@@ -344,15 +344,7 @@ internal class QueueController(
     }
 
     fun cycleAbLoop() {
-        val at = player.currentPosition.coerceAtLeast(0)
-        val loop = _abLoop.value
-        _abLoop.value =
-            when {
-                loop == null -> AbLoop(at)
-                loop.endMs == null && at > loop.startMs + MIN_LOOP_MS -> loop.copy(endMs = at)
-                loop.endMs == null -> AbLoop(at)
-                else -> null
-            }
+        _abLoop.value = AbLoopReducer.advance(_abLoop.value, player.currentPosition)
     }
 
     fun clearAbLoop() {
@@ -365,7 +357,4 @@ internal class QueueController(
         if (player.currentPosition >= end) player.seekTo(loop.startMs)
     }
 
-    private companion object {
-        const val MIN_LOOP_MS = 1_000L
-    }
 }
