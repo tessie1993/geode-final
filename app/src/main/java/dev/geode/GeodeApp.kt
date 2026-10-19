@@ -1,12 +1,18 @@
 package dev.geode
 
 import android.app.Application
+import androidx.glance.appwidget.updateAll
 import dagger.hilt.android.HiltAndroidApp
+import dev.geode.widget.NowPlayingWidget
 import java.io.File
 
 @HiltAndroidApp
-class GeodeApp : Application() {
-    val container: GeodeContainer by lazy { GeodeContainer(this) }
+class GeodeApp :
+    Application(),
+    GeodeContainerOwner {
+    override val container: GeodeContainer by lazy {
+        GeodeContainer(this) { NowPlayingWidget().updateAll(this) }
+    }
 
     override fun onCreate() {
         super.onCreate()

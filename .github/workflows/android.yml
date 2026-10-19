@@ -78,7 +78,7 @@ jobs:
       # class of bug is caught at PR time instead of the next audit.
       - name: detekt
         working-directory: ${{ env.PROJECT_DIR }}
-        run: ./gradlew :app:detekt --stacktrace --no-daemon
+        run: ./gradlew detekt --stacktrace --no-daemon
 
       # detekt prints only "Analysis failed with N weighted issues" and a stack
       # trace; the findings themselves go to a report file. Without this, reading
@@ -88,21 +88,13 @@ jobs:
         if: failure()
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
-          dir=app/build/reports/detekt
-          if [ -f "$dir/detekt.txt" ]; then
-            echo "::group::detekt findings"
-            cat "$dir/detekt.txt"
-            echo "::endgroup::"
-          elif [ -f "$dir/detekt.xml" ]; then
-            # The XML carries the same findings one <error> element per issue;
-            # enough to name the rule, file and line without the artifact.
-            echo "::group::detekt findings (xml)"
-            grep -oE '<file name="[^"]*"|<error line="[0-9]+" column="[0-9]+" severity="[^"]*" message="[^"]*" source="[^"]*"' "$dir/detekt.xml" || cat "$dir/detekt.xml"
-            echo "::endgroup::"
-          else
-            echo "No detekt report found under $dir. Present:"
-            ls -la "$dir" 2>/dev/null || echo "  (directory absent)"
-          fi
+          for report in */build/reports/detekt/detekt.txt engine/*/build/reports/detekt/detekt.txt; do
+            if [ -f "$report" ]; then
+              echo "::group::$report"
+              cat "$report"
+              echo "::endgroup::"
+            fi
+          done
 
       - name: Assemble debug APK
         working-directory: ${{ env.PROJECT_DIR }}
@@ -152,7 +144,7 @@ jobs:
       # still available from the workflow run for device testing.
       - name: Run unit tests
         working-directory: ${{ env.PROJECT_DIR }}
-        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+        run: ./gradlew testDebugUnitTest :engine:audio-core:test --stacktrace --no-daemon
 
       - name: Run Android lint
         working-directory: ${{ env.PROJECT_DIR }}
@@ -168,8 +160,8 @@ jobs:
         with:
           name: geode-build-reports-${{ github.run_number }}
           path: |
-            app/build/reports/
-            app/build/test-results/
+            **/build/reports/
+            **/build/test-results/
           if-no-files-found: ignore
           retention-days: 14
 

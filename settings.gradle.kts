@@ -30,3 +30,5 @@ include(
     ":engine:scenes",
     ":engine:audio-android",
 )
+
+include(":app-runtime", ":ui-compose", ":app-resources")

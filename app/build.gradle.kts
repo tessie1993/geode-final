@@ -202,29 +202,19 @@ listOf("assembleRelease", "bundleRelease").forEach { name ->
 }
 
 dependencies {
-    // What the removed :engine:runtime aggregator re-exported to :app via api(...).
-    implementation(project(":engine:scenes"))
-    implementation(project(":engine:audio-android"))
+    implementation(project(":app-runtime"))
+    implementation(project(":ui-compose"))
+    implementation(project(":app-resources"))
 
     implementation(libs.core.splashscreen)
-    implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)
     implementation(libs.media3.session)
-    implementation(libs.media3.transformer)
-    implementation(libs.media3.effect)
-    implementation(libs.documentfile)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
-    implementation(libs.compose.material3)
-    implementation(libs.compose.material3.adaptive)
     implementation(libs.hilt.android)
-    implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
-    implementation(libs.compose.material.icons.extended)
     implementation(libs.activity.compose)
     implementation(libs.glance.appwidget)
-    implementation(libs.lifecycle.viewmodel.compose)
-    implementation(libs.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)

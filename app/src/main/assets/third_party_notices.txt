@@ -766,7 +766,7 @@ That's all there is to it!
 
 Mali (font)
 -----------
-app/src/main/res/font/mali_regular.ttf, mali_medium.ttf, mali_semibold.ttf
+app-resources/src/main/res/font/mali_regular.ttf, mali_medium.ttf, mali_semibold.ttf
 and mali_bold.ttf are the Mali family, bundled unmodified from
 https://github.com/google/fonts/tree/main/ofl/mali and used for the app's
 body, label and title typography (StoneTheme.kt).
@@ -867,7 +867,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 Mystery Quest (font)
 --------------------
-app/src/main/res/font/mystery_quest_regular.ttf is the Mystery Quest font,
+app-resources/src/main/res/font/mystery_quest_regular.ttf is the Mystery Quest font,
 bundled unmodified from
 https://github.com/google/fonts/tree/main/ofl/mysteryquest and used for the
 app's display and headline typography (StoneTheme.kt).

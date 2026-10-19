@@ -35,6 +35,10 @@ class VisualizerRenderer(
     @Volatile
     var features: AudioFeatures = AudioFeatures.empty()
 
+    /** Read once per GL frame. The provider must be non-blocking and safe on the GL thread. */
+    @Volatile
+    var featuresProvider: (() -> AudioFeatures)? = null
+
     @Volatile
     var requestedSceneId: String = SceneIds.DEFAULT
 
@@ -196,7 +200,7 @@ class VisualizerRenderer(
             nativeViz.setAdsrConfigs(adsr)
             nativeAdsr = adsr
         }
-        nativeViz.setFeatures(features)
+        nativeViz.setFeatures(featuresProvider?.invoke() ?: features)
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDurationMs)

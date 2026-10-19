@@ -34,7 +34,7 @@ if [ $# -lt 1 ]; then
 fi
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-RES="$SCRIPT_DIR/../app/src/main/res"
+RES="$SCRIPT_DIR/../app-resources/src/main/res"
 DRAWABLE="$RES/drawable-nodpi"
 RAW="$RES/raw"
 FONT="$RES/font"
@@ -114,7 +114,7 @@ done
 # Regenerate ThemePackCatalog.kt from the packs' own token files, so the
 # Kotlin catalog can never drift from what was actually imported.
 # ---------------------------------------------------------------------------
-CATALOG="$SCRIPT_DIR/../app/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt"
+CATALOG="$SCRIPT_DIR/../app-runtime/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt"
 
 # token <pack-dir> <json-key>  -> string value from tokens/theme.tokens.json
 # (space-preserving: the pack contract requires exact names like "Clear Quartz")

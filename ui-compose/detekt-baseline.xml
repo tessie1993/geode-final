@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>MatchingDeclarationName:PaletteMaker.kt$SavedPalettes</ID>
+    <ID>NestedBlockDepth:PlayerScreen.kt$internal suspend fun driveSpectrum( live: Boolean, bands: () -&gt; FloatArray, emit: (FloatArray) -&gt; Unit, )</ID>
+    <ID>ReturnCount:LibraryScreen.kt$internal fun playlistDropIndex( from: Int, offsetPx: Float, rowHeightPx: Int, count: Int, ): Int</ID>
+  </CurrentIssues>
+</SmellBaseline>

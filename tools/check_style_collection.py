@@ -36,10 +36,10 @@ def main() -> None:
     # SceneCommon.hpp (uploadSceneTouch), not inline in CymaticsScene.cpp itself.
     scene_common = read("core/viz/scenes/SceneCommon.hpp")
     scene_registry = read("core/viz/SceneRegistry.cpp")
-    hub = read("app/src/main/java/dev/geode/ui/VisualsHub.kt")
-    shell = read("app/src/main/java/dev/geode/ui/AppShell.kt")
-    crystal = read("app/src/main/java/dev/geode/ui/Crystal.kt")
-    theme_catalog = read("app/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt")
+    hub = read("ui-compose/src/main/java/dev/geode/ui/VisualsHub.kt")
+    shell = read("ui-compose/src/main/java/dev/geode/ui/AppShell.kt")
+    crystal = read("ui-compose/src/main/java/dev/geode/ui/Crystal.kt")
+    theme_catalog = read("app-runtime/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt")
 
     # \s* after the paren: ktlint wraps long constructor calls onto their own
     # lines, so the id literal is not necessarily on the same line as the name.

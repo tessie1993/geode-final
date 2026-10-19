@@ -36,8 +36,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import dev.geode.R
 import dev.geode.playback.PlaybackService
+import dev.geode.resources.R
 import dev.geode.ui.MainActivity
 
 /** Artwork, title, artist and transport, redrawn whenever the playback service publishes a change. */
