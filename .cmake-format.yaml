@@ -1,0 +1,8 @@
+format:
+  tab_size: 4
+  line_width: 120
+lint:
+  # Existing CMake variables use both lower_case and UPPER_CASE.
+  local_var_pattern: '[a-zA-Z_][a-zA-Z0-9_]*'
+  # Documentation and line wrapping are not commit blockers.
+  disabled_codes: [C0111, C0301]

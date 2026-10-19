@@ -26,4 +26,5 @@ google-services.json
 .codex/
 AGENTS.md
 __pycache__/
+.venv-hooks/
 *.logcat

@@ -1,0 +1,80 @@
+minimum_pre_commit_version: '4.0.0'
+default_stages: [pre-commit]
+# Do not lint third-party submodules, generated output, or local IDE state.
+exclude: '(^|/)(third_party|build|\.gradle|\.cxx|\.idea|\.venv-hooks)/'
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+        args: [--assume-in-merge]
+      - id: check-case-conflict
+      - id: check-illegal-windows-names
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+      - id: check-xml
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=no]
+
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v21.1.8
+    hooks:
+      - id: clang-format
+        name: Check C/C++ formatting
+        entry: clang-format
+        args: [--dry-run, --Werror, --style=file]
+        types_or: [c, c++]
+
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-lint
+        additional_dependencies: [pyyaml==6.0.3]
+
+  - repo: local
+    hooks:
+      - id: cppcheck
+        name: Check C/C++ bugs with Cppcheck
+        language: python
+        entry: cppcheck
+        additional_dependencies: [cppcheck==1.5.3]
+        args:
+          - --enable=warning,performance,portability
+          - --error-exitcode=1
+          - --std=c++20
+          - --inline-suppr
+          - --suppress=missingIncludeSystem
+          - --template=gcc
+          - --quiet
+          - -Icore
+        types_or: [c, c++]
+        require_serial: true
+      - id: staged-whitespace
+        name: Check staged whitespace
+        language: system
+        entry: git diff --cached --check
+        pass_filenames: false
+        always_run: true
+      - id: dependency-pins
+        name: Check dependency versions and catalog references
+        language: python
+        entry: python tools/hooks/check_dependencies.py
+        additional_dependencies: ['tomli==2.2.1; python_version < "3.11"']
+        files: '(^gradle/.*\.toml$|\.gradle\.kts$)'
+        require_serial: true
+      - id: ktlint
+        name: Check staged app/engine Kotlin with Gradle ktlint
+        language: python
+        entry: python tools/hooks/check_kotlin.py
+        files: '^(app|engine)/.*\.kts?$'
+        require_serial: true
+      - id: native-dependency-pins
+        name: Check changed native submodule pins
+        language: python
+        entry: python tools/hooks/check_native_dependencies.py
+        pass_filenames: false
+        always_run: true

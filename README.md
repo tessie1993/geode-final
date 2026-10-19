@@ -58,6 +58,9 @@ Requires JDK 17+, the Android SDK with `platforms;android-37`, NDK
 them. The workflows under `.github/workflows` build the debug APK, ship a
 signed APK and cut a Play Store release; they check out the submodules.
 
+For staged-change checks before each commit (Kotlin, C/C++, CMake, dependency
+declarations, and common file errors), follow [the Git hook setup](docs/GIT_HOOKS.md).
+
 ## Architecture
 
 Gradle modules, package `dev.geode`:
