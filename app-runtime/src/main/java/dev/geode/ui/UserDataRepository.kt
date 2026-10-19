@@ -3,6 +3,7 @@ package dev.geode.ui
 import android.content.SharedPreferences
 import dev.geode.ui.theme.ThemePack
 import dev.geode.ui.theme.ThemePackCatalog
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 data class GeodeUserData(
@@ -31,13 +34,17 @@ interface UserDataRepository {
     suspend fun setTheme(pack: ThemePack)
 
     suspend fun setGuiPrefs(prefs: GuiPrefs)
+
+    suspend fun updateGuiPrefs(transform: (GuiPrefs) -> GuiPrefs)
 }
 
 class SharedPrefsUserDataRepository(
     prefs: SharedPreferences,
     scope: CoroutineScope,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : UserDataRepository {
     private val store = ThemeStore(prefs)
+    private val guiWrites = Mutex()
 
     private val _theme = MutableStateFlow(ThemePackCatalog.bySlug(null))
     override val theme: StateFlow<ThemePack> = _theme.asStateFlow()
@@ -54,8 +61,8 @@ class SharedPrefsUserDataRepository(
 
     init {
         scope.launch {
-            val pack = withContext(Dispatchers.IO) { store.load() }
-            val gui = withContext(Dispatchers.IO) { store.loadGui() }
+            val pack = withContext(ioDispatcher) { store.load() }
+            val gui = withContext(ioDispatcher) { store.loadGui() }
             if (!_loaded.value) {
                 _theme.value = pack
                 _guiPrefs.value = gui
@@ -67,12 +74,27 @@ class SharedPrefsUserDataRepository(
     override suspend fun setTheme(pack: ThemePack) {
         _theme.value = pack
         _loaded.value = true
-        withContext(Dispatchers.IO) { store.save(pack) }
+        withContext(ioDispatcher) { store.save(pack) }
     }
 
     override suspend fun setGuiPrefs(prefs: GuiPrefs) {
-        _guiPrefs.value = prefs
-        _loaded.value = true
-        withContext(Dispatchers.IO) { store.saveGui(prefs) }
+        writeGuiPrefs(requireCommit = false) { prefs }
+    }
+
+    override suspend fun updateGuiPrefs(transform: (GuiPrefs) -> GuiPrefs) {
+        writeGuiPrefs(requireCommit = true, transform = transform)
+    }
+
+    private suspend fun writeGuiPrefs(
+        requireCommit: Boolean,
+        transform: (GuiPrefs) -> GuiPrefs,
+    ) {
+        guiWrites.withLock {
+            val updated = transform(_guiPrefs.value)
+            // Commit on IO before publishing. Failed writes never advance onboarding state.
+            withContext(ioDispatcher) { store.saveGui(updated, requireCommit) }
+            _guiPrefs.value = updated
+            _loaded.value = true
+        }
     }
 }

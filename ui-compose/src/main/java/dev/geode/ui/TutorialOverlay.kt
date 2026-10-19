@@ -17,11 +17,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,18 +40,16 @@ import dev.geode.resources.R
 @Composable
 fun TutorialOverlay(
     steps: List<TutorialStep>,
+    index: Int,
     dontShowAgain: Boolean,
     onDontShowAgainChange: (Boolean) -> Unit,
-    onNavigate: (GeodeDestination) -> Unit,
+    onBack: () -> Unit,
+    onNext: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (steps.isEmpty()) return
-    var index by rememberSaveable { mutableIntStateOf(0) }
     val step = steps[index.coerceIn(0, steps.lastIndex)]
-
-    // Navigation follows the step rather than the button, so Back walks the app backwards too.
-    LaunchedEffect(step) { onNavigate(step.destination) }
 
     Box(
         modifier
@@ -109,8 +102,8 @@ fun TutorialOverlay(
             TutorialActions(
                 atFirst = index == 0,
                 atLast = index == steps.lastIndex,
-                onBack = { if (index > 0) index-- },
-                onNext = { if (index < steps.lastIndex) index++ else onDismiss() },
+                onBack = onBack,
+                onNext = onNext,
                 onSkip = onDismiss,
             )
         }

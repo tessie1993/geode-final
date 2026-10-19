@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,8 +22,11 @@ import dev.geode.render.SceneFactory
 import dev.geode.render.TransitionStyle
 import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneParams
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(UnstableApi::class)
@@ -33,6 +37,21 @@ class PlayerViewModel
         private val sessions: PlayerSessionProvider,
     ) : ViewModel() {
         private val session: PlayerSession = sessions.get()
+
+        init {
+            viewModelScope.launch {
+                session.playbackNotice.collectLatest { notice ->
+                    if (notice != null) {
+                        delay(NOTICE_VISIBLE_MS)
+                        session.clearPlaybackNotice()
+                    }
+                }
+            }
+        }
+
+        private companion object {
+            const val NOTICE_VISIBLE_MS = 8_000L
+        }
 
         val player: Player get() = session.player
 

@@ -796,4 +796,6 @@
     <string name="palette_none_yet">None yet — build a gradient above and save it.</string>
     <string name="palette_edit">Edit</string>
     <string name="palette_delete">Delete</string>
+    <string name="presentation_action_failed">The action could not be completed. Please try again.</string>
+    <string name="search_failed">Search could not be completed. Change the query to try again.</string>
 </resources>

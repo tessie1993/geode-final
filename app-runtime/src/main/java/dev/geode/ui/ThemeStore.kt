@@ -7,6 +7,7 @@ import dev.geode.analysis.BeatTuning
 import dev.geode.resources.R
 import dev.geode.ui.theme.ThemePack
 import dev.geode.ui.theme.ThemePackCatalog
+import java.io.IOException
 
 enum class PlayerPosition(
     @param:StringRes val labelRes: Int,
@@ -205,9 +206,13 @@ class ThemeStore(
         prefs.getBoolean(KEY_REDUCED_MOTION, false) ||
             prefs.getString(KEY_SAFETY_CHOICE, null) == LEGACY_CHOICE_REDUCED_MOTION
 
-    fun saveGui(gui: GuiPrefs) {
+    fun saveGui(
+        gui: GuiPrefs,
+        requireCommit: Boolean = false,
+    ) {
         val fontColor = gui.fontColorOverride
-        prefs.edit {
+        val editor = prefs.edit()
+        editor.apply {
             putString(KEY_POS, gui.playerPosition.name)
             putString(KEY_CORNER, gui.cornerStyle.name)
             putFloat(KEY_OPACITY, gui.barOpacity)
@@ -235,6 +240,11 @@ class ThemeStore(
             putBoolean(KEY_KEY_COLOR, gui.keyColor)
             putBoolean(KEY_SECOND_SCREEN, gui.secondScreen)
             putBoolean(KEY_MIC_REACTIVE, gui.micReactive)
+        }
+        if (requireCommit) {
+            if (!editor.commit()) throw IOException("Could not save interface preferences")
+        } else {
+            editor.apply()
         }
     }
 

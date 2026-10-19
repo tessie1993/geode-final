@@ -65,7 +65,7 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
 
       - name: Verify (ktlint, tests, lint)
-        run: ./gradlew ktlintCheck testDebugUnitTest lint --stacktrace
+        run: ./gradlew ktlintCheck testDebugUnitTest :presentation-state:test lint --stacktrace
 
       # The secrets keep their MUSICVIZ_ names, but app/build.gradle.kts reads
       # GEODE_ — so they are exported under the names the build looks for.

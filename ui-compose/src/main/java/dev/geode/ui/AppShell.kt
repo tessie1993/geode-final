@@ -36,10 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,18 +55,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
-import dev.geode.analysis.SearchMatcher
-import dev.geode.data.BootAnimationStore
-import dev.geode.data.GeodePrefsFiles
+import dev.geode.presentation.EntryStage
+import dev.geode.presentation.GeodeDestination
+import dev.geode.presentation.SearchPhase
+import dev.geode.presentation.ShellAction
+import dev.geode.presentation.ShellOverlay
+import dev.geode.presentation.ShellState
 import dev.geode.render.VisualizerView
 import dev.geode.resources.R
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-
-private const val CRASH_REPORT_MAX_BYTES = 64 * 1024
 
 /**
  * A destination paired with the resolved label and icon the navigation surfaces draw for it.
@@ -119,37 +114,18 @@ fun AppRoot() {
             themePack
         }
     val externalDisplay = rememberExternalDisplay()
-    val appState = rememberGeodeAppState(externalDisplay)
-    val bootAnimEnabled = remember { BootAnimationStore(GeodePrefsFiles(context).general).load() }
+    val shell: ShellViewModel = geodeViewModel()
+    val appState by shell.state.collectAsStateWithLifecycle()
+    val crashText by shell.crashReport.collectAsStateWithLifecycle()
+    val effectFailed by shell.effectFailed.collectAsStateWithLifecycle()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val onSecondScreen = gui.secondScreen && externalDisplay != null
     if (onSecondScreen) {
         SecondScreenCanvas(externalDisplay, visualizerView)
     }
 
-    var crashText by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
-        crashText =
-            withContext(Dispatchers.IO) {
-                val file = java.io.File(context.filesDir, "crash-latest.txt")
-                if (file.exists()) {
-                    file.inputStream().use { stream ->
-                        val buf = ByteArray(CRASH_REPORT_MAX_BYTES)
-                        var read = 0
-                        while (read < buf.size) {
-                            val n = stream.read(buf, read, buf.size - read)
-                            if (n < 0) break
-                            read += n
-                        }
-                        String(buf, 0, read, Charsets.UTF_8)
-                    }
-                } else {
-                    null
-                }
-            }
-    }
     VisualizerEngineBindings(viewModel, visualizerView)
-    androidx.activity.compose.BackHandler(enabled = !appState.onPlayer) { appState.resetToPlayer() }
+    androidx.activity.compose.BackHandler(enabled = appState.canGoBack) { shell.dispatch(ShellAction.Back) }
     CrystalMaterialTheme(
         pack = effectiveTheme,
         gui = gui,
@@ -171,7 +147,7 @@ fun AppRoot() {
                     },
                 compact = gui.compactPlayer,
                 barOpacity = gui.barOpacity,
-                onExpand = appState::expand,
+                onExpand = { shell.dispatch(ShellAction.Open(ShellOverlay.PLAYER)) },
                 onPlayPause = viewModel::togglePlayPause,
                 onPrevious = viewModel::previous,
                 onNext = viewModel::next,
@@ -180,36 +156,25 @@ fun AppRoot() {
         // Someone who came here to listen does not get a render queue in their navigation bar.
         // First run no longer asks, so everyone starts with everything and narrows it in Settings.
         val showsStudio = gui.intent.showsStudio
-        // Set by Settings > Help to replay the tour after it has already been seen; the automatic
-        // first-run showing is a function of the stored prefs instead, so this stays false there.
-        var tutorialRunning by rememberSaveable { mutableStateOf(false) }
-        // Offered once, to someone who has finished setup and has not turned the offer off.
-        val offerTutorial = gui.setupDone && !gui.tutorialSeen && gui.tutorialOnFirstRun
-        // Latched the moment the tour is offered, so that from then on its visibility depends on
-        // `tutorialRunning` alone. Without this, ticking "don't show this next time" DURING the
-        // tour clears `tutorialOnFirstRun`, which clears `offerTutorial`, which closes the tour
-        // out from under the person who was reading it — the checkbox is about the NEXT install,
-        // not this minute.
-        LaunchedEffect(offerTutorial) { if (offerTutorial) tutorialRunning = true }
         val navEntries =
             GeodeDestination.entries
                 .filter { it != GeodeDestination.STUDIO || showsStudio }
                 .map { NavEntry(it, CrystalNavItem(stringResource(it.labelRes), it.icon)) }
         val destinationContent: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             PlaybackNoticeBanner(viewModel)
-            when (appState.dest) {
+            when (appState.destination) {
                 GeodeDestination.PLAYER ->
                     PlayerScreen(
                         viewModel,
-                        onOpenSearch = appState::openSearch,
-                        onExpand = appState::expand,
-                        onOpenLibrary = { appState.navigateTo(GeodeDestination.LIBRARY) },
+                        onOpenSearch = { shell.dispatch(ShellAction.Open(ShellOverlay.SEARCH)) },
+                        onExpand = { shell.dispatch(ShellAction.Open(ShellOverlay.PLAYER)) },
+                        onOpenLibrary = { shell.dispatch(ShellAction.Navigate(GeodeDestination.LIBRARY)) },
                     )
                 GeodeDestination.LIBRARY ->
                     if (twoPane) {
                         Row(Modifier.fillMaxSize()) {
                             Box(Modifier.weight(1f)) {
-                                LibraryScreen(onOpenSearch = appState::openSearch)
+                                LibraryScreen(onOpenSearch = { shell.dispatch(ShellAction.Open(ShellOverlay.SEARCH)) })
                             }
                             Box(
                                 Modifier
@@ -220,24 +185,30 @@ fun AppRoot() {
                             Box(Modifier.weight(1f)) {
                                 PlayerScreen(
                                     viewModel,
-                                    onOpenSearch = appState::openSearch,
-                                    onExpand = appState::expand,
+                                    onOpenSearch = { shell.dispatch(ShellAction.Open(ShellOverlay.SEARCH)) },
+                                    onExpand = { shell.dispatch(ShellAction.Open(ShellOverlay.PLAYER)) },
                                     onOpenLibrary = {},
                                 )
                             }
                         }
                     } else {
-                        LibraryScreen(onOpenSearch = appState::openSearch)
+                        LibraryScreen(onOpenSearch = { shell.dispatch(ShellAction.Open(ShellOverlay.SEARCH)) })
                     }
                 GeodeDestination.VISUALS ->
                     VisualsHub(
                         viewModel,
                         visualizerView,
-                        onOpenNowPlaying = appState::expand,
-                        liveBackdrop = gui.clearVisualsMenu && !appState.expanded && !onSecondScreen,
+                        onOpenNowPlaying = { shell.dispatch(ShellAction.Open(ShellOverlay.PLAYER)) },
+                        liveBackdrop = gui.clearVisualsMenu && appState.overlay != ShellOverlay.PLAYER && !onSecondScreen,
                     )
                 GeodeDestination.STUDIO -> StudioRoute()
-                GeodeDestination.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
+                GeodeDestination.SETTINGS ->
+                    SettingsScreen(
+                        viewModel,
+                        exportOpen = appState.overlay == ShellOverlay.EXPORT,
+                        onOpenExport = { shell.dispatch(ShellAction.Open(ShellOverlay.EXPORT)) },
+                        onStartTutorial = { shell.dispatch(ShellAction.StartTutorial) },
+                    )
             }
         }
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -247,6 +218,7 @@ fun AppRoot() {
                 AppShellCompact(
                     navEntries = navEntries,
                     appState = appState,
+                    onNavigate = { shell.dispatch(ShellAction.Navigate(it)) },
                     gui = gui,
                     hasMedia = state.hasMedia,
                     miniPlayer = miniPlayer,
@@ -256,13 +228,14 @@ fun AppRoot() {
                 AppShellExpanded(
                     navEntries = navEntries,
                     appState = appState,
+                    onNavigate = { shell.dispatch(ShellAction.Navigate(it)) },
                     hasMedia = state.hasMedia,
                     miniPlayer = miniPlayer,
                     content = { destinationContent(true) },
                 )
             }
-            if (appState.searching) {
-                SearchScreen(viewModel, onClose = appState::closeSearch)
+            if (appState.overlay == ShellOverlay.SEARCH) {
+                SearchScreen(onClose = { shell.dispatch(ShellAction.CloseOverlay) })
             }
             val clipLabel = stringResource(R.string.crash_clip_label)
             crashText?.let { text ->
@@ -283,52 +256,52 @@ fun AppRoot() {
                     },
                     dismissButton = {
                         CrystalButton(filled = false, onClick = {
-                            java.io.File(context.filesDir, "crash-latest.txt").delete()
-                            crashText = null
+                            shell.dismissCrash()
                         }) { Text(stringResource(R.string.action_dismiss)) }
                     },
                 )
             }
-            if (appState.expanded) {
+            if (appState.overlay == ShellOverlay.PLAYER) {
                 VisualizerScreen(
                     viewModel = viewModel,
                     visualizerView = visualizerView,
                     externalDisplayName = if (onSecondScreen) externalDisplay?.name else null,
-                    onCollapse = appState::collapse,
+                    onCollapse = { shell.dispatch(ShellAction.CloseOverlay) },
                     onOpenVisuals = {
-                        appState.collapse()
-                        appState.navigateTo(GeodeDestination.VISUALS)
+                        shell.dispatch(ShellAction.Navigate(GeodeDestination.VISUALS))
                     },
                 )
             }
-            if ((!bootAnimEnabled || appState.bootDone) && !gui.safetyAcknowledged) {
-                SafetyConsent(
-                    onAcknowledge = { settingsViewModel.setGuiPrefs(gui.copy(safetyAcknowledged = true)) },
-                )
-            } else if ((!bootAnimEnabled || appState.bootDone) && !gui.setupDone) {
-                // Setup runs only after the notice is acknowledged, and only until it is done.
-                FirstRunGate(
-                    onDone = {
-                        settingsViewModel.setGuiPrefs(gui.copy(setupDone = true))
-                        appState.navigateTo(gui.intent.landingDestination)
-                    },
-                )
-            } else if (tutorialRunning) {
-                // Offered once setup is out of the way, so the tour walks a real app with a real
-                // library rather than a set of empty tabs.
-                TutorialOverlay(
-                    steps = TutorialStep.forNav(showsStudio),
-                    dontShowAgain = !gui.tutorialOnFirstRun,
-                    onDontShowAgainChange = { settingsViewModel.setGuiPrefs(gui.copy(tutorialOnFirstRun = !it)) },
-                    onNavigate = appState::navigateTo,
-                    onDismiss = {
-                        tutorialRunning = false
-                        settingsViewModel.setGuiPrefs(gui.copy(tutorialSeen = true))
-                    },
-                )
+            if (appState.overlay == ShellOverlay.EXPORT) {
+                ExportHost(viewModel, visualizerView) { shell.dispatch(ShellAction.CloseOverlay) }
             }
-            if (bootAnimEnabled && !appState.bootDone) {
-                BootIntro(onDone = { appState.bootDone = true })
+            when (appState.stage) {
+                EntryStage.LOADING ->
+                    Box(
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).clickable(onClick = {}),
+                        contentAlignment = Alignment.Center,
+                    ) { androidx.compose.material3.CircularProgressIndicator() }
+                EntryStage.BOOT -> BootIntro(onDone = { shell.dispatch(ShellAction.BootFinished) })
+                EntryStage.SAFETY -> SafetyConsent(onAcknowledge = { shell.dispatch(ShellAction.AcknowledgeSafety) })
+                EntryStage.SETUP -> FirstRunGate(onDone = { shell.dispatch(ShellAction.FinishSetup) })
+                EntryStage.TUTORIAL ->
+                    TutorialOverlay(
+                        steps = appState.tourStops.map { it.appearance() },
+                        index = appState.tourStops.indexOf(appState.tourStop).coerceAtLeast(0),
+                        dontShowAgain = !gui.tutorialOnFirstRun,
+                        onDontShowAgainChange = { shell.dispatch(ShellAction.SetTutorialOffer(!it)) },
+                        onBack = { shell.dispatch(ShellAction.PreviousTutorialStep) },
+                        onNext = { shell.dispatch(ShellAction.NextTutorialStep) },
+                        onDismiss = { shell.dispatch(ShellAction.DismissTutorial) },
+                    )
+                EntryStage.READY -> Unit
+            }
+            if (effectFailed) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = shell::dismissError,
+                    text = { Text(stringResource(R.string.presentation_action_failed)) },
+                    confirmButton = { CrystalButton(onClick = shell::dismissError) { Text(stringResource(R.string.action_dismiss)) } },
+                )
             }
         }
     }
@@ -337,7 +310,8 @@ fun AppRoot() {
 @Composable
 private fun AppShellCompact(
     navEntries: List<NavEntry>,
-    appState: GeodeAppState,
+    appState: ShellState,
+    onNavigate: (GeodeDestination) -> Unit,
     gui: GuiPrefs,
     hasMedia: Boolean,
     miniPlayer: @Composable () -> Unit,
@@ -363,8 +337,8 @@ private fun AppShellCompact(
                     items = navEntries.map { it.item },
                     // A destination can be hidden while still being the current one — reaching
                     // Studio from a track menu, say. Fall back to the first tab rather than -1.
-                    selected = navEntries.indexOfFirst { it.destination == appState.dest }.coerceAtLeast(0),
-                    onSelect = { appState.navigateTo(navEntries[it].destination) },
+                    selected = navEntries.indexOfFirst { it.destination == appState.destination }.coerceAtLeast(0),
+                    onSelect = { onNavigate(navEntries[it].destination) },
                     opacity = gui.barOpacity,
                 )
             }
@@ -377,7 +351,8 @@ private fun AppShellCompact(
 @Composable
 private fun AppShellExpanded(
     navEntries: List<NavEntry>,
-    appState: GeodeAppState,
+    appState: ShellState,
+    onNavigate: (GeodeDestination) -> Unit,
     hasMedia: Boolean,
     miniPlayer: @Composable () -> Unit,
     content: @Composable () -> Unit,
@@ -386,8 +361,8 @@ private fun AppShellExpanded(
         NavigationRail(containerColor = Color.Transparent) {
             navEntries.forEach { (destination, item) ->
                 NavigationRailItem(
-                    selected = appState.dest == destination,
-                    onClick = { appState.navigateTo(destination) },
+                    selected = appState.destination == destination,
+                    onClick = { onNavigate(destination) },
                     icon = { StoneIconArt(item.icon, item.label) },
                     label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
                 )
@@ -472,10 +447,10 @@ private fun MiniPlayer(
 @Composable
 fun SettingsScreen(
     viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
+    exportOpen: Boolean,
+    onOpenExport: () -> Unit,
     onStartTutorial: () -> Unit,
 ) {
-    var showExport by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
             CrystalOverline(stringResource(R.string.app_name))
@@ -483,82 +458,24 @@ fun SettingsScreen(
         }
         AppSettingsTab(
             viewModel,
-            exportOpen = showExport,
-            onOpenExport = { showExport = true },
+            exportOpen = exportOpen,
+            onOpenExport = onOpenExport,
             onStartTutorial = onStartTutorial,
         )
     }
-    if (showExport) {
-        ExportHost(viewModel, visualizerView) { showExport = false }
-    }
 }
 
-private data class SearchTrackRow(
-    val uri: String,
-    val title: String,
-    val subtitle: String,
-    val fields: List<String>,
-    val fromDevice: Boolean,
-)
-
 @Composable
-fun SearchScreen(
-    viewModel: PlayerViewModel,
-    onClose: () -> Unit,
-) {
+fun SearchScreen(onClose: () -> Unit) {
     val settingsViewModel: SettingsViewModel = geodeViewModel()
-    val libraryViewModel: LibraryViewModel = geodeViewModel()
-    var query by rememberSaveable { mutableStateOf("") }
-    var debounced by rememberSaveable { mutableStateOf("") }
+    val searchViewModel: SearchViewModel = geodeViewModel()
+    val search by searchViewModel.state.collectAsStateWithLifecycle()
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
-    val library by libraryViewModel.library.collectAsStateWithLifecycle()
-    val viz by viewModel.vizState.collectAsStateWithLifecycle()
-    val deviceTracks by libraryViewModel.deviceTracks.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { libraryViewModel.refreshDeviceTracks() }
-    LaunchedEffect(query) {
-        if (query.isNotBlank()) delay(250)
-        debounced = query
-    }
+    LaunchedEffect(searchViewModel) { searchViewModel.open() }
     val dismiss = rememberPredictiveDismiss(onDismiss = onClose)
-
-    val terms = remember(debounced) { SearchMatcher.terms(debounced) }
-    val trackResults =
-        remember(terms, deviceTracks, library.tracks) {
-            val candidates =
-                deviceTracks.map { t ->
-                    SearchTrackRow(
-                        uri = t.uri,
-                        title = t.title,
-                        subtitle = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · "),
-                        fields = listOf(t.title, t.artist, t.album, t.folder),
-                        fromDevice = true,
-                    )
-                } +
-                    library.tracks.map { t ->
-                        SearchTrackRow(
-                            uri = t.uri,
-                            title = t.title,
-                            subtitle = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · "),
-                            fields = listOf(t.title, t.artist, t.album, t.genre),
-                            fromDevice = false,
-                        )
-                    }
-            SearchMatcher.filterTracks(
-                terms = terms,
-                items = candidates,
-                uriOf = { it.uri },
-                fieldsOf = { it.fields },
-                preferred = { it.fromDevice },
-            )
-        }
-    val playlistResults =
-        remember(terms, library.playlists) {
-            library.playlists.filter { SearchMatcher.matches(terms, listOf(it.name)) }
-        }
-    val presetResults =
-        remember(terms, viz.presets) {
-            viz.presets.filter { SearchMatcher.matches(terms, listOf(it.name)) }
-        }
+    val trackResults = search.results?.tracks.orEmpty()
+    val playlistResults = search.results?.playlists.orEmpty()
+    val presetResults = search.results?.presets.orEmpty()
 
     Box(Modifier.fillMaxSize().dismissTransform(dismiss)) {
         CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
@@ -571,8 +488,8 @@ fun SearchScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
+                    value = search.query,
+                    onValueChange = searchViewModel::setQuery,
                     modifier = Modifier.weight(1f),
                     placeholder = { Text(stringResource(R.string.search_placeholder)) },
                     singleLine = true,
@@ -581,7 +498,7 @@ fun SearchScreen(
                 IconButton(onClick = onClose) { StoneIconArt(StoneIcon.CLOSE, stringResource(R.string.search_close)) }
             }
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (terms.isEmpty()) {
+                if (search.phase == SearchPhase.IDLE) {
                     item {
                         Text(
                             stringResource(R.string.search_hint),
@@ -589,6 +506,10 @@ fun SearchScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                } else if (search.phase == SearchPhase.LOADING) {
+                    item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                } else if (search.phase == SearchPhase.FAILED) {
+                    item { Text(stringResource(R.string.search_failed)) }
                 } else {
                     if (trackResults.isNotEmpty()) {
                         item {
@@ -602,11 +523,7 @@ fun SearchScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        viewModel.playFrom(
-                                            trackResults.map { r -> QueueTrack(r.uri, r.title, r.subtitle) },
-                                            t.uri,
-                                        )
-                                        onClose()
+                                        if (searchViewModel.playTrack(t.uri)) onClose()
                                     },
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -622,7 +539,7 @@ fun SearchScreen(
                                         )
                                     }
                                 }
-                                IconButton(onClick = { viewModel.enqueue(t.uri) }) {
+                                IconButton(onClick = { searchViewModel.enqueue(t.uri) }) {
                                     StoneIconArt(StoneIcon.QUEUE, stringResource(R.string.action_add_to_queue))
                                 }
                             }
@@ -640,8 +557,7 @@ fun SearchScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        libraryViewModel.playPlaylist(pl.name)
-                                        onClose()
+                                        if (searchViewModel.playPlaylist(pl.name)) onClose()
                                     }.padding(vertical = 8.dp),
                             ) {
                                 Text(pl.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -670,8 +586,7 @@ fun SearchScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        viewModel.applyPreset(p)
-                                        onClose()
+                                        if (searchViewModel.applyPreset(p)) onClose()
                                     }.padding(vertical = 8.dp),
                             )
                         }
@@ -679,7 +594,7 @@ fun SearchScreen(
                     if (trackResults.isEmpty() && playlistResults.isEmpty() && presetResults.isEmpty()) {
                         item {
                             Text(
-                                stringResource(R.string.search_no_results, debounced),
+                                stringResource(R.string.search_no_results, search.query),
                                 Modifier.padding(vertical = 16.dp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -696,11 +611,6 @@ private fun PlaybackNoticeBanner(viewModel: PlayerViewModel) {
     val notice by viewModel.playbackNotice.collectAsStateWithLifecycle()
     val message = notice ?: return
     val dismissDescription = stringResource(R.string.notice_dismiss_description)
-
-    LaunchedEffect(message) {
-        kotlinx.coroutines.delay(NOTICE_VISIBLE_MS)
-        viewModel.clearPlaybackNotice()
-    }
 
     Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
         Row(
@@ -734,5 +644,3 @@ private fun PlaybackNoticeBanner(viewModel: PlayerViewModel) {
         }
     }
 }
-
-private const val NOTICE_VISIBLE_MS = 8_000L

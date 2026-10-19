@@ -9,6 +9,8 @@ android {
     testOptions.unitTests.isIncludeAndroidResources = true
 }
 dependencies {
+    testImplementation(libs.kotlinx.coroutines.test)
+    implementation(project(":presentation-state"))
     implementation(project(":engine:scenes"))
     implementation(project(":engine:audio-android"))
     implementation(project(":app-resources"))

@@ -7,6 +7,7 @@ android {
     buildFeatures.compose = true
 }
 dependencies {
+    implementation(project(":presentation-state"))
     implementation(project(":app-runtime"))
     implementation(project(":engine:scenes"))
     implementation(project(":engine:audio-android"))

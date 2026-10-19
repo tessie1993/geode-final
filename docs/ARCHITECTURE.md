@@ -56,6 +56,13 @@ CI now runs tests and static analysis across modules. Theme import and style
 collection tooling follow the new source/resource ownership. Existing detekt
 baseline entries move with their files; new violations are not baselined away.
 
+## Presentation transitions
+
+The shell, entry flow, tutorial and global search now use the independent
+`:presentation-state` module. Runtime ViewModels execute effects; Compose renders
+state and dispatches actions. See [presentation state and effects](PRESENTATION_STATE.md)
+for invariants, tests and the remaining per-feature migration scope.
+
 ## Live feature delivery
 
 The GL renderer can read a feature provider once at frame submission. The

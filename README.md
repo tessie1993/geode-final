@@ -67,6 +67,7 @@ Gradle modules, package `dev.geode`:
 | `:engine:audio-core` | `GeodeNative`, the JNI binding to `libgeode.so`, and the Kotlin wrappers over the native analyzers |
 | `:engine:audio-android` | The PCM tap, presentation clock driver and other Android-side audio plumbing |
 | `:engine:scenes` | Scene ids and parameters, the GL-thread adapter over the native renderer, offscreen rendering for export, the analysis engine and its cache |
+| `:presentation-state` | UI-independent shell/search reducers, immutable state and coroutine stores |
 | `:ui-compose` | Screens, controls, navigation, theme rendering, Studio preview and GL view bindings |
 | `:app-runtime` | Feature controllers and ViewModels, playback/session, library and stores, editor, export, capture and wallpaper |
 | `:app-resources` | Shared strings, theme assets, fonts and Android resources |
@@ -91,14 +92,15 @@ Shaders ship as assets under `app/src/main/assets/shaders/` and are loaded by
 the native core. Gradle enforces `app → ui-compose → app-runtime`; runtime
 cannot import the screens. See [architecture and UI replacement](docs/ARCHITECTURE.md)
 and the [buffer and signal review](docs/BUFFER_ARCHITECTURE_REVIEW.md) for remaining
-coupling and real-time correctness work.
+coupling and real-time correctness work. See [presentation state and effects](docs/PRESENTATION_STATE.md)
+for reducer contracts, restoration, async behavior and migration scope.
 
 ## Tests
 
 JVM tests include `app-runtime/src/test/.../PresetLinkTest.kt`,
 `app-runtime/src/test/.../RenderScratchFilesTest.kt` and
 `engine/audio-core/src/test/.../FeatureRingTest.kt`. Run
-`./gradlew testDebugUnitTest :engine:audio-core:test`. `app/src/androidTest/.../BuildVariantTest.kt` needs a device. Checks that cannot run
+`./gradlew testDebugUnitTest :engine:audio-core:test :presentation-state:test`. `app/src/androidTest/.../BuildVariantTest.kt` needs a device. Checks that cannot run
 headless (GL behaviour, capture, wallpaper) are listed in
 [docs/DEVICE_CHECKS.md](docs/DEVICE_CHECKS.md), a partial reconstruction.
 `tools/glslcheck` compiles and renders every fragment style and every fluid

@@ -32,3 +32,5 @@ include(
 )
 
 include(":app-runtime", ":ui-compose", ":app-resources")
+
+include(":presentation-state")
