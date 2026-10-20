@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues live in GitHub Issues on `tessie1993/geode-final`, worked through the GitHub MCP tools (no `gh` CLI). See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues on `tessie1993/geode-final`, worked through the GitHub MCP tools or the `gh` CLI (both allowed). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

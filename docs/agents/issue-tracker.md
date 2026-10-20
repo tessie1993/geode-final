@@ -1,6 +1,6 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues on `tessie1993/geode-final`. Use the GitHub MCP tools (`mcp__github__*`) for every operation. Do not use the `gh` CLI.
+Issues and specs for this repo live as GitHub issues on `tessie1993/geode-final`. Use the GitHub MCP tools (`mcp__github__*`) or the `gh` CLI (`gh issue`, `gh pr`, `gh api`), whichever is available. The conventions below name the MCP tools; the `gh` equivalents work the same way. In cloud sessions `gh` goes through a proxy that blocks repository settings writes, so settings (security features, branch protection) are changed by the owner in the GitHub UI.
 
 ## Conventions
 
