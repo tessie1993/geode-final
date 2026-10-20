@@ -48,6 +48,22 @@ internal object RetiredFeatureData {
                     // Bit-perfect USB output.
                     "bit_perfect",
                 ),
+            GeodePrefsFiles.VIZ to
+                listOf(
+                    // Auto visuals: random switching, visual playlists and section staging.
+                    "auto_random_enabled",
+                    "auto_random_interval_sec",
+                    "auto_random_on_beat",
+                    "auto_random_include_styles",
+                    "auto_random_include_presets",
+                    "auto_random_include_milk",
+                    "auto_randomize_colors",
+                    "auto_playlist_enabled",
+                    "auto_playlist_interval_sec",
+                    "auto_playlist_intelligent",
+                    "auto_playlist_entries",
+                    "auto_section_staging",
+                ),
         )
 
     /** Notification channels only retired features created. */

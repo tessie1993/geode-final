@@ -68,7 +68,6 @@ fun VisualizerScreen(
 ) {
     val settingsViewModel: SettingsViewModel = geodeViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val autoMode by viewModel.autoMode.collectAsStateWithLifecycle()
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
@@ -285,20 +284,6 @@ fun VisualizerScreen(
                         TextButton(onClick = onOpenVisuals) {
                             StoneIconArt(StoneIcon.SETTINGS, null)
                             Text("  " + stringResource(R.string.nav_visuals))
-                        }
-                        TextButton(onClick = viewModel::cycleAutoMode) {
-                            StoneIconArt(StoneIcon.QUEUE, null)
-                            Text(
-                                "  " +
-                                    stringResource(
-                                        when (autoMode) {
-                                            1 -> R.string.auto_random
-                                            2 -> R.string.auto_smart
-                                            3 -> R.string.auto_sections
-                                            else -> R.string.auto_off
-                                        },
-                                    ),
-                            )
                         }
                     }
                     Row(

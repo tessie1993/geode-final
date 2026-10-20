@@ -154,8 +154,7 @@ class PlayerSession internal constructor(
             },
         )
 
-    private val autoVisualsPrefsStore = AutoVisualsPrefsStore(prefsFiles.viz)
-    private val vizStateStore = VizStateStore(prefsFiles.viz, scope, autoVisualsPrefsStore)
+    private val vizStateStore = VizStateStore(prefsFiles.viz, scope)
     private val audioFxController = playback.audioFx
 
     private val settings: PlayerSettingsController =
@@ -325,23 +324,6 @@ class PlayerSession internal constructor(
 
     val features: StateFlow<AudioFeatures> = engine.features
 
-    fun enrichFeatures(f: AudioFeatures): AudioFeatures {
-        val ui = _uiState.value
-        val durationMs = ui.duration.value
-        if (durationMs <= 0L) return f
-        val pos = ui.position.value.coerceIn(0L, durationMs)
-        val sections = _vizState.value.sections
-        var idx = 0
-        for (s in sections) {
-            if (s <= pos) idx++ else break
-        }
-        return f.copy(
-            progress = pos.toFloat() / durationMs,
-            sectionIndex = idx,
-            sectionCount = sections.size + 1,
-        )
-    }
-
     private val pcmScratch = FloatArray(4096)
     private var pcmCursor = 0L
 
@@ -403,9 +385,6 @@ class PlayerSession internal constructor(
 
     val favourites: StateFlow<Set<TrackId>> get() = listening.favourites
 
-    private val _presetLocked = MutableStateFlow(false)
-    val presetLocked: StateFlow<Boolean> = _presetLocked
-
     private val analysis: TrackAnalysisController =
         TrackAnalysisController(
             application,
@@ -414,8 +393,6 @@ class PlayerSession internal constructor(
                 override val currentUri: Uri? get() = this@PlayerSession.currentUri
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
                 override val vizState: MutableStateFlow<VizUiState> get() = _vizState
-                override val playerPositionMs: Long get() = player.currentPosition
-                override val presetLocked: Boolean get() = _presetLocked.value
 
                 override fun noteAnalysis(
                     uri: Uri,
@@ -442,9 +419,6 @@ class PlayerSession internal constructor(
             withContext(Dispatchers.Main) { if (currentUri == uri) _lyrics.value = found }
         }
     }
-
-    private val _autoMode = MutableStateFlow(0)
-    val autoMode: StateFlow<Int> = _autoMode
 
     private var playerListener: Player.Listener? = null
 
@@ -504,66 +478,6 @@ class PlayerSession internal constructor(
     val vizApply: SharedFlow<VizApply> get() = visual.vizApply
 
     val morphFade: SharedFlow<Float> get() = visual.morphFade
-
-    private val autoVisuals: AutoVisualsController =
-        AutoVisualsController(
-            autoVisualsPrefsStore,
-            object : AutoVisualsController.Host {
-                override val vizState: StateFlow<VizUiState> get() = _vizState
-
-                override fun updateViz(transform: (VizUiState) -> VizUiState) = _vizState.update(transform)
-
-                override val isPlaying: Boolean get() = _uiState.value.isPlaying
-                override val positionMs: Long get() = _uiState.value.position.value
-
-                override fun features() = engine.features.value
-
-                override val presetLocked: Boolean get() = _presetLocked.value
-
-                override fun selectScene(sceneId: SceneId) = visual.selectScene(sceneId)
-
-                override fun applyPreset(preset: Preset) = visual.applyPreset(preset)
-
-                override fun applyMilk(
-                    path: String,
-                    sceneId: SceneId,
-                ) = visual.emitApply(VizApply(milkPath = path, sceneId = sceneId))
-
-                override fun analyzeCurrentTrack() = analysis.analyzeCurrentTrack()
-
-                override fun milkFilesAsync(onDone: (List<MilkFile>) -> Unit) = milkPresetFilesAsync(onDone)
-            },
-        )
-
-    fun addToVizPlaylist(entry: VizPlaylistEntry) = autoVisuals.addToVizPlaylist(entry)
-
-    fun removeVizPlaylistAt(index: Int) = autoVisuals.removeVizPlaylistAt(index)
-
-    fun setVizPlaylistEnabled(enabled: Boolean) = autoVisuals.setVizPlaylistEnabled(enabled)
-
-    fun setVizPlaylistIntelligent(enabled: Boolean) = autoVisuals.setVizPlaylistIntelligent(enabled)
-
-    fun setVizPlaylistInterval(seconds: Int) = autoVisuals.setVizPlaylistInterval(seconds)
-
-    fun setRandomEnabled(enabled: Boolean) = autoVisuals.setRandomEnabled(enabled)
-
-    fun setRandomInterval(seconds: Int) = autoVisuals.setRandomInterval(seconds)
-
-    fun setRandomOnBeat(enabled: Boolean) = autoVisuals.setRandomOnBeat(enabled)
-
-    fun setRandomIncludeStyles(enabled: Boolean) = autoVisuals.setRandomIncludeStyles(enabled)
-
-    fun setRandomIncludePresets(enabled: Boolean) = autoVisuals.setRandomIncludePresets(enabled)
-
-    fun setRandomIncludeMilk(enabled: Boolean) = autoVisuals.setRandomIncludeMilk(enabled)
-
-    fun setRandomizeColors(enabled: Boolean) = autoVisuals.setRandomizeColors(enabled)
-
-    fun setSectionStaging(enabled: Boolean) = autoVisuals.setSectionStaging(enabled)
-
-    fun randomStepNow() = autoVisuals.randomStepNow()
-
-    fun applyVizEntry(entry: VizPlaylistEntry) = autoVisuals.applyVizEntry(entry)
 
     val deviceTracks: StateFlow<List<DeviceTrack>> get() = musicLibrary.deviceTracks
 
@@ -695,18 +609,6 @@ class PlayerSession internal constructor(
         playTrack(last.uri)
     }
 
-    fun togglePresetLock() {
-        _presetLocked.update { !it }
-    }
-
-    fun cycleAutoMode() {
-        val next = (_autoMode.value + 1) % 4
-        _autoMode.value = next
-        setRandomEnabled(next == 1)
-        setIntelligenceMode(if (next == 2) IntelligenceMode.AUTO else IntelligenceMode.MANUAL)
-        setSectionStaging(next == 3)
-    }
-
     fun playNext(uri: TrackId) = queueController.playNext(uri)
 
     fun enqueue(uri: TrackId) = queueController.enqueue(uri)
@@ -803,11 +705,10 @@ class PlayerSession internal constructor(
 
     private fun onTrackChanged() {
         engine.reset()
-        autoVisuals.onTrackChanged()
         analysis.timeline = null
         clearAbLoop()
         loadLyricsFor(currentUri)
-        _vizState.update { it.copy(suggestedSceneId = null, bpm = 0f, sections = emptyList()) }
+        _vizState.update { it.copy(suggestedSceneId = null, bpm = 0f) }
         if (_vizState.value.intelligenceMode != IntelligenceMode.MANUAL) {
             analyzeCurrentTrack()
         } else {
@@ -904,12 +805,12 @@ class PlayerSession internal constructor(
 
                 override fun keyframes() = editor.state.value.project.keyframes
 
-                override fun publishSections(
+                override fun publishTempo(
                     uri: Uri,
                     timeline: FeatureTimeline,
                 ) {
-                    if (currentUri == uri && _vizState.value.sections.isEmpty()) {
-                        _vizState.update { it.copy(bpm = timeline.bpm, sections = timeline.detectSections()) }
+                    if (currentUri == uri && _vizState.value.bpm == 0f) {
+                        _vizState.update { it.copy(bpm = timeline.bpm) }
                     }
                 }
             },
@@ -1167,10 +1068,6 @@ class PlayerSession internal constructor(
             queueController.enforceAbLoop()
             queueController.refreshQueue()
             captureController.refreshMicState()
-            analysis.applyIntelligence()
-            autoVisuals.advanceVizPlaylist()
-            autoVisuals.advanceRandomMode()
-            autoVisuals.advanceSectionStaging()
             listening.persistSession()
             bookmarks.onPoll(player)
             delay(POLL_INTERVAL_MS)

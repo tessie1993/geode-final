@@ -18,13 +18,11 @@ import dev.geode.R
 
 @Composable
 internal fun BehaviorSettingsTab(viewModel: SettingsViewModel) {
-    val playerViewModel: PlayerViewModel = geodeViewModel()
     val gui by viewModel.guiPrefs.collectAsStateWithLifecycle()
     SettingsTabColumn {
         item { SettingsGroup(stringResource(R.string.behavior_group_intent)) { IntentGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_touch)) { TouchGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_safety)) { VisualSafetyGroup(viewModel, gui) } }
-        item { SettingsGroup(stringResource(R.string.behavior_group_auto)) { AutoVisualsGroup(playerViewModel) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_wallpaper)) { LiveWallpaperGroup() } }
     }
 }

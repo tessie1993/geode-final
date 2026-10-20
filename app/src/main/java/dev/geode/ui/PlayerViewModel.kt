@@ -65,8 +65,6 @@ class PlayerViewModel
 
         val lyrics: StateFlow<Lyrics?> get() = session.lyrics
 
-        val autoMode: StateFlow<Int> get() = session.autoMode
-
         val sleepTimerRemaining: StateFlow<Millis?> get() = session.sleepTimerRemaining
 
         val vizApply: SharedFlow<VizApply> get() = session.vizApply
@@ -82,8 +80,6 @@ class PlayerViewModel
         fun cycleRepeatMode() = session.cycleRepeatMode()
 
         fun applyLiveInputProfile(profile: LiveInputProfile) = session.applyLiveInputProfile(profile)
-
-        fun enrichFeatures(f: AudioFeatures): AudioFeatures = session.enrichFeatures(f)
 
         fun latestPcm(): PcmChunk? = session.latestPcm()
 
@@ -118,36 +114,6 @@ class PlayerViewModel
 
         fun cancelSleepTimer() = session.cancelSleepTimer()
 
-        fun addToVizPlaylist(entry: VizPlaylistEntry) = session.addToVizPlaylist(entry)
-
-        fun removeVizPlaylistAt(index: Int) = session.removeVizPlaylistAt(index)
-
-        fun setVizPlaylistEnabled(enabled: Boolean) = session.setVizPlaylistEnabled(enabled)
-
-        fun setVizPlaylistIntelligent(enabled: Boolean) = session.setVizPlaylistIntelligent(enabled)
-
-        fun setVizPlaylistInterval(seconds: Int) = session.setVizPlaylistInterval(seconds)
-
-        fun setRandomEnabled(enabled: Boolean) = session.setRandomEnabled(enabled)
-
-        fun setRandomInterval(seconds: Int) = session.setRandomInterval(seconds)
-
-        fun setRandomOnBeat(enabled: Boolean) = session.setRandomOnBeat(enabled)
-
-        fun setRandomIncludeStyles(enabled: Boolean) = session.setRandomIncludeStyles(enabled)
-
-        fun setRandomIncludePresets(enabled: Boolean) = session.setRandomIncludePresets(enabled)
-
-        fun setRandomIncludeMilk(enabled: Boolean) = session.setRandomIncludeMilk(enabled)
-
-        fun setRandomizeColors(enabled: Boolean) = session.setRandomizeColors(enabled)
-
-        fun setSectionStaging(enabled: Boolean) = session.setSectionStaging(enabled)
-
-        fun randomStepNow() = session.randomStepNow()
-
-        fun applyVizEntry(entry: VizPlaylistEntry) = session.applyVizEntry(entry)
-
         fun recentlyPlayed() = session.recentlyPlayed()
 
         fun currentTrackUri(): TrackId? = session.currentTrackUri()
@@ -168,8 +134,6 @@ class PlayerViewModel
         fun togglePlayPauseFaded() = session.togglePlayPauseFaded()
 
         fun resumeLastPlayed() = session.resumeLastPlayed()
-
-        fun cycleAutoMode() = session.cycleAutoMode()
 
         fun playNext(uri: TrackId) = session.playNext(uri)
 

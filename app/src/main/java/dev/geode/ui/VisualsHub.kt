@@ -136,11 +136,6 @@ fun VisualsHub(
     }
 }
 
-internal fun vizPlaylistIndexOf(
-    playlist: List<VizPlaylistEntry>,
-    presetName: PresetId,
-): Int = playlist.indexOfFirst { it.presetName == presetName }
-
 internal fun presetReplaceTarget(
     rawName: String,
     presets: List<Preset>,
@@ -265,25 +260,6 @@ private fun PresetsTreeTab(
                     }
                     IconButton(onClick = { sharePreset(context, visualsViewModel, p.id) }) {
                         StoneIconArt(StoneIcon.SHARE, "Share this preset")
-                    }
-                    val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.id)
-                    val inPlaylist = playlistIndex >= 0
-                    IconButton(
-                        onClick = {
-                            if (inPlaylist) {
-                                viewModel.removeVizPlaylistAt(playlistIndex)
-                            } else {
-                                viewModel.addToVizPlaylist(
-                                    VizPlaylistEntry(sceneId = p.sceneId, presetName = p.id, label = p.name),
-                                )
-                            }
-                        },
-                    ) {
-                        StoneIconArt(
-                            StoneIcon.FAVORITE,
-                            if (inPlaylist) "Remove from visual playlist" else "Add to visual playlist",
-                            tint = if (inPlaylist) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                        )
                     }
                     IconButton(onClick = { movingPreset = p.id }) {
                         StoneIconArt(StoneIcon.FOLDER, "Move to another folder")

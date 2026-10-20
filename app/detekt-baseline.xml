@@ -3,7 +3,6 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>ComplexCondition:Adsr.kt$AdsrEngine$features.beat &amp;&amp; (c.retrigger || stage[i] == 0 || stage[i] == 4)</ID>
-    <ID>ComplexCondition:AutoVisualsController.kt$AutoVisualsController$choices.size &gt; 1 &amp;&amp; pick.sceneId == s.sceneId &amp;&amp; pick.presetName == null &amp;&amp; pick.milkPath == null</ID>
     <ID>ComplexCondition:FeatureTimeline.kt$FeatureTimeline$beat == f.beat &amp;&amp; onset == f.onset &amp;&amp; flux == f.flux &amp;&amp; strength == f.beatStrength &amp;&amp; transient == f.transient</ID>
     <ID>ComplexCondition:NebulaScene.kt$NebulaScene$px[i] &lt; -1.3f || px[i] &gt; 1.3f || py[i] &lt; -1.3f || py[i] &gt; 1.3f</ID>
     <ID>ComplexCondition:TextureStore.kt$TextureStore$bytes.size &gt;= 4 &amp;&amp; bytes[0] == 'D'.code.toByte() &amp;&amp; bytes[1] == 'D'.code.toByte() &amp;&amp; bytes[2] == 'S'.code.toByte() &amp;&amp; bytes[3] == ' '.code.toByte()</ID>
@@ -17,7 +16,6 @@
     <ID>LoopWithTooManyJumpStatements:Adsr.kt$AdsrEngine.Companion$for</ID>
     <ID>LoopWithTooManyJumpStatements:AudioCapturePump.kt$AudioCapturePump$while</ID>
     <ID>LoopWithTooManyJumpStatements:AudioTranscoder.kt$AudioTranscoder$while</ID>
-    <ID>LoopWithTooManyJumpStatements:AutoVisualsPrefsStore.kt$AutoVisualsPrefsStore.Companion$for</ID>
     <ID>LoopWithTooManyJumpStatements:CompositeGradeTest.kt$CompositeGradeTest$for</ID>
     <ID>LoopWithTooManyJumpStatements:FeatureTimeline.kt$FeatureTimeline$for</ID>
     <ID>LoopWithTooManyJumpStatements:Lfo.kt$LfoEngine.Companion$for</ID>
@@ -44,7 +42,6 @@
     <ID>ReturnCount:AiffPcm.kt$AiffPcm.Companion$private fun readExtended80(din: DataInputStream): Int</ID>
     <ID>ReturnCount:AnalysisCache.kt$AnalysisCache$fun load( context: Context, uri: Uri, beatSensitivity: Float, beatMinIntervalMs: Float, ): FeatureTimeline?</ID>
     <ID>ReturnCount:AudioTranscoder.kt$AudioTranscoder$fun feedEncoder(): Boolean</ID>
-    <ID>ReturnCount:AutoVisualsController.kt$AutoVisualsController$fun advanceSectionStaging()</ID>
     <ID>ReturnCount:BarTrim.kt$BarTrim$fun trimToBars( durationUs: Long, bpm: Float, ): Long</ID>
     <ID>ReturnCount:BlueNoise.kt$BlueNoise$fun createTexture(context: Context): Int</ID>
     <ID>ReturnCount:CaptureController.kt$CaptureController$fun setMicEnabled(enabled: Boolean): MicCapture.Failure?</ID>

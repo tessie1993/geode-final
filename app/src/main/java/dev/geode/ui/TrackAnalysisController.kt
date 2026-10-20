@@ -28,8 +28,6 @@ internal class TrackAnalysisController(
         val currentUri: Uri?
         val guiPrefs: GuiPrefs
         val vizState: MutableStateFlow<VizUiState>
-        val playerPositionMs: Long
-        val presetLocked: Boolean
 
         fun noteAnalysis(
             uri: Uri,
@@ -53,7 +51,6 @@ internal class TrackAnalysisController(
 
     private var analyzingUri: Uri? = null
     private var beatRedecideJob: Job? = null
-    private var autoSuggestKey = Long.MIN_VALUE
 
     fun redecideCachedBeats(prefs: GuiPrefs) {
         val base = timeline ?: return
@@ -96,7 +93,7 @@ internal class TrackAnalysisController(
                 ?.let { t ->
                     if (host.currentUri == uri) {
                         timeline = t
-                        host.vizState.update { it.copy(bpm = t.bpm, sections = t.detectSections()) }
+                        host.vizState.update { it.copy(bpm = t.bpm) }
                     }
                 }
         }
@@ -127,12 +124,10 @@ internal class TrackAnalysisController(
                         it.copy(
                             analysis = AnalysisState.Idle,
                             bpm = t.bpm,
-                            sections = t.detectSections(),
                             suggestedSceneId = suggestion,
                         )
                     }
                     if (analyzingUri == uri) analyzingUri = null
-                    withContext(Dispatchers.Main) { applyIntelligence() }
                 } else {
                     if (analyzingUri == uri) {
                         analyzingUri = null
@@ -152,31 +147,6 @@ internal class TrackAnalysisController(
                 }
             }
         }
-    }
-
-    @Suppress("ReturnCount")
-    fun applyIntelligence() {
-        if (host.presetLocked) return
-        if (host.vizState.value.intelligenceMode != IntelligenceMode.AUTO) return
-        val t = timeline ?: return
-        val pos = host.playerPositionMs
-        val section =
-            host.vizState.value.sections
-                .count { it <= pos }
-        val key = (System.identityHashCode(t).toLong() shl 16) or (section.toLong() and 0xFFFF)
-        if (key == autoSuggestKey) return
-        autoSuggestKey = key
-        val f = t.featuresAt(pos)
-        val suggestion =
-            SceneSuggester.suggest(
-                t.bpm,
-                f.rms,
-                f.centroid,
-                f.pulseConfidence,
-                f.chromaConfidence,
-                f.stereoWidth,
-            )
-        host.vizState.update { if (it.sceneId == suggestion) it else it.copy(sceneId = suggestion) }
     }
 
     @Suppress("ReturnCount")
