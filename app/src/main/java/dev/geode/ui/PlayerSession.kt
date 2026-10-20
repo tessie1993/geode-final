@@ -406,40 +406,6 @@ class PlayerSession internal constructor(
     private val _presetLocked = MutableStateFlow(false)
     val presetLocked: StateFlow<Boolean> = _presetLocked
 
-    private val trackColor: TrackColorController =
-        TrackColorController(
-            application,
-            scope,
-            object : TrackColorController.Host {
-                override val currentUri: Uri? get() = this@PlayerSession.currentUri
-                override val keyColorEnabled: Boolean get() = guiPrefs.value.keyColor
-                override val params: SceneParams get() = _vizState.value.params
-                override val currentTrackKey: String? get() = currentTrackKey()
-
-                override fun setSceneParams(params: SceneParams) = visual.setSceneParams(params)
-
-                override fun persistKeyColorPref(enabled: Boolean) {
-                    setGuiPrefs(guiPrefs.value.copy(keyColor = enabled))
-                }
-            },
-        )
-
-    val artPaletteNote: StateFlow<String?> get() = trackColor.artPaletteNote
-
-    fun applyKeyColor(key: String) = trackColor.applyKeyColor(key)
-
-    fun setKeyColor(enabled: Boolean) = trackColor.setKeyColor(enabled)
-
-    fun applyArtworkPalette() = trackColor.applyArtworkPalette()
-
-    fun currentTrackKey(): String? {
-        val uri = currentUri?.toTrackId() ?: return null
-        return library.value.tracks
-            .firstOrNull { it.uri == uri }
-            ?.key
-            ?.takeIf { it.isNotBlank() }
-    }
-
     private val analysis: TrackAnalysisController =
         TrackAnalysisController(
             application,
@@ -450,8 +416,6 @@ class PlayerSession internal constructor(
                 override val vizState: MutableStateFlow<VizUiState> get() = _vizState
                 override val playerPositionMs: Long get() = player.currentPosition
                 override val presetLocked: Boolean get() = _presetLocked.value
-
-                override fun applyKeyColor(key: String) = trackColor.applyKeyColor(key)
 
                 override fun noteAnalysis(
                     uri: Uri,

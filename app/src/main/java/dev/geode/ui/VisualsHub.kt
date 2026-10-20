@@ -926,15 +926,7 @@ private fun CustomizeTabBody(
                 onAdsrChange = visualsViewModel::setAdsr,
             )
         }
-        CustomizeTab.COLOR -> {
-            val artNote by viewModel.artPaletteNote.collectAsStateWithLifecycle()
-            ColorTab(
-                p,
-                onChange,
-                onTakeArtworkPalette = viewModel::applyArtworkPalette,
-                artworkNote = artNote,
-            )
-        }
+        CustomizeTab.COLOR -> ColorTab(p, onChange)
         CustomizeTab.FX -> FxTab(p, onChange)
         CustomizeTab.FLUID ->
             FluidTab(

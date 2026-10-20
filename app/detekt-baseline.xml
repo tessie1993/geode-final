@@ -43,7 +43,6 @@
     <ID>ReturnCount:AiffPcm.kt$AiffPcm.Companion$internal fun parse(rawStream: InputStream): AiffPcm?</ID>
     <ID>ReturnCount:AiffPcm.kt$AiffPcm.Companion$private fun readExtended80(din: DataInputStream): Int</ID>
     <ID>ReturnCount:AnalysisCache.kt$AnalysisCache$fun load( context: Context, uri: Uri, beatSensitivity: Float, beatMinIntervalMs: Float, ): FeatureTimeline?</ID>
-    <ID>ReturnCount:ArtPalette.kt$ArtPalette$fun extract(pixels: IntArray): Extracted?</ID>
     <ID>ReturnCount:AudioTranscoder.kt$AudioTranscoder$fun feedEncoder(): Boolean</ID>
     <ID>ReturnCount:AutoVisualsController.kt$AutoVisualsController$fun advanceSectionStaging()</ID>
     <ID>ReturnCount:BarTrim.kt$BarTrim$fun trimToBars( durationUs: Long, bpm: Float, ): Long</ID>
@@ -62,7 +61,6 @@
     <ID>ReturnCount:FluidSim.kt$FluidSim$fun step(dtRaw: Float)</ID>
     <ID>ReturnCount:FluidSim.kt$FluidSim$private fun compileCustom( src: String?, current: GlUtil.UniformCache?, reportError: (String?) -&gt; Unit, ): GlUtil.UniformCache?</ID>
     <ID>ReturnCount:HistoryStore.kt$HistoryStore$private fun readLocked()</ID>
-    <ID>ReturnCount:KeyPalette.kt$KeyPalette$fun hueFor(key: String): Float?</ID>
     <ID>ReturnCount:LibraryScreen.kt$internal fun playlistDropIndex( from: Int, offsetPx: Float, rowHeightPx: Int, count: Int, ): Int</ID>
     <ID>ReturnCount:MicCapture.kt$MicCapture$@Synchronized fun start(onSampleRate: (Int) -&gt; Unit = {}): Failure?</ID>
     <ID>ReturnCount:MusicPlaylistStore.kt$MusicPlaylistStore$fun move( name: String, from: Int, to: Int, ): MusicPlaylist</ID>

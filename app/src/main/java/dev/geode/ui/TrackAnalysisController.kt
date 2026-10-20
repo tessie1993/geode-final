@@ -31,8 +31,6 @@ internal class TrackAnalysisController(
         val playerPositionMs: Long
         val presetLocked: Boolean
 
-        fun applyKeyColor(key: String)
-
         fun noteAnalysis(
             uri: Uri,
             timeline: FeatureTimeline,
@@ -123,7 +121,6 @@ internal class TrackAnalysisController(
                     }
                 host.noteAnalysis(uri, t)
                 if (host.currentUri == uri) {
-                    withContext(Dispatchers.Main) { host.applyKeyColor(t.key) }
                     timeline = t
                     val suggestion = SceneSuggester.suggestForTrack(t)
                     host.vizState.update {

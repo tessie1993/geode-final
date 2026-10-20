@@ -40,6 +40,8 @@ internal object RetiredFeatureData {
                     "gui_second_screen",
                     // Boot ripple intro.
                     "boot_anim",
+                    // Key colours.
+                    "gui_key_color",
                 ),
             GeodePrefsFiles.PLAYER to
                 listOf(

@@ -63,8 +63,6 @@ class PlayerViewModel
 
         val favourites: StateFlow<Set<TrackId>> get() = session.favourites
 
-        val artPaletteNote: StateFlow<String?> get() = session.artPaletteNote
-
         val lyrics: StateFlow<Lyrics?> get() = session.lyrics
 
         val autoMode: StateFlow<Int> get() = session.autoMode
@@ -111,14 +109,6 @@ class PlayerViewModel
             treeUri: Uri,
             onDone: (MilkPackImporter.Report) -> Unit,
         ) = session.importMilkFolderAsync(treeUri, onDone)
-
-        fun applyKeyColor(key: String) = session.applyKeyColor(key)
-
-        fun setKeyColor(enabled: Boolean) = session.setKeyColor(enabled)
-
-        fun applyArtworkPalette() = session.applyArtworkPalette()
-
-        fun currentTrackKey(): String? = session.currentTrackKey()
 
         fun setIntelligenceMode(mode: IntelligenceMode) = session.setIntelligenceMode(mode)
 
