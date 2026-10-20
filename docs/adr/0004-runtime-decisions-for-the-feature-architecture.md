@@ -44,3 +44,6 @@ These decisions extend ADR-0003 (structure: ADR-0005) with how the features beha
 - **Renders run one at a time.** While the live Visual is on screen, the render slows down so the live picture stays smooth, then speeds up again.
 - **Presets from a newer version** load what this version knows. Unknown parts are kept unapplied and saved back untouched, with a short note that some parts need a newer Geode. Older presets are upgraded when opened.
 - **The Library notices new music** through Android's media-change notice while the app runs, plus a quick check when the app opens. There is no periodic background job.
+- **Startup shows the screen first.** The last screen appears at once, and the audio engine and the Visual warm up in the background. Nothing heavy blocks the first frame.
+- **When the phone is busy:** audio comes first and must never crackle; the Visual lowers its quality before it drops frames; then the App UI; renders get what is left.
+- **Packaging:** Geode ships as an App Bundle on Play, so each phone downloads only what it needs, and CI also builds a universal APK for testing and direct installs.

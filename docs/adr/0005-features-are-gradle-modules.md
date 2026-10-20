@@ -14,7 +14,7 @@ The owner wants the parts of the app not interwoven: the state machine, the hand
 | `:feature:x:api` | pure JVM | the **public interface**: the state the outside may read, its Commands and its events | `:arch:kernel` |
 | `:feature:x:core` | pure JVM | the **state machine and reducer**: sealed states, internal events, effects as data | its own `:api`, `:arch:kernel`, other features' `:api` |
 | `:feature:x:handlers` | Android library | the **effect handlers**: they carry out effects (IO, database, the audio adapter, the system) and report results back as events | its own `:core` and `:api`, `:arch:*`, other features' `:api` (to send them Commands, e.g. Capture asking Playback to pause) |
-| `:feature:x:ui` | Android library, Compose | the **stateless screens** `XScreen(model, onAction)`, with previews and screenshots | its own `:api` only |
+| `:feature:x:ui` | Android library, Compose | the **stateless screens** `XScreen(model, onAction)`, with previews and screenshots | its own `:api` and `:design` |
 
 - **The reducer sits in between.** The UI sends Commands and renders state. Handlers only receive effects and report events. Neither the UI nor the handlers know about each other or about the reducer's internals.
 - **Features talk only through each other's `:api`.** No module may depend on another feature's `:core`, `:handlers` or `:ui`. The compiler enforces this. The Konsist architecture test plus a module-graph check fail CI on any other break: Android code in `:api` or `:core`, a cycle, or a wrong-direction dependency.
@@ -22,6 +22,7 @@ The owner wants the parts of the app not interwoven: the state machine, the hand
 - **Failures are typed.** Handlers catch everything at their edge and report a named failure as an event; the reducer decides what happens and the app-wide error channel shows it. A failure reported while nothing shows the banner is logged, and the latest one is shown once when the banner next appears.
 - **Data ownership.** Playback holds the playlists and the play history in its own Room database, and the history can be saved as a playlist. Other features read them only through Playback's `:api`.
 - **Diagnostics stay on the phone** (there is no internet permission): a "Share diagnostics" button in Settings writes a file with the log, settings and phone model, with no personal data, and a hidden developer overlay shows frame time, buffer sizes, audio crackles and the engine state.
+- **`:design`** (Android library, Compose) holds the App UI's design tokens, theme and common components, never anything of the Visual. Each feature's `:ui` keeps its own strings.
 - **`:app`** only wires: Hilt bindings, routes, navigation, and the real adapters over the native engine.
 
 ## Running as well as possible
