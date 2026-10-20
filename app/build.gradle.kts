@@ -44,7 +44,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.geode"
-        minSdk = 26
+        minSdk = 31
         targetSdk = 36
         versionCode = 32
         versionName = "1.8.0"
@@ -208,7 +208,6 @@ dependencies {
     implementation(project(":engine:scenes"))
     implementation(project(":engine:audio-android"))
 
-    implementation(libs.core.splashscreen)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)
     implementation(libs.media3.session)

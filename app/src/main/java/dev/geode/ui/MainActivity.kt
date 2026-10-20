@@ -4,12 +4,13 @@ import android.app.SearchManager
 import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.R
 
@@ -46,13 +47,30 @@ class MainActivity : ComponentActivity() {
         playFromSearch(intent)
     }
 
+    /**
+     * The platform splash stays up until the first frame is drawn, so holding that frame back
+     * holds the splash: drawing resumes once the user's data has loaded.
+     */
+    private fun keepSplashUntilUserDataLoaded() {
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(
+            object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    val ready = settingsViewModel.userDataLoaded.value
+                    if (ready) content.viewTreeObserver.removeOnPreDrawListener(this)
+                    return ready
+                }
+            },
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen().setKeepOnScreenCondition { !settingsViewModel.userDataLoaded.value }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             AppRoot()
         }
+        keepSplashUntilUserDataLoaded()
         if (savedInstanceState == null) {
             importSharedPreset(intent)
                 playFromSearch(intent)
