@@ -90,7 +90,12 @@ int __android_log_print(int, const char*, const char*, ...);
 HDR
 
 # ---- compile, with the project's flags ----------------------------------------
-mapfile -t SRCS < <(sed -n '/add_library(geode_core STATIC/,/^)/p' "$ROOT/core/CMakeLists.txt" | grep -E '^\s+((viz|util)/|analysis/FrameLevels\.cpp)' | tr -d ' ')
+# geode_core's sources are listed in two places: core/CMakeLists.txt, and core/pure_sources.cmake for
+# the part the host unit tests also build. Read both, the same way.
+mapfile -t SRCS < <({
+  sed -n '/add_library(geode_core STATIC/,/^)/p' "$ROOT/core/CMakeLists.txt"
+  sed -n '/set(GEODE_CORE_PURE_SOURCES/,/^)/p' "$ROOT/core/pure_sources.cmake"
+} | grep -E '^\s+((viz|util)/|analysis/FrameLevels\.cpp)' | tr -d ' ')
 echo "hostlink: compiling ${#SRCS[@]} translation units"
 fail=0
 for f in "${SRCS[@]}"; do

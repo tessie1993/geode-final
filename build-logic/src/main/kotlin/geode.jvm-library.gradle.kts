@@ -1,6 +1,7 @@
 plugins {
     id("org.jetbrains.kotlin.jvm")
     id("geode.kotlin-common")
+    id("geode.mutation-jvm")
 }
 
 java {

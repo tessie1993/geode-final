@@ -28,4 +28,8 @@ dependencies {
     implementation(libs.detekt.gradle)
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.android.gradle.plugin)
+    implementation(libs.pitest.gradle)
+    implementation(libs.pitest.android.gradle)
+    implementation(libs.kover.gradle)
+    implementation(libs.roborazzi.gradle)
 }

@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("geode.kotlin-common")
+    id("geode.mutation-android")
 }
 
 extensions.configure<com.android.build.api.dsl.LibraryExtension> {
