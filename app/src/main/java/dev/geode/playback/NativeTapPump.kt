@@ -4,7 +4,6 @@ import androidx.media3.common.C
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.bridge.GeodeNative
-import dev.geode.engine.types.Frames
 import dev.geode.engine.types.Hz
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -40,7 +39,7 @@ class NativeTapPump(
     private fun loop(handle: Long) {
         val buffer = ByteBuffer.allocateDirect(FRAMES * CHANNELS * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
         var rate = Hz(0)
-        clock.attachSkippedFrames { Frames(0L) }
+        clock.attachSkippedFrames { 0L }
         while (running) {
             val current = Hz(GeodeNative.playerOutputSampleRate(handle))
             if (current.value > 0 && current != rate) {
