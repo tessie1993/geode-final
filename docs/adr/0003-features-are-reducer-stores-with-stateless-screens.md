@@ -2,16 +2,16 @@
 
 Every feature (Playback, Library, Customization, Capture, Studio, Settings) is one package in `:app`, `feature/<name>/core` and `feature/<name>/ui`. Its core is a pure reducer, `reduce(state, event) → Next(state, effects)`. States are sealed types matched with exhaustive `when` (no `else`). Effects are plain data carried out by the feature's effect runner, and their results come back as events. Timers are effects too: started on entering a state, cancelled on leaving it, and tested with a fake clock. No MVI library.
 
-Each feature runs in one app-scoped `@Singleton` store, so switching tabs or leaving full-screen visual mode never restarts the music, the visual or a recording. The per-frame path (audio → Sound signals → Reactions → pixels) stays in C++ (ADR-0002). The reducer only runs when something changes.
+Each feature runs in one app-scoped `@Singleton` store, so switching tabs or leaving full-screen visual mode never restarts the music, the Visual or a Recording. The per-frame path (audio → Sound signals → Reactions → pixels) stays in C++ (ADR-0002). The reducer only runs when something changes.
 
 Features talk only through each other's interface: a read-only `state`, `send(Command)`, and an optional `events` stream of one-off facts the feature owns. There is no global event bus. Dependencies point one way: screens → features → the audio engine, with Settings and the engine at the bottom. The shared native audio pipeline is an adapter beneath Playback and Capture, not a feature.
 
-Each place in the app (a tab, a sheet, full-screen visual mode) has one `XRoute()`. Only the route touches its thin `@HiltViewModel`, permissions and launchers. It calls `XScreen(model, onAction)`: an immutable screen model and a single action callback. Nothing below a route gets a ViewModel, a store, IO or a service start. Visual-only state, such as an open panel, stays in Compose `remember`.
+Each place in the app (a tab, a sheet, full-screen visual mode) has one `XRoute()`. Only the route touches its thin `@HiltViewModel`, permissions and launchers. It calls `XScreen(model, onAction)`: an immutable screen model and a single action callback. Nothing below a route gets a ViewModel, a store, IO or a service start. App-UI-only state, such as whether a panel is open, stays in Compose `remember`.
 
 A feature is done when CI shows:
 - reducer tests written as transition tables, covering every state and event;
 - a Pitest mutation score of at least 80% on its `core`;
-- Roborazzi screenshots of its screens, taken from their `@Preview`s;
+- Roborazzi screenshots of its screens, taken from their `@Preview`s. These cover the App UI only; the Visual is checked by the shader golden-frame tests;
 - the Konsist architecture test passing: `core` imports no Android or Compose, `ui` imports no other feature's internals, and the feature graph has no cycles.
 
 Ids and units (`TrackId`, `StyleId`, `RenderId`, `Millis`, `Hz` …) become `@JvmInline value class`es in one PR, before the feature work.
