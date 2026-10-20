@@ -102,7 +102,9 @@ bool AnalysisSession::pull(GeodeFeatureFrame& out) {
     if (buffered_ < static_cast<size_t>(fftSize_)) return false;
     const float* mid = buffer_.data();
     const float* side = sideBuffer_.data();
-    analyzer_.analyze(mid, 1.0f / hopRateHz_);
+    // The hop is a whole number of samples, so its duration is that many samples, not 1 / hopRateHz_: the
+    // analyser's clock then advances by exactly the audio it consumed, live and offline alike.
+    analyzer_.analyze(mid, static_cast<float>(hopSamples_) / static_cast<float>(sampleRateHz_));
     analyzer_.spectrumInto(spectrum_.data());
     key_.accumulate(spectrum_.data(), static_cast<int>(spectrum_.size()), sampleRateHz_, fftSize_);
     chroma_.step(spectrum_.data(), static_cast<int>(spectrum_.size()), sampleRateHz_, fftSize_);
