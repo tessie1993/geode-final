@@ -162,9 +162,12 @@ class HistoryStore(
                                 .put("ms", e.listenedMs),
                         )
                     }
+                    // Cleared with the snapshot, under the lock: a change made while the file is
+                    // being written sets it again, so flush() still sees it.
+                    dirty = false
                     JSONObject().put("tracks", arr).toString()
                 }
-            if (AtomicWrite.text(file, text)) dirty = false
+            if (!AtomicWrite.text(file, text)) dirty = true
         }
     }
 

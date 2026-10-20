@@ -65,7 +65,7 @@ class LibraryTree(
 
     /** The playable rows of the folder a tapped id came from, and where the tapped one sits. */
     fun queueFor(mediaId: String): Pair<List<MediaItem>, Int>? {
-        val parent = mediaId.substringBefore(SEPARATOR, "")
+        val parent = mediaId.substringBeforeLast(SEPARATOR, "")
         if (parent.isEmpty()) return null
         val siblings = children(parent).filter { it.mediaMetadata.isPlayable == true }
         val index = siblings.indexOfFirst { it.mediaId == mediaId }
@@ -73,10 +73,10 @@ class LibraryTree(
     }
 
     fun playable(mediaId: String): MediaItem? {
-        val uri = mediaId.substringAfter(SEPARATOR, "")
+        val uri = mediaId.substringAfterLast(SEPARATOR, "")
         if (uri.isEmpty()) return null
         val row = rowsFor(listOf(uri)).firstOrNull() ?: Row(uri, uri.substringAfterLast('/'), "", "")
-        return playable(mediaId.substringBefore(SEPARATOR), row)
+        return playable(mediaId.substringBeforeLast(SEPARATOR), row)
     }
 
     private fun topLevel(): List<MediaItem> =

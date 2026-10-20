@@ -50,6 +50,8 @@ Java_dev_geode_engine_bridge_GeodeNative_tagsRead(JNIEnv* env, jobject, jint fd,
     }
     for (int i = 0; i < GEODE_TAG_TEXT_COUNT; ++i) {
         jbyteArray bytes = utf8Bytes(env, geode_tags_text(tags.get(), static_cast<GeodeTagText>(i)));
+        // OutOfMemoryError is pending: no further JNI calls but returning are allowed.
+        if (!bytes) return -1;
         env->SetObjectArrayElement(texts, i, bytes);
         env->DeleteLocalRef(bytes);
     }

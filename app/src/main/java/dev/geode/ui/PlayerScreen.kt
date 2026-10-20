@@ -159,7 +159,7 @@ private fun PlayerHero(
     onOpenLibrary: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val uri = remember(state.title, state.artist) { viewModel.currentTrackUri() }
+    val uri = remember(state.title, state.artist, state.queueIndex) { viewModel.currentTrackUri() }
     val foreign = external.active
     val foreignTrack = external.nowPlaying?.takeIf { it.title.isNotBlank() }
     val hasSource = foreign || micActive || state.hasMedia

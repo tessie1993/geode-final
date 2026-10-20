@@ -77,7 +77,7 @@ fun VisualizerScreen(
     val favourites by viewModel.favourites.collectAsStateWithLifecycle()
     val abLoop by viewModel.abLoop.collectAsStateWithLifecycle()
     val external by viewModel.externalAudio.collectAsStateWithLifecycle()
-    val currentUri = remember(state.title, state.artist) { viewModel.currentTrackUri() }
+    val currentUri = remember(state.title, state.artist, state.queueIndex) { viewModel.currentTrackUri() }
     val isFavourite = currentUri != null && currentUri in favourites
     var panel by remember { mutableStateOf(PlayerPanel.TRANSPORT) }
     val chromeAlpha = maxOf(gui.barOpacity, 0.25f)

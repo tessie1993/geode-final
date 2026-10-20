@@ -275,6 +275,8 @@ bool SceneParams::set(std::string_view name, float value) {
         {"rippleOverlaySpecular", &SceneParams::rippleOverlaySpecular},
         {"formDrive", &SceneParams::formDrive},
     };
+    // NaN slips through std::clamp/std::min in the safety clamps and lerpParams keeps it forever.
+    if (!std::isfinite(value)) return false;
     for (const auto& f : kAllFloats) {
         if (name == f.name) { this->*f.member = value; return true; }
     }

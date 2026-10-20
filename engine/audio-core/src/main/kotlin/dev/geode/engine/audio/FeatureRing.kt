@@ -41,7 +41,9 @@ class FeatureRing(
 
     val epoch: Int get() = epochValue
 
-    private val oldestReadable: Int get() = maxOf(0, written + capacityFrames / 4 - capacityFrames)
+    // At least one slot of slack: at capacity 2, capacityFrames / 4 is 0 and the oldest readable
+    // slot would be the one an in-progress publish is overwriting.
+    private val oldestReadable: Int get() = maxOf(0, written + maxOf(1, capacityFrames / 4) - capacityFrames)
 
     fun beginEpoch() {
         written = 0

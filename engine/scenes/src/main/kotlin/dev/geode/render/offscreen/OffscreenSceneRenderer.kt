@@ -49,6 +49,8 @@ class OffscreenSceneRenderer(
     fun prepare() {
         val viz = NativeViz(context)
         check(viz.create()) { "native renderer could not be created" }
+        // Owned from here on, so release() frees it even if a check below throws.
+        native = viz
         // Pinned to the full tier: an export renders as fast as the encoder takes frames, so its
         // wall-clock frame time says nothing about the device.
         viz.setOffscreen(true)
@@ -60,7 +62,6 @@ class OffscreenSceneRenderer(
         viz.setReducedMotion(spec.reducedMotion)
         if (spec.lfoConfigs.isNotEmpty()) viz.setLfoConfigs(spec.lfoConfigs)
         if (spec.adsrConfigs.isNotEmpty()) viz.setAdsrConfigs(spec.adsrConfigs)
-        native = viz
     }
 
     /**

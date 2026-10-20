@@ -34,10 +34,11 @@ void gainsFor(float t, int curve, float& out, float& in) {
 
 Mixer::Mixer() : tap_(kTapSamples), scratch_(kMaxRenderFrames * kChannels, 0.0f) {}
 
-// Only frees chains setDsp() already retired (queued for us to destroy); the chain still live in dsp_,
-// if any, was never handed to us to own and is left for its caller to destroy, same as before this
-// change.
+// geode_player_set_dsp hands the installed chain to the player, which destroys it "at player
+// destruction" (geode_api.h), so the live chain is freed here along with the retired ones. The output
+// stream is closed before the mixer goes, so no render() can still be inside it.
 Mixer::~Mixer() {
+    if (geode_dsp* live = dsp_.exchange(nullptr, std::memory_order_acq_rel)) geode_dsp_destroy(live);
     std::lock_guard<std::mutex> guard(dspRetireLock_);
     for (const RetiredDsp& retired : retiredDsp_) geode_dsp_destroy(retired.dsp);
     retiredDsp_.clear();
@@ -61,7 +62,8 @@ void Mixer::setCrossfade(int64_t frames, int curve) {
 // who now owns destroying the old chain.
 void Mixer::setDsp(geode_dsp* dsp, bool streamRunning) {
     geode_dsp* old = dsp_.exchange(dsp, std::memory_order_acq_rel);
-    if (!old) return;
+    // Re-installing the live chain must not retire it: it would be destroyed while still in use.
+    if (!old || old == dsp) return;
     // callbacks_ read right after the swap becomes visible: once it has advanced past this value, every
     // render() call that could still have read the old pointer (started before the swap, still holding
     // it locally) has finished and incremented callbacks_, so the old chain is safe to destroy. If the
@@ -146,6 +148,8 @@ void Mixer::retire(Deck* deck) {
 }
 
 void Mixer::beginTransition(Deck* from, Deck* to) {
+    // A deck that ran dry before its successor arrived set ended_; the successor is playing now.
+    ended_.store(false, std::memory_order_release);
     current_.store(to, std::memory_order_release);
     next_.store(nullptr, std::memory_order_release);
     retire(from);

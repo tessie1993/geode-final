@@ -24,35 +24,40 @@ class AnalysisEngine(
             hopRateHz = HOP_RATE_HZ,
         )
 
+    // Serialises every native call on [analyzer]: the loop's tick on Dispatchers.Default, tuning
+    // setters from Main or the playback thread, and the destroy in close(). The native session is
+    // not thread-safe, and a stop()/start() pair can briefly leave the old loop finishing a tick.
+    private val nativeLock = Any()
+
     @Volatile
     var sampleRateHz: Int = 44100
         set(value) {
             field = value
-            analyzer.sampleRateHz = value
+            synchronized(nativeLock) { analyzer.sampleRateHz = value }
         }
 
     var attack: Float = DEFAULT_ATTACK
         set(value) {
             field = value
-            analyzer.attackSeconds = BeatTuning.envelopeSeconds(value)
+            synchronized(nativeLock) { analyzer.attackSeconds = BeatTuning.envelopeSeconds(value) }
         }
 
     var decay: Float = DEFAULT_DECAY
         set(value) {
             field = value
-            analyzer.releaseSeconds = BeatTuning.envelopeSeconds(value)
+            synchronized(nativeLock) { analyzer.releaseSeconds = BeatTuning.envelopeSeconds(value) }
         }
 
     var beatSensitivity: Float = BeatTuning.SENSITIVITY_DEFAULT
         set(value) {
             field = BeatTuning.clampSensitivity(value)
-            analyzer.sensitivity = field
+            synchronized(nativeLock) { analyzer.sensitivity = field }
         }
 
     var beatMinIntervalMs: Float = BeatTuning.INTERVAL_MS_DEFAULT
         set(value) {
             field = BeatTuning.clampIntervalMs(value)
-            analyzer.refractoryMs = field
+            synchronized(nativeLock) { analyzer.refractoryMs = field }
         }
 
     private val _features = MutableStateFlow(AudioFeatures.empty(bandCount))
@@ -193,11 +198,15 @@ class AnalysisEngine(
                     val pass = Pass()
                     var deadlineNs = System.nanoTime()
                     while (!closed) {
-                        if (resetPending) {
-                            resetPending = false
-                            pass.reset()
+                        synchronized(nativeLock) {
+                            // Re-checked under the lock: close() may have destroyed the handle.
+                            if (closed) return@launch
+                            if (resetPending) {
+                                resetPending = false
+                                pass.reset()
+                            }
+                            pass.tick()
                         }
-                        pass.tick()
                         deadlineNs += TICK_NS
                         val now = System.nanoTime()
                         if (deadlineNs < now) deadlineNs = now
@@ -217,11 +226,11 @@ class AnalysisEngine(
         }
     }
 
-    /** Best-effort teardown: the loop may still observe [closed] one tick late. Prefer [closeAndJoin] where a suspend context is available. */
+    /** Does not wait for the loop, but the destroy waits for any in-flight tick (nativeLock) and the loop exits on [closed]. */
     fun close() {
         closed = true
         stop()
-        analyzer.close()
+        synchronized(nativeLock) { analyzer.close() }
     }
 
     /** Cancels the loop and waits for it to actually stop before destroying the native handle, so no in-flight native call can race the destroy. */
@@ -229,7 +238,7 @@ class AnalysisEngine(
         closed = true
         val current = synchronized(jobLock) { job.also { job = null } }
         current?.cancelAndJoin()
-        analyzer.close()
+        synchronized(nativeLock) { analyzer.close() }
     }
 
     companion object {

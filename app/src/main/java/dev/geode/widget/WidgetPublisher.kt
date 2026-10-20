@@ -62,7 +62,7 @@ class WidgetPublisher(
                 scope.launch {
                     val art = uri?.let { MediaArtwork.decodeEmbedded(appContext, it, ART_PX) }
                     val path = WidgetState.writeArt(appContext, art)
-                    WidgetState.save(appContext, WidgetState.load(appContext).copy(artPath = path))
+                    WidgetState.saveArt(appContext, path)
                     NowPlayingWidget().updateAll(appContext)
                 }
         }
