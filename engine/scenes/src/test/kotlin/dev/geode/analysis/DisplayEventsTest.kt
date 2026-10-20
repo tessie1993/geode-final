@@ -77,7 +77,8 @@ class DisplayEventsTest {
     @Test
     fun `a frame between events carries none, whatever its one-hop fields held`() {
         val display = DisplayEvents()
-        val stale = AudioFeatures.empty().copy(beat = true, beatStrength = 1f, transient = 0.9f, kick = 0.9f, drop = true)
+        val stale =
+            AudioFeatures.empty().copy(beat = true, beatStrength = 1f, transient = 0.9f, kick = 0.9f, drop = true)
 
         val f = display.frame(stale)
 
