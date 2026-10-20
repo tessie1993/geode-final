@@ -5,6 +5,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import dev.geode.engine.audio.AnalysisHop
 import dev.geode.engine.audio.ReactiveAnalyzer
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.CancellationException
@@ -166,7 +167,7 @@ class OfflineAnalyzer(
         private val frames = FrameAccumulator()
         private var scratch = FloatArray(AnalysisEngine.DEFAULT_FFT_SIZE * 4)
         private var sampleRate = 44100
-        private var hopSamples = sampleRate / 60
+        private var hopSamples = AnalysisHop.samples(sampleRate, AnalysisEngine.DEFAULT_FFT_SIZE)
 
         private var absSample = 0L
 
@@ -201,7 +202,7 @@ class OfflineAnalyzer(
         private fun adoptSampleRate(sampleRateHz: Int) {
             if (sampleRateHz != sampleRate) {
                 sampleRate = sampleRateHz
-                hopSamples = (sampleRate / 60).coerceAtLeast(1)
+                hopSamples = AnalysisHop.samples(sampleRate, AnalysisEngine.DEFAULT_FFT_SIZE)
             }
             analyzer.sampleRateHz = sampleRate
         }
@@ -259,7 +260,7 @@ class OfflineAnalyzer(
             val group = frames.groupSize
             return FeatureTimeline(
                 out,
-                hopMs = group * 1000L / 60,
+                hopMs = (group * 1000f / HOP_RATE_HZ).toLong(),
                 key = analyzer.key(),
                 hopRateHz = HOP_RATE_HZ / group,
             )
@@ -275,7 +276,7 @@ class OfflineAnalyzer(
     }
 
     companion object {
-        const val OFFLINE_HOP_RATE_HZ = 60f
+        const val OFFLINE_HOP_RATE_HZ = AnalysisHop.RATE_HZ
     }
 }
 

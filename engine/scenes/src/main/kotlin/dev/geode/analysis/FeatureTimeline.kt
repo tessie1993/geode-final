@@ -104,31 +104,36 @@ class FeatureTimeline(
             0
         }
 
+    /**
+     * The features to draw at [timeMs]. With a [spanMs], the span is one rendered frame: the
+     * continuous values are those at [timeMs], and every one-hop event of the frames timed in
+     * (timeMs, timeMs + spanMs] is folded in (flags or'ed, strengths and onset/flux maxed). Spans of
+     * consecutive frames tile the timeline, so each event is drawn on exactly one rendered frame
+     * at any frame rate.
+     */
     fun featuresAt(
         timeMs: Long,
         spanMs: Long = 0L,
     ): AudioFeatures {
         if (frames.isEmpty()) return AudioFeatures.empty()
-        val first = indexAt(timeMs)
-        val f = frames[first].features
-        if (spanMs <= 0L || frameSpacingMs <= 0.0) return f
-        val last = (indexAt(timeMs + spanMs) - 1).coerceIn(first, frames.size - 1)
-        if (last <= first) return f
-        var beat = f.beat
-        var onset = f.onset
-        var flux = f.flux
-        var strength = f.beatStrength
-        var transient = f.transient
-        for (i in first + 1..last) {
-            val g = frames[i].features
-            beat = beat || g.beat
-            onset = maxOf(onset, g.onset)
-            flux = maxOf(flux, g.flux)
-            strength = maxOf(strength, g.beatStrength)
-            transient = maxOf(transient, g.transient)
+        val f = frames[indexAt(timeMs)].features
+        if (spanMs <= 0L) return f
+        var folded = f.withoutEvents()
+        for (i in framesUpTo(timeMs) until framesUpTo(timeMs + spanMs)) {
+            folded = folded.foldedWith(frames[i].features)
         }
-        if (beat == f.beat && onset == f.onset && flux == f.flux && strength == f.beatStrength && transient == f.transient) return f
-        return f.copy(beat = beat, onset = onset, flux = flux, beatStrength = strength, transient = transient)
+        return folded
+    }
+
+    /** How many frames are timed at or before [timeMs]. */
+    private fun framesUpTo(timeMs: Long): Int {
+        var lo = 0
+        var hi = frames.size
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (frames[mid].timeMs <= timeMs) lo = mid + 1 else hi = mid
+        }
+        return lo
     }
 
     fun progressionAt(

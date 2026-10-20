@@ -126,7 +126,7 @@ const std::array<float, LfoEngine::kSlots>& LfoEngine::tick(float dt, const Geod
             case ModSource::Treble: raw = follow(i, features.treble, dt); break;
             case ModSource::Level: raw = follow(i, live::level(features), dt); break;
             case ModSource::Brightness: raw = follow(i, live::brightness(features), dt); break;
-            case ModSource::Transient: raw = follow(i, live::hit(features), dt); break;
+            case ModSource::Transient: raw = followHit(i, live::hit(features), dt); break;
             case ModSource::StereoWidth: raw = follow(i, live::width(features), dt); break;
             case ModSource::StereoPan: raw = followBipolar(i, live::pan(features), dt); break;
         }
@@ -176,6 +176,17 @@ float LfoEngine::oscillator(int i, const LfoConfig& c, float dt) {
 
 float LfoEngine::follow(int i, float value, float dt) {
     return followBipolar(i, std::clamp(value, 0.0f, 1.0f) * 2.0f - 1.0f, dt);
+}
+
+// A hit reaches the Visual on one display frame only (DisplayEvents), so a rise time would scale its peak with
+// the frame rate: the follower jumps to it at once, then falls as any other source does.
+float LfoEngine::followHit(int i, float value, float dt) {
+    const float target = std::clamp(value, 0.0f, 1.0f) * 2.0f - 1.0f;
+    if (target > followed_[i]) {
+        followed_[i] = target;
+        return followed_[i];
+    }
+    return followBipolar(i, target, dt);
 }
 
 float LfoEngine::followBipolar(int i, float value, float dt) {

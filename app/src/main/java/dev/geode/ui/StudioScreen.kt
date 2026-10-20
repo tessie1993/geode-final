@@ -390,8 +390,6 @@ private fun ClipEditor(
     var edit by remember(clip.uri) { mutableStateOf(ClipEdit()) }
     val duration = clip.durationMs.coerceAtLeast(1L)
     val dismiss = rememberPredictiveDismiss(onDismiss = onClose)
-    // Mirrors ExportHost's destination picker: below API 29 StudioExporter.publish cannot insert
-    // into MediaStore, so the render button forces this picker there instead of failing silently.
     val destinationPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { uri ->
             if (uri != null) onExportToDestination(clip, edit, uri)
@@ -420,13 +418,7 @@ private fun ClipEditor(
                 phase = studio.phase,
                 canExport = edit.trimmedMs(duration) > 0,
                 atDefaults = edit.isIdentity(duration),
-                onExport = {
-                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-                        destinationPicker.launch("geode_studio_${System.currentTimeMillis()}.mp4")
-                    } else {
-                        onExport(clip, edit)
-                    }
-                },
+                onExport = { onExport(clip, edit) },
                 onExportToDestination = {
                     destinationPicker.launch("geode_studio_${System.currentTimeMillis()}.mp4")
                 },

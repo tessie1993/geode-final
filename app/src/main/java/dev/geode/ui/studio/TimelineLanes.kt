@@ -199,21 +199,10 @@ fun TimelineEditor(
                     }
             }
         }
-    // Mirrors ExportHost's destination picker for the visualizer export: below API 29
-    // StudioExporter.publish cannot insert into MediaStore at all, so the project export button
-    // forces this picker there instead of trying (and failing) to save into Movies/Geode.
     val projectDestinationPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { uri ->
             if (uri != null) actions.exportProject(uri)
         }
-
-    fun exportProject() {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-            projectDestinationPicker.launch("geode_cut_${System.currentTimeMillis()}.mp4")
-        } else {
-            actions.exportProject()
-        }
-    }
 
     fun exportChapters(
         format: ChapterFormat,
@@ -292,7 +281,7 @@ fun TimelineEditor(
             onUndo = actions::undo,
             onRedo = actions::redo,
             onZoom = { pxPerMs = (pxPerMs * it).coerceIn(TimelineScale.MIN_PX_PER_MS, TimelineScale.MAX_PX_PER_MS) },
-            onExport = ::exportProject,
+            onExport = { actions.exportProject() },
             onClose = onClose,
         )
         ExportStatusRow(

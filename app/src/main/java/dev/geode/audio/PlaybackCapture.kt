@@ -5,22 +5,16 @@ import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.projection.MediaProjection
-import android.os.Build
-import androidx.annotation.RequiresApi
 import dev.geode.util.bestEffort
 import kotlin.math.abs
 
 enum class CaptureFailure {
-    UNSUPPORTED,
-
     PERMISSION,
 
     CONSENT,
 
     UNAVAILABLE,
 }
-
-val playbackCaptureSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
 class PlaybackCapture(
     sink: dev.geode.engine.audio.PcmSink,
@@ -34,7 +28,6 @@ class PlaybackCapture(
 
     override val threadName = "geode-playback-capture"
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     @Synchronized
     fun start(
         projection: MediaProjection,
@@ -70,7 +63,6 @@ class PlaybackCapture(
         blockedLikely = false
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     private fun openRecord(projection: MediaProjection): AudioRecord? {
         val config =
             AudioPlaybackCaptureConfiguration
@@ -79,43 +71,49 @@ class PlaybackCapture(
                 .addMatchingUsage(AudioAttributes.USAGE_GAME)
                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
                 .build()
-        for (rate in intArrayOf(DEFAULT_RATE, 44_100, 22_050)) {
-            for (mask in intArrayOf(AudioFormat.CHANNEL_IN_STEREO, AudioFormat.CHANNEL_IN_MONO)) {
-                for (encoding in intArrayOf(AudioFormat.ENCODING_PCM_FLOAT, AudioFormat.ENCODING_PCM_16BIT)) {
-                    val min = AudioRecord.getMinBufferSize(rate, mask, encoding)
-                    if (min <= 0) continue
-                    val channels = if (mask == AudioFormat.CHANNEL_IN_STEREO) 2 else 1
-                    val rec =
-                        runCatching {
-                            @Suppress("MissingPermission")
-                            AudioRecord
+        for ((rate, mask, encoding) in CANDIDATE_FORMATS) {
+            val min = AudioRecord.getMinBufferSize(rate, mask, encoding)
+            if (min <= 0) continue
+            val channels = if (mask == AudioFormat.CHANNEL_IN_STEREO) 2 else 1
+            val rec =
+                runCatching {
+                    @Suppress("MissingPermission")
+                    AudioRecord
+                        .Builder()
+                        .setAudioPlaybackCaptureConfig(config)
+                        .setAudioFormat(
+                            AudioFormat
                                 .Builder()
-                                .setAudioPlaybackCaptureConfig(config)
-                                .setAudioFormat(
-                                    AudioFormat
-                                        .Builder()
-                                        .setEncoding(encoding)
-                                        .setSampleRate(rate)
-                                        .setChannelMask(mask)
-                                        .build(),
-                                ).setBufferSizeInBytes(
-                                    (min * BUFFER_MULTIPLIER).coerceAtLeast(READ_FRAMES * channels * 4),
-                                ).build()
-                        }.getOrNull()
-                    if (rec != null && rec.state == AudioRecord.STATE_INITIALIZED) {
-                        sampleRateHz = rate
-                        channelCount = channels
-                        return rec
-                    }
-                    bestEffort(TAG, "rec?.release()") { rec?.release() }
-                }
+                                .setEncoding(encoding)
+                                .setSampleRate(rate)
+                                .setChannelMask(mask)
+                                .build(),
+                        ).setBufferSizeInBytes(
+                            (min * BUFFER_MULTIPLIER).coerceAtLeast(READ_FRAMES * channels * 4),
+                        ).build()
+                }.getOrNull()
+            if (rec != null && rec.state == AudioRecord.STATE_INITIALIZED) {
+                sampleRateHz = rate
+                channelCount = channels
+                return rec
             }
+            bestEffort(TAG, "rec?.release()") { rec?.release() }
         }
         return null
     }
 
     private companion object {
         const val DEFAULT_RATE = 48_000
+
+        /** Every (rate, channel mask, encoding) to try, best first: rate, then stereo, then float. */
+        val CANDIDATE_FORMATS: List<Triple<Int, Int, Int>> =
+            intArrayOf(DEFAULT_RATE, 44_100, 22_050).flatMap { rate ->
+                intArrayOf(AudioFormat.CHANNEL_IN_STEREO, AudioFormat.CHANNEL_IN_MONO).flatMap { mask ->
+                    intArrayOf(AudioFormat.ENCODING_PCM_FLOAT, AudioFormat.ENCODING_PCM_16BIT).map { encoding ->
+                        Triple(rate, mask, encoding)
+                    }
+                }
+            }
     }
 }
 

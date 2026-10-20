@@ -59,9 +59,9 @@
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
     <!--
-      The crystal packs' haptic cues name Android feedback constants that all
-      landed after minSdk 26, so older devices fall back to the vibration
-      patterns the packs ship alongside them.
+      The crystal packs' haptic cues name Android feedback constants, and the
+      newest of them landed after minSdk 31, so older devices fall back to the
+      vibration patterns the packs ship alongside them.
     -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Bit-perfect USB output asks the platform for a mixer path through
@@ -95,7 +95,6 @@
         android:appCategory="audio"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
-        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"

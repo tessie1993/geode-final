@@ -20,6 +20,10 @@ int hopFor(int sampleRateHz, float hopRateHz, int fftSize) {
     const int hop = std::max(static_cast<int>(sampleRateHz / hopRateHz), 1);
     return std::min(hop, fftSize);
 }
+
+// Sequence numbers cross JNI as floats, which hold every integer below 2^24 exactly; they wrap back to 1 there
+// (0 is "not fired yet"), so a reader comparing for inequality still sees every step.
+constexpr uint32_t kEventSeqWrap = 1u << 24;
 }  // namespace
 
 AnalysisSession::AnalysisSession(int sampleRateHz, int fftSize, float hopRateHz)
@@ -51,6 +55,8 @@ void AnalysisSession::reset() {
     analyzer_.reset();
     chroma_.reset();
     buffered_ = 0;
+    eventSeq_.fill(0);
+    eventStrength_.fill(0.0f);
 }
 
 void AnalysisSession::analyze(const float* mid, const float* side, size_t frames, float dtSeconds, GeodeFeatureFrame& out) {
@@ -59,6 +65,7 @@ void AnalysisSession::analyze(const float* mid, const float* side, size_t frames
     analyzer_.spectrumInto(spectrum_.data());
     chroma_.step(spectrum_.data(), static_cast<int>(spectrum_.size()), sampleRateHz_, fftSize_);
     fill(mid, side, out);
+    sequence(out);
     averagedWaveform(mid, out.waveform);
 }
 
@@ -102,11 +109,14 @@ bool AnalysisSession::pull(GeodeFeatureFrame& out) {
     if (buffered_ < static_cast<size_t>(fftSize_)) return false;
     const float* mid = buffer_.data();
     const float* side = sideBuffer_.data();
-    analyzer_.analyze(mid, 1.0f / hopRateHz_);
+    // The hop is a whole number of samples, so its duration is that many samples, not 1 / hopRateHz_: the
+    // analyser's clock then advances by exactly the audio it consumed, live and offline alike.
+    analyzer_.analyze(mid, static_cast<float>(hopSamples_) / static_cast<float>(sampleRateHz_));
     analyzer_.spectrumInto(spectrum_.data());
     key_.accumulate(spectrum_.data(), static_cast<int>(spectrum_.size()), sampleRateHz_, fftSize_);
     chroma_.step(spectrum_.data(), static_cast<int>(spectrum_.size()), sampleRateHz_, fftSize_);
     fill(mid, side, out);
+    sequence(out);
     decimatedWaveform(mid, out.waveform);
 
     // hopSamples_ is clamped to fftSize_ at construction/setSampleRateHz, and buffered_ >= fftSize_ here
@@ -157,6 +167,29 @@ void AnalysisSession::fill(const float* mid, const float* side, GeodeFeatureFram
     out.chromaConfidence = chroma_.confidence();
     std::copy(a.bands().begin(), a.bands().end(), out.bands);
     std::copy(chroma_.bins().begin(), chroma_.bins().end(), out.chroma);
+}
+
+// Counts every one-hop event that fired on this hop and keeps the strength it fired with, so the frame carries
+// each occurrence for as long as it is the latest one, not only on its own hop.
+void AnalysisSession::sequence(GeodeFeatureFrame& out) {
+    std::array<float, GEODE_EVENT_COUNT> fired{};
+    fired[GEODE_EVENT_BEAT] = out.beat > 0.0f ? (out.beatStrength > 0.0f ? out.beatStrength : 1.0f) : 0.0f;
+    fired[GEODE_EVENT_TRANSIENT] = out.transient;
+    fired[GEODE_EVENT_KICK] = out.kick;
+    fired[GEODE_EVENT_SNARE] = out.snare;
+    fired[GEODE_EVENT_HAT] = out.hat;
+    fired[GEODE_EVENT_DOWNBEAT] = out.downbeat;
+    fired[GEODE_EVENT_SECTION_BOUNDARY] = out.sectionBoundary;
+    fired[GEODE_EVENT_DROP] = out.drop;
+    fired[GEODE_EVENT_ARRIVAL] = out.arrival;
+    for (size_t e = 0; e < fired.size(); e++) {
+        if (fired[e] > 0.0f) {
+            eventSeq_[e] = eventSeq_[e] + 1u >= kEventSeqWrap ? 1u : eventSeq_[e] + 1u;
+            eventStrength_[e] = fired[e];
+        }
+        out.events[e].seq = static_cast<float>(eventSeq_[e]);
+        out.events[e].strength = eventStrength_[e];
+    }
 }
 
 void AnalysisSession::averagedWaveform(const float* mid, float* out) const {

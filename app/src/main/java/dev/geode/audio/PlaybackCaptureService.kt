@@ -80,18 +80,16 @@ class PlaybackCaptureService : Service() {
 
     private fun startForegroundNotification() {
         val manager = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    getString(dev.geode.R.string.capture_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply {
-                    description = getString(dev.geode.R.string.capture_channel_description)
-                    setShowBadge(false)
-                },
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                getString(dev.geode.R.string.capture_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = getString(dev.geode.R.string.capture_channel_description)
+                setShowBadge(false)
+            },
+        )
         val open =
             android.app.PendingIntent.getActivity(
                 this,
@@ -148,7 +146,6 @@ class PlaybackCaptureService : Service() {
             resultCode: Int,
             data: Intent,
         ) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
             val intent =
                 Intent(context, PlaybackCaptureService::class.java)
                     .putExtra(EXTRA_RESULT_CODE, resultCode)

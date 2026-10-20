@@ -7,7 +7,7 @@ class ReactiveAnalyzer(
     val bandCount: Int = FeatureFrameLayout.BAND_COUNT,
     val fftSize: Int = 2048,
     sampleRateHz: Int = 48_000,
-    private val hopRateHz: Float = 62.5f,
+    private val hopRateHz: Float = AnalysisHop.RATE_HZ,
 ) : AutoCloseable {
     init {
         require(bandCount == FeatureFrameLayout.BAND_COUNT) {
@@ -96,6 +96,9 @@ class ReactiveAnalyzer(
     val stereoCorrelation: Float get() = frame[FeatureFrameLayout.STEREO_CORRELATION]
     val stereoPan: Float get() = frame[FeatureFrameLayout.STEREO_PAN]
     val chromaConfidence: Float get() = frame[FeatureFrameLayout.CHROMA_CONFIDENCE]
+
+    /** Every one-hop event so far, sequenced: what a reader that skips hops edge-detects on. */
+    val events: SoundEvents get() = SoundEvents.read(frame, FeatureFrameLayout.EVENTS)
 
     fun analyze(
         samples: FloatArray,

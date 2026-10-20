@@ -603,27 +603,25 @@ private fun QuickActions(
                 }
             }
         }
-        if (external.supported) {
-            item {
-                QuickAction(
-                    Icons.Filled.Cast,
-                    stringResource(if (external.active) R.string.quick_capturing else R.string.source_other_apps),
-                    active = external.active,
-                ) {
-                    if (external.active) {
-                        viewModel.stopExternalAudio()
-                    } else {
-                        capturePermissions.launch(
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                                arrayOf(
-                                    android.Manifest.permission.RECORD_AUDIO,
-                                    android.Manifest.permission.POST_NOTIFICATIONS,
-                                )
-                            } else {
-                                arrayOf(android.Manifest.permission.RECORD_AUDIO)
-                            },
-                        )
-                    }
+        item {
+            QuickAction(
+                Icons.Filled.Cast,
+                stringResource(if (external.active) R.string.quick_capturing else R.string.source_other_apps),
+                active = external.active,
+            ) {
+                if (external.active) {
+                    viewModel.stopExternalAudio()
+                } else {
+                    capturePermissions.launch(
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            arrayOf(
+                                android.Manifest.permission.RECORD_AUDIO,
+                                android.Manifest.permission.POST_NOTIFICATIONS,
+                            )
+                        } else {
+                            arrayOf(android.Manifest.permission.RECORD_AUDIO)
+                        },
+                    )
                 }
             }
         }

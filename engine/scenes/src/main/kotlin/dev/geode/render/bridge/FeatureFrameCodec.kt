@@ -49,5 +49,6 @@ object FeatureFrameCodec {
         f.bands.copyInto(out, FeatureFrameLayout.BANDS, 0, minOf(f.bands.size, FeatureFrameLayout.BAND_COUNT))
         f.waveform.copyInto(out, FeatureFrameLayout.WAVEFORM, 0, minOf(f.waveform.size, FeatureFrameLayout.WAVEFORM_POINTS))
         if (f.hasChroma) f.chroma.copyInto(out, FeatureFrameLayout.CHROMA, 0, FeatureFrameLayout.CHROMA_BINS)
+        f.events.writeTo(out, FeatureFrameLayout.EVENTS)
     }
 }

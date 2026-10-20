@@ -3,7 +3,6 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>ComplexCondition:Adsr.kt$AdsrEngine$hit &gt; 0f &amp;&amp; (c.retrigger || stage[i] == 0 || stage[i] == 4)</ID>
-    <ID>ComplexCondition:FeatureTimeline.kt$FeatureTimeline$beat == f.beat &amp;&amp; onset == f.onset &amp;&amp; flux == f.flux &amp;&amp; strength == f.beatStrength &amp;&amp; transient == f.transient</ID>
     <ID>LoopWithTooManyJumpStatements:Adsr.kt$AdsrEngine.Companion$for</ID>
     <ID>LoopWithTooManyJumpStatements:FeatureTimeline.kt$FeatureTimeline$for</ID>
     <ID>LoopWithTooManyJumpStatements:Lfo.kt$LfoEngine$for</ID>

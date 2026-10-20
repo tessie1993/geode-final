@@ -22,10 +22,37 @@ typedef struct geode_tags     geode_tags;
 #define GEODE_BAND_COUNT 64
 #define GEODE_WAVEFORM_POINTS 128
 #define GEODE_CHROMA_BINS 12
-#define GEODE_FEATURE_FRAME_FLOATS (33 + GEODE_BAND_COUNT + GEODE_WAVEFORM_POINTS + GEODE_CHROMA_BINS)
 
-/* Every member is a float so the whole frame crosses JNI as one float array in this order.
- * Units: levels 0..1, phases 0..1 of a cycle, bpm in beats per minute, flags 0 or 1. */
+/* The one-hop events, in GeodeFeatureFrame.events order. */
+enum {
+    GEODE_EVENT_BEAT,
+    GEODE_EVENT_TRANSIENT,
+    GEODE_EVENT_KICK,
+    GEODE_EVENT_SNARE,
+    GEODE_EVENT_HAT,
+    GEODE_EVENT_DOWNBEAT,
+    GEODE_EVENT_SECTION_BOUNDARY,
+    GEODE_EVENT_DROP,
+    GEODE_EVENT_ARRIVAL,
+    GEODE_EVENT_COUNT
+};
+
+/* A sequenced event: how many times it has fired since the analysis was created or reset, and the strength
+ * it fired with last. seq counts 1, 2, 3 ... and wraps from 2^24 - 1 (the largest integer a float holds
+ * exactly) back to 1; 0 means it has not fired yet. A reader that looks less often than once per hop, such as
+ * a display frame, edge-detects on seq, so it sees every event exactly once at any frame rate. */
+typedef struct GeodeEvent {
+    float seq;
+    float strength;
+} GeodeEvent;
+
+#define GEODE_FEATURE_FRAME_FLOATS \
+    (33 + GEODE_BAND_COUNT + GEODE_WAVEFORM_POINTS + GEODE_CHROMA_BINS + 2 * GEODE_EVENT_COUNT)
+
+/* Every member is a float (an event is two) so the whole frame crosses JNI as one float array in this order.
+ * Units: levels 0..1, phases 0..1 of a cycle, bpm in beats per minute, flags 0 or 1. beat, beatStrength,
+ * transient, kick, snare, hat, downbeat, sectionBoundary, drop and arrival are one-hop impulses: non-zero only
+ * on the hop that fired them. events carries the same occurrences sequenced, for readers that skip hops. */
 typedef struct GeodeFeatureFrame {
     float rms;
     float bass;
@@ -63,12 +90,14 @@ typedef struct GeodeFeatureFrame {
     float bands[GEODE_BAND_COUNT];
     float waveform[GEODE_WAVEFORM_POINTS];
     float chroma[GEODE_CHROMA_BINS];
+    GeodeEvent events[GEODE_EVENT_COUNT];
 } GeodeFeatureFrame;
 
 GEODE_API const char* geode_version(void);
 
 /* hop_rate_hz sets every tempo-domain filter; the hop in samples for push/pull is sample_rate / hop_rate_hz,
- * clamped to fft_size. fft_size must be a power of two >= GEODE_WAVEFORM_POINTS (so the waveform decimation
+ * rounded down and clamped to fft_size, and each pulled hop advances the analysis by hop / sample_rate seconds.
+ * fft_size must be a power of two >= GEODE_WAVEFORM_POINTS (so the waveform decimation
  * step is never zero); NULL on any other value. */
 GEODE_API geode_analysis* geode_analysis_create(int sample_rate, int fft_size, float hop_rate_hz);
 GEODE_API void            geode_analysis_destroy(geode_analysis*);

@@ -267,21 +267,16 @@ fun ExportHost(
                 state = loop,
                 onStart = { req ->
                     requestNotificationPermissionOnce()
-                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-                        pendingLoopExport = PendingLoopExport.from(req)
-                        loopDestinationPicker.launch("geode_loop_${System.currentTimeMillis()}.mp4")
-                    } else {
-                        viewModel.startLoopRender(
-                            req.aspect,
-                            req.codec,
-                            req.fps,
-                            visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                            req.loopMs,
-                            req.crossfadeMs,
-                            req.drift,
-                            req.audioClips,
-                        )
-                    }
+                    viewModel.startLoopRender(
+                        req.aspect,
+                        req.codec,
+                        req.fps,
+                        visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
+                        req.loopMs,
+                        req.crossfadeMs,
+                        req.drift,
+                        req.audioClips,
+                    )
                 },
                 onStartToDestination = { req ->
                     requestNotificationPermissionOnce()
@@ -305,35 +300,15 @@ fun ExportHost(
                 trackDuration = state.duration,
                 onStart = { aspect, fps, loopSafe, range, codec ->
                     requestNotificationPermissionOnce()
-                    // Saving into the Videos library without asking is a scoped-storage privilege,
-                    // and scoped storage starts at Q. Below it the same insert needs
-                    // WRITE_EXTERNAL_STORAGE - a permission this app does not ask for and should not
-                    // start asking for - so the write failed with a SecurityException the user saw
-                    // raw. The folder picker is the same save by another route and has always worked
-                    // here, so on those versions the primary button opens it.
-                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-                        pendingExport =
-                            PendingExport(
-                                aspect,
-                                fps,
-                                viz.sceneId,
-                                loopSafe,
-                                range?.startMs ?: 0L,
-                                range?.durationMs ?: 0L,
-                                codec,
-                            )
-                        destinationPicker.launch("geode_${System.currentTimeMillis()}.mp4")
-                    } else {
-                        viewModel.startExport(
-                            aspect,
-                            fps,
-                            visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                            loopSafe = loopSafe,
-                            range = range,
-                            sceneFactoryFor = { id -> sceneFactoryFor(id, viz.sceneId) },
-                            codec = codec,
-                        )
-                    }
+                    viewModel.startExport(
+                        aspect,
+                        fps,
+                        visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
+                        loopSafe = loopSafe,
+                        range = range,
+                        sceneFactoryFor = { id -> sceneFactoryFor(id, viz.sceneId) },
+                        codec = codec,
+                    )
                 },
                 onStartToDestination = { aspect, fps, loopSafe, range, codec ->
                     requestNotificationPermissionOnce()

@@ -4,6 +4,7 @@ import android.content.Context
 import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
+import dev.geode.analysis.DisplayEvents
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
@@ -88,6 +89,9 @@ class VisualizerRenderer(
     private var nativeLfo: List<LfoConfig>? = null
     private var nativeAdsr: List<AdsrConfig>? = null
     private var nativeThermalSampleMs = 0L
+
+    // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
+    private val displayEvents = DisplayEvents()
 
     @Volatile
     private var lastMilkPreset: String? = null
@@ -198,7 +202,7 @@ class VisualizerRenderer(
             nativeViz.setAdsrConfigs(adsr)
             nativeAdsr = adsr
         }
-        nativeViz.setFeatures(features)
+        nativeViz.setFeatures(displayEvents.frame(features))
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
