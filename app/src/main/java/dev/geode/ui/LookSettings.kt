@@ -18,9 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,14 +26,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
-import dev.geode.data.BootAnimationStore
-import dev.geode.data.GeodePrefsFiles
 
 @Composable
 internal fun LookSettingsTab(viewModel: SettingsViewModel) {
@@ -259,20 +253,5 @@ private fun LayoutGroup(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-    BootAnimationRow()
-}
-
-@Composable
-private fun BootAnimationRow() {
-    val ctx = LocalContext.current
-    val store = remember { BootAnimationStore(GeodePrefsFiles(ctx).general) }
-    var bootAnim by remember { mutableStateOf(store.load()) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.look_boot_animation), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = bootAnim, onCheckedChange = {
-            bootAnim = it
-            store.save(it)
-        })
     }
 }

@@ -37,6 +37,8 @@ internal object RetiredFeatureData {
                 listOf(
                     // Second-screen output.
                     "gui_second_screen",
+                    // Boot ripple intro.
+                    "boot_anim",
                 ),
         )
 

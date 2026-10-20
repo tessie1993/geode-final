@@ -60,8 +60,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.geode.R
 import dev.geode.analysis.SearchMatcher
-import dev.geode.data.BootAnimationStore
-import dev.geode.data.GeodePrefsFiles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.render.VisualizerView
@@ -121,7 +119,6 @@ fun AppRoot() {
             themePack
         }
     val appState = rememberGeodeAppState()
-    val bootAnimEnabled = remember { BootAnimationStore(GeodePrefsFiles(context).general).load() }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     var crashText by remember { mutableStateOf<String?>(null) }
@@ -297,11 +294,11 @@ fun AppRoot() {
                     },
                 )
             }
-            if ((!bootAnimEnabled || appState.bootDone) && !gui.safetyAcknowledged) {
+            if (!gui.safetyAcknowledged) {
                 SafetyConsent(
                     onAcknowledge = { settingsViewModel.setGuiPrefs(gui.copy(safetyAcknowledged = true)) },
                 )
-            } else if ((!bootAnimEnabled || appState.bootDone) && !gui.setupDone) {
+            } else if (!gui.setupDone) {
                 // Setup runs only after the notice is acknowledged, and only until it is done.
                 FirstRunGate(
                     onDone = {
@@ -322,9 +319,6 @@ fun AppRoot() {
                         settingsViewModel.setGuiPrefs(gui.copy(tutorialSeen = true))
                     },
                 )
-            }
-            if (bootAnimEnabled && !appState.bootDone) {
-                BootIntro(onDone = { appState.bootDone = true })
             }
         }
     }

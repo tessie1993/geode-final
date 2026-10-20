@@ -34,15 +34,12 @@ class GeodeAppState(
     dest: GeodeDestination = GeodeDestination.PLAYER,
     expanded: Boolean = false,
     searching: Boolean = false,
-    bootDone: Boolean = false,
 ) {
     var dest by mutableStateOf(dest)
 
     var expanded by mutableStateOf(expanded)
 
     var searching by mutableStateOf(searching)
-
-    var bootDone by mutableStateOf(bootDone)
 
     val onPlayer: Boolean get() = dest == GeodeDestination.PLAYER
 
@@ -75,7 +72,7 @@ class GeodeAppState(
             Saver(
                 // Saved as the enum name, not its ordinal: reordering the navigation bar then
                 // cannot silently restore a process-death survivor onto a different screen.
-                save = { listOf(it.dest.name, it.expanded, it.searching, it.bootDone) },
+                save = { listOf(it.dest.name, it.expanded, it.searching) },
                 restore = {
                     GeodeAppState(
                         dest =
@@ -83,7 +80,6 @@ class GeodeAppState(
                                 ?: GeodeDestination.PLAYER,
                         expanded = it[1] as Boolean,
                         searching = it[2] as Boolean,
-                        bootDone = it[3] as Boolean,
                     )
                 },
             )

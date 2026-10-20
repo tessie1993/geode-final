@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- System splash shown while the process cold-starts. Background matches
-         the default Clear Quartz pack background so the handoff to the
-         Compose BootIntro overlay (same color) is seamless. -->
+    <!-- System splash shown while the process cold-starts. -->
     <style name="Theme.Geode.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#EEEAE3</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>

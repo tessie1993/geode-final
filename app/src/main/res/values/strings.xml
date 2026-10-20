@@ -590,7 +590,6 @@
     <string name="look_compact_player">Compact mini-player</string>
     <string name="look_clear_visuals_menu">Clear-overlay Visuals menu</string>
     <string name="look_clear_visuals_hint">Text-only Visuals menu over the live visuals, so adjustments are visible as you make them.</string>
-    <string name="look_boot_animation">Boot animation</string>
 
     <!-- Font colour swatches. Mineral names; the argb value is what persists. -->
     <string name="font_color_auto">Auto</string>
