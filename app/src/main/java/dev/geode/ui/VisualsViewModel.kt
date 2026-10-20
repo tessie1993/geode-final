@@ -34,7 +34,7 @@ sealed interface PresetLinkImport {
 /** Outcome of a `geode://template/...` link reaching the app through an intent. */
 sealed interface TemplateLinkImport {
     data class Imported(
-        val name: PresetId,
+        val name: String,
     ) : TemplateLinkImport
 
     data class Replaced(
