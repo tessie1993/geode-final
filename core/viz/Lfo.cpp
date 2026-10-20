@@ -1,10 +1,10 @@
-#include "viz/Lfo.hpp"
+#include "geode/viz/Lfo.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "viz/LiveSignal.hpp"
-#include "viz/VisualSafety.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "geode/viz/VisualSafety.hpp"
 
 namespace geode::viz {
 

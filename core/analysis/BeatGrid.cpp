@@ -1,4 +1,4 @@
-#include "analysis/BeatGrid.hpp"
+#include "geode/analysis/BeatGrid.hpp"
 
 #include <cmath>
 

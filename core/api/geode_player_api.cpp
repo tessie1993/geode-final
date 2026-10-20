@@ -3,8 +3,8 @@
 #include <memory>
 #include <string>
 
-#include "api/geode_api.h"
-#include "audio/player/Player.hpp"
+#include "geode/api/geode_api.h"
+#include "geode/audio/player/Player.hpp"
 
 struct geode_player {
     geode::audio::player::Player player;

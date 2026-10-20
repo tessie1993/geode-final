@@ -7,7 +7,7 @@
 // frame of it come out non-black", and it writes the frame to a PNG so the
 // answer can be looked at rather than trusted.
 //
-// Includes are resolved the way core/viz/ShaderSource.cpp resolves them: the
+// Includes are resolved the way core/render/ShaderSource.cpp resolves them: the
 // registered names are PARSED OUT OF THAT FILE (kIncludes), the line pattern
 // is the same anchored `//#include <name>`, and an unknown name is a hard
 // error - so a library added to the app without registering it fails here

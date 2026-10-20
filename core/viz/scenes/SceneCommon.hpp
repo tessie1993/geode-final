@@ -4,9 +4,9 @@
 #include <algorithm>
 #include <cmath>
 
-#include "api/geode_api.h"
-#include "viz/Program.hpp"
-#include "viz/TouchField.hpp"
+#include "geode/api/geode_api.h"
+#include "geode/render/Program.hpp"
+#include "geode/viz/TouchField.hpp"
 
 namespace geode::viz {
 

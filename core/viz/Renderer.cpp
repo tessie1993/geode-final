@@ -1,10 +1,10 @@
-#include "viz/Renderer.hpp"
+#include "geode/viz/Renderer.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 
-#include "util/Log.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::viz {
 

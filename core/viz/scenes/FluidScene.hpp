@@ -1,12 +1,12 @@
 #pragma once
 #include <vector>
 
-#include "viz/fluid/FluidEmitters.hpp"
-#include "viz/fluid/FluidLook.hpp"
-#include "viz/fluid/FluidParticles.hpp"
-#include "viz/fluid/FluidSim.hpp"
-#include "viz/scenes/FluidSceneBase.hpp"
-#include "viz/scenes/StyleCatalog.hpp"
+#include "geode/viz/fluid/FluidEmitters.hpp"
+#include "fluid/FluidLook.hpp"
+#include "fluid/FluidParticles.hpp"
+#include "geode/viz/fluid/FluidSim.hpp"
+#include "scenes/FluidSceneBase.hpp"
+#include "scenes/StyleCatalog.hpp"
 
 namespace geode::viz {
 

@@ -1,4 +1,4 @@
-#include "viz/compute/SimGlsl.hpp"
+#include "compute/SimGlsl.hpp"
 
 #include <sstream>
 

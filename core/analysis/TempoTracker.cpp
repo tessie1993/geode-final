@@ -1,4 +1,4 @@
-#include "analysis/TempoTracker.hpp"
+#include "geode/analysis/TempoTracker.hpp"
 
 #include <algorithm>
 #include <cmath>

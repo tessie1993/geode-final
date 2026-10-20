@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# hostlink - compiles core/viz and core/util on the HOST and links them into
+# hostlink - compiles core/viz, core/render and core/util on the HOST and links them into
 # one shared object with --no-undefined, against Mesa's real libGLESv2/libEGL.
 #
 # What this proves: every translation unit the core's CMake lists under
-# viz/ and util/ compiles under the project's own flags (-std=c++20
+# viz/, render/ and util/ compiles under the project's own flags (-std=c++20
 # -fvisibility=hidden -Wall -Wextra) and every symbol they reference is
 # defined - by another of them, by GL, by libc, or by one of the named stubs
 # below. A changed constructor, a renamed method or a declaration with no
@@ -90,17 +90,21 @@ int __android_log_print(int, const char*, const char*, ...);
 HDR
 
 # ---- compile, with the project's flags ----------------------------------------
-# geode_core's sources are listed in two places: core/CMakeLists.txt, and core/pure_sources.cmake for
-# the part the host unit tests also build. Read both, the same way.
-mapfile -t SRCS < <({
-  sed -n '/add_library(geode_core STATIC/,/^)/p' "$ROOT/core/CMakeLists.txt"
-  sed -n '/set(GEODE_CORE_PURE_SOURCES/,/^)/p' "$ROOT/core/pure_sources.cmake"
-} | grep -E '^\s+((viz|util)/|analysis/FrameLevels\.cpp)' | tr -d ' ')
+# The native libraries' sources are listed in two places: core/CMakeLists.txt, and
+# core/pure_sources.cmake for the part the host unit tests also build. Read both, the same way.
+# Each translation unit sees its own library's private root (core/<lib>) and every public
+# include dir (core/*/include), as in the CMake build; tools/ci/check_native_includes.py
+# enforces which of those it may actually use.
+mapfile -t SRCS < <(cat "$ROOT/core/CMakeLists.txt" "$ROOT/core/pure_sources.cmake" \
+  | grep -E '^\s+((viz|render|util)/|analysis/FrameLevels\.cpp)' | tr -d ' ' | sort -u)
+PUBLIC_INCS=()
+for d in "$ROOT"/core/*/include; do PUBLIC_INCS+=(-I "$d"); done
 echo "hostlink: compiling ${#SRCS[@]} translation units"
 fail=0
 for f in "${SRCS[@]}"; do
   obj="$WORK/obj/$(echo "$f" | tr '/' '_').o"
-  if ! g++ -std=c++20 -fvisibility=hidden -Wall -Wextra -fPIC -c -I "$ROOT/core" -I "$WORK/inc" "$ROOT/core/$f" -o "$obj"; then
+  lib="${f%%/*}"
+  if ! g++ -std=c++20 -fvisibility=hidden -Wall -Wextra -fPIC -c -I "$ROOT/core/$lib" "${PUBLIC_INCS[@]}" -I "$WORK/inc" "$ROOT/core/$f" -o "$obj"; then
     echo "hostlink: COMPILE FAILED $f"; fail=1
   fi
 done

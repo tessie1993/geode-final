@@ -1,4 +1,4 @@
-#include "audio/player/Decoder.hpp"
+#include "geode/audio/player/Decoder.hpp"
 
 #include <media/NdkMediaCodec.h>
 #include <media/NdkMediaExtractor.h>

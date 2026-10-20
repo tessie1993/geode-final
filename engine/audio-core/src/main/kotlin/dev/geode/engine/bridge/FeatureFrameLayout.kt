@@ -1,6 +1,6 @@
 package dev.geode.engine.bridge
 
-/** Float offsets of `GeodeFeatureFrame` (core/api/geode_api.h); the order there is the order here. */
+/** Float offsets of `GeodeFeatureFrame` (core/api/include/geode/api/geode_api.h); the order there is the order here. */
 object FeatureFrameLayout {
     const val RMS = 0
     const val BASS = 1
