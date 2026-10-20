@@ -3,6 +3,7 @@ package dev.geode.ui
 import android.content.SharedPreferences
 import android.os.SystemClock
 import dev.geode.data.LfoStore
+import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
 import dev.geode.render.LfoConfig
@@ -46,7 +47,7 @@ internal class ModulationController(
     interface Host {
         val params: SceneParams
 
-        val sceneId: String
+        val sceneId: SceneId
 
         fun setSceneParams(params: SceneParams)
     }

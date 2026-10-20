@@ -14,6 +14,7 @@ import dev.geode.audio.MicCapture
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.Preset
 import dev.geode.di.PlayerSessionProvider
+import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
@@ -227,7 +228,7 @@ class PlayerViewModel
 
         fun clearPlaybackNotice() = session.clearPlaybackNotice()
 
-        fun selectScene(sceneId: String) = session.selectScene(sceneId)
+        fun selectScene(sceneId: SceneId) = session.selectScene(sceneId)
 
         fun setReactivity(
             attack: Float,
@@ -262,7 +263,7 @@ class PlayerViewModel
             destination: Uri? = null,
             loopSafe: Boolean = false,
             range: ExportRange? = null,
-            sceneFactoryFor: ((String) -> SceneFactory)? = null,
+            sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
             codec: ExportCodec = ExportCodec.H264,
         ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
 

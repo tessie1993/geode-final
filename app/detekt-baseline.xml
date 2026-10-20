@@ -80,7 +80,7 @@
     <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun window( tracks: List&lt;QueueTrack&gt;, startUri: TrackId, ): Window</ID>
     <ID>ReturnCount:PlayerViewModel.kt$PlayerViewModel$private fun applyIntelligence()</ID>
     <ID>ReturnCount:PlayerViewModel.kt$PlayerViewModel$private fun waveformOf(timeline: FeatureTimeline): FloatArray?</ID>
-    <ID>ReturnCount:PresetLibraryController.kt$PresetLibraryController$fun importPresetLink(text: String): String?</ID>
+    <ID>ReturnCount:PresetLibraryController.kt$PresetLibraryController$fun importPresetLink(text: String): PresetId?</ID>
     <ID>ReturnCount:PresetLink.kt$PresetLink$fun decode(text: String): String?</ID>
     <ID>ReturnCount:PresetStore.kt$PresetStore$fun removeFolder(name: String): Boolean</ID>
     <ID>ReturnCount:RippleMath.kt$RippleMath$fun strokeDrops( x: Float, y: Float, dx: Float, dy: Float, dt: Float, radius: Float, strength: Float, ): List&lt;StrokeDrop&gt;</ID>

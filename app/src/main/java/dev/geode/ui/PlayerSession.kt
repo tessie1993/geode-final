@@ -44,6 +44,8 @@ import dev.geode.data.TemplateLook
 import dev.geode.data.TemplateRepository
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
@@ -306,7 +308,7 @@ class PlayerSession internal constructor(
             object : ModulationController.Host {
                 override val params: SceneParams get() = _vizState.value.params
 
-                override val sceneId: String get() = _vizState.value.sceneId
+                override val sceneId: SceneId get() = _vizState.value.sceneId
 
                 override fun setSceneParams(params: SceneParams) = visual.setSceneParams(params)
             },
@@ -456,14 +458,14 @@ class PlayerSession internal constructor(
                 override val trackPositionMs: Long
                     get() = runCatching { player.currentPosition }.getOrDefault(0L)
 
-                override fun selectScene(sceneId: String) = visual.selectScene(sceneId)
+                override fun selectScene(sceneId: String) = visual.selectScene(SceneId(sceneId))
 
                 override fun setSceneParams(params: SceneParams) = visual.setSceneParams(params)
 
                 override fun applyMilk(
                     path: String,
                     sceneId: String,
-                ) = visual.emitApply(VizApply(milkPath = path, sceneId = sceneId))
+                ) = visual.emitApply(VizApply(milkPath = path, sceneId = SceneId(sceneId)))
             },
         )
 
@@ -622,13 +624,13 @@ class PlayerSession internal constructor(
 
                 override val presetLocked: Boolean get() = _presetLocked.value
 
-                override fun selectScene(sceneId: String) = visual.selectScene(sceneId)
+                override fun selectScene(sceneId: SceneId) = visual.selectScene(sceneId)
 
                 override fun applyPreset(preset: Preset) = visual.applyPreset(preset)
 
                 override fun applyMilk(
                     path: String,
-                    sceneId: String,
+                    sceneId: SceneId,
                 ) = visual.emitApply(VizApply(milkPath = path, sceneId = sceneId))
 
                 override fun analyzeCurrentTrack() = analysis.analyzeCurrentTrack()
@@ -827,7 +829,7 @@ class PlayerSession internal constructor(
     ) = presetLibrary.renamePresetFolder(from, to)
 
     fun movePresetToFolder(
-        name: String,
+        name: PresetId,
         folder: String,
     ) = presetLibrary.movePresetToFolder(name, folder)
 
@@ -944,7 +946,7 @@ class PlayerSession internal constructor(
 
     fun setExportTake(name: String?) = takeController.setExportTake(name)
 
-    fun selectScene(sceneId: String) = visual.selectScene(sceneId)
+    fun selectScene(sceneId: SceneId) = visual.selectScene(sceneId)
 
     fun setReactivity(
         attack: Float,
@@ -984,18 +986,18 @@ class PlayerSession internal constructor(
 
     fun noteMilkPreset(path: String) = vizStateStore.noteMilkPreset(path)
 
-    fun presetShareLink(name: String): String? = presetLibrary.presetShareLink(name)
+    fun presetShareLink(name: PresetId): String? = presetLibrary.presetShareLink(name)
 
-    fun importPresetLink(text: String): String? = presetLibrary.importPresetLink(text)
+    fun importPresetLink(text: String): PresetId? = presetLibrary.importPresetLink(text)
 
     fun importPresetFile(
         uri: Uri,
-        onResult: (String?) -> Unit,
+        onResult: (PresetId?) -> Unit,
     ) = presetLibrary.importPresetFile(uri, onResult)
 
-    fun presetFile(name: String): File? = presetLibrary.presetFile(name)
+    fun presetFile(name: PresetId): File? = presetLibrary.presetFile(name)
 
-    fun deletePreset(name: String) = presetLibrary.deletePreset(name)
+    fun deletePreset(name: PresetId) = presetLibrary.deletePreset(name)
 
     val templates: StateFlow<List<VideoTemplate>> get() = templateLibrary.library
 
@@ -1046,7 +1048,7 @@ class PlayerSession internal constructor(
                 ): FeatureTimeline = analysis.analyzeCached(uri, onProgress)
 
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
-                override val sceneId: String get() = _vizState.value.sceneId
+                override val sceneId: SceneId get() = _vizState.value.sceneId
                 override val sceneParams get() = _vizState.value.params
 
                 override fun lfoConfigs() = modulation.lfos.value
@@ -1074,7 +1076,7 @@ class PlayerSession internal constructor(
 
     fun analysisTimeline(): FeatureTimeline? = analysis.timeline
 
-    fun currentSceneId(): String = _vizState.value.sceneId
+    fun currentSceneId(): String = _vizState.value.sceneId.value
 
     fun currentSceneParams(): SceneParams = _vizState.value.params
 
@@ -1095,7 +1097,7 @@ class PlayerSession internal constructor(
         destination: Uri? = null,
         loopSafe: Boolean = false,
         range: ExportRange? = null,
-        sceneFactoryFor: ((String) -> SceneFactory)? = null,
+        sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
         codec: ExportCodec = ExportCodec.H264,
     ) = exportController.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
 

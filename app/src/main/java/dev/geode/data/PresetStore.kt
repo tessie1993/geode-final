@@ -2,6 +2,8 @@ package dev.geode.data
 
 import android.content.Context
 import androidx.annotation.WorkerThread
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.render.scene.SceneParams
 import org.json.JSONObject
 import java.io.File
@@ -9,13 +11,16 @@ import java.security.MessageDigest
 
 data class Preset(
     val name: String,
-    val sceneId: String,
+    val sceneId: SceneId,
     val attack: Float,
     val decay: Float,
     val customShader: String? = null,
     val params: SceneParams = SceneParams.DEFAULT,
     val milkPreset: String? = null,
-)
+) {
+    /** A preset is identified by its name; this is that name as an id. */
+    val id: PresetId get() = PresetId(name)
+}
 
 class PresetStore(
     context: Context,
@@ -145,7 +150,7 @@ class PresetStore(
         internal fun toJson(p: Preset): String =
             JSONObject()
                 .put("name", p.name)
-                .put("sceneId", p.sceneId)
+                .put("sceneId", p.sceneId.value)
                 .put("attack", p.attack.toDouble())
                 .put("decay", p.decay.toDouble())
                 .put("speed", p.params.speed.toDouble())
@@ -310,7 +315,7 @@ class PresetStore(
         }
 
         internal fun paramsToJson(params: SceneParams): JSONObject =
-            JSONObject(toJson(Preset("", "", 0f, 0f, null, params)))
+            JSONObject(toJson(Preset("", SceneId(""), 0f, 0f, null, params)))
                 .also { o -> ENVELOPE_KEYS.forEach(o::remove) }
 
         internal fun paramsFromJson(o: JSONObject): SceneParams {
@@ -326,7 +331,7 @@ class PresetStore(
             val o = JSONObject(json)
             return Preset(
                 name = o.getString("name"),
-                sceneId = o.getString("sceneId"),
+                sceneId = SceneId(o.getString("sceneId")),
                 attack = o.getDouble("attack").toFloat(),
                 decay = o.getDouble("decay").toFloat(),
                 customShader = if (o.has("customShader")) o.getString("customShader") else null,

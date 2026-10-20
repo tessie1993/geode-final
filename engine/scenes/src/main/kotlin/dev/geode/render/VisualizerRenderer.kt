@@ -5,6 +5,7 @@ import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.render.bridge.NativeViz
+import dev.geode.engine.types.SceneId
 import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
@@ -36,7 +37,7 @@ class VisualizerRenderer(
     var features: AudioFeatures = AudioFeatures.empty()
 
     @Volatile
-    var requestedSceneId: String = SceneIds.DEFAULT
+    var requestedSceneId: SceneId = SceneIds.DEFAULT
 
     @Volatile
     var sceneParams: SceneParams = SceneParams.DEFAULT
@@ -46,7 +47,7 @@ class VisualizerRenderer(
     var reducedMotion: Boolean = false
 
     @Volatile
-    var layerSceneId: String? = null
+    var layerSceneId: SceneId? = null
 
     @Volatile
     var layerMix: Float = 0.5f
@@ -96,7 +97,7 @@ class VisualizerRenderer(
             return nativeViz.knows(SceneIds.MILKDROP)
         }
 
-    fun availableSceneIds(): List<String> {
+    fun availableSceneIds(): List<SceneId> {
         nativeViz.create()
         return nativeViz.sceneIds()
     }
@@ -105,14 +106,14 @@ class VisualizerRenderer(
     fun releaseScenes() = nativeViz.destroy()
 
     fun submitShader(
-        sceneId: String,
+        sceneId: SceneId,
         fragmentSrc: String,
     ) {
         nativeViz.create()
         nativeViz.setCustomShader(sceneId, fragmentSrc)
     }
 
-    fun customShaderFor(sceneId: String): String? = nativeViz.customShaderFor(sceneId)
+    fun customShaderFor(sceneId: SceneId): String? = nativeViz.customShaderFor(sceneId)
 
     fun submitFluidInjectionShaders(
         force: String?,
@@ -209,11 +210,11 @@ class VisualizerRenderer(
         pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
-    fun exportSceneFactory(sceneId: String): SceneFactory {
+    fun exportSceneFactory(sceneId: SceneId): SceneFactory {
         val id = sceneId
         val preset = lastMilkPreset
         return object : SceneFactory {
-            override val sceneId: String = id
+            override val sceneId: SceneId = id
 
             override val milkPresetPath: String? = preset
         }

@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.Preset
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.render.VisualizerView
 import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
@@ -164,7 +166,7 @@ fun VisualsHub(
 
 internal fun vizPlaylistIndexOf(
     playlist: List<VizPlaylistEntry>,
-    presetName: String,
+    presetName: PresetId,
 ): Int = playlist.indexOfFirst { it.presetName == presetName }
 
 internal fun presetReplaceTarget(
@@ -175,7 +177,7 @@ internal fun presetReplaceTarget(
     return presets.firstOrNull { !BuiltInPresets.isBuiltIn(it.name) && it.name == name }?.name
 }
 
-internal fun builtInPresetSceneFamily(activeSceneId: String): String =
+internal fun builtInPresetSceneFamily(activeSceneId: SceneId): SceneId =
     when {
         VisualStyleCatalog.isCymatics(activeSceneId) -> SceneIds.CYMATICS
         VisualStyleCatalog.isFluid(activeSceneId) -> SceneIds.FLUID
@@ -183,8 +185,8 @@ internal fun builtInPresetSceneFamily(activeSceneId: String): String =
     }
 
 internal fun builtInPresetMatchesScene(
-    presetSceneId: String,
-    activeSceneId: String,
+    presetSceneId: SceneId,
+    activeSceneId: SceneId,
 ): Boolean = presetSceneId == activeSceneId || presetSceneId == builtInPresetSceneFamily(activeSceneId)
 
 @Composable
@@ -201,19 +203,19 @@ private fun PresetsTreeTab(
     var saveFolder by rememberSaveable { mutableStateOf("") }
     var renamingFolder by remember { mutableStateOf<String?>(null) }
     var folderRenameText by remember { mutableStateOf("") }
-    var movingPreset by remember { mutableStateOf<String?>(null) }
-    var deletingPreset by remember { mutableStateOf<String?>(null) }
+    var movingPreset by remember { mutableStateOf<PresetId?>(null) }
+    var deletingPreset by remember { mutableStateOf<PresetId?>(null) }
     var replacingPreset by remember { mutableStateOf<String?>(null) }
     var showTemplates by remember { mutableStateOf(false) }
     val userPresets = viz.presets.filterNot { BuiltInPresets.isBuiltIn(it.name) }.distinctBy { it.name }
-    val byFolder = userPresets.groupBy { presetFolders.folderOf(it.name) }
+    val byFolder = userPresets.groupBy { presetFolders.folderOf(it.id) }
     val context = androidx.compose.ui.platform.LocalContext.current
     var importNote by remember { mutableStateOf<String?>(null) }
     val presetFilePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
                 visualsViewModel.importPresetFile(uri) { name ->
-                    importNote = name?.let { "Imported \"$it\"." } ?: "That file is not a Geode preset."
+                    importNote = name?.let { "Imported \"${it.value}\"." } ?: "That file is not a Geode preset."
                 }
             }
         }
@@ -227,7 +229,7 @@ private fun PresetsTreeTab(
                         when {
                             pasted.isNullOrBlank() -> "The clipboard is empty."
                             else ->
-                                visualsViewModel.importPresetLink(pasted)?.let { "Imported \"$it\"." }
+                                visualsViewModel.importPresetLink(pasted)?.let { "Imported \"${it.value}\"." }
                                     ?: "That clipboard text is not a Geode preset link."
                         }
                 }) { Text("Paste a shared preset") }
@@ -293,10 +295,10 @@ private fun PresetsTreeTab(
                     IconButton(onClick = { applyPresetLive(viewModel, visualizerView, p) }) {
                         StoneIconArt(StoneIcon.PLAY, "Apply", tint = MaterialTheme.colorScheme.primary)
                     }
-                    IconButton(onClick = { sharePreset(context, visualsViewModel, p.name) }) {
+                    IconButton(onClick = { sharePreset(context, visualsViewModel, p.id) }) {
                         StoneIconArt(StoneIcon.SHARE, "Share this preset")
                     }
-                    val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.name)
+                    val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.id)
                     val inPlaylist = playlistIndex >= 0
                     IconButton(
                         onClick = {
@@ -304,7 +306,7 @@ private fun PresetsTreeTab(
                                 viewModel.removeVizPlaylistAt(playlistIndex)
                             } else {
                                 viewModel.addToVizPlaylist(
-                                    VizPlaylistEntry(sceneId = p.sceneId, presetName = p.name, label = p.name),
+                                    VizPlaylistEntry(sceneId = p.sceneId, presetName = p.id, label = p.name),
                                 )
                             }
                         },
@@ -315,10 +317,10 @@ private fun PresetsTreeTab(
                             tint = if (inPlaylist) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                         )
                     }
-                    IconButton(onClick = { movingPreset = p.name }) {
+                    IconButton(onClick = { movingPreset = p.id }) {
                         StoneIconArt(StoneIcon.FOLDER, "Move to another folder")
                     }
-                    IconButton(onClick = { deletingPreset = p.name }) {
+                    IconButton(onClick = { deletingPreset = p.id }) {
                         StoneIconArt(StoneIcon.DELETE, "Remove", tint = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -419,7 +421,7 @@ private fun PresetsTreeTab(
         val current = presetFolders.folderOf(name)
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { movingPreset = null },
-            title = { Text("Move \"$name\"") },
+            title = { Text("Move \"${name.value}\"") },
             text = {
                 androidx.compose.foundation.layout.FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -463,7 +465,7 @@ private fun PresetsTreeTab(
     deletingPreset?.let { name ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { deletingPreset = null },
-            title = { Text("Delete \"$name\"?") },
+            title = { Text("Delete \"${name.value}\"?") },
             text = {
                 Text(
                     "Removes this preset and its file for good — there is no undo. " +
@@ -500,14 +502,14 @@ internal fun clipboardText(context: android.content.Context): String? =
 private fun sharePreset(
     context: android.content.Context,
     viewModel: VisualsViewModel,
-    name: String,
+    name: PresetId,
 ) {
     val link = viewModel.presetShareLink(name)
     val send =
         if (link != null) {
             android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_SUBJECT, "Geode preset: $name")
+                putExtra(android.content.Intent.EXTRA_SUBJECT, "Geode preset: ${name.value}")
                 putExtra(android.content.Intent.EXTRA_TEXT, link)
             }
         } else {
@@ -540,7 +542,7 @@ private fun StylesTab(
 ) {
     var sub by rememberSaveable { mutableStateOf(0) }
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
-    val pickScene: (String) -> Unit = { viewModel.selectScene(it) }
+    val pickScene: (SceneId) -> Unit = { viewModel.selectScene(it) }
     Column(Modifier.fillMaxSize()) {
         suggestedSceneToOffer(viz.suggestedSceneId, viz.sceneId)?.let { suggested ->
             Row(
@@ -577,21 +579,21 @@ private fun StylesTab(
 }
 
 internal fun suggestedSceneToOffer(
-    suggestedSceneId: String?,
-    activeSceneId: String,
-): String? = suggestedSceneId?.takeIf { it != activeSceneId }
+    suggestedSceneId: SceneId?,
+    activeSceneId: SceneId,
+): SceneId? = suggestedSceneId?.takeIf { it != activeSceneId }
 
-internal fun sceneDisplayLabel(id: String): String {
+internal fun sceneDisplayLabel(id: SceneId): String {
     val catalogued = VisualStyleCatalog.label(id)
-    if (catalogued != id) return catalogued
-    return id.split('_').joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
+    if (catalogued != id.value) return catalogued
+    return id.value.split('_').joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
 }
 
 @Composable
 private fun SceneList(
-    ids: List<String>,
-    current: String,
-    onPick: (String) -> Unit,
+    ids: List<SceneId>,
+    current: SceneId,
+    onPick: (SceneId) -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize()) {
         items(ids) { id ->
@@ -906,7 +908,7 @@ internal fun CustomizePanel(
  */
 private fun tabAppliesTo(
     tab: CustomizeTab,
-    sceneId: String,
+    sceneId: SceneId,
 ): Boolean =
     when (tab) {
         CustomizeTab.SHAPE,

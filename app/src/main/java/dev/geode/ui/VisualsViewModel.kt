@@ -12,6 +12,7 @@ import dev.geode.data.TemplateImport
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
 import dev.geode.di.PlayerSessionProvider
+import dev.geode.engine.types.PresetId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.LfoConfig
 import dev.geode.render.scene.CustomizeTab
@@ -24,7 +25,7 @@ sealed interface PresetLinkImport {
     data object NotALink : PresetLinkImport
 
     data class Imported(
-        val name: String,
+        val name: PresetId,
     ) : PresetLinkImport
 
     data object Unreadable : PresetLinkImport
@@ -33,7 +34,7 @@ sealed interface PresetLinkImport {
 /** Outcome of a `geode://template/...` link reaching the app through an intent. */
 sealed interface TemplateLinkImport {
     data class Imported(
-        val name: String,
+        val name: PresetId,
     ) : TemplateLinkImport
 
     data class Replaced(
@@ -131,13 +132,13 @@ class VisualsViewModel
             folder: String = "",
         ) = session.savePreset(name, customShader, folder)
 
-        fun deletePreset(name: String) = session.deletePreset(name)
+        fun deletePreset(name: PresetId) = session.deletePreset(name)
 
-        fun presetFile(name: String): File? = session.presetFile(name)
+        fun presetFile(name: PresetId): File? = session.presetFile(name)
 
-        fun presetShareLink(name: String): String? = session.presetShareLink(name)
+        fun presetShareLink(name: PresetId): String? = session.presetShareLink(name)
 
-        fun importPresetLink(text: String): String? = session.importPresetLink(text)
+        fun importPresetLink(text: String): PresetId? = session.importPresetLink(text)
 
         fun importSharedPreset(data: String): PresetLinkImport =
             if (!PresetLink.isPresetLink(data)) {
@@ -151,7 +152,7 @@ class VisualsViewModel
 
         fun importPresetFile(
             uri: Uri,
-            onResult: (String?) -> Unit,
+            onResult: (PresetId?) -> Unit,
         ) = session.importPresetFile(uri, onResult)
 
         fun addPresetFolder(path: String) = session.addPresetFolder(path)
@@ -162,7 +163,7 @@ class VisualsViewModel
         ) = session.renamePresetFolder(from, to)
 
         fun movePresetToFolder(
-            name: String,
+            name: PresetId,
             folder: String,
         ) = session.movePresetToFolder(name, folder)
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.engine.types.SceneId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -29,7 +30,7 @@ import dev.geode.render.VisualizerView
 private data class PendingExport(
     val aspect: ExportAspect,
     val fps: Int,
-    val sceneId: String,
+    val sceneId: SceneId,
     val loopSafe: Boolean,
     val rangeStartMs: Long,
     val rangeDurationMs: Long,
@@ -49,7 +50,7 @@ private val PendingExportSaver =
                     req.aspect.height,
                     req.aspect.bitRate,
                     req.fps,
-                    req.sceneId,
+                    req.sceneId.value,
                     req.loopSafe,
                     req.rangeStartMs,
                     req.rangeDurationMs,
@@ -64,7 +65,7 @@ private val PendingExportSaver =
                 PendingExport(
                     aspect = ExportAspect(saved[0] as Int, saved[1] as Int, saved[2] as Int),
                     fps = saved[3] as Int,
-                    sceneId = saved[4] as String,
+                    sceneId = SceneId(saved[4] as String),
                     loopSafe = saved[5] as Boolean,
                     rangeStartMs = saved[6] as Long,
                     rangeDurationMs = saved[7] as Long,
@@ -201,7 +202,7 @@ fun ExportHost(
             else -> ExportEntryMode.Menu
         }
 
-    val sceneFactoryFor: (String, String) -> SceneFactory =
+    val sceneFactoryFor: (SceneId, SceneId) -> SceneFactory =
         { requested, fallback ->
             val renderer = visualizerView.visualizerRenderer
             renderer.exportSceneFactory(

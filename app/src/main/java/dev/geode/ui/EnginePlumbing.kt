@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.geode.engine.types.SceneId
 import dev.geode.render.BlendMode
 import dev.geode.render.TransitionCatalog
 import dev.geode.render.VisualSafety
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 data class LayersUiState(
     val enabled: Boolean = false,
-    val sceneId: String? = null,
+    val sceneId: SceneId? = null,
     val mix: Float = 0.5f,
     val blend: BlendMode = BlendMode.SCREEN,
 )
@@ -20,9 +21,9 @@ data class LayersUiState(
 object LayersBus {
     val state = MutableStateFlow(LayersUiState())
 
-    val availableScenes = MutableStateFlow<List<String>>(emptyList())
+    val availableScenes = MutableStateFlow<List<SceneId>>(emptyList())
 
-    val activeSceneId = MutableStateFlow<String?>(null)
+    val activeSceneId = MutableStateFlow<SceneId?>(null)
 }
 
 @Composable

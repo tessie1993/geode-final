@@ -3,6 +3,7 @@ package dev.geode.ui
 import dev.geode.analysis.AnalysisEngine
 import dev.geode.analysis.LiveInputProfile
 import dev.geode.data.Preset
+import dev.geode.engine.types.SceneId
 import dev.geode.render.TransitionCatalog
 import dev.geode.render.TransitionStyle
 import dev.geode.render.scene.SceneParams
@@ -36,7 +37,7 @@ internal class VisualSettingsController(
         _vizApply.tryEmit(apply)
     }
 
-    fun selectScene(sceneId: String) {
+    fun selectScene(sceneId: SceneId) {
         state.update { it.copy(sceneId = sceneId) }
         vizStateStore.persist()
     }

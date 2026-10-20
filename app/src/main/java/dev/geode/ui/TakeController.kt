@@ -66,7 +66,7 @@ internal class TakeController(
         if (_state.value.recording) return
         stopReplay()
         val s = host.vizState.value
-        recorder = PerformanceTake.Recorder(s.sceneId, s.params, host.activeMilkPath)
+        recorder = PerformanceTake.Recorder(s.sceneId.value, s.params, host.activeMilkPath)
         recordStartMs = android.os.SystemClock.elapsedRealtime()
         recordTrackOffsetMs = host.trackPositionMs
         _state.update { it.copy(recording = true, recordedEvents = 1, recordedMs = 0L, note = null) }
@@ -75,7 +75,7 @@ internal class TakeController(
                 host.vizState.collect { live ->
                     val rec = recorder ?: return@collect
                     val at = android.os.SystemClock.elapsedRealtime() - recordStartMs
-                    rec.append(at, live.sceneId, live.params, host.activeMilkPath)
+                    rec.append(at, live.sceneId.value, live.params, host.activeMilkPath)
                     _state.update { it.copy(recordedEvents = rec.size, recordedMs = at) }
                     if (!rec.hasRoom) stopRecording()
                 }
@@ -137,7 +137,7 @@ internal class TakeController(
                 while (true) {
                     val at = android.os.SystemClock.elapsedRealtime() - startedAt
                     timeline.stateAt(at)?.let { state ->
-                        if (state.sceneId.isNotEmpty() && state.sceneId != host.vizState.value.sceneId) {
+                        if (state.sceneId.isNotEmpty() && state.sceneId != host.vizState.value.sceneId.value) {
                             host.selectScene(state.sceneId)
                         }
                         if (state.params != host.vizState.value.params) host.setSceneParams(state.params)

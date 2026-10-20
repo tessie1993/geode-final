@@ -1,6 +1,7 @@
 package dev.geode.ui
 
 import dev.geode.data.Preset
+import dev.geode.engine.types.SceneId
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneParams
 
@@ -653,7 +654,7 @@ object BuiltInPresets {
             // smooth field, neon wants hits).
             Preset(
                 name = "fluid_ink · Sumi",
-                sceneId = "fluid_ink",
+                sceneId = SceneId("fluid_ink"),
                 attack = 0.35f,
                 decay = 0.6f,
                 customShader = null,
@@ -676,7 +677,7 @@ object BuiltInPresets {
             ),
             Preset(
                 name = "fluid_chrome · Mercury",
-                sceneId = "fluid_chrome",
+                sceneId = SceneId("fluid_chrome"),
                 attack = 0.3f,
                 decay = 0.5f,
                 customShader = null,
@@ -700,7 +701,7 @@ object BuiltInPresets {
             ),
             Preset(
                 name = "fluid_neon · Pulse",
-                sceneId = "fluid_neon",
+                sceneId = SceneId("fluid_neon"),
                 attack = 0.6f,
                 decay = 0.3f,
                 customShader = null,
@@ -723,7 +724,7 @@ object BuiltInPresets {
             ),
             Preset(
                 name = "fluid_lava · Magma",
-                sceneId = "fluid_lava",
+                sceneId = SceneId("fluid_lava"),
                 attack = 0.25f,
                 decay = 0.7f,
                 customShader = null,
@@ -748,7 +749,7 @@ object BuiltInPresets {
             ),
             Preset(
                 name = "fluid_aurora · Curtains",
-                sceneId = "fluid_aurora",
+                sceneId = SceneId("fluid_aurora"),
                 attack = 0.4f,
                 decay = 0.5f,
                 customShader = null,
@@ -900,7 +901,7 @@ object BuiltInPresets {
         SceneCapabilities.SHADER_SCENES.keys.flatMap { id ->
             LOOKS.map { look ->
                 Preset(
-                    name = "$id · ${look.name}",
+                    name = "${id.value} · ${look.name}",
                     sceneId = id,
                     attack = look.attack,
                     decay = look.decay,
