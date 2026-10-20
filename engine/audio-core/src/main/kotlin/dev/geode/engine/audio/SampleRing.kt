@@ -87,6 +87,21 @@ class SampleRing(
         const val DEFAULT_RUNWAY_DIVISOR = 4
     }
 
+    internal fun copyInterleaved(
+        firstSample: Long,
+        count: Int,
+        channelsOut: Int,
+        out: FloatArray,
+    ) {
+        var r = firstSample
+        var w = 0
+        repeat(count) {
+            val slot = (r and mask).toInt()
+            for (c in 0 until channelsOut) out[w++] = channels[c][slot]
+            r++
+        }
+    }
+
     internal fun copyInto(
         firstSample: Long,
         count: Int,

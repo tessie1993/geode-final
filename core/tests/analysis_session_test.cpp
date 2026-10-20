@@ -84,16 +84,26 @@ namespace {
 // does not fire. A beat with no strength of its own counts as a full one.
 float firedOn(const GeodeFeatureFrame& f, int event) {
     switch (event) {
-        case GEODE_EVENT_BEAT: return f.beat > 0.0f ? (f.beatStrength > 0.0f ? f.beatStrength : 1.0f) : 0.0f;
-        case GEODE_EVENT_TRANSIENT: return f.transient;
-        case GEODE_EVENT_KICK: return f.kick;
-        case GEODE_EVENT_SNARE: return f.snare;
-        case GEODE_EVENT_HAT: return f.hat;
-        case GEODE_EVENT_DOWNBEAT: return f.downbeat;
-        case GEODE_EVENT_SECTION_BOUNDARY: return f.sectionBoundary;
-        case GEODE_EVENT_DROP: return f.drop;
-        case GEODE_EVENT_ARRIVAL: return f.arrival;
-        default: return 0.0f;
+        case GEODE_EVENT_BEAT:
+            return f.beat > 0.0f ? (f.beatStrength > 0.0f ? f.beatStrength : 1.0f) : 0.0f;
+        case GEODE_EVENT_TRANSIENT:
+            return f.transient;
+        case GEODE_EVENT_KICK:
+            return f.kick;
+        case GEODE_EVENT_SNARE:
+            return f.snare;
+        case GEODE_EVENT_HAT:
+            return f.hat;
+        case GEODE_EVENT_DOWNBEAT:
+            return f.downbeat;
+        case GEODE_EVENT_SECTION_BOUNDARY:
+            return f.sectionBoundary;
+        case GEODE_EVENT_DROP:
+            return f.drop;
+        case GEODE_EVENT_ARRIVAL:
+            return f.arrival;
+        default:
+            return 0.0f;
     }
 }
 
