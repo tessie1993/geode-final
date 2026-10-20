@@ -1,7 +1,9 @@
 package dev.geode.engine.audioandroid
 
+import dev.geode.engine.types.Frames
+
 fun interface SkippedFrameSource {
-    fun skippedInputFramesSinceFlush(): Long
+    fun skippedInputFramesSinceFlush(): Frames
 }
 
 interface SinkClockHooks {
@@ -23,7 +25,7 @@ interface SinkClockHooks {
 fun interface TapBoundaryListener {
     fun onTapBoundary(
         ended: PcmTapFormat?,
-        endedFrames: Long,
+        endedFrames: Frames,
         begun: PcmTapFormat,
     )
 }

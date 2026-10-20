@@ -35,6 +35,7 @@ import dev.geode.data.ExportPrefsStore
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.exportCodecLabel
 import dev.geode.data.exportQualityLabel
+import dev.geode.engine.types.Millis
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportQuality
@@ -50,12 +51,13 @@ fun SettingsDialog(
     selectedTake: String?,
     onSelectTake: (String?) -> Unit,
     bpm: Float,
-    trackDurationMs: Long,
+    trackDuration: Millis,
     onStart: (ExportAspect, Int, Boolean, ExportRange?, ExportCodec) -> Unit,
     onStartToDestination: (ExportAspect, Int, Boolean, ExportRange?, ExportCodec) -> Unit,
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val trackDurationMs = trackDuration.value
     val context = LocalContext.current
     val exportPrefs = remember { ExportPrefsStore(GeodePrefsFiles(context).general) }
     val defaults = remember { exportPrefs.load() }
@@ -239,9 +241,9 @@ fun SettingsDialog(
                                     } else {
                                         stringResource(
                                             R.string.export_segment_summary,
-                                            formatClock(range.startMs),
-                                            formatClock(range.endMs),
-                                            formatClock(range.durationMs),
+                                            formatClock(Millis(range.startMs)),
+                                            formatClock(Millis(range.endMs)),
+                                            formatClock(Millis(range.durationMs)),
                                         )
                                     },
                                     style = MaterialTheme.typography.bodySmall,

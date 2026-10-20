@@ -71,7 +71,7 @@ internal fun DuplicatesTab(
                     Column(Modifier.weight(1f)) {
                         Text(track.folder.ifBlank { track.uri.value }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            listOf(track.album, LibraryBrowse.formatDuration(track.durationMs))
+                            listOf(track.album, LibraryBrowse.formatDuration(track.duration))
                                 .filter { it.isNotBlank() }
                                 .joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall,

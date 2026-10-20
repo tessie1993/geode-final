@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.BlendMode
 import dev.geode.render.TransitionCatalog
@@ -74,7 +75,7 @@ fun VisualizerEngineBindings(
         val renderer = visualizerView.visualizerRenderer
         renderer.transitionId = id
         TransitionCatalog.builtIn(id)?.let { renderer.transitionStyle = it }
-        renderer.transitionDurationMs = (viz.transitionDurationSec * 1000).toLong()
+        renderer.transitionDuration = Millis((viz.transitionDurationSec * 1000).toLong())
         visualizerView.queueEvent { renderer.warmTransition(id) }
     }
     LaunchedEffect(gui.reducedMotion) {

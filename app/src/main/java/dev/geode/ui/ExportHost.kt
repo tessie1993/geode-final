@@ -302,7 +302,7 @@ fun ExportHost(
                 selectedTake = takes.exportTake,
                 onSelectTake = studioViewModel::setExportTake,
                 bpm = viz.bpm,
-                trackDurationMs = state.durationMs,
+                trackDuration = state.duration,
                 onStart = { aspect, fps, loopSafe, range, codec ->
                     requestNotificationPermissionOnce()
                     // Saving into the Videos library without asking is a scoped-storage privilege,

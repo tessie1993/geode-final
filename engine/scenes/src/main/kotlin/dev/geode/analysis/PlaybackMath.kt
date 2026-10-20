@@ -1,5 +1,6 @@
 package dev.geode.analysis
 
+import dev.geode.engine.types.Millis
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
@@ -16,8 +17,8 @@ object PlaybackMath {
         return (remainingMs.toFloat() / fadeMs).coerceIn(0f, 1f)
     }
 
-    fun formatCountdown(remainingMs: Long): String {
-        val totalSec = (remainingMs.coerceAtLeast(0L) + 999L) / 1000L
+    fun formatCountdown(remaining: Millis): String {
+        val totalSec = (remaining.value.coerceAtLeast(0L) + 999L) / 1000L
         return "%d:%02d".format(totalSec / 60, totalSec % 60)
     }
 

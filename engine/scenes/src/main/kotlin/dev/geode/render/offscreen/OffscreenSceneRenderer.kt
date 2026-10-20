@@ -2,6 +2,7 @@ package dev.geode.render.offscreen
 
 import android.content.Context
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.engine.types.Millis
 import dev.geode.render.AdsrConfig
 import dev.geode.render.LfoConfig
 import dev.geode.render.SceneFactory
@@ -58,7 +59,7 @@ class OffscreenSceneRenderer(
         viz.surfaceChanged(spec.width, spec.height)
         check(viz.setScene(sceneFactory.sceneId)) { "native renderer cannot draw \"${sceneFactory.sceneId}\"" }
         sceneFactory.milkPresetPath?.let { viz.loadMilkPreset(it) }
-        viz.setTransition(TransitionStyle.CUT.name.lowercase(), 0L)
+        viz.setTransition(TransitionStyle.CUT.name.lowercase(), Millis.ZERO)
         viz.setReducedMotion(spec.reducedMotion)
         if (spec.lfoConfigs.isNotEmpty()) viz.setLfoConfigs(spec.lfoConfigs)
         if (spec.adsrConfigs.isNotEmpty()) viz.setAdsrConfigs(spec.adsrConfigs)

@@ -5,6 +5,7 @@ import android.content.res.AssetManager
 import dev.geode.analysis.AudioFeatures
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
@@ -88,9 +89,9 @@ class NativeViz(
 
     fun setTransition(
         id: String,
-        durationMs: Long,
+        duration: Millis,
     ) {
-        if (handle != 0L) GeodeNative.vizSetTransition(handle, id, durationMs)
+        if (handle != 0L) GeodeNative.vizSetTransition(handle, id, duration.value)
     }
 
     fun beginParamMorph(seconds: Float) {

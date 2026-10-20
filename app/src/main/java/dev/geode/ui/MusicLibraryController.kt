@@ -12,6 +12,7 @@ import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistStore
 import dev.geode.data.TagWriteOutcome
 import dev.geode.data.TrackTagEdit
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.playback.toTrackId
 import dev.geode.playback.toUri
@@ -33,7 +34,7 @@ data class DeviceTrack(
     val artist: String,
     val album: String,
     val folder: String,
-    val durationMs: Long,
+    val duration: Millis,
     val addedSec: Long = 0L,
 )
 
@@ -281,7 +282,7 @@ internal class MusicLibraryController(
         timeline: dev.geode.analysis.FeatureTimeline,
     ) {
         trackLibrary
-            .updateAnalysis(uri.toTrackId(), metadataFor(uri).title, timeline.durationMs, timeline.bpm, timeline.key)
+            .updateAnalysis(uri.toTrackId(), metadataFor(uri).title, Millis(timeline.durationMs), timeline.bpm, timeline.key)
             ?.let { merged -> _library.update { it.copy(tracks = merged) } }
     }
 

@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
@@ -23,7 +24,7 @@ class HistoryStore(
         var playCount: Int,
         var title: String,
         var artist: String = "",
-        var listenedMs: Long = 0L,
+        var listened: Millis = Millis.ZERO,
     )
 
     init {
@@ -61,7 +62,7 @@ class HistoryStore(
                     playCount = o.getInt("count"),
                     title = o.optString("title"),
                     artist = o.optString("artist"),
-                    listenedMs = o.optLong("ms", 0L),
+                    listened = Millis(o.optLong("ms", 0L)),
                 )
             entries[e.uri] = e
         }
@@ -84,11 +85,11 @@ class HistoryStore(
 
     fun addListenTime(
         uri: TrackId,
-        deltaMs: Long,
+        delta: Millis,
     ) {
-        if (deltaMs <= 0) return
+        if (delta <= Millis.ZERO) return
         synchronized(lock) {
-            entries[uri]?.let { it.listenedMs += deltaMs }
+            entries[uri]?.let { it.listened += delta }
             dirty = true
         }
     }
@@ -117,7 +118,7 @@ class HistoryStore(
         synchronized(lock) {
             entries.values
                 .filter { it.playCount > 0 }
-                .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listenedMs })
+                .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listened })
                 .take(limit)
         }
 
@@ -149,7 +150,7 @@ class HistoryStore(
                         .forEach { toPersist[it.uri] = it }
                     entries.values
                         .filter { it.playCount > 0 }
-                        .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listenedMs })
+                        .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listened })
                         .take(200)
                         .forEach { toPersist[it.uri] = it }
                     toPersist.values.forEach { e ->
@@ -160,7 +161,7 @@ class HistoryStore(
                                 .put("count", e.playCount)
                                 .put("title", e.title)
                                 .put("artist", e.artist)
-                                .put("ms", e.listenedMs),
+                                .put("ms", e.listened.value),
                         )
                     }
                     // Cleared with the snapshot, under the lock: a change made while the file is

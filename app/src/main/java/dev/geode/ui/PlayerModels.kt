@@ -3,6 +3,7 @@ package dev.geode.ui
 import androidx.media3.common.Player
 import dev.geode.analysis.IntelligenceMode
 import dev.geode.data.Preset
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
@@ -12,8 +13,8 @@ import dev.geode.render.scene.SceneParams
 
 data class PlayerUiState(
     val isPlaying: Boolean = false,
-    val positionMs: Long = 0,
-    val durationMs: Long = 0,
+    val position: Millis = Millis.ZERO,
+    val duration: Millis = Millis.ZERO,
     val title: String? = null,
     val artist: String? = null,
     val hasMedia: Boolean = false,

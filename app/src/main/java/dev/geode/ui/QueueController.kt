@@ -6,6 +6,7 @@ import android.provider.OpenableColumns
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.playback.MediaArtwork
 import dev.geode.playback.QueueOps
@@ -22,8 +23,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class AbLoop(
-    val startMs: Long,
-    val endMs: Long? = null,
+    val start: Millis,
+    val end: Millis? = null,
 )
 
 internal class QueueController(
@@ -338,8 +339,8 @@ internal class QueueController(
         }
     }
 
-    fun seekToMs(positionMs: Long) {
-        if (player.duration > 0) player.seekTo(positionMs.coerceIn(0L, player.duration))
+    fun seekToMs(position: Millis) {
+        if (player.duration > 0) player.seekTo(position.value.coerceIn(0L, player.duration))
     }
 
     fun seekTo(fraction: Float) {
@@ -348,13 +349,13 @@ internal class QueueController(
     }
 
     fun cycleAbLoop() {
-        val at = player.currentPosition.coerceAtLeast(0)
+        val at = Millis(player.currentPosition.coerceAtLeast(0))
         val loop = _abLoop.value
         _abLoop.value =
             when {
                 loop == null -> AbLoop(at)
-                loop.endMs == null && at > loop.startMs + MIN_LOOP_MS -> loop.copy(endMs = at)
-                loop.endMs == null -> AbLoop(at)
+                loop.end == null && at > loop.start + MIN_LOOP -> loop.copy(end = at)
+                loop.end == null -> AbLoop(at)
                 else -> null
             }
     }
@@ -365,11 +366,11 @@ internal class QueueController(
 
     fun enforceAbLoop() {
         val loop = _abLoop.value ?: return
-        val end = loop.endMs ?: return
-        if (player.currentPosition >= end) player.seekTo(loop.startMs)
+        val end = loop.end ?: return
+        if (player.currentPosition >= end.value) player.seekTo(loop.start.value)
     }
 
     private companion object {
-        const val MIN_LOOP_MS = 1_000L
+        val MIN_LOOP = Millis(1_000L)
     }
 }

@@ -1,5 +1,6 @@
 package dev.geode.ui
 
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -14,12 +15,14 @@ class TrackLibraryFormatTest {
     private val uri = "content://media/external/audio/media/42"
 
     @Test
-    fun `a track's id is written as the plain uri string`() {
-        val text = TrackLibrary.serialize(listOf(LibraryTrack(uri = TrackId(uri), title = "Kyanite")))
+    fun `a track's id and duration are written as plain values`() {
+        val track = LibraryTrack(uri = TrackId(uri), title = "Kyanite", duration = Millis(205_400L))
+        val text = TrackLibrary.serialize(listOf(track))
 
         val written = JSONObject(text).getJSONArray("tracks").getJSONObject(0)
         assertEquals(uri, written.get("uri"))
         assertEquals("Kyanite", written.get("title"))
+        assertEquals(205_400L, written.getLong("durationMs"))
     }
 
     @Test
@@ -28,7 +31,7 @@ class TrackLibraryFormatTest {
 
         val track = TrackLibrary.parse(old).single()
         assertEquals(TrackId(uri), track.uri)
-        assertEquals(205_400L, track.durationMs)
+        assertEquals(Millis(205_400L), track.duration)
     }
 
     @Test

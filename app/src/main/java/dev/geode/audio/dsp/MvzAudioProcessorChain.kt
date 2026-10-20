@@ -9,6 +9,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.SilenceSkippingAudioProcessor
 import dev.geode.engine.audioandroid.SinkClockHooks
 import dev.geode.engine.audioandroid.SkippedFrameSource
+import dev.geode.engine.types.Frames
 
 @OptIn(UnstableApi::class)
 class MvzAudioProcessorChain(
@@ -42,5 +43,5 @@ class MvzAudioProcessorChain(
 
     override fun getSkippedOutputFrameCount(): Long = silenceSkipping.skippedFrames
 
-    override fun skippedInputFramesSinceFlush(): Long = silenceSkipping.skippedFrames
+    override fun skippedInputFramesSinceFlush(): Frames = Frames(silenceSkipping.skippedFrames)
 }

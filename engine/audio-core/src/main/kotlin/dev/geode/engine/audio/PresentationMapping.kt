@@ -1,13 +1,16 @@
 package dev.geode.engine.audio
 
+import dev.geode.engine.types.Frames
+import dev.geode.engine.types.Micros
+
 sealed interface PresentationTime {
     data class At(
-        val us: Long,
+        val us: Micros,
     ) : PresentationTime
 
     data class Skipped(
-        val fromInputSample: Long,
-        val toInputSample: Long,
+        val fromInputSample: Frames,
+        val toInputSample: Frames,
     ) : PresentationTime
 
     data class StaleEpoch(
@@ -20,7 +23,7 @@ sealed interface PresentationTime {
 
 sealed interface InputPosition {
     data class At(
-        val inputSample: Long,
+        val inputSample: Frames,
         val epoch: Int,
     ) : InputPosition
 

@@ -14,6 +14,7 @@ import dev.geode.audio.MicCapture
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.Preset
 import dev.geode.di.PlayerSessionProvider
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
@@ -70,7 +71,7 @@ class PlayerViewModel
 
         val autoMode: StateFlow<Int> get() = session.autoMode
 
-        val sleepTimerRemainingMs: StateFlow<Long?> get() = session.sleepTimerRemainingMs
+        val sleepTimerRemaining: StateFlow<Millis?> get() = session.sleepTimerRemaining
 
         val vizApply: SharedFlow<VizApply> get() = session.vizApply
 
@@ -222,7 +223,7 @@ class PlayerViewModel
 
         fun togglePlayPause() = session.togglePlayPause()
 
-        fun seekToMs(positionMs: Long) = session.seekToMs(positionMs)
+        fun seekToMs(position: Millis) = session.seekToMs(position)
 
         fun seekTo(fraction: Float) = session.seekTo(fraction)
 

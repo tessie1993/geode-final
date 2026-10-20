@@ -44,6 +44,8 @@ import dev.geode.data.TemplateLook
 import dev.geode.data.TemplateRepository
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
+import dev.geode.engine.types.Hz
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
@@ -124,8 +126,8 @@ class PlayerSession internal constructor(
                     engine.reset()
                 }
 
-                override fun setAnalysisRate(rateHz: Int) {
-                    engine.sampleRateHz = rateHz
+                override fun setAnalysisRate(rate: Hz) {
+                    engine.sampleRateHz = rate.value
                 }
 
                 override fun setMicReactivePref(on: Boolean) {
@@ -370,15 +372,16 @@ class PlayerSession internal constructor(
 
     fun enrichFeatures(f: AudioFeatures): AudioFeatures {
         val ui = _uiState.value
-        if (ui.durationMs <= 0L) return f
-        val pos = ui.positionMs.coerceIn(0L, ui.durationMs)
+        val durationMs = ui.duration.value
+        if (durationMs <= 0L) return f
+        val pos = ui.position.value.coerceIn(0L, durationMs)
         val sections = _vizState.value.sections
         var idx = 0
         for (s in sections) {
             if (s <= pos) idx++ else break
         }
         return f.copy(
-            progress = pos.toFloat() / ui.durationMs,
+            progress = pos.toFloat() / durationMs,
             sectionIndex = idx,
             sectionCount = sections.size + 1,
         )
@@ -556,8 +559,8 @@ class PlayerSession internal constructor(
         _uiState.value =
             PlayerUiState(
                 isPlaying = player.isPlaying,
-                positionMs = player.currentPosition.coerceAtLeast(0),
-                durationMs = player.duration.coerceAtLeast(0),
+                position = Millis(player.currentPosition.coerceAtLeast(0)),
+                duration = Millis(player.duration.coerceAtLeast(0)),
                 artist = player.mediaMetadata.artist?.toString(),
                 title =
                     player.mediaMetadata.title?.toString()
@@ -590,7 +593,7 @@ class PlayerSession internal constructor(
             },
         )
 
-    val sleepTimerRemainingMs: StateFlow<Long?> = sleepTimer.remainingMs
+    val sleepTimerRemaining: StateFlow<Millis?> = sleepTimer.remaining
 
     fun startSleepTimer(minutes: Int) {
         if (minutes <= 0) {
@@ -618,7 +621,7 @@ class PlayerSession internal constructor(
                 override fun updateViz(transform: (VizUiState) -> VizUiState) = _vizState.update(transform)
 
                 override val isPlaying: Boolean get() = _uiState.value.isPlaying
-                override val positionMs: Long get() = _uiState.value.positionMs
+                override val positionMs: Long get() = _uiState.value.position.value
 
                 override fun features() = engine.features.value
 
@@ -901,7 +904,7 @@ class PlayerSession internal constructor(
         }
     }
 
-    fun seekToMs(positionMs: Long) = queueController.seekToMs(positionMs)
+    fun seekToMs(position: Millis) = queueController.seekToMs(position)
 
     fun seekTo(fraction: Float) = queueController.seekTo(fraction)
 

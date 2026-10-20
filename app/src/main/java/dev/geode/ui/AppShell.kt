@@ -62,6 +62,7 @@ import dev.geode.R
 import dev.geode.analysis.SearchMatcher
 import dev.geode.data.BootAnimationStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.render.VisualizerView
 import dev.geode.ui.theme.StoneIcon
@@ -165,8 +166,8 @@ fun AppRoot() {
                 isPlaying = state.isPlaying,
                 hasMedia = state.hasMedia,
                 progress =
-                    if (state.durationMs > 0) {
-                        state.positionMs / state.durationMs.toFloat()
+                    if (state.duration > Millis.ZERO) {
+                        state.position.value / state.duration.value.toFloat()
                     } else {
                         0f
                     },

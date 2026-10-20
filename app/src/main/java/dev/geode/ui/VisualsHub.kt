@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.Preset
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.render.VisualizerView
@@ -117,7 +118,7 @@ fun VisualsHub(
                     Column(Modifier.weight(1f)) {
                         CrystalOverline(
                             when {
-                                takes.recording -> "● Recording  ${formatTakeTime(takes.recordedMs)}"
+                                takes.recording -> "● Recording  ${Millis(takes.recordedMs).minutesSeconds()}"
                                 takes.replaying != null -> "▶ ${takes.replaying}"
                                 liveBackdrop -> "Live overlay"
                                 else -> "Geode"
@@ -1139,11 +1140,6 @@ internal fun takeRenameError(
         else -> null
     }
 
-private fun formatTakeTime(ms: Long): String {
-    val total = (ms / 1000).coerceAtLeast(0)
-    return "%d:%02d".format(total / 60, total % 60)
-}
-
 @Composable
 private fun TakesTab(viewModel: StudioViewModel) {
     val studioViewModel = viewModel
@@ -1158,7 +1154,7 @@ private fun TakesTab(viewModel: StudioViewModel) {
         item {
             Text(
                 if (takes.recording) {
-                    "Recording — ${takes.recordedEvents} keyframes, ${formatTakeTime(takes.recordedMs)}. " +
+                    "Recording — ${takes.recordedEvents} keyframes, ${Millis(takes.recordedMs).minutesSeconds()}. " +
                         "Go and perform; press the stop button in the header when you are done."
                 } else {
                     "A take stores what the visuals were doing, moment by moment — every slider, " +
@@ -1174,8 +1170,8 @@ private fun TakesTab(viewModel: StudioViewModel) {
             item {
                 Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                     Text(
-                        "Replaying ${takes.replaying} — ${formatTakeTime(takes.replayMs)} / " +
-                            formatTakeTime(takes.replayEndMs),
+                        "Replaying ${takes.replaying} — ${Millis(takes.replayMs).minutesSeconds()} / " +
+                            Millis(takes.replayEndMs).minutesSeconds(),
                         style = MaterialTheme.typography.labelMedium,
                         color = accentTextColor(),
                     )
@@ -1199,7 +1195,7 @@ private fun TakesTab(viewModel: StudioViewModel) {
                 Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
                     Text(take.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        "${formatTakeTime(take.durationMs)} · ${take.eventCount} keyframes · " +
+                        "${Millis(take.durationMs).minutesSeconds()} · ${take.eventCount} keyframes · " +
                             "${take.sizeBytes / 1024} KB" +
                             if (takes.exportTake == take.name) " · exports this" else "",
                         style = MaterialTheme.typography.labelSmall,

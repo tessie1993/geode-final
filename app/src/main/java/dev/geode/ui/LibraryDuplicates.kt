@@ -16,7 +16,7 @@ object LibraryDuplicates {
         tracks
             .groupBy { normalise(it.title) to normalise(it.artist) }
             .values
-            .flatMap { same -> splitByDuration(same.sortedBy { it.durationMs }) }
+            .flatMap { same -> splitByDuration(same.sortedBy { it.duration }) }
             .filter { it.size > 1 }
             .map { group -> DuplicateGroup(group.first().title, group.first().artist, group.sortedBy { it.folder }) }
             .sortedBy { it.title.lowercase() }
@@ -25,7 +25,7 @@ object LibraryDuplicates {
         val groups = ArrayList<MutableList<DeviceTrack>>()
         for (track in sorted) {
             val open = groups.lastOrNull()
-            if (open != null && abs(open.last().durationMs - track.durationMs) <= DURATION_SLACK_MS) {
+            if (open != null && abs(open.last().duration.value - track.duration.value) <= DURATION_SLACK_MS) {
                 open += track
             } else {
                 groups += mutableListOf(track)

@@ -201,7 +201,7 @@ class PlaybackService : MediaLibraryService() {
                                     .build(),
                             ).build()
                     }
-                return MediaSession.MediaItemsWithStartPosition(items, saved.index, saved.positionMs)
+                return MediaSession.MediaItemsWithStartPosition(items, saved.index, saved.position.value)
             }
             val last = HistoryStore(context).recentlyPlayed(1).firstOrNull() ?: return null
             val item =

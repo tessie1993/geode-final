@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,7 +21,7 @@ class SessionStore(
     data class Saved(
         val tracks: List<SavedTrack>,
         val index: Int,
-        val positionMs: Long,
+        val position: Millis,
     )
 
     @Suppress("ReturnCount")
@@ -52,7 +53,7 @@ class SessionStore(
                 .put(KEY_VERSION, VERSION)
                 .put(KEY_TRACKS, items)
                 .put(KEY_INDEX, session.index.coerceIn(0, session.tracks.size - 1))
-                .put(KEY_POSITION, session.positionMs.coerceAtLeast(0L))
+                .put(KEY_POSITION, session.position.value.coerceAtLeast(0L))
         return AtomicWrite.text(file, root.toString())
     }
 
@@ -86,7 +87,7 @@ class SessionStore(
         return Saved(
             tracks = tracks,
             index = root.optInt(KEY_INDEX, 0).coerceIn(0, tracks.size - 1),
-            positionMs = root.optLong(KEY_POSITION, 0L).coerceAtLeast(0L),
+            position = Millis(root.optLong(KEY_POSITION, 0L).coerceAtLeast(0L)),
         )
     }
 

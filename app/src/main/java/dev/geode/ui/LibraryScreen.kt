@@ -208,7 +208,7 @@ private fun TrackRow(
                 stored?.artist?.ifBlank { null } ?: t.artist,
                 stored?.album?.ifBlank { null } ?: t.album,
             ).filter { it.isNotBlank() }.joinToString(" \u00b7 ")
-    val duration = LibraryBrowse.formatDuration(t.durationMs)
+    val duration = LibraryBrowse.formatDuration(t.duration)
     var menu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var addingToPlaylist by remember { mutableStateOf(false) }

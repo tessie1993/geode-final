@@ -3,6 +3,7 @@ package dev.geode.ui
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
+import dev.geode.engine.types.Millis
 import dev.geode.playback.toTrackId
 
 /** The music MediaStore already indexes, read the same way for the library screen and the Android Auto tree. */
@@ -56,7 +57,7 @@ object DeviceTrackQuery {
                                 artist = c.getString(ar) ?: "Unknown artist",
                                 album = c.getString(al) ?: "Unknown album",
                                 folder = path.substringBeforeLast('/', ""),
-                                durationMs = c.getLong(du),
+                                duration = Millis(c.getLong(du)),
                                 addedSec = c.getLong(ad),
                             )
                     }

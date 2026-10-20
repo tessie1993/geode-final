@@ -8,6 +8,7 @@ import dev.geode.data.FavouritesRepository
 import dev.geode.data.HistoryStore
 import dev.geode.data.SessionRepository
 import dev.geode.data.SessionStore
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.playback.toTrackId
 import dev.geode.playback.toUri
@@ -80,7 +81,7 @@ internal class ListeningTracker(
         }
         val delta = now - listenTickAtMs
         listenTickAtMs = now
-        if (delta in 1..MAX_LISTEN_TICK_MS) historyStore.addListenTime(uri, delta)
+        if (delta in 1..MAX_LISTEN_TICK_MS) historyStore.addListenTime(uri, Millis(delta))
     }
 
     fun flushListenTime() {
@@ -100,7 +101,7 @@ internal class ListeningTracker(
                     player.setMediaItems(
                         saved.tracks.map { host.mediaItemFor(QueueTrack(it.uri, it.title, it.artist)) },
                         saved.index,
-                        saved.positionMs,
+                        saved.position.value,
                     )
                     player.prepare()
                     saved.tracks[saved.index].uri.toUri()
@@ -143,7 +144,7 @@ internal class ListeningTracker(
                             .orEmpty(),
                 )
             }
-        storeScope.launch { sessionRepository.save(SessionStore.Saved(tracks, index, position)) }
+        storeScope.launch { sessionRepository.save(SessionStore.Saved(tracks, index, Millis(position))) }
     }
 
     private companion object {

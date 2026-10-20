@@ -2,6 +2,7 @@ package dev.geode.ui
 
 import android.content.Context
 import dev.geode.data.AtomicWrite
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
@@ -11,7 +12,7 @@ data class LibraryTrack(
     val uri: TrackId,
     val title: String,
     val artist: String = "",
-    val durationMs: Long = 0L,
+    val duration: Millis = Millis.ZERO,
     val bpm: Float = 0f,
     val key: String = "",
     val analyzed: Boolean = false,
@@ -36,7 +37,7 @@ class TrackLibrary(
     fun updateAnalysis(
         uri: TrackId,
         title: String,
-        durationMs: Long,
+        duration: Millis,
         bpm: Float,
         key: String = "",
     ): List<LibraryTrack>? =
@@ -45,7 +46,7 @@ class TrackLibrary(
             val base = map[uri] ?: LibraryTrack(uri = uri, title = title)
             map[uri] =
                 base.copy(
-                    durationMs = if (durationMs > 0) durationMs else base.durationMs,
+                    duration = if (duration > Millis.ZERO) duration else base.duration,
                     bpm = bpm,
                     key = key.ifBlank { base.key },
                     analyzed = true,
@@ -184,7 +185,7 @@ class TrackLibrary(
                 .put("uri", t.uri.value)
                 .put("title", t.title)
                 .put("artist", t.artist)
-                .put("durationMs", t.durationMs)
+                .put("durationMs", t.duration.value)
                 .put("bpm", t.bpm.toDouble())
                 .put("key", t.key)
                 .put("analyzed", t.analyzed)
@@ -201,7 +202,7 @@ class TrackLibrary(
                 uri = TrackId(o.getString("uri")),
                 title = o.optString("title", "Track"),
                 artist = o.optString("artist", ""),
-                durationMs = o.optLong("durationMs", 0L),
+                duration = Millis(o.optLong("durationMs", 0L)),
                 bpm = o.optDouble("bpm", 0.0).toFloat(),
                 key = o.optString("key", ""),
                 analyzed = o.optBoolean("analyzed", false),

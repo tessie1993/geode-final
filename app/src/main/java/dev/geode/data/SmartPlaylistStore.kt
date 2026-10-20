@@ -83,7 +83,7 @@ object SmartPlaylistMatcher {
             RuleField.ARTIST -> text(rule, track.artist)
             RuleField.ALBUM -> text(rule, track.album)
             RuleField.FOLDER -> text(rule, track.folder)
-            RuleField.DURATION_MINUTES -> number(rule, track.durationMs / 60_000f)
+            RuleField.DURATION_MINUTES -> number(rule, track.duration.value / 60_000f)
             RuleField.ADDED_DAYS_AGO -> number(rule, (nowMs / 1000L - track.addedSec) / 86_400f)
             RuleField.PLAY_COUNT -> number(rule, playCountOf(track.uri).toFloat())
             RuleField.FAVOURITE -> (track.uri in favourites) == (rule.op != RuleOp.IS_NOT)

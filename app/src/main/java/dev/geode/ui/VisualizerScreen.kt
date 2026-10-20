@@ -212,7 +212,7 @@ fun VisualizerScreen(
                         PlayerPanel.LYRICS ->
                             LyricsPanel(
                                 lyrics = lyrics,
-                                positionMs = state.positionMs,
+                                position = state.position,
                                 onSeek = { viewModel.seekToMs(it) },
                                 modifier = Modifier.fillMaxSize(),
                             )
@@ -259,17 +259,17 @@ fun VisualizerScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text(formatTime(state.positionMs), style = MaterialTheme.typography.labelSmall)
+                        Text(state.position.minutesSeconds(), style = MaterialTheme.typography.labelSmall)
                         WaveformSeekBar(
                             waveform = waveform,
-                            positionMs = state.positionMs,
-                            durationMs = state.durationMs,
-                            loopStartMs = abLoop?.startMs,
-                            loopEndMs = abLoop?.endMs,
+                            position = state.position,
+                            duration = state.duration,
+                            loopStart = abLoop?.start,
+                            loopEnd = abLoop?.end,
                             onSeek = viewModel::seekTo,
                             modifier = Modifier.weight(1f).height(40.dp),
                         )
-                        Text(formatTime(state.durationMs), style = MaterialTheme.typography.labelSmall)
+                        Text(state.duration.minutesSeconds(), style = MaterialTheme.typography.labelSmall)
                     }
                     Row(
                         Modifier.fillMaxWidth(),
@@ -356,7 +356,7 @@ fun VisualizerScreen(
                             Text(
                                 when {
                                     abLoop == null -> stringResource(R.string.ab_loop_idle)
-                                    abLoop?.endMs == null -> stringResource(R.string.ab_loop_set_b)
+                                    abLoop?.end == null -> stringResource(R.string.ab_loop_set_b)
                                     else -> stringResource(R.string.ab_loop_looping)
                                 },
                                 style = MaterialTheme.typography.labelMedium,
@@ -624,8 +624,3 @@ private class VisualizerTouch(
 }
 
 private const val FRAME_DT = 1f / 60f
-
-private fun formatTime(ms: Long): String {
-    val total = (ms / 1000).coerceAtLeast(0)
-    return "%d:%02d".format(total / 60, total % 60)
-}
