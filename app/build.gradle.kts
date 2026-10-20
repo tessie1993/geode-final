@@ -234,6 +234,9 @@ dependencies {
     // The real org.json: with isReturnDefaultValues the android.jar stub returns defaults, so a
     // store test that parses JSON would pass without parsing anything.
     testImplementation(libs.org.json)
+    // The architecture test of ADR-0003: feature cores stay plain Kotlin, features use each other
+    // only through their interface, and the feature graph has no cycles.
+    testImplementation(libs.konsist)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

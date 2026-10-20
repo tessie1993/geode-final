@@ -28,7 +28,7 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 The mutation score counts every mutant. A mutant no test reaches counts as surviving, so untested code cannot score well by being skipped.
 
 - **Module floors.** Each module has a floor in `config/mutation/thresholds.properties`. The floors only ratchet upwards: raise one when a module's score improves, and never lower one to get a PR through.
-- **Feature cores.** Every feature core package (`dev.geode.feature.<name>.core`) must score at least `feature-core` (80%), whatever its module scores overall (ADR-0003).
+- **Feature cores.** Every feature core package (`dev.geode.feature.<name>.core`) must score at least `feature-core` (80%), whatever its module scores overall (ADR-0003). The shared kernel the stores are built from, `dev.geode.feature.kernel.core`, matches the same pattern and is held to the same floor; the job summary lists it as feature `kernel`.
 
 The job log lists the surviving mutants, and the HTML report is attached to the run.
 
@@ -43,5 +43,6 @@ The screenshot and golden-frame goldens are recorded in CI, on the same runner i
 ## Adding tests
 
 - **Kotlin:** tests go in `src/test` of the module. Feature cores are tested through their reducer, as transition tables (ADR-0003).
+- **Architecture:** `FeatureArchitectureKonsistTest` checks `:app` against the rules of ADR-0003 with Konsist, in the unit-test job: feature cores import no Android or Compose, no feature uses another's internals (only its root package, which is its public interface), and the feature graph has no cycles. `FeatureRulesTest` proves each rule reports a planted violation. Tests named `*KonsistTest` read source files rather than run code, so they stay out of mutation runs.
 - **App UI:** screenshot tests are named `*ScreenshotTest`, which keeps them out of mutation runs. They render under Robolectric with `@GraphicsMode(NATIVE)` and save to `app/src/test/screenshots`.
 - **C++:** tests are `core/tests/*_test.cpp`. Only code listed in `core/pure_sources.cmake` can be tested on the host. Code that needs Android, GLES, projectM, Oboe or TagLib stays out of that list.
