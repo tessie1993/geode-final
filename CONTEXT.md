@@ -87,3 +87,25 @@ _Avoid_: Project, timeline, sequence
 **Short**:
 An Edit made for social feeds, typically vertical and under a minute.
 _Avoid_: Reel, clip
+
+### Architecture
+
+**Feature**:
+One part of the app (Playback, Library, Customization, Capture, Studio, Settings) with a pure core and its own screens. Other features and screens reach it only through its read-only state, `send(Command)` and its `events` (ADR-0003).
+_Avoid_: module, slice, controller
+
+**Feature store**:
+The one app-scoped holder of a feature's state. It runs every command and result through the feature's reducer and carries out the effects the reducer decides.
+_Avoid_: ViewModel, session, controller
+
+**Effect**:
+Something a reducer asks to have done: work for the feature's effect runner, starting or cancelling a timer, or publishing one of the feature's events. What the work finds out comes back to the reducer as an event.
+_Avoid_: side effect, action
+
+**Kernel**:
+The shared base every feature store is built from: the store, effects, timers and the effect runner contract. It is not a feature.
+_Avoid_: framework, base feature
+
+**Audio adapter**:
+The one interface features use to reach the shared native audio pipeline: the player, live capture from the microphone or a USB or line input, and the analysis that feeds the Visual. It sits beneath Playback and Capture and is not a feature.
+_Avoid_: audio service, player session
