@@ -1,7 +1,12 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#ifdef __ANDROID__
 #include <android/asset_manager.h>
+#else
+// Host builds (core/host: the C++ unit tests) never create a renderer; they only need the name.
+typedef struct AAssetManager AAssetManager;
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif

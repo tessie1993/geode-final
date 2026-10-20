@@ -28,4 +28,4 @@ The graph reflects the last indexed commit (check `graph_stats` freshness). Conf
 
 ## Builds and tests
 
-Never run Gradle, CMake or tests locally. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it.
+Never run Gradle, CMake or tests locally. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it. What each check gates, the mutation floors, and how to re-record screenshot and Visual goldens (`[record-goldens]` in a commit message): `docs/ci.md`.

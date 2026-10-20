@@ -9,6 +9,8 @@ plugins {
     id("geode.kotlin-common")
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    id("geode.mutation-android")
+    id("geode.screenshots")
 }
 
 val keystoreProps =
@@ -229,6 +231,9 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // The real org.json: with isReturnDefaultValues the android.jar stub returns defaults, so a
+    // store test that parses JSON would pass without parsing anything.
+    testImplementation(libs.org.json)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

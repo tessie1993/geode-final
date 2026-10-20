@@ -2,6 +2,9 @@ plugins {
     id("org.jlleitschuh.gradle.ktlint")
     id("io.gitlab.arturbosch.detekt")
     id("geode.provenance")
+    // Line coverage, reported on every PR by the unit-test job (docs/ci.md). The mutation score is
+    // the gate; coverage is shown so a reviewer can see what the tests reach.
+    id("org.jetbrains.kotlinx.kover")
 }
 
 ktlint {

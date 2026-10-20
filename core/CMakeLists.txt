@@ -1,4 +1,7 @@
+include(${CMAKE_CURRENT_SOURCE_DIR}/pure_sources.cmake)
+
 add_library(geode_core STATIC
+    ${GEODE_CORE_PURE_SOURCES}
     api/geode_api.cpp
     api/geode_viz_api.cpp
     api/geode_dsp_api.cpp
@@ -10,47 +13,16 @@ add_library(geode_core STATIC
     audio/player/Mixer.cpp
     audio/player/Output.cpp
     audio/player/Player.cpp
-    audio/dsp/Equalizer.cpp
-    audio/dsp/Crossfeed.cpp
-    audio/dsp/Limiter.cpp
-    analysis/WindowTable.cpp
-    analysis/Spectrum.cpp
-    analysis/AdaptiveRange.cpp
-    analysis/LogBands.cpp
-    analysis/Chromagram.cpp
-    analysis/SuperFlux.cpp
-    analysis/HarmonicBalance.cpp
-    analysis/OnsetPeakPicker.cpp
-    analysis/AdaptiveWhitening.cpp
-    analysis/TempoTracker.cpp
-    analysis/TempoStability.cpp
-    analysis/BeatGrid.cpp
-    analysis/BarTracker.cpp
-    analysis/DrumChannels.cpp
-    analysis/KeyDetector.cpp
-    analysis/StructureTracker.cpp
-    analysis/StereoField.cpp
-    analysis/FrameLevels.cpp
-    analysis/PulseReplay.cpp
-    analysis/ReactiveAnalyzer.cpp
-    analysis/AnalysisSession.cpp
     viz/ShaderSource.cpp
     viz/GlCaps.cpp
     viz/GlProber.cpp
     viz/GlProfile.cpp
     viz/Compute.cpp
-    viz/Sha256.cpp
     viz/ProgramBinaryCache.cpp
     viz/Program.cpp
     viz/Texture.cpp
     viz/Framebuffer.cpp
     viz/Quad.cpp
-    viz/Params.cpp
-    viz/ParamsFields.cpp
-    viz/Lfo.cpp
-    viz/Adsr.cpp
-    viz/FormDrive.cpp
-    viz/VisualSafety.cpp
     viz/ThermalGovernor.cpp
     viz/TouchField.cpp
     viz/Transition.cpp
@@ -67,8 +39,6 @@ add_library(geode_core STATIC
     viz/compute/SimGlsl.cpp
     viz/compute/SimPass.cpp
     viz/fluid/FluidBuffers.cpp
-    viz/fluid/FluidMath.cpp
-    viz/fluid/RippleMath.cpp
     viz/fluid/FluidChoreography.cpp
     viz/fluid/FluidEmitters.cpp
     viz/fluid/FluidSim.cpp
@@ -77,7 +47,6 @@ add_library(geode_core STATIC
     viz/fluid/RippleSim.cpp
     viz/fluid/FlowField.cpp
     viz/scenes/StyleCatalog.cpp
-    viz/scenes/CymaticsMath.cpp
     viz/scenes/CymaticsScene.cpp
     viz/scenes/SilkScene.cpp
     viz/scenes/LifeScene.cpp
@@ -88,7 +57,6 @@ add_library(geode_core STATIC
     viz/scenes/CurlFlowScene.cpp
     viz/scenes/WaterScene.cpp
     viz/scenes/MilkdropScene.cpp
-    util/Json.cpp
 )
 target_include_directories(geode_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # TagLib only exports its include paths for the install tree; the generated taglib_config.h sits in its binary dir.
