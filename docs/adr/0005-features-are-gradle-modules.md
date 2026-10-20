@@ -53,7 +53,7 @@ The C++ is split the same way. Audio, analysis, the Visual and rendering become 
 
 ## Code shape
 
-SOLID principles and size limits (function and file length, parameter count, nesting) are reported as warnings, never failures: inline annotations on the changed lines of each PR, from detekt for Kotlin and lizard for C++. The thresholds sit near the current code's 95th–99th percentile (functions of about 60 lines, complexity 15, 8 parameters, nesting depth 4). The existing blocking detekt ratchet stays as it is, and its stale baseline entries are removed.
+Code follows SOLID principles by review, not by an extra CI job. The existing detekt gate stays as it is, and no advisory size or complexity checks are added, so nothing beyond the agreed gates can block a PR.
 
 ## Considered options
 
