@@ -67,11 +67,21 @@ class MicCapture(
         val now = nowMs()
         if (peak > SILENCE_EPSILON) {
             lastAudibleAtMs = now
-            silenceLikely = false
+            noteSilence(false)
         } else {
             val quietSince = if (lastAudibleAtMs == 0L) startedAtMs else lastAudibleAtMs
-            if (now - quietSince > SILENCE_GRACE_MS) silenceLikely = true
+            if (now - quietSince > SILENCE_GRACE_MS) noteSilence(true)
         }
+    }
+
+    /** Called on the pump's thread each time [silenceLikely] changes while capturing. */
+    @Volatile
+    var onSilenceChanged: ((Boolean) -> Unit)? = null
+
+    private fun noteSilence(likely: Boolean) {
+        if (silenceLikely == likely) return
+        silenceLikely = likely
+        onSilenceChanged?.invoke(likely)
     }
 
     override fun resetLevel() {
