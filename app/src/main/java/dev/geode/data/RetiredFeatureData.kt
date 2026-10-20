@@ -40,6 +40,11 @@ internal object RetiredFeatureData {
                     // Boot ripple intro.
                     "boot_anim",
                 ),
+            GeodePrefsFiles.PLAYER to
+                listOf(
+                    // Bit-perfect USB output.
+                    "bit_perfect",
+                ),
         )
 
     fun sweepOnce(context: Context) {

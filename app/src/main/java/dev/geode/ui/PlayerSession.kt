@@ -45,7 +45,6 @@ import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
 import dev.geode.export.StudioClip
 import dev.geode.geodeContainer
-import dev.geode.playback.BitPerfectOutput
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackErrors
 import dev.geode.playback.PlaybackService
@@ -184,10 +183,6 @@ class PlayerSession internal constructor(
                 override fun redecideCachedBeats(prefs: GuiPrefs) = analysis.redecideCachedBeats(prefs)
 
                 override fun refreshUi() = refresh()
-
-                override fun applyBitPerfect(enabled: Boolean) {
-                    BitPerfectOutput.apply(application, enabled)
-                }
             },
         )
 
