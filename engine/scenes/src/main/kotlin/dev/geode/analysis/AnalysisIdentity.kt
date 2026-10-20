@@ -1,5 +1,7 @@
 package dev.geode.analysis
 
+import dev.geode.engine.audio.AnalysisHop
+
 object AnalysisIdentity {
     const val ALGORITHM_VERSION: Int = 2
 
@@ -7,6 +9,5 @@ object AnalysisIdentity {
         "alg=$ALGORITHM_VERSION" +
             "|fft=${AnalysisEngine.DEFAULT_FFT_SIZE}" +
             "|bands=${AnalysisEngine.DEFAULT_BAND_COUNT}" +
-            "|liveHz=${AnalysisEngine.HOP_RATE_HZ}" +
-            "|offlineHz=${OfflineAnalyzer.OFFLINE_HOP_RATE_HZ}"
+            "|hopHz=${AnalysisHop.RATE_HZ}"
 }

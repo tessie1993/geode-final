@@ -7,7 +7,7 @@ class ReactiveAnalyzer(
     val bandCount: Int = FeatureFrameLayout.BAND_COUNT,
     val fftSize: Int = 2048,
     sampleRateHz: Int = 48_000,
-    private val hopRateHz: Float = 62.5f,
+    private val hopRateHz: Float = AnalysisHop.RATE_HZ,
 ) : AutoCloseable {
     init {
         require(bandCount == FeatureFrameLayout.BAND_COUNT) {
