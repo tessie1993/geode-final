@@ -20,8 +20,34 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 | Dependency review | No new dependency with a known high-severity vulnerability. | `ci.yml`, `dependency-graph.yml` |
 | CodeQL | Code-safety analysis of the Kotlin and C++ code. | `codeql.yml` |
 | Instrumented tests | Tests that need a real Android runtime, on an emulator. | `ci.yml` |
+| Code-size advisories | **Not a gate.** Warnings on changed lines for long, complex or wide code; see below. Never fails. | `config/detekt/detekt-advisory.yml`, `tools/ci/advisory_annotations.py` |
 
 **Visual vs App UI.** The screenshot check covers the App UI (screens and controls). The golden-frame check covers the Visual (the audio-reactive picture). See `CONTEXT.md`.
+
+## Code-size advisories
+
+Two layers, kept apart:
+
+- **The blocking ratchet.** `config/detekt/detekt.yml` sets every size threshold just above the worst existing value, and each module's `detekt-baseline.xml` holds what was already there. It fails the Lint job if anything gets worse. Lower a threshold in the commit that shrinks its worst offender; prune baseline entries whose file is gone.
+- **The advisory pass.** The `advisory` job reports code past the thresholds below as warnings. It never fails: every step tolerates failure and the job is `continue-on-error`. Only findings in code the pull request changed become annotations (GitHub shows about 10 per step); the full list goes to the job summary.
+
+Thresholds sit near the measured p95-p99, so they flag the tail rather than normal code. Main sources only; tests are not checked.
+
+| Tool | Check | Warns above |
+|---|---|---|
+| detekt `LongMethod` | Function length | 60 lines |
+| detekt `CyclomaticComplexMethod` | Cyclomatic complexity | 15 |
+| detekt `LongParameterList` | Parameters (defaulted ones not counted) | 8 per function, 10 per constructor |
+| detekt `NestedBlockDepth` | Nesting depth | 4 |
+| detekt `LargeClass` | Class length (data catalogs excluded) | 600 lines |
+| detekt `TooManyFunctions` | Non-private functions per class, file, object, interface or enum | 30 |
+| detekt `ComplexInterface` | Members per interface (interface segregation) | 15 |
+| detekt `MagicNumber` | Unnamed numeric literals | any, except -1, 0, 1, 2, 0.5 and their float forms; property and constant declarations, enums, named arguments, `@Composable` and `@Preview` code, theme files and tests are ignored |
+| lizard (C++, `core/` without tests and host) | Function length | 60 NLOC |
+| lizard | Cyclomatic complexity | 15 |
+| lizard | Parameters | 6 |
+
+The detekt pass is the `detektAdvisory` task in `geode.kotlin-common`, which writes SARIF to `build/reports/detekt-advisory/`. `tools/ci/advisory_annotations.py` reads that SARIF and lizard's warnings, keeps the findings whose code the PR diff touches, and prints them as `::warning` annotations. It needs no extra permissions.
 
 ## Mutation score floors
 

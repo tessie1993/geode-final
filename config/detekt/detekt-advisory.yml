@@ -1,0 +1,94 @@
+# Advisory detekt config: code-size and SOLID warnings, never failures (docs/ci.md, issue #60).
+#
+# Run by the `detektAdvisory` task (build-logic geode.kotlin-common) over main sources only, with
+# ignoreFailures on and no baseline. CI turns the findings into PR annotations on changed lines
+# (tools/ci/advisory_annotations.py). The blocking gate is config/detekt/detekt.yml; this file
+# never touches it.
+#
+# Thresholds sit near the measured p95-p99 of the codebase, so they flag the tail, not normal
+# code. Only the rules listed here are reported; the script drops anything else the default
+# config turns on.
+
+# Rule sets that have nothing to do with size or structure: off, so the advisory run stays fast
+# and quiet. The blocking config still runs them.
+comments:
+  active: false
+coroutines:
+  active: false
+empty-blocks:
+  active: false
+exceptions:
+  active: false
+naming:
+  active: false
+performance:
+  active: false
+potential-bugs:
+  active: false
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 60
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 15
+  LongParameterList:
+    active: true
+    functionThreshold: 8
+    constructorThreshold: 10
+    ignoreDefaultParameters: true
+  NestedBlockDepth:
+    active: true
+    threshold: 4
+  LargeClass:
+    active: true
+    threshold: 600
+    # Pure data catalogs: long by nature, no logic to decompose.
+    excludes:
+      - '**/ThemePackCatalog.kt'
+      - '**/VisualStyleCatalog.kt'
+      - '**/BuiltInPresets.kt'
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 30
+    thresholdInClasses: 30
+    thresholdInInterfaces: 30
+    thresholdInObjects: 30
+    thresholdInEnums: 30
+    ignorePrivate: true
+    ignoreOverridden: true
+  # Interface segregation: an interface this wide makes every implementer carry all of it.
+  ComplexInterface:
+    active: true
+    threshold: 15
+    includeStaticDeclarations: false
+    includePrivateDeclarations: false
+  ComplexCondition:
+    active: false
+
+style:
+  MagicNumber:
+    active: true
+    excludes:
+      - '**/test/**'
+      - '**/androidTest/**'
+      - '**/testFixtures/**'
+      - '**/*Test.kt'
+      - '**/*Preview*.kt'
+      - '**/ui/theme/**'
+      - '**/*.kts'
+    # Composables and previews are dense with layout numbers (16.dp, 12.sp, 0.6f alpha); the
+    # theme and dimension tokens are where those belong, but flagging every one is noise.
+    ignoreAnnotated: ['Composable', 'Preview']
+    ignoreNumbers: ['-1', '0', '1', '2', '0.5', '-1.0', '0.0', '1.0', '2.0']
+    ignoreHashCodeFunction: true
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: false
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreNamedArgument: true
+    ignoreEnums: true
+    ignoreRanges: false
+    ignoreExtensionFunctions: true

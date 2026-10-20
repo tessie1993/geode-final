@@ -1,7 +1,7 @@
 name: CI
 
-# The whole test suite, on every pull request (docs/ci.md). Every job is a gate: a ticket is done
-# when all of them are green. Nothing is built or tested anywhere else; agents never build locally.
+# The whole test suite, on every pull request (docs/ci.md). Every job is a gate except `advisory`,
+# which only warns: a ticket is done when all the gates are green. Nothing is built or tested anywhere else; agents never build locally.
 # Pushes to main are handled by ship-apk.yml, which builds and publishes the APK.
 
 on:
@@ -94,6 +94,42 @@ jobs:
           path: "**/build/reports/"
           if-no-files-found: ignore
           retention-days: 14
+
+  # Not a gate. Code-size and SOLID thresholds (docs/ci.md) reported as warnings on the lines a
+  # pull request changed, plus the full list in the job summary. Every step swallows its own
+  # failure and the job is continue-on-error as well, so nothing here can turn CI red.
+  advisory:
+    name: Code-size advisories (never fails)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The head commit, not the merge commit, so annotation line numbers match the PR diff.
+          # Full history so the merge base with the PR base is available.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: ./.github/actions/android-setup
+        continue-on-error: true
+      - name: detekt advisory (Kotlin, warnings only)
+        continue-on-error: true
+        run: ./gradlew detektAdvisory --continue --stacktrace --no-daemon || true
+      - name: lizard (C++, warnings only)
+        continue-on-error: true
+        run: |
+          python3 -m pip install --quiet lizard==1.24.1 || true
+          # lizard exits non-zero whenever it prints a warning.
+          python3 -m lizard -l cpp --warnings_only -Tnloc=60 -C 15 -a 6 \
+            -x 'core/tests/*' -x 'core/host/*' core > "$RUNNER_TEMP/lizard.txt" || true
+      - name: Annotate changed lines and write the summary
+        if: always()
+        continue-on-error: true
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 tools/ci/advisory_annotations.py ${BASE:+--base "$BASE"} --lizard "$RUNNER_TEMP/lizard.txt" \
+            $(find . -path '*/build/reports/detekt-advisory/detekt.sarif' -not -path './build-logic/*') || true
 
   unit-tests:
     name: Kotlin unit tests and coverage

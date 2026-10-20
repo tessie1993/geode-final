@@ -24,6 +24,30 @@ extensions.configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
     buildUponDefaultConfig = true
 }
 
+// The advisory pass: code-size and SOLID thresholds near the codebase's p95-p99, reported as
+// warnings and never as a failure (docs/ci.md). Main sources only, no baseline, its own config;
+// the blocking `detekt` task above is untouched. CI reads the SARIF and annotates only the lines
+// a pull request changed (tools/ci/advisory_annotations.py).
+tasks.register<io.gitlab.arturbosch.detekt.Detekt>("detektAdvisory") {
+    group = "verification"
+    description = "Advisory code-size and SOLID warnings (never fails)."
+    setSource(files("src/main/java", "src/main/kotlin"))
+    include("**/*.kt")
+    config.setFrom(rootProject.file("config/detekt/detekt-advisory.yml"))
+    buildUponDefaultConfig = true
+    ignoreFailures = true
+    basePath = rootProject.projectDir.absolutePath
+    reports {
+        sarif.required.set(true)
+        sarif.outputLocation.set(layout.buildDirectory.file("reports/detekt-advisory/detekt.sarif"))
+        md.required.set(true)
+        md.outputLocation.set(layout.buildDirectory.file("reports/detekt-advisory/detekt.md"))
+        html.required.set(false)
+        xml.required.set(false)
+        txt.required.set(false)
+    }
+}
+
 // Which JDK compiles, as opposed to what that JDK emits. Left unset it silently follows
 // JAVA_HOME, so a developer on Android Studio's JBR and CI on temurin were running different
 // compilers against the same source - the drift that hid a broken detekt gate locally for as
