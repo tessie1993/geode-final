@@ -20,6 +20,8 @@ The owner wants the parts of the app not interwoven: the state machine, the hand
 - **Features talk only through each other's `:api`.** No module may depend on another feature's `:core`, `:handlers` or `:ui`. The compiler enforces this. The Konsist architecture test plus a module-graph check fail CI on any other break: Android code in `:api` or `:core`, a cycle, or a wrong-direction dependency.
 - **Contracts are tracked.** Every `:api` module and both `:arch` modules have a checked-in dump of their public types and functions. CI fails when a public interface changes without its dump changing in the same PR, so every contract change is visible in review.
 - **Failures are typed.** Handlers catch everything at their edge and report a named failure as an event; the reducer decides what happens and the app-wide error channel shows it. A failure reported while nothing shows the banner is logged, and the latest one is shown once when the banner next appears.
+- **Data ownership.** Playback holds the playlists and the play history in its own Room database, and the history can be saved as a playlist. Other features read them only through Playback's `:api`.
+- **Diagnostics stay on the phone** (there is no internet permission): a "Share diagnostics" button in Settings writes a file with the log, settings and phone model, with no personal data, and a hidden developer overlay shows frame time, buffer sizes, audio crackles and the engine state.
 - **`:app`** only wires: Hilt bindings, routes, navigation, and the real adapters over the native engine.
 
 ## Running as well as possible
@@ -33,6 +35,12 @@ The owner wants the parts of the app not interwoven: the state machine, the hand
 ## Native code
 
 The C++ is split the same way. Audio, analysis, the Visual and rendering become separate libraries, each with one small public header as its contract, and a build check stops any library including another's insides. The "who moves what" table (Macros, LFOs and other Modulators, Reactions, Automations) is applied per frame in C++; Kotlin sends it as part of the Customization snapshot only when it changes.
+
+- **Hand-off without locks.** Kotlin writes a new snapshot into a spare slot and the drawing and audio threads pick it up at the start of their next frame, so they never wait on a lock.
+- **One schema for both sides.** The snapshot is a binary format generated from one schema file (e.g. FlatBuffers) into both Kotlin and C++ types, so the two cannot drift. Shared preset files stay versioned JSON.
+- **No exceptions across the bridge.** Every native call returns a typed status that Kotlin turns into a named failure. A crash inside C++ is caught at the bridge, reported as an engine failure, and the audio restarts by itself.
+- **C++ is mutation tested too.** The pure native libraries (analysis, the mod matrix, audio maths) get a mutation score in CI with a floor that only ratchets upward.
+- **The live wallpaper runs in the app's process** and shares its engine code.
 
 ## Numbers and buffers
 

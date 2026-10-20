@@ -6,7 +6,7 @@ These decisions extend ADR-0003 (structure: ADR-0005) with how the features beha
 - **Playback owns the queue.** Library, Studio, the widget and the notification only send it commands: play this, play next, add to queue.
 - **There is one shared live Visual.** Full-screen visual mode, the Visuals tab and Recordings show the same running Visual, and moving between them never restarts it. The live wallpaper runs its own Visual only while the app is closed.
 - **Renders use a separate engine instance**, so you can keep listening and watching while a video exports.
-- **Restoring after Android kills the app:** each feature saves enough to restore the queue and position (paused), the look with its Customization and undo history, the open screen and sheet, and the Studio render queue. Settings persist on their own and are never "restored over".
+- **Restoring after Android kills the app:** each feature saves enough to restore the queue and position (paused), the look with its Customization, the undo history (which survives Android killing the app in the background but is cleared when you close the app yourself), the open screen and sheet, and the Studio render queue. Settings persist on their own and are never "restored over".
 - **Errors:** a failure in one feature appears in **one app-wide banner**, which every feature reports to through a single shared channel. Audio and the Visual keep running. Failures are also written to the local log; nothing leaves the device.
 - **Idle engine:** whether the audio engine shuts down when idle in the background is a **preference** (#28).
 - **Mic while music plays:** when Capture starts during playback, the user is **asked each time** whether to pause the song or keep both.
