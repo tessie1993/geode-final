@@ -56,6 +56,39 @@ class FeatureRuntimeTest {
         }
 
     @Test
+    fun `the latest failure reported while nobody listens is shown once, to the next collector`() =
+        runTest {
+            val logged = mutableListOf<String>()
+            val errors = ErrorChannel { logged += it.message }
+            errors.report(FeatureFailure("capture", "first"))
+            errors.report(FeatureFailure("library", "second"))
+
+            val banner = mutableListOf<String>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { errors.failures.collect { banner += it.message } }
+            val later = mutableListOf<String>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { errors.failures.collect { later += it.message } }
+
+            assertEquals(listOf("second"), banner)
+            assertEquals(emptyList<String>(), later)
+            assertEquals(listOf("first", "second"), logged)
+        }
+
+    @Test
+    fun `a failure shown to a collector is not kept for a later one`() =
+        runTest {
+            val errors = ErrorChannel { }
+            val banner = mutableListOf<String>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { errors.failures.collect { banner += it.message } }
+
+            errors.report(FeatureFailure("capture", "lost"))
+            val later = mutableListOf<String>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { errors.failures.collect { later += it.message } }
+
+            assertEquals(listOf("lost"), banner)
+            assertEquals(emptyList<String>(), later)
+        }
+
+    @Test
     fun `work that throws in the runtime's scope is reported under its name, and its siblings carry on`() =
         runTest {
             val failures = mutableListOf<FeatureFailure>()

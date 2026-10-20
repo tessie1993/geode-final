@@ -8,7 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.onSubscription
 
 /** One failure, reported by the feature named [feature]. Nothing about it leaves the device. */
 data class FeatureFailure(
@@ -21,9 +21,11 @@ data class FeatureFailure(
  * The one app-wide channel every feature reports its failures to, which one App UI banner shows
  * (ADR-0004). Reporting only records and announces: the audio and the Visual keep running.
  *
- * Each report goes to [log] first, so it is in the local log whether or not anyone is listening, and
- * is then published on [failures]. [failures] is not replayed: the banner sees what is reported while
- * it collects, with up to [EVENT_BUFFER] reports waiting for it.
+ * Each report goes to [log] first, so every failure is in the local log. It is then published on
+ * [failures] to whoever collects, with up to [EVENT_BUFFER] reports waiting for a slow collector.
+ * When nobody collects, the channel keeps only the latest failure and hands it, once, to the next
+ * collector, so a banner that appears later shows what it missed; older missed failures are only in
+ * the log.
  */
 class ErrorChannel(
     private val log: (FeatureFailure) -> Unit,
@@ -31,12 +33,25 @@ class ErrorChannel(
     private val published =
         MutableSharedFlow<FeatureFailure>(extraBufferCapacity = EVENT_BUFFER, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    val failures: Flow<FeatureFailure> = published.asSharedFlow()
+    private val lock = Any()
+
+    // Guarded by lock: the latest failure reported while nobody collected.
+    private var missed: FeatureFailure? = null
+
+    val failures: Flow<FeatureFailure> = published.onSubscription { takeMissed()?.let { emit(it) } }
 
     fun report(failure: FeatureFailure) {
         log(failure)
+        synchronized(lock) {
+            if (published.subscriptionCount.value == 0) {
+                missed = failure
+                return
+            }
+        }
         published.tryEmit(failure)
     }
+
+    private fun takeMissed(): FeatureFailure? = synchronized(lock) { missed.also { missed = null } }
 }
 
 /**
