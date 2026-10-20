@@ -97,6 +97,9 @@ class ReactiveAnalyzer(
     val stereoPan: Float get() = frame[FeatureFrameLayout.STEREO_PAN]
     val chromaConfidence: Float get() = frame[FeatureFrameLayout.CHROMA_CONFIDENCE]
 
+    /** Every one-hop event so far, sequenced: what a reader that skips hops edge-detects on. */
+    val events: SoundEvents get() = SoundEvents.read(frame, FeatureFrameLayout.EVENTS)
+
     fun analyze(
         samples: FloatArray,
         dtSeconds: Float,
