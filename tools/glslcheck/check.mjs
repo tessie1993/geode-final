@@ -37,7 +37,7 @@ import { launch } from '../shaderpreview/lib/cdp.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
 const SHADERS = path.join(ROOT, 'app', 'src', 'main', 'assets', 'shaders');
-const SHADER_SOURCE_CPP = path.join(ROOT, 'core', 'viz', 'ShaderSource.cpp');
+const SHADER_SOURCE_CPP = path.join(ROOT, 'core', 'render', 'ShaderSource.cpp');
 const SCENE_REGISTRY_CPP = path.join(ROOT, 'core', 'viz', 'SceneRegistry.cpp');
 const FLUID_LOOK_HPP = path.join(ROOT, 'core', 'viz', 'fluid', 'FluidLook.hpp');
 
