@@ -68,8 +68,12 @@ _Avoid_: Strobe safety, epilepsy mode
 The place where people turn music into video files: they make Renders and Recordings, edit them, and share the results.
 _Avoid_: Editor, export screen
 
+**Project**:
+A folder of Renders, Recordings, Edits and Shorts that the user creates and names. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported.
+_Avoid_: album, collection, folder (for the concept)
+
 **Render**:
-A video file made offline from a song or playlist with a Customization. It remembers both, so it can be made again at another shape or quality.
+A video file made offline from a song or playlist with a Customization. It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
 _Avoid_: Export, take, clip
 
 **Recording**:
