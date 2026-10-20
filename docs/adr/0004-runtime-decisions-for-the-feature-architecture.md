@@ -17,7 +17,7 @@ These decisions extend ADR-0003 (structure: ADR-0005) with how the features beha
   - the library index, history, play counts, playlists, Projects and the render queue in a **Room** database;
   - presets as small **versioned files** that can be shared.
 - **Every saved format carries a version** and is migrated step by step. CI loads real old samples to prove that nothing is lost.
-- **Navigation:** type-safe **Navigation Compose**. Every place (a tab, a sheet, full-screen visual mode) is a typed route, and the back stack is saved and restored.
+- **Navigation:** type-safe **Navigation Compose**. Every place (a tab, a sheet, full-screen visual mode) is a typed route, and the back stack is saved and restored. Deep links open the Player and the Library directly.
 - **Renders** run in a foreground service of the media-processing type, with a progress notification. The queue lives in the database, so unfinished renders resume after Android kills the app.
 - **Library scanning:** Android's MediaStore finds the files. Geode's TagLib reader fills in the missing tags (composer, album artist, ReplayGain, embedded art) in the background, cached in Room.
 - **Customization to C++:** one compact, versioned snapshot is sent whenever the Customization changes. Nothing crosses per frame (ADR-0002).
