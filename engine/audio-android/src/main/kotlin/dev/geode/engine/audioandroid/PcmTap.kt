@@ -52,7 +52,7 @@ class PcmTap(
         framesWritten = Frames(0L)
         format = next
         try {
-            boundaryListener?.onTapBoundary(ended, endedFrames, next)
+            boundaryListener?.onTapBoundary(ended, endedFrames.value, next)
         } catch (survivable: RuntimeException) {
             boundaryFailures++
         }
