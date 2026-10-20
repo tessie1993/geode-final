@@ -60,8 +60,7 @@ class NativeViz(
 
     fun knows(sceneId: SceneId): Boolean = handle != 0L && GeodeNative.vizKnows(handle, sceneId.value)
 
-    fun sceneIds(): List<SceneId> =
-        if (handle == 0L) emptyList() else GeodeNative.vizSceneIds(handle).split('\n').filter { it.isNotEmpty() }.map(::SceneId)
+    fun sceneIds(): List<SceneId> = if (handle == 0L) emptyList() else GeodeNative.vizSceneIds(handle).split('\n').filter { it.isNotEmpty() }.map(::SceneId)
 
     fun setParams(p: SceneParams) {
         if (handle == 0L) return

@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
-class TrackIdUriTest {
+class TrackIdUriRobolectricTest {
     @Test
     fun `a media store id becomes the uri it names`() {
         val uri = TrackId("content://media/external/audio/media/42").toUri()

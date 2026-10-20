@@ -142,7 +142,7 @@ class HistoryStore(
                     val arr = JSONArray()
                     // Persist the union of the 200 most recent and the 200 most-played entries
                     // (deduped by uri) so a heavily played old track isn't dropped from disk even
-                    // though mostPlayed() ranks by playCount/listenedMs rather than recency.
+                    // though mostPlayed() ranks by playCount/listened rather than recency.
                     val toPersist = LinkedHashMap<TrackId, Entry>()
                     entries.values
                         .sortedByDescending { it.lastPlayedMs }

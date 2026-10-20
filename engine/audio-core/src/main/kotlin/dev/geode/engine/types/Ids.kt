@@ -1,9 +1,11 @@
 package dev.geode.engine.types
 
-// Each id prints as its raw value, so a string template or a JSON writer that predates the type
-// still writes exactly what it wrote before.
-
-/** A track, named by its content-uri string: the library key, the queue entry and the Media3 media id. */
+/**
+ * A track, named by its content-uri string: the library key, the queue entry and the Media3 media id.
+ *
+ * Every id here prints as its raw value, so a string template or a JSON writer that predates the
+ * type still writes exactly what it wrote before.
+ */
 @JvmInline
 value class TrackId(
     val value: String,
