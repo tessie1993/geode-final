@@ -63,11 +63,11 @@ TEST(AnalysisSession, TheAnalysisClockAdvancesByTheAudioItConsumed) {
 
 TEST(AnalysisSession, PullingIsTheSameWhateverSizeTheAudioArrivesIn) {
     const auto pcm = noiseWithClicks(static_cast<size_t>(kSampleRate) * 3, static_cast<size_t>(kSampleRate) / 4);
-    AnalysisSession small(kSampleRate, kFftSize, kHopRateHz);
-    AnalysisSession large(kSampleRate, kFftSize, kHopRateHz);
+    AnalysisSession fine(kSampleRate, kFftSize, kHopRateHz);
+    AnalysisSession coarse(kSampleRate, kFftSize, kHopRateHz);
 
-    const auto a = analyse(small, pcm, 256);
-    const auto b = analyse(large, pcm, 3001);
+    const auto a = analyse(fine, pcm, 256);
+    const auto b = analyse(coarse, pcm, 3001);
 
     ASSERT_EQ(a.size(), (pcm.size() / 2 - kFftSize) / kHopSamples + 1);
     ASSERT_EQ(a.size(), b.size());
