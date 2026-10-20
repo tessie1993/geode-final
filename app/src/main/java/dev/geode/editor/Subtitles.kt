@@ -1,6 +1,7 @@
 package dev.geode.editor
 
 import dev.geode.ui.LyricLine
+import java.util.Locale
 
 data class SubtitleCue(
     val startMs: Long,
@@ -81,7 +82,8 @@ object Subtitles {
         val h = ms / 3_600_000
         val m = ms / 60_000 % 60
         val s = ms / 1000 % 60
-        return "%02d:%02d:%02d,%03d".format(h, m, s, ms % 1000)
+        // Locale.ROOT: a default locale with non-ASCII digits writes a file players reject.
+        return String.format(Locale.ROOT, "%02d:%02d:%02d,%03d", h, m, s, ms % 1000)
     }
 
     private val TIMING = Regex("""(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})""")

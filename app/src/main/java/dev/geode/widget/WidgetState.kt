@@ -45,6 +45,21 @@ data class WidgetState(
                 .apply()
         }
 
+        /**
+         * Stores only the artwork path. The artwork job runs off the main thread, so a full
+         * load/copy/save there would write back a stale `playing` over a newer [save].
+         */
+        fun saveArt(
+            context: Context,
+            artPath: String?,
+        ) {
+            context
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_ART, artPath)
+                .apply()
+        }
+
         /** Writes the artwork the widget will decode; null clears it. Returns the path stored. */
         fun writeArt(
             context: Context,

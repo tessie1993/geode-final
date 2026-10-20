@@ -48,7 +48,9 @@ class NativePlayer(
             Thread(runnable, "geode-native-player").apply { isDaemon = true }
         }
     private val entries = ArrayList<Entry>()
-    private val loads = HashMap<Long, Int>()
+
+    // Load token -> Entry.uid, not queue index: queue edits move entries between indices.
+    private val loads = HashMap<Long, Long>()
     private var nextUid = 1L
     private var nextLoad = 1L
     private var currentIndex = 0
@@ -62,8 +64,14 @@ class NativePlayer(
     private var crossfadeMs = 0
     private var loadedId = -1L
     private var queuedId = -1L
-    private var queuedIndex = -1
+    private var queuedUid = -1L
+
+    // A start position set before prepare(), e.g. a restored session; consumed by handlePrepare.
+    private var pendingStartMs = 0L
     private var error: PlaybackException? = null
+
+    // Read by the worker thread before it touches the native handle.
+    @Volatile
     private var released = false
 
     private val poll =
@@ -137,7 +145,9 @@ class NativePlayer(
     override fun handlePrepare(): ListenableFuture<*> {
         prepared = true
         error = null
-        return if (loadedId < 0) openCurrent(0L) else done()
+        val startMs = pendingStartMs
+        pendingStartMs = 0L
+        return if (loadedId < 0) openCurrent(startMs) else done()
     }
 
     override fun handleStop(): ListenableFuture<*> {
@@ -213,7 +223,10 @@ class NativePlayer(
             GeodeNative.playerStop(handle)
             return done()
         }
-        return if (prepared) openCurrent(if (startPositionMs == C.TIME_UNSET) 0L else startPositionMs) else done()
+        val startMs = if (startPositionMs == C.TIME_UNSET) 0L else startPositionMs
+        if (prepared) return openCurrent(startMs)
+        pendingStartMs = startMs
+        return done()
     }
 
     override fun handleAddMediaItems(
@@ -278,11 +291,22 @@ class NativePlayer(
         val playing = GeodeNative.playerCurrentToken(handle)
         if (playing >= 0 && playing != loadedId) {
             // The engine joined into the pre-rolled track on its own.
-            val index = loads[playing] ?: return
+            val uid = loads[playing] ?: return
             loadedId = playing
             queuedId = -1
-            currentIndex = index.coerceAtMost(entries.lastIndex)
+            val index = entries.indexOfFirst { it.uid == uid }
+            currentIndex = (if (index >= 0) index else currentIndex).coerceAtMost(entries.lastIndex)
             queueNext()
+        }
+        // With gapless and crossfade both off nothing is pre-rolled, so the engine stops at the end
+        // of each track; advance to the next one here. The old token is dropped from loads below,
+        // so a later poll that still sees it does not advance twice.
+        if (playing == loadedId && endedWithoutPreRoll()) {
+            val next = nextIndex()
+            if (next >= 0) {
+                currentIndex = next
+                openCurrent(0L)
+            }
         }
         loads.keys.retainAll { it == loadedId || it == queuedId }
         if (GeodeNative.playerState(handle) == ENGINE_ERROR && error == null) {
@@ -293,10 +317,15 @@ class NativePlayer(
         dsp.sync()
     }
 
+    private fun endedWithoutPreRoll(): Boolean {
+        val preRolls = gapless || crossfadeMs > 0
+        return prepared && !preRolls && GeodeNative.playerState(handle) == ENGINE_ENDED
+    }
+
     private fun openCurrent(positionMs: Long): ListenableFuture<*> {
         val entry = entries.getOrNull(currentIndex) ?: return done()
         val id = nextLoad++
-        loads[id] = currentIndex
+        loads[id] = entry.uid
         loadedId = id
         queuedId = -1
         val play = playWhenReady
@@ -333,12 +362,13 @@ class NativePlayer(
             }
             return
         }
-        if (queuedId >= 0 && queuedIndex == index) return
         val entry = entries[index]
+        // Compared by entry, not position: play-next, remove and move put another track at the same index.
+        if (queuedId >= 0 && queuedUid == entry.uid) return
         val id = nextLoad++
-        loads[id] = index
+        loads[id] = entry.uid
         queuedId = id
-        queuedIndex = index
+        queuedUid = entry.uid
         worker.execute {
             // Same race as openCurrent(): don't call into the native handle once released.
             if (released) return@execute

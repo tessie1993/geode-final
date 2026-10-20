@@ -49,7 +49,8 @@ internal fun DuplicatesTab(
             item { Text(stringResource(R.string.duplicates_none), Modifier.padding(16.dp)) }
         }
         groups.forEach { group ->
-            item(key = "${group.title}|${group.artist}") {
+            // Title and artist can repeat across groups (one bucket splits by duration); a track sits in one group only.
+            item(key = "dup|${group.tracks.first().uri}") {
                 Text(
                     stringResource(R.string.duplicates_group, group.title, group.artist, group.tracks.size),
                     style = MaterialTheme.typography.labelMedium,

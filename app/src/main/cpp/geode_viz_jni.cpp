@@ -124,10 +124,11 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetMilkTextureDir(JNIEnv* env, jobje
 
 JNIEXPORT jstring JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizTakeMilkPresetLoaded(JNIEnv* env, jobject, jlong handle) {
-    const size_t length = geode_viz_take_milk_preset_loaded(vizOf(handle), nullptr, 0);
-    if (length == 0) return nullptr;
-    std::vector<char> buffer(length + 1, '\0');
-    geode_viz_take_milk_preset_loaded(vizOf(handle), buffer.data(), buffer.size());
+    // The take is destructive, so it is called once: a length query first would consume the
+    // path and leave the second call nothing. PATH_MAX-sized; a longer path cannot be opened anyway.
+    std::vector<char> buffer(4096, '\0');
+    const size_t length = geode_viz_take_milk_preset_loaded(vizOf(handle), buffer.data(), buffer.size());
+    if (length == 0 || length >= buffer.size()) return nullptr;
     return env->NewStringUTF(buffer.data());
 }
 

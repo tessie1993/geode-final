@@ -131,6 +131,14 @@ object NativeTags {
         } catch (e: SecurityException) {
             RingLog.note(TAG, "openFileDescriptor($mode) refused", e)
             null
+        } catch (e: IllegalArgumentException) {
+            // Providers throw this for a stale or revoked document URI; callers such as
+            // ReplayGain read on a scope with no handler, so it must not escape.
+            RingLog.note(TAG, "openFileDescriptor($mode) rejected the uri", e)
+            null
+        } catch (e: IllegalStateException) {
+            RingLog.note(TAG, "openFileDescriptor($mode) provider failed", e)
+            null
         }
 
     private sealed class FdResult
