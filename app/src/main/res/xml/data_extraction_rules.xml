@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+. <cloud-backup> is the same shape as backup_rules.xml: keep
-     user-authored data, drop the rebuildable cache and the crash file.
-     <device-transfer> is deliberately NOT - see its own comment below.
-     BackupRulesCoverageTest pins both, and the difference between them. -->
+<!-- <cloud-backup> keeps user-authored data and drops the rebuildable cache
+     and the crash file. <device-transfer> deliberately does not - see its own
+     comment below. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude
