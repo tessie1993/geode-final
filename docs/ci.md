@@ -9,7 +9,7 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 | Check | What it gates | Where it is configured |
 |---|---|---|
 | Build debug APK | The app assembles, native code included. The APK is attached to the run for device testing (not a gate). | `ci.yml` |
-| Lint | detekt (every module, with per-module baselines), ktlint, and Android lint (every Android module). | `config/detekt/detekt.yml`, `build-logic/…/geode.kotlin-common.gradle.kts` |
+| Lint | detekt (every module, with per-module baselines), ktlint, Android lint (every Android module), and the public API of the interface modules against their dumps. | `config/detekt/detekt.yml`, `build-logic/…/geode.kotlin-common.gradle.kts`, `geode.api-dump` |
 | Kotlin unit tests and coverage | Every module's unit tests, including the JVM modules (`:engine:audio-core`, `:arch:*`, and each feature's `:api` and `:core`), and the architecture test. Line coverage per module is written to the job summary. | Kover, applied in `geode.kotlin-common` |
 | Mutation tests | One job per module runs **every** mutant (Pitest), then `tools/ci/mutation_gate.py` checks the score. | `config/mutation/thresholds.properties`, `geode.mutation-jvm` / `geode.mutation-android` |
 | App UI screenshots | Roborazzi screenshots of App UI composables match the goldens in `app/src/test/screenshots`. | `geode.screenshots` |
@@ -39,6 +39,14 @@ The screenshot and golden-frame goldens are recorded in CI, on the same runner i
 1. Push a commit whose message contains `[record-goldens]`. On that run, both jobs record instead of verifying, and push a commit with the new goldens to the PR branch.
 2. Review the new images in the PR diff. They are the change being approved.
 3. Push any further commit. Commits pushed by the CI bot do not start CI, so this push is what verifies against the new goldens.
+
+## Updating the public API dumps
+
+`:arch:kernel`, `:arch:audio` and every feature's `:api` apply `geode.api-dump`: the Kotlin Gradle plugin's ABI validation writes their public API to `<module>/api/`, and the lint job runs `checkKotlinAbi` against it, so any change to a public interface shows in the PR as a change to a dump. The dumps are written in CI, like the goldens, since agents never run Gradle locally:
+
+1. Push a commit whose message contains `[api-dump]`. On that run the lint job runs `updateKotlinAbi` instead of the check, and pushes a commit with the new dumps to the PR branch.
+2. Review the dump diff. It is the API change being approved.
+3. Push any further commit, so CI checks against the new dumps.
 
 ## Adding tests
 

@@ -2,6 +2,7 @@
 // adapter lives in :app, over the native pipeline; the fake is in this module's test fixtures.
 plugins {
     id("geode.arch-jvm")
+    id("geode.api-dump")
 }
 
 dependencies {

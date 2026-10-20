@@ -3,6 +3,7 @@
 // and on nothing else of the feature.
 plugins {
     id("geode.arch-jvm")
+    id("geode.api-dump")
 }
 
 dependencies {

@@ -57,11 +57,17 @@ jobs:
           retention-days: 7
 
   static-analysis:
-    name: Lint (detekt, ktlint, Android lint)
+    name: Lint (detekt, ktlint, Android lint, public API)
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # Write access only to push regenerated public API dumps back to the PR ([api-dump]).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Two commits deep, so the PR's head commit is here too: its message can ask for [api-dump].
+          fetch-depth: 2
       - uses: ./.github/actions/android-setup
       - name: detekt (every module)
         run: ./gradlew detekt --continue --stacktrace --no-daemon
@@ -75,6 +81,28 @@ jobs:
           done
       - name: ktlint
         run: ./gradlew ktlintCheck --continue --stacktrace --no-daemon
+      # The public API of :arch:* and every feature's :api must match its dump in <module>/api
+      # (geode.api-dump). A head commit whose message contains [api-dump] regenerates the dumps
+      # instead, and pushes them to the PR branch (docs/ci.md).
+      - name: Public API (check, or dump on [api-dump])
+        id: api
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if git log -1 --format=%B "$HEAD_SHA" | grep -qF '[api-dump]'; then
+            ./gradlew updateKotlinAbi --stacktrace --no-daemon
+            echo "dumped=true" >> "$GITHUB_OUTPUT"
+          else
+            ./gradlew checkKotlinAbi --continue --stacktrace --no-daemon
+          fi
+      - name: Push the public API dumps
+        if: steps.api.outputs.dumped == 'true' && github.event_name == 'pull_request'
+        run: |
+          dumps=$(find . \( -path ./build-logic -o -name build -o -name .git \) -prune -o -type d -name api -print | while read -r dir; do
+            if ls "$dir"/*.api > /dev/null 2>&1; then echo "${dir#./}"; fi
+          done)
+          if [ -z "$dumps" ]; then echo "::error::updateKotlinAbi wrote no dumps"; exit 1; fi
+          tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Dump the public API" $dumps
       # Origin markers in engine sources must agree with docs/visualizer-v2/provenance.json.
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon

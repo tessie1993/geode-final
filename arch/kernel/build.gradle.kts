@@ -2,6 +2,7 @@
 // mutation floor. Its test fixtures (a fake clock, an in-place runtime) are for any module's tests.
 plugins {
     id("geode.arch-jvm")
+    id("geode.api-dump")
 }
 
 dependencies {
