@@ -19,6 +19,8 @@ internal object RetiredFeatureData {
         listOf(
             // Takes: recorded performances.
             "takes",
+            // Video templates: saved and imported `geode://template` documents.
+            "templates",
         )
 
     /** Preference keys only retired features wrote, by preferences file. */

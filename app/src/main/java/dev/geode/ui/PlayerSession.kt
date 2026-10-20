@@ -18,7 +18,6 @@ import dev.geode.data.EditorProjectStore
 import dev.geode.data.FavouritesRepository
 import dev.geode.data.FilePresetRepository
 import dev.geode.data.FileSessionRepository
-import dev.geode.data.FileTemplateRepository
 import dev.geode.data.LfoStore
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.MilkTexture
@@ -36,12 +35,6 @@ import dev.geode.data.SharedPrefsPlayerPrefsRepository
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistMatcher
 import dev.geode.data.TagWriteOutcome
-import dev.geode.data.TemplateId
-import dev.geode.data.TemplateImport
-import dev.geode.data.TemplateLook
-import dev.geode.data.TemplateRepository
-import dev.geode.data.TemplateWrite
-import dev.geode.data.VideoTemplate
 import dev.geode.engine.types.Hz
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
@@ -171,25 +164,6 @@ class PlayerSession internal constructor(
 
                 override val presetMirrorUri: String? get() = guiPrefs.value.presetMirrorUri
                 override val activeMilkPath: String? get() = vizStateStore.activeMilkPath.value
-            },
-        )
-
-    private val templateRepository: TemplateRepository = FileTemplateRepository.from(application)
-
-    private val templateLibrary: TemplateController =
-        TemplateController(
-            application,
-            templateRepository,
-            scope,
-            storeScope,
-            object : TemplateController.Host {
-                override val vizState: StateFlow<VizUiState> get() = _vizState
-                override val activeMilkPath: String? get() = vizStateStore.activeMilkPath.value
-
-                override fun applyLook(
-                    look: TemplateLook,
-                    name: String,
-                ) = visual.applyPreset(look.toPreset(name))
             },
         )
 
@@ -957,37 +931,6 @@ class PlayerSession internal constructor(
 
     fun deletePreset(name: PresetId) = presetLibrary.deletePreset(name)
 
-    val templates: StateFlow<List<VideoTemplate>> get() = templateLibrary.library
-
-    val templateStarters: List<VideoTemplate> get() = templateLibrary.starters
-
-    fun applyTemplate(template: VideoTemplate) = templateLibrary.applyTemplate(template)
-
-    fun saveCurrentAsTemplate(
-        name: String,
-        customShader: String?,
-        onResult: (TemplateWrite) -> Unit,
-    ) = templateLibrary.saveCurrentAsTemplate(name, customShader, onResult)
-
-    fun adoptTemplate(
-        starter: VideoTemplate,
-        onResult: (TemplateImport) -> Unit,
-    ) = templateLibrary.adopt(starter, onResult)
-
-    fun deleteTemplate(id: TemplateId) = templateLibrary.deleteTemplate(id)
-
-    fun importTemplateText(
-        text: String,
-        onResult: (TemplateImport) -> Unit,
-    ) = templateLibrary.importTemplateText(text, onResult)
-
-    fun importTemplateFile(
-        uri: Uri,
-        onResult: (TemplateImport) -> Unit,
-    ) = templateLibrary.importTemplateFile(uri, onResult)
-
-    fun templateShareLink(template: VideoTemplate): String? = templateLibrary.shareLink(template)
-
     private val exportController: ExportController =
         ExportController(
             application,
@@ -1163,7 +1106,6 @@ class PlayerSession internal constructor(
         captureController.start()
         musicLibrary.refreshNumericTitles()
         presetLibrary.refreshInitial()
-        templateLibrary.refreshInitial()
         musicLibrary.refresh()
         textureController.refresh()
         scope.launch {

@@ -114,10 +114,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!--
-              Shared presets and video templates. Both are self-contained
-              documents and the app has no network permission, so a "shared"
-              link IS the thing itself, carried inside it; tapping one in a
-              chat opens the app and imports it. Nothing is fetched.
+              Shared presets. A preset is a self-contained document and the
+              app has no network permission, so a "shared" link IS the thing
+              itself, carried inside it; tapping one in a chat opens the app
+              and imports it. Nothing is fetched.
             -->
             <intent-filter android:autoVerify="false">
                 <action android:name="android.intent.action.VIEW" />
@@ -126,9 +126,6 @@
                 <data
                     android:scheme="geode"
                     android:host="preset" />
-                <data
-                    android:scheme="geode"
-                    android:host="template" />
             </intent-filter>
             <!-- Android Auto voice search: "play <something> on Geode" arrives here
                  with a query, and the activity plays the first library match. -->

@@ -6,11 +6,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.data.MilkTexture
 import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
-import dev.geode.data.TemplateFormat
-import dev.geode.data.TemplateId
-import dev.geode.data.TemplateImport
-import dev.geode.data.TemplateWrite
-import dev.geode.data.VideoTemplate
 import dev.geode.di.PlayerSessionProvider
 import dev.geode.engine.types.PresetId
 import dev.geode.render.AdsrConfig
@@ -29,21 +24,6 @@ sealed interface PresetLinkImport {
     ) : PresetLinkImport
 
     data object Unreadable : PresetLinkImport
-}
-
-/** Outcome of a `geode://template/...` link reaching the app through an intent. */
-sealed interface TemplateLinkImport {
-    data class Imported(
-        val name: String,
-    ) : TemplateLinkImport
-
-    data class Replaced(
-        val name: String,
-    ) : TemplateLinkImport
-
-    data class Unreadable(
-        val why: String,
-    ) : TemplateLinkImport
 }
 
 @HiltViewModel
@@ -172,54 +152,4 @@ class VisualsViewModel
         fun noteMilkPreset(path: String) = session.noteMilkPreset(path)
 
         internal fun milkPresetPathFor(preset: Preset): String? = session.milkPresetPathFor(preset)
-
-        val templates: StateFlow<List<VideoTemplate>> get() = session.templates
-
-        val templateStarters: List<VideoTemplate> get() = session.templateStarters
-
-        fun applyTemplate(template: VideoTemplate) = session.applyTemplate(template)
-
-        fun saveCurrentAsTemplate(
-            name: String,
-            customShader: String?,
-            onResult: (TemplateWrite) -> Unit,
-        ) = session.saveCurrentAsTemplate(name, customShader, onResult)
-
-        fun adoptTemplate(
-            starter: VideoTemplate,
-            onResult: (TemplateImport) -> Unit,
-        ) = session.adoptTemplate(starter, onResult)
-
-        fun deleteTemplate(id: TemplateId) = session.deleteTemplate(id)
-
-        fun importTemplateText(
-            text: String,
-            onResult: (TemplateImport) -> Unit,
-        ) = session.importTemplateText(text, onResult)
-
-        fun importTemplateFile(
-            uri: Uri,
-            onResult: (TemplateImport) -> Unit,
-        ) = session.importTemplateFile(uri, onResult)
-
-        fun templateShareLink(template: VideoTemplate): String? = session.templateShareLink(template)
-
-        /** Whether [data] carries a template link at all, before the async import runs. */
-        fun isTemplateLink(data: String): Boolean = TemplateFormat.linkIn(data) != null
-
-        fun importSharedTemplate(
-            data: String,
-            onResult: (TemplateLinkImport) -> Unit,
-        ) {
-            session.importTemplateText(data) { outcome ->
-                onResult(
-                    when (outcome) {
-                        is TemplateImport.Added -> TemplateLinkImport.Imported(outcome.template.name)
-                        is TemplateImport.Replaced -> TemplateLinkImport.Replaced(outcome.template.name)
-                        is TemplateImport.Unreadable -> TemplateLinkImport.Unreadable(outcome.why)
-                        is TemplateImport.WriteFailed -> TemplateLinkImport.Unreadable(outcome.why)
-                    },
-                )
-            }
-        }
     }
