@@ -42,6 +42,9 @@ internal object RetiredFeatureData {
                     "boot_anim",
                     // Key colours.
                     "gui_key_color",
+                    // App UI theme packs, and following the system's light mode onto the light one.
+                    "app_theme",
+                    "gui_follow_system_dark",
                 ),
             GeodePrefsFiles.PLAYER to
                 listOf(

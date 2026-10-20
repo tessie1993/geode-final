@@ -2,7 +2,6 @@ package dev.geode.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -108,16 +107,7 @@ fun AppRoot() {
             visualizerView.onPause()
         }
     }
-    val themePack by settingsViewModel.theme.collectAsStateWithLifecycle()
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
-    val systemDark = isSystemInDarkTheme()
-    val effectiveTheme =
-        if (gui.followSystemDark && !systemDark) {
-            dev.geode.ui.theme.ThemePackCatalog.all
-                .firstOrNull { it.isLight } ?: themePack
-        } else {
-            themePack
-        }
     val appState = rememberGeodeAppState()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -145,7 +135,7 @@ fun AppRoot() {
     VisualizerEngineBindings(viewModel, visualizerView)
     androidx.activity.compose.BackHandler(enabled = !appState.onPlayer) { appState.resetToPlayer() }
     CrystalMaterialTheme(
-        pack = effectiveTheme,
+        pack = dev.geode.ui.theme.ThemePackCatalog.lapisLazuli,
         gui = gui,
     ) {
         val miniPlayer: @Composable () -> Unit = {
