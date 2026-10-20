@@ -22,7 +22,6 @@
     <ID>LoopWithTooManyJumpStatements:FeatureTimeline.kt$FeatureTimeline$for</ID>
     <ID>LoopWithTooManyJumpStatements:Lfo.kt$LfoEngine.Companion$for</ID>
     <ID>LoopWithTooManyJumpStatements:Lyrics.kt$LyricsLoader$for</ID>
-    <ID>LoopWithTooManyJumpStatements:PerformanceTake.kt$PerformanceTake.Timeline$while</ID>
     <ID>LoopWithTooManyJumpStatements:RenderAccumulatorWrapTest.kt$RenderAccumulatorWrapTest$for</ID>
     <ID>LoopWithTooManyJumpStatements:ShaderSamplerPrecisionTest.kt$ShaderSamplerPrecisionTest$for</ID>
     <ID>MatchingDeclarationName:PaletteMaker.kt$SavedPalettes</ID>
@@ -72,8 +71,6 @@
     <ID>ReturnCount:NowPlayingBridge.kt$NowPlayingBridge$fun current(): External?</ID>
     <ID>ReturnCount:PcmRingBuffer.kt$PcmRingBuffer$private fun snapshotFrom( src: FloatArray, out: FloatArray, ): Boolean</ID>
     <ID>ReturnCount:PerformanceMonitor.kt$PerformanceMonitor$fun onFrame(dtSeconds: Float): Int</ID>
-    <ID>ReturnCount:PerformanceTake.kt$PerformanceTake.Recorder$fun append( atMs: Long, sceneId: String, params: SceneParams, milkPath: String?, ): Boolean</ID>
-    <ID>ReturnCount:PerformanceTake.kt$PerformanceTake.Timeline$fun stateAt(ms: Long): State?</ID>
     <ID>ReturnCount:PlaybackCapture.kt$PlaybackCapture$@RequiresApi(Build.VERSION_CODES.Q) @Synchronized fun start( projection: MediaProjection, onSampleRate: (Int) -&gt; Unit = {}, ): CaptureFailure?</ID>
     <ID>ReturnCount:PlaybackCaptureService.kt$PlaybackCaptureService$override fun onStartCommand( intent: Intent?, flags: Int, startId: Int, ): Int</ID>
     <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun contextFor( uri: TrackId, browse: List&lt;QueueTrack&gt;, deviceTracks: List&lt;DeviceTrack&gt;, libraryTracks: List&lt;LibraryTrack&gt;, ): List&lt;QueueTrack&gt;</ID>
@@ -88,7 +85,6 @@
     <ID>ReturnCount:RippleSim.kt$RippleSim$fun resize( w: Int, h: Int, ): Boolean</ID>
     <ID>ReturnCount:StereoField.kt$StereoField$fun width( mid: FloatArray, side: FloatArray, count: Int = minOf(mid.size, side.size), ): Float</ID>
     <ID>ReturnCount:StudioExporter.kt$StudioExporter$suspend fun export( source: Uri, sourceDurationMs: Long, edit: ClipEdit, displayName: String, onProgress: (Float) -&gt; Unit, ): Result</ID>
-    <ID>ReturnCount:TakeStore.kt$TakeStore$fun rename( from: String, to: String, ): Boolean</ID>
     <ID>ReturnCount:TextureStore.kt$TextureStore$private fun importOne(uri: Uri): TextureImportResult</ID>
     <ID>ReturnCount:TrackLibrary.kt$TrackLibrary$private fun readLocked(): List&lt;LibraryTrack&gt;?</ID>
     <ID>ReturnCount:VisualizerRenderer.kt$VisualizerRenderer$private fun createScene( id: String, particleShaders: EmergenceScene.Shaders, quadVert: String, export: Boolean = false, ): Scene</ID>

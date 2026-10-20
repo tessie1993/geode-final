@@ -604,7 +604,7 @@ private class VisualizerTouch(
     ) {
         if (transform && TouchTransform.isTransform(zoomChange, rotationChange)) {
             // Pinch and twist drive the real Zoom and Rotation params rather than a
-            // view-only transform, which is why a gesture survives into presets, takes and
+            // view-only transform, which is why a gesture survives into presets and
             // exports instead of evaporating when the screen is left.
             onTransform(zoomChange, rotationChange)
         } else if (smear) {

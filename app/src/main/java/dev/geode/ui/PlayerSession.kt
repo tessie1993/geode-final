@@ -18,7 +18,6 @@ import dev.geode.data.EditorProjectStore
 import dev.geode.data.FavouritesRepository
 import dev.geode.data.FilePresetRepository
 import dev.geode.data.FileSessionRepository
-import dev.geode.data.FileTakeRepository
 import dev.geode.data.FileTemplateRepository
 import dev.geode.data.LfoStore
 import dev.geode.data.MilkPackImporter
@@ -37,7 +36,6 @@ import dev.geode.data.SharedPrefsPlayerPrefsRepository
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistMatcher
 import dev.geode.data.TagWriteOutcome
-import dev.geode.data.TakeStore
 import dev.geode.data.TemplateId
 import dev.geode.data.TemplateImport
 import dev.geode.data.TemplateLook
@@ -447,32 +445,6 @@ class PlayerSession internal constructor(
     val historyTick: StateFlow<Int> get() = listening.historyTick
 
     val favourites: StateFlow<Set<TrackId>> get() = listening.favourites
-
-    private val takeController: TakeController =
-        TakeController(
-            FileTakeRepository(TakeStore(application)),
-            scope,
-            storeScope,
-            object : TakeController.Host {
-                override val vizState: StateFlow<VizUiState> get() = _vizState
-                override val activeMilkPath: String? get() = vizStateStore.activeMilkPath.value
-                override val trackUri: String? get() = currentUri?.toString()
-
-                override val trackPositionMs: Long
-                    get() = runCatching { player.currentPosition }.getOrDefault(0L)
-
-                override fun selectScene(sceneId: String) = visual.selectScene(SceneId(sceneId))
-
-                override fun setSceneParams(params: SceneParams) = visual.setSceneParams(params)
-
-                override fun applyMilk(
-                    path: String,
-                    sceneId: String,
-                ) = visual.emitApply(VizApply(milkPath = path, sceneId = SceneId(sceneId)))
-            },
-        )
-
-    val takeState: StateFlow<TakeUiState> get() = takeController.state
 
     private val _presetLocked = MutableStateFlow(false)
     val presetLocked: StateFlow<Boolean> = _presetLocked
@@ -932,23 +904,6 @@ class PlayerSession internal constructor(
         _playbackNotice.value = null
     }
 
-    fun startRecording() = takeController.startRecording()
-
-    fun stopRecording(name: String? = null) = takeController.stopRecording(name)
-
-    fun playTake(name: String) = takeController.playTake(name)
-
-    fun stopReplay() = takeController.stopReplay()
-
-    fun deleteTake(name: String) = takeController.deleteTake(name)
-
-    fun renameTake(
-        from: String,
-        to: String,
-    ) = takeController.renameTake(from, to)
-
-    fun setExportTake(name: String?) = takeController.setExportTake(name)
-
     fun selectScene(sceneId: SceneId) = visual.selectScene(sceneId)
 
     fun setReactivity(
@@ -1051,7 +1006,6 @@ class PlayerSession internal constructor(
                 ): FeatureTimeline = analysis.analyzeCached(uri, onProgress)
 
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
-                override val sceneId: SceneId get() = _vizState.value.sceneId
                 override val sceneParams get() = _vizState.value.params
 
                 override fun lfoConfigs() = modulation.lfos.value
@@ -1059,8 +1013,6 @@ class PlayerSession internal constructor(
                 override fun adsrConfigs() = modulation.adsrs.value
 
                 override fun keyframes() = editor.state.value.project.keyframes
-
-                override suspend fun loadExportTake() = takeController.loadExportTake()
 
                 override fun publishSections(
                     uri: Uri,
@@ -1100,9 +1052,8 @@ class PlayerSession internal constructor(
         destination: Uri? = null,
         loopSafe: Boolean = false,
         range: ExportRange? = null,
-        sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
         codec: ExportCodec = ExportCodec.H264,
-    ) = exportController.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
+    ) = exportController.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, codec)
 
     fun cancelExport() = exportController.cancelExport()
 
@@ -1211,7 +1162,6 @@ class PlayerSession internal constructor(
         // the capture controller needs before it may call back into this session.
         captureController.start()
         musicLibrary.refreshNumericTitles()
-        takeController.refresh()
         presetLibrary.refreshInitial()
         templateLibrary.refreshInitial()
         musicLibrary.refresh()

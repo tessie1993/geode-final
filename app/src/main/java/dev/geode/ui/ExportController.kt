@@ -5,10 +5,8 @@ import android.net.Uri
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.data.ExportPrefsStore
 import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.PerformanceTake
 import dev.geode.editor.AnimatableParams
 import dev.geode.editor.KeyframeSheet
-import dev.geode.engine.types.SceneId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -57,17 +55,6 @@ data class LoopUiState(
     val phase: ExportPhase = ExportPhase.Idle,
 )
 
-internal fun exportSceneIdFor(
-    take: PerformanceTake.Timeline?,
-    liveSceneId: SceneId,
-): SceneId =
-    take
-        ?.stateAt(0L)
-        ?.sceneId
-        ?.takeIf { it.isNotEmpty() }
-        ?.let(::SceneId)
-        ?: liveSceneId
-
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 internal class ExportController(
     private val application: Application,
@@ -86,7 +73,6 @@ internal class ExportController(
 
         val guiPrefs: GuiPrefs
 
-        val sceneId: SceneId
         val sceneParams: SceneParams
 
         fun lfoConfigs(): List<dev.geode.render.LfoConfig>
@@ -95,8 +81,6 @@ internal class ExportController(
 
         /** The open editor project's tracks; programme-level scene tracks animate the export. */
         fun keyframes(): KeyframeSheet
-
-        suspend fun loadExportTake(): PerformanceTake.Timeline?
 
         fun publishSections(
             uri: Uri,
@@ -141,7 +125,6 @@ internal class ExportController(
         destination: Uri? = null,
         loopSafe: Boolean = false,
         range: ExportRange? = null,
-        sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
         codec: ExportCodec = ExportCodec.H264,
     ) {
         val uri = host.exportUri ?: return
@@ -171,7 +154,6 @@ internal class ExportController(
                         )
                     host.publishSections(uri, t)
                     val name = "geode_${System.currentTimeMillis()}.mp4"
-                    val exportTake = host.loadExportTake()
                     val sheet = host.keyframes()
                     val animated =
                         sheet.tracks.any {
@@ -184,26 +166,16 @@ internal class ExportController(
                         }
                     val clipStartMs = range?.startMs ?: 0L
                     val paramsAt: ((Long) -> SceneParams)? =
-                        if (exportTake == null && !animated) {
+                        if (animated) {
+                            { ms: Long -> AnimatableParams.applyToScene(host.sceneParams, sheet.valuesAt(clipStartMs + ms)) }
+                        } else {
                             null
-                        } else {
-                            { ms: Long ->
-                                val base =
-                                    exportTake?.stateAt(clipStartMs + ms - exportTake.trackOffsetMs)?.params ?: host.sceneParams
-                                if (animated) AnimatableParams.applyToScene(base, sheet.valuesAt(clipStartMs + ms)) else base
-                            }
-                        }
-                    val factory =
-                        if (exportTake != null && sceneFactoryFor != null) {
-                            sceneFactoryFor(exportSceneIdFor(exportTake, host.sceneId))
-                        } else {
-                            sceneFactory
                         }
                     val result =
                         exporter.export(
                             audioUri = uri,
                             timeline = t,
-                            sceneFactory = factory,
+                            sceneFactory = sceneFactory,
                             aspect = aspect,
                             fileName = name,
                             sceneParams = host.sceneParams,

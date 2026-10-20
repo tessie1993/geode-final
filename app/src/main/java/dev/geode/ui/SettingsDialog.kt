@@ -47,9 +47,6 @@ import dev.geode.export.LoudnessTarget
 fun SettingsDialog(
     export: ExportUiState,
     hasMedia: Boolean,
-    takes: List<String>,
-    selectedTake: String?,
-    onSelectTake: (String?) -> Unit,
     bpm: Float,
     trackDuration: Millis,
     onStart: (ExportAspect, Int, Boolean, ExportRange?, ExportCodec) -> Unit,
@@ -277,24 +274,6 @@ fun SettingsDialog(
                             },
                             style = MaterialTheme.typography.labelSmall,
                         )
-                        if (takes.isNotEmpty()) {
-                            Text(stringResource(R.string.export_group_performance), style = MaterialTheme.typography.labelMedium)
-                            Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                QualityChip(stringResource(R.string.export_live_settings), selectedTake == null) { onSelectTake(null) }
-                                takes.forEach { name ->
-                                    QualityChip(name, selectedTake == name) { onSelectTake(name) }
-                                }
-                            }
-                            if (selectedTake != null) {
-                                Text(
-                                    stringResource(R.string.export_take_explainer),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
-                        }
                         if (quality == ExportQuality.UHD4K) {
                             Text(
                                 stringResource(R.string.export_4k_fallback),

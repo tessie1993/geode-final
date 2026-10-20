@@ -24,7 +24,6 @@ import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
 import dev.geode.export.TimeOfDayDrift
-import dev.geode.render.SceneFactory
 import dev.geode.render.VisualizerView
 
 private data class PendingExport(
@@ -202,13 +201,6 @@ fun ExportHost(
             else -> ExportEntryMode.Menu
         }
 
-    val sceneFactoryFor: (SceneId, SceneId) -> SceneFactory =
-        { requested, fallback ->
-            val renderer = visualizerView.visualizerRenderer
-            renderer.exportSceneFactory(
-                if (requested in renderer.availableSceneIds()) requested else fallback,
-            )
-        }
     val destinationPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { dest ->
             val req = pendingExport
@@ -221,7 +213,6 @@ fun ExportHost(
                     destination = dest,
                     loopSafe = req.loopSafe,
                     range = req.range,
-                    sceneFactoryFor = { id -> sceneFactoryFor(id, req.sceneId) },
                     codec = req.codec,
                 )
             }
@@ -244,7 +235,6 @@ fun ExportHost(
                 )
             }
         }
-    val takes by studioViewModel.takeState.collectAsStateWithLifecycle()
     when (mode) {
         ExportEntryMode.Menu ->
             AlertDialog(
@@ -298,9 +288,6 @@ fun ExportHost(
             SettingsDialog(
                 export = export,
                 hasMedia = state.hasMedia,
-                takes = takes.takes.map { it.name },
-                selectedTake = takes.exportTake,
-                onSelectTake = studioViewModel::setExportTake,
                 bpm = viz.bpm,
                 trackDuration = state.duration,
                 onStart = { aspect, fps, loopSafe, range, codec ->
@@ -330,7 +317,6 @@ fun ExportHost(
                             visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
                             loopSafe = loopSafe,
                             range = range,
-                            sceneFactoryFor = { id -> sceneFactoryFor(id, viz.sceneId) },
                             codec = codec,
                         )
                     }

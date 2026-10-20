@@ -18,9 +18,4 @@
     <exclude
         domain="file"
         path="milk/textures" />
-    <!-- Takes are megabytes of JSON per long performance: same quota
-         arithmetic as the textures above. -->
-    <exclude
-        domain="file"
-        path="takes" />
 </full-backup-content>

@@ -264,9 +264,8 @@ class PlayerViewModel
             destination: Uri? = null,
             loopSafe: Boolean = false,
             range: ExportRange? = null,
-            sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
             codec: ExportCodec = ExportCodec.H264,
-        ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
+        ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, codec)
 
         fun startLoopRender(
             aspect: ExportAspect,

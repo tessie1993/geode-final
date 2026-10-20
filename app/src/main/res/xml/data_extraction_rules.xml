@@ -20,11 +20,6 @@
         <exclude
             domain="file"
             path="milk/textures" />
-        <!-- Takes are megabytes of JSON per long performance: same quota
-             arithmetic as the textures above. -->
-        <exclude
-            domain="file"
-            path="takes" />
     </cloud-backup>
     <!-- A direct phone-to-phone copy has no cloud quota, so the excludes above
          are not repeated here: carrying the analysis cache and the imported
