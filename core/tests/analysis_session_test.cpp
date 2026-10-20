@@ -77,3 +77,78 @@ TEST(AnalysisSession, PullingIsTheSameWhateverSizeTheAudioArrivesIn) {
         EXPECT_EQ(a[i].kick, b[i].kick) << "hop " << i;
     }
 }
+
+namespace {
+
+// The strength each sequenced event fires with on a hop, as the frame's one-hop fields report it; 0 when it
+// does not fire. A beat with no strength of its own counts as a full one.
+float firedOn(const GeodeFeatureFrame& f, int event) {
+    switch (event) {
+        case GEODE_EVENT_BEAT: return f.beat > 0.0f ? (f.beatStrength > 0.0f ? f.beatStrength : 1.0f) : 0.0f;
+        case GEODE_EVENT_TRANSIENT: return f.transient;
+        case GEODE_EVENT_KICK: return f.kick;
+        case GEODE_EVENT_SNARE: return f.snare;
+        case GEODE_EVENT_HAT: return f.hat;
+        case GEODE_EVENT_DOWNBEAT: return f.downbeat;
+        case GEODE_EVENT_SECTION_BOUNDARY: return f.sectionBoundary;
+        case GEODE_EVENT_DROP: return f.drop;
+        case GEODE_EVENT_ARRIVAL: return f.arrival;
+        default: return 0.0f;
+    }
+}
+
+std::vector<GeodeFeatureFrame> clickTrack() {
+    AnalysisSession session(kSampleRate, kFftSize, kHopRateHz);
+    session.setTuning(3.0f, 60.0f, 0.02f, 0.15f);
+    // Six seconds with a click every quarter second, far enough apart for every picker's refractory window.
+    const auto pcm = noiseWithClicks(static_cast<size_t>(kSampleRate) * 6, static_cast<size_t>(kSampleRate) / 4);
+    return analyse(session, pcm, 512);
+}
+
+}  // namespace
+
+TEST(AnalysisSession, EachEventsSequenceStepsOnceOnEveryHopItFiresOn) {
+    const auto hops = clickTrack();
+    ASSERT_FALSE(hops.empty());
+
+    for (int e = 0; e < GEODE_EVENT_COUNT; e++) {
+        float seq = 0.0f;
+        float strength = 0.0f;
+        for (size_t i = 0; i < hops.size(); i++) {
+            const float fired = firedOn(hops[i], e);
+            if (fired > 0.0f) {
+                seq += 1.0f;
+                strength = fired;
+            }
+            ASSERT_EQ(hops[i].events[e].seq, seq) << "event " << e << ", hop " << i;
+            ASSERT_EQ(hops[i].events[e].strength, strength) << "event " << e << ", hop " << i;
+        }
+    }
+    EXPECT_GT(hops.back().events[GEODE_EVENT_TRANSIENT].seq, 0.0f) << "the clicks should be heard as transients";
+}
+
+TEST(AnalysisSession, AReaderLookingAt30_60Or120FpsSeesEveryEventExactlyOnce) {
+    const auto hops = clickTrack();
+    const double seconds = static_cast<double>(kFftSize + (hops.size() - 1) * kHopSamples) / kSampleRate;
+
+    for (const int fps : {30, 60, 120}) {
+        for (int e = 0; e < GEODE_EVENT_COUNT; e++) {
+            float lastSeen = 0.0f;
+            int seen = 0;
+            // One display frame past the end, so the last hop is looked at too.
+            for (int tick = 0; tick <= static_cast<int>(seconds * fps) + 1; tick++) {
+                // The newest hop whose whole window has arrived by this display frame.
+                const auto heard = static_cast<size_t>(static_cast<double>(tick) / fps * kSampleRate);
+                if (heard < static_cast<size_t>(kFftSize)) continue;
+                const size_t newest = std::min((heard - kFftSize) / kHopSamples, hops.size() - 1);
+                const GeodeEvent& event = hops[newest].events[e];
+                if (event.seq != lastSeen && event.seq != 0.0f) {
+                    seen++;
+                    EXPECT_GT(event.strength, 0.0f) << "event " << e << " at " << fps << " fps";
+                }
+                lastSeen = event.seq;
+            }
+            EXPECT_EQ(static_cast<float>(seen), hops.back().events[e].seq) << "event " << e << " at " << fps << " fps";
+        }
+    }
+}
