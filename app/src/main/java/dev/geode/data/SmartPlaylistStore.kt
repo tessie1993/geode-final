@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.DeviceTrack
 import org.json.JSONArray
 import org.json.JSONObject
@@ -53,8 +54,8 @@ object SmartPlaylistMatcher {
     fun resolve(
         playlist: SmartPlaylist,
         tracks: List<DeviceTrack>,
-        playCountOf: (String) -> Int,
-        favourites: Set<String>,
+        playCountOf: (TrackId) -> Int,
+        favourites: Set<TrackId>,
         nowMs: Long = System.currentTimeMillis(),
     ): List<DeviceTrack> {
         val rules = playlist.rules.filter { it.value.isNotBlank() || it.field.isFlag }
@@ -73,8 +74,8 @@ object SmartPlaylistMatcher {
     private fun matches(
         rule: SmartRule,
         track: DeviceTrack,
-        playCountOf: (String) -> Int,
-        favourites: Set<String>,
+        playCountOf: (TrackId) -> Int,
+        favourites: Set<TrackId>,
         nowMs: Long,
     ): Boolean =
         when (rule.field) {

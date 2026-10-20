@@ -12,6 +12,9 @@ import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistStore
 import dev.geode.data.TagWriteOutcome
 import dev.geode.data.TrackTagEdit
+import dev.geode.engine.types.TrackId
+import dev.geode.playback.toTrackId
+import dev.geode.playback.toUri
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class DeviceTrack(
-    val uri: String,
+    val uri: TrackId,
     val title: String,
     val artist: String,
     val album: String,
@@ -71,7 +74,7 @@ internal class MusicLibraryController(
     private val _library = MutableStateFlow(LibraryState())
     val library: StateFlow<LibraryState> = _library
 
-    val trackOverrides: StateFlow<Map<String, LibraryTrack>> =
+    val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> =
         _library
             .map { st -> st.tracks.associateBy { it.uri } }
             .stateIn(
@@ -182,11 +185,11 @@ internal class MusicLibraryController(
         }.getOrNull() ?: ("" to 0L)
 
     private fun libraryTrackFor(
-        uriStr: String,
+        uri: TrackId,
         m: FileMeta,
     ): LibraryTrack =
         LibraryTrack(
-            uri = uriStr,
+            uri = uri,
             title = m.title,
             artist = m.artist,
             album = m.album,
@@ -215,21 +218,21 @@ internal class MusicLibraryController(
                             android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                         )
                     }
-                    libraryTrackFor(uri.toString(), metadataFor(uri))
+                    libraryTrackFor(uri.toTrackId(), metadataFor(uri))
                 }
             trackLibrary.addAll(tracks)?.let { merged -> _library.update { it.copy(tracks = merged) } }
         }
     }
 
-    fun trackOverride(uri: String): LibraryTrack? = _library.value.tracks.firstOrNull { it.uri == uri }
+    fun trackOverride(uri: TrackId): LibraryTrack? = _library.value.tracks.firstOrNull { it.uri == uri }
 
-    suspend fun trackInfoFor(uriStr: String): LibraryTrack =
-        trackOverride(uriStr) ?: withContext(Dispatchers.IO) {
-            libraryTrackFor(uriStr, metadataFor(Uri.parse(uriStr)))
+    suspend fun trackInfoFor(uri: TrackId): LibraryTrack =
+        trackOverride(uri) ?: withContext(Dispatchers.IO) {
+            libraryTrackFor(uri, metadataFor(uri.toUri()))
         }
 
     fun saveTrackInfo(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -246,7 +249,7 @@ internal class MusicLibraryController(
 
     /** Writes the edit into the audio file itself, keeping its album artist; see [TagWriteOutcome] for the result. */
     suspend fun writeTrackInfo(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -256,7 +259,7 @@ internal class MusicLibraryController(
         comment: String,
     ): TagWriteOutcome =
         withContext(Dispatchers.IO) {
-            val target = Uri.parse(uri)
+            val target = uri.toUri()
             val resolver = application.contentResolver
             val existing = NativeTags.read(resolver, target)
             val edit =
@@ -278,7 +281,7 @@ internal class MusicLibraryController(
         timeline: dev.geode.analysis.FeatureTimeline,
     ) {
         trackLibrary
-            .updateAnalysis(uri.toString(), metadataFor(uri).title, timeline.durationMs, timeline.bpm, timeline.key)
+            .updateAnalysis(uri.toTrackId(), metadataFor(uri).title, timeline.durationMs, timeline.bpm, timeline.key)
             ?.let { merged -> _library.update { it.copy(tracks = merged) } }
     }
 
@@ -291,7 +294,7 @@ internal class MusicLibraryController(
             var latest: List<LibraryTrack>? = null
             for (t in bad) {
                 runCatching {
-                    val (title, artist) = metadataFor(Uri.parse(t.uri))
+                    val (title, artist) = metadataFor(t.uri.toUri())
                     if (title != t.title || artist != t.artist) {
                         trackLibrary.updateMetadata(t.uri, title, artist)?.let { latest = it }
                     }
@@ -369,7 +372,7 @@ internal class MusicLibraryController(
                             f.type?.startsWith("audio/") == true ||
                                 name.substringAfterLast('.', "").lowercase() in AUDIO_EXTS
                         if (isAudio) {
-                            found += libraryTrackFor(f.uri.toString(), metadataFor(f.uri))
+                            found += libraryTrackFor(f.uri.toTrackId(), metadataFor(f.uri))
                         }
                     }
                 }
@@ -415,7 +418,7 @@ internal class MusicLibraryController(
 
     fun addTrackToPlaylist(
         playlist: String,
-        uri: String,
+        uri: TrackId,
     ) {
         musicPlaylists.addTrack(playlist, uri)
         _library.update { it.copy(playlists = musicPlaylists.list()) }
@@ -423,7 +426,7 @@ internal class MusicLibraryController(
 
     fun removeTrackFromPlaylist(
         playlist: String,
-        uri: String,
+        uri: TrackId,
     ) {
         musicPlaylists.removeTrack(playlist, uri)
         _library.update { it.copy(playlists = musicPlaylists.list()) }
@@ -462,10 +465,10 @@ internal class MusicLibraryController(
                     val urisByFileName =
                         _library.value.tracks
                             .filter { it.fileName.isNotBlank() }
-                            .groupBy({ it.fileName.lowercase() }, { it.uri })
+                            .groupBy({ it.fileName.lowercase() }, { it.uri.value })
                     val resolution = PlaylistFormats.resolve(parsed.entries, urisByFileName)
                     val name = uniquePlaylistName(parsed.name.ifBlank { fileName.ifBlank { "Playlist" } })
-                    musicPlaylists.save(MusicPlaylist(name, resolution.uris))
+                    musicPlaylists.save(MusicPlaylist(name, resolution.uris.map(::TrackId)))
                     withContext(Dispatchers.Main) { _library.update { it.copy(playlists = musicPlaylists.list()) } }
                     PlaylistImportResult.Imported(
                         name = name,

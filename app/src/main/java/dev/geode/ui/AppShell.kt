@@ -62,6 +62,7 @@ import dev.geode.R
 import dev.geode.analysis.SearchMatcher
 import dev.geode.data.BootAnimationStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.engine.types.TrackId
 import dev.geode.render.VisualizerView
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
@@ -494,7 +495,7 @@ fun SettingsScreen(
 }
 
 private data class SearchTrackRow(
-    val uri: String,
+    val uri: TrackId,
     val title: String,
     val subtitle: String,
     val fields: List<String>,
@@ -597,7 +598,7 @@ fun SearchScreen(
                                 Modifier.padding(top = 8.dp),
                             )
                         }
-                        items(trackResults, key = { "t:${it.uri}" }) { t ->
+                        items(trackResults, key = { "t:${it.uri.value}" }) { t ->
                             Row(
                                 Modifier
                                     .fillMaxWidth()

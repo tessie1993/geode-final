@@ -1,7 +1,6 @@
 package dev.geode.ui
 
 import android.Manifest
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -63,6 +62,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.MusicPlaylist
+import dev.geode.engine.types.TrackId
+import dev.geode.playback.toUri
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.launch
@@ -178,7 +179,7 @@ private fun TrackList(
 ) {
     val queue = remember(tracks) { tracks.map(PlaybackQueue::queueTrack) }
     LazyColumn(Modifier.fillMaxSize()) {
-        items(tracks, key = { it.uri }) { t -> TrackRow(t, viewModel, queue = queue) }
+        items(tracks, key = { it.uri.value }) { t -> TrackRow(t, viewModel, queue = queue) }
         if (tracks.isEmpty()) {
             // An empty library and an empty result set are different problems, and telling
             // someone "no music found" mid-search would send them looking for the wrong fix.
@@ -256,7 +257,7 @@ private fun TrackRow(
                 menu = false
             })
             DropdownMenuItem(text = { Text(stringResource(R.string.action_add_to_library_list)) }, onClick = {
-                libraryViewModel.importTracks(listOf(Uri.parse(t.uri)))
+                libraryViewModel.importTracks(listOf(t.uri.toUri()))
                 menu = false
             })
             DropdownMenuItem(text = { Text(stringResource(R.string.action_edit_track_info)) }, onClick = {
@@ -275,7 +276,7 @@ private fun TrackRow(
 
 @Composable
 private fun AddToPlaylistDialog(
-    uri: String,
+    uri: TrackId,
     viewModel: LibraryViewModel,
     onDismiss: () -> Unit,
 ) {
@@ -350,7 +351,7 @@ private fun GroupList(
                 }) { Text(stringResource(R.string.action_shuffle)) }
             }
             LazyColumn(Modifier.fillMaxSize()) {
-                items(groups.getValue(sel), key = { it.uri }) { t ->
+                items(groups.getValue(sel), key = { it.uri.value }) { t ->
                     TrackRow(t, viewModel, subtitleOverride = t.album, queue = queue)
                 }
             }

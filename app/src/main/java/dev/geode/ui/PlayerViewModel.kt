@@ -14,6 +14,7 @@ import dev.geode.audio.MicCapture
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.Preset
 import dev.geode.di.PlayerSessionProvider
+import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -60,7 +61,7 @@ class PlayerViewModel
 
         val historyTick: StateFlow<Int> get() = session.historyTick
 
-        val favourites: StateFlow<Set<String>> get() = session.favourites
+        val favourites: StateFlow<Set<TrackId>> get() = session.favourites
 
         val artPaletteNote: StateFlow<String?> get() = session.artPaletteNote
 
@@ -167,9 +168,9 @@ class PlayerViewModel
 
         fun recentlyPlayed() = session.recentlyPlayed()
 
-        fun currentTrackUri(): String? = session.currentTrackUri()
+        fun currentTrackUri(): TrackId? = session.currentTrackUri()
 
-        fun toggleFavourite(uri: String? = null) = session.toggleFavourite(uri)
+        fun toggleFavourite(uri: TrackId? = null) = session.toggleFavourite(uri)
 
         fun cycleAbLoop() = session.cycleAbLoop()
 
@@ -188,19 +189,19 @@ class PlayerViewModel
 
         fun cycleAutoMode() = session.cycleAutoMode()
 
-        fun playNext(uri: String) = session.playNext(uri)
+        fun playNext(uri: TrackId) = session.playNext(uri)
 
         fun playFromSearch(query: String) = session.playFromSearch(query)
 
-        fun enqueue(uri: String) = session.enqueue(uri)
+        fun enqueue(uri: TrackId) = session.enqueue(uri)
 
         fun shuffleAllHistory() = session.shuffleAllHistory()
 
-        fun playTrack(uri: String) = session.playTrack(uri)
+        fun playTrack(uri: TrackId) = session.playTrack(uri)
 
         fun playFrom(
             tracks: List<QueueTrack>,
-            startUri: String,
+            startUri: TrackId,
         ) = session.playFrom(tracks, startUri)
 
         fun playAll(

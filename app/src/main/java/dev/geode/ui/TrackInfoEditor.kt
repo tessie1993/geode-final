@@ -1,7 +1,6 @@
 package dev.geode.ui
 
 import android.app.Activity
-import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,6 +35,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.data.TagWriteOutcome
+import dev.geode.engine.types.TrackId
+import dev.geode.playback.toUri
 import kotlinx.coroutines.launch
 
 private val COMMON_GENRES =
@@ -43,7 +44,7 @@ private val COMMON_GENRES =
 
 /** The saved fields, kept aside so a granted [MediaStore.createWriteRequest] consent can retry the write once. */
 private data class PendingTrackEdit(
-    val uri: String,
+    val uri: TrackId,
     val title: String,
     val artist: String,
     val album: String,
@@ -58,7 +59,7 @@ private suspend fun LibraryViewModel.writeTrackInfo(edit: PendingTrackEdit): Tag
 
 @Composable
 fun TrackInfoEditor(
-    uri: String,
+    uri: TrackId,
     viewModel: LibraryViewModel,
     onDismiss: () -> Unit,
 ) {
@@ -127,7 +128,7 @@ fun TrackInfoEditor(
                 when (viewModel.writeTrackInfo(edit)) {
                     TagWriteOutcome.Written -> {}
                     TagWriteOutcome.NeedsConsent -> {
-                        val parsed = Uri.parse(uri)
+                        val parsed = uri.toUri()
                         val canRequestConsent =
                             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && parsed.authority == MediaStore.AUTHORITY
                         if (canRequestConsent) {

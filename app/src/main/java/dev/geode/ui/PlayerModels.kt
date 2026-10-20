@@ -3,6 +3,7 @@ package dev.geode.ui
 import androidx.media3.common.Player
 import dev.geode.analysis.IntelligenceMode
 import dev.geode.data.Preset
+import dev.geode.engine.types.TrackId
 import dev.geode.render.TransitionStyle
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
@@ -68,7 +69,7 @@ data class MilkFile(
 )
 
 data class QueueTrack(
-    val uri: String,
+    val uri: TrackId,
     val title: String = "",
     val artist: String = "",
 )

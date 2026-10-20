@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -11,7 +12,7 @@ class SessionStore(
     private val file = File(context.filesDir, FILE_NAME)
 
     data class SavedTrack(
-        val uri: String,
+        val uri: TrackId,
         val title: String,
         val artist: String,
     )
@@ -41,7 +42,7 @@ class SessionStore(
         for (t in session.tracks) {
             items.put(
                 JSONObject()
-                    .put(KEY_URI, t.uri)
+                    .put(KEY_URI, t.uri.value)
                     .put(KEY_TITLE, t.title)
                     .put(KEY_ARTIST, t.artist),
             )
@@ -76,7 +77,7 @@ class SessionStore(
             if (uri.isBlank()) continue
             tracks +=
                 SavedTrack(
-                    uri = uri,
+                    uri = TrackId(uri),
                     title = item.optString(KEY_TITLE).orEmpty(),
                     artist = item.optString(KEY_ARTIST).orEmpty(),
                 )

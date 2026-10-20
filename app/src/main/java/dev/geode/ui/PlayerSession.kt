@@ -44,6 +44,7 @@ import dev.geode.data.TemplateLook
 import dev.geode.data.TemplateRepository
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
+import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -53,6 +54,7 @@ import dev.geode.playback.BitPerfectOutput
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackErrors
 import dev.geode.playback.PlaybackService
+import dev.geode.playback.toTrackId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.LfoConfig
 import dev.geode.render.SceneFactory
@@ -247,7 +249,7 @@ class PlayerSession internal constructor(
 
     val library: StateFlow<LibraryState> get() = musicLibrary.library
 
-    val trackOverrides: StateFlow<Map<String, LibraryTrack>> get() = musicLibrary.trackOverrides
+    val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> get() = musicLibrary.trackOverrides
 
     val userDataLoaded: StateFlow<Boolean> get() = container.userData.loaded
 
@@ -439,7 +441,7 @@ class PlayerSession internal constructor(
 
     val historyTick: StateFlow<Int> get() = listening.historyTick
 
-    val favourites: StateFlow<Set<String>> get() = listening.favourites
+    val favourites: StateFlow<Set<TrackId>> get() = listening.favourites
 
     private val takeController: TakeController =
         TakeController(
@@ -497,7 +499,7 @@ class PlayerSession internal constructor(
     fun applyArtworkPalette() = trackColor.applyArtworkPalette()
 
     fun currentTrackKey(): String? {
-        val uri = currentUri?.toString() ?: return null
+        val uri = currentUri?.toTrackId() ?: return null
         return library.value.tracks
             .firstOrNull { it.uri == uri }
             ?.key
@@ -675,12 +677,12 @@ class PlayerSession internal constructor(
 
     fun importTracks(uris: List<Uri>) = musicLibrary.importTracks(uris)
 
-    fun trackOverride(uri: String): LibraryTrack? = musicLibrary.trackOverride(uri)
+    fun trackOverride(uri: TrackId): LibraryTrack? = musicLibrary.trackOverride(uri)
 
-    suspend fun trackInfoFor(uriStr: String): LibraryTrack = musicLibrary.trackInfoFor(uriStr)
+    suspend fun trackInfoFor(uri: TrackId): LibraryTrack = musicLibrary.trackInfoFor(uri)
 
     fun saveTrackInfo(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -691,7 +693,7 @@ class PlayerSession internal constructor(
     ) = musicLibrary.saveTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
 
     suspend fun writeTrackInfo(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -726,12 +728,12 @@ class PlayerSession internal constructor(
 
     fun addTrackToPlaylist(
         playlist: String,
-        uri: String,
+        uri: TrackId,
     ) = musicLibrary.addTrackToPlaylist(playlist, uri)
 
     fun removeTrackFromPlaylist(
         playlist: String,
-        uri: String,
+        uri: TrackId,
     ) = musicLibrary.removeTrackFromPlaylist(playlist, uri)
 
     fun playPlaylist(
@@ -763,10 +765,10 @@ class PlayerSession internal constructor(
         if (tracks.isNotEmpty()) playFrom(tracks, tracks.first().uri)
     }
 
-    fun currentTrackUri(): String? = currentUri?.toString()
+    fun currentTrackUri(): TrackId? = currentUri?.toTrackId()
 
-    fun toggleFavourite(uri: String? = null) {
-        listening.toggleFavourite(uri ?: currentUri?.toString() ?: return)
+    fun toggleFavourite(uri: TrackId? = null) {
+        listening.toggleFavourite(uri ?: currentUri?.toTrackId() ?: return)
     }
 
     val abLoop: StateFlow<AbLoop?> get() = queueController.abLoop
@@ -807,9 +809,9 @@ class PlayerSession internal constructor(
         setSectionStaging(next == 3)
     }
 
-    fun playNext(uri: String) = queueController.playNext(uri)
+    fun playNext(uri: TrackId) = queueController.playNext(uri)
 
-    fun enqueue(uri: String) = queueController.enqueue(uri)
+    fun enqueue(uri: TrackId) = queueController.enqueue(uri)
 
     fun shuffleAllHistory() {
         playAll(listening.recentlyPlayed(100).map { QueueTrack(it.uri, it.title) }, shuffled = true)
@@ -854,7 +856,7 @@ class PlayerSession internal constructor(
             },
         )
 
-    fun playTrack(uri: String) = queueController.playTrack(uri)
+    fun playTrack(uri: TrackId) = queueController.playTrack(uri)
 
     /** Voice search: the library matches for [query] as a queue, or everything when the query is blank. */
     fun playFromSearch(query: String) {
@@ -868,7 +870,7 @@ class PlayerSession internal constructor(
 
     fun playFrom(
         tracks: List<QueueTrack>,
-        startUri: String,
+        startUri: TrackId,
     ) = queueController.playFrom(tracks, startUri)
 
     fun playAll(
@@ -1244,7 +1246,7 @@ class PlayerSession internal constructor(
                                         ?.lastPathSegment
                                         .orEmpty()
                             listening.recordPlay(
-                                u.toString(),
+                                u.toTrackId(),
                                 title,
                                 player.mediaMetadata.artist
                                     ?.toString()

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import dev.geode.R
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.delay
@@ -153,7 +154,7 @@ private fun PlayerHero(
     styleLabel: String,
     micActive: Boolean,
     external: ExternalAudioState,
-    favourites: Set<String>,
+    favourites: Set<TrackId>,
     canResume: Boolean,
     onExpand: () -> Unit,
     onOpenLibrary: () -> Unit,

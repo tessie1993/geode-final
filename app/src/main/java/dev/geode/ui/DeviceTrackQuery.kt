@@ -3,6 +3,7 @@ package dev.geode.ui
 import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
+import dev.geode.playback.toTrackId
 
 /** The music MediaStore already indexes, read the same way for the library screen and the Android Auto tree. */
 object DeviceTrackQuery {
@@ -50,7 +51,7 @@ object DeviceTrackQuery {
                         val path = c.getString(da).orEmpty()
                         out +=
                             DeviceTrack(
-                                uri = uri.toString(),
+                                uri = uri.toTrackId(),
                                 title = c.getString(ti) ?: "Unknown",
                                 artist = c.getString(ar) ?: "Unknown artist",
                                 album = c.getString(al) ?: "Unknown album",

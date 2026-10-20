@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import dev.geode.engine.types.TrackId
 import dev.geode.geodeContainer
 import dev.geode.playback.MediaArtwork
 import kotlinx.coroutines.CoroutineScope
@@ -60,7 +61,7 @@ class WidgetPublisher(
             artJob?.cancel()
             artJob =
                 scope.launch {
-                    val art = uri?.let { MediaArtwork.decodeEmbedded(appContext, it, ART_PX) }
+                    val art = uri?.let { MediaArtwork.decodeEmbedded(appContext, TrackId(it), ART_PX) }
                     val path = WidgetState.writeArt(appContext, art)
                     WidgetState.saveArt(appContext, path)
                     NowPlayingWidget().updateAll(appContext)

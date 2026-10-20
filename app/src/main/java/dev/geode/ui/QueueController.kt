@@ -3,12 +3,14 @@ package dev.geode.ui
 import android.app.Application
 import android.net.Uri
 import android.provider.OpenableColumns
-import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import dev.geode.engine.types.TrackId
 import dev.geode.playback.MediaArtwork
 import dev.geode.playback.QueueOps
+import dev.geode.playback.toTrackId
+import dev.geode.playback.toUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,11 +62,11 @@ internal class QueueController(
     // detect it is stale and skip applying its results.
     private var openGeneration = 0
 
-    fun playTrack(uri: String) = playFrom(PlaybackQueue.contextFor(uri, lastBrowseContext, host.deviceTracks, host.libraryTracks), uri)
+    fun playTrack(uri: TrackId) = playFrom(PlaybackQueue.contextFor(uri, lastBrowseContext, host.deviceTracks, host.libraryTracks), uri)
 
     fun playFrom(
         tracks: List<QueueTrack>,
-        startUri: String,
+        startUri: TrackId,
     ) {
         val window = PlaybackQueue.window(tracks, startUri)
         if (window.tracks.isEmpty()) return
@@ -111,19 +113,19 @@ internal class QueueController(
         if (unresolved.isNotEmpty()) resolveTitlesAsync(unresolved, generation)
     }
 
-    fun playNext(uri: String) {
+    fun playNext(uri: TrackId) {
         val at = QueueOps.insertNextIndex(player.currentMediaItemIndex, player.mediaItemCount)
         player.addMediaItem(at, mediaItemFor(uri.toUri()))
         host.refreshUi()
     }
 
-    fun enqueue(uri: String) {
+    fun enqueue(uri: TrackId) {
         player.addMediaItem(mediaItemFor(uri.toUri()))
         host.refreshUi()
     }
 
     fun mediaItemFor(uri: Uri): MediaItem {
-        val known = host.libraryTracks.firstOrNull { it.uri == uri.toString() }
+        val known = host.libraryTracks.firstOrNull { it.uri == uri.toTrackId() }
         val (t, a) = if (known != null) known.title to known.artist else metadataQuick(uri)
         return mediaItemFor(uri, t, a)
     }
@@ -144,7 +146,7 @@ internal class QueueController(
                     .Builder()
                     .setTitle(title)
                     .setArtist(artist.ifBlank { null })
-                    .setExtras(MediaArtwork.embeddedArtExtras(uri.toString()))
+                    .setExtras(MediaArtwork.embeddedArtExtras(uri.toTrackId()))
                     .build(),
             ).build()
 
@@ -159,7 +161,7 @@ internal class QueueController(
      * [resolveTitlesAsync] patches in the real DISPLAY_NAME off the main thread.
      */
     private fun quickMediaItem(uri: Uri): QuickItem {
-        val known = host.libraryTracks.firstOrNull { it.uri == uri.toString() }
+        val known = host.libraryTracks.firstOrNull { it.uri == uri.toTrackId() }
         return if (known != null) {
             QuickItem(mediaItemFor(uri, known.title, known.artist), unresolved = false)
         } else {
@@ -211,7 +213,7 @@ internal class QueueController(
         return MediaItem
             .Builder()
             .setUri(track.uri.toUri())
-            .setMediaId(track.uri)
+            .setMediaId(track.uri.value)
             .setMediaMetadata(
                 MediaMetadata
                     .Builder()
@@ -249,10 +251,12 @@ internal class QueueController(
                 val item = player.getMediaItemAt(i)
                 QueueTrack(
                     uri =
-                        item.localConfiguration
-                            ?.uri
-                            ?.toString()
-                            .orEmpty(),
+                        TrackId(
+                            item.localConfiguration
+                                ?.uri
+                                ?.toString()
+                                .orEmpty(),
+                        ),
                     title =
                         item.mediaMetadata.title?.toString()
                             ?: item.localConfiguration

@@ -2,12 +2,13 @@ package dev.geode.ui
 
 import android.content.Context
 import dev.geode.data.AtomicWrite
+import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
 data class LibraryTrack(
-    val uri: String,
+    val uri: TrackId,
     val title: String,
     val artist: String = "",
     val durationMs: Long = 0L,
@@ -33,7 +34,7 @@ class TrackLibrary(
     fun addAll(tracks: List<LibraryTrack>): List<LibraryTrack>? = mutate { current -> mergeAdds(current, tracks) }
 
     fun updateAnalysis(
-        uri: String,
+        uri: TrackId,
         title: String,
         durationMs: Long,
         bpm: Float,
@@ -53,7 +54,7 @@ class TrackLibrary(
         }
 
     fun updateMetadata(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
     ): List<LibraryTrack>? =
@@ -63,7 +64,7 @@ class TrackLibrary(
         }
 
     fun updateMetadata(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -73,7 +74,7 @@ class TrackLibrary(
         comment: String,
     ): List<LibraryTrack>? = mutate { upsertInfo(it, uri, title, artist, album, genre, year, trackNo, comment) }
 
-    fun remove(uri: String): List<LibraryTrack>? = mutate { current -> current.filterNot { it.uri == uri } }
+    fun remove(uri: TrackId): List<LibraryTrack>? = mutate { current -> current.filterNot { it.uri == uri } }
 
     private fun mutate(block: (List<LibraryTrack>) -> List<LibraryTrack>): List<LibraryTrack>? {
         synchronized(lock) {
@@ -106,7 +107,7 @@ class TrackLibrary(
             if (t.fileName.isNotBlank() && t.sizeBytes > 0L) {
                 "file:${t.fileName.lowercase()}:${t.sizeBytes}"
             } else {
-                "uri:${t.uri}"
+                "uri:${t.uri.value}"
             }
 
         internal fun mergeAdds(
@@ -139,7 +140,7 @@ class TrackLibrary(
 
         internal fun upsertInfo(
             tracks: List<LibraryTrack>,
-            uri: String,
+            uri: TrackId,
             title: String,
             artist: String,
             album: String,
@@ -180,7 +181,7 @@ class TrackLibrary(
 
         private fun toJson(t: LibraryTrack): JSONObject =
             JSONObject()
-                .put("uri", t.uri)
+                .put("uri", t.uri.value)
                 .put("title", t.title)
                 .put("artist", t.artist)
                 .put("durationMs", t.durationMs)
@@ -197,7 +198,7 @@ class TrackLibrary(
 
         private fun fromJson(o: JSONObject): LibraryTrack =
             LibraryTrack(
-                uri = o.getString("uri"),
+                uri = TrackId(o.getString("uri")),
                 title = o.optString("title", "Track"),
                 artist = o.optString("artist", ""),
                 durationMs = o.optLong("durationMs", 0L),

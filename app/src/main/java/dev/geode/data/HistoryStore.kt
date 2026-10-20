@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -11,13 +12,13 @@ class HistoryStore(
 
     private val lock = Any()
 
-    private val entries = LinkedHashMap<String, Entry>()
+    private val entries = LinkedHashMap<TrackId, Entry>()
 
     @Volatile
     private var readable = true
 
     data class Entry(
-        val uri: String,
+        val uri: TrackId,
         var lastPlayedMs: Long,
         var playCount: Int,
         var title: String,
@@ -55,7 +56,7 @@ class HistoryStore(
             val o = arr.getJSONObject(i)
             val e =
                 Entry(
-                    uri = o.getString("uri"),
+                    uri = TrackId(o.getString("uri")),
                     lastPlayedMs = o.getLong("last"),
                     playCount = o.getInt("count"),
                     title = o.optString("title"),
@@ -67,7 +68,7 @@ class HistoryStore(
     }
 
     fun recordPlay(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String = "",
     ) {
@@ -82,7 +83,7 @@ class HistoryStore(
     }
 
     fun addListenTime(
-        uri: String,
+        uri: TrackId,
         deltaMs: Long,
     ) {
         if (deltaMs <= 0) return
@@ -120,7 +121,7 @@ class HistoryStore(
                 .take(limit)
         }
 
-    fun entryFor(uri: String): Entry? = synchronized(lock) { entries[uri] }
+    fun entryFor(uri: TrackId): Entry? = synchronized(lock) { entries[uri] }
 
     private fun persist() {
         if (!writeQueued.compareAndSet(false, true)) return
@@ -141,7 +142,7 @@ class HistoryStore(
                     // Persist the union of the 200 most recent and the 200 most-played entries
                     // (deduped by uri) so a heavily played old track isn't dropped from disk even
                     // though mostPlayed() ranks by playCount/listenedMs rather than recency.
-                    val toPersist = LinkedHashMap<String, Entry>()
+                    val toPersist = LinkedHashMap<TrackId, Entry>()
                     entries.values
                         .sortedByDescending { it.lastPlayedMs }
                         .take(200)
@@ -154,7 +155,7 @@ class HistoryStore(
                     toPersist.values.forEach { e ->
                         arr.put(
                             JSONObject()
-                                .put("uri", e.uri)
+                                .put("uri", e.uri.value)
                                 .put("last", e.lastPlayedMs)
                                 .put("count", e.playCount)
                                 .put("title", e.title)

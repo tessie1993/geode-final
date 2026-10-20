@@ -31,7 +31,7 @@ class SessionBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         io.submit<Bitmap> {
-            MediaArtwork.decodeEmbedded(appContext, uri.toString())
+            MediaArtwork.decodeEmbedded(appContext, uri.toTrackId())
                 ?: throw IllegalArgumentException("no embedded artwork in $uri")
         }
 

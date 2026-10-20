@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.geode.R
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.delay
@@ -254,7 +255,7 @@ private fun rememberFollowsPlayback(listState: LazyListState): MutableState<Bool
 @Composable
 fun QueuePanel(
     queue: QueueUiState,
-    favourites: Set<String>,
+    favourites: Set<TrackId>,
     onPlayIndex: (Int) -> Unit,
     onMoveUp: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -360,11 +361,11 @@ fun QueuePanel(
 }
 
 internal fun queueRowKeys(tracks: List<QueueTrack>): List<String> {
-    val seen = HashMap<String, Int>()
+    val seen = HashMap<TrackId, Int>()
     return tracks.map { t ->
         val n = seen[t.uri] ?: 0
         seen[t.uri] = n + 1
-        if (n == 0) t.uri else "${t.uri}#$n"
+        if (n == 0) t.uri.value else "${t.uri.value}#$n"
     }
 }
 

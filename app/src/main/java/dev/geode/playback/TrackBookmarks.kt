@@ -3,6 +3,8 @@ package dev.geode.playback
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import dev.geode.data.BookmarkStore
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 
 /** Keeps a long track's bookmark current from the session's poll, and seeks to it when the track starts. */
 class TrackBookmarks(
@@ -10,19 +12,19 @@ class TrackBookmarks(
     private val enabled: () -> Boolean,
 ) {
     private var lastSavedAtMs = 0L
-    private var resumedUri: String? = null
+    private var resumedUri: TrackId? = null
 
     fun onTrackStarted(player: Player) {
         val uri =
             player.currentMediaItem
                 ?.localConfiguration
                 ?.uri
-                ?.toString() ?: return
+                ?.toTrackId() ?: return
         if (uri == resumedUri) return
         resumedUri = uri
         if (!enabled()) return
         val position = store.positionFor(uri) ?: return
-        if (player.currentPosition < BookmarkStore.EDGE_MS) player.seekTo(position)
+        if (player.currentPosition < BookmarkStore.EDGE_MS) player.seekTo(position.value)
     }
 
     fun onPoll(player: Player) {
@@ -33,11 +35,11 @@ class TrackBookmarks(
             player.currentMediaItem
                 ?.localConfiguration
                 ?.uri
-                ?.toString() ?: return
+                ?.toTrackId() ?: return
         val duration = player.duration
         if (duration == C.TIME_UNSET || duration < BookmarkStore.LONG_TRACK_MS) return
         lastSavedAtMs = now
-        store.note(uri, player.currentPosition, duration)
+        store.note(uri, Millis(player.currentPosition), Millis(duration))
     }
 
     private companion object {

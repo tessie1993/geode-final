@@ -76,8 +76,8 @@
     <ID>ReturnCount:PerformanceTake.kt$PerformanceTake.Timeline$fun stateAt(ms: Long): State?</ID>
     <ID>ReturnCount:PlaybackCapture.kt$PlaybackCapture$@RequiresApi(Build.VERSION_CODES.Q) @Synchronized fun start( projection: MediaProjection, onSampleRate: (Int) -&gt; Unit = {}, ): CaptureFailure?</ID>
     <ID>ReturnCount:PlaybackCaptureService.kt$PlaybackCaptureService$override fun onStartCommand( intent: Intent?, flags: Int, startId: Int, ): Int</ID>
-    <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun contextFor( uri: String, browse: List&lt;QueueTrack&gt;, deviceTracks: List&lt;DeviceTrack&gt;, libraryTracks: List&lt;LibraryTrack&gt;, ): List&lt;QueueTrack&gt;</ID>
-    <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun window( tracks: List&lt;QueueTrack&gt;, startUri: String, ): Window</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun contextFor( uri: TrackId, browse: List&lt;QueueTrack&gt;, deviceTracks: List&lt;DeviceTrack&gt;, libraryTracks: List&lt;LibraryTrack&gt;, ): List&lt;QueueTrack&gt;</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun window( tracks: List&lt;QueueTrack&gt;, startUri: TrackId, ): Window</ID>
     <ID>ReturnCount:PlayerViewModel.kt$PlayerViewModel$private fun applyIntelligence()</ID>
     <ID>ReturnCount:PlayerViewModel.kt$PlayerViewModel$private fun waveformOf(timeline: FeatureTimeline): FloatArray?</ID>
     <ID>ReturnCount:PresetLibraryController.kt$PresetLibraryController$fun importPresetLink(text: String): String?</ID>
