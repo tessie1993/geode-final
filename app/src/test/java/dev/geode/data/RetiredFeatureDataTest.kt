@@ -30,6 +30,9 @@ class RetiredFeatureDataTest {
         RetiredFeatureData.directories.forEach { dir ->
             File(context.filesDir, dir).apply { mkdirs() }.resolve("stale.json").writeText("{}")
         }
+        RetiredFeatureData.cacheDirectories.forEach { dir ->
+            File(context.cacheDir, dir).apply { mkdirs() }.resolve("stale.json").writeText("{}")
+        }
         RetiredFeatureData.prefsKeys.forEach { (file, keys) ->
             prefs(file).edit().apply { keys.forEach { putString(it, "stale") } }.commit()
         }
@@ -43,6 +46,9 @@ class RetiredFeatureDataTest {
 
         RetiredFeatureData.directories.forEach { dir ->
             assertFalse("$dir survived", File(context.filesDir, dir).exists())
+        }
+        RetiredFeatureData.cacheDirectories.forEach { dir ->
+            assertFalse("cache/$dir survived", File(context.cacheDir, dir).exists())
         }
         RetiredFeatureData.prefsKeys.forEach { (file, keys) ->
             keys.forEach { key -> assertFalse("$file/$key survived", prefs(file).contains(key)) }

@@ -23,6 +23,13 @@ internal object RetiredFeatureData {
             "templates",
         )
 
+    /** Directories under `cacheDir` that only retired features wrote. */
+    val cacheDirectories: List<String> =
+        listOf(
+            // Video templates: copies staged for a share sheet.
+            "share/templates",
+        )
+
     /** Preference keys only retired features wrote, by preferences file. */
     val prefsKeys: Map<String, List<String>> =
         mapOf()
@@ -31,6 +38,7 @@ internal object RetiredFeatureData {
         val general = context.getSharedPreferences(GeodePrefsFiles.GENERAL, Context.MODE_PRIVATE)
         if (general.getBoolean(SWEPT_KEY, false)) return
         directories.forEach { File(context.filesDir, it).deleteRecursively() }
+        cacheDirectories.forEach { File(context.cacheDir, it).deleteRecursively() }
         prefsKeys.forEach { (file, keys) ->
             context.getSharedPreferences(file, Context.MODE_PRIVATE).edit { keys.forEach(::remove) }
         }
