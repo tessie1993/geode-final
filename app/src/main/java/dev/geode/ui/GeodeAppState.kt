@@ -1,6 +1,5 @@
 package dev.geode.ui
 
-import android.view.Display
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -44,9 +43,6 @@ class GeodeAppState(
     var searching by mutableStateOf(searching)
 
     var bootDone by mutableStateOf(bootDone)
-
-    var externalDisplay: Display? = null
-        internal set
 
     val onPlayer: Boolean get() = dest == GeodeDestination.PLAYER
 
@@ -95,8 +91,4 @@ class GeodeAppState(
 }
 
 @Composable
-fun rememberGeodeAppState(externalDisplay: Display?): GeodeAppState {
-    val state = rememberSaveable(saver = GeodeAppState.Saver) { GeodeAppState() }
-    state.externalDisplay = externalDisplay
-    return state
-}
+fun rememberGeodeAppState(): GeodeAppState = rememberSaveable(saver = GeodeAppState.Saver) { GeodeAppState() }

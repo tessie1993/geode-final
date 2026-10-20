@@ -215,9 +215,7 @@
     <string name="quick_sleep_30m">Sleep 30m</string>
     <string name="quick_shuffle_all">Shuffle all</string>
 
-    <!-- Now Playing on a connected display: this screen becomes the remote. -->
-    <string name="second_screen_showing_on">Showing on</string>
-    <string name="second_screen_explainer">The visuals are on the connected display. Everything here still controls them — turn this off in Settings › Live input &amp; touch to bring them back.</string>
+    <!-- Now Playing, full screen. -->
     <string name="action_collapse">Collapse</string>
 
     <!-- Panel chips under the transport. -->
@@ -606,7 +604,6 @@
 
     <!-- Settings: Behavior tab. -->
     <string name="behavior_group_touch">Touch</string>
-    <string name="behavior_group_display">Connected display</string>
     <string name="behavior_group_safety">Visual safety</string>
     <string name="behavior_group_auto">Auto visuals</string>
     <string name="behavior_group_wallpaper">Live wallpaper</string>
@@ -615,9 +612,6 @@
     <string name="behavior_smear_strength">"Smear strength  %1$d%%"</string>
     <string name="behavior_touch_transform">Pinch and twist the canvas</string>
     <string name="behavior_touch_transform_hint">Two fingers on the fullscreen visualizer: pinch moves the Zoom slider, twist moves Rotation. They are the same controls the Customize panel shows, so a gesture is saved into presets — and undone by dragging the slider back.</string>
-    <string name="behavior_display_use">Use a connected display</string>
-    <string name="behavior_display_connected">Connected: %1$s. The visuals play there and the phone becomes the control surface — the canvas moves rather than being mirrored, so the big screen shows exactly what the app renders.</string>
-    <string name="behavior_display_none">Nothing connected. Plug in HDMI or start casting, and the visuals move to that screen while the phone keeps the controls.</string>
     <string name="behavior_group_intent">What you\'re here for</string>
     <string name="behavior_safety_title">Flashing and motion</string>
     <string name="behavior_flash_guidance">Nothing in Geode can flash more than three times a second. Published guidance (WCAG 2.3.1) puts the general limit there, and the clamp sits in the render path itself — it applies to every scene, every preset and every imported file, on screen and in exported video alike. It is not a setting, so there is nothing here to adjust.</string>

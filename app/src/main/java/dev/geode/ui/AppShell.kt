@@ -120,14 +120,9 @@ fun AppRoot() {
         } else {
             themePack
         }
-    val externalDisplay = rememberExternalDisplay()
-    val appState = rememberGeodeAppState(externalDisplay)
+    val appState = rememberGeodeAppState()
     val bootAnimEnabled = remember { BootAnimationStore(GeodePrefsFiles(context).general).load() }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val onSecondScreen = gui.secondScreen && externalDisplay != null
-    if (onSecondScreen) {
-        SecondScreenCanvas(externalDisplay, visualizerView)
-    }
 
     var crashText by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
@@ -236,7 +231,7 @@ fun AppRoot() {
                         viewModel,
                         visualizerView,
                         onOpenNowPlaying = appState::expand,
-                        liveBackdrop = gui.clearVisualsMenu && !appState.expanded && !onSecondScreen,
+                        liveBackdrop = gui.clearVisualsMenu && !appState.expanded,
                     )
                 GeodeDestination.STUDIO -> StudioRoute()
                 GeodeDestination.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
@@ -295,7 +290,6 @@ fun AppRoot() {
                 VisualizerScreen(
                     viewModel = viewModel,
                     visualizerView = visualizerView,
-                    externalDisplayName = if (onSecondScreen) externalDisplay?.name else null,
                     onCollapse = appState::collapse,
                     onOpenVisuals = {
                         appState.collapse()

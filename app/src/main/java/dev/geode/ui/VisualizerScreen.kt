@@ -63,7 +63,6 @@ import kotlin.math.abs
 fun VisualizerScreen(
     viewModel: PlayerViewModel,
     visualizerView: VisualizerView,
-    externalDisplayName: String? = null,
     onCollapse: () -> Unit,
     onOpenVisuals: () -> Unit,
 ) {
@@ -100,28 +99,7 @@ fun VisualizerScreen(
                 onTransform = viewModel::nudgeTransform,
             ),
     ) {
-        if (externalDisplayName == null) {
-            VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
-        } else {
-            CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
-            Column(
-                Modifier.align(Alignment.Center).padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CrystalOverline(stringResource(R.string.second_screen_showing_on))
-                Text(
-                    externalDisplayName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    stringResource(R.string.second_screen_explainer),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-        }
+        VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
 
         if (controlsVisible) {
             Row(

@@ -32,7 +32,13 @@ internal object RetiredFeatureData {
 
     /** Preference keys only retired features wrote, by preferences file. */
     val prefsKeys: Map<String, List<String>> =
-        mapOf()
+        mapOf(
+            GeodePrefsFiles.GENERAL to
+                listOf(
+                    // Second-screen output.
+                    "gui_second_screen",
+                ),
+        )
 
     fun sweepOnce(context: Context) {
         val general = context.getSharedPreferences(GeodePrefsFiles.GENERAL, Context.MODE_PRIVATE)

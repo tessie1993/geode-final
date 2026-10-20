@@ -148,7 +148,6 @@ data class GuiPrefs(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = 1f,
     val keyColor: Boolean = false,
-    val secondScreen: Boolean = true,
     val touchTransform: Boolean = true,
 ) {
     val fontColorOverride: Int?
@@ -239,7 +238,6 @@ class ThemeStore(
             touchSmearStrength = prefs.getFloat(KEY_TOUCH_SMEAR_STRENGTH, 1f).coerceIn(0.2f, 2f),
             touchTransform = prefs.getBoolean(KEY_TOUCH_TRANSFORM, true),
             keyColor = prefs.getBoolean(KEY_KEY_COLOR, false),
-            secondScreen = prefs.getBoolean(KEY_SECOND_SCREEN, true),
             micReactive = prefs.getBoolean(KEY_MIC_REACTIVE, false),
         )
     }
@@ -295,7 +293,6 @@ class ThemeStore(
             putFloat(KEY_TOUCH_SMEAR_STRENGTH, gui.touchSmearStrength)
             putBoolean(KEY_TOUCH_TRANSFORM, gui.touchTransform)
             putBoolean(KEY_KEY_COLOR, gui.keyColor)
-            putBoolean(KEY_SECOND_SCREEN, gui.secondScreen)
             putBoolean(KEY_MIC_REACTIVE, gui.micReactive)
         }
     }
@@ -337,7 +334,6 @@ class ThemeStore(
         const val KEY_TOUCH_SMEAR_STRENGTH = "gui_touch_smear_strength"
         const val KEY_TOUCH_TRANSFORM = "gui_touch_transform"
         const val KEY_KEY_COLOR = "gui_key_color"
-        const val KEY_SECOND_SCREEN = "gui_second_screen"
         const val KEY_MIC_REACTIVE = "gui_mic_reactive"
     }
 }
