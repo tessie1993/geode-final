@@ -167,7 +167,9 @@ internal class ExportController(
                     val clipStartMs = range?.startMs ?: 0L
                     val paramsAt: ((Long) -> SceneParams)? =
                         if (animated) {
-                            { ms: Long -> AnimatableParams.applyToScene(host.sceneParams, sheet.valuesAt(clipStartMs + ms)) }
+                            { ms: Long ->
+                                AnimatableParams.applyToScene(host.sceneParams, sheet.valuesAt(clipStartMs + ms))
+                            }
                         } else {
                             null
                         }
