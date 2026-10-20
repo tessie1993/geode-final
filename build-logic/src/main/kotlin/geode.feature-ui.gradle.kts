@@ -1,6 +1,7 @@
 // A feature's :ui (ADR-0005): stateless screens XScreen(model, onAction) with their previews and
 // Roborazzi screenshots (geode.screenshots). An Android library with Compose that depends on its own
-// :api only, never on its :core or :handlers, nor on another feature.
+// :api and on :design (the App UI's tokens, theme and common components, added here so no feature
+// has to), never on its :core or :handlers, nor on another feature.
 plugins {
     id("geode.android-library")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -19,6 +20,7 @@ extensions.configure<com.android.build.api.dsl.LibraryExtension> {
 
 dependencies {
     "implementation"(project("$feature:api"))
+    "implementation"(project(":design"))
     "implementation"(platform(catalog.findLibrary("compose-bom").get()))
     "implementation"(catalog.findLibrary("compose-ui").get())
     "implementation"(catalog.findLibrary("compose-material3").get())

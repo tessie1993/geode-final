@@ -10,7 +10,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.geode.R
-import dev.geode.ui.theme.StoneIcon
+import dev.geode.design.theme.StoneIcon
 
 /**
  * The app's top-level screens, in the order the navigation bar shows them.

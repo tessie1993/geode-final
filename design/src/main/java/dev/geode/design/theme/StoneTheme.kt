@@ -1,4 +1,4 @@
-package dev.geode.ui.theme
+package dev.geode.design.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Typography
@@ -12,8 +12,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import dev.geode.R
-import dev.geode.ui.ThemeContrast
+import dev.geode.design.R
 
 val LocalThemePack = staticCompositionLocalOf { ThemePackCatalog.all.first() }
 
@@ -27,12 +26,15 @@ val MaliFamily =
 
 val MysteryQuestFamily = FontFamily(Font(R.font.mystery_quest_regular, FontWeight.Normal))
 
+/** Line height as a multiple of the font size, for every style of [stoneTypography]. */
+const val STONE_LINE_HEIGHT_RATIO = 1.35f
+
 fun stoneTypography(textScale: Float = 1f): Typography {
     fun style(
         family: FontFamily,
         size: Int,
         weight: FontWeight,
-        lineHeight: Float = size * 1.35f,
+        lineHeight: Float = size * STONE_LINE_HEIGHT_RATIO,
     ) = TextStyle(
         fontFamily = family,
         fontWeight = weight,
@@ -67,14 +69,12 @@ fun ThemePack.colorScheme(
 
     fun Color.intensity(): Color =
         Color(
-            dev.geode.ui.ColorDerive
-                .scaleSaturation(toArgbInt(), accentIntensity),
+            ColorDerive.scaleSaturation(toArgbInt(), accentIntensity),
         )
 
     fun Color.dimmed(): Color =
         Color(
-            dev.geode.ui.ColorDerive
-                .dim(toArgbInt(), backgroundDim),
+            ColorDerive.dim(toArgbInt(), backgroundDim),
         )
     val primary = p.primary.intensity()
     val secondary = p.secondary.intensity()
@@ -156,8 +156,7 @@ private fun readableOn(
         t = minOf(1f, t + 0.08f)
         tone =
             Color(
-                dev.geode.ui.ColorDerive
-                    .lerpArgb(authored.toArgbInt(), end.toArgbInt(), t),
+                ColorDerive.lerpArgb(authored.toArgbInt(), end.toArgbInt(), t),
             )
     }
     return tone
@@ -171,9 +170,3 @@ private fun contrastRatio(
     val lb = b.luminance()
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
 }
-
-private fun Color.toArgbInt(): Int =
-    ((alpha * 255f + 0.5f).toInt() shl 24) or
-        ((red * 255f + 0.5f).toInt() shl 16) or
-        ((green * 255f + 0.5f).toInt() shl 8) or
-        (blue * 255f + 0.5f).toInt()

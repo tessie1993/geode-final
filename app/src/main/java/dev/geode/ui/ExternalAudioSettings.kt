@@ -24,6 +24,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.audio.CaptureFailure
 import dev.geode.audio.PlaybackCaptureService
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalOverline
+import dev.geode.design.crystalPanel
+import dev.geode.design.theme.accentTextColor
 
 @Composable
 fun ExternalAudioSettings(viewModel: PlayerViewModel) {

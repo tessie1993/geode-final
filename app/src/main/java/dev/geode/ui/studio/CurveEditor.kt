@@ -29,13 +29,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.design.CrystalSlider
 import dev.geode.editor.AnimatableParam
 import dev.geode.editor.BezierCurve
 import dev.geode.editor.EaseShape
 import dev.geode.editor.Interpolation
 import dev.geode.editor.Keyframe
 import dev.geode.editor.ParamValue
-import dev.geode.ui.CrystalSlider
 
 /** Interpolation, curve handles and the value of one key. Every change is a new [Keyframe]. */
 @Composable

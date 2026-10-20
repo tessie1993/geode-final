@@ -14,6 +14,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.geode.design.CrystalButton
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

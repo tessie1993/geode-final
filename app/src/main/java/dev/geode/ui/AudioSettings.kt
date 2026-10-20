@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.analysis.BeatTuning
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalSlider
 import kotlin.math.roundToInt
 
 @Composable

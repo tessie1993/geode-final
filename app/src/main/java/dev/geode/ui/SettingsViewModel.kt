@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.audio.AudioFxState
 import dev.geode.data.PlayerPrefs
+import dev.geode.design.theme.ThemePack
 import dev.geode.di.PlayerSessionProvider
-import dev.geode.ui.theme.ThemePack
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 

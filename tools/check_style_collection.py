@@ -39,7 +39,7 @@ def main() -> None:
     hub = read("app/src/main/java/dev/geode/ui/VisualsHub.kt")
     shell = read("app/src/main/java/dev/geode/ui/AppShell.kt")
     crystal = read("app/src/main/java/dev/geode/ui/Crystal.kt")
-    theme_catalog = read("app/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt")
+    theme_catalog = read("design/src/main/java/dev/geode/design/theme/ThemePackCatalog.kt")
 
     # \s* after the paren: ktlint wraps long constructor calls onto their own
     # lines, so the id literal is not necessarily on the same line as the name.

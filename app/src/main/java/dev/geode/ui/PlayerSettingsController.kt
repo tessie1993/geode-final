@@ -11,9 +11,9 @@ import dev.geode.audio.AudioFxController
 import dev.geode.audio.AudioFxState
 import dev.geode.data.PlayerPrefs
 import dev.geode.data.PlayerPrefsRepository
+import dev.geode.design.theme.ThemePack
 import dev.geode.playback.NativePlayer
 import dev.geode.playback.ReplayGain
-import dev.geode.ui.theme.ThemePack
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

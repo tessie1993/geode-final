@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.geode.design.theme.LocalFontColor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.max

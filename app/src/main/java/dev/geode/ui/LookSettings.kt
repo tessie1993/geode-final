@@ -37,6 +37,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.BootAnimationStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.design.CrystalGem
+import dev.geode.design.CrystalSegmented
+import dev.geode.design.CrystalSlider
+import dev.geode.design.crystalPanel
+import dev.geode.design.crystalShardShape
+import dev.geode.design.theme.accentTextColor
+import dev.geode.design.theme.fontColorActive
 
 @Composable
 internal fun LookSettingsTab(viewModel: SettingsViewModel) {
@@ -105,12 +112,12 @@ internal fun LookSettingsTab(viewModel: SettingsViewModel) {
 @Composable
 private fun ThemePickerRow(
     viewModel: SettingsViewModel,
-    current: dev.geode.ui.theme.ThemePack,
+    current: dev.geode.design.theme.ThemePack,
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(dev.geode.ui.theme.ThemePackCatalog.all) { t ->
+        items(dev.geode.design.theme.ThemePackCatalog.all) { t ->
             val sel = t.slug == current.slug
-            CompositionLocalProvider(dev.geode.ui.theme.LocalThemePack provides t) {
+            CompositionLocalProvider(dev.geode.design.theme.LocalThemePack provides t) {
                 Column(
                     Modifier
                         .width(88.dp)
@@ -145,7 +152,7 @@ private fun ThemePickerRow(
 private fun FontColorRow(
     viewModel: SettingsViewModel,
     gui: GuiPrefs,
-    appTheme: dev.geode.ui.theme.ThemePack,
+    appTheme: dev.geode.design.theme.ThemePack,
 ) {
     val cs = MaterialTheme.colorScheme
     Column {

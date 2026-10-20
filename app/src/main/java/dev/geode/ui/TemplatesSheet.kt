@@ -34,9 +34,11 @@ import dev.geode.R
 import dev.geode.data.TemplateImport
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
+import dev.geode.design.CrystalButton
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
+import dev.geode.design.theme.accentTextColor
 import dev.geode.render.VisualizerView
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
 
 /**
  * Save-load-share for video templates, opened next to the preset library it mirrors

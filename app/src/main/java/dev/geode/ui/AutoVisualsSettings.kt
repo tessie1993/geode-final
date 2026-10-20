@@ -13,6 +13,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.design.CrystalOverline
+import dev.geode.design.CrystalSlider
+import dev.geode.design.theme.accentTextColor
 import dev.geode.render.scene.MilkdropEngine
 import kotlin.math.roundToInt
 

@@ -42,6 +42,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalOverline
+import dev.geode.design.CrystalSlider
+import dev.geode.design.GlowTitle
+import dev.geode.design.crystalPanel
+import dev.geode.design.theme.accentTextColor
 import dev.geode.export.ClipEdit
 import dev.geode.export.ClipLook
 import dev.geode.export.ExportQuality

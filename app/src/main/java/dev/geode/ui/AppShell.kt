@@ -62,11 +62,21 @@ import dev.geode.R
 import dev.geode.analysis.SearchMatcher
 import dev.geode.data.BootAnimationStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.design.CrystalBackground
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalNavBar
+import dev.geode.design.CrystalNavItem
+import dev.geode.design.CrystalOverline
+import dev.geode.design.GlowTitle
+import dev.geode.design.crystalPanel
+import dev.geode.design.crystalShardShape
+import dev.geode.design.luminousHairline
+import dev.geode.design.softGlow
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.render.VisualizerView
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -115,7 +125,7 @@ fun AppRoot() {
     val systemDark = isSystemInDarkTheme()
     val effectiveTheme =
         if (gui.followSystemDark && !systemDark) {
-            dev.geode.ui.theme.ThemePackCatalog.all
+            dev.geode.design.theme.ThemePackCatalog.all
                 .firstOrNull { it.isLight } ?: themePack
         } else {
             themePack

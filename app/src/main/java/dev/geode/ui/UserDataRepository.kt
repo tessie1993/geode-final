@@ -1,8 +1,8 @@
 package dev.geode.ui
 
 import android.content.SharedPreferences
-import dev.geode.ui.theme.ThemePack
-import dev.geode.ui.theme.ThemePackCatalog
+import dev.geode.design.theme.ThemePack
+import dev.geode.design.theme.ThemePackCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
