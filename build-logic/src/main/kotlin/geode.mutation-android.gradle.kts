@@ -27,6 +27,10 @@ extensions.configure<pl.droidsonroids.gradle.pitest.PitestPluginExtension> {
             "*.BuildConfig",
             "*.R",
             "*.R\$*",
+            // One Compose function here is too large for PIT's bytecode library (ASM "Too many
+            // operations"), which aborts the whole run. It is the old Studio timeline, which the
+            // Studio redo (#13) replaces.
+            "dev.geode.ui.studio.TimelineLanesKt",
         )
     // Screenshot tests render the App UI for Roborazzi; they assert pixels, not behaviour, and are
     // far too slow to rerun per mutant.

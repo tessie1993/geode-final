@@ -14,4 +14,5 @@ android.permission.POST_NOTIFICATIONS
 android.permission.VIBRATE
 android.permission.MODIFY_AUDIO_SETTINGS
 android.permission.WAKE_LOCK
+android.permission.RECEIVE_BOOT_COMPLETED
 ${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

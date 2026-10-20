@@ -11,6 +11,13 @@ val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 // what Roborazzi needs to read the frame back.
 tasks.withType<Test>().configureEach {
     systemProperty("robolectric.pixelCopyRenderMode", "hardware")
+    // Robolectric's Android 16 environment sets up ApplicationSharedMemory through
+    // jdk.internal.access.SharedSecrets, which JDK 21 does not export to unnamed modules.
+    jvmArgs(
+        "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+        "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+    )
 }
 
 dependencies {

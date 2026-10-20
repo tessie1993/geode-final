@@ -107,12 +107,19 @@ information. Specifically, the app has:</p>
       controls notification and the ongoing notifications Android requires while
       <em>Visualize other apps</em> or a video render is running.</li>
   <li><strong><code>FOREGROUND_SERVICE</code></strong> (with the media-playback,
-      media-projection and media-processing types): lets playback, capture and video
-      rendering keep running while the app is not on screen, always with a visible
-      notification.</li>
+      media-projection and media-processing types, and data-sync, which Android 14 and
+      below use for video rendering instead of media-processing): lets playback, capture
+      and video rendering keep running while the app is not on screen, always with a
+      visible notification.</li>
   <li><strong><code>VIBRATE</code></strong>: haptic feedback for the app's controls.</li>
   <li><strong><code>WAKE_LOCK</code></strong>: keeps music playing reliably while the
       screen is off. It grants no access to any data.</li>
+  <li><strong><code>MODIFY_AUDIO_SETTINGS</code></strong>: lets bit-perfect USB output ask
+      Android for a direct audio path. It is granted at install and grants no access to
+      any data.</li>
+  <li><strong><code>RECEIVE_BOOT_COMPLETED</code></strong>: added by Android's WorkManager
+      library, which the home-screen widget uses, so scheduled widget updates resume after
+      the phone restarts. It grants no access to any data.</li>
 </ul>
 <p>Geode requests no camera, contacts, location or Internet permission.</p>
 
