@@ -3,12 +3,6 @@
     <string name="app_name">Geode</string>
     <string name="wallpaper_label">Geode</string>
     <string name="wallpaper_description">Your last Geode style, reacting to whatever the app is playing and drifting gently when it is not.</string>
-    <string name="notification_listener_label">Geode — now playing in other apps</string>
-    <string name="capture_channel_name">Visualizing other apps</string>
-    <string name="capture_channel_description">Shown while Geode is reading the audio another app is playing.</string>
-    <string name="capture_notification_title">Visualizing other apps</string>
-    <string name="capture_notification_text">Geode is reading the audio playing on this device.</string>
-    <string name="capture_notification_stop">Stop</string>
     <string name="export_channel_name">Rendering video</string>
     <string name="export_channel_description">Shown while Geode is rendering a video, so the render is not interrupted.</string>
     <string name="export_notification_title">Rendering video</string>
@@ -165,18 +159,13 @@
     <string name="action_add_to_queue">Add to queue</string>
 
     <!-- Now Playing: what the app is listening to, and to what. -->
-    <string name="source_other_apps">Other apps</string>
     <string name="source_live_input">Live input</string>
     <string name="state_now_playing">Now playing</string>
     <string name="state_paused">Paused</string>
     <string name="state_nothing_playing">Nothing playing</string>
-    <string name="title_whatever_is_playing">Whatever is playing</string>
     <string name="title_the_room">The room</string>
     <string name="title_untitled">Untitled</string>
     <string name="title_pick_something">Pick something to play</string>
-    <string name="subtitle_capture_refused">%1$s will not be captured — see Settings</string>
-    <string name="subtitle_capture_refused_unknown_app">That app</string>
-    <string name="subtitle_captured_from_another_app">Captured from another app</string>
     <string name="subtitle_microphone_hears">Whatever the microphone hears</string>
     <string name="subtitle_unknown_artist">Unknown artist</string>
     <string name="subtitle_nothing_playing">Your library, your history, or the room</string>
@@ -188,7 +177,6 @@
     <string name="action_repeat">Repeat</string>
     <string name="action_favourite_add">Add to favourites</string>
     <string name="action_favourite_remove">Remove from favourites</string>
-    <string name="action_stop_capture">Stop capture</string>
     <string name="action_resume_last_played">Resume last played</string>
     <string name="action_open_library">Open library</string>
     <string name="action_open_queue">Open queue</string>
@@ -210,7 +198,6 @@
 
     <!-- Quick actions under the player. -->
     <string name="quick_room_on">Room: on</string>
-    <string name="quick_capturing">Capturing</string>
     <string name="quick_sleep_on">Sleep: on</string>
     <string name="quick_sleep_30m">Sleep 30m</string>
     <string name="quick_shuffle_all">Shuffle all</string>
@@ -480,26 +467,6 @@
     <string name="audio_mic_busy">The microphone could not be opened — another app may be using it.</string>
     <string name="audio_tune_room">Tune for what the phone is hearing</string>
     <string name="audio_profiles_explainer">Each sets the beat threshold, the reactivity envelope and the band balance together — they are one decision, and they live on three different screens. Every value stays an ordinary slider afterwards.</string>
-
-    <!-- Settings › Audio › Other apps (playback capture). -->
-    <string name="ext_visualize_other_apps">Visualize other apps</string>
-    <string name="ext_needs_android10">Needs Android 10 or newer — the API that lets one app read another app\'s audio arrived with it. Live input (the microphone) works on every version and can hear the same speaker.</string>
-    <string name="ext_explainer">Drives the visuals from whatever is already playing on this device — a streaming app, a video, a game — instead of from a file in your library. Android asks for capture permission first, and shows a notification the whole time it is running. Audio is analysed live and never recorded, saved or sent anywhere.</string>
-    <string name="ext_waiting_permission">Waiting for the capture permission…</string>
-    <string name="ext_listening_to">Listening to %1$s.</string>
-    <string name="ext_listening_idle">Listening. Start something playing in any app.</string>
-    <string name="ext_now_playing_line">%1$s: %2$s</string>
-    <string name="ext_now_playing_line_with_artist">%1$s: %2$s — %3$s</string>
-    <string name="ext_read_now_playing_explainer">Geode can also show WHAT the other app is playing — the track and artist, on the visualizer. That reads the media session, which Android gates behind notification access. Optional: the visuals work on the sound alone.</string>
-    <string name="ext_allow_reading">Allow reading now playing</string>
-    <string name="ext_silence_title">Silence, on purpose</string>
-    <string name="ext_refused_body">%1$s does not allow other apps to capture its audio. Android honours that, and there is no setting on either side that changes it — the capture is running and being handed digital silence. Most other apps (YouTube, podcast players, games) do allow it and work here.</string>
-    <string name="ext_mic_alternative">The microphone still hears your speaker. It picks up the room with it, so it is a rougher signal — but it reacts to %1$s.</string>
-    <string name="ext_use_mic_instead">Use the microphone instead</string>
-    <string name="ext_fail_unsupported">This device is older than Android 10, which introduced audio capture between apps.</string>
-    <string name="ext_fail_permission">Microphone access is off for Geode. Android requires it for audio capture of any kind — turn it on in Android Settings › Apps › Geode › Permissions.</string>
-    <string name="ext_fail_consent">Capture permission was not given. Nothing is being read.</string>
-    <string name="ext_fail_unavailable">The device would not open an audio capture at any format — another app may be holding it.</string>
 
     <!-- Export: shared by the Export tab and the export dialog. -->
     <string name="export_title">Export</string>

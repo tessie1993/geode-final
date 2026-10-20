@@ -1,7 +1,6 @@
 package dev.geode.ui
 
 import android.app.Application
-import android.content.Intent
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.PlaybackException
@@ -106,7 +105,6 @@ class PlayerSession internal constructor(
     private val captureController: CaptureController =
         CaptureController(
             application,
-            scope,
             playback.captureSink,
             object : CaptureController.Host {
                 override fun pausePlayback() = player.pause()
@@ -130,19 +128,9 @@ class PlayerSession internal constructor(
 
     val micState: StateFlow<MicState> get() = captureController.micState
 
-    val externalAudio: StateFlow<ExternalAudioState> get() = captureController.externalAudio
-
     fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = captureController.setMicEnabled(enabled)
 
     fun hasMicPermission(): Boolean = captureController.hasMicPermission()
-
-    fun noteExternalAudioConsentPending() = captureController.noteExternalAudioConsentPending()
-
-    fun noteExternalAudioConsentDenied() = captureController.noteExternalAudioConsentDenied()
-
-    fun stopExternalAudio() = captureController.stopExternalAudio()
-
-    fun notificationAccessIntent(): Intent = captureController.notificationAccessIntent()
 
     init {
         playback.onAudioFormat = captureController.audioFormatHook
@@ -1196,7 +1184,6 @@ class PlayerSession internal constructor(
                     if (!isPlaying) return
                     consecutivePlaybackFailures = 0
                     if (captureController.micActive) setMicEnabled(false)
-                    if (externalAudio.value.active) stopExternalAudio()
                     fades.ensureAudibleAfterExternalPlay()
                     PlaybackService.ensureRunning(application)
                 }
@@ -1215,7 +1202,6 @@ class PlayerSession internal constructor(
             listening.accrueListenTime()
             queueController.enforceAbLoop()
             queueController.refreshQueue()
-            captureController.refreshExternalAudio()
             captureController.refreshMicState()
             analysis.applyIntelligence()
             autoVisuals.advanceVizPlaylist()

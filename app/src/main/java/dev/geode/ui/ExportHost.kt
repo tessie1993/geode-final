@@ -167,7 +167,7 @@ fun ExportHost(
 
     // On API 33+ a render's progress notification (ExportService, foreground since it must
     // survive the Activity going away) is silently suppressed for anyone who has never granted
-    // POST_NOTIFICATIONS — nothing else in the app asks for it unless audio capture is turned on.
+    // POST_NOTIFICATIONS — nothing else in the app asks for it.
     // Ask once, right as the first render starts, with one rationale dialog first; the render
     // proceeds either way, whether the permission is granted, denied, or never asked at all.
     var notificationPermissionAsked by rememberSaveable { mutableStateOf(false) }

@@ -33,7 +33,6 @@ internal fun AudioSettingsTab(viewModel: PlayerViewModel) {
         item { EqualizerSettings(settingsViewModel) }
         item { SettingsGroup(stringResource(R.string.audio_group_analysis)) { AnalysisGroup(settingsViewModel) } }
         item { SettingsGroup(stringResource(R.string.source_live_input)) { LiveInputGroup(viewModel) } }
-        item { SettingsGroup(stringResource(R.string.source_other_apps)) { ExternalAudioSettings(viewModel) } }
     }
 }
 

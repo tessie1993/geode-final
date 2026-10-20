@@ -24,7 +24,7 @@
 <body>
 
 <h1>Geode — Privacy Policy</h1>
-<p class="updated">Last updated: 23 August 2026</p>
+<p class="updated">Last updated: 20 October 2026</p>
 
 <p>Geode is an offline music player and visualizer for Android. This policy describes
 what the app does with your information. The short version: Geode collects nothing,
@@ -62,18 +62,6 @@ information. Specifically, the app has:</p>
       <td>Analysed in memory only; never recorded to a file, never stored, never transmitted</td>
     </tr>
     <tr>
-      <td>Audio other apps are playing — only while the optional <em>Visualize other apps</em>
-          feature is switched on</td>
-      <td>So the visuals can react to music from another app</td>
-      <td>Analysed in memory only; never recorded to a file, never stored, never transmitted</td>
-    </tr>
-    <tr>
-      <td>The name of the app and track playing elsewhere — only if you grant the optional
-          notification access described below</td>
-      <td>To label what the visuals are reacting to</td>
-      <td>Shown on screen; not stored, not transmitted</td>
-    </tr>
-    <tr>
       <td>Folders you pick</td>
       <td>Optional music folders and an optional preset-mirror folder</td>
       <td>Access is granted by you through the Android file picker and can be revoked at any time</td>
@@ -96,21 +84,19 @@ information. Specifically, the app has:</p>
   <li><strong><code>READ_MEDIA_AUDIO</code></strong> (Android 13+) /
       <strong><code>READ_EXTERNAL_STORAGE</code></strong> (Android 12 and below):
       required to find and play the music already on your device. Nothing else is read.</li>
-  <li><strong><code>RECORD_AUDIO</code></strong> (microphone): used by two optional
-      features only — <em>Live input</em> and <em>Visualize other apps</em> (Android
-      requires the microphone permission for its playback-capture API even though no
-      microphone is involved). It is requested at the moment you switch one of those
-      features on, never at launch. What is captured is analysed in memory to drive the
-      visuals and is never written to disk or transmitted. If you never turn these
-      features on, the microphone is never accessed.</li>
+  <li><strong><code>RECORD_AUDIO</code></strong> (microphone): used by one optional
+      feature only — <em>Live input</em>, which listens to the microphone or a connected
+      USB or line-in audio source. It is requested at the moment you switch that feature
+      on, never at launch. What is captured is analysed in memory to drive the visuals and
+      is never written to disk or transmitted. If you never turn the feature on, the
+      microphone is never accessed.</li>
   <li><strong><code>POST_NOTIFICATIONS</code></strong> (Android 13+): for the playback
-      controls notification and the ongoing notifications Android requires while
-      <em>Visualize other apps</em> or a video render is running.</li>
-  <li><strong><code>FOREGROUND_SERVICE</code></strong> (with the media-playback,
-      media-projection and media-processing types, and data-sync, which Android 14 and
-      below use for video rendering instead of media-processing): lets playback, capture
-      and video rendering keep running while the app is not on screen, always with a
-      visible notification.</li>
+      controls notification and the ongoing notification Android requires while a video
+      render is running.</li>
+  <li><strong><code>FOREGROUND_SERVICE</code></strong> (with the media-playback and
+      media-processing types, and data-sync, which Android 14 and below use for video
+      rendering instead of media-processing): lets playback and video rendering keep
+      running while the app is not on screen, always with a visible notification.</li>
   <li><strong><code>VIBRATE</code></strong>: haptic feedback for the app's controls.</li>
   <li><strong><code>WAKE_LOCK</code></strong>: keeps music playing reliably while the
       screen is off. It grants no access to any data.</li>
@@ -119,22 +105,6 @@ information. Specifically, the app has:</p>
       the phone restarts. It grants no access to any data.</li>
 </ul>
 <p>Geode requests no camera, contacts, location or Internet permission.</p>
-
-<h2>Visualize other apps (playback capture)</h2>
-<p>If you turn this feature on, Android shows its own system consent dialog before any
-capture starts, and an ongoing notification is displayed the whole time the feature is
-active. Geode reads the device's audio output solely to animate the visuals: the samples
-pass through an in-memory analysis buffer and are never saved, recorded or sent
-anywhere. The capture stops when you switch the feature off, dismiss it from the
-notification, or the system ends it.</p>
-
-<h2>Now playing access (notification access)</h2>
-<p>Optionally, you can grant Geode <em>notification access</em> in system settings so it
-can show which app and track the device is playing (for example the title playing in
-another music app). Geode uses this access only to read the media sessions Android
-exposes through it; notification contents are not read, stored or transmitted. You can
-revoke this at any time in <em>Settings → Notifications → Notification access</em>, and
-the feature simply goes without labels.</p>
 
 <h2>Video export</h2>
 <p>When you export a visualization, Geode writes an MP4 file to the location you choose

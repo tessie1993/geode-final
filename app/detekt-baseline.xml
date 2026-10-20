@@ -34,7 +34,6 @@
     <ID>NestedBlockDepth:ExportDefaultsPersistenceTest.kt$ExportDefaultsPersistenceTest$@Test fun everyChoiceCombinationRoundTrips()</ID>
     <ID>NestedBlockDepth:FluidSim.kt$FluidSim$private fun allocGrids(preserve: Boolean)</ID>
     <ID>NestedBlockDepth:OfflineAnalyzer.kt$OfflineAnalyzer$fun analyzeBlocking( uri: Uri, beatSensitivity: Float = BeatTuning.SENSITIVITY_DEFAULT, beatMinIntervalMs: Float = BeatTuning.INTERVAL_MS_DEFAULT, onProgress: (Float) -&gt; Unit = {}, ): FeatureTimeline</ID>
-    <ID>NestedBlockDepth:PlaybackCapture.kt$PlaybackCapture$@RequiresApi(Build.VERSION_CODES.Q) private fun openRecord(projection: MediaProjection): AudioRecord?</ID>
     <ID>NestedBlockDepth:PlayerScreen.kt$internal suspend fun driveSpectrum( live: Boolean, bands: () -&gt; FloatArray, emit: (FloatArray) -&gt; Unit, )</ID>
     <ID>NestedBlockDepth:RippleMathTest.kt$RippleMathTest$private fun ringRadius(h: FloatArray): Float</ID>
     <ID>NestedBlockDepth:SceneFailureTest.kt$SceneFailureTest$private fun shaderFailureBlocks(source: String): List&lt;String&gt;</ID>
@@ -68,11 +67,8 @@
     <ID>ReturnCount:MicCapture.kt$MicCapture$@Synchronized fun start(onSampleRate: (Int) -&gt; Unit = {}): Failure?</ID>
     <ID>ReturnCount:MusicPlaylistStore.kt$MusicPlaylistStore$fun move( name: String, from: Int, to: Int, ): MusicPlaylist</ID>
     <ID>ReturnCount:MusicPlaylistStore.kt$MusicPlaylistStore$fun rename( oldName: String, newName: String, ): Boolean</ID>
-    <ID>ReturnCount:NowPlayingBridge.kt$NowPlayingBridge$fun current(): External?</ID>
     <ID>ReturnCount:PcmRingBuffer.kt$PcmRingBuffer$private fun snapshotFrom( src: FloatArray, out: FloatArray, ): Boolean</ID>
     <ID>ReturnCount:PerformanceMonitor.kt$PerformanceMonitor$fun onFrame(dtSeconds: Float): Int</ID>
-    <ID>ReturnCount:PlaybackCapture.kt$PlaybackCapture$@RequiresApi(Build.VERSION_CODES.Q) @Synchronized fun start( projection: MediaProjection, onSampleRate: (Int) -&gt; Unit = {}, ): CaptureFailure?</ID>
-    <ID>ReturnCount:PlaybackCaptureService.kt$PlaybackCaptureService$override fun onStartCommand( intent: Intent?, flags: Int, startId: Int, ): Int</ID>
     <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun contextFor( uri: TrackId, browse: List&lt;QueueTrack&gt;, deviceTracks: List&lt;DeviceTrack&gt;, libraryTracks: List&lt;LibraryTrack&gt;, ): List&lt;QueueTrack&gt;</ID>
     <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun window( tracks: List&lt;QueueTrack&gt;, startUri: TrackId, ): Window</ID>
     <ID>ReturnCount:PlayerViewModel.kt$PlayerViewModel$private fun applyIntelligence()</ID>

@@ -1,9 +1,12 @@
 package dev.geode.data
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,6 +27,8 @@ import java.io.File
 class RetiredFeatureDataTest {
     private val context: Context = RuntimeEnvironment.getApplication()
 
+    private val notifications: NotificationManager = context.getSystemService(NotificationManager::class.java)
+
     private fun prefs(name: String) = context.getSharedPreferences(name, Context.MODE_PRIVATE)
 
     private fun seedStaleData() {
@@ -35,6 +40,9 @@ class RetiredFeatureDataTest {
         }
         RetiredFeatureData.prefsKeys.forEach { (file, keys) ->
             prefs(file).edit().apply { keys.forEach { putString(it, "stale") } }.commit()
+        }
+        RetiredFeatureData.notificationChannels.forEach { id ->
+            notifications.createNotificationChannel(NotificationChannel(id, id, NotificationManager.IMPORTANCE_LOW))
         }
     }
 
@@ -52,6 +60,9 @@ class RetiredFeatureDataTest {
         }
         RetiredFeatureData.prefsKeys.forEach { (file, keys) ->
             keys.forEach { key -> assertFalse("$file/$key survived", prefs(file).contains(key)) }
+        }
+        RetiredFeatureData.notificationChannels.forEach { id ->
+            assertNull("channel $id survived", notifications.getNotificationChannel(id))
         }
     }
 

@@ -38,9 +38,9 @@ ABIs arm64-v8a and x86_64. The full version history is in
   device has no HEVC encoder.
 - **Live wallpaper** — the visualizer as a home-screen wallpaper, with an idle
   drive so it keeps moving without audio.
-- **Other apps' audio** — Android 10+ playback capture feeds the same PCM ring
-  buffer the player's tap and the microphone share, so every scene, the
-  exporter and the wallpaper work unchanged on foreign audio.
+- **Live input** — the microphone, or a USB or line-in source in its place,
+  feeds the same PCM ring buffer as the player's tap, so every scene reacts to
+  the room unchanged.
 
 ## Build
 

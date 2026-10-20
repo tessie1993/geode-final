@@ -1,6 +1,5 @@
 package dev.geode.ui
 
-import android.content.Intent
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
@@ -59,7 +58,6 @@ class PlayerViewModel
 
         val micState: StateFlow<MicState> get() = session.micState
 
-        val externalAudio: StateFlow<ExternalAudioState> get() = session.externalAudio
 
         val historyTick: StateFlow<Int> get() = session.historyTick
 
@@ -80,14 +78,6 @@ class PlayerViewModel
         fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = session.setMicEnabled(enabled)
 
         fun hasMicPermission(): Boolean = session.hasMicPermission()
-
-        fun noteExternalAudioConsentPending() = session.noteExternalAudioConsentPending()
-
-        fun noteExternalAudioConsentDenied() = session.noteExternalAudioConsentDenied()
-
-        fun stopExternalAudio() = session.stopExternalAudio()
-
-        fun notificationAccessIntent(): Intent = session.notificationAccessIntent()
 
         fun toggleShuffle() = session.toggleShuffle()
 

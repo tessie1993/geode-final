@@ -75,7 +75,6 @@ fun VisualizerScreen(
     val queue by viewModel.queue.collectAsStateWithLifecycle()
     val favourites by viewModel.favourites.collectAsStateWithLifecycle()
     val abLoop by viewModel.abLoop.collectAsStateWithLifecycle()
-    val external by viewModel.externalAudio.collectAsStateWithLifecycle()
     val currentUri = remember(state.title, state.artist, state.queueIndex) { viewModel.currentTrackUri() }
     val isFavourite = currentUri != null && currentUri in favourites
     var panel by remember { mutableStateOf(PlayerPanel.TRANSPORT) }
@@ -122,29 +121,15 @@ fun VisualizerScreen(
                     Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.action_collapse))
                 }
                 Column(Modifier.weight(1f, fill = false)) {
-                    val foreign = external.active
-                    val foreignTrack = external.nowPlaying?.takeIf { it.title.isNotBlank() }
                     val appName = stringResource(R.string.app_name)
                     Text(
-                        when {
-                            foreign -> foreignTrack?.title ?: stringResource(R.string.source_other_apps)
-                            else -> state.title?.ifBlank { appName } ?: appName
-                        },
+                        state.title?.ifBlank { appName } ?: appName,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val subtitle =
-                        when {
-                            foreign ->
-                                listOfNotNull(
-                                    foreignTrack?.artist?.takeIf { it.isNotBlank() },
-                                    external.nowPlaying?.appLabel,
-                                ).joinToString(" · ")
-                                    .ifBlank { stringResource(R.string.subtitle_captured_from_another_app) }
-                            else -> state.artist?.takeIf { it.isNotBlank() }.orEmpty()
-                        }
+                    val subtitle = state.artist?.takeIf { it.isNotBlank() }.orEmpty()
                     if (subtitle.isNotEmpty()) {
                         Text(
                             subtitle,
@@ -155,7 +140,7 @@ fun VisualizerScreen(
                         )
                     }
                 }
-                if (state.hasMedia && !external.active) {
+                if (state.hasMedia) {
                     IconButton(onClick = { viewModel.toggleFavourite() }) {
                         StoneIconArt(
                             StoneIcon.FAVORITE,
