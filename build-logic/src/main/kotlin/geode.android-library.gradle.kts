@@ -7,7 +7,7 @@ plugins {
 extensions.configure<com.android.build.api.dsl.LibraryExtension> {
     compileSdk = 37
     defaultConfig {
-        minSdk = 26
+        minSdk = 31
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

@@ -44,7 +44,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.geode"
-        minSdk = 26
+        minSdk = 31
         targetSdk = 36
         versionCode = 32
         versionName = "1.8.0"
