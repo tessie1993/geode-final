@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         keepSplashUntilUserDataLoaded()
         if (savedInstanceState == null) {
             importSharedPreset(intent)
-                playFromSearch(intent)
+            playFromSearch(intent)
         }
     }
 }

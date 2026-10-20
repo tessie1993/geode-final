@@ -27,7 +27,7 @@ import java.io.File
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
-class RetiredFeatureDataTest {
+class RetiredFeatureDataRobolectricTest {
     private val context: Context = RuntimeEnvironment.getApplication()
 
     private val notifications: NotificationManager =

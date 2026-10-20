@@ -58,7 +58,6 @@ class PlayerViewModel
 
         val micState: StateFlow<MicState> get() = session.micState
 
-
         val historyTick: StateFlow<Int> get() = session.historyTick
 
         val favourites: StateFlow<Set<TrackId>> get() = session.favourites
