@@ -22,6 +22,7 @@ These decisions extend ADR-0003 (structure: ADR-0005) with how the features beha
 - **Library scanning:** Android's MediaStore finds the files. Geode's TagLib reader fills in the missing tags (composer, album artist, ReplayGain, embedded art) in the background, cached in Room.
 - **Customization to C++:** one compact, versioned snapshot is sent whenever the Customization changes. Nothing crosses per frame (ADR-0002).
 - **Minimum Android version: 12** (API 31). The old-version workarounds are removed.
+- **Quality gates:** mutation scores are the test-quality gate, and line coverage stays a report only. There are no performance budgets or Baseline Profiles for now.
 - **End-to-end journeys on the emulator** in CI:
   - play a song and switch tabs and full-screen mode, without a restart;
   - Record the Visual;
