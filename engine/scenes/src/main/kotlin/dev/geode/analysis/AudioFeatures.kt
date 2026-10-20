@@ -1,5 +1,7 @@
 package dev.geode.analysis
 
+import dev.geode.engine.audio.SoundEvents
+
 data class AudioFeatures(
     val bands: FloatArray,
     val waveform: FloatArray,
@@ -43,6 +45,10 @@ data class AudioFeatures(
     val arrival: Boolean = false,
     val harmonicity: Float = HARMONICITY_UNDECIDED,
     val warmup: Float = 0f,
+    // beat, beatStrength, transient, kick, snare, hat, downbeat, sectionBoundary, drop and arrival
+    // are one-hop impulses. A live frame also carries every occurrence so far, sequenced, for a
+    // reader that looks less often than once per hop (DisplayEvents); offline frames leave it empty.
+    val events: SoundEvents = SoundEvents.NONE,
 ) {
     val hasChroma: Boolean get() = chroma.size == 12
 
@@ -56,6 +62,41 @@ data class AudioFeatures(
 
     val motionImpulse: Float
         get() = maxOf(beatImpulse, transient * TRANSIENT_MOTION_WEIGHT)
+
+    /** These features with no one-hop event in them: what a stretch in which nothing fired reports. */
+    fun withoutEvents(): AudioFeatures =
+        copy(
+            beat = false,
+            beatStrength = 0f,
+            transient = 0f,
+            kick = 0f,
+            snare = 0f,
+            hat = 0f,
+            downbeat = false,
+            sectionBoundary = false,
+            drop = false,
+            arrival = false,
+        )
+
+    /**
+     * These features with every one-hop event of [other] folded in, as when two hops become one:
+     * flags or'ed, strengths maxed, and onset and flux maxed with them.
+     */
+    fun foldedWith(other: AudioFeatures): AudioFeatures =
+        copy(
+            beat = beat || other.beat,
+            beatStrength = maxOf(beatStrength, other.beatStrength),
+            transient = maxOf(transient, other.transient),
+            kick = maxOf(kick, other.kick),
+            snare = maxOf(snare, other.snare),
+            hat = maxOf(hat, other.hat),
+            downbeat = downbeat || other.downbeat,
+            sectionBoundary = sectionBoundary || other.sectionBoundary,
+            drop = drop || other.drop,
+            arrival = arrival || other.arrival,
+            onset = maxOf(onset, other.onset),
+            flux = maxOf(flux, other.flux),
+        )
 
     companion object {
         const val TRANSIENT_MOTION_WEIGHT = 0.5f

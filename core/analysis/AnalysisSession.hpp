@@ -1,5 +1,7 @@
 #pragma once
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,7 @@ public:
 
 private:
     void fill(const float* mid, const float* side, GeodeFeatureFrame& out) const;
+    void sequence(GeodeFeatureFrame& out);
     void averagedWaveform(const float* mid, float* out) const;
     void decimatedWaveform(const float* mid, float* out) const;
 
@@ -38,6 +41,8 @@ private:
     std::vector<float> buffer_;
     std::vector<float> sideBuffer_;
     size_t buffered_ = 0;
+    std::array<uint32_t, GEODE_EVENT_COUNT> eventSeq_{};
+    std::array<float, GEODE_EVENT_COUNT> eventStrength_{};
 };
 
 }  // namespace geode::analysis
