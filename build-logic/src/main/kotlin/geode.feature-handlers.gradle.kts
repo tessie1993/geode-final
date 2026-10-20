@@ -1,6 +1,7 @@
 // A feature's :handlers (ADR-0005): the effect runner that carries out the reducer's effects (IO, the
 // database, the audio adapter, the system) and reports results back as events. An Android library; it
-// depends on its own :core and :api and on :arch:*.
+// depends on its own :core and :api and on :arch:*, and may add another feature's :api to call its
+// send or read its state, never that feature's :core, :handlers or :ui.
 plugins {
     id("geode.android-library")
 }

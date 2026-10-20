@@ -8,7 +8,8 @@ import org.junit.Test
  * that follows it is not. The real build is checked by [FeatureArchitectureKonsistTest].
  */
 class FeatureRulesTest {
-    // Two features laid out exactly as ADR-0005 says, with capture using playback's interface.
+    // Two features laid out exactly as ADR-0005 says, with capture's core and handlers using
+    // playback's interface.
     private val cleanBuild =
         listOf(
             Module(":app", setOf(":feature:capture:handlers", ":feature:capture:ui", ":arch:kernel")),
@@ -18,7 +19,10 @@ class FeatureRulesTest {
             Module(":feature:playback:core", setOf(":arch:kernel")),
             Module(":feature:capture:api", setOf(":arch:kernel")),
             Module(":feature:capture:core", setOf(":arch:kernel", ":feature:playback:api")),
-            Module(":feature:capture:handlers", setOf(":feature:capture:core", ":feature:capture:api", ":arch:audio")),
+            Module(
+                ":feature:capture:handlers",
+                setOf(":feature:capture:core", ":feature:capture:api", ":arch:audio", ":feature:playback:api"),
+            ),
             Module(":feature:capture:ui", setOf(":feature:capture:api")),
         )
 
@@ -76,7 +80,7 @@ class FeatureRulesTest {
         val modules =
             listOf(
                 Module(":feature:capture:core", setOf(":feature:playback:core")),
-                Module(":feature:capture:handlers", setOf(":feature:playback:handlers", ":feature:playback:api")),
+                Module(":feature:capture:handlers", setOf(":feature:playback:handlers", ":feature:playback:core", ":feature:playback:api")),
                 Module(":feature:capture:api", setOf(":feature:playback:api", ":arch:audio")),
                 Module(":arch:audio", setOf(":feature:playback:api")),
                 Module(":engine:scenes", setOf(":feature:playback:api")),
@@ -87,7 +91,7 @@ class FeatureRulesTest {
             listOf(
                 ":feature:capture:core may not depend on :feature:playback:core",
                 ":feature:capture:handlers may not depend on :feature:playback:handlers",
-                ":feature:capture:handlers may not depend on :feature:playback:api",
+                ":feature:capture:handlers may not depend on :feature:playback:core",
                 ":feature:capture:api may not depend on :feature:playback:api",
                 ":feature:capture:api may not depend on :arch:audio",
                 ":arch:audio may not depend on :feature:playback:api",
@@ -95,6 +99,21 @@ class FeatureRulesTest {
                 ":feature:capture:extras may not depend on :arch:kernel",
             ),
             FeatureRules.dependenciesFollowTheTable(modules),
+        )
+    }
+
+    @Test
+    fun `handlers that use each other's interface close a circle too`() {
+        val modules =
+            listOf(
+                Module(":feature:capture:handlers", setOf(":feature:playback:api")),
+                Module(":feature:playback:handlers", setOf(":feature:capture:api")),
+            )
+
+        assertEquals(emptyList<String>(), FeatureRules.dependenciesFollowTheTable(modules))
+        assertEquals(
+            listOf("features depend on each other in a cycle: capture -> playback -> capture"),
+            FeatureRules.noFeatureCycles(modules),
         )
     }
 
