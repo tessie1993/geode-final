@@ -46,11 +46,14 @@ The C++ is split the same way. Audio, analysis, the Visual and rendering become 
 ## Numbers and buffers
 
 - No loose numbers: each module keeps its sizes, limits and timeouts as named, typed constants in one place; the App UI uses design tokens only. Anything a person might want to change belongs in Settings.
-- Buffers are sized dynamically wherever that is better. The audio buffer tunes itself: it starts at the phone's best size, grows a step after a crackle and eases back once stable, with no setting. How each Visual buffer is sized (MilkDrop's and the Styles') follows from an investigation of the shaders and the native Visual.
+- Buffers are sized dynamically wherever that is better. The audio buffer tunes itself: it starts at the phone's best size, grows a step after a crackle and eases back once stable, with no setting.
+- **Visual buffers follow load and never go black.** The scene and trail buffers scale with load, with hysteresis so they don't flip back and forth. A resize copies the old picture into the new buffer and never clears to black. Simulations (Life, Myco, Ripple…) keep their own declared grid and reset only when that grid really changes. Heavy Styles may declare their own render scale in their manifest. Renders always draw at the exact export size, and export supersampling is a named setting.
+- **MilkDrop adapts in two steps.** Under load it lowers its warp-mesh detail first, which is safe at any time. Its buffer size changes only at the next preset change, which already blends from the old picture. It gets the real paced frame rate, not a fixed 60.
+- **Renders are frame-exact.** Our projectM copy is driven by the render clock during a render, so the same song and settings always give the same video.
 
 ## Code shape
 
-SOLID principles and size limits (function and file length, parameter count, nesting) are reported on each PR as warnings, not failures, with thresholds set after reading the current code.
+SOLID principles and size limits (function and file length, parameter count, nesting) are reported as warnings, never failures: inline annotations on the changed lines of each PR, from detekt for Kotlin and lizard for C++. The thresholds sit near the current code's 95th–99th percentile (functions of about 60 lines, complexity 15, 8 parameters, nesting depth 4). The existing blocking detekt ratchet stays as it is, and its stale baseline entries are removed.
 
 ## Considered options
 
