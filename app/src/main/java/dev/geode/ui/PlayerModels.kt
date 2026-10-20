@@ -3,14 +3,18 @@ package dev.geode.ui
 import androidx.media3.common.Player
 import dev.geode.analysis.IntelligenceMode
 import dev.geode.data.Preset
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
+import dev.geode.engine.types.TrackId
 import dev.geode.render.TransitionStyle
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 
 data class PlayerUiState(
     val isPlaying: Boolean = false,
-    val positionMs: Long = 0,
-    val durationMs: Long = 0,
+    val position: Millis = Millis.ZERO,
+    val duration: Millis = Millis.ZERO,
     val title: String? = null,
     val artist: String? = null,
     val hasMedia: Boolean = false,
@@ -21,9 +25,9 @@ data class PlayerUiState(
 )
 
 data class VizUiState(
-    val sceneId: String = SceneIds.DEFAULT,
+    val sceneId: SceneId = SceneIds.DEFAULT,
     val intelligenceMode: IntelligenceMode = IntelligenceMode.MANUAL,
-    val suggestedSceneId: String? = null,
+    val suggestedSceneId: SceneId? = null,
     val attack: Float = 0.6f,
     val decay: Float = 0.12f,
     val analysis: AnalysisState = AnalysisState.Idle,
@@ -50,8 +54,8 @@ data class VizUiState(
 )
 
 data class VizPlaylistEntry(
-    val sceneId: String,
-    val presetName: String? = null,
+    val sceneId: SceneId,
+    val presetName: PresetId? = null,
     val milkPath: String? = null,
     val label: String,
 )
@@ -59,7 +63,7 @@ data class VizPlaylistEntry(
 data class VizApply(
     val milkPath: String? = null,
     val customShader: String? = null,
-    val sceneId: String? = null,
+    val sceneId: SceneId? = null,
 )
 
 data class MilkFile(
@@ -68,7 +72,7 @@ data class MilkFile(
 )
 
 data class QueueTrack(
-    val uri: String,
+    val uri: TrackId,
     val title: String = "",
     val artist: String = "",
 )

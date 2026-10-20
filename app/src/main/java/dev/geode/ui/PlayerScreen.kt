@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import dev.geode.R
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.delay
@@ -62,7 +64,7 @@ fun PlayerScreen(
     val queue by viewModel.queue.collectAsStateWithLifecycle()
     val favourites by viewModel.favourites.collectAsStateWithLifecycle()
     val tick by viewModel.historyTick.collectAsStateWithLifecycle()
-    val sleepRemainingMs by viewModel.sleepTimerRemainingMs.collectAsStateWithLifecycle()
+    val sleepRemaining by viewModel.sleepTimerRemaining.collectAsStateWithLifecycle()
     val canShuffle = remember(tick) { viewModel.recentlyPlayed().isNotEmpty() }
     var showQueue by rememberSaveable { mutableStateOf(true) }
     val upNext = remember(queue) { queue.tracks.drop(queue.index + 1).take(3) }
@@ -139,7 +141,7 @@ fun PlayerScreen(
                 viewModel = viewModel,
                 micActive = mic.active,
                 external = external,
-                sleepRunning = sleepRemainingMs != null,
+                sleepRunning = sleepRemaining != null,
                 canShuffle = canShuffle,
             )
         }
@@ -153,7 +155,7 @@ private fun PlayerHero(
     styleLabel: String,
     micActive: Boolean,
     external: ExternalAudioState,
-    favourites: Set<String>,
+    favourites: Set<TrackId>,
     canResume: Boolean,
     onExpand: () -> Unit,
     onOpenLibrary: () -> Unit,
@@ -321,17 +323,17 @@ private fun TransportCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(formatClock(state.positionMs), style = MaterialTheme.typography.labelSmall)
+            Text(formatClock(state.position), style = MaterialTheme.typography.labelSmall)
             WaveformSeekBar(
                 waveform = waveform,
-                positionMs = state.positionMs,
-                durationMs = state.durationMs,
-                loopStartMs = abLoop?.startMs,
-                loopEndMs = abLoop?.endMs,
+                position = state.position,
+                duration = state.duration,
+                loopStart = abLoop?.start,
+                loopEnd = abLoop?.end,
                 onSeek = viewModel::seekTo,
                 modifier = Modifier.weight(1f).height(40.dp),
             )
-            Text(formatClock(state.durationMs), style = MaterialTheme.typography.labelSmall)
+            Text(formatClock(state.duration), style = MaterialTheme.typography.labelSmall)
         }
         Row(
             Modifier.fillMaxWidth(),
@@ -384,7 +386,7 @@ private fun TransportCard(
                 Text(
                     when {
                         abLoop == null -> stringResource(R.string.ab_loop_idle)
-                        abLoop.endMs == null -> stringResource(R.string.ab_loop_set_b)
+                        abLoop.end == null -> stringResource(R.string.ab_loop_set_b)
                         else -> stringResource(R.string.ab_loop_looping)
                     },
                     style = MaterialTheme.typography.labelMedium,
@@ -700,8 +702,8 @@ private fun QuickActionShell(
     }
 }
 
-internal fun formatClock(ms: Long): String {
-    val total = (ms / 1000).coerceAtLeast(0)
+internal fun formatClock(time: Millis): String {
+    val total = (time.value / 1000).coerceAtLeast(0)
     val hours = total / 3600
     val minutes = (total % 3600) / 60
     val seconds = total % 60

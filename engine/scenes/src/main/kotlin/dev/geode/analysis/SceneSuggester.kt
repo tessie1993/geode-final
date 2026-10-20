@@ -1,21 +1,22 @@
 package dev.geode.analysis
 
+import dev.geode.engine.types.SceneId
 import dev.geode.render.scene.SceneIds
 
 enum class IntelligenceMode { MANUAL, SUGGEST, AUTO }
 
 object SceneSuggester {
-    const val SCENE_JULIA = SceneIds.JULIA
-    const val SCENE_TUNNEL = SceneIds.TUNNEL
+    val SCENE_JULIA = SceneIds.JULIA
+    val SCENE_TUNNEL = SceneIds.TUNNEL
 
-    val SCENE_MYCELIUM: String =
+    val SCENE_MYCELIUM: SceneId =
         requireNotNull(
             dev.geode.render.scene.VisualStyleCatalog
-                .myco("myco_polycephalum"),
+                .myco(SceneId("myco_polycephalum")),
         ).id
 
     data class Affinity(
-        val sceneId: String,
+        val sceneId: SceneId,
         val tempoBpm: ClosedFloatingPointRange<Float> = 60f..180f,
         val energy: ClosedFloatingPointRange<Float> = 0f..1f,
         val brightness: ClosedFloatingPointRange<Float> = 0f..1f,
@@ -88,7 +89,7 @@ object SceneSuggester {
             a.percussiveBias * (pulseConfidence - chromaConfidence) +
             a.widthBias * (stereoWidth - 0.25f)
 
-    fun suggestForTrack(timeline: FeatureTimeline): String {
+    fun suggestForTrack(timeline: FeatureTimeline): SceneId {
         val frames = timeline.frames
 
         fun avg(pick: (AudioFeatures) -> Float): Float =
@@ -110,5 +111,5 @@ object SceneSuggester {
         pulseConfidence: Float = 0f,
         chromaConfidence: Float = 0f,
         stereoWidth: Float = 0f,
-    ): String = AFFINITIES.maxBy { score(it, bpm, energy, centroid, pulseConfidence, chromaConfidence, stereoWidth) }.sceneId
+    ): SceneId = AFFINITIES.maxBy { score(it, bpm, energy, centroid, pulseConfidence, chromaConfidence, stereoWidth) }.sceneId
 }

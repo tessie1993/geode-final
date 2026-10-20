@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.analysis.IntelligenceMode
+import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
 import dev.geode.render.BlendMode
@@ -1122,7 +1123,7 @@ private const val LAYERS_ENABLED = "Layers enabled"
 /** Wraps a tab's content in the scene + search context every control reads. */
 @Composable
 internal fun ParamSurface(
-    sceneId: String,
+    sceneId: SceneId,
     query: String,
     content: @Composable () -> Unit,
 ) = CompositionLocalProvider(

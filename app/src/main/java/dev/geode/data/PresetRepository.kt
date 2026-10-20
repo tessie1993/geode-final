@@ -1,5 +1,6 @@
 package dev.geode.data
 
+import dev.geode.engine.types.PresetId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,9 +10,9 @@ import java.io.File
 
 data class PresetFolders(
     val folders: List<String> = emptyList(),
-    val folderByPreset: Map<String, String> = emptyMap(),
+    val folderByPreset: Map<PresetId, String> = emptyMap(),
 ) {
-    fun folderOf(preset: String): String = folderByPreset[preset].orEmpty()
+    fun folderOf(preset: PresetId): String = folderByPreset[preset].orEmpty()
 }
 
 interface PresetRepository {
@@ -24,7 +25,7 @@ interface PresetRepository {
         folder: String = "",
     )
 
-    suspend fun delete(name: String)
+    suspend fun delete(name: PresetId)
 
     suspend fun addFolder(path: String)
 
@@ -34,13 +35,13 @@ interface PresetRepository {
     )
 
     suspend fun moveToFolder(
-        name: String,
+        name: PresetId,
         folder: String,
     )
 
     suspend fun refreshFolders()
 
-    fun fileOf(name: String): File?
+    fun fileOf(name: PresetId): File?
 
     fun materializeMilk(
         presetName: String,
@@ -64,8 +65,8 @@ class FilePresetRepository(
         refreshFolders()
     }
 
-    override suspend fun delete(name: String) {
-        withContext(Dispatchers.IO) { store.delete(name) }
+    override suspend fun delete(name: PresetId) {
+        withContext(Dispatchers.IO) { store.delete(name.value) }
         refreshFolders()
     }
 
@@ -83,10 +84,10 @@ class FilePresetRepository(
     }
 
     override suspend fun moveToFolder(
-        name: String,
+        name: PresetId,
         folder: String,
     ) {
-        withContext(Dispatchers.IO) { store.moveToFolder(name, folder) }
+        withContext(Dispatchers.IO) { store.moveToFolder(name.value, folder) }
         refreshFolders()
     }
 
@@ -95,12 +96,12 @@ class FilePresetRepository(
             withContext(Dispatchers.IO) {
                 PresetFolders(
                     folders = store.folders(),
-                    folderByPreset = store.list().associate { it.name to store.folderOf(it.name) },
+                    folderByPreset = store.list().associate { it.id to store.folderOf(it.name) },
                 )
             }
     }
 
-    override fun fileOf(name: String): File? = store.fileOf(name)
+    override fun fileOf(name: PresetId): File? = store.fileOf(name.value)
 
     override fun materializeMilk(
         presetName: String,

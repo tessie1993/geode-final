@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         val message =
             when (val result = visualsViewModel.importSharedPreset(data)) {
                 PresetLinkImport.NotALink -> return
-                is PresetLinkImport.Imported -> getString(R.string.preset_link_imported, result.name)
+                is PresetLinkImport.Imported -> getString(R.string.preset_link_imported, result.name.value)
                 PresetLinkImport.Unreadable -> getString(R.string.preset_link_unreadable)
             }
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()

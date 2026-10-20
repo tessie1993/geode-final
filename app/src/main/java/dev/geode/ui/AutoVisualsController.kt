@@ -3,6 +3,7 @@ package dev.geode.ui
 import dev.geode.analysis.AudioFeatures
 import dev.geode.data.PaletteStore
 import dev.geode.data.Preset
+import dev.geode.engine.types.SceneId
 import dev.geode.render.LiveSignal
 import dev.geode.render.scene.MilkdropEngine
 import dev.geode.render.scene.SceneIds
@@ -28,13 +29,13 @@ internal class AutoVisualsController(
 
         val presetLocked: Boolean
 
-        fun selectScene(sceneId: String)
+        fun selectScene(sceneId: SceneId)
 
         fun applyPreset(preset: Preset)
 
         fun applyMilk(
             path: String,
-            sceneId: String,
+            sceneId: SceneId,
         )
 
         fun analyzeCurrentTrack()
@@ -233,9 +234,9 @@ internal class AutoVisualsController(
                 dev.geode.render.scene.VisualStyleCatalog.mycoIds +
                 dev.geode.render.scene.VisualStyleCatalog.acidIds +
                 dev.geode.render.scene.SceneCapabilities.SHADER_SCENES.keys
-        if (s.randomIncludeStyles) sceneIds.forEach { choices += VizPlaylistEntry(sceneId = it, label = it) }
+        if (s.randomIncludeStyles) sceneIds.forEach { choices += VizPlaylistEntry(sceneId = it, label = it.value) }
         if (s.randomIncludePresets) {
-            s.presets.forEach { choices += VizPlaylistEntry(sceneId = it.sceneId, presetName = it.name, label = it.name) }
+            s.presets.forEach { choices += VizPlaylistEntry(sceneId = it.sceneId, presetName = it.id, label = it.name) }
         }
         if (s.randomIncludeMilk && MilkdropEngine.available) {
             cachedMilkFiles.forEach {
@@ -270,7 +271,7 @@ internal class AutoVisualsController(
         host.selectScene(entry.sceneId)
         if (entry.presetName != null) {
             host.vizState.value.presets
-                .firstOrNull { it.name == entry.presetName && it.sceneId == entry.sceneId }
+                .firstOrNull { it.id == entry.presetName && it.sceneId == entry.sceneId }
                 ?.let { host.applyPreset(it) }
         }
         if (entry.milkPath != null) {

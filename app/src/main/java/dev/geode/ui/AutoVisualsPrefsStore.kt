@@ -1,6 +1,8 @@
 package dev.geode.ui
 
 import android.content.SharedPreferences
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -68,10 +70,10 @@ class AutoVisualsPrefsStore(
             for (e in entries) {
                 arr.put(
                     JSONObject()
-                        .put("sceneId", e.sceneId)
+                        .put("sceneId", e.sceneId.value)
                         .put("label", e.label)
                         .apply {
-                            e.presetName?.let { put("presetName", it) }
+                            e.presetName?.let { put("presetName", it.value) }
                             e.milkPath?.let { put("milkPath", it) }
                         },
                 )
@@ -89,8 +91,8 @@ class AutoVisualsPrefsStore(
                         if (sceneId.isEmpty()) continue
                         add(
                             VizPlaylistEntry(
-                                sceneId = sceneId,
-                                presetName = o.optString("presetName", "").takeIf { it.isNotEmpty() },
+                                sceneId = SceneId(sceneId),
+                                presetName = o.optString("presetName", "").takeIf { it.isNotEmpty() }?.let(::PresetId),
                                 milkPath = o.optString("milkPath", "").takeIf { it.isNotEmpty() },
                                 label = o.optString("label", "").ifEmpty { sceneId },
                             ),

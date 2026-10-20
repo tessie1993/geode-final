@@ -4,6 +4,8 @@ import androidx.media3.common.C
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.types.Frames
+import dev.geode.engine.types.Hz
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -37,18 +39,18 @@ class NativeTapPump(
 
     private fun loop(handle: Long) {
         val buffer = ByteBuffer.allocateDirect(FRAMES * CHANNELS * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
-        var rate = 0
-        clock.attachSkippedFrames { 0L }
+        var rate = Hz(0)
+        clock.attachSkippedFrames { Frames(0L) }
         while (running) {
-            val current = GeodeNative.playerOutputSampleRate(handle)
-            if (current > 0 && current != rate) {
+            val current = Hz(GeodeNative.playerOutputSampleRate(handle))
+            if (current.value > 0 && current != rate) {
                 rate = current
                 // The clock driver trusts a boundary only after both sink hooks reported; native has neither.
                 clock.onSpeedApplied(1f)
                 clock.onSkipSilenceApplied(false)
-                tap.flush(rate, CHANNELS, C.ENCODING_PCM_FLOAT)
+                tap.flush(rate.value, CHANNELS, C.ENCODING_PCM_FLOAT)
             }
-            val frames = if (rate > 0) GeodeNative.playerReadTap(handle, buffer, FRAMES) else 0
+            val frames = if (rate.value > 0) GeodeNative.playerReadTap(handle, buffer, FRAMES) else 0
             if (frames > 0) {
                 buffer.limit(frames * CHANNELS * Float.SIZE_BYTES)
                 buffer.position(0)

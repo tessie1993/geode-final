@@ -2,6 +2,7 @@ package dev.geode.ui
 
 import androidx.annotation.StringRes
 import dev.geode.R
+import dev.geode.engine.types.Millis
 
 /**
  * How the track list is ordered. Exhaustive by construction: adding an order is a compile error
@@ -35,7 +36,7 @@ object LibraryBrowse {
                 tracks.sortedWith(compareBy({ it.artist.lowercase() }, { it.title.lowercase() }))
             LibrarySort.ALBUM ->
                 tracks.sortedWith(compareBy({ it.album.lowercase() }, { it.title.lowercase() }))
-            LibrarySort.DURATION -> tracks.sortedBy { it.durationMs }
+            LibrarySort.DURATION -> tracks.sortedBy { it.duration }
             LibrarySort.ADDED -> tracks.sortedByDescending { it.addedSec }
         }
 
@@ -119,11 +120,7 @@ object LibraryBrowse {
     }
 
     /** `m:ss`, or blank when the duration is unknown — better nothing than a confident `0:00`. */
-    fun formatDuration(durationMs: Long): String {
-        if (durationMs <= 0L) return ""
-        val totalSeconds = durationMs / 1000L
-        return "%d:%02d".format(totalSeconds / 60L, totalSeconds % 60L)
-    }
+    fun formatDuration(duration: Millis): String = if (duration > Millis.ZERO) duration.minutesSeconds() else ""
 
     private val WORD_SPLIT = Regex("[\\s\\-_./]+")
 }

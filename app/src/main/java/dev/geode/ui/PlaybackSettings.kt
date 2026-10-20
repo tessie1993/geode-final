@@ -43,7 +43,7 @@ private val REPLAYGAIN_MODES =
 fun PlaybackSettingsSection(viewModel: SettingsViewModel) {
     val playerViewModel: PlayerViewModel = geodeViewModel()
     val prefs by viewModel.playerPrefs.collectAsStateWithLifecycle()
-    val sleepRemainingMs by playerViewModel.sleepTimerRemainingMs.collectAsStateWithLifecycle()
+    val sleepRemaining by playerViewModel.sleepTimerRemaining.collectAsStateWithLifecycle()
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             stringResource(R.string.audio_dsp_visuals_notice),
@@ -122,7 +122,7 @@ fun PlaybackSettingsSection(viewModel: SettingsViewModel) {
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                val running = sleepRemainingMs != null
+                val running = sleepRemaining != null
                 SLEEP_TIMER_CHOICES.forEach { minutes ->
                     FilterChip(
                         selected =
@@ -150,7 +150,7 @@ fun PlaybackSettingsSection(viewModel: SettingsViewModel) {
             PlaybackSwitchRow(stringResource(R.string.playback_sleep_finish_track), prefs.sleepFinishTrack) {
                 viewModel.setPlayerPrefs(prefs.copy(sleepFinishTrack = it))
             }
-            sleepRemainingMs?.let { remaining ->
+            sleepRemaining?.let { remaining ->
                 Text(
                     stringResource(
                         if (prefs.sleepFinishTrack) {

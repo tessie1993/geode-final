@@ -1,6 +1,8 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -11,7 +13,7 @@ class SessionStore(
     private val file = File(context.filesDir, FILE_NAME)
 
     data class SavedTrack(
-        val uri: String,
+        val uri: TrackId,
         val title: String,
         val artist: String,
     )
@@ -19,7 +21,7 @@ class SessionStore(
     data class Saved(
         val tracks: List<SavedTrack>,
         val index: Int,
-        val positionMs: Long,
+        val position: Millis,
     )
 
     @Suppress("ReturnCount")
@@ -41,7 +43,7 @@ class SessionStore(
         for (t in session.tracks) {
             items.put(
                 JSONObject()
-                    .put(KEY_URI, t.uri)
+                    .put(KEY_URI, t.uri.value)
                     .put(KEY_TITLE, t.title)
                     .put(KEY_ARTIST, t.artist),
             )
@@ -51,7 +53,7 @@ class SessionStore(
                 .put(KEY_VERSION, VERSION)
                 .put(KEY_TRACKS, items)
                 .put(KEY_INDEX, session.index.coerceIn(0, session.tracks.size - 1))
-                .put(KEY_POSITION, session.positionMs.coerceAtLeast(0L))
+                .put(KEY_POSITION, session.position.value.coerceAtLeast(0L))
         return AtomicWrite.text(file, root.toString())
     }
 
@@ -76,7 +78,7 @@ class SessionStore(
             if (uri.isBlank()) continue
             tracks +=
                 SavedTrack(
-                    uri = uri,
+                    uri = TrackId(uri),
                     title = item.optString(KEY_TITLE).orEmpty(),
                     artist = item.optString(KEY_ARTIST).orEmpty(),
                 )
@@ -85,7 +87,7 @@ class SessionStore(
         return Saved(
             tracks = tracks,
             index = root.optInt(KEY_INDEX, 0).coerceIn(0, tracks.size - 1),
-            positionMs = root.optLong(KEY_POSITION, 0L).coerceAtLeast(0L),
+            position = Millis(root.optLong(KEY_POSITION, 0L).coerceAtLeast(0L)),
         )
     }
 

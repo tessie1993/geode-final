@@ -4,6 +4,8 @@ import android.content.Context
 import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
 import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneIds
@@ -36,7 +38,7 @@ class VisualizerRenderer(
     var features: AudioFeatures = AudioFeatures.empty()
 
     @Volatile
-    var requestedSceneId: String = SceneIds.DEFAULT
+    var requestedSceneId: SceneId = SceneIds.DEFAULT
 
     @Volatile
     var sceneParams: SceneParams = SceneParams.DEFAULT
@@ -46,7 +48,7 @@ class VisualizerRenderer(
     var reducedMotion: Boolean = false
 
     @Volatile
-    var layerSceneId: String? = null
+    var layerSceneId: SceneId? = null
 
     @Volatile
     var layerMix: Float = 0.5f
@@ -59,7 +61,7 @@ class VisualizerRenderer(
     var transitionStyle: TransitionStyle = TransitionStyle.FADE
 
     @Volatile
-    var transitionDurationMs: Long = 1200
+    var transitionDuration: Millis = Millis(1200L)
 
     @Volatile
     var transitionId: String = TransitionStyle.FADE.name.lowercase()
@@ -96,7 +98,7 @@ class VisualizerRenderer(
             return nativeViz.knows(SceneIds.MILKDROP)
         }
 
-    fun availableSceneIds(): List<String> {
+    fun availableSceneIds(): List<SceneId> {
         nativeViz.create()
         return nativeViz.sceneIds()
     }
@@ -105,14 +107,14 @@ class VisualizerRenderer(
     fun releaseScenes() = nativeViz.destroy()
 
     fun submitShader(
-        sceneId: String,
+        sceneId: SceneId,
         fragmentSrc: String,
     ) {
         nativeViz.create()
         nativeViz.setCustomShader(sceneId, fragmentSrc)
     }
 
-    fun customShaderFor(sceneId: String): String? = nativeViz.customShaderFor(sceneId)
+    fun customShaderFor(sceneId: SceneId): String? = nativeViz.customShaderFor(sceneId)
 
     fun submitFluidInjectionShaders(
         force: String?,
@@ -199,7 +201,7 @@ class VisualizerRenderer(
         nativeViz.setFeatures(features)
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
-        nativeViz.setTransition(transitionId, transitionDurationMs)
+        nativeViz.setTransition(transitionId, transitionDuration)
         nativeViz.setPacedFps(ThermalGovernor.pacedFps)
         val now = SystemClock.elapsedRealtime()
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
@@ -209,11 +211,11 @@ class VisualizerRenderer(
         pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
-    fun exportSceneFactory(sceneId: String): SceneFactory {
+    fun exportSceneFactory(sceneId: SceneId): SceneFactory {
         val id = sceneId
         val preset = lastMilkPreset
         return object : SceneFactory {
-            override val sceneId: String = id
+            override val sceneId: SceneId = id
 
             override val milkPresetPath: String? = preset
         }

@@ -1,7 +1,6 @@
 package dev.geode.ui
 
 import android.app.Activity
-import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.playback.toUri
 
 /** Same title, artist and length, listed side by side so the spare copy can be played to check and then deleted. */
 @Composable
@@ -50,14 +50,14 @@ internal fun DuplicatesTab(
         }
         groups.forEach { group ->
             // Title and artist can repeat across groups (one bucket splits by duration); a track sits in one group only.
-            item(key = "dup|${group.tracks.first().uri}") {
+            item(key = "dup|${group.tracks.first().uri.value}") {
                 Text(
                     stringResource(R.string.duplicates_group, group.title, group.artist, group.tracks.size),
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
-            items(group.tracks.size, key = { group.tracks[it].uri }) { index ->
+            items(group.tracks.size, key = { group.tracks[it].uri.value }) { index ->
                 val track = group.tracks[index]
                 Row(
                     Modifier
@@ -69,9 +69,9 @@ internal fun DuplicatesTab(
                     TrackArtwork(track.uri, Modifier.size(40.dp), corner = 8.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(track.folder.ifBlank { track.uri }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(track.folder.ifBlank { track.uri.value }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            listOf(track.album, LibraryBrowse.formatDuration(track.durationMs))
+                            listOf(track.album, LibraryBrowse.formatDuration(track.duration))
                                 .filter { it.isNotBlank() }
                                 .joinToString(" · "),
                             style = MaterialTheme.typography.labelSmall,
@@ -82,7 +82,7 @@ internal fun DuplicatesTab(
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         TextButton(onClick = {
-                            val request = MediaStore.createDeleteRequest(context.contentResolver, listOf(Uri.parse(track.uri)))
+                            val request = MediaStore.createDeleteRequest(context.contentResolver, listOf(track.uri.toUri()))
                             deleter.launch(IntentSenderRequest.Builder(request.intentSender).build())
                         }) { Text(stringResource(R.string.action_delete)) }
                     }

@@ -62,6 +62,8 @@ import dev.geode.R
 import dev.geode.analysis.SearchMatcher
 import dev.geode.data.BootAnimationStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import dev.geode.render.VisualizerView
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
@@ -164,8 +166,8 @@ fun AppRoot() {
                 isPlaying = state.isPlaying,
                 hasMedia = state.hasMedia,
                 progress =
-                    if (state.durationMs > 0) {
-                        state.positionMs / state.durationMs.toFloat()
+                    if (state.duration > Millis.ZERO) {
+                        state.position.value / state.duration.value.toFloat()
                     } else {
                         0f
                     },
@@ -494,7 +496,7 @@ fun SettingsScreen(
 }
 
 private data class SearchTrackRow(
-    val uri: String,
+    val uri: TrackId,
     val title: String,
     val subtitle: String,
     val fields: List<String>,
@@ -597,7 +599,7 @@ fun SearchScreen(
                                 Modifier.padding(top = 8.dp),
                             )
                         }
-                        items(trackResults, key = { "t:${it.uri}" }) { t ->
+                        items(trackResults, key = { "t:${it.uri.value}" }) { t ->
                             Row(
                                 Modifier
                                     .fillMaxWidth()

@@ -15,6 +15,8 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.RingLog
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.types.Micros
+import dev.geode.engine.types.Millis
 import dev.geode.util.bestEffort
 import java.io.FileNotFoundException
 import java.util.concurrent.Callable
@@ -111,7 +113,7 @@ class NativePlayer(
                 engine == ENGINE_ENDED -> Player.STATE_ENDED
                 else -> Player.STATE_BUFFERING
             }
-        val positionMs = if (released) 0L else GeodeNative.playerPositionUs(handle) / 1000L
+        val positionMs = if (released) 0L else Micros(GeodeNative.playerPositionUs(handle)).toMillis().value
         return State
             .Builder()
             .setAvailableCommands(COMMANDS)
@@ -203,7 +205,7 @@ class NativePlayer(
             error = null
             return openCurrent(position)
         }
-        GeodeNative.playerSeek(handle, position * 1000L)
+        GeodeNative.playerSeek(handle, Millis(position).toMicros().value)
         return done()
     }
 
@@ -343,7 +345,7 @@ class NativePlayer(
                     return@Callable
                 }
                 GeodeNative.playerOpen(handle, fd.first, 0L, fd.second, id)
-                if (positionMs > 0L) GeodeNative.playerSeek(handle, positionMs * 1000L)
+                if (positionMs > 0L) GeodeNative.playerSeek(handle, Millis(positionMs).toMicros().value)
                 if (play) GeodeNative.playerPlay(handle)
                 main.post { queueNext() }
             },

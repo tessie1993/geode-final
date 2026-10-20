@@ -1,5 +1,7 @@
 package dev.geode.ui
 
+import dev.geode.engine.types.TrackId
+
 object PlaybackQueue {
     const val PREV_RESTART_MS: Long = 3_000L
 
@@ -12,7 +14,7 @@ object PlaybackQueue {
 
     fun window(
         tracks: List<QueueTrack>,
-        startUri: String,
+        startUri: TrackId,
     ): Window {
         val at = tracks.indexOfFirst { it.uri == startUri }
         if (at < 0) return Window(listOf(QueueTrack(startUri)), 0)
@@ -23,7 +25,7 @@ object PlaybackQueue {
     }
 
     fun contextFor(
-        uri: String,
+        uri: TrackId,
         browse: List<QueueTrack>,
         deviceTracks: List<DeviceTrack>,
         libraryTracks: List<LibraryTrack>,

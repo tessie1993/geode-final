@@ -4,6 +4,8 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.TeeAudioProcessor
 import dev.geode.engine.audio.PcmSink
+import dev.geode.engine.types.Frames
+import dev.geode.engine.types.Hz
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -24,7 +26,7 @@ class PcmTap(
         private set
 
     @Volatile
-    var framesWritten: Long = 0L
+    var framesWritten: Frames = Frames(0L)
         private set
 
     private var staging: FloatArray = FloatArray(0)
@@ -38,7 +40,7 @@ class PcmTap(
         val endedFrames = framesWritten
         val next =
             PcmTapFormat(
-                sampleRateHz = sampleRateHz,
+                sampleRate = Hz(sampleRateHz),
                 channelCount = channelCount,
                 encoding = encoding,
                 generation = (ended?.generation ?: 0) + 1,
@@ -47,7 +49,7 @@ class PcmTap(
             val floats = STAGING_FRAMES * channelCount
             if (staging.size != floats) staging = FloatArray(floats)
         }
-        framesWritten = 0L
+        framesWritten = Frames(0L)
         format = next
         try {
             boundaryListener?.onTapBoundary(ended, endedFrames, next)
@@ -69,7 +71,7 @@ class PcmTap(
         val frameBytes = width.bytes * channels
         var at = buffer.position()
         val end = buffer.limit()
-        var written = framesWritten
+        var written = framesWritten.value
         while (end - at >= frameBytes) {
             val frames = minOf(perChunk, (end - at) / frameBytes)
             val samples = frames * channels
@@ -81,7 +83,7 @@ class PcmTap(
             at += samples * width.bytes
             written += frames
         }
-        framesWritten = written
+        framesWritten = Frames(written)
     }
 
     private fun fill16(

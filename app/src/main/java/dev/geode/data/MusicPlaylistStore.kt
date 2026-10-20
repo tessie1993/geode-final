@@ -1,13 +1,14 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
 data class MusicPlaylist(
     val name: String,
-    val trackUris: List<String> = emptyList(),
+    val trackUris: List<TrackId> = emptyList(),
 )
 
 class MusicPlaylistStore(
@@ -49,7 +50,7 @@ class MusicPlaylistStore(
 
     fun addTrack(
         name: String,
-        uri: String,
+        uri: TrackId,
     ): MusicPlaylist {
         val current = current(name) ?: return MusicPlaylist(name)
         val updated =
@@ -87,7 +88,7 @@ class MusicPlaylistStore(
 
     fun removeTrack(
         name: String,
-        uri: String,
+        uri: TrackId,
     ): MusicPlaylist {
         val current = current(name) ?: return MusicPlaylist(name)
         val updated = current.copy(trackUris = current.trackUris.filterNot { it == uri })
@@ -108,7 +109,7 @@ class MusicPlaylistStore(
 
     private fun toJson(p: MusicPlaylist): String {
         val arr = JSONArray()
-        p.trackUris.forEach { arr.put(it) }
+        p.trackUris.forEach { arr.put(it.value) }
         return JSONObject().put("name", p.name).put("tracks", arr).toString()
     }
 
@@ -117,7 +118,7 @@ class MusicPlaylistStore(
         val arr = o.getJSONArray("tracks")
         return MusicPlaylist(
             name = o.getString("name"),
-            trackUris = (0 until arr.length()).map { arr.getString(it) },
+            trackUris = (0 until arr.length()).map { TrackId(arr.getString(it)) },
         )
     }
 }

@@ -8,6 +8,7 @@ import dev.geode.data.FavouritesStore
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.HistoryStore
 import dev.geode.data.MusicPlaylistStore
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.DeviceTrack
 import dev.geode.ui.DeviceTrackQuery
 import dev.geode.ui.TrackLibrary
@@ -20,7 +21,7 @@ class LibraryTree(
     private val context: Context,
 ) {
     private data class Row(
-        val uri: String,
+        val uri: TrackId,
         val title: String,
         val artist: String,
         val album: String,
@@ -73,9 +74,10 @@ class LibraryTree(
     }
 
     fun playable(mediaId: String): MediaItem? {
-        val uri = mediaId.substringAfterLast(SEPARATOR, "")
-        if (uri.isEmpty()) return null
-        val row = rowsFor(listOf(uri)).firstOrNull() ?: Row(uri, uri.substringAfterLast('/'), "", "")
+        val raw = mediaId.substringAfterLast(SEPARATOR, "")
+        if (raw.isEmpty()) return null
+        val uri = TrackId(raw)
+        val row = rowsFor(listOf(uri)).firstOrNull() ?: Row(uri, raw.substringAfterLast('/'), "", "")
         return playable(mediaId.substringBeforeLast(SEPARATOR), row)
     }
 
@@ -129,12 +131,12 @@ class LibraryTree(
         return device + imported
     }
 
-    private fun rowsFor(uris: List<String>): List<Row> {
+    private fun rowsFor(uris: List<TrackId>): List<Row> {
         val byUri = tracks().associateBy { it.uri }
         return uris.mapNotNull { uri -> byUri[uri] }
     }
 
-    private fun DeviceTrack.row(overrides: Map<String, dev.geode.ui.LibraryTrack>): Row {
+    private fun DeviceTrack.row(overrides: Map<TrackId, dev.geode.ui.LibraryTrack>): Row {
         val stored = overrides[uri]
         return Row(
             uri,
@@ -150,8 +152,8 @@ class LibraryTree(
     ): MediaItem =
         MediaItem
             .Builder()
-            .setMediaId("$parentId$SEPARATOR${row.uri}")
-            .setUri(row.uri)
+            .setMediaId("$parentId$SEPARATOR${row.uri.value}")
+            .setUri(row.uri.value)
             .setMediaMetadata(
                 MediaMetadata
                     .Builder()

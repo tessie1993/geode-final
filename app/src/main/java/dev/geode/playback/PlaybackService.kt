@@ -187,11 +187,11 @@ class PlaybackService : MediaLibraryService() {
                     saved.tracks.map { t ->
                         MediaItem
                             .Builder()
-                            .setUri(t.uri)
+                            .setUri(t.uri.value)
                             // Distinct per track: MediaMetadata.equals ignores extras, so without
                             // this two untitled tracks compare equal and the platform session skips
                             // the metadata update. artworkUri used to supply this discriminator.
-                            .setMediaId(t.uri)
+                            .setMediaId(t.uri.value)
                             .setMediaMetadata(
                                 MediaMetadata
                                     .Builder()
@@ -201,14 +201,14 @@ class PlaybackService : MediaLibraryService() {
                                     .build(),
                             ).build()
                     }
-                return MediaSession.MediaItemsWithStartPosition(items, saved.index, saved.positionMs)
+                return MediaSession.MediaItemsWithStartPosition(items, saved.index, saved.position.value)
             }
             val last = HistoryStore(context).recentlyPlayed(1).firstOrNull() ?: return null
             val item =
                 MediaItem
                     .Builder()
-                    .setUri(last.uri)
-                    .setMediaId(last.uri)
+                    .setUri(last.uri.value)
+                    .setMediaId(last.uri.value)
                     .setMediaMetadata(
                         MediaMetadata
                             .Builder()

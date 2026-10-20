@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.geode.R
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.theme.StoneIcon
 import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.delay
@@ -61,13 +63,17 @@ import kotlinx.coroutines.flow.collectLatest
 @Composable
 fun WaveformSeekBar(
     waveform: FloatArray?,
-    positionMs: Long,
-    durationMs: Long,
-    loopStartMs: Long?,
-    loopEndMs: Long?,
+    position: Millis,
+    duration: Millis,
+    loopStart: Millis?,
+    loopEnd: Millis?,
     onSeek: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val positionMs = position.value
+    val durationMs = duration.value
+    val loopStartMs = loopStart?.value
+    val loopEndMs = loopEnd?.value
     var dragFraction by remember { mutableFloatStateOf(-1f) }
     val played =
         if (dragFraction >= 0f) {
@@ -81,8 +87,8 @@ fun WaveformSeekBar(
     val idle = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
     val loopTint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.28f)
     val playhead = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
-    val positionLabel = formatClock(if (dragFraction >= 0f) (dragFraction * durationMs).toLong() else positionMs)
-    val durationLabel = formatClock(durationMs)
+    val positionLabel = formatClock(if (dragFraction >= 0f) Millis((dragFraction * durationMs).toLong()) else position)
+    val durationLabel = formatClock(duration)
     val seekDescription = stringResource(R.string.seek_description, positionLabel, durationLabel)
     Canvas(
         modifier
@@ -152,8 +158,8 @@ fun WaveformSeekBar(
 @Composable
 fun LyricsPanel(
     lyrics: Lyrics?,
-    positionMs: Long,
-    onSeek: (Long) -> Unit,
+    position: Millis,
+    onSeek: (Millis) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (lyrics == null) {
@@ -170,7 +176,7 @@ fun LyricsPanel(
         }
         return
     }
-    val current = lyrics.indexAt(positionMs)
+    val current = lyrics.indexAt(position.value)
     val listState = rememberLazyListState()
     val follows = rememberFollowsPlayback(listState)
     LaunchedEffect(current, follows.value) {
@@ -196,7 +202,7 @@ fun LyricsPanel(
                         if (lyrics.synced) {
                             Modifier.clickable {
                                 follows.value = true
-                                onSeek(line.timeMs)
+                                onSeek(Millis(line.timeMs))
                             }
                         } else {
                             Modifier
@@ -254,7 +260,7 @@ private fun rememberFollowsPlayback(listState: LazyListState): MutableState<Bool
 @Composable
 fun QueuePanel(
     queue: QueueUiState,
-    favourites: Set<String>,
+    favourites: Set<TrackId>,
     onPlayIndex: (Int) -> Unit,
     onMoveUp: (Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -360,11 +366,11 @@ fun QueuePanel(
 }
 
 internal fun queueRowKeys(tracks: List<QueueTrack>): List<String> {
-    val seen = HashMap<String, Int>()
+    val seen = HashMap<TrackId, Int>()
     return tracks.map { t ->
         val n = seen[t.uri] ?: 0
         seen[t.uri] = n + 1
-        if (n == 0) t.uri else "${t.uri}#$n"
+        if (n == 0) t.uri.value else "${t.uri.value}#$n"
     }
 }
 

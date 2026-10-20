@@ -7,6 +7,7 @@ import dev.geode.audio.NowPlayingBridge
 import dev.geode.audio.PlaybackCapture
 import dev.geode.audio.PlaybackCaptureService
 import dev.geode.audio.playbackCaptureSupported
+import dev.geode.engine.types.Hz
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +45,7 @@ internal class CaptureController(
 
         fun resetAnalysis()
 
-        fun setAnalysisRate(rateHz: Int)
+        fun setAnalysisRate(rate: Hz)
 
         fun setMicReactivePref(on: Boolean)
 
@@ -74,7 +75,7 @@ internal class CaptureController(
     val audioFormatHook: (sampleRateHz: Int, channelCount: Int, encoding: Int) -> Unit =
         { rate, _, _ ->
             tapSampleRateHz = rate
-            if (!externalAudioOwnsAnalyzer()) host.setAnalysisRate(rate)
+            if (!externalAudioOwnsAnalyzer()) host.setAnalysisRate(Hz(rate))
         }
 
     /**
@@ -119,7 +120,7 @@ internal class CaptureController(
         }
     }
 
-    private fun playbackRateFallback(): Int = tapSampleRateHz.takeIf { it > 0 } ?: 44100
+    private fun playbackRateFallback(): Hz = Hz(tapSampleRateHz.takeIf { it > 0 } ?: 44100)
 
     private fun externalAudioOwnsAnalyzer(): Boolean = micCapture.active || playbackCapture.active
 
@@ -135,7 +136,7 @@ internal class CaptureController(
         if (micCapture.active) return null
         if (playbackCapture.active || _externalAudio.value.active) stopExternalAudio()
         host.pausePlayback()
-        val failure = micCapture.start { rate -> host.setAnalysisRate(rate) }
+        val failure = micCapture.start { rate -> host.setAnalysisRate(Hz(rate)) }
         if (failure != null) {
             _micState.value = MicState(active = false, failure = failure)
             return failure
@@ -173,7 +174,7 @@ internal class CaptureController(
         }
         host.pausePlayback()
         if (micCapture.active) setMicEnabled(false)
-        val failure = playbackCapture.start(projection) { rate -> host.setAnalysisRate(rate) }
+        val failure = playbackCapture.start(projection) { rate -> host.setAnalysisRate(Hz(rate)) }
         host.resetAnalysis()
         if (failure != null) {
             host.setAnalysisRate(playbackRateFallback())

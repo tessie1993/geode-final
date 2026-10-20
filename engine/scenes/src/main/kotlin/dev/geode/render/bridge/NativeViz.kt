@@ -5,6 +5,8 @@ import android.content.res.AssetManager
 import dev.geode.analysis.AudioFeatures
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
 import dev.geode.render.BlendMode
@@ -56,9 +58,16 @@ class NativeViz(
         handle = 0L
     }
 
-    fun knows(sceneId: String): Boolean = handle != 0L && GeodeNative.vizKnows(handle, sceneId)
+    fun knows(sceneId: SceneId): Boolean = handle != 0L && GeodeNative.vizKnows(handle, sceneId.value)
 
-    fun sceneIds(): List<String> = if (handle == 0L) emptyList() else GeodeNative.vizSceneIds(handle).split('\n').filter { it.isNotEmpty() }
+    fun sceneIds(): List<SceneId> {
+        if (handle == 0L) return emptyList()
+        return GeodeNative
+            .vizSceneIds(handle)
+            .split('\n')
+            .filter { it.isNotEmpty() }
+            .map(::SceneId)
+    }
 
     fun setParams(p: SceneParams) {
         if (handle == 0L) return
@@ -77,18 +86,18 @@ class NativeViz(
     }
 
     fun setLayer(
-        sceneId: String?,
+        sceneId: SceneId?,
         mix: Float,
         blend: BlendMode,
     ) {
-        if (handle != 0L) GeodeNative.vizSetLayer(handle, sceneId ?: "", mix, blend.ordinal)
+        if (handle != 0L) GeodeNative.vizSetLayer(handle, sceneId?.value ?: "", mix, blend.ordinal)
     }
 
     fun setTransition(
         id: String,
-        durationMs: Long,
+        duration: Millis,
     ) {
-        if (handle != 0L) GeodeNative.vizSetTransition(handle, id, durationMs)
+        if (handle != 0L) GeodeNative.vizSetTransition(handle, id, duration.value)
     }
 
     fun beginParamMorph(seconds: Float) {
@@ -139,13 +148,13 @@ class NativeViz(
     }
 
     fun setCustomShader(
-        sceneId: String,
+        sceneId: SceneId,
         fragmentSource: String,
     ) {
-        if (handle != 0L) GeodeNative.vizSetCustomShader(handle, sceneId, fragmentSource)
+        if (handle != 0L) GeodeNative.vizSetCustomShader(handle, sceneId.value, fragmentSource)
     }
 
-    fun customShaderFor(sceneId: String): String? = if (handle == 0L) null else GeodeNative.vizCustomShader(handle, sceneId)
+    fun customShaderFor(sceneId: SceneId): String? = if (handle == 0L) null else GeodeNative.vizCustomShader(handle, sceneId.value)
 
     fun setLfoConfigs(configs: List<LfoConfig>) {
         if (handle == 0L) return
@@ -183,7 +192,7 @@ class NativeViz(
         if (handle != 0L) GeodeNative.vizSurfaceChanged(handle, width, height)
     }
 
-    fun setScene(sceneId: String): Boolean = handle != 0L && GeodeNative.vizSetScene(handle, sceneId)
+    fun setScene(sceneId: SceneId): Boolean = handle != 0L && GeodeNative.vizSetScene(handle, sceneId.value)
 
     fun warmTransition(id: String) {
         if (handle != 0L) GeodeNative.vizWarmTransition(handle, id)

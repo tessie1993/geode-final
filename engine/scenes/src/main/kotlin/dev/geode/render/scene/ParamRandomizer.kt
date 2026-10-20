@@ -1,5 +1,6 @@
 package dev.geode.render.scene
 
+import dev.geode.engine.types.SceneId
 import kotlin.random.Random
 
 object ParamRandomizer {
@@ -36,7 +37,7 @@ object ParamRandomizer {
         locked: Set<String>,
         rng: Random = Random.Default,
         tab: CustomizeTab? = null,
-        sceneId: String? = null,
+        sceneId: SceneId? = null,
     ): SceneParams {
         repeat(REROLLS) {
             val rolled = roll(current, locked, rng, tab, sceneId, null)
@@ -122,7 +123,7 @@ object ParamRandomizer {
         locked: Set<String>,
         rng: Random,
         tab: CustomizeTab?,
-        sceneId: String?,
+        sceneId: SceneId?,
         keySink: MutableList<Pair<CustomizeTab, String>>?,
     ): SceneParams {
         fun f(

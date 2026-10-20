@@ -1,6 +1,8 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -11,18 +13,18 @@ class HistoryStore(
 
     private val lock = Any()
 
-    private val entries = LinkedHashMap<String, Entry>()
+    private val entries = LinkedHashMap<TrackId, Entry>()
 
     @Volatile
     private var readable = true
 
     data class Entry(
-        val uri: String,
+        val uri: TrackId,
         var lastPlayedMs: Long,
         var playCount: Int,
         var title: String,
         var artist: String = "",
-        var listenedMs: Long = 0L,
+        var listened: Millis = Millis.ZERO,
     )
 
     init {
@@ -55,19 +57,19 @@ class HistoryStore(
             val o = arr.getJSONObject(i)
             val e =
                 Entry(
-                    uri = o.getString("uri"),
+                    uri = TrackId(o.getString("uri")),
                     lastPlayedMs = o.getLong("last"),
                     playCount = o.getInt("count"),
                     title = o.optString("title"),
                     artist = o.optString("artist"),
-                    listenedMs = o.optLong("ms", 0L),
+                    listened = Millis(o.optLong("ms", 0L)),
                 )
             entries[e.uri] = e
         }
     }
 
     fun recordPlay(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String = "",
     ) {
@@ -82,12 +84,12 @@ class HistoryStore(
     }
 
     fun addListenTime(
-        uri: String,
-        deltaMs: Long,
+        uri: TrackId,
+        delta: Millis,
     ) {
-        if (deltaMs <= 0) return
+        if (delta <= Millis.ZERO) return
         synchronized(lock) {
-            entries[uri]?.let { it.listenedMs += deltaMs }
+            entries[uri]?.let { it.listened += delta }
             dirty = true
         }
     }
@@ -116,11 +118,11 @@ class HistoryStore(
         synchronized(lock) {
             entries.values
                 .filter { it.playCount > 0 }
-                .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listenedMs })
+                .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listened })
                 .take(limit)
         }
 
-    fun entryFor(uri: String): Entry? = synchronized(lock) { entries[uri] }
+    fun entryFor(uri: TrackId): Entry? = synchronized(lock) { entries[uri] }
 
     private fun persist() {
         if (!writeQueued.compareAndSet(false, true)) return
@@ -140,26 +142,26 @@ class HistoryStore(
                     val arr = JSONArray()
                     // Persist the union of the 200 most recent and the 200 most-played entries
                     // (deduped by uri) so a heavily played old track isn't dropped from disk even
-                    // though mostPlayed() ranks by playCount/listenedMs rather than recency.
-                    val toPersist = LinkedHashMap<String, Entry>()
+                    // though mostPlayed() ranks by playCount/listened rather than recency.
+                    val toPersist = LinkedHashMap<TrackId, Entry>()
                     entries.values
                         .sortedByDescending { it.lastPlayedMs }
                         .take(200)
                         .forEach { toPersist[it.uri] = it }
                     entries.values
                         .filter { it.playCount > 0 }
-                        .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listenedMs })
+                        .sortedWith(compareByDescending<Entry> { it.playCount }.thenByDescending { it.listened })
                         .take(200)
                         .forEach { toPersist[it.uri] = it }
                     toPersist.values.forEach { e ->
                         arr.put(
                             JSONObject()
-                                .put("uri", e.uri)
+                                .put("uri", e.uri.value)
                                 .put("last", e.lastPlayedMs)
                                 .put("count", e.playCount)
                                 .put("title", e.title)
                                 .put("artist", e.artist)
-                                .put("ms", e.listenedMs),
+                                .put("ms", e.listened.value),
                         )
                     }
                     // Cleared with the snapshot, under the lock: a change made while the file is

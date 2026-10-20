@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.SharedPreferences
+import dev.geode.engine.types.TrackId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,19 +14,19 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 interface FavouritesRepository {
-    val favourites: StateFlow<Set<String>>
+    val favourites: StateFlow<Set<TrackId>>
 
-    suspend fun toggle(uri: String): Boolean
+    suspend fun toggle(uri: TrackId): Boolean
 
-    suspend fun remove(uri: String)
+    suspend fun remove(uri: TrackId)
 }
 
 class SharedPrefsFavouritesRepository(
     private val prefs: SharedPreferences,
     scope: CoroutineScope,
 ) : FavouritesRepository {
-    private val _favourites = MutableStateFlow<Set<String>>(emptySet())
-    override val favourites: StateFlow<Set<String>> = _favourites.asStateFlow()
+    private val _favourites = MutableStateFlow<Set<TrackId>>(emptySet())
+    override val favourites: StateFlow<Set<TrackId>> = _favourites.asStateFlow()
 
     private val store = CompletableDeferred<FavouritesStore>()
     private val writeLock = Mutex()
@@ -40,7 +41,7 @@ class SharedPrefsFavouritesRepository(
         }
     }
 
-    override suspend fun toggle(uri: String): Boolean {
+    override suspend fun toggle(uri: TrackId): Boolean {
         val opened = store.await()
         return writeLock.withLock {
             val added = withContext(Dispatchers.IO) { opened.toggle(uri) }
@@ -49,7 +50,7 @@ class SharedPrefsFavouritesRepository(
         }
     }
 
-    override suspend fun remove(uri: String) {
+    override suspend fun remove(uri: TrackId) {
         val opened = store.await()
         writeLock.withLock {
             withContext(Dispatchers.IO) { opened.remove(uri) }
