@@ -39,11 +39,14 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "material3Adaptive" }
 compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
@@ -59,6 +62,7 @@ konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 ktlint-gradle = { module = "org.jlleitschuh.gradle.ktlint:org.jlleitschuh.gradle.ktlint.gradle.plugin", version.ref = "ktlint" }
 detekt-gradle = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-compose-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 pitest-gradle = { module = "info.solidsoft.pitest:info.solidsoft.pitest.gradle.plugin", version.ref = "pitestGradle" }
 pitest-android-gradle = { module = "pl.droidsonroids.pitest:pl.droidsonroids.pitest.gradle.plugin", version.ref = "pitestAndroidGradle" }
