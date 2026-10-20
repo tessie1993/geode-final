@@ -207,6 +207,9 @@ dependencies {
     // What the removed :engine:runtime aggregator re-exported to :app via api(...).
     implementation(project(":engine:scenes"))
     implementation(project(":engine:audio-android"))
+    // The feature architecture (ADR-0005). :app only wires: Hilt bindings and the real adapters.
+    implementation(project(":arch:kernel"))
+    implementation(project(":arch:audio"))
 
     implementation(libs.core.splashscreen)
     implementation(libs.media3.exoplayer)

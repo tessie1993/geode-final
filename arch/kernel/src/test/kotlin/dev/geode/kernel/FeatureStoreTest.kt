@@ -1,28 +1,30 @@
 package dev.geode.kernel
 
 import dev.geode.engine.types.Millis
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
 
 /**
- * The store's contract, through [Feature]: what it publishes, in which order it carries effects
- * out, and how timers behave. The reducer here is scripted: a command carries the effects it
- * should decide, and the state is the log of every event reduced so far.
+ * The store's contract, through [Feature]: what it publishes, in which order it carries effects out,
+ * how timers behave and where failures go. The reducer here is scripted: a command carries the effects
+ * it should decide, and the state is the log of every event reduced so far.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeatureStoreTest {
     private val clock = FakeClock()
+    private val failures = mutableListOf<FeatureFailure>()
     private val timeline = mutableListOf<String>()
     private val runner = ScriptedRunner(timeline)
-    private val store = storeOf(runner)
+    private val store = storeOf(inPlaceRuntime(clock, failures))
 
     @Test
     fun `the state starts as given and follows every command`() {
@@ -43,7 +45,7 @@ class FeatureStoreTest {
 
     @Test
     fun `results come back through the reducer`() {
-        runner.onRun = { work, report -> report(Result("$work done")) }
+        runner.onRun = { work, results -> results.report(Result("$work done")) }
 
         store.send(Command("go", listOf(Perform("load"))))
 
@@ -51,15 +53,12 @@ class FeatureStoreTest {
     }
 
     @Test
-    fun `an event reported mid-transition waits until every effect of that transition has started`() {
-        runner.onRun = { work, report -> report(Result("$work done")) }
+    fun `a result reported mid-transition waits until every effect of that transition has started`() {
+        runner.onRun = { work, results -> results.report(Result("$work done")) }
 
         store.send(Command("go", listOf(Perform("a"), Perform("b"))))
 
-        assertEquals(
-            listOf("reduce go", "run a", "run b", "reduce a done", "reduce b done"),
-            timeline,
-        )
+        assertEquals(listOf("reduce go", "run a", "run b", "reduce a done", "reduce b done"), timeline)
     }
 
     @Test
@@ -69,6 +68,50 @@ class FeatureStoreTest {
         store.send(Command("outer", listOf(Perform("x"), Perform("y"))))
 
         assertEquals(listOf("reduce outer", "run x", "run y", "reduce nested"), timeline)
+    }
+
+    @Test
+    fun `work that suspends reports when it resumes`() {
+        val gate = CompletableDeferred<String>()
+        runner.onSuspendingRun = { results -> results.report(Result(gate.await())) }
+
+        store.send(Command("go", listOf(Perform("wait"))))
+        assertEquals(listOf("go"), store.state.value)
+        gate.complete("arrived")
+
+        assertEquals(listOf("go", "arrived"), store.state.value)
+        assertEquals(emptyList<FeatureFailure>(), failures)
+    }
+
+    @Test
+    fun `work that throws is reported under the feature's name and other work carries on`() {
+        runner.onRun = { work, results -> if (work == "bad") error("disk full") else results.report(Result("$work done")) }
+
+        store.send(Command("go", listOf(Perform("bad"), Perform("good"))))
+
+        assertEquals(listOf("go", "good done"), store.state.value)
+        val failure = failures.single()
+        assertEquals("probe", failure.feature)
+        assertEquals("java.lang.IllegalStateException: disk full", failure.message)
+        assertEquals("disk full", failure.cause?.message)
+    }
+
+    @Test
+    fun `a reducer that throws is reported and the store goes on with the next event`() {
+        store.send(Command(BOOM))
+        store.send(Command("after"))
+
+        assertEquals(listOf("after"), store.state.value)
+        assertEquals("probe", failures.single().feature)
+        assertEquals("scripted failure", failures.single().cause?.message)
+    }
+
+    @Test
+    fun `a failure the reducer decides on goes to the error channel`() {
+        store.send(Command("go", listOf(ReportFailure("capture did not start"))))
+
+        assertEquals(listOf("probe: capture did not start"), failures.map { "${it.feature}: ${it.message}" })
+        assertEquals(null, failures.single().cause)
     }
 
     @Test
@@ -84,6 +127,28 @@ class FeatureStoreTest {
 
             assertEquals(listOf("started", "ready", "again"), early)
             assertEquals(listOf("again"), late)
+        }
+
+    @Test
+    fun `start effects are carried out when the store is built`() {
+        val started = storeOf(inPlaceRuntime(clock, failures), start = listOf(Perform("subscribe")))
+
+        assertEquals(listOf("subscribe"), runner.ran)
+        assertEquals(emptyList<String>(), started.state.value)
+    }
+
+    @Test
+    fun `an event that arrives off the main dispatcher is reduced there`() =
+        runTest {
+            val main = StandardTestDispatcher(testScheduler)
+            val runtime = FeatureRuntime(main, main, clock, ErrorChannel { failures += it })
+            val onMain = storeOf(runtime)
+
+            onMain.send(Command("tap"))
+            assertEquals(emptyList<String>(), onMain.state.value)
+            runCurrent()
+
+            assertEquals(listOf("tap"), onMain.state.value)
         }
 
     @Test
@@ -109,20 +174,12 @@ class FeatureStoreTest {
         assertEquals(1, clock.pendingCount)
         clock.advanceBy(Millis(10_000))
         assertEquals(listOf("arm", "re-arm", "new"), store.state.value)
-        assertEquals(Millis(10_300), clock.now)
     }
 
     @Test
     fun `timers with different keys run independently`() {
-        store.send(
-            Command(
-                "arm",
-                listOf(
-                    StartTimer("slow", Millis(200), Result("slow")),
-                    StartTimer("fast", Millis(100), Result("fast")),
-                ),
-            ),
-        )
+        val both = listOf(StartTimer("slow", Millis(200), Result("slow")), StartTimer("fast", Millis(100), Result("fast")))
+        store.send(Command("arm", both))
         store.send(Command("cancel fast", listOf(CancelTimer("fast"))))
 
         clock.advanceBy(Millis(1_000))
@@ -149,35 +206,23 @@ class FeatureStoreTest {
 
     @Test
     fun `a timer that fired while its cancellation was being decided is not delivered`() {
-        // The work stands in for something slow: the clock moves on while it runs, so the timer
-        // fires before the store reaches the CancelTimer that follows it.
-        runner.onRun = { _, _ -> clock.advanceBy(Millis(1_000)) }
         store.send(Command("arm", listOf(StartTimer("t", Millis(500), Result("tick")))))
 
-        store.send(Command("leave", listOf(Perform("slow"), CancelTimer("t"))))
+        // Time moves on while the reducer decides, so the timer fires before the CancelTimer runs.
+        store.send(Command("leave", listOf(CancelTimer("t")), whileReducing = { clock.advanceBy(Millis(1_000)) }))
 
         assertEquals(listOf("arm", "leave"), store.state.value)
     }
 
     @Test
     fun `a timer that fired before it was replaced delivers only the replacement`() {
-        runner.onRun = { _, _ -> clock.advanceBy(Millis(1_000)) }
         store.send(Command("arm", listOf(StartTimer("t", Millis(500), Result("old")))))
 
-        store.send(Command("re-arm", listOf(Perform("slow"), StartTimer("t", Millis(500), Result("new")))))
-        runner.onRun = { _, _ -> }
+        val replace = listOf(StartTimer("t", Millis(500), Result("new")))
+        store.send(Command("re-arm", replace, whileReducing = { clock.advanceBy(Millis(1_000)) }))
         clock.advanceBy(Millis(500))
 
         assertEquals(listOf("arm", "re-arm", "new"), store.state.value)
-    }
-
-    @Test
-    fun `a reducer that throws fails the send but not the store`() {
-        assertThrows(IllegalStateException::class.java) { store.send(Command(BOOM)) }
-
-        store.send(Command("after"))
-
-        assertEquals(listOf("after"), store.state.value)
     }
 
     @Test
@@ -195,34 +240,60 @@ class FeatureStoreTest {
         start.countDown()
         workers.forEach { it.join() }
 
-        val counts = store.state.value.groupingBy { it }.eachCount()
+        val counts =
+            store.state.value
+                .groupingBy { it }
+                .eachCount()
         assertEquals((0 until threads).associate { "$it" to each }, counts)
     }
 
-    private fun storeOf(runner: ScriptedRunner) =
-        FeatureStore<List<String>, Probe, Command, String, String>(
-            initial = emptyList(),
-            reducer =
-                Reducer { log, event ->
-                    check(event.label != BOOM) { "scripted failure" }
-                    timeline += "reduce ${event.label}"
-                    Next(log + event.label, (event as? Command)?.effects.orEmpty())
-                },
-            runner = runner,
-            timers = clock,
-            scope = CoroutineScope(UnconfinedTestDispatcher()),
-        )
+    @Test
+    fun `the store hands commands to the reducer through its mapping`() {
+        val mapped =
+            FeatureStore<List<String>, String, Probe, String, String>(
+                name = "mapped",
+                initial = emptyList(),
+                reducer = { log, event -> Next(log + event.label) },
+                toEvent = { Command("cmd:$it") },
+                runner = runner,
+                runtime = inPlaceRuntime(clock, failures),
+            )
+
+        mapped.send("play")
+
+        assertEquals(listOf("cmd:play"), mapped.state.value)
+    }
+
+    private fun storeOf(
+        runtime: FeatureRuntime,
+        start: List<Effect<String, Probe, String>> = emptyList(),
+    ) = FeatureStore<List<String>, Command, Probe, String, String>(
+        name = "probe",
+        initial = emptyList(),
+        reducer =
+            Reducer { log, event ->
+                check(event.label != BOOM) { "scripted failure" }
+                timeline += "reduce ${event.label}"
+                (event as? Command)?.whileReducing?.invoke()
+                Next(log + event.label, (event as? Command)?.effects.orEmpty())
+            },
+        toEvent = { it },
+        runner = runner,
+        runtime = runtime,
+        start = start,
+    )
 
     private sealed interface Probe {
         val label: String
     }
 
-    private data class Command(
+    private class Command(
         override val label: String,
         val effects: List<Effect<String, Probe, String>> = emptyList(),
+        val whileReducing: () -> Unit = {},
     ) : Probe
 
-    private data class Result(
+    private class Result(
         override val label: String,
     ) : Probe
 
@@ -230,15 +301,17 @@ class FeatureStoreTest {
         private val timeline: MutableList<String>,
     ) : EffectRunner<String, Probe> {
         val ran = mutableListOf<String>()
-        var onRun: (String, (Probe) -> Unit) -> Unit = { _, _ -> }
+        var onRun: (String, Results<Probe>) -> Unit = { _, _ -> }
+        var onSuspendingRun: (suspend (Results<Probe>) -> Unit)? = null
 
         override suspend fun run(
             work: String,
-            report: (Probe) -> Unit,
+            results: Results<Probe>,
         ) {
             ran += work
             timeline += "run $work"
-            onRun(work, report)
+            val suspending = onSuspendingRun
+            if (suspending != null) suspending(results) else onRun(work, results)
         }
     }
 

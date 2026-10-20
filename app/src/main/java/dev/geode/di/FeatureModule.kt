@@ -8,37 +8,40 @@ import dagger.hilt.components.SingletonComponent
 import dev.geode.RingLog
 import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.NativeAudioAdapter
-import dev.geode.kernel.CoroutineTimerScheduler
-import dev.geode.kernel.TimerScheduler
-import dev.geode.kernel.featureScope
-import kotlinx.coroutines.CoroutineScope
+import dev.geode.kernel.ErrorChannel
+import dev.geode.kernel.ExecutorTimerScheduler
+import dev.geode.kernel.FeatureRuntime
 import kotlinx.coroutines.Dispatchers
-import javax.inject.Qualifier
+import java.util.concurrent.Executors
 import javax.inject.Singleton
 
-/** The scope every feature store runs its effects and timers in (ADR-0003). */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class FeatureStoreScope
-
 /**
- * What every feature store is built from. Nothing in the app injects these yet: the features are
- * built alongside the old code and switched over in one PR (ADR-0003).
+ * What every feature store is built from (ADR-0004, ADR-0005). Nothing in the app injects these yet:
+ * the features are built alongside the old code and switched over in one PR (#17).
  */
 @Module
 @InstallIn(SingletonComponent::class)
 object FeatureModule {
+    /** The app-wide error channel; every report is also written to the local log. */
     @Provides
     @Singleton
-    @FeatureStoreScope
-    fun provideFeatureStoreScope(): CoroutineScope =
-        featureScope(Dispatchers.Main.immediate) { failure -> RingLog.note(TAG, "feature effect failed", failure) }
+    fun provideErrorChannel(): ErrorChannel =
+        ErrorChannel { failure -> RingLog.note(TAG, "${failure.feature}: ${failure.message}", failure.cause) }
 
+    /**
+     * Reducers on the main thread, handlers on a background pool, timers on their own thread. This is
+     * where the stores' dispatchers are injected from, hence the one place they are named.
+     */
     @Provides
     @Singleton
-    fun provideTimerScheduler(
-        @FeatureStoreScope scope: CoroutineScope,
-    ): TimerScheduler = CoroutineTimerScheduler(scope)
+    @Suppress("InjectDispatcher")
+    fun provideFeatureRuntime(errors: ErrorChannel): FeatureRuntime =
+        FeatureRuntime(
+            main = Dispatchers.Main.immediate,
+            background = Dispatchers.Default,
+            timers = ExecutorTimerScheduler(Executors.newSingleThreadScheduledExecutor(::timerThread)),
+            errors = errors,
+        )
 
     @Provides
     @Singleton
@@ -46,3 +49,6 @@ object FeatureModule {
 }
 
 private const val TAG = "FeatureStore"
+private const val TIMER_THREAD = "geode-feature-timers"
+
+private fun timerThread(task: Runnable): Thread = Thread(task, TIMER_THREAD).apply { isDaemon = true }

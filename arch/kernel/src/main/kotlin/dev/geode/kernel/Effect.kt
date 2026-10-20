@@ -42,3 +42,11 @@ data class CancelTimer(
 data class Emit<out O>(
     val event: O,
 ) : Effect<Nothing, Nothing, O>
+
+/**
+ * Reports a failure the reducer has decided on, such as "the capture did not start", to the app-wide
+ * [ErrorChannel] under the feature's name (ADR-0004).
+ */
+data class ReportFailure(
+    val message: String,
+) : Effect<Nothing, Nothing, Nothing>

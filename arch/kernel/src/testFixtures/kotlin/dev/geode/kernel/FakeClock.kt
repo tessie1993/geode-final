@@ -18,7 +18,7 @@ class FakeClock : TimerScheduler {
 
     override fun schedule(
         after: Millis,
-        action: () -> Unit,
+        action: Runnable,
     ): ScheduledTimer {
         val entry = Pending(now + after, nextSequence++, action)
         pending += entry
@@ -35,7 +35,7 @@ class FakeClock : TimerScheduler {
                     ?: break
             pending.remove(due)
             now = due.at
-            due.action()
+            due.action.run()
         }
         now = target
     }
@@ -43,6 +43,6 @@ class FakeClock : TimerScheduler {
     private class Pending(
         val at: Millis,
         val sequence: Long,
-        val action: () -> Unit,
+        val action: Runnable,
     )
 }

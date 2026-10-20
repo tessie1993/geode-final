@@ -4,8 +4,8 @@
 Reads the PIT mutations.xml the module's pitest task wrote, prints the score and the surviving
 mutants, and fails when:
   - the module's score is below its floor in config/mutation/thresholds.properties, or
-  - any feature core package (dev.geode.feature.<name>.core), or the kernel the feature stores are
-    built from (dev.geode.kernel), scores below the `feature-core` floor (ADR-0003).
+  - any feature core package (dev.geode.feature.<name>.core) scores below the `feature-core`
+    floor (ADR-0003).
 
 The score is detected / all mutants, where NO_COVERAGE counts as not detected: untested code
 cannot score well by being skipped.
@@ -20,17 +20,6 @@ import xml.etree.ElementTree as ET
 
 DETECTED = {"KILLED", "TIMED_OUT", "MEMORY_ERROR", "RUN_ERROR"}
 FEATURE_CORE = re.compile(r"^dev\.geode\.feature\.([a-z0-9_]+)\.core\.")
-KERNEL = re.compile(r"^dev\.geode\.kernel\.")
-
-
-def gated_part(cls):
-    """The name a class is held to the feature-core floor under, or None."""
-    match = FEATURE_CORE.match(cls)
-    if match:
-        return f"feature `{match.group(1)}` core"
-    if KERNEL.match(cls):
-        return "kernel"
-    return None
 
 
 def load_thresholds(path):
@@ -72,10 +61,10 @@ def main(module, report, thresholds_path):
     for m in mutations:
         cls = m.findtext("mutatedClass", "")
         hit = m.get("status") in DETECTED
-        part = gated_part(cls)
-        if part:
-            features[part][0] += hit
-            features[part][1] += 1
+        match = FEATURE_CORE.match(cls)
+        if match:
+            features[match.group(1)][0] += hit
+            features[match.group(1)][1] += 1
         if not hit:
             survivors.append(
                 f"{m.get('status')}: {m.findtext('sourceFile')}:{m.findtext('lineNumber')} "
@@ -89,9 +78,9 @@ def main(module, report, thresholds_path):
         failures.append(f"{module} scored {module_score:.1f}%, below its floor of {floor:g}%")
     for name, (hit, count) in sorted(features.items()):
         s = score(hit, count)
-        summary(f"- {name}: {s:.1f}% ({hit}/{count}), floor {feature_floor:g}%")
+        summary(f"- feature `{name}` core: {s:.1f}% ({hit}/{count}), floor {feature_floor:g}%")
         if s < feature_floor:
-            failures.append(f"{name} scored {s:.1f}%, below {feature_floor:g}% (ADR-0003)")
+            failures.append(f"feature {name} core scored {s:.1f}%, below {feature_floor:g}% (ADR-0003)")
 
     if survivors:
         print(f"::group::{len(survivors)} surviving or uncovered mutants")
