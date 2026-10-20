@@ -63,6 +63,41 @@ data class AudioFeatures(
     val motionImpulse: Float
         get() = maxOf(beatImpulse, transient * TRANSIENT_MOTION_WEIGHT)
 
+    /** These features with no one-hop event in them: what a stretch in which nothing fired reports. */
+    fun withoutEvents(): AudioFeatures =
+        copy(
+            beat = false,
+            beatStrength = 0f,
+            transient = 0f,
+            kick = 0f,
+            snare = 0f,
+            hat = 0f,
+            downbeat = false,
+            sectionBoundary = false,
+            drop = false,
+            arrival = false,
+        )
+
+    /**
+     * These features with every one-hop event of [other] folded in, as when two hops become one:
+     * flags or'ed, strengths maxed, and onset and flux maxed with them.
+     */
+    fun foldedWith(other: AudioFeatures): AudioFeatures =
+        copy(
+            beat = beat || other.beat,
+            beatStrength = maxOf(beatStrength, other.beatStrength),
+            transient = maxOf(transient, other.transient),
+            kick = maxOf(kick, other.kick),
+            snare = maxOf(snare, other.snare),
+            hat = maxOf(hat, other.hat),
+            downbeat = downbeat || other.downbeat,
+            sectionBoundary = sectionBoundary || other.sectionBoundary,
+            drop = drop || other.drop,
+            arrival = arrival || other.arrival,
+            onset = maxOf(onset, other.onset),
+            flux = maxOf(flux, other.flux),
+        )
+
     companion object {
         const val TRANSIENT_MOTION_WEIGHT = 0.5f
 
