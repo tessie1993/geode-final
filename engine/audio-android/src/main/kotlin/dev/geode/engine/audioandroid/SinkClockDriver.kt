@@ -11,7 +11,7 @@ class SinkClockDriver(
 ) : SinkClockHooks,
     TapBoundaryListener {
     @Volatile
-    private var skipped: SkippedFrameSource = SkippedFrameSource { Frames(0L) }
+    private var skipped: SkippedFrameSource = SkippedFrameSource { 0L }
 
     private var speed: Float = 1f
     private var sawSpeedHook = false
@@ -69,14 +69,14 @@ class SinkClockDriver(
 
     override fun onTapBoundary(
         ended: PcmTapFormat?,
-        endedFrames: Frames,
+        endedFrames: Long,
         begun: PcmTapFormat,
     ) {
         boundaries++
         if (sawSkipHook) hookedBoundaries++
 
-        val endedCount = endedFrames.value
-        val rawSkip = if (ended != null && endedCount > 0L) skipped.skippedInputFramesSinceFlush().value else 0L
+        val endedCount = Frames(endedFrames).value
+        val rawSkip = if (ended != null && endedCount > 0L) Frames(skipped.skippedInputFramesSinceFlush()).value else 0L
         val trustworthy = rawSkip in 0L..endedCount
         if (!trustworthy) discardedSkipExceedingFrames++
         val skip = if (trustworthy) rawSkip else 0L

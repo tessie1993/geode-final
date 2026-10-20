@@ -1,9 +1,9 @@
 package dev.geode.engine.audioandroid
 
-import dev.geode.engine.types.Frames
-
+// The two `fun interface` hooks below stay on raw frame counts: Android lint crashes analysing SAM
+// conversions whose method signature carries a value class. Callers wrap into `Frames` at once.
 fun interface SkippedFrameSource {
-    fun skippedInputFramesSinceFlush(): Frames
+    fun skippedInputFramesSinceFlush(): Long
 }
 
 interface SinkClockHooks {
@@ -25,7 +25,7 @@ interface SinkClockHooks {
 fun interface TapBoundaryListener {
     fun onTapBoundary(
         ended: PcmTapFormat?,
-        endedFrames: Frames,
+        endedFrames: Long,
         begun: PcmTapFormat,
     )
 }
