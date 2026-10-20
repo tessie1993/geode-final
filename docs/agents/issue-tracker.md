@@ -9,7 +9,7 @@ Issues and specs for this repo live as GitHub issues on `tessie1993/geode-final`
 - **List issues**: `list_issues` with `labels` / `state` filters.
 - **Comment on an issue**: `add_issue_comment`.
 - **Apply / remove labels**: `issue_write` with `method: update` and the full `labels` list.
-- **Close**: comment, then `issue_write` with `state: closed` and a `state_reason`.
+- **Close**: comment, then `issue_write` with `method: update`, `state: closed` and a `state_reason`.
 
 ## Pull requests as a triage surface
 
