@@ -1,17 +1,34 @@
-# Features are Gradle modules (supersedes ADR-0003's package-per-feature)
+# Features are Gradle modules, each split into interface, state machine, handlers and screens (supersedes ADR-0003's package-per-feature)
 
-The owner wants each part of the app walled off, so that editing one part cannot break the rest. Features are therefore **Gradle modules**, not packages inside `:app`. Everything else in ADR-0003 stands: the reducer core, effects as data, timers as effects, stateless screens and the CI bar.
+The owner wants the parts of the app not interwoven: the state machine, the handlers and the screens are separate, with the reducer in between, so that editing one part cannot break the rest and the app runs as well as it can. Features are therefore **Gradle modules**, and each feature is split in four. Everything else in ADR-0003 stands: the pure reducer, effects as data, timers as effects, stateless screens and the CI bar.
 
-- **`:arch:kernel`** (pure JVM) holds the reducer, effects, the feature store, timers and the app-wide error channel. Its test fixtures include a fake clock.
-- **`:arch:audio`** (pure JVM) holds the audio adapter interface and its announcements (ADR-0004). Its test fixtures include a fake adapter. The real adapter, which wraps the native pipeline, lives in `:app`.
-- **Each feature has two modules:**
-  - `:feature:<name>` (pure JVM): the feature's public interface (state, commands, events) plus its reducer. Internals are Kotlin `internal`. Other features may depend only on this module. Its mutation floor is 80%.
-  - `:feature:<name>:ui` (Android library, Compose): stateless screens, previews and screenshots.
-- **`:app`** wires features with Hilt, owns the routes and navigation, and holds the Android adapters.
-- **The compiler enforces the walls.** The Konsist architecture test covers the rest: no Android code in cores, no `:ui` depending on another feature's `:ui`, and no cycles. Breaking either fails CI.
-- **Threading:** reducers run on the main thread (they are tiny and pure, so screens update in the same frame). Effects run on injected background dispatchers.
+## Shared foundation
+
+- **`:arch:kernel`** (pure JVM): `Next`, `Reducer`, `Effect`, the feature store, timers and the app-wide error channel (ADR-0004). Its test fixtures include a fake clock.
+- **`:arch:audio`** (pure JVM): the audio adapter interface and its announcements (ADR-0004). Its test fixtures include a fake adapter.
+
+## Per feature: four modules, one direction
+
+| Module | Kind | Holds | May depend on |
+|---|---|---|---|
+| `:feature:x:api` | pure JVM | the **public interface**: the state the outside may read, its Commands and its events | `:arch:kernel` |
+| `:feature:x:core` | pure JVM | the **state machine and reducer**: sealed states, internal events, effects as data | its own `:api`, `:arch:kernel`, other features' `:api` |
+| `:feature:x:handlers` | Android library | the **effect handlers**: they carry out effects (IO, database, the audio adapter, the system) and report results back as events | its own `:core` and `:api`, `:arch:*` |
+| `:feature:x:ui` | Android library, Compose | the **stateless screens** `XScreen(model, onAction)`, with previews and screenshots | its own `:api` only |
+
+- **The reducer sits in between.** The UI sends Commands and renders state. Handlers only receive effects and report events. Neither the UI nor the handlers know about each other or about the reducer's internals.
+- **Features talk only through each other's `:api`.** No module may depend on another feature's `:core`, `:handlers` or `:ui`. The compiler enforces this. The Konsist architecture test plus a module-graph check fail CI on any other break: Android code in `:api` or `:core`, a cycle, or a wrong-direction dependency.
+- **`:app`** only wires: Hilt bindings, routes, navigation, and the real adapters over the native engine.
+
+## Running as well as possible
+
+- **Reducers** run on the main thread (`Main.immediate`). They are tiny and pure, so a tap shows in the same frame. **Handlers** run on injected background dispatchers, so IO never blocks the App UI.
+- **State is immutable** and published through `StateFlow` with distinct values only. Each screen observes the slice it shows, and screen models are stable (`@Immutable`), so Compose recomposes only what changed.
+- **The per-frame path stays in C++** (ADR-0002). Kotlin sends a compact snapshot only when something changes (ADR-0004).
+- **Separate modules build in parallel and from cache**, and CI tests each one on its own. A change rebuilds only the modules that depend on it.
+- The release build keeps R8 full mode and avoids reflection in the hot paths.
 
 ## Considered options
 
 - **Packages plus an architecture test (ADR-0003):** a weaker wall, caught only after compiling.
-- **Modules for the cores only:** a middle ground, but screens could still reach across features.
+- **Two modules per feature (core + ui):** handlers would sit in the core module or in `:app`, mixing IO with the state machine or scattering it.
