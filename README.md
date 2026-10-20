@@ -6,7 +6,7 @@ the NDK underneath (audio analysis, the GLES 3.x renderer, the DSP chain, a
 native player and tag access). Everything runs on-device: the app holds no
 network permission, and nothing it hears or renders leaves the phone.
 
-Currently v1.8.0 (versionCode 32); minSdk 26, targetSdk 36, compileSdk 37,
+Currently v1.8.0 (versionCode 32); minSdk 31, targetSdk 36, compileSdk 37,
 ABIs arm64-v8a and x86_64. The full version history is in
 [CHANGELOG.md](CHANGELOG.md).
 
@@ -107,10 +107,10 @@ portability, not device checks.
 ## Maintainer notes
 
 - Tag writing covers files the app holds a write grant for. For a
-  `content://media/...` track the app did not create, on API 30+ the editor
-  now launches `MediaStore.createWriteRequest` for the user's consent and
-  retries the write once if it is granted; below API 30, for a non-MediaStore
-  URI, or if consent is denied, it reports the refused write instead.
+  `content://media/...` track the app did not create, the editor launches
+  `MediaStore.createWriteRequest` for the user's consent and retries the
+  write once if it is granted; for a non-MediaStore URI, or if consent is
+  denied, it reports the refused write instead.
 - `ENABLE_PLAYLIST` in the root `CMakeLists.txt` is now `OFF`: nothing calls
   `libprojectM-4-playlist.so`, so it is no longer packaged.
 - `compileSdk = 37` while the workflows install `platforms;android-36`; both

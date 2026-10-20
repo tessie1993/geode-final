@@ -6,7 +6,6 @@ import dev.geode.audio.MicCapture
 import dev.geode.audio.NowPlayingBridge
 import dev.geode.audio.PlaybackCapture
 import dev.geode.audio.PlaybackCaptureService
-import dev.geode.audio.playbackCaptureSupported
 import dev.geode.engine.types.Hz
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +22,6 @@ data class MicState(
 )
 
 data class ExternalAudioState(
-    val supported: Boolean = playbackCaptureSupported,
     val active: Boolean = false,
     val awaitingConsent: Boolean = false,
     val failure: CaptureFailure? = null,
@@ -160,12 +158,6 @@ internal class CaptureController(
     }
 
     private fun startPlaybackCapture(projection: android.media.projection.MediaProjection) {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) {
-            _externalAudio.update {
-                it.copy(awaitingConsent = false, failure = CaptureFailure.UNSUPPORTED)
-            }
-            return
-        }
         if (!micCapture.hasPermission()) {
             _externalAudio.update {
                 it.copy(awaitingConsent = false, failure = CaptureFailure.PERMISSION)
