@@ -1,13 +1,21 @@
 # Geode
 
-An offline, private music player for Android with a real-time visualizer that reacts to the music, plus video export of what it shows.
+An offline, private music player for Android that draws a real-time Visual reacting to the music, plus video export of that Visual.
 
 ## Language
 
-### Visuals
+### The Visual and the App UI
+
+**Visual**:
+The audio-reactive picture the engine draws every frame from the music: in full-screen visual mode, behind the Visuals tab, and inside Renders and Recordings. Only the Visual reacts to sound.
+_Avoid_: visuals (for the App UI), graphics, animation, visualizer
+
+**App UI**:
+The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the theme. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
+_Avoid_: visuals, visual design, interface (an architecture term)
 
 **Style**:
-One selectable visual look, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
+One selectable look for the Visual, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
 _Avoid_: Scene (an engine term), effect, visualizer
 
 **Customization**:
@@ -31,7 +39,7 @@ The detailed layer of Customize under the Macros, opened on request.
 _Avoid_: Expert mode, pro tab
 
 **Reaction**:
-A link from one Sound signal to one visual or Camera property, with an amount.
+A link from one Sound signal to one property of the Visual or the Camera, with an amount.
 _Avoid_: Modulation, route, mapping, LFO target
 
 ### Studio
@@ -45,7 +53,7 @@ A video file made offline from a song or playlist with a Customization. It remem
 _Avoid_: Export, take, clip
 
 **Recording**:
-A video file captured in real time from the live player, holding what was on screen and the sound that was playing.
+A video file captured in real time from the live player, holding the Visual (never the App UI) and the sound that was playing.
 _Avoid_: Take, screen capture
 
 **Edit**:
