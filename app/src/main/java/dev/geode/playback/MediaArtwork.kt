@@ -4,7 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import androidx.core.net.toUri
+import dev.geode.engine.types.TrackId
 
 object MediaArtwork {
     /**
@@ -22,11 +22,11 @@ object MediaArtwork {
     const val EXTRA_EMBEDDED_ART_URI: String = "dev.geode.playback.EMBEDDED_ART_URI"
 
     /** Extras announcing that [uri]'s embedded picture is this item's artwork source. */
-    fun embeddedArtExtras(uri: String): Bundle = Bundle(1).apply { putString(EXTRA_EMBEDDED_ART_URI, uri) }
+    fun embeddedArtExtras(uri: TrackId): Bundle = Bundle(1).apply { putString(EXTRA_EMBEDDED_ART_URI, uri.value) }
 
     fun decodeEmbedded(
         context: Context,
-        uri: String,
+        uri: TrackId,
         maxPx: Int = DEFAULT_MAX_PX,
     ): Bitmap? =
         runCatching {

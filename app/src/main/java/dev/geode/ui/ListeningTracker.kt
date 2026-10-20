@@ -8,6 +8,10 @@ import dev.geode.data.FavouritesRepository
 import dev.geode.data.HistoryStore
 import dev.geode.data.SessionRepository
 import dev.geode.data.SessionStore
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
+import dev.geode.playback.toTrackId
+import dev.geode.playback.toUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,10 +39,10 @@ internal class ListeningTracker(
     private val _historyTick = MutableStateFlow(0)
     val historyTick: StateFlow<Int> = _historyTick
 
-    val favourites: StateFlow<Set<String>> = favouritesRepository.favourites
+    val favourites: StateFlow<Set<TrackId>> = favouritesRepository.favourites
 
     private var listenTickAtMs = 0L
-    private var listenTickUri: String? = null
+    private var listenTickUri: TrackId? = null
     private var lastSessionWriteMs = Long.MIN_VALUE
     private var lastSessionIndex = -1
 
@@ -46,9 +50,9 @@ internal class ListeningTracker(
 
     fun recentlyPlayed(limit: Int) = historyStore.recentlyPlayed(limit)
 
-    fun playCountOf(uri: String): Int = historyStore.entryFor(uri)?.playCount ?: 0
+    fun playCountOf(uri: TrackId): Int = historyStore.entryFor(uri)?.playCount ?: 0
 
-    fun toggleFavourite(uri: String) {
+    fun toggleFavourite(uri: TrackId) {
         storeScope.launch {
             favouritesRepository.toggle(uri)
             _historyTick.update { it + 1 }
@@ -56,7 +60,7 @@ internal class ListeningTracker(
     }
 
     fun recordPlay(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
     ) {
@@ -66,7 +70,7 @@ internal class ListeningTracker(
     }
 
     fun accrueListenTime() {
-        val uri = host.currentUri?.toString()
+        val uri = host.currentUri?.toTrackId()
         val now = System.currentTimeMillis()
         val playing = host.player.isPlaying && uri != null
         if (!playing || uri != listenTickUri) {
@@ -77,7 +81,7 @@ internal class ListeningTracker(
         }
         val delta = now - listenTickAtMs
         listenTickAtMs = now
-        if (delta in 1..MAX_LISTEN_TICK_MS) historyStore.addListenTime(uri, delta)
+        if (delta in 1..MAX_LISTEN_TICK_MS) historyStore.addListenTime(uri, Millis(delta))
     }
 
     fun flushListenTime() {
@@ -97,16 +101,16 @@ internal class ListeningTracker(
                     player.setMediaItems(
                         saved.tracks.map { host.mediaItemFor(QueueTrack(it.uri, it.title, it.artist)) },
                         saved.index,
-                        saved.positionMs,
+                        saved.position.value,
                     )
                     player.prepare()
-                    Uri.parse(saved.tracks[saved.index].uri)
+                    saved.tracks[saved.index].uri.toUri()
                 }.getOrNull()
             if (restored != null) return restored
         }
         val last = historyStore.recentlyPlayed(1).firstOrNull() ?: return null
         return runCatching {
-            val uri = Uri.parse(last.uri)
+            val uri = last.uri.toUri()
             player.setMediaItems(listOf(host.mediaItemFor(uri)))
             player.prepare()
             uri
@@ -127,7 +131,7 @@ internal class ListeningTracker(
         val tracks =
             (0 until count).mapNotNull { i ->
                 val item = runCatching { player.getMediaItemAt(i) }.getOrNull() ?: return@mapNotNull null
-                val uri = item.localConfiguration?.uri?.toString() ?: return@mapNotNull null
+                val uri = item.localConfiguration?.uri?.toTrackId() ?: return@mapNotNull null
                 SessionStore.SavedTrack(
                     uri = uri,
                     title =
@@ -140,7 +144,7 @@ internal class ListeningTracker(
                             .orEmpty(),
                 )
             }
-        storeScope.launch { sessionRepository.save(SessionStore.Saved(tracks, index, position)) }
+        storeScope.launch { sessionRepository.save(SessionStore.Saved(tracks, index, Millis(position))) }
     }
 
     private companion object {

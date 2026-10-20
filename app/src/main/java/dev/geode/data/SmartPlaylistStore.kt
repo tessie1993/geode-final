@@ -1,6 +1,7 @@
 package dev.geode.data
 
 import android.content.Context
+import dev.geode.engine.types.TrackId
 import dev.geode.ui.DeviceTrack
 import org.json.JSONArray
 import org.json.JSONObject
@@ -53,8 +54,8 @@ object SmartPlaylistMatcher {
     fun resolve(
         playlist: SmartPlaylist,
         tracks: List<DeviceTrack>,
-        playCountOf: (String) -> Int,
-        favourites: Set<String>,
+        playCountOf: (TrackId) -> Int,
+        favourites: Set<TrackId>,
         nowMs: Long = System.currentTimeMillis(),
     ): List<DeviceTrack> {
         val rules = playlist.rules.filter { it.value.isNotBlank() || it.field.isFlag }
@@ -73,8 +74,8 @@ object SmartPlaylistMatcher {
     private fun matches(
         rule: SmartRule,
         track: DeviceTrack,
-        playCountOf: (String) -> Int,
-        favourites: Set<String>,
+        playCountOf: (TrackId) -> Int,
+        favourites: Set<TrackId>,
         nowMs: Long,
     ): Boolean =
         when (rule.field) {
@@ -82,7 +83,7 @@ object SmartPlaylistMatcher {
             RuleField.ARTIST -> text(rule, track.artist)
             RuleField.ALBUM -> text(rule, track.album)
             RuleField.FOLDER -> text(rule, track.folder)
-            RuleField.DURATION_MINUTES -> number(rule, track.durationMs / 60_000f)
+            RuleField.DURATION_MINUTES -> number(rule, track.duration.value / 60_000f)
             RuleField.ADDED_DAYS_AGO -> number(rule, (nowMs / 1000L - track.addedSec) / 86_400f)
             RuleField.PLAY_COUNT -> number(rule, playCountOf(track.uri).toFloat())
             RuleField.FAVOURITE -> (track.uri in favourites) == (rule.op != RuleOp.IS_NOT)

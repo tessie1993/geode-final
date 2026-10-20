@@ -74,7 +74,7 @@ internal class TemplateController(
                 }
             val look =
                 TemplateLook(
-                    sceneId = s.sceneId,
+                    sceneId = s.sceneId.value,
                     attack = s.attack,
                     decay = s.decay,
                     params = s.params,

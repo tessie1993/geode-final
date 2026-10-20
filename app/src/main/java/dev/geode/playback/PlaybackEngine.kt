@@ -51,9 +51,9 @@ class PlaybackSession internal constructor(
         PcmTap(captureSink) { format ->
             val hook = onAudioFormat
             if (hook != null) {
-                hook(format.sampleRateHz, format.channelCount, format.encoding)
+                hook(format.sampleRate.value, format.channelCount, format.encoding)
             } else {
-                analysis.sampleRateHz = format.sampleRateHz
+                analysis.sampleRateHz = format.sampleRate.value
             }
         }.apply {
             boundaryListener =

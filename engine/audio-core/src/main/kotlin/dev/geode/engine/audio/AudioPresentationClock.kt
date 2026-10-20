@@ -1,5 +1,7 @@
 package dev.geode.engine.audio
 
+import dev.geode.engine.types.Frames
+import dev.geode.engine.types.Micros
 import kotlin.math.roundToLong
 
 class AudioPresentationClock(
@@ -18,14 +20,14 @@ class AudioPresentationClock(
         val last = snapshot.segments.lastOrNull()
         if (last != null) {
             require(segment.presentationUsStart >= last.presentationUsStart) {
-                "presentation time only moves forward; ${segment.presentationUsStart} follows ${last.presentationUsStart}"
+                "presentation time only moves forward; ${segment.presentationUsStart.value} follows ${last.presentationUsStart.value}"
             }
             require(segment.discontinuityGeneration >= last.discontinuityGeneration) {
                 "discontinuity generation only increases"
             }
             require(segment.epoch != last.epoch || segment.inputSampleStart >= last.inputSampleStart) {
                 "within an epoch input frames only move forward; " +
-                    "${segment.inputSampleStart} follows ${last.inputSampleStart} in epoch ${segment.epoch}"
+                    "${segment.inputSampleStart.value} follows ${last.inputSampleStart.value} in epoch ${segment.epoch}"
             }
         }
         val previous = snapshot.segments
@@ -47,7 +49,7 @@ class PresentationSnapshot(
     val epoch: Int? get() = segments.lastOrNull()?.epoch
 
     fun presentationTimeOf(
-        inputSample: Long,
+        inputSample: Frames,
         epoch: Int,
     ): PresentationTime {
         val currentEpoch = this.epoch ?: return PresentationTime.Unknown
@@ -60,23 +62,23 @@ class PresentationSnapshot(
         }
         val heardOffset = offset - segment.skippedInputSamples
         return PresentationTime.At(
-            segment.presentationUsStart + (heardOffset / segment.inputSamplesPerPresentationUs).roundToLong(),
+            segment.presentationUsStart + Micros((heardOffset.value / segment.inputSamplesPerPresentationUs).roundToLong()),
         )
     }
 
-    fun inputPositionAt(presentationUs: Long): InputPosition {
+    fun inputPositionAt(presentationUs: Micros): InputPosition {
         val segment =
             segments.lastOrNull { it.presentationUsStart <= presentationUs }
                 ?: return InputPosition.Unknown
         val elapsedUs = presentationUs - segment.presentationUsStart
         return InputPosition.At(
-            inputSample = segment.firstPresentedSample + (elapsedUs * segment.inputSamplesPerPresentationUs).roundToLong(),
+            inputSample = segment.firstPresentedSample + Frames((elapsedUs.value * segment.inputSamplesPerPresentationUs).roundToLong()),
             epoch = segment.epoch,
         )
     }
 
     private fun segmentCovering(
-        inputSample: Long,
+        inputSample: Frames,
         epoch: Int,
     ): ClockSegment? = segments.lastOrNull { it.epoch == epoch && it.inputSampleStart <= inputSample }
 }

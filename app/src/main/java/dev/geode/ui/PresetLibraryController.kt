@@ -6,6 +6,7 @@ import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
 import dev.geode.data.PresetRepository
 import dev.geode.data.PresetStore
+import dev.geode.engine.types.PresetId
 import dev.geode.render.scene.SceneIds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,7 @@ internal class PresetLibraryController(
     }
 
     fun movePresetToFolder(
-        name: String,
+        name: PresetId,
         folder: String,
     ) {
         storeScope.launch {
@@ -97,12 +98,12 @@ internal class PresetLibraryController(
                 }
             milkSource?.let { source -> presets.materializeMilk(name, source) }
             presets.save(Preset(name, s.sceneId, s.attack, s.decay, customShader, s.params, milkSource), folder)
-            mirrorPresetToChosenFolder(name)
+            mirrorPresetToChosenFolder(PresetId(name))
             relistPresets()
         }
     }
 
-    private fun mirrorPresetToChosenFolder(name: String) {
+    private fun mirrorPresetToChosenFolder(name: PresetId) {
         val uriStr = host.presetMirrorUri ?: return
         scope.launch(Dispatchers.IO) {
             runCatching {
@@ -128,10 +129,10 @@ internal class PresetLibraryController(
         }
     }
 
-    private fun milkFileFor(presetName: String): java.io.File =
+    private fun milkFileFor(preset: PresetId): java.io.File =
         java.io.File(
             java.io.File(application.filesDir, "milk").apply { mkdirs() },
-            PresetStore.milkFileName(presetName),
+            PresetStore.milkFileName(preset.value),
         )
 
     fun milkPresetPathFor(preset: Preset): String? {
@@ -139,22 +140,22 @@ internal class PresetLibraryController(
         return presets.materializeMilk(preset.name, preset.milkPreset)
     }
 
-    fun presetShareLink(name: String): String? {
+    fun presetShareLink(name: PresetId): String? {
         val preset =
             host.vizState.value.presets
-                .firstOrNull { it.name == name } ?: return null
+                .firstOrNull { it.id == name } ?: return null
         val link = PresetLink.encode(PresetStore.toJson(preset))
         return link.takeIf { it.length <= PresetLink.MAX_LINK_LENGTH }
     }
 
-    fun importPresetLink(text: String): String? {
+    fun importPresetLink(text: String): PresetId? {
         val link = PresetLink.findIn(text) ?: return null
         return importPresetJson(PresetLink.decode(link) ?: return null)
     }
 
     fun importPresetFile(
         uri: Uri,
-        onResult: (String?) -> Unit,
+        onResult: (PresetId?) -> Unit,
     ) {
         scope.launch {
             val json =
@@ -171,7 +172,7 @@ internal class PresetLibraryController(
         }
     }
 
-    private fun importPresetJson(json: String): String? {
+    private fun importPresetJson(json: String): PresetId? {
         val incoming = runCatching { PresetStore.fromJson(json) }.getOrNull() ?: return null
         val existing =
             host.vizState.value.presets
@@ -194,14 +195,14 @@ internal class PresetLibraryController(
             presets.save(preset)
             relistPresets()
         }
-        return name
+        return preset.id
     }
 
-    fun presetFile(name: String): java.io.File? = presets.fileOf(name)
+    fun presetFile(name: PresetId): java.io.File? = presets.fileOf(name)
 
-    fun deletePreset(name: String) {
-        if (BuiltInPresets.isBuiltIn(name)) return
-        host.updatePresets { presets -> presets.filterNot { it.name == name } }
+    fun deletePreset(name: PresetId) {
+        if (BuiltInPresets.isBuiltIn(name.value)) return
+        host.updatePresets { presets -> presets.filterNot { it.id == name } }
         storeScope.launch {
             removeMirroredPreset(presets.fileOf(name)?.name, milkFileFor(name).name)
             presets.delete(name)

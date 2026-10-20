@@ -4,6 +4,7 @@ import android.os.SystemClock
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import dev.geode.analysis.PlaybackMath
+import dev.geode.engine.types.Millis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,9 +18,9 @@ class SleepTimer internal constructor(
     private val player: Player,
     private val scope: CoroutineScope,
 ) {
-    private val _remainingMs = MutableStateFlow<Long?>(null)
+    private val _remaining = MutableStateFlow<Millis?>(null)
 
-    val remainingMs: StateFlow<Long?> = _remainingMs
+    val remaining: StateFlow<Millis?> = _remaining
 
     @Volatile
     var onFadeVolume: ((Float) -> Unit)? = null
@@ -43,12 +44,12 @@ class SleepTimer internal constructor(
                     while (true) {
                         val remaining = endMs - SystemClock.elapsedRealtime()
                         if (remaining <= 0L) break
-                        _remainingMs.value = remaining
+                        _remaining.value = Millis(remaining)
                         if (!finishTrack) applyFade(PlaybackMath.sleepFadeVolume(remaining))
                         delay(if (remaining <= PlaybackMath.SLEEP_FADE_MS) 100 else 500)
                     }
                     if (finishTrack && playbackOngoing()) {
-                        _remainingMs.value = 0L
+                        _remaining.value = Millis.ZERO
                         awaitCurrentTrackDone()
                     }
                     player.pause()
@@ -56,7 +57,7 @@ class SleepTimer internal constructor(
                     applyFade(1f)
                     if (job === started) {
                         job = null
-                        _remainingMs.value = null
+                        _remaining.value = null
                     }
                 }
             }
@@ -66,7 +67,7 @@ class SleepTimer internal constructor(
     fun cancel() {
         val running = job
         job = null
-        _remainingMs.value = null
+        _remaining.value = null
         running?.cancel()
         applyFade(1f)
     }

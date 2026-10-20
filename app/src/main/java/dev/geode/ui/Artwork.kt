@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.geode.engine.types.TrackId
 import dev.geode.playback.MediaArtwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,19 +47,19 @@ object ArtworkCache {
 
     suspend fun load(
         context: Context,
-        uri: String,
+        uri: TrackId,
     ): ImageBitmap? {
-        cache.get(uri)?.let { return if (it === NONE) null else it as ImageBitmap }
+        cache.get(uri.value)?.let { return if (it === NONE) null else it as ImageBitmap }
         val decoded = withContext(Dispatchers.IO) { decode(context, uri) }
-        cache.put(uri, decoded ?: NONE)
+        cache.put(uri.value, decoded ?: NONE)
         return decoded
     }
 
-    fun peek(uri: String): ImageBitmap? = cache.get(uri)?.takeIf { it !== NONE } as? ImageBitmap
+    fun peek(uri: TrackId): ImageBitmap? = cache.get(uri.value)?.takeIf { it !== NONE } as? ImageBitmap
 
     private fun decode(
         context: Context,
-        uri: String,
+        uri: TrackId,
     ): ImageBitmap? = MediaArtwork.decodeEmbedded(context, uri, ART_PX)?.asImageBitmap()
 }
 
@@ -177,7 +178,7 @@ fun VideoFrame(
 
 @Composable
 fun TrackArtwork(
-    uri: String?,
+    uri: TrackId?,
     modifier: Modifier = Modifier,
     corner: Dp = 14.dp,
 ) {
@@ -202,7 +203,7 @@ fun TrackArtwork(
                 contentScale = ContentScale.Crop,
             )
         } else {
-            Box(Modifier.fillMaxSize().background(placeholderBrush(uri))) {
+            Box(Modifier.fillMaxSize().background(placeholderBrush(uri?.value))) {
                 Icon(
                     Icons.Filled.MusicNote,
                     null,

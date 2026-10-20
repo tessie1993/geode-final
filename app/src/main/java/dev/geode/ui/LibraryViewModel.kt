@@ -9,6 +9,7 @@ import dev.geode.data.MusicPlaylist
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.TagWriteOutcome
 import dev.geode.di.PlayerSessionProvider
+import dev.geode.engine.types.TrackId
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,7 +38,7 @@ private val WhileUiSubscribed = SharingStarted.WhileSubscribed(5_000)
 data class LibraryUiState(
     val tracks: List<DeviceTrack> = emptyList(),
     val playlists: List<MusicPlaylist> = emptyList(),
-    val overrides: Map<String, LibraryTrack> = emptyMap(),
+    val overrides: Map<TrackId, LibraryTrack> = emptyMap(),
     val query: String = "",
     val sort: LibrarySort = LibrarySort.TITLE,
     val isScanning: Boolean = false,
@@ -107,7 +108,7 @@ class LibraryViewModel
 
         val libraryScanning: StateFlow<Boolean> get() = session.libraryScanning
 
-        val trackOverrides: StateFlow<Map<String, LibraryTrack>> get() = session.trackOverrides
+        val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> get() = session.trackOverrides
 
         fun refreshDeviceTracks() = session.refreshDeviceTracks()
 
@@ -119,12 +120,12 @@ class LibraryViewModel
 
         fun rescanMediaRoots() = session.rescanMediaRoots()
 
-        fun trackOverride(uri: String): LibraryTrack? = session.trackOverride(uri)
+        fun trackOverride(uri: TrackId): LibraryTrack? = session.trackOverride(uri)
 
-        suspend fun trackInfoFor(uriStr: String): LibraryTrack = session.trackInfoFor(uriStr)
+        suspend fun trackInfoFor(uri: TrackId): LibraryTrack = session.trackInfoFor(uri)
 
         fun saveTrackInfo(
-            uri: String,
+            uri: TrackId,
             title: String,
             artist: String,
             album: String,
@@ -135,7 +136,7 @@ class LibraryViewModel
         ) = session.saveTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
 
         suspend fun writeTrackInfo(
-            uri: String,
+            uri: TrackId,
             title: String,
             artist: String,
             album: String,
@@ -164,12 +165,12 @@ class LibraryViewModel
 
         fun addTrackToPlaylist(
             playlist: String,
-            uri: String,
+            uri: TrackId,
         ) = session.addTrackToPlaylist(playlist, uri)
 
         fun removeTrackFromPlaylist(
             playlist: String,
-            uri: String,
+            uri: TrackId,
         ) = session.removeTrackFromPlaylist(playlist, uri)
 
         fun playPlaylist(

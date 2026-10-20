@@ -322,7 +322,7 @@ object TemplateFormat {
                 ?: SceneParams.DEFAULT
         val bare =
             TemplateLook(
-                sceneId = source?.optString(KEY_SCENE_ID).orEmpty().ifBlank { SceneIds.DEFAULT },
+                sceneId = source?.optString(KEY_SCENE_ID).orEmpty().ifBlank { SceneIds.DEFAULT.value },
                 attack = optFloat(source, KEY_ATTACK, TemplateLook.DEFAULT_ATTACK),
                 decay = optFloat(source, KEY_DECAY, TemplateLook.DEFAULT_DECAY),
                 params = params,

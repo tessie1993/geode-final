@@ -1,5 +1,7 @@
 package dev.geode.render.scene
 
+import dev.geode.engine.types.SceneId
+
 /** Which scene class a style id builds. One entry per renderer, not per style. */
 enum class SceneKind {
     SHADER,
@@ -25,7 +27,7 @@ enum class SceneKind {
 
 object SceneCapabilities {
     /** Fragment style id -> the APK asset the native ShaderScene compiles. */
-    val SHADER_SCENES: Map<String, String> =
+    val SHADER_SCENES: Map<SceneId, String> =
         linkedMapOf(
             SceneIds.JULIA to "shaders/julia_frag.glsl",
             SceneIds.TUNNEL to "shaders/tunnel_frag.glsl",
@@ -87,7 +89,7 @@ object SceneCapabilities {
      * scoping Detail to `SceneKind.SHADER` would put a dead slider in front of anyone looking at
      * Plasma, which is exactly what [ParamScope]'s no-dead-controls rule exists to prevent.
      */
-    val MARCHED_SCENES: Set<String> =
+    val MARCHED_SCENES: Set<SceneId> =
         setOf(
             SceneIds.VANISHING,
             SceneIds.MORPHOGEN,
@@ -108,7 +110,7 @@ object SceneCapabilities {
      * `SceneRegistry` falls back to it, so the Customize panel describes what will actually be
      * on screen rather than an id nothing can render.
      */
-    fun kindOf(sceneId: String): SceneKind =
+    fun kindOf(sceneId: SceneId): SceneKind =
         when {
             sceneId in SHADER_SCENES -> SceneKind.SHADER
             sceneId == SceneIds.MILKDROP -> SceneKind.MILKDROP
@@ -122,19 +124,19 @@ object SceneCapabilities {
             else -> SceneKind.SILK
         }
 
-    fun isFluid(sceneId: String): Boolean = VisualStyleCatalog.isFluid(sceneId)
+    fun isFluid(sceneId: SceneId): Boolean = VisualStyleCatalog.isFluid(sceneId)
 
-    fun isWater(sceneId: String): Boolean = sceneId == SceneIds.WATER
+    fun isWater(sceneId: SceneId): Boolean = sceneId == SceneIds.WATER
 
-    fun isCymatics(sceneId: String): Boolean = VisualStyleCatalog.isCymatics(sceneId)
+    fun isCymatics(sceneId: SceneId): Boolean = VisualStyleCatalog.isCymatics(sceneId)
 
-    fun hasJourney(sceneId: String): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW || sceneId == SceneIds.WATER
+    fun hasJourney(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW || sceneId == SceneIds.WATER
 
-    fun hasEmitters(sceneId: String): Boolean = isFluid(sceneId) || sceneId == SceneIds.WATER
+    fun hasEmitters(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.WATER
 
-    fun hasParticleLayer(sceneId: String): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW
+    fun hasParticleLayer(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW
 
-    fun usesPointSprites(sceneId: String): Boolean = hasParticleLayer(sceneId)
+    fun usesPointSprites(sceneId: SceneId): Boolean = hasParticleLayer(sceneId)
 
-    fun hasShaderLook(sceneId: String): Boolean = sceneId in SHADER_SCENES
+    fun hasShaderLook(sceneId: SceneId): Boolean = sceneId in SHADER_SCENES
 }

@@ -2,6 +2,8 @@ package dev.geode.engine.audioandroid
 
 import dev.geode.engine.audio.AudioPresentationClock
 import dev.geode.engine.audio.ClockSegment
+import dev.geode.engine.types.Frames
+import dev.geode.engine.types.Micros
 import kotlin.math.roundToLong
 
 class SinkClockDriver(
@@ -73,14 +75,15 @@ class SinkClockDriver(
         boundaries++
         if (sawSkipHook) hookedBoundaries++
 
-        val rawSkip = if (ended != null && endedFrames > 0L) skipped.skippedInputFramesSinceFlush() else 0L
-        val trustworthy = rawSkip in 0L..endedFrames
+        val endedCount = Frames(endedFrames).value
+        val rawSkip = if (ended != null && endedCount > 0L) Frames(skipped.skippedInputFramesSinceFlush()).value else 0L
+        val trustworthy = rawSkip in 0L..endedCount
         if (!trustworthy) discardedSkipExceedingFrames++
         val skip = if (trustworthy) rawSkip else 0L
 
         if (openSlope > 0.0) {
-            anchorUs += ((endedFrames - skip) / openSlope).roundToLong()
-        } else if (ended != null && endedFrames > 0L) {
+            anchorUs += ((endedCount - skip) / openSlope).roundToLong()
+        } else if (ended != null && endedCount > 0L) {
             unmeasuredBoundaries++
             distrustAnchor()
         }
@@ -95,7 +98,7 @@ class SinkClockDriver(
             distrustAnchor()
             return
         }
-        if (begun.sampleRateHz <= 0 || begun.channelCount <= 0 || begun.sampleWidth == null || !(speed > 0f)) {
+        if (begun.sampleRate.value <= 0 || begun.channelCount <= 0 || begun.sampleWidth == null || !(speed > 0f)) {
             refusedUnreadableFormat++
             distrustAnchor()
             return
@@ -110,11 +113,11 @@ class SinkClockDriver(
                 ClockSegment.fromFormat(
                     epoch = begun.generation,
                     discontinuityGeneration = begun.generation,
-                    inputSampleStart = 0L,
-                    presentationUsStart = anchorUs,
-                    sampleRateHz = begun.sampleRateHz,
+                    inputSampleStart = Frames(0L),
+                    presentationUsStart = Micros(anchorUs),
+                    sampleRate = begun.sampleRate,
                     speed = speed,
-                    skippedInputSamples = 0L,
+                    skippedInputSamples = Frames(0L),
                 )
             clock.append(segment)
             openSlope = segment.inputSamplesPerPresentationUs

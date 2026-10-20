@@ -1,23 +1,27 @@
 package dev.geode.engine.audio
 
+import dev.geode.engine.types.Frames
+import dev.geode.engine.types.Hz
+import dev.geode.engine.types.Micros
+
 data class ClockSegment(
     val epoch: Int,
     val discontinuityGeneration: Int,
-    val inputSampleStart: Long,
-    val presentationUsStart: Long,
+    val inputSampleStart: Frames,
+    val presentationUsStart: Micros,
     val inputSamplesPerPresentationUs: Double,
     val speed: Float,
-    val skippedInputSamples: Long,
+    val skippedInputSamples: Frames,
 ) {
     init {
         require(inputSamplesPerPresentationUs > 0.0) {
             "slope must be positive, was $inputSamplesPerPresentationUs"
         }
-        require(inputSampleStart >= 0) { "inputSampleStart must not be negative" }
-        require(skippedInputSamples >= 0) { "skippedInputSamples must not be negative" }
+        require(inputSampleStart.value >= 0) { "inputSampleStart must not be negative" }
+        require(skippedInputSamples.value >= 0) { "skippedInputSamples must not be negative" }
     }
 
-    val firstPresentedSample: Long get() = inputSampleStart + skippedInputSamples
+    val firstPresentedSample: Frames get() = inputSampleStart + skippedInputSamples
 
     companion object {
         private const val US_PER_SECOND = 1_000_000.0
@@ -25,12 +29,13 @@ data class ClockSegment(
         fun fromFormat(
             epoch: Int,
             discontinuityGeneration: Int,
-            inputSampleStart: Long,
-            presentationUsStart: Long,
-            sampleRateHz: Int,
+            inputSampleStart: Frames,
+            presentationUsStart: Micros,
+            sampleRate: Hz,
             speed: Float,
-            skippedInputSamples: Long = 0L,
+            skippedInputSamples: Frames = Frames(0L),
         ): ClockSegment {
+            val sampleRateHz = sampleRate.value
             require(sampleRateHz > 0) { "sampleRateHz must be positive, was $sampleRateHz" }
             require(speed > 0f) { "speed must be positive, was $speed" }
             return ClockSegment(

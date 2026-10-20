@@ -31,16 +31,36 @@ A value measured live from the audio that is playing, such as level, a band, a d
 _Avoid_: Feature, analysis, song structure
 
 **Macro**:
-One large control in the basic Customize view that moves several properties of a Style together. Each Style picks its own Macros.
+One large control in the basic Customize view. It is a single value: changing it changes every property linked to it. Each Style has 6, shipped as suggestions that the user can clear, rebuild, rename or remap.
 _Avoid_: Preset knob, master slider
+
+**Shared core**:
+The controls every Style has, MilkDrop and user shaders included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, and colour grading.
+_Avoid_: Global params, common FX
+
+**Extras**:
+A Style's own controls on top of the Shared core, taken from that Style's real shader variables.
+_Avoid_: Scene params, custom params
 
 **Advanced view**:
 The detailed layer of Customize under the Macros, opened on request.
 _Avoid_: Expert mode, pro tab
 
 **Reaction**:
-A link from one Sound signal to one property of the Visual or the Camera, with an amount.
+A link from one Sound signal or Modulator to one target: a property of the Visual or Camera, a Macro, another Modulator, or an on/off switch. It has an amount and direction, rise and fall, a range and a curve.
 _Avoid_: Modulation, route, mapping, LFO target
+
+**Modulator**:
+A generated value that moves targets the way a Sound signal does: an LFO wave, a hit envelope, a step sequencer or a smooth random drift. Each one has its own start setting, and it does not run until it is linked to something. Not a Sound signal, because it is not measured from the audio.
+_Avoid_: LFO (only one kind), oscillator
+
+**Automation**:
+Behaviour the Customization performs by itself over the music: switching Style, changing the palette, Camera moves on the beat, sequenced effects, and autopilot Macros.
+_Avoid_: Auto visuals, scripts
+
+**No-flash rule**:
+The Visual never flashes. An engine-wide limit on how fast overall brightness may change bounds every Style, Reaction, Modulator and Automation, live and in every Render and Recording. It has no switch.
+_Avoid_: Strobe safety, epilepsy mode
 
 ### Studio
 
@@ -48,8 +68,12 @@ _Avoid_: Modulation, route, mapping, LFO target
 The place where people turn music into video files: they make Renders and Recordings, edit them, and share the results.
 _Avoid_: Editor, export screen
 
+**Project**:
+A folder of Renders, Recordings, Edits and Shorts that the user creates and names. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported.
+_Avoid_: album, collection, folder (for the concept)
+
 **Render**:
-A video file made offline from a song or playlist with a Customization. It remembers both, so it can be made again at another shape or quality.
+A video file made offline from a song or playlist with a Customization. It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
 _Avoid_: Export, take, clip
 
 **Recording**:

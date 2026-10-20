@@ -181,7 +181,7 @@ object BundledTemplates {
             notes = "Vertical hook clip. Loud, loop-safe, thirty seconds around the biggest moment.",
             look =
                 TemplateLook(
-                    sceneId = SceneIds.FLUID,
+                    sceneId = SceneIds.FLUID.value,
                     attack = 0.85f,
                     decay = 0.24f,
                     params =
@@ -221,7 +221,7 @@ object BundledTemplates {
             notes = "Square, slow and soft. Made to sit under a study playlist without shouting.",
             look =
                 TemplateLook(
-                    sceneId = SceneIds.AURORA,
+                    sceneId = SceneIds.AURORA.value,
                     attack = 0.4f,
                     decay = 0.06f,
                     params =
@@ -283,7 +283,7 @@ object BundledTemplates {
             notes = "Round artwork, ring progress, whole track. The classic single-cover post.",
             look =
                 TemplateLook(
-                    sceneId = SceneIds.RING,
+                    sceneId = SceneIds.RING.value,
                     attack = 0.55f,
                     decay = 0.1f,
                     params =
@@ -335,7 +335,7 @@ object BundledTemplates {
             notes = "Four-by-five feed post, fifteen seconds, album name front and centre.",
             look =
                 TemplateLook(
-                    sceneId = SceneIds.WAVES,
+                    sceneId = SceneIds.WAVES.value,
                     attack = 0.7f,
                     decay = 0.15f,
                     params =
@@ -393,7 +393,7 @@ object BundledTemplates {
             notes = "Wide, calm spectrum for speech. Whole episode, readable title, no strobing.",
             look =
                 TemplateLook(
-                    sceneId = SceneIds.BARS,
+                    sceneId = SceneIds.BARS.value,
                     attack = 0.5f,
                     decay = 0.2f,
                     params =
@@ -451,7 +451,7 @@ object BundledTemplates {
             notes = "Archive render: 4K, sixty frames, no overlays. The one you keep.",
             look =
                 TemplateLook(
-                    sceneId = SceneIds.DEFAULT,
+                    sceneId = SceneIds.DEFAULT.value,
                     attack = 0.65f,
                     decay = 0.12f,
                     params =

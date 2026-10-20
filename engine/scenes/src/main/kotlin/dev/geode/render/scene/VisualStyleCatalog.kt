@@ -1,5 +1,7 @@
 package dev.geode.render.scene
 
+import dev.geode.engine.types.SceneId
+
 /**
  * Catalog of the per-scene visual styles the engine can render.
  *
@@ -8,7 +10,7 @@ package dev.geode.render.scene
  */
 object VisualStyleCatalog {
     data class CymaticsStyle(
-        val id: String,
+        val id: SceneId,
         val label: String,
         val shaderStyle: Int,
         val geometryOverride: Int? = null,
@@ -29,7 +31,7 @@ object VisualStyleCatalog {
         listOf(
             CymaticsStyle(SceneIds.CYMATICS, "Original · Resonant Field", 0),
             CymaticsStyle(
-                "chladni_sand",
+                SceneId("chladni_sand"),
                 "Chladni Sand",
                 1,
                 geometryOverride = 1,
@@ -44,7 +46,7 @@ object VisualStyleCatalog {
                 hueSpan = 0.45f,
             ),
             CymaticsStyle(
-                "bessel_drum",
+                SceneId("bessel_drum"),
                 "Drumhead",
                 2,
                 geometryOverride = 0,
@@ -59,7 +61,7 @@ object VisualStyleCatalog {
                 modeCap = 2,
             ),
             CymaticsStyle(
-                "harmonograph",
+                SceneId("harmonograph"),
                 "Harmonograph",
                 3,
                 scale = 0.82f,
@@ -74,7 +76,7 @@ object VisualStyleCatalog {
                 hueSpan = 1.6f,
             ),
             CymaticsStyle(
-                "faraday",
+                SceneId("faraday"),
                 "Faraday",
                 4,
                 geometryOverride = 0,
@@ -89,7 +91,7 @@ object VisualStyleCatalog {
                 hueSpan = 1.15f,
             ),
             CymaticsStyle(
-                "harmonic_shell",
+                SceneId("harmonic_shell"),
                 "Harmonic Shell",
                 5,
                 geometryOverride = 0,
@@ -104,7 +106,7 @@ object VisualStyleCatalog {
                 hueSpan = 1.35f,
             ),
             CymaticsStyle(
-                "caustic_sheet",
+                SceneId("caustic_sheet"),
                 "Caustic Sheet",
                 6,
                 scale = 1.05f,
@@ -119,7 +121,7 @@ object VisualStyleCatalog {
                 modeCap = 4,
             ),
             CymaticsStyle(
-                "levitator",
+                SceneId("levitator"),
                 "Levitator",
                 7,
                 geometryOverride = 1,
@@ -135,7 +137,7 @@ object VisualStyleCatalog {
                 modeCap = 3,
             ),
             CymaticsStyle(
-                "standing_chamber",
+                SceneId("standing_chamber"),
                 "Standing Chamber",
                 8,
                 geometryOverride = 1,
@@ -151,7 +153,7 @@ object VisualStyleCatalog {
                 modeCap = 4,
             ),
             CymaticsStyle(
-                "rosensweig",
+                SceneId("rosensweig"),
                 "Rosensweig Spikes",
                 9,
                 geometryOverride = 0,
@@ -166,7 +168,7 @@ object VisualStyleCatalog {
                 hueSpan = 0.35f,
             ),
             CymaticsStyle(
-                "kundt_tube",
+                SceneId("kundt_tube"),
                 "Kundt Tube",
                 10,
                 geometryOverride = 1,
@@ -183,7 +185,7 @@ object VisualStyleCatalog {
         )
 
     data class SilkStyle(
-        val id: String,
+        val id: SceneId,
         val label: String,
         val field: Int,
         val flow: Float = 1f,
@@ -204,9 +206,9 @@ object VisualStyleCatalog {
 
     val silk: List<SilkStyle> =
         listOf(
-            SilkStyle("silk_web", "Halvorsen Web", 0),
+            SilkStyle(SceneId("silk_web"), "Halvorsen Web", 0),
             SilkStyle(
-                "silk_bloom",
+                SceneId("silk_bloom"),
                 "Cosine Bloom",
                 1,
                 flow = 0.85f,
@@ -219,7 +221,7 @@ object VisualStyleCatalog {
                 bPeriod = 41f,
             ),
             SilkStyle(
-                "silk_weave",
+                SceneId("silk_weave"),
                 "Triaxial Weave",
                 2,
                 flow = 1.15f,
@@ -233,7 +235,7 @@ object VisualStyleCatalog {
                 bPeriod = 47f,
             ),
             SilkStyle(
-                "silk_shell",
+                SceneId("silk_shell"),
                 "Concentric Shells",
                 3,
                 flow = 0.9f,
@@ -248,7 +250,7 @@ object VisualStyleCatalog {
                 bPeriod = 38f,
             ),
             SilkStyle(
-                "silk_spiral",
+                SceneId("silk_spiral"),
                 "Phase Spiral",
                 4,
                 flow = 1.2f,
@@ -262,7 +264,7 @@ object VisualStyleCatalog {
                 bPeriod = 49f,
             ),
             SilkStyle(
-                "silk_fold",
+                SceneId("silk_fold"),
                 "Recursive Fold",
                 5,
                 fieldScale = 1.15f,
@@ -274,7 +276,7 @@ object VisualStyleCatalog {
                 bPeriod = 44f,
             ),
             SilkStyle(
-                "silk_hyper",
+                SceneId("silk_hyper"),
                 "Hyperbolic Bloom",
                 6,
                 flow = 0.8f,
@@ -287,7 +289,7 @@ object VisualStyleCatalog {
                 bPeriod = 35f,
             ),
             SilkStyle(
-                "silk_resonance",
+                SceneId("silk_resonance"),
                 "Nested Resonance",
                 7,
                 flow = 1.05f,
@@ -298,7 +300,7 @@ object VisualStyleCatalog {
                 bPeriod = 43f,
             ),
             SilkStyle(
-                "silk_curl",
+                SceneId("silk_curl"),
                 "Curl Weave",
                 8,
                 flow = 1.3f,
@@ -309,7 +311,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.62f,
             ),
             SilkStyle(
-                "silk_pendulum",
+                SceneId("silk_pendulum"),
                 "Pendulum Garden",
                 9,
                 flow = 0.95f,
@@ -323,7 +325,7 @@ object VisualStyleCatalog {
         )
 
     data class LifeStyle(
-        val id: String,
+        val id: SceneId,
         val label: String,
         val rule: Int,
         val dt: Float,
@@ -348,9 +350,9 @@ object VisualStyleCatalog {
 
     val life: List<LifeStyle> =
         listOf(
-            LifeStyle("life_orbium", "Orbium Drift", 0, dt = 0.1f, mu = 0.15f, sigma = 0.017f, look = 0),
+            LifeStyle(SceneId("life_orbium"), "Orbium Drift", 0, dt = 0.1f, mu = 0.15f, sigma = 0.017f, look = 0),
             LifeStyle(
-                "life_gyre",
+                SceneId("life_gyre"),
                 "Gyre Garden",
                 0,
                 dt = 0.1f,
@@ -360,7 +362,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.5f,
             ),
             LifeStyle(
-                "life_helix",
+                SceneId("life_helix"),
                 "Helicium Reef",
                 0,
                 dt = 0.1f,
@@ -371,7 +373,7 @@ object VisualStyleCatalog {
                 seedJitter = 7f,
             ),
             LifeStyle(
-                "life_pulsar",
+                SceneId("life_pulsar"),
                 "Pulsar Colony",
                 0,
                 dt = 0.1f,
@@ -382,7 +384,7 @@ object VisualStyleCatalog {
                 seedJitter = 6f,
             ),
             LifeStyle(
-                "life_hydro",
+                SceneId("life_hydro"),
                 "Hydrogeminium",
                 0,
                 dt = 0.1f,
@@ -399,7 +401,7 @@ object VisualStyleCatalog {
                 seedJitter = 5f,
             ),
             LifeStyle(
-                "life_bug",
+                SceneId("life_bug"),
                 "Smooth Bugs",
                 0,
                 dt = 1f,
@@ -411,7 +413,7 @@ object VisualStyleCatalog {
                 seedJitter = 8f,
             ),
             LifeStyle(
-                "life_mitosis",
+                SceneId("life_mitosis"),
                 "Mitosis",
                 1,
                 dt = 1f,
@@ -423,7 +425,7 @@ object VisualStyleCatalog {
                 seedJitter = 11f,
             ),
             LifeStyle(
-                "life_coral",
+                SceneId("life_coral"),
                 "Coral Bloom",
                 1,
                 dt = 1f,
@@ -435,7 +437,7 @@ object VisualStyleCatalog {
                 seedJitter = 8f,
             ),
             LifeStyle(
-                "life_labyrinth",
+                SceneId("life_labyrinth"),
                 "Living Ink",
                 1,
                 dt = 1f,
@@ -447,7 +449,7 @@ object VisualStyleCatalog {
                 seedJitter = 7f,
             ),
             LifeStyle(
-                "life_worms",
+                SceneId("life_worms"),
                 "Ember Worms",
                 1,
                 dt = 1f,
@@ -460,7 +462,7 @@ object VisualStyleCatalog {
         )
 
     data class AcidStyle(
-        val id: String,
+        val id: SceneId,
         val label: String,
         val mode: Int,
         val source: Int,
@@ -482,7 +484,7 @@ object VisualStyleCatalog {
     val acid: List<AcidStyle> =
         listOf(
             AcidStyle(
-                "acid_tv",
+                SceneId("acid_tv"),
                 "TV Acid",
                 0,
                 0,
@@ -494,7 +496,7 @@ object VisualStyleCatalog {
                 saturation = 1.15f,
             ),
             AcidStyle(
-                "acid_well",
+                SceneId("acid_well"),
                 "Phosphor Well",
                 1,
                 1,
@@ -509,7 +511,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.33f,
             ),
             AcidStyle(
-                "acid_kaleid",
+                SceneId("acid_kaleid"),
                 "Kaleido Melt",
                 2,
                 0,
@@ -522,7 +524,7 @@ object VisualStyleCatalog {
                 saturation = 1.1f,
             ),
             AcidStyle(
-                "acid_droste",
+                SceneId("acid_droste"),
                 "Droste Throat",
                 3,
                 1,
@@ -534,7 +536,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.72f,
             ),
             AcidStyle(
-                "acid_prism",
+                SceneId("acid_prism"),
                 "Prism Drift",
                 4,
                 1,
@@ -545,7 +547,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.45f,
             ),
             AcidStyle(
-                "acid_mosh",
+                SceneId("acid_mosh"),
                 "Datamosh",
                 5,
                 2,
@@ -558,7 +560,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.18f,
             ),
             AcidStyle(
-                "acid_scan",
+                SceneId("acid_scan"),
                 "Scanline Surge",
                 6,
                 2,
@@ -572,7 +574,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.55f,
             ),
             AcidStyle(
-                "acid_solar",
+                SceneId("acid_solar"),
                 "Solar Flare",
                 7,
                 1,
@@ -584,7 +586,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.06f,
             ),
             AcidStyle(
-                "acid_mirror",
+                SceneId("acid_mirror"),
                 "Mirror Room",
                 8,
                 0,
@@ -596,7 +598,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.85f,
             ),
             AcidStyle(
-                "acid_smear",
+                SceneId("acid_smear"),
                 "Neon Smear",
                 9,
                 3,
@@ -611,7 +613,7 @@ object VisualStyleCatalog {
         )
 
     data class MycoStyle(
-        val id: String,
+        val id: SceneId,
         val label: String,
         val agentRes: Int = 192,
         val sensorDist: Float = 9f,
@@ -637,9 +639,9 @@ object VisualStyleCatalog {
 
     val myco: List<MycoStyle> =
         listOf(
-            MycoStyle("myco_polycephalum", "Polycephalum", reaim = 0.15f),
+            MycoStyle(SceneId("myco_polycephalum"), "Polycephalum", reaim = 0.15f),
             MycoStyle(
-                "myco_rivals",
+                SceneId("myco_rivals"),
                 "Rival Colonies",
                 sensorDist = 11f,
                 speciesMix = 0.5f,
@@ -651,7 +653,7 @@ object VisualStyleCatalog {
                 reaim = 0.2f,
             ),
             MycoStyle(
-                "myco_symbiosis",
+                SceneId("myco_symbiosis"),
                 "Symbiosis",
                 sensorDist = 8f,
                 sensorAngle = 0.45f,
@@ -662,7 +664,7 @@ object VisualStyleCatalog {
                 reaim = 0.15f,
             ),
             MycoStyle(
-                "myco_predator",
+                SceneId("myco_predator"),
                 "Predator",
                 agentRes = 176,
                 sensorDist = 12f,
@@ -676,7 +678,7 @@ object VisualStyleCatalog {
                 reaim = 0.25f,
             ),
             MycoStyle(
-                "myco_ghosts",
+                SceneId("myco_ghosts"),
                 "Ghost Veil",
                 agentRes = 160,
                 sensorDist = 14f,
@@ -688,7 +690,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.58f,
             ),
             MycoStyle(
-                "myco_circuit",
+                SceneId("myco_circuit"),
                 "Circuit Bloom",
                 agentRes = 176,
                 sensorAngle = 0.6f,
@@ -701,7 +703,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.35f,
             ),
             MycoStyle(
-                "myco_silkroad",
+                SceneId("myco_silkroad"),
                 "Silk Roads",
                 agentRes = 176,
                 sensorDist = 22f,
@@ -715,7 +717,7 @@ object VisualStyleCatalog {
                 hueOffset = -0.2f,
             ),
             MycoStyle(
-                "myco_sporestorm",
+                SceneId("myco_sporestorm"),
                 "Spore Storm",
                 sensorDist = 8f,
                 deposit = 0.16f,
@@ -724,7 +726,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.68f,
             ),
             MycoStyle(
-                "myco_capillary",
+                SceneId("myco_capillary"),
                 "Capillaries",
                 agentRes = 208,
                 sensorDist = 5f,
@@ -738,7 +740,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.98f,
             ),
             MycoStyle(
-                "myco_frostvein",
+                SceneId("myco_frostvein"),
                 "Frost Veins",
                 agentRes = 176,
                 sensorDist = 10f,
@@ -762,7 +764,7 @@ object VisualStyleCatalog {
      * turns the emitters' base hue.
      */
     data class FluidStyle(
-        val id: String,
+        val id: SceneId,
         val label: String,
         val look: Int = 0,
         val curl: Float = 1f,
@@ -780,7 +782,7 @@ object VisualStyleCatalog {
         listOf(
             FluidStyle(SceneIds.FLUID, "Original · Dye"),
             FluidStyle(
-                "fluid_ink",
+                SceneId("fluid_ink"),
                 "Ink Wash",
                 look = 1,
                 curl = 0.6f,
@@ -792,7 +794,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.58f,
             ),
             FluidStyle(
-                "fluid_oilslick",
+                SceneId("fluid_oilslick"),
                 "Oil Slick",
                 look = 2,
                 curl = 1.3f,
@@ -803,7 +805,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.12f,
             ),
             FluidStyle(
-                "fluid_neon",
+                SceneId("fluid_neon"),
                 "Neon Contours",
                 look = 3,
                 curl = 1.1f,
@@ -814,7 +816,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.72f,
             ),
             FluidStyle(
-                "fluid_chrome",
+                SceneId("fluid_chrome"),
                 "Liquid Chrome",
                 look = 4,
                 curl = 0.8f,
@@ -826,7 +828,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.5f,
             ),
             FluidStyle(
-                "fluid_smoke",
+                SceneId("fluid_smoke"),
                 "Smoke",
                 look = 5,
                 curl = 1.5f,
@@ -838,7 +840,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.62f,
             ),
             FluidStyle(
-                "fluid_lava",
+                SceneId("fluid_lava"),
                 "Lava",
                 look = 6,
                 curl = 0.5f,
@@ -850,7 +852,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.02f,
             ),
             FluidStyle(
-                "fluid_marble",
+                SceneId("fluid_marble"),
                 "Marble",
                 look = 7,
                 curl = 0.9f,
@@ -862,7 +864,7 @@ object VisualStyleCatalog {
                 hueOffset = 0.33f,
             ),
             FluidStyle(
-                "fluid_aurora",
+                SceneId("fluid_aurora"),
                 "Aurora",
                 look = 8,
                 curl = 1.4f,
@@ -875,12 +877,12 @@ object VisualStyleCatalog {
             ),
         )
 
-    val cymaticsIds: List<String> = cymatics.map { it.id }
-    val fluidIds: List<String> = fluid.map { it.id }
-    val silkIds: List<String> = silk.map { it.id }
-    val lifeIds: List<String> = life.map { it.id }
-    val acidIds: List<String> = acid.map { it.id }
-    val mycoIds: List<String> = myco.map { it.id }
+    val cymaticsIds: List<SceneId> = cymatics.map { it.id }
+    val fluidIds: List<SceneId> = fluid.map { it.id }
+    val silkIds: List<SceneId> = silk.map { it.id }
+    val lifeIds: List<SceneId> = life.map { it.id }
+    val acidIds: List<SceneId> = acid.map { it.id }
+    val mycoIds: List<SceneId> = myco.map { it.id }
 
     private val cymaticsById = cymatics.associateBy { it.id }
     private val fluidById = fluid.associateBy { it.id }
@@ -889,29 +891,29 @@ object VisualStyleCatalog {
     private val acidById = acid.associateBy { it.id }
     private val mycoById = myco.associateBy { it.id }
 
-    fun cymatics(id: String): CymaticsStyle? = cymaticsById[id]
+    fun cymatics(id: SceneId): CymaticsStyle? = cymaticsById[id]
 
-    fun fluid(id: String): FluidStyle? = fluidById[id]
+    fun fluid(id: SceneId): FluidStyle? = fluidById[id]
 
-    fun silk(id: String): SilkStyle? = silkById[id]
+    fun silk(id: SceneId): SilkStyle? = silkById[id]
 
-    fun life(id: String): LifeStyle? = lifeById[id]
+    fun life(id: SceneId): LifeStyle? = lifeById[id]
 
-    fun acid(id: String): AcidStyle? = acidById[id]
+    fun acid(id: SceneId): AcidStyle? = acidById[id]
 
-    fun myco(id: String): MycoStyle? = mycoById[id]
+    fun myco(id: SceneId): MycoStyle? = mycoById[id]
 
-    fun isCymatics(id: String): Boolean = id in cymaticsById
+    fun isCymatics(id: SceneId): Boolean = id in cymaticsById
 
     /** True for every style that runs the Fluid solver, `fluid` itself included. */
-    fun isFluid(id: String): Boolean = id in fluidById
+    fun isFluid(id: SceneId): Boolean = id in fluidById
 
-    fun label(id: String): String =
+    fun label(id: SceneId): String =
         cymaticsById[id]?.label
             ?: fluidById[id]?.label
             ?: silkById[id]?.label
             ?: lifeById[id]?.label
             ?: acidById[id]?.label
             ?: mycoById[id]?.label
-            ?: id
+            ?: id.value
 }

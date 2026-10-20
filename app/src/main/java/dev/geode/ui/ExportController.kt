@@ -8,6 +8,7 @@ import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.PerformanceTake
 import dev.geode.editor.AnimatableParams
 import dev.geode.editor.KeyframeSheet
+import dev.geode.engine.types.SceneId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -58,12 +59,13 @@ data class LoopUiState(
 
 internal fun exportSceneIdFor(
     take: PerformanceTake.Timeline?,
-    liveSceneId: String,
-): String =
+    liveSceneId: SceneId,
+): SceneId =
     take
         ?.stateAt(0L)
         ?.sceneId
         ?.takeIf { it.isNotEmpty() }
+        ?.let(::SceneId)
         ?: liveSceneId
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -84,7 +86,7 @@ internal class ExportController(
 
         val guiPrefs: GuiPrefs
 
-        val sceneId: String
+        val sceneId: SceneId
         val sceneParams: SceneParams
 
         fun lfoConfigs(): List<dev.geode.render.LfoConfig>
@@ -139,7 +141,7 @@ internal class ExportController(
         destination: Uri? = null,
         loopSafe: Boolean = false,
         range: ExportRange? = null,
-        sceneFactoryFor: ((String) -> SceneFactory)? = null,
+        sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
         codec: ExportCodec = ExportCodec.H264,
     ) {
         val uri = host.exportUri ?: return

@@ -1,6 +1,7 @@
 package dev.geode.engine.audioandroid
 
 import androidx.media3.common.C
+import dev.geode.engine.types.Hz
 
 enum class PcmSampleWidth(
     val bytes: Int,
@@ -10,7 +11,7 @@ enum class PcmSampleWidth(
 }
 
 data class PcmTapFormat(
-    val sampleRateHz: Int,
+    val sampleRate: Hz,
     val channelCount: Int,
     val encoding: Int,
     val generation: Int,

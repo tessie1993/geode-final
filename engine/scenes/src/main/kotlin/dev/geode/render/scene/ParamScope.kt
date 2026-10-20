@@ -1,5 +1,7 @@
 package dev.geode.render.scene
 
+import dev.geode.engine.types.SceneId
+
 /**
  * Which styles a Customize parameter can actually move.
  *
@@ -87,7 +89,7 @@ enum class ParamScope {
     RIPPLE_OVERLAY,
     ;
 
-    fun appliesTo(sceneId: String): Boolean =
+    fun appliesTo(sceneId: SceneId): Boolean =
         // MARCH_DETAIL is the one scope a SceneKind cannot answer: the marched styles are a
         // subset of one kind, so the id is the only thing that separates them.
         if (this == MARCH_DETAIL) {

@@ -44,6 +44,11 @@ import dev.geode.data.TemplateLook
 import dev.geode.data.TemplateRepository
 import dev.geode.data.TemplateWrite
 import dev.geode.data.VideoTemplate
+import dev.geode.engine.types.Hz
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
+import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -53,6 +58,7 @@ import dev.geode.playback.BitPerfectOutput
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackErrors
 import dev.geode.playback.PlaybackService
+import dev.geode.playback.toTrackId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.LfoConfig
 import dev.geode.render.SceneFactory
@@ -120,8 +126,8 @@ class PlayerSession internal constructor(
                     engine.reset()
                 }
 
-                override fun setAnalysisRate(rateHz: Int) {
-                    engine.sampleRateHz = rateHz
+                override fun setAnalysisRate(rate: Hz) {
+                    engine.sampleRateHz = rate.value
                 }
 
                 override fun setMicReactivePref(on: Boolean) {
@@ -247,7 +253,7 @@ class PlayerSession internal constructor(
 
     val library: StateFlow<LibraryState> get() = musicLibrary.library
 
-    val trackOverrides: StateFlow<Map<String, LibraryTrack>> get() = musicLibrary.trackOverrides
+    val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> get() = musicLibrary.trackOverrides
 
     val userDataLoaded: StateFlow<Boolean> get() = container.userData.loaded
 
@@ -304,7 +310,7 @@ class PlayerSession internal constructor(
             object : ModulationController.Host {
                 override val params: SceneParams get() = _vizState.value.params
 
-                override val sceneId: String get() = _vizState.value.sceneId
+                override val sceneId: SceneId get() = _vizState.value.sceneId
 
                 override fun setSceneParams(params: SceneParams) = visual.setSceneParams(params)
             },
@@ -366,15 +372,16 @@ class PlayerSession internal constructor(
 
     fun enrichFeatures(f: AudioFeatures): AudioFeatures {
         val ui = _uiState.value
-        if (ui.durationMs <= 0L) return f
-        val pos = ui.positionMs.coerceIn(0L, ui.durationMs)
+        val durationMs = ui.duration.value
+        if (durationMs <= 0L) return f
+        val pos = ui.position.value.coerceIn(0L, durationMs)
         val sections = _vizState.value.sections
         var idx = 0
         for (s in sections) {
             if (s <= pos) idx++ else break
         }
         return f.copy(
-            progress = pos.toFloat() / ui.durationMs,
+            progress = pos.toFloat() / durationMs,
             sectionIndex = idx,
             sectionCount = sections.size + 1,
         )
@@ -439,7 +446,7 @@ class PlayerSession internal constructor(
 
     val historyTick: StateFlow<Int> get() = listening.historyTick
 
-    val favourites: StateFlow<Set<String>> get() = listening.favourites
+    val favourites: StateFlow<Set<TrackId>> get() = listening.favourites
 
     private val takeController: TakeController =
         TakeController(
@@ -454,14 +461,14 @@ class PlayerSession internal constructor(
                 override val trackPositionMs: Long
                     get() = runCatching { player.currentPosition }.getOrDefault(0L)
 
-                override fun selectScene(sceneId: String) = visual.selectScene(sceneId)
+                override fun selectScene(sceneId: String) = visual.selectScene(SceneId(sceneId))
 
                 override fun setSceneParams(params: SceneParams) = visual.setSceneParams(params)
 
                 override fun applyMilk(
                     path: String,
                     sceneId: String,
-                ) = visual.emitApply(VizApply(milkPath = path, sceneId = sceneId))
+                ) = visual.emitApply(VizApply(milkPath = path, sceneId = SceneId(sceneId)))
             },
         )
 
@@ -497,7 +504,7 @@ class PlayerSession internal constructor(
     fun applyArtworkPalette() = trackColor.applyArtworkPalette()
 
     fun currentTrackKey(): String? {
-        val uri = currentUri?.toString() ?: return null
+        val uri = currentUri?.toTrackId() ?: return null
         return library.value.tracks
             .firstOrNull { it.uri == uri }
             ?.key
@@ -552,8 +559,8 @@ class PlayerSession internal constructor(
         _uiState.value =
             PlayerUiState(
                 isPlaying = player.isPlaying,
-                positionMs = player.currentPosition.coerceAtLeast(0),
-                durationMs = player.duration.coerceAtLeast(0),
+                position = Millis(player.currentPosition.coerceAtLeast(0)),
+                duration = Millis(player.duration.coerceAtLeast(0)),
                 artist = player.mediaMetadata.artist?.toString(),
                 title =
                     player.mediaMetadata.title?.toString()
@@ -586,7 +593,7 @@ class PlayerSession internal constructor(
             },
         )
 
-    val sleepTimerRemainingMs: StateFlow<Long?> = sleepTimer.remainingMs
+    val sleepTimerRemaining: StateFlow<Millis?> = sleepTimer.remaining
 
     fun startSleepTimer(minutes: Int) {
         if (minutes <= 0) {
@@ -614,19 +621,19 @@ class PlayerSession internal constructor(
                 override fun updateViz(transform: (VizUiState) -> VizUiState) = _vizState.update(transform)
 
                 override val isPlaying: Boolean get() = _uiState.value.isPlaying
-                override val positionMs: Long get() = _uiState.value.positionMs
+                override val positionMs: Long get() = _uiState.value.position.value
 
                 override fun features() = engine.features.value
 
                 override val presetLocked: Boolean get() = _presetLocked.value
 
-                override fun selectScene(sceneId: String) = visual.selectScene(sceneId)
+                override fun selectScene(sceneId: SceneId) = visual.selectScene(sceneId)
 
                 override fun applyPreset(preset: Preset) = visual.applyPreset(preset)
 
                 override fun applyMilk(
                     path: String,
-                    sceneId: String,
+                    sceneId: SceneId,
                 ) = visual.emitApply(VizApply(milkPath = path, sceneId = sceneId))
 
                 override fun analyzeCurrentTrack() = analysis.analyzeCurrentTrack()
@@ -675,12 +682,12 @@ class PlayerSession internal constructor(
 
     fun importTracks(uris: List<Uri>) = musicLibrary.importTracks(uris)
 
-    fun trackOverride(uri: String): LibraryTrack? = musicLibrary.trackOverride(uri)
+    fun trackOverride(uri: TrackId): LibraryTrack? = musicLibrary.trackOverride(uri)
 
-    suspend fun trackInfoFor(uriStr: String): LibraryTrack = musicLibrary.trackInfoFor(uriStr)
+    suspend fun trackInfoFor(uri: TrackId): LibraryTrack = musicLibrary.trackInfoFor(uri)
 
     fun saveTrackInfo(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -691,7 +698,7 @@ class PlayerSession internal constructor(
     ) = musicLibrary.saveTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
 
     suspend fun writeTrackInfo(
-        uri: String,
+        uri: TrackId,
         title: String,
         artist: String,
         album: String,
@@ -726,12 +733,12 @@ class PlayerSession internal constructor(
 
     fun addTrackToPlaylist(
         playlist: String,
-        uri: String,
+        uri: TrackId,
     ) = musicLibrary.addTrackToPlaylist(playlist, uri)
 
     fun removeTrackFromPlaylist(
         playlist: String,
-        uri: String,
+        uri: TrackId,
     ) = musicLibrary.removeTrackFromPlaylist(playlist, uri)
 
     fun playPlaylist(
@@ -763,10 +770,10 @@ class PlayerSession internal constructor(
         if (tracks.isNotEmpty()) playFrom(tracks, tracks.first().uri)
     }
 
-    fun currentTrackUri(): String? = currentUri?.toString()
+    fun currentTrackUri(): TrackId? = currentUri?.toTrackId()
 
-    fun toggleFavourite(uri: String? = null) {
-        listening.toggleFavourite(uri ?: currentUri?.toString() ?: return)
+    fun toggleFavourite(uri: TrackId? = null) {
+        listening.toggleFavourite(uri ?: currentUri?.toTrackId() ?: return)
     }
 
     val abLoop: StateFlow<AbLoop?> get() = queueController.abLoop
@@ -807,9 +814,9 @@ class PlayerSession internal constructor(
         setSectionStaging(next == 3)
     }
 
-    fun playNext(uri: String) = queueController.playNext(uri)
+    fun playNext(uri: TrackId) = queueController.playNext(uri)
 
-    fun enqueue(uri: String) = queueController.enqueue(uri)
+    fun enqueue(uri: TrackId) = queueController.enqueue(uri)
 
     fun shuffleAllHistory() {
         playAll(listening.recentlyPlayed(100).map { QueueTrack(it.uri, it.title) }, shuffled = true)
@@ -825,7 +832,7 @@ class PlayerSession internal constructor(
     ) = presetLibrary.renamePresetFolder(from, to)
 
     fun movePresetToFolder(
-        name: String,
+        name: PresetId,
         folder: String,
     ) = presetLibrary.movePresetToFolder(name, folder)
 
@@ -854,7 +861,7 @@ class PlayerSession internal constructor(
             },
         )
 
-    fun playTrack(uri: String) = queueController.playTrack(uri)
+    fun playTrack(uri: TrackId) = queueController.playTrack(uri)
 
     /** Voice search: the library matches for [query] as a queue, or everything when the query is blank. */
     fun playFromSearch(query: String) {
@@ -868,7 +875,7 @@ class PlayerSession internal constructor(
 
     fun playFrom(
         tracks: List<QueueTrack>,
-        startUri: String,
+        startUri: TrackId,
     ) = queueController.playFrom(tracks, startUri)
 
     fun playAll(
@@ -897,7 +904,7 @@ class PlayerSession internal constructor(
         }
     }
 
-    fun seekToMs(positionMs: Long) = queueController.seekToMs(positionMs)
+    fun seekToMs(position: Millis) = queueController.seekToMs(position)
 
     fun seekTo(fraction: Float) = queueController.seekTo(fraction)
 
@@ -942,7 +949,7 @@ class PlayerSession internal constructor(
 
     fun setExportTake(name: String?) = takeController.setExportTake(name)
 
-    fun selectScene(sceneId: String) = visual.selectScene(sceneId)
+    fun selectScene(sceneId: SceneId) = visual.selectScene(sceneId)
 
     fun setReactivity(
         attack: Float,
@@ -982,18 +989,18 @@ class PlayerSession internal constructor(
 
     fun noteMilkPreset(path: String) = vizStateStore.noteMilkPreset(path)
 
-    fun presetShareLink(name: String): String? = presetLibrary.presetShareLink(name)
+    fun presetShareLink(name: PresetId): String? = presetLibrary.presetShareLink(name)
 
-    fun importPresetLink(text: String): String? = presetLibrary.importPresetLink(text)
+    fun importPresetLink(text: String): PresetId? = presetLibrary.importPresetLink(text)
 
     fun importPresetFile(
         uri: Uri,
-        onResult: (String?) -> Unit,
+        onResult: (PresetId?) -> Unit,
     ) = presetLibrary.importPresetFile(uri, onResult)
 
-    fun presetFile(name: String): File? = presetLibrary.presetFile(name)
+    fun presetFile(name: PresetId): File? = presetLibrary.presetFile(name)
 
-    fun deletePreset(name: String) = presetLibrary.deletePreset(name)
+    fun deletePreset(name: PresetId) = presetLibrary.deletePreset(name)
 
     val templates: StateFlow<List<VideoTemplate>> get() = templateLibrary.library
 
@@ -1044,7 +1051,7 @@ class PlayerSession internal constructor(
                 ): FeatureTimeline = analysis.analyzeCached(uri, onProgress)
 
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
-                override val sceneId: String get() = _vizState.value.sceneId
+                override val sceneId: SceneId get() = _vizState.value.sceneId
                 override val sceneParams get() = _vizState.value.params
 
                 override fun lfoConfigs() = modulation.lfos.value
@@ -1072,7 +1079,7 @@ class PlayerSession internal constructor(
 
     fun analysisTimeline(): FeatureTimeline? = analysis.timeline
 
-    fun currentSceneId(): String = _vizState.value.sceneId
+    fun currentSceneId(): String = _vizState.value.sceneId.value
 
     fun currentSceneParams(): SceneParams = _vizState.value.params
 
@@ -1093,7 +1100,7 @@ class PlayerSession internal constructor(
         destination: Uri? = null,
         loopSafe: Boolean = false,
         range: ExportRange? = null,
-        sceneFactoryFor: ((String) -> SceneFactory)? = null,
+        sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
         codec: ExportCodec = ExportCodec.H264,
     ) = exportController.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
 
@@ -1244,7 +1251,7 @@ class PlayerSession internal constructor(
                                         ?.lastPathSegment
                                         .orEmpty()
                             listening.recordPlay(
-                                u.toString(),
+                                u.toTrackId(),
                                 title,
                                 player.mediaMetadata.artist
                                     ?.toString()

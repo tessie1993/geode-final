@@ -1,6 +1,8 @@
 package dev.geode.data
 
 import android.content.SharedPreferences
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 
 data class PlayerPrefs(
     val shuffle: Boolean = false,
@@ -134,22 +136,24 @@ class PlayerPrefsStore(
 class BookmarkStore(
     private val prefs: SharedPreferences,
 ) {
-    fun positionFor(uri: String): Long? = prefs.getLong(keyOf(uri), -1L).takeIf { it > 0L }
+    fun positionFor(uri: TrackId): Millis? = prefs.getLong(keyOf(uri), -1L).takeIf { it > 0L }?.let(::Millis)
 
     fun note(
-        uri: String,
-        positionMs: Long,
-        durationMs: Long,
+        uri: TrackId,
+        position: Millis,
+        duration: Millis,
     ) {
+        val positionMs = position.value
+        val durationMs = duration.value
         if (durationMs < LONG_TRACK_MS) return
         if (positionMs < EDGE_MS || positionMs > durationMs - EDGE_MS) clear(uri) else prefs.edit().putLong(keyOf(uri), positionMs).apply()
     }
 
-    fun clear(uri: String) {
+    fun clear(uri: TrackId) {
         if (prefs.contains(keyOf(uri))) prefs.edit().remove(keyOf(uri)).apply()
     }
 
-    private fun keyOf(uri: String): String = PREFIX + uri
+    private fun keyOf(uri: TrackId): String = PREFIX + uri.value
 
     companion object {
         const val LONG_TRACK_MS: Long = 20L * 60_000L
