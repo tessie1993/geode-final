@@ -1,6 +1,6 @@
 # Runtime decisions for the feature architecture
 
-These decisions extend ADR-0003 with how the features behave at runtime. The owner settled them on 2026-10-20.
+These decisions extend ADR-0003 (structure: ADR-0005) with how the features behave at runtime. The owner settled them on 2026-10-20.
 
 - **Android's media session is the single source of truth for playback.** Playback's state, position and queue are what the app, the lock screen, the notification, Bluetooth and the widget all read. The audio adapter **announces changes** to Playback: started, paused, seeked, track changed, ended and error. Playback works out the position from the clock between announcements, so there is no polling (today's 500 ms poll goes).
 - **Playback owns the queue.** Library, Studio, the widget and the notification only send it commands: play this, play next, add to queue.
@@ -12,6 +12,16 @@ These decisions extend ADR-0003 with how the features behave at runtime. The own
 - **Mic while music plays:** when Capture starts during playback, the user is **asked each time** whether to pause the song or keep both.
 - **The widget and the live wallpaper stay.** They talk to Playback and the Visual through their public interfaces only.
 - **Architecture rules are hard gates.** The Konsist architecture test fails CI on any break, with no exceptions list.
+- **Storage:**
+  - settings in **DataStore**;
+  - the library index, history, play counts, playlists, Projects and the render queue in a **Room** database;
+  - presets as small **versioned files** that can be shared.
+- **Every saved format carries a version** and is migrated step by step. CI loads real old samples to prove that nothing is lost.
+- **Navigation:** type-safe **Navigation Compose**. Every place (a tab, a sheet, full-screen visual mode) is a typed route, and the back stack is saved and restored.
+- **Renders** run in a foreground service of the media-processing type, with a progress notification. The queue lives in the database, so unfinished renders resume after Android kills the app.
+- **Library scanning:** Android's MediaStore finds the files. Geode's TagLib reader fills in the missing tags (composer, album artist, ReplayGain, embedded art) in the background, cached in Room.
+- **Customization to C++:** one compact, versioned snapshot is sent whenever the Customization changes. Nothing crosses per frame (ADR-0002).
+- **Minimum Android version: 12** (API 31). The old-version workarounds are removed.
 - **End-to-end journeys on the emulator** in CI:
   - play a song and switch tabs and full-screen mode, without a restart;
   - Record the Visual;
