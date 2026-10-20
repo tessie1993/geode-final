@@ -1,21 +1,21 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues on `tessie1993/geode-final`. Use the `gh` CLI where it is available. In Claude Code cloud sessions there is no `gh`; use the GitHub MCP tools (`mcp__github__*`) named below instead.
+Issues and specs for this repo live as GitHub issues on `tessie1993/geode-final`. Use the GitHub MCP tools (`mcp__github__*`) for every operation. Do not use the `gh` CLI.
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`, or `mcp__github__issue_write` with `method: create`.
-- **Read an issue**: `gh issue view <number> --comments`, or `mcp__github__issue_read` (`get`, `get_comments`, `get_labels`, `get_sub_issues`).
-- **List issues**: `gh issue list --state open --json number,title,body,labels,comments`, or `mcp__github__list_issues` with `labels` / `state` filters.
-- **Comment on an issue**: `gh issue comment <number> --body "..."`, or `mcp__github__add_issue_comment`.
-- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`, or `mcp__github__issue_write` with `method: update` and the full `labels` list.
-- **Close**: `gh issue close <number> --comment "..."`, or comment and then `issue_write` with `state: closed`.
+- **Create an issue**: `issue_write` with `method: create`. Labels that don't exist yet are only created when no `parent_issue_number` is passed, so create first, then attach as a sub-issue.
+- **Read an issue**: `issue_read` (`get`, `get_comments`, `get_labels`, `get_sub_issues`).
+- **List issues**: `list_issues` with `labels` / `state` filters.
+- **Comment on an issue**: `add_issue_comment`.
+- **Apply / remove labels**: `issue_write` with `method: update` and the full `labels` list.
+- **Close**: comment, then `issue_write` with `state: closed` and a `state_reason`.
 
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
 
-When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr` equivalents (or `mcp__github__pull_request_read`).
+When set to `yes`, PRs run through the same labels and states as issues, read with `pull_request_read`.
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either.
 
@@ -32,8 +32,8 @@ Read the issue with its comments.
 Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
 
 - **Map**: a single issue labelled `wayfinder:map`, holding the Destination / Notes / Decisions-so-far / Not-yet-specified / Out-of-scope body.
-- **Child ticket**: a GitHub sub-issue of the map (`issue_write` with `parent_issue_number`, or `gh api` on the sub-issues endpoint). Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
-- **Blocking**: GitHub's native issue dependencies where the tool can reach them (`gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`). The MCP tools cannot, so in cloud sessions use the fallback: a `Blocked by: #<n>, #<n>` line at the top of the child body. A ticket is unblocked when every blocker is closed.
-- **Frontier query**: list the map's open sub-issues, drop any with an open blocker (native dependency or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
+- **Child ticket**: a GitHub sub-issue of the map: create it, then `sub_issue_write` with `method: add` and the child's numeric id. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
+- **Blocking**: the MCP tools cannot set native issue dependencies, so a `Blocked by: #<n>, #<n>` line goes at the top of the child body. A ticket is unblocked when every blocker is closed.
+- **Frontier query**: `issue_read get_sub_issues` on the map, keep open children, drop any with an open issue in its `Blocked by` line or an assignee; first in map order wins.
 - **Claim**: assign the ticket to the driving dev (`tessie1993`) as the session's first write.
 - **Resolve**: comment the answer, close the issue, then append a context pointer (gist + link) to the map's Decisions-so-far.
