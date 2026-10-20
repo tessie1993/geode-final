@@ -10,8 +10,11 @@
 # definition fails here the way it fails in the NDK link, without an SDK, an
 # NDK or a device.
 #
+# analysis/FrameLevels.cpp is pulled in too: FormDrive calls its level helpers,
+# and it depends on nothing outside the standard library.
+#
 # What it does not prove: anything about the Android toolchain (clang, the
-# NDK's libc++, 16 KB page alignment, LTO), the audio/analysis/library trees
+# NDK's libc++, 16 KB page alignment, LTO), the rest of the audio/analysis/library trees
 # (they need kissfft, oboe, taglib and mediandk), or that anything runs.
 #
 # Stubs, all named: android/asset_manager.h and android/log.h are replaced by
@@ -87,7 +90,7 @@ int __android_log_print(int, const char*, const char*, ...);
 HDR
 
 # ---- compile, with the project's flags ----------------------------------------
-mapfile -t SRCS < <(sed -n '/add_library(geode_core STATIC/,/^)/p' "$ROOT/core/CMakeLists.txt" | grep -E '^\s+(viz|util)/' | tr -d ' ')
+mapfile -t SRCS < <(sed -n '/add_library(geode_core STATIC/,/^)/p' "$ROOT/core/CMakeLists.txt" | grep -E '^\s+((viz|util)/|analysis/FrameLevels\.cpp)' | tr -d ' ')
 echo "hostlink: compiling ${#SRCS[@]} translation units"
 fail=0
 for f in "${SRCS[@]}"; do
