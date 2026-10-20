@@ -37,3 +37,10 @@ These decisions extend ADR-0003 (structure: ADR-0005) with how the features beha
 - **One Visual per place:** simpler, but every switch restarts the picture and costs battery.
 - **Renders share the live engine:** faster on weak phones, but the music would pause during every export.
 - **Errors only in the part that failed:** rejected by the owner in favour of one consistent banner.
+
+## Content, renders and sync
+
+- **Styles are data packs.** Each Style is a folder holding its shader and a manifest: its family, its parameters with their ranges, its extras, and its default Macros and Reactions. Adding a Style needs no Kotlin or C++ change. CI checks every manifest and every golden frame.
+- **Renders run one at a time.** While the live Visual is on screen, the render slows down so the live picture stays smooth, then speeds up again.
+- **Presets from a newer version** load what this version knows. Unknown parts are kept unapplied and saved back untouched, with a short note that some parts need a newer Geode. Older presets are upgraded when opened.
+- **The Library notices new music** through Android's media-change notice while the app runs, plus a quick check when the app opens. There is no periodic background job.
