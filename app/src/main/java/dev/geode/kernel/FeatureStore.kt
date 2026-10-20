@@ -1,4 +1,4 @@
-package dev.geode.feature.kernel.core
+package dev.geode.kernel
 
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope

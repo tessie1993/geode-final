@@ -5,16 +5,16 @@ import dev.geode.audio.adapter.CaptureFailure
 import dev.geode.audio.adapter.CaptureSource
 import dev.geode.audio.adapter.CaptureStatus
 import dev.geode.engine.types.Millis
-import dev.geode.feature.kernel.core.CancelTimer
-import dev.geode.feature.kernel.core.Effect
-import dev.geode.feature.kernel.core.EffectRunner
-import dev.geode.feature.kernel.core.Emit
-import dev.geode.feature.kernel.core.FeatureStore
-import dev.geode.feature.kernel.core.Next
-import dev.geode.feature.kernel.core.Perform
-import dev.geode.feature.kernel.core.Reducer
-import dev.geode.feature.kernel.core.StartTimer
-import dev.geode.feature.kernel.core.TimerScheduler
+import dev.geode.kernel.CancelTimer
+import dev.geode.kernel.Effect
+import dev.geode.kernel.EffectRunner
+import dev.geode.kernel.Emit
+import dev.geode.kernel.FeatureStore
+import dev.geode.kernel.Next
+import dev.geode.kernel.Perform
+import dev.geode.kernel.Reducer
+import dev.geode.kernel.StartTimer
+import dev.geode.kernel.TimerScheduler
 import kotlinx.coroutines.CoroutineScope
 
 // A sample feature that exists only in tests, to prove the foundation end to end: a sealed state

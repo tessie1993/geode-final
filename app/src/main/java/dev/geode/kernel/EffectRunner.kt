@@ -1,4 +1,4 @@
-package dev.geode.feature.kernel.core
+package dev.geode.kernel
 
 /**
  * Carries out a feature's [Perform] work: the only place a feature touches IO, the audio adapter or

@@ -1,4 +1,4 @@
-package dev.geode.feature.kernel.core
+package dev.geode.kernel
 
 /**
  * What a [Reducer] decided for one event: the state to move to, and the effects to carry out.

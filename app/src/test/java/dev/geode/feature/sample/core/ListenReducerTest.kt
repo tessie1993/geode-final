@@ -6,11 +6,6 @@ import dev.geode.audio.adapter.CaptureSource.LINE_IN
 import dev.geode.audio.adapter.CaptureSource.MICROPHONE
 import dev.geode.audio.adapter.CaptureStatus
 import dev.geode.engine.types.Millis
-import dev.geode.feature.kernel.core.CancelTimer
-import dev.geode.feature.kernel.core.Emit
-import dev.geode.feature.kernel.core.Next
-import dev.geode.feature.kernel.core.Perform
-import dev.geode.feature.kernel.core.StartTimer
 import dev.geode.feature.sample.core.ListenCommand.Start
 import dev.geode.feature.sample.core.ListenCommand.Stop
 import dev.geode.feature.sample.core.ListenEvent.CheckDue
@@ -24,6 +19,11 @@ import dev.geode.feature.sample.core.ListenState.Starting
 import dev.geode.feature.sample.core.ListenWork.Begin
 import dev.geode.feature.sample.core.ListenWork.Check
 import dev.geode.feature.sample.core.ListenWork.End
+import dev.geode.kernel.CancelTimer
+import dev.geode.kernel.Emit
+import dev.geode.kernel.Next
+import dev.geode.kernel.Perform
+import dev.geode.kernel.StartTimer
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

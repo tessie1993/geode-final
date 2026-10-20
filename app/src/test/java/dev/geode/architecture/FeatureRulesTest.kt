@@ -14,7 +14,7 @@ class FeatureRulesTest {
             """
             package dev.geode.feature.capture.core
 
-            import dev.geode.feature.kernel.core.Next
+            import dev.geode.kernel.Next
             import dev.geode.feature.playback.Playback
             import kotlinx.coroutines.flow.StateFlow
 
@@ -57,6 +57,26 @@ class FeatureRulesTest {
     }
 
     @Test
+    fun `a kernel that uses Android is reported`() {
+        val kernel = file("dev.geode.kernel", "import android.os.SystemClock")
+
+        assertEquals(
+            listOf("kernel.kt: kernel uses android.os.SystemClock"),
+            FeatureRules.coreIsPlainKotlin(listOf(kernel)),
+        )
+    }
+
+    @Test
+    fun `a kernel that knows a feature is reported`() {
+        val kernel = file("dev.geode.kernel", "import dev.geode.feature.playback.Playback")
+
+        assertEquals(
+            listOf("kernel.kt: kernel uses dev.geode.feature.playback.Playback"),
+            FeatureRules.kernelKnowsNoFeature(listOf(kernel)),
+        )
+    }
+
+    @Test
     fun `a screen that uses another feature's internals is reported`() {
         val ui = file("dev.geode.feature.capture.ui", "import dev.geode.feature.playback.core.PlaybackReducer")
 
@@ -73,7 +93,7 @@ class FeatureRulesTest {
                 "dev.geode.feature.capture.ui",
                 """
                 import dev.geode.feature.capture.core.CaptureState
-                import dev.geode.feature.kernel.core.Feature
+                import dev.geode.kernel.Feature
                 import dev.geode.feature.playback.Playback
                 import dev.geode.feature.playback.Playback.State
                 import dev.geode.feature.playback.playbackPreview
@@ -109,7 +129,7 @@ class FeatureRulesTest {
         text: String,
     ) =
         SourceFile(
-            path = packageName.removePrefix("dev.geode.feature.").replace('.', '/') + ".kt",
+            path = packageName.removePrefix("dev.geode.feature.").removePrefix("dev.geode.").replace('.', '/') + ".kt",
             packageName = packageName,
             references = referencesIn(text.trimIndent()),
         )

@@ -11,26 +11,40 @@ data class SourceFile(
 )
 
 /**
- * The feature rules of ADR-0003, as plain functions over [SourceFile]s so the same rules can run on
- * the real code (through Konsist) and on small fixtures that prove each one reports a violation.
+ * The feature rules of ADR-0003 and ADR-0004, as plain functions over [SourceFile]s so the same rules
+ * run on the real code (through Konsist) and on small fixtures that prove each one reports a break.
  *
  * A feature is a package `dev.geode.feature.<name>`. Its root package is its public interface;
- * everything in a sub-package (`core`, `ui`, ...) is its own business. The kernel is shared by every
- * feature and is not one of them.
+ * everything in a sub-package (`core`, `ui`, ...) is internal. The kernel, `dev.geode.kernel`, is what
+ * every feature store is built from; it is not a feature. There is no exceptions list.
  */
 object FeatureRules {
     private const val FEATURES = "dev.geode.feature."
-    private const val KERNEL = "kernel"
+    private const val KERNEL = "dev.geode.kernel"
     private val platformPrefixes = listOf("android.", "androidx.", "org.jetbrains.compose.")
 
-    /** `core` imports no Android, AndroidX or Compose. */
+    /** Feature cores and the kernel import no Android, AndroidX or Compose. */
     fun coreIsPlainKotlin(files: List<SourceFile>): List<String> =
+        files.flatMap { file ->
+            val what =
+                when {
+                    isKernel(file.packageName) -> "kernel"
+                    layerOf(file.packageName) == "core" -> "feature core"
+                    else -> return@flatMap emptyList()
+                }
+            file.references
+                .filter { ref -> platformPrefixes.any { ref.startsWith(it) } }
+                .map { "${file.path}: $what uses $it" }
+        }
+
+    /** The kernel knows no feature: features depend on it, never the other way round. */
+    fun kernelKnowsNoFeature(files: List<SourceFile>): List<String> =
         files
-            .filter { layerOf(it.packageName) == "core" }
+            .filter { isKernel(it.packageName) }
             .flatMap { file ->
                 file.references
-                    .filter { ref -> platformPrefixes.any { ref.startsWith(it) } }
-                    .map { "${file.path}: feature core uses $it" }
+                    .filter { featureOf(it) != null }
+                    .map { "${file.path}: kernel uses $it" }
             }
 
     /** A feature uses another only through its public interface, never its core or screens. */
@@ -40,7 +54,7 @@ object FeatureRules {
             file.references
                 .filter { ref ->
                     val other = featureOf(ref)
-                    other != null && other != own && other != KERNEL && isInternal(ref)
+                    other != null && other != own && isInternal(ref)
                 }.map { "${file.path}: $own uses the internals of another feature: $it" }
         }
 
@@ -57,7 +71,9 @@ object FeatureRules {
     }
 
     fun all(files: List<SourceFile>): List<String> =
-        coreIsPlainKotlin(files) + noFeatureReachesIntoAnother(files) + noFeatureCycles(files)
+        coreIsPlainKotlin(files) + kernelKnowsNoFeature(files) + noFeatureReachesIntoAnother(files) + noFeatureCycles(files)
+
+    private fun isKernel(packageName: String): Boolean = packageName == KERNEL || packageName.startsWith("$KERNEL.")
 
     private fun featureOf(name: String): String? =
         name

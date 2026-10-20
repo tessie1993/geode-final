@@ -1,4 +1,4 @@
-package dev.geode.feature.kernel.core
+package dev.geode.kernel
 
 import dev.geode.engine.types.Millis
 import kotlinx.coroutines.ExperimentalCoroutinesApi

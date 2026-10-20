@@ -8,9 +8,9 @@ import dagger.hilt.components.SingletonComponent
 import dev.geode.RingLog
 import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.NativeAudioAdapter
-import dev.geode.feature.kernel.core.CoroutineTimerScheduler
-import dev.geode.feature.kernel.core.TimerScheduler
-import dev.geode.feature.kernel.core.featureScope
+import dev.geode.kernel.CoroutineTimerScheduler
+import dev.geode.kernel.TimerScheduler
+import dev.geode.kernel.featureScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import javax.inject.Qualifier

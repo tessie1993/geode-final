@@ -4,7 +4,7 @@ import dev.geode.audio.adapter.CaptureFailure
 import dev.geode.audio.adapter.CaptureSource
 import dev.geode.audio.adapter.FakeAudioAdapter
 import dev.geode.engine.types.Millis
-import dev.geode.feature.kernel.core.FakeClock
+import dev.geode.kernel.FakeClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
