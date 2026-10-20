@@ -1,5 +1,7 @@
 package dev.geode.analysis
 
+import dev.geode.engine.audio.SoundEvents
+
 data class AudioFeatures(
     val bands: FloatArray,
     val waveform: FloatArray,
@@ -43,6 +45,10 @@ data class AudioFeatures(
     val arrival: Boolean = false,
     val harmonicity: Float = HARMONICITY_UNDECIDED,
     val warmup: Float = 0f,
+    // beat, beatStrength, transient, kick, snare, hat, downbeat, sectionBoundary, drop and arrival
+    // are one-hop impulses. A live frame also carries every occurrence so far, sequenced, for a
+    // reader that looks less often than once per hop (DisplayEvents); offline frames leave it empty.
+    val events: SoundEvents = SoundEvents.NONE,
 ) {
     val hasChroma: Boolean get() = chroma.size == 12
 

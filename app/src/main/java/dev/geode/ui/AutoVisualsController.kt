@@ -3,7 +3,8 @@ package dev.geode.ui
 import dev.geode.analysis.AudioFeatures
 import dev.geode.data.PaletteStore
 import dev.geode.data.Preset
-import dev.geode.render.LiveSignal
+import dev.geode.engine.audio.SoundEvent
+import dev.geode.engine.audio.SoundEventEdges
 import dev.geode.render.scene.MilkdropEngine
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
@@ -11,6 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** A switch waits for a hit this strong — the live transient, not a tracked beat. */
 private const val STRONG_MOMENT_IMPULSE = 0.6f
+
+/** Whether the latest hit since the previous step of [hits] was a strong one. */
+private fun strongHit(hits: SoundEventEdges): Boolean = hits.strength(SoundEvent.TRANSIENT) >= STRONG_MOMENT_IMPULSE
 
 internal class AutoVisualsController(
     private val prefsStore: AutoVisualsPrefsStore,
@@ -45,6 +49,11 @@ internal class AutoVisualsController(
     private var lastVizSwitchMs = 0L
     private var vizPlaylistIndex = 0
     private var lastRandomSwitchMs = 0L
+
+    // The poll runs every half second, far slower than one-hop hits arrive: each poll asks whether a
+    // hit landed since the previous one, instead of whether one lands on the poll itself.
+    private val playlistHits = SoundEventEdges()
+    private val randomHits = SoundEventEdges()
     private val randomRng = kotlin.random.Random(android.os.SystemClock.elapsedRealtime())
 
     private var cachedMilkFiles: List<MilkFile> = emptyList()
@@ -97,9 +106,9 @@ internal class AutoVisualsController(
         val intervalMs = s.vizPlaylistIntervalSec * 1000L
         val due =
             if (s.vizPlaylistIntelligent) {
-                val f = host.features()
+                playlistHits.step(host.features().events)
                 val minDwell = maxOf(8_000L, intervalMs / 2)
-                (elapsed >= minDwell && LiveSignal.hit(f) >= STRONG_MOMENT_IMPULSE) || elapsed >= intervalMs * 2
+                (elapsed >= minDwell && strongHit(playlistHits)) || elapsed >= intervalMs * 2
             } else {
                 elapsed >= intervalMs
             }
@@ -212,9 +221,9 @@ internal class AutoVisualsController(
         val intervalMs = s.randomIntervalSec * 1000L
         val due =
             if (s.randomOnBeat) {
-                val f = host.features()
+                randomHits.step(host.features().events)
                 val minDwell = maxOf(6_000L, intervalMs / 2)
-                (elapsed >= minDwell && LiveSignal.hit(f) >= STRONG_MOMENT_IMPULSE) || elapsed >= intervalMs * 2
+                (elapsed >= minDwell && strongHit(randomHits)) || elapsed >= intervalMs * 2
             } else {
                 elapsed >= intervalMs
             }
