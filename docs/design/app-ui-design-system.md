@@ -10,6 +10,12 @@ This is the brief for the new **App UI** (the app's own screens and controls). I
 
 Always high end. References come only from top-tier work: Dribbble's featured designers, Behance's featured case studies, shipped apps on Mobbin, Awwwards, and Apple Design Award winners. Assets are art-directed and hand-crafted or professionally rendered, such as rendered stones, water and leaves, photographic or painterly textures, and carefully drawn vector icons. Low-quality procedural art (noise blobs, generated filler shapes, clip-art) is never used.
 
+## Tools and sources
+
+- **Shipped assets** are rendered in Blender (Cycles) from CC0 scans and HDRIs from Poly Haven. Every source and its licence is recorded in an asset manifest, and the owner reviews each asset sheet before anything ships.
+- **Free AI image generators** are for mood and concept exploration only, never shipped. A test of a free FLUX generator came out mid-quality and watermarked, below the bar.
+- **Post-processing** (cropping, compositing, export to WebP at each screen density) uses ImageMagick and Blender's compositor.
+
 ## Decided
 
 - **Themes:** three, chosen in Settings. Each theme has a dark version (the default) and a light version.
