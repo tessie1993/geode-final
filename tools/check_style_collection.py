@@ -74,34 +74,14 @@ def main() -> None:
     )
     require("SceneList(VisualStyleCatalog.cymaticsIds" in hub, "Cymatics variants are absent from the picker")
 
-    # The mineral texture system (CrystalTextureKind) was replaced by the
-    # ThemePack catalog; each named stone is a top-level val in ThemePackCatalog.kt.
-    named_themes = [
-        "lapisLazuli",
-        "sugilite",
-        "amethyst",
-        "clearQuartz",
-        "azurite",
-        "firestone",
-        "kyanite",
-        "malachite",
-        "mookaite",
-        "onyx",
-    ]
-    for name in named_themes:
-        require(f"val {name} =" in theme_catalog, f"missing theme pack for {name}")
-    all_list_match = re.search(r"val all: List<ThemePack> = listOf\(([^)]*)\)", theme_catalog)
-    require(all_list_match is not None, "ThemePackCatalog has no `all` registry list")
-    if all_list_match:
-        registered = {n.strip() for n in all_list_match.group(1).split(",")}
-        require(registered == set(named_themes), "ThemePackCatalog.all is missing or has extra theme packs")
+    # The App UI keeps one theme pack, Lapis Lazuli, until the App UI redesign.
+    require("val lapisLazuli =" in theme_catalog, "missing the Lapis Lazuli theme pack")
 
     require("CrystalMaterialTheme(" in shell, "shell does not propagate the active theme pack")
     require("LocalThemePack provides pack" in crystal, "crystal panels do not receive the active theme pack")
 
     print("style collection checks passed")
     print(f"  Cymatics substyles:   {len(cym_ids)}")
-    print(f"  Theme packs:          {len(named_themes)}")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,6 @@ package dev.geode.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,8 +59,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.geode.R
 import dev.geode.analysis.SearchMatcher
-import dev.geode.data.BootAnimationStore
-import dev.geode.data.GeodePrefsFiles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.render.VisualizerView
@@ -110,24 +107,9 @@ fun AppRoot() {
             visualizerView.onPause()
         }
     }
-    val themePack by settingsViewModel.theme.collectAsStateWithLifecycle()
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
-    val systemDark = isSystemInDarkTheme()
-    val effectiveTheme =
-        if (gui.followSystemDark && !systemDark) {
-            dev.geode.ui.theme.ThemePackCatalog.all
-                .firstOrNull { it.isLight } ?: themePack
-        } else {
-            themePack
-        }
-    val externalDisplay = rememberExternalDisplay()
-    val appState = rememberGeodeAppState(externalDisplay)
-    val bootAnimEnabled = remember { BootAnimationStore(GeodePrefsFiles(context).general).load() }
+    val appState = rememberGeodeAppState()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val onSecondScreen = gui.secondScreen && externalDisplay != null
-    if (onSecondScreen) {
-        SecondScreenCanvas(externalDisplay, visualizerView)
-    }
 
     var crashText by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
@@ -153,7 +135,7 @@ fun AppRoot() {
     VisualizerEngineBindings(viewModel, visualizerView)
     androidx.activity.compose.BackHandler(enabled = !appState.onPlayer) { appState.resetToPlayer() }
     CrystalMaterialTheme(
-        pack = effectiveTheme,
+        pack = dev.geode.ui.theme.ThemePackCatalog.lapisLazuli,
         gui = gui,
     ) {
         val miniPlayer: @Composable () -> Unit = {
@@ -236,7 +218,7 @@ fun AppRoot() {
                         viewModel,
                         visualizerView,
                         onOpenNowPlaying = appState::expand,
-                        liveBackdrop = gui.clearVisualsMenu && !appState.expanded && !onSecondScreen,
+                        liveBackdrop = gui.clearVisualsMenu && !appState.expanded,
                     )
                 GeodeDestination.STUDIO -> StudioRoute()
                 GeodeDestination.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
@@ -295,7 +277,6 @@ fun AppRoot() {
                 VisualizerScreen(
                     viewModel = viewModel,
                     visualizerView = visualizerView,
-                    externalDisplayName = if (onSecondScreen) externalDisplay?.name else null,
                     onCollapse = appState::collapse,
                     onOpenVisuals = {
                         appState.collapse()
@@ -303,11 +284,11 @@ fun AppRoot() {
                     },
                 )
             }
-            if ((!bootAnimEnabled || appState.bootDone) && !gui.safetyAcknowledged) {
+            if (!gui.safetyAcknowledged) {
                 SafetyConsent(
                     onAcknowledge = { settingsViewModel.setGuiPrefs(gui.copy(safetyAcknowledged = true)) },
                 )
-            } else if ((!bootAnimEnabled || appState.bootDone) && !gui.setupDone) {
+            } else if (!gui.setupDone) {
                 // Setup runs only after the notice is acknowledged, and only until it is done.
                 FirstRunGate(
                     onDone = {
@@ -328,9 +309,6 @@ fun AppRoot() {
                         settingsViewModel.setGuiPrefs(gui.copy(tutorialSeen = true))
                     },
                 )
-            }
-            if (bootAnimEnabled && !appState.bootDone) {
-                BootIntro(onDone = { appState.bootDone = true })
             }
         }
     }

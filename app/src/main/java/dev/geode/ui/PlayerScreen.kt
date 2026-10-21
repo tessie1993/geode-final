@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,10 +56,8 @@ fun PlayerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     val mic by viewModel.micState.collectAsStateWithLifecycle()
-    val external by viewModel.externalAudio.collectAsStateWithLifecycle()
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val abLoop by viewModel.abLoop.collectAsStateWithLifecycle()
-    val autoMode by viewModel.autoMode.collectAsStateWithLifecycle()
     val queue by viewModel.queue.collectAsStateWithLifecycle()
     val favourites by viewModel.favourites.collectAsStateWithLifecycle()
     val tick by viewModel.historyTick.collectAsStateWithLifecycle()
@@ -95,7 +92,6 @@ fun PlayerScreen(
                 state = state,
                 styleLabel = sceneDisplayLabel(viz.sceneId),
                 micActive = mic.active,
-                external = external,
                 favourites = favourites,
                 canResume = canShuffle,
                 onExpand = onExpand,
@@ -110,7 +106,6 @@ fun PlayerScreen(
                 state = state,
                 waveform = waveform,
                 abLoop = abLoop,
-                autoMode = autoMode,
                 queueSize = queue.tracks.size,
                 queueOpen = showQueue,
                 onToggleQueue = { showQueue = !showQueue },
@@ -121,7 +116,7 @@ fun PlayerScreen(
         item {
             LiveSpectrum(
                 viewModel,
-                live = state.isPlaying || mic.active || external.active,
+                live = state.isPlaying || mic.active,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(44.dp),
             )
         }
@@ -140,7 +135,6 @@ fun PlayerScreen(
             QuickActions(
                 viewModel = viewModel,
                 micActive = mic.active,
-                external = external,
                 sleepRunning = sleepRemaining != null,
                 canShuffle = canShuffle,
             )
@@ -154,7 +148,6 @@ private fun PlayerHero(
     state: PlayerUiState,
     styleLabel: String,
     micActive: Boolean,
-    external: ExternalAudioState,
     favourites: Set<TrackId>,
     canResume: Boolean,
     onExpand: () -> Unit,
@@ -162,9 +155,7 @@ private fun PlayerHero(
     modifier: Modifier = Modifier,
 ) {
     val uri = remember(state.title, state.artist, state.queueIndex) { viewModel.currentTrackUri() }
-    val foreign = external.active
-    val foreignTrack = external.nowPlaying?.takeIf { it.title.isNotBlank() }
-    val hasSource = foreign || micActive || state.hasMedia
+    val hasSource = micActive || state.hasMedia
     val isFavourite = uri != null && uri in favourites
     Column(
         modifier
@@ -174,13 +165,13 @@ private fun PlayerHero(
                 MaterialTheme.colorScheme.surfaceVariant,
                 MaterialTheme.colorScheme.primary,
                 corner = 24.dp,
-                glowStrength = if (state.isPlaying || foreign || micActive) 1.2f else 0.7f,
+                glowStrength = if (state.isPlaying || micActive) 1.2f else 0.7f,
             ).clickable(enabled = hasSource, onClick = onExpand)
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TrackArtwork(
-            if (foreign || micActive) null else uri,
+            if (micActive) null else uri,
             Modifier.fillMaxWidth().aspectRatio(1f),
             corner = 18.dp,
         )
@@ -188,7 +179,6 @@ private fun PlayerHero(
             Column(Modifier.weight(1f)) {
                 CrystalOverline(
                     when {
-                        foreign -> external.nowPlaying?.appLabel ?: stringResource(R.string.source_other_apps)
                         micActive -> stringResource(R.string.source_live_input)
                         state.isPlaying -> stringResource(R.string.state_now_playing)
                         state.hasMedia -> stringResource(R.string.state_paused)
@@ -197,7 +187,6 @@ private fun PlayerHero(
                 )
                 Text(
                     when {
-                        foreign -> foreignTrack?.title ?: stringResource(R.string.title_whatever_is_playing)
                         micActive -> stringResource(R.string.title_the_room)
                         state.hasMedia -> state.title ?: stringResource(R.string.title_untitled)
                         else -> stringResource(R.string.title_pick_something)
@@ -208,15 +197,6 @@ private fun PlayerHero(
                 )
                 Text(
                     when {
-                        external.refusedByApp ->
-                            stringResource(
-                                R.string.subtitle_capture_refused,
-                                external.refusingApp
-                                    ?: stringResource(R.string.subtitle_capture_refused_unknown_app),
-                            )
-                        foreign ->
-                            foreignTrack?.artist?.ifBlank { null }
-                                ?: stringResource(R.string.subtitle_captured_from_another_app)
                         micActive -> stringResource(R.string.subtitle_microphone_hears)
                         state.hasMedia ->
                             state.artist?.takeIf { it.isNotBlank() }
@@ -224,17 +204,12 @@ private fun PlayerHero(
                         else -> stringResource(R.string.subtitle_nothing_playing)
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color =
-                        if (external.refusedByApp) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (state.hasMedia && !foreign) {
+            if (state.hasMedia) {
                 IconButton(onClick = { viewModel.toggleFavourite() }) {
                     StoneIconArt(
                         StoneIcon.FAVORITE,
@@ -257,11 +232,6 @@ private fun PlayerHero(
         ) {
             SceneChip(styleLabel)
             Box(Modifier.weight(1f))
-            if (foreign) {
-                CrystalButton(filled = false, compact = true, onClick = viewModel::stopExternalAudio) {
-                    Text(stringResource(R.string.action_stop_capture))
-                }
-            }
         }
         if (!hasSource) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -301,7 +271,6 @@ private fun TransportCard(
     state: PlayerUiState,
     waveform: FloatArray?,
     abLoop: AbLoop?,
-    autoMode: Int,
     queueSize: Int,
     queueOpen: Boolean,
     onToggleQueue: () -> Unit,
@@ -396,18 +365,6 @@ private fun TransportCard(
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                )
-            }
-            TextButton(onClick = viewModel::cycleAutoMode) {
-                Text(
-                    when (autoMode) {
-                        1 -> stringResource(R.string.auto_random)
-                        2 -> stringResource(R.string.auto_smart)
-                        3 -> stringResource(R.string.auto_sections)
-                        else -> stringResource(R.string.auto_off)
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             TextButton(onClick = onToggleQueue) {
@@ -543,45 +500,14 @@ internal suspend fun driveSpectrum(
 private fun QuickActions(
     viewModel: PlayerViewModel,
     micActive: Boolean,
-    external: ExternalAudioState,
     sleepRunning: Boolean,
     canShuffle: Boolean,
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val micPermission =
         androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts
                 .RequestPermission(),
         ) { granted -> if (granted) viewModel.setMicEnabled(true) }
-    val projectionLauncher =
-        androidx.activity.compose.rememberLauncherForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts
-                .StartActivityForResult(),
-        ) { result ->
-            val data = result.data
-            if (result.resultCode == android.app.Activity.RESULT_OK && data != null) {
-                dev.geode.audio.PlaybackCaptureService
-                    .start(context, result.resultCode, data)
-            } else {
-                viewModel.noteExternalAudioConsentDenied()
-            }
-        }
-    val capturePermissions =
-        androidx.activity.compose.rememberLauncherForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts
-                .RequestMultiplePermissions(),
-        ) { granted ->
-            if (granted[android.Manifest.permission.RECORD_AUDIO] != false) {
-                viewModel.noteExternalAudioConsentPending()
-                projectionLauncher.launch(
-                    context
-                        .getSystemService(android.media.projection.MediaProjectionManager::class.java)
-                        .createScreenCaptureIntent(),
-                )
-            } else {
-                viewModel.noteExternalAudioConsentDenied()
-            }
-        }
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding =
@@ -600,28 +526,6 @@ private fun QuickActions(
                     viewModel.setMicEnabled(true)
                 } else {
                     micPermission.launch(android.Manifest.permission.RECORD_AUDIO)
-                }
-            }
-        }
-        item {
-            QuickAction(
-                Icons.Filled.Cast,
-                stringResource(if (external.active) R.string.quick_capturing else R.string.source_other_apps),
-                active = external.active,
-            ) {
-                if (external.active) {
-                    viewModel.stopExternalAudio()
-                } else {
-                    capturePermissions.launch(
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                            arrayOf(
-                                android.Manifest.permission.RECORD_AUDIO,
-                                android.Manifest.permission.POST_NOTIFICATIONS,
-                            )
-                        } else {
-                            arrayOf(android.Manifest.permission.RECORD_AUDIO)
-                        },
-                    )
                 }
             }
         }
