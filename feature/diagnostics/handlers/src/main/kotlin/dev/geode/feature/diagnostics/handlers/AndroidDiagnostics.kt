@@ -29,6 +29,9 @@ private const val PARTIAL_SUFFIX = ".partial"
 /** No optional package information is asked for: the version is all the report needs. */
 private const val NO_PACKAGE_FLAGS = 0
 
+/** [NO_PACKAGE_FLAGS] as the `Long` that `PackageInfoFlags` takes from API 33. */
+private const val NO_PACKAGE_INFO_FLAGS = 0L
+
 /** The provider the diagnostics file is shared through (see the module's manifest). */
 class DiagnosticsFileProvider : FileProvider()
 
@@ -104,7 +107,7 @@ class AndroidSystemFacts(
     private fun packageInfo(): PackageInfo {
         val packages = context.packageManager
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packages.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(NO_PACKAGE_FLAGS.toLong()))
+            packages.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(NO_PACKAGE_INFO_FLAGS))
         } else {
             @Suppress("DEPRECATION")
             packages.getPackageInfo(context.packageName, NO_PACKAGE_FLAGS)
