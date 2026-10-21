@@ -218,7 +218,7 @@ TEST(LfoEngine, Waveforms) {
     EXPECT_NEAR(out[1], 0.0f, kTol);
     EXPECT_NEAR(out[2], 0.3f, kTol);
     // Phase 0.5.
-    out = lfo.tick(0.25f, f);
+    out = lfo.tick(0.5f, f);
     EXPECT_NEAR(out[0], 0.0f, kTol);
     EXPECT_NEAR(out[1], -0.3f, kTol);
     EXPECT_NEAR(out[2], -0.3f, kTol);
