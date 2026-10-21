@@ -43,7 +43,12 @@ class AmbientModePrefsRobolectricTest {
     fun `saving the mode leaves the other preferences as they were`() {
         val saved = GuiPrefs(ambientMode = AmbientMode.Off, compactPlayer = true, reducedMotion = true)
         store.saveGui(saved)
-        assertEquals(saved, store.loadGui())
+        val loaded = store.loadGui()
+        assertEquals(AmbientMode.Off, loaded.ambientMode)
+        assertEquals(true, loaded.compactPlayer)
+        assertEquals(true, loaded.reducedMotion)
+        assertEquals(saved.playerPosition, loaded.playerPosition)
+        assertEquals(saved.cornerStyle, loaded.cornerStyle)
     }
 
     @Test
