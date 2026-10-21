@@ -59,7 +59,7 @@ void CymaticsScene::draw(float timeSeconds) {
     for (int i = 0; i < modeCount_; ++i) totalAmplitude += modes_[static_cast<size_t>(i) * 4 + 2];
 
     const float hit = live::hit(f);
-    beatPulse_ = std::clamp(std::max(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), beatPulse_ - dt * 3.0f), 0.0f, 1.5f);
+    beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
 
     const float speed = std::clamp(p.speed, 0.05f, 4.0f);
     const float swirlRate = std::clamp(p.cymaticsSwirl * style_.swirl, -1.0f, 1.0f) * speed;

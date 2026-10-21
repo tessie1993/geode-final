@@ -212,14 +212,12 @@ class PresetStore(
                 .put("bassGain", p.params.bassGain.toDouble())
                 .put("midGain", p.params.midGain.toDouble())
                 .put("trebGain", p.params.trebGain.toDouble())
-                .put("flash", p.params.flash.toDouble())
                 .put("chromaAb", p.params.chromaAb.toDouble())
                 .put("vignette", p.params.vignette.toDouble())
                 .put("scanlines", p.params.scanlines.toDouble())
                 .put("grain", p.params.grain.toDouble())
                 .put("glitch", p.params.glitch.toDouble())
                 .put("fisheye", p.params.fisheye.toDouble())
-                .put("strobe", p.params.strobe.toDouble())
                 .put("paramFadeSec", p.params.paramFadeSec.toDouble())
                 .put("solarize", p.params.solarize)
                 .put("fluidQuality", p.params.fluidQuality)
@@ -394,14 +392,12 @@ class PresetStore(
                         bassGain = o.optDouble("bassGain", 1.0).toFloat(),
                         midGain = o.optDouble("midGain", 1.0).toFloat(),
                         trebGain = o.optDouble("trebGain", 1.0).toFloat(),
-                        flash = o.optDouble("flash", 0.0).toFloat(),
                         chromaAb = o.optDouble("chromaAb", 0.0).toFloat(),
                         vignette = o.optDouble("vignette", 0.0).toFloat(),
                         scanlines = o.optDouble("scanlines", 0.0).toFloat(),
                         grain = o.optDouble("grain", 0.0).toFloat(),
                         glitch = o.optDouble("glitch", 0.0).toFloat(),
                         fisheye = o.optDouble("fisheye", 0.0).toFloat(),
-                        strobe = o.optDouble("strobe", 0.0).toFloat(),
                         paramFadeSec = o.optDouble("paramFadeSec", 0.0).toFloat(),
                         fluidQuality = o.optInt("fluidQuality", 2),
                         fluidAutoQuality = o.optBoolean("fluidAutoQuality", true),

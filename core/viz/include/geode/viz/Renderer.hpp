@@ -12,10 +12,12 @@
 
 #include "geode/api/geode_api.h"
 #include "geode/viz/Adsr.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
 #include "geode/viz/Lfo.hpp"
+#include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/RenderScale.hpp"
@@ -109,7 +111,7 @@ private:
     float drawSecondaryTargets(const SceneParams& p, float dt);
     void bindSecondaryTarget();
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
-    void composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo);
+    void composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
     void wireFlow(Scene& target, const SceneParams& p);
@@ -136,7 +138,8 @@ private:
     TrailPass trailPass_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
-    FlashBudget flashBudget_;
+    // The No-flash rule: every finished frame passes through it (CONTEXT.md).
+    NoFlashPass noFlash_;
     ThermalGovernor thermal_;
     scale::LoadScaleController loadScale_;
     std::vector<std::pair<std::string, float>> styleScales_;
@@ -204,6 +207,7 @@ private:
     float postRotationAngle_ = 0.0f;
     float postCyclePhase_ = 0.0f;
     float postBeatPulse_ = 0.0f;
+    BeatEnvelope postBeat_;
     Scene* activeScene_ = nullptr;
     Scene* outgoingScene_ = nullptr;
     Scene* layerScene_ = nullptr;

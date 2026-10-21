@@ -350,6 +350,7 @@ void Renderer::onSurfaceCreated() {
     quadVert_ = *quadVert;
     if (!trailPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!compositePass_.create(*fadeVert, &error)) fail(error);
+    if (!noFlash_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
 
     // Port of CyclicPalettes.createTexture: five 256-entry RGB rows.
     const auto palette = assets_.readAsset("shaders/cyclic_palettes.bin");

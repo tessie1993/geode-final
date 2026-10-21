@@ -92,14 +92,12 @@ reach every style through the composite pass, which is its own column.
 | `bassGain` | Behavior | `Bass gain` | `bassGain` |   |   |   |   |   |   |   |   |   | · | · |
 | `midGain` | Behavior | `Mid gain` | `midGain` |   |   |   |   |   |   |   |   |   | · | · |
 | `trebGain` | Behavior | `Treble gain` | `trebGain` |   |   |   |   |   |   |   |   |   | · | · |
-| `flash` | Behavior | `Beat flash` | `flash` | · |   |   |   |   |   |   |   |   | · | · |
 | `chromaAb` | FX | `Chromatic aberration` | `chromaAb` |   |   |   |   |   |   |   |   |   | · | · |
 | `vignette` | FX | `Vignette` | `vignette` |   |   |   |   |   |   |   |   |   | · | · |
 | `scanlines` | FX | `Scanlines` | `scanlines` |   |   |   |   |   |   |   |   |   | · | · |
 | `grain` | FX | `Film grain` | `grain` |   |   |   |   |   |   |   |   |   | · | · |
 | `glitch` | FX | `Glitch` | `glitch` |   |   |   | · |   |   |   |   |   | · | · |
 | `fisheye` | FX | `Fisheye` | `fisheye` |   |   |   |   |   |   |   |   |   | · | · |
-| `strobe` | FX | `Strobe` | `strobe` |   |   |   |   |   |   |   |   |   | · | · |
 | `paramFadeSec` | FX | — | `paramFadeSec` |   |   |   |   |   |   |   |   |   | · |   |
 | `fluidQuality` | Fluid | — | `fluidQuality` |   |   |   |   |   | · |   | · |   |   |   |
 | `fluidAutoQuality` | Fluid | — | `fluidAutoQuality` |   |   |   |   |   | · |   | · |   |   | · |
