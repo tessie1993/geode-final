@@ -27,8 +27,10 @@ class CustomizationSnapshotTest {
             soundReleaseSeconds = 0.5f,
         )
 
-    private fun hex(bytes: ByteArray): String =
-        MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+    private fun hex(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        return digest.joinToString("") { "%02x".format(it) }
+    }
 
     private fun wire(snapshot: CustomizationSnapshot): ByteBuffer = ByteBuffer.wrap(snapshot.encode()).order(ByteOrder.LITTLE_ENDIAN)
 
