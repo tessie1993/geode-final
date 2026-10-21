@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <float name="gui_accent_intensity" value="1.25" />
+    <float name="gui_background_dim" value="0.3" />
+    <boolean name="gui_white_font" value="true" />
+    <float name="gui_text_scale" value="1.15" />
+    <float name="gui_opacity" value="0.5" />
+    <string name="gui_player_pos">TOP</string>
+    <string name="gui_corner">PILL</string>
+    <boolean name="gui_compact_player" value="true" />
+    <boolean name="gui_clear_visuals_menu" value="true" />
+    <float name="beat_sigma" value="5.0" />
+    <float name="beat_min_interval_ms" value="450.0" />
+    <int name="morph_beats" value="6" />
+    <boolean name="gui_mic_reactive" value="true" />
+    <boolean name="gui_touch_smear" value="true" />
+    <float name="gui_touch_smear_strength" value="1.5" />
+    <boolean name="gui_touch_transform" value="false" />
+    <string name="gui_safety_choice">REDUCED_MOTION</string>
+    <string name="gui_intent">LISTEN</string>
+    <string name="export_quality">UHD4K</string>
+    <int name="export_fps" value="30" />
+    <string name="export_ratio">R9_16</string>
+    <boolean name="export_loop" value="true" />
+    <string name="export_codec">HEVC</string>
+    <string name="export_loudness_target">shorts</string>
+    <string name="preset_mirror_uri">content://tree/presets</string>
+    <boolean name="gui_tutorial_seen" value="true" />
+    <boolean name="gui_tutorial_on_first_run" value="false" />
+    <string name="lfos">[{&quot;target&quot;:&quot;ZOOM&quot;}]</string>
+</map>

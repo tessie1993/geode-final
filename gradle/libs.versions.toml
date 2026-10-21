@@ -25,6 +25,11 @@ robolectric = "4.17"
 orgJson = "20240303"
 # Architecture test of ADR-0003 (#33), test scope only.
 konsist = "0.17.3"
+# Settings in DataStore (ADR-0004, #38).
+datastore = "1.1.7"
+# Playback's playlists, play history and saved session (#34, ADR-0004 storage).
+room = "2.8.4"
+androidxTestCore = "1.7.0"
 
 [libraries]
 documentfile = { module = "androidx.documentfile:documentfile", version = "1.1.0" }
@@ -57,6 +62,11 @@ roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = 
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 org-json = { module = "org.json:json", version.ref = "orgJson" }
 konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
+datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 
 ktlint-gradle = { module = "org.jlleitschuh.gradle.ktlint:org.jlleitschuh.gradle.ktlint.gradle.plugin", version.ref = "ktlint" }
 detekt-gradle = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt" }

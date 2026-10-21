@@ -41,9 +41,26 @@ include(
     ":arch:audio",
 )
 
+// Playback (#34): play, pause, seek and next as one state machine over the audio adapter, with its
+// playlists and play history in its own Room database.
+include(
+    ":feature:playback:api",
+    ":feature:playback:core",
+    ":feature:playback:handlers",
+    ":feature:playback:ui",
+)
+
 include(
     ":feature:capture:api",
     ":feature:capture:core",
     ":feature:capture:handlers",
     ":feature:capture:ui",
+)
+
+// Settings (#38): today's settings on one store, in DataStore (ADR-0004).
+include(
+    ":feature:settings:api",
+    ":feature:settings:core",
+    ":feature:settings:handlers",
+    ":feature:settings:ui",
 )

@@ -211,6 +211,7 @@ class VisualizerRenderer(
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
             nativeThermalSampleMs = now
             nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
+            nativeViz.setFrameLoad(FramePacer.activeStats())
         }
         pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }

@@ -5,12 +5,7 @@
 namespace geode::viz {
 
 const ThermalTierInfo& thermalTierInfo(ThermalTier tier) {
-    static const std::array<ThermalTierInfo, 4> kInfos = {{
-        {1.0f, true, 0.0f},
-        {0.85f, true, 0.0f},
-        {0.7f, false, 0.0f},
-        {0.6f, false, 30.0f},
-    }};
+    static constexpr std::array<ThermalTierInfo, 4> kInfos = {kTierFull, kTierEased, kTierReduced, kTierMinimal};
     return kInfos[static_cast<int>(tier)];
 }
 
@@ -23,7 +18,7 @@ float PerformanceMonitor::averageFps() const {
     const int n = std::min(count_, windowSize_);
     for (int i = 0; i < n; i++) sum += samples_[i];
     const float meanDt = sum / n;
-    return meanDt > 1e-6f ? 1.0f / meanDt : 0.0f;
+    return meanDt > kMinFrameSeconds ? 1.0f / meanDt : 0.0f;
 }
 
 int PerformanceMonitor::onFrame(float dtSeconds) {
@@ -32,8 +27,9 @@ int PerformanceMonitor::onFrame(float dtSeconds) {
         lastTargetFps_ = target;
         deficitSeconds_ = 0.0f;
     }
-    const float fps = dtSeconds > 1e-6f ? 1.0f / dtSeconds : 1000.0f;
-    if (fps < 5.0f || fps > 180.0f) return 0;
+    if (dtSeconds <= kMinFrameSeconds) return 0;
+    const float fps = 1.0f / dtSeconds;
+    if (fps < kMinCredibleFps || fps > kMaxCredibleFps) return 0;
     samples_[index_] = dtSeconds;
     index_ = (index_ + 1) % windowSize_;
     count_ = std::min(count_ + 1, windowSize_);
@@ -42,7 +38,7 @@ int PerformanceMonitor::onFrame(float dtSeconds) {
     if (avg < target) deficitSeconds_ += dtSeconds; else deficitSeconds_ = 0.0f;
     if (deficitSeconds_ < sustainSeconds_) return 0;
     const float severity = (target - avg) / target;
-    return severity > 0.35f ? 2 : 1;
+    return severity > kSevereDeficit ? 2 : 1;
 }
 
 void PerformanceMonitor::reset() {
@@ -59,8 +55,7 @@ float PerformanceMonitor::effectiveTargetFps() const {
 }
 
 void ThermalGovernor::onFrame(float dtSeconds) {
-    if (offscreenDepth_.load() > 0) return;
-    if (!platformKnows_.load()) trackMeasuredTrend(dtSeconds);
+    if (offscreen()) return;
     sampleClock_ += dtSeconds;
     if (sampleClock_ < kSamplePeriodSeconds) return;
     sampleClock_ = 0.0f;
@@ -68,7 +63,6 @@ void ThermalGovernor::onFrame(float dtSeconds) {
 }
 
 void ThermalGovernor::onSurfaceRecreated() {
-    monitor_.reset();
     sampleClock_ = 0.0f;
     hotDwellSeconds_ = 0.0f;
     coolDwellSeconds_ = 0.0f;
@@ -79,18 +73,8 @@ void ThermalGovernor::endOffscreenRender() {
     while (depth > 0 && !offscreenDepth_.compare_exchange_weak(depth, depth - 1)) {}
 }
 
-void ThermalGovernor::trackMeasuredTrend(float dtSeconds) {
-    monitor_.setPacedFps(pacedFps_.load());
-    const int relief = monitor_.onFrame(dtSeconds);
-    if (relief <= 0) return;
-    const int ceiling = static_cast<int>(kMeasuredCeiling);
-    measuredFloor_ = static_cast<ThermalTier>(std::min(static_cast<int>(measuredFloor_) + relief, ceiling));
-    monitor_.reset();
-}
-
 ThermalTier ThermalGovernor::observe() const {
-    const ThermalTier platform = std::max(statusTier(osStatus_.load()), headroomTier());
-    return platformKnows_.load() ? platform : std::max(platform, measuredFloor_);
+    return std::max(statusTier(osStatus_.load()), headroomTier());
 }
 
 void ThermalGovernor::settle(ThermalTier observed) {
