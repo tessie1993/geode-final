@@ -18,10 +18,11 @@ import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
@@ -51,7 +52,7 @@ class SettingsStoreTest {
     private val file: File by lazy { File(folder.root, "geode-settings.preferences_pb") }
 
     @After
-    fun closeStores() = scopes.forEach { it.cancel() }
+    fun closeStores() = reopen()
 
     @Test
     fun `the first start takes the old settings, unchanged`() {
@@ -129,9 +130,12 @@ class SettingsStoreTest {
         )
     }
 
-    /** Closes the open stores, as when the app is killed, so the file can be opened again. */
+    /**
+     * Closes the open stores, as when the app is killed, so the file can be opened again. DataStore
+     * lets a file go only once its scope has finished, not when the cancel is sent, so this waits.
+     */
     private fun reopen() {
-        scopes.forEach { it.cancel() }
+        runBlocking { scopes.forEach { it.coroutineContext.job.cancelAndJoin() } }
         scopes.clear()
     }
 

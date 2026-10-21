@@ -18,17 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-
-/** The App UI's sizes for Settings, until the shared design tokens (:design) are in place. */
-internal object SettingsDimens {
-    val gutter = 16.dp
-    val groupPadding = 14.dp
-    val groupGap = 14.dp
-    val rowGap = 10.dp
-    val chipGap = 6.dp
-    val groupCorner = 18.dp
-}
 
 /** Multiplies a fraction for showing it as a percentage. */
 internal const val PERCENT = 100
