@@ -195,7 +195,6 @@ object ParamRandomizer {
         section(CustomizeTab.REACTIVITY)
         r(ParamKeys.AUDIO_DRIVE) { it.copy(audioDrive = f(0.6f, 1.8f)) }
         r(ParamKeys.BEAT_RESPONSE) { it.copy(beatResponse = f(0.3f, 2f)) }
-        r(ParamKeys.BEAT_FLASH) { it.copy(flash = sometimes(0.5f, 0.1f, 0.6f)) }
         r(ParamKeys.BASS_GAIN) { it.copy(bassGain = f(0.8f, 1.4f)) }
         r(ParamKeys.MID_GAIN) { it.copy(midGain = f(0.8f, 1.4f)) }
         r(ParamKeys.TREBLE_GAIN) { it.copy(trebGain = f(0.8f, 1.4f)) }
@@ -245,7 +244,6 @@ object ParamRandomizer {
         r(ParamKeys.FILM_GRAIN) { it.copy(grain = sometimes(0.3f, 0.1f, 0.4f)) }
         r(ParamKeys.GLITCH) { it.copy(glitch = sometimes(0.2f, 0.1f, 0.4f)) }
         r(ParamKeys.FISHEYE) { it.copy(fisheye = sometimes(0.25f, -0.5f, 0.5f)) }
-        r(ParamKeys.STROBE) { it.copy(strobe = sometimes(0.08f, 0.15f, 0.4f)) }
 
         section(CustomizeTab.FLUID)
         r(ParamKeys.SOLVER_ITERATIONS) { it.copy(fluidIterations = n(12, 28)) }
