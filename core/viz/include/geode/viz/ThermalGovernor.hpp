@@ -7,19 +7,28 @@ namespace geode::viz {
 
 enum class ThermalTier { Full, Eased, Reduced, Minimal };
 
+// What each tier allows: the ceiling it puts on the load scale of the scene and trail buffers
+// (RenderScale.hpp), and whether the optional overlay passes (flow, ripple) run.
 struct ThermalTierInfo {
     float renderScale;
     bool optionalPasses;
-    float fpsCap;  // 0 = none
 };
+inline constexpr ThermalTierInfo kTierFull{1.0f, true};
+inline constexpr ThermalTierInfo kTierEased{0.85f, true};
+inline constexpr ThermalTierInfo kTierReduced{0.7f, false};
+inline constexpr ThermalTierInfo kTierMinimal{0.6f, false};
 const ThermalTierInfo& thermalTierInfo(ThermalTier tier);
 
 // Port of PerformanceMonitor.kt: downgrades on a sustained deficit, never upgrades.
 class PerformanceMonitor {
 public:
     static constexpr float kFreeRunning = 0.0f;
+    static constexpr float kDefaultTargetFps = 50.0f;
+    static constexpr float kDefaultSustainSeconds = 2.5f;
+    static constexpr int kDefaultWindowSize = 30;
 
-    explicit PerformanceMonitor(float targetFps = 50.0f, float sustainSeconds = 2.5f, int windowSize = 30);
+    explicit PerformanceMonitor(float targetFps = kDefaultTargetFps, float sustainSeconds = kDefaultSustainSeconds,
+                                int windowSize = kDefaultWindowSize);
     void setPacedFps(float fps) { pacedFps_.store(fps); }
     float averageFps() const;
     int onFrame(float dtSeconds);
@@ -27,6 +36,12 @@ public:
 
 private:
     static constexpr float kKeepingUpFraction = 0.85f;
+    // Intervals outside this band are a pause or a stutter, not a frame rate.
+    static constexpr float kMinCredibleFps = 5.0f;
+    static constexpr float kMaxCredibleFps = 180.0f;
+    // A deficit deeper than this fraction of the target asks for two steps of relief, not one.
+    static constexpr float kSevereDeficit = 0.35f;
+    static constexpr float kMinFrameSeconds = 1e-6f;
     float effectiveTargetFps() const;
 
     float targetFps_;
@@ -40,15 +55,18 @@ private:
     std::atomic<float> pacedFps_{kFreeRunning};
 };
 
-// Port of ThermalGovernor.kt; the platform readings (status, headroom) are pushed in by the host.
+// Settles a thermal tier from the platform's readings (status, headroom), which the host pushes in.
+// How busy the GPU is - the frame times - is the load scale's job (RenderScale.hpp), not this one's.
 class ThermalGovernor {
 public:
-    ThermalTier tier() const { return offscreenDepth_.load() > 0 ? ThermalTier::Full : settled_.load(); }
+    ThermalTier tier() const { return offscreen() ? ThermalTier::Full : settled_.load(); }
+    // The ceiling the tier puts on the load scale.
+    float renderCeiling() const { return thermalTierInfo(tier()).renderScale; }
+    bool offscreen() const { return offscreenDepth_.load() > 0; }
     void setPacedFps(float fps) { pacedFps_.store(fps); }
     float pacedFps() const { return pacedFps_.load(); }
 
-    // Marks the platform as answering; called once with the first real status.
-    void setPlatformStatus(int status) { osStatus_.store(status); platformKnows_.store(true); }
+    void setPlatformStatus(int status) { osStatus_.store(status); }
     // NaN means no forecast; sampled by the host at most once a second.
     void setThermalHeadroom(float headroom) { headroom_.store(headroom); }
 
@@ -68,7 +86,6 @@ private:
     static constexpr float kHeadroomReduced = 0.85f;
     static constexpr float kHeadroomMinimal = 0.95f;
 
-    void trackMeasuredTrend(float dtSeconds);
     ThermalTier observe() const;
     void settle(ThermalTier observed);
     static ThermalTier statusTier(int status);
@@ -76,13 +93,9 @@ private:
 
     std::atomic<ThermalTier> settled_{ThermalTier::Full};
     std::atomic<int> osStatus_{kStatusNone};
-    std::atomic<bool> platformKnows_{false};
     std::atomic<float> headroom_{NAN};
     std::atomic<int> offscreenDepth_{0};
     std::atomic<float> pacedFps_{0.0f};
-    PerformanceMonitor monitor_;
-    ThermalTier measuredFloor_ = ThermalTier::Full;
-    static constexpr ThermalTier kMeasuredCeiling = ThermalTier::Reduced;
     float sampleClock_ = 0.0f;
     float hotDwellSeconds_ = 0.0f;
     float coolDwellSeconds_ = 0.0f;

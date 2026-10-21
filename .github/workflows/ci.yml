@@ -273,6 +273,7 @@ jobs:
         run: |
           node tools/glslcheck/check.mjs --all --size 96 --time 12.5 --out build-frames/styles
           node tools/glslcheck/check.mjs --fluid-display --size 96 --out build-frames/fluid
+          node tools/glslcheck/check.mjs --all --resize --size 96 --time 12.5 --out build-frames/resize
       - name: Record or verify
         id: mode
         run: |
@@ -286,12 +287,13 @@ jobs:
         run: |
           python3 tools/ci/compare_frames.py tools/glslcheck/goldens/styles build-frames/styles
           python3 tools/ci/compare_frames.py tools/glslcheck/goldens/fluid build-frames/fluid
+          python3 tools/ci/compare_frames.py tools/glslcheck/goldens/resize build-frames/resize
       - name: Record goldens
         if: steps.mode.outputs.record == 'true' && github.event_name == 'pull_request'
         run: |
           rm -rf tools/glslcheck/goldens
           mkdir -p tools/glslcheck/goldens
-          cp -r build-frames/styles build-frames/fluid tools/glslcheck/goldens/
+          cp -r build-frames/styles build-frames/fluid build-frames/resize tools/glslcheck/goldens/
           tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record Visual golden frames" tools/glslcheck/goldens
       - name: Upload rendered frames
         if: failure()

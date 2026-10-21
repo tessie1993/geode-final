@@ -180,6 +180,11 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetPacedFps(JNIEnv*, jobject, jlong 
 }
 
 JNIEXPORT void JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetFrameLoad(JNIEnv*, jobject, jlong handle, jint frames, jfloat p95Ms) {
+    geode_viz_set_frame_load(vizOf(handle), frames, p95Ms);
+}
+
+JNIEXPORT void JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetOffscreen(JNIEnv*, jobject, jlong handle, jboolean on) {
     geode_viz_set_offscreen(vizOf(handle), on == JNI_TRUE);
 }

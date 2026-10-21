@@ -349,6 +349,14 @@ class FramePacer(
         private val runningStack = mutableListOf<FramePacer>()
 
         /**
+         * The frame-time window of the most recently started pacer that is still running, the same
+         * pacer whose cap [ThermalGovernor.pacedFps] reflects; [FrameStats.EMPTY] when none runs.
+         * The native renderer scales the Visual's scene and trail buffers with it. Allocates like
+         * [stats], so poll it at thermal-sampling rates.
+         */
+        fun activeStats(): FrameStats = synchronized(runningStack) { runningStack.lastOrNull() }?.stats() ?: FrameStats.EMPTY
+
+        /**
          * The rate the scenes are authored and tuned at. Above it the fragment cost of a
          * full-screen visualizer scales linearly for motion that is already smooth, and the
          * phone reaches thermal throttling sooner — which costs more frames than it bought.

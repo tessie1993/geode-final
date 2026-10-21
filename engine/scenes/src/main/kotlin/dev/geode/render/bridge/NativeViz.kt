@@ -10,6 +10,7 @@ import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
 import dev.geode.render.BlendMode
+import dev.geode.render.FrameStats
 import dev.geode.render.LfoConfig
 import dev.geode.render.LfoEngine
 import dev.geode.render.scene.SceneParams
@@ -175,6 +176,11 @@ class NativeViz(
 
     fun setPacedFps(fps: Float) {
         if (handle != 0L) GeodeNative.vizSetPacedFps(handle, fps)
+    }
+
+    /** The frame pacer's latest window, which the scene and trail buffers scale with. */
+    fun setFrameLoad(stats: FrameStats) {
+        if (handle != 0L) GeodeNative.vizSetFrameLoad(handle, stats.frames, stats.p95Ms)
     }
 
     fun setOffscreen(on: Boolean) {
