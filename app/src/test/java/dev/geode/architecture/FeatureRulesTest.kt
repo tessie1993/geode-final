@@ -9,10 +9,11 @@ import org.junit.Test
  */
 class FeatureRulesTest {
     // Two features laid out exactly as ADR-0005 says, with capture's core and handlers using
-    // playback's interface.
+    // playback's interface, and capture's screens drawn with :design.
     private val cleanBuild =
         listOf(
-            Module(":app", setOf(":feature:capture:handlers", ":feature:capture:ui", ":arch:kernel")),
+            Module(":app", setOf(":feature:capture:handlers", ":feature:capture:ui", ":arch:kernel", ":design")),
+            Module(":design", emptySet()),
             Module(":arch:kernel", setOf(":engine:audio-core")),
             Module(":arch:audio", setOf(":engine:audio-core")),
             Module(":feature:playback:api", setOf(":arch:kernel")),
@@ -23,7 +24,7 @@ class FeatureRulesTest {
                 ":feature:capture:handlers",
                 setOf(":feature:capture:core", ":feature:capture:api", ":arch:audio", ":feature:playback:api"),
             ),
-            Module(":feature:capture:ui", setOf(":feature:capture:api")),
+            Module(":feature:capture:ui", setOf(":feature:capture:api", ":design")),
         )
 
     @Test
@@ -99,6 +100,46 @@ class FeatureRulesTest {
                 ":feature:capture:extras may not depend on :arch:kernel",
             ),
             FeatureRules.dependenciesFollowTheTable(modules),
+        )
+    }
+
+    @Test
+    fun `only screens and the app may use the design module`() {
+        val modules =
+            listOf(
+                Module(":feature:capture:ui", setOf(":design")),
+                Module(":app", setOf(":design")),
+                Module(":feature:capture:api", setOf(":design")),
+                Module(":feature:capture:core", setOf(":design")),
+                Module(":feature:capture:handlers", setOf(":design")),
+                Module(":arch:kernel", setOf(":design")),
+                Module(":engine:scenes", setOf(":design")),
+            )
+
+        assertEquals(
+            listOf(
+                ":feature:capture:api may not depend on :design",
+                ":feature:capture:core may not depend on :design",
+                ":feature:capture:handlers may not depend on :design",
+                ":arch:kernel may not depend on :design",
+                ":engine:scenes may not depend on :design",
+            ),
+            FeatureRules.dependenciesFollowTheTable(modules),
+        )
+    }
+
+    @Test
+    fun `the design module depends on no feature, no arch and nothing of the Visual`() {
+        val design = Module(":design", setOf(":feature:capture:api", ":feature:capture:ui", ":arch:kernel", ":engine:scenes"))
+
+        assertEquals(
+            listOf(
+                ":design may not depend on :feature:capture:api",
+                ":design may not depend on :feature:capture:ui",
+                ":design may not depend on :arch:kernel",
+                ":design may not depend on :engine:scenes",
+            ),
+            FeatureRules.dependenciesFollowTheTable(listOf(design)),
         )
     }
 

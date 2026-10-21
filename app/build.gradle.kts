@@ -210,6 +210,8 @@ dependencies {
     // The feature architecture (ADR-0005). :app only wires: Hilt bindings and the real adapters.
     implementation(project(":arch:kernel"))
     implementation(project(":arch:audio"))
+    // The App UI's design tokens, theme and common components.
+    implementation(project(":design"))
 
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)

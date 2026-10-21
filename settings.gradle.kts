@@ -25,6 +25,9 @@ dependencyResolutionManagement {
 rootProject.name = "geode"
 include(":app")
 
+// The App UI's design tokens, theme and common components (ADR-0005), never anything of the Visual.
+include(":design")
+
 include(
     ":engine:audio-core",
     ":engine:scenes",
