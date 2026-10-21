@@ -1,0 +1,30 @@
+{
+  "comment": "The one schema for what crosses the native bridge (ADR-0005, Native code). tools/bridge_schema/generate.py turns it into the C and C++ types under core/ and the Kotlin types in :engine:audio-core; CI fails when the generated files are stale. Change this file, run the generator, and commit both.",
+  "statuses": [
+    {"name": "OK", "doc": "The call did what was asked."},
+    {"name": "NULL_HANDLE", "doc": "The handle was 0: it was never created, or it was already destroyed. Nothing happened."},
+    {"name": "INVALID_ARGUMENT", "doc": "An argument was missing or out of range. Nothing changed."},
+    {"name": "MALFORMED_SNAPSHOT", "doc": "The snapshot bytes do not follow the schema. Nothing changed."},
+    {"name": "UNSUPPORTED_VERSION", "doc": "The snapshot was written for another schema version. Nothing changed."},
+    {"name": "BUSY", "doc": "Another snapshot was being published at the same moment. Nothing changed; offer it again."},
+    {"name": "OUT_OF_MEMORY", "doc": "The engine could not allocate. The call was abandoned."},
+    {"name": "ENGINE_FAILURE", "doc": "The engine threw inside the call. It was caught at the bridge and the call was abandoned."}
+  ],
+  "snapshot": {
+    "name": "CustomizationSnapshot",
+    "doc": "The Customization as the engine reads it: sent whole, only when it changes (ADR-0004), and picked up by the drawing and audio threads at the start of their next frame.",
+    "magic": "GCS1",
+    "version": 1,
+    "fields": [
+      {"name": "revision", "type": "u32", "doc": "Counts up each time Kotlin sends a changed Customization."},
+      {"name": "reducedMotion", "type": "bool", "reader": "draw", "doc": "The system's reduce-motion setting, which calms every Style."},
+      {"name": "params", "type": "f32", "count": 135, "reader": "draw", "doc": "Every scene parameter, in geode_viz_param_name order; ints and flags as floats."},
+      {"name": "lfo", "type": "f32", "count": 24, "reader": "draw", "doc": "The LFO Modulators: GEODE_LFO_SLOTS slots of GEODE_LFO_CONFIG_FLOATS each."},
+      {"name": "adsr", "type": "f32", "count": 20, "reader": "draw", "doc": "The hit-envelope Modulators: GEODE_ADSR_SLOTS slots of GEODE_ADSR_CONFIG_FLOATS each."},
+      {"name": "soundSensitivity", "type": "f32", "reader": "audio", "doc": "How readily a Sound signal fires: the onset sensitivity."},
+      {"name": "soundRefractoryMs", "type": "f32", "reader": "audio", "doc": "The shortest gap between two onsets, in milliseconds."},
+      {"name": "soundAttackSeconds", "type": "f32", "reader": "audio", "doc": "How fast the level followers rise, in seconds."},
+      {"name": "soundReleaseSeconds", "type": "f32", "reader": "audio", "doc": "How fast the level followers fall, in seconds."}
+    ]
+  }
+}

@@ -55,6 +55,7 @@ import dev.geode.export.ExportRange
 import dev.geode.export.StudioClip
 import dev.geode.geodeContainer
 import dev.geode.playback.BitPerfectOutput
+import dev.geode.playback.EngineFailureNotices
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackErrors
 import dev.geode.playback.PlaybackService
@@ -926,6 +927,10 @@ class PlayerSession internal constructor(
 
     val playbackNotice: StateFlow<String?> = _playbackNotice
 
+    // Failures caught at the native bridge reach the same app-wide banner (ADR-0004).
+    private val engineFailureNotices =
+        EngineFailureNotices(show = { message -> scope.launch { _playbackNotice.value = application.getString(message) } })
+
     private var consecutivePlaybackFailures = 0
 
     fun clearPlaybackNotice() {
@@ -1170,6 +1175,7 @@ class PlayerSession internal constructor(
                 .toList()
 
         captureController.shutdown()
+        engineFailureNotices.close()
         AudioBus.removeConsumer()
         playerListener?.let { player.removeListener(it) }
         playerListener = null

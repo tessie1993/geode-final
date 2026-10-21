@@ -3,7 +3,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/native_libraries.cmake)
 
 # One static library per area, dependencies one way only (docs/native-libraries.md):
 #
-#   util, api_types  <-  render, analysis, audio, library  <-  viz  <-  api  <-  geode_core
+#   util, api_types  <-  bridge, render, analysis, audio, library  <-  viz  <-  api  <-  geode_core
 #
 # Every list below is relative to core/. The pure part of each library comes from pure_sources.cmake.
 
@@ -14,6 +14,11 @@ geode_core_library(geode_util util
     ${GEODE_UTIL_PURE_SOURCES}
 )
 target_link_libraries(geode_util PUBLIC log)
+
+geode_core_library(geode_bridge bridge
+    ${GEODE_BRIDGE_PURE_SOURCES}
+)
+target_link_libraries(geode_bridge PUBLIC geode_api_types)
 
 geode_core_library(geode_render render
     render/ShaderSource.cpp
@@ -102,12 +107,13 @@ geode_core_library(geode_api api
     api/geode_viz_api.cpp
     api/geode_tags_api.cpp
     api/geode_player_api.cpp
+    api/geode_snapshot_api.cpp
 )
 target_link_libraries(geode_api
     PUBLIC geode_api_types
-    PRIVATE geode_analysis geode_audio geode_library geode_viz geode_util)
+    PRIVATE geode_analysis geode_audio geode_bridge geode_library geode_viz geode_util)
 
-foreach(geode_lib geode_util geode_render geode_analysis geode_audio geode_library geode_viz geode_api)
+foreach(geode_lib geode_util geode_bridge geode_render geode_analysis geode_audio geode_library geode_viz geode_api)
     target_compile_options(${geode_lib} PRIVATE ${GEODE_COMPILE_OPTIONS})
 endforeach()
 
@@ -115,5 +121,5 @@ endforeach()
 # the same link line the single geode_core static library gave it.
 add_library(geode_core INTERFACE)
 target_link_libraries(geode_core INTERFACE
-    geode_api geode_viz geode_render geode_analysis geode_audio geode_library geode_util
+    geode_api geode_viz geode_render geode_analysis geode_audio geode_library geode_bridge geode_util
     kissfft::kissfft projectM tag oboe mediandk GLESv3 EGL log android)

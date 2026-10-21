@@ -226,6 +226,9 @@ jobs:
         run: |
           python3 tools/ci/check_native_includes.py --self-test
           python3 tools/ci/check_native_includes.py
+      # The snapshot schema generates the C, C++ and Kotlin bridge types; they must match what is committed.
+      - name: Bridge schema is current
+        run: python3 tools/bridge_schema/generate.py --check
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
       - name: Configure
@@ -244,6 +247,30 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q libgles-dev libegl-dev
           tools/hostlink/hostlink.sh
+
+  native-concurrency:
+    name: C++ concurrency tests (host, TSan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out kissfft
+        run: git submodule update --init --depth 1 third_party/kissfft
+      # ThreadSanitizer's shadow memory needs a narrower address-space randomisation than the runner's default.
+      - name: Make room for ThreadSanitizer
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake -S core/host -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DGEODE_SANITIZE_THREAD=ON
+      - name: Build
+        run: cmake --build build-tsan --parallel
+      # The lock-free Customization hand-off (core/bridge): its unit tests and its concurrent stress tests.
+      - name: Test the lock-free hand-off
+        env:
+          TSAN_OPTIONS: halt_on_error=1 second_deadlock_stack=1
+        run: ctest --test-dir build-tsan --output-on-failure --no-tests=error -R 'TripleBuffer|SnapshotExchange'
 
   visual-frames:
     name: Visual golden frames (shaders)

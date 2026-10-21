@@ -152,6 +152,10 @@
     <!-- Playback notices: a transient error strip under the top bar. -->
     <string name="notice_dismiss">Dismiss</string>
     <string name="notice_dismiss_description">Dismiss playback message</string>
+    <!-- Engine failures caught at the native bridge (ADR-0005); the app keeps running. -->
+    <string name="engine_failure_audio">The audio engine hit a problem and is restarting.</string>
+    <string name="engine_failure_visual">The visual engine hit a problem. It keeps running.</string>
+    <string name="engine_failure_other">The engine hit a problem. Geode keeps running.</string>
 
     <plurals name="track_count">
         <item quantity="one">%1$d track</item>

@@ -1,6 +1,8 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+
+#include "geode/api/geode_status.h"
 #ifdef __ANDROID__
 #include <android/asset_manager.h>
 #else
@@ -18,6 +20,7 @@ typedef struct geode_viz      geode_viz;
 typedef struct geode_dsp      geode_dsp;
 typedef struct geode_player   geode_player;
 typedef struct geode_tags     geode_tags;
+typedef struct geode_snapshots geode_snapshots;
 
 #define GEODE_BAND_COUNT 64
 #define GEODE_WAVEFORM_POINTS 128
@@ -183,6 +186,21 @@ GEODE_API void        geode_viz_warm_transition(geode_viz*, const char* id);
 GEODE_API void        geode_viz_cut(geode_viz*);
 GEODE_API void        geode_viz_render(geode_viz*, double time_seconds, uint32_t target_fbo);
 GEODE_API void        geode_viz_release_scenes(geode_viz*);
+
+/* Customization snapshots (ADR-0004, ADR-0005). Kotlin publishes the whole Customization, in the wire format
+ * core/bridge/schema/native_bridge.json defines, only when it changes. Each attached reader picks the newest one
+ * up at the start of its next frame without taking a lock: the Visual at the start of geode_viz_render, the
+ * analysis at the start of geode_analysis_pull. A snapshot that fails to decode changes nothing.
+ * Destroy a geode_snapshots only after detaching it (attach NULL) from every reader, or after destroying them. */
+GEODE_API geode_snapshots* geode_snapshots_create(void);
+GEODE_API void             geode_snapshots_destroy(geode_snapshots*);
+/* Any thread. GEODE_STATUS_BUSY when another publish is under way; offer it again. */
+GEODE_API GeodeStatus      geode_snapshots_publish(geode_snapshots*, const uint8_t* bytes, size_t length);
+GEODE_API uint32_t         geode_snapshots_revision(const geode_snapshots*);   /* 0 before the first publish */
+/* NULL detaches. A newly attached exchange is applied on the reader's next frame only once a snapshot is
+ * published after the attach. */
+GEODE_API GeodeStatus      geode_viz_attach_snapshots(geode_viz*, geode_snapshots*);
+GEODE_API GeodeStatus      geode_analysis_attach_snapshots(geode_analysis*, geode_snapshots*);
 
 /* Playback DSP: gain -> 10-band equalizer -> crossfeed -> lookahead limiter on float interleaved PCM.
  * Setters may be called from any thread; geode_dsp_process runs on the audio thread and never allocates,
