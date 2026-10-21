@@ -38,6 +38,13 @@ include(
     ":arch:audio",
 )
 
+include(
+    ":feature:capture:api",
+    ":feature:capture:core",
+    ":feature:capture:handlers",
+    ":feature:capture:ui",
+)
+
 // Settings (#38): today's settings on one store, in DataStore (ADR-0004).
 include(
     ":feature:settings:api",
