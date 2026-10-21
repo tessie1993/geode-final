@@ -1,9 +1,7 @@
 <?xml version='1.0' encoding='utf-8' standalone='yes' ?>
 <map>
-    <string name="app_theme">CLEAR_QUARTZ</string>
     <float name="gui_accent_intensity" value="1.25" />
     <float name="gui_background_dim" value="0.3" />
-    <boolean name="gui_follow_system_dark" value="true" />
     <boolean name="gui_white_font" value="true" />
     <float name="gui_text_scale" value="1.15" />
     <float name="gui_opacity" value="0.5" />
@@ -11,16 +9,13 @@
     <string name="gui_corner">PILL</string>
     <boolean name="gui_compact_player" value="true" />
     <boolean name="gui_clear_visuals_menu" value="true" />
-    <boolean name="boot_anim" value="false" />
     <float name="beat_sigma" value="5.0" />
     <float name="beat_min_interval_ms" value="450.0" />
     <int name="morph_beats" value="6" />
-    <boolean name="gui_key_color" value="true" />
     <boolean name="gui_mic_reactive" value="true" />
     <boolean name="gui_touch_smear" value="true" />
     <float name="gui_touch_smear_strength" value="1.5" />
     <boolean name="gui_touch_transform" value="false" />
-    <boolean name="gui_second_screen" value="false" />
     <string name="gui_safety_choice">REDUCED_MOTION</string>
     <string name="gui_intent">LISTEN</string>
     <string name="export_quality">UHD4K</string>

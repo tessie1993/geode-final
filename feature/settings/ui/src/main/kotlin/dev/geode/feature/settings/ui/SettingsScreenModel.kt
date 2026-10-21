@@ -6,7 +6,6 @@ import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.feature.settings.api.ThemeId
 
 /** The Settings tabs, in the order they are shown. */
 enum class SettingsSection {
@@ -18,13 +17,6 @@ enum class SettingsSection {
     HELP,
     ABOUT,
 }
-
-/** A theme the person can pick, with its display name. The catalog of themes lives with the theme. */
-@Immutable
-data class ThemeChoice(
-    val id: ThemeId,
-    val name: String,
-)
 
 /** A text colour the person can pick; a null [color] is the theme's own. */
 @Immutable
@@ -41,7 +33,6 @@ data class FontColorChoice(
 data class SettingsScreenModel(
     val section: SettingsSection,
     val values: SettingsValues?,
-    val themes: List<ThemeChoice>,
     val fontColors: List<FontColorChoice>,
     val appVersion: String,
 ) {
@@ -50,14 +41,12 @@ data class SettingsScreenModel(
         fun of(
             state: SettingsState,
             section: SettingsSection,
-            themes: List<ThemeChoice>,
             fontColors: List<FontColorChoice>,
             appVersion: String,
         ): SettingsScreenModel =
             SettingsScreenModel(
                 section = section,
                 values = (state as? SettingsState.Ready)?.values,
-                themes = themes,
                 fontColors = fontColors,
                 appVersion = appVersion,
             )

@@ -10,20 +10,12 @@ import dev.geode.engine.types.Millis
 sealed interface SettingsCommand
 
 sealed interface LookCommand : SettingsCommand {
-    data class SetTheme(
-        val theme: ThemeId,
-    ) : LookCommand
-
     data class SetAccentIntensity(
         val intensity: Float,
     ) : LookCommand
 
     data class SetBackgroundDim(
         val dim: Float,
-    ) : LookCommand
-
-    data class SetFollowSystemDark(
-        val on: Boolean,
     ) : LookCommand
 
     /** Null goes back to the theme's own text colour. */
@@ -52,10 +44,6 @@ sealed interface LookCommand : SettingsCommand {
     ) : LookCommand
 
     data class SetClearVisualsMenu(
-        val on: Boolean,
-    ) : LookCommand
-
-    data class SetBootAnimation(
         val on: Boolean,
     ) : LookCommand
 }
@@ -121,10 +109,6 @@ sealed interface PlaybackCommand : SettingsCommand {
         val on: Boolean,
     ) : PlaybackCommand
 
-    data class SetBitPerfect(
-        val on: Boolean,
-    ) : PlaybackCommand
-
     data class SetCrossfade(
         val crossfade: Millis,
     ) : PlaybackCommand
@@ -176,10 +160,6 @@ sealed interface AnalysisCommand : SettingsCommand {
         val length: Seconds,
     ) : AnalysisCommand
 
-    data class SetKeyColour(
-        val on: Boolean,
-    ) : AnalysisCommand
-
     data class SetReactToMicrophone(
         val on: Boolean,
     ) : AnalysisCommand
@@ -195,10 +175,6 @@ sealed interface BehaviorCommand : SettingsCommand {
     ) : BehaviorCommand
 
     data class SetTouchTransform(
-        val on: Boolean,
-    ) : BehaviorCommand
-
-    data class SetSecondScreen(
         val on: Boolean,
     ) : BehaviorCommand
 

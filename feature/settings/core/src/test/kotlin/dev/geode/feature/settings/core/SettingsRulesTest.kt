@@ -36,7 +36,6 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.feature.settings.api.ThemeId
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -56,14 +55,12 @@ class SettingsRulesTest {
 
     private val lookRows: List<Row> =
         listOf(
-            Row(LookCommand.SetTheme(ThemeId("onyx")), defaults.copy(look = look.copy(theme = ThemeId("onyx")))),
             Row(LookCommand.SetAccentIntensity(1.2f), defaults.copy(look = look.copy(accentIntensity = 1.2f))),
             Row(LookCommand.SetAccentIntensity(0.1f), defaults.copy(look = look.copy(accentIntensity = 0.5f))),
             Row(LookCommand.SetAccentIntensity(9f), defaults.copy(look = look.copy(accentIntensity = 1.5f))),
             Row(LookCommand.SetBackgroundDim(0.3f), defaults.copy(look = look.copy(backgroundDim = 0.3f))),
             Row(LookCommand.SetBackgroundDim(-1f), defaults),
             Row(LookCommand.SetBackgroundDim(0.9f), defaults.copy(look = look.copy(backgroundDim = 0.6f))),
-            Row(LookCommand.SetFollowSystemDark(true), defaults.copy(look = look.copy(followSystemDark = true))),
             Row(LookCommand.SetFontColor(night), defaults.copy(look = look.copy(fontColor = night))),
             Row(LookCommand.SetFontColor(null), defaults),
             Row(LookCommand.SetTextScale(1.1f), defaults.copy(look = look.copy(textScale = 1.1f))),
@@ -76,7 +73,6 @@ class SettingsRulesTest {
             Row(LookCommand.SetCornerStyle(CornerStyle.PILL), defaults.copy(look = look.copy(cornerStyle = CornerStyle.PILL))),
             Row(LookCommand.SetCompactPlayer(true), defaults.copy(look = look.copy(compactPlayer = true))),
             Row(LookCommand.SetClearVisualsMenu(true), defaults.copy(look = look.copy(clearVisualsMenu = true))),
-            Row(LookCommand.SetBootAnimation(false), defaults.copy(look = look.copy(bootAnimation = false))),
         )
 
     private val playbackRows: List<Row> =
@@ -117,7 +113,6 @@ class SettingsRulesTest {
             Row(PlaybackCommand.SetReplayGainClipGuard(false), defaults.copy(playback = playback.copy(replayGainClipGuard = false))),
             Row(PlaybackCommand.SetNativeEngine(true), defaults.copy(playback = playback.copy(nativeEngine = true))),
             Row(PlaybackCommand.SetGapless(false), defaults.copy(playback = playback.copy(gapless = false))),
-            Row(PlaybackCommand.SetBitPerfect(true), defaults.copy(playback = playback.copy(bitPerfect = true))),
             Row(PlaybackCommand.SetCrossfade(Millis(4_000)), defaults.copy(playback = playback.copy(crossfade = Millis(4_000)))),
             Row(PlaybackCommand.SetCrossfade(Millis(-10)), defaults),
             Row(PlaybackCommand.SetCrossfade(Millis(99_000)), defaults.copy(playback = playback.copy(crossfade = Millis(12_000)))),
@@ -163,7 +158,6 @@ class SettingsRulesTest {
             Row(AnalysisCommand.SetPresetMorph(Seconds(4f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(4f)))),
             Row(AnalysisCommand.SetPresetMorph(Seconds(-1f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(0f)))),
             Row(AnalysisCommand.SetPresetMorph(Seconds(30f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(8f)))),
-            Row(AnalysisCommand.SetKeyColour(true), defaults.copy(analysis = analysis.copy(keyColour = true))),
             Row(AnalysisCommand.SetReactToMicrophone(true), defaults.copy(analysis = analysis.copy(reactToMicrophone = true))),
         )
 
@@ -174,7 +168,6 @@ class SettingsRulesTest {
             Row(BehaviorCommand.SetTouchSmearStrength(0f), defaults.copy(behavior = behavior.copy(touchSmearStrength = 0.2f))),
             Row(BehaviorCommand.SetTouchSmearStrength(9f), defaults.copy(behavior = behavior.copy(touchSmearStrength = 2f))),
             Row(BehaviorCommand.SetTouchTransform(false), defaults.copy(behavior = behavior.copy(touchTransform = false))),
-            Row(BehaviorCommand.SetSecondScreen(false), defaults.copy(behavior = behavior.copy(secondScreen = false))),
             Row(BehaviorCommand.SetReducedMotion(true), defaults.copy(behavior = behavior.copy(reducedMotion = true))),
         )
 

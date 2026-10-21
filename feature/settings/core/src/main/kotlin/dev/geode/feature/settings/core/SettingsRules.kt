@@ -65,10 +65,8 @@ object SettingsRules {
         command: LookCommand,
     ): LookSettings =
         when (command) {
-            is LookCommand.SetTheme -> look.copy(theme = command.theme)
             is LookCommand.SetAccentIntensity -> look.copy(accentIntensity = command.intensity)
             is LookCommand.SetBackgroundDim -> look.copy(backgroundDim = command.dim)
-            is LookCommand.SetFollowSystemDark -> look.copy(followSystemDark = command.on)
             is LookCommand.SetFontColor -> look.copy(fontColor = command.color)
             is LookCommand.SetTextScale -> look.copy(textScale = command.scale)
             is LookCommand.SetBarOpacity -> look.copy(barOpacity = command.opacity)
@@ -76,7 +74,6 @@ object SettingsRules {
             is LookCommand.SetCornerStyle -> look.copy(cornerStyle = command.style)
             is LookCommand.SetCompactPlayer -> look.copy(compactPlayer = command.on)
             is LookCommand.SetClearVisualsMenu -> look.copy(clearVisualsMenu = command.on)
-            is LookCommand.SetBootAnimation -> look.copy(bootAnimation = command.on)
         }
 
     private fun playback(
@@ -99,7 +96,6 @@ object SettingsRules {
             is PlaybackCommand.SetReplayGainClipGuard -> playback.copy(replayGainClipGuard = command.on)
             is PlaybackCommand.SetNativeEngine -> playback.copy(nativeEngine = command.on)
             is PlaybackCommand.SetGapless -> playback.copy(gapless = command.on)
-            is PlaybackCommand.SetBitPerfect -> playback.copy(bitPerfect = command.on)
             is PlaybackCommand.SetCrossfade -> playback.copy(crossfade = command.crossfade)
             is PlaybackCommand.SetCrossfadeCurve -> playback.copy(crossfadeCurve = command.curve)
         }
@@ -136,7 +132,6 @@ object SettingsRules {
             is AnalysisCommand.UseBeatTuning ->
                 analysis.copy(beatSensitivity = command.tuning.sensitivity, beatMinIntervalMs = command.tuning.minIntervalMs)
             is AnalysisCommand.SetPresetMorph -> analysis.copy(presetMorph = command.length)
-            is AnalysisCommand.SetKeyColour -> analysis.copy(keyColour = command.on)
             is AnalysisCommand.SetReactToMicrophone -> analysis.copy(reactToMicrophone = command.on)
         }
 
@@ -148,7 +143,6 @@ object SettingsRules {
             is BehaviorCommand.SetTouchSmear -> behavior.copy(touchSmear = command.on)
             is BehaviorCommand.SetTouchSmearStrength -> behavior.copy(touchSmearStrength = command.strength)
             is BehaviorCommand.SetTouchTransform -> behavior.copy(touchTransform = command.on)
-            is BehaviorCommand.SetSecondScreen -> behavior.copy(secondScreen = command.on)
             is BehaviorCommand.SetReducedMotion -> behavior.copy(reducedMotion = command.on)
         }
 

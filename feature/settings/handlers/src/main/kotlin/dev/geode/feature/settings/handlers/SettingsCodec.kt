@@ -22,7 +22,6 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.feature.settings.api.ThemeId
 import dev.geode.feature.settings.core.SettingsRules
 import dev.geode.feature.settings.handlers.SettingsKeys as K
 
@@ -33,9 +32,6 @@ import dev.geode.feature.settings.handlers.SettingsKeys as K
  * what older builds stored.
  */
 internal object SettingsCodec {
-    /** Theme names saved before themes were named by slug. */
-    private val LEGACY_THEMES = mapOf("CLEAR_QUARTZ" to "clear-quartz", "SUGILITE" to "sugilite")
-
     /** The answer to the old safety question that also meant "reduce motion". */
     private const val LEGACY_REDUCED_MOTION = "REDUCED_MOTION"
 
@@ -75,10 +71,8 @@ internal object SettingsCodec {
     private fun Reader.look(): LookSettings {
         val default = LookSettings()
         return LookSettings(
-            theme = string(K.THEME)?.let { ThemeId(LEGACY_THEMES[it] ?: it) } ?: default.theme,
             accentIntensity = float(K.ACCENT_INTENSITY, default.accentIntensity),
             backgroundDim = float(K.BACKGROUND_DIM, default.backgroundDim),
-            followSystemDark = boolean(K.FOLLOW_SYSTEM_DARK, default.followSystemDark),
             fontColor = int(K.FONT_COLOR)?.let(::Argb) ?: WHITE.takeIf { boolean(K.LEGACY_WHITE_FONT, false) },
             textScale = float(K.TEXT_SCALE, default.textScale),
             barOpacity = float(K.BAR_OPACITY, default.barOpacity),
@@ -86,7 +80,6 @@ internal object SettingsCodec {
             cornerStyle = enum(K.CORNER_STYLE, default.cornerStyle),
             compactPlayer = boolean(K.COMPACT_PLAYER, default.compactPlayer),
             clearVisualsMenu = boolean(K.CLEAR_VISUALS_MENU, default.clearVisualsMenu),
-            bootAnimation = boolean(K.BOOT_ANIMATION, default.bootAnimation),
         )
     }
 
@@ -108,7 +101,6 @@ internal object SettingsCodec {
             replayGainClipGuard = boolean(K.REPLAY_GAIN_CLIP_GUARD, default.replayGainClipGuard),
             nativeEngine = boolean(K.NATIVE_ENGINE, default.nativeEngine),
             gapless = boolean(K.GAPLESS, default.gapless),
-            bitPerfect = boolean(K.BIT_PERFECT, default.bitPerfect),
             crossfade = Millis((int(K.CROSSFADE) ?: default.crossfade.value.toInt()).toLong()),
             crossfadeCurve = ordinal(K.CROSSFADE_CURVE, CrossfadeCurve.entries, default.crossfadeCurve),
         )
@@ -134,7 +126,6 @@ internal object SettingsCodec {
             beatSensitivity = float(K.BEAT_SENSITIVITY, default.beatSensitivity),
             beatMinIntervalMs = float(K.BEAT_MIN_INTERVAL, default.beatMinIntervalMs),
             presetMorph = Seconds(float(K.PRESET_MORPH, legacyMorph)),
-            keyColour = boolean(K.KEY_COLOUR, default.keyColour),
             reactToMicrophone = boolean(K.REACT_TO_MICROPHONE, default.reactToMicrophone),
         )
     }
@@ -145,7 +136,6 @@ internal object SettingsCodec {
             touchSmear = boolean(K.TOUCH_SMEAR, default.touchSmear),
             touchSmearStrength = float(K.TOUCH_SMEAR_STRENGTH, default.touchSmearStrength),
             touchTransform = boolean(K.TOUCH_TRANSFORM, default.touchTransform),
-            secondScreen = boolean(K.SECOND_SCREEN, default.secondScreen),
             reducedMotion = boolean(K.REDUCED_MOTION, false) || string(K.LEGACY_SAFETY_CHOICE) == LEGACY_REDUCED_MOTION,
         )
     }
@@ -179,10 +169,8 @@ internal object SettingsCodec {
 
     private fun look(look: LookSettings): Map<String, Any?> =
         mapOf(
-            K.THEME to look.theme.slug,
             K.ACCENT_INTENSITY to look.accentIntensity,
             K.BACKGROUND_DIM to look.backgroundDim,
-            K.FOLLOW_SYSTEM_DARK to look.followSystemDark,
             K.FONT_COLOR to look.fontColor?.value,
             K.TEXT_SCALE to look.textScale,
             K.BAR_OPACITY to look.barOpacity,
@@ -190,7 +178,6 @@ internal object SettingsCodec {
             K.CORNER_STYLE to look.cornerStyle.name,
             K.COMPACT_PLAYER to look.compactPlayer,
             K.CLEAR_VISUALS_MENU to look.clearVisualsMenu,
-            K.BOOT_ANIMATION to look.bootAnimation,
         )
 
     private fun playback(playback: PlaybackSettings): Map<String, Any?> =
@@ -210,7 +197,6 @@ internal object SettingsCodec {
             K.REPLAY_GAIN_CLIP_GUARD to playback.replayGainClipGuard,
             K.NATIVE_ENGINE to playback.nativeEngine,
             K.GAPLESS to playback.gapless,
-            K.BIT_PERFECT to playback.bitPerfect,
             K.CROSSFADE to playback.crossfade.value.toInt(),
             K.CROSSFADE_CURVE to playback.crossfadeCurve.ordinal,
         )
@@ -230,12 +216,10 @@ internal object SettingsCodec {
             K.BEAT_SENSITIVITY to analysis.beatSensitivity,
             K.BEAT_MIN_INTERVAL to analysis.beatMinIntervalMs,
             K.PRESET_MORPH to analysis.presetMorph.value,
-            K.KEY_COLOUR to analysis.keyColour,
             K.REACT_TO_MICROPHONE to analysis.reactToMicrophone,
             K.TOUCH_SMEAR to behavior.touchSmear,
             K.TOUCH_SMEAR_STRENGTH to behavior.touchSmearStrength,
             K.TOUCH_TRANSFORM to behavior.touchTransform,
-            K.SECOND_SCREEN to behavior.secondScreen,
             K.REDUCED_MOTION to behavior.reducedMotion,
             K.EXPORT_QUALITY to export.quality.name,
             K.EXPORT_FPS to export.frameRate.fps,

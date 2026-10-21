@@ -27,7 +27,6 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.feature.settings.api.ThemeId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -41,10 +40,8 @@ class SettingsCodecTest {
     /** Every setting away from its default, as today's build stores it across its four files. */
     private val today: Map<String, Any?> =
         mapOf(
-            "app_theme" to "onyx",
             "gui_accent_intensity" to 1.25f,
             "gui_background_dim" to 0.3f,
-            "gui_follow_system_dark" to true,
             "gui_font_color" to 0xFFD6B15A.toInt(),
             "gui_text_scale" to 1.15f,
             "gui_opacity" to 0.5f,
@@ -52,7 +49,6 @@ class SettingsCodecTest {
             "gui_corner" to "PILL",
             "gui_compact_player" to true,
             "gui_clear_visuals_menu" to true,
-            "boot_anim" to false,
             "speed" to 1.25f,
             "pitch_semitones" to -2f,
             "skip_silence" to true,
@@ -68,7 +64,6 @@ class SettingsCodecTest {
             "replaygain_clip_guard" to false,
             "native_engine" to true,
             "gapless" to false,
-            "bit_perfect" to true,
             "crossfade_ms" to 4_000,
             "crossfade_curve" to 2,
             "enabled" to true,
@@ -79,12 +74,10 @@ class SettingsCodecTest {
             "beat_sigma" to 5f,
             "beat_min_interval_ms" to 450f,
             "gui_preset_morph_seconds" to 3.5f,
-            "gui_key_color" to true,
             "gui_mic_reactive" to true,
             "gui_touch_smear" to true,
             "gui_touch_smear_strength" to 1.5f,
             "gui_touch_transform" to false,
-            "gui_second_screen" to false,
             "gui_reduced_motion" to true,
             "export_quality" to "UHD4K",
             "export_fps" to 30,
@@ -104,10 +97,8 @@ class SettingsCodecTest {
         SettingsValues(
             look =
                 LookSettings(
-                    theme = ThemeId("onyx"),
                     accentIntensity = 1.25f,
                     backgroundDim = 0.3f,
-                    followSystemDark = true,
                     fontColor = Argb(0xFFD6B15A.toInt()),
                     textScale = 1.15f,
                     barOpacity = 0.5f,
@@ -115,7 +106,6 @@ class SettingsCodecTest {
                     cornerStyle = CornerStyle.PILL,
                     compactPlayer = true,
                     clearVisualsMenu = true,
-                    bootAnimation = false,
                 ),
             playback =
                 PlaybackSettings(
@@ -134,7 +124,6 @@ class SettingsCodecTest {
                     replayGainClipGuard = false,
                     nativeEngine = true,
                     gapless = false,
-                    bitPerfect = true,
                     crossfade = Millis(4_000),
                     crossfadeCurve = CrossfadeCurve.SMOOTH,
                 ),
@@ -151,7 +140,6 @@ class SettingsCodecTest {
                     beatSensitivity = 5f,
                     beatMinIntervalMs = 450f,
                     presetMorph = Seconds(3.5f),
-                    keyColour = true,
                     reactToMicrophone = true,
                 ),
             behavior =
@@ -159,7 +147,6 @@ class SettingsCodecTest {
                     touchSmear = true,
                     touchSmearStrength = 1.5f,
                     touchTransform = false,
-                    secondScreen = false,
                     reducedMotion = true,
                 ),
             export =
@@ -204,7 +191,7 @@ class SettingsCodecTest {
     fun `the defaults are written in today's formats too`() {
         val stored = SettingsCodec.encode(SettingsValues())
 
-        assertEquals("lapis-lazuli", stored["app_theme"])
+        assertEquals(1.0f, stored["gui_text_scale"])
         assertEquals("0,0,0,0,0,0,0,0,0,0", stored["band_levels"])
         assertEquals(-1, stored["preset"])
         assertEquals(60, stored["export_fps"])
@@ -220,7 +207,6 @@ class SettingsCodecTest {
     fun `what older builds stored is understood`() {
         val older =
             mapOf(
-                "app_theme" to "CLEAR_QUARTZ",
                 "gui_white_font" to true,
                 "morph_beats" to 6,
                 "gui_safety_choice" to "REDUCED_MOTION",
@@ -229,7 +215,6 @@ class SettingsCodecTest {
 
         val values = SettingsCodec.decode(older)
 
-        assertEquals(ThemeId("clear-quartz"), values.look.theme)
         assertEquals(Argb(0xFFFFFFFF.toInt()), values.look.fontColor)
         assertEquals(Seconds(3f), values.analysis.presetMorph)
         assertTrue(values.behavior.reducedMotion)
@@ -239,9 +224,8 @@ class SettingsCodecTest {
 
     @Test
     fun `the other old answers carry over only what they meant`() {
-        val values = SettingsCodec.decode(mapOf("app_theme" to "SUGILITE", "gui_white_font" to false, "gui_safety_choice" to "CALM"))
+        val values = SettingsCodec.decode(mapOf("gui_white_font" to false, "gui_safety_choice" to "CALM"))
 
-        assertEquals(ThemeId("sugilite"), values.look.theme)
         assertEquals(null, values.look.fontColor)
         assertFalse(values.behavior.reducedMotion)
         assertTrue(values.onboarding.safetyAcknowledged)
@@ -309,6 +293,14 @@ class SettingsCodecTest {
             ids,
         )
         assertEquals(ExportLoudness.YOUTUBE, SettingsCodec.decode(mapOf("export_loudness_target" to "youtube")).export.loudness)
+    }
+
+    @Test
+    fun `settings retired before this feature are not read`() {
+        val retired = listOf("app_theme", "gui_follow_system_dark", "boot_anim", "gui_key_color", "gui_second_screen", "bit_perfect")
+
+        assertTrue(retired.none { key -> SettingsKeys.LEGACY_FILES.values.any { key in it } })
+        assertTrue(retired.none { it in SettingsCodec.encode(SettingsValues()) })
     }
 
     @Test

@@ -4,7 +4,9 @@ package dev.geode.feature.settings.handlers
  * Where each setting is stored. The keys and their formats are today's, unchanged (#38): a key in
  * DataStore has the name and type it had in its SharedPreferences file. The files they come from
  * are listed in [LEGACY_FILES], with only the keys that are settings, so nothing else in those
- * files (bookmarks, the queue's shuffle and repeat, Customization) is touched.
+ * files (bookmarks, the queue's shuffle and repeat, Customization) is touched. Settings retired
+ * before this feature (#9: themes, following the system's dark mode, the start-up animation, key
+ * colours, a second screen, bit-perfect output) are swept by the old code and are not read here.
  */
 internal object SettingsKeys {
     /** The DataStore file every setting now lives in. */
@@ -15,10 +17,8 @@ internal object SettingsKeys {
     const val CURRENT_VERSION = 1
 
     // Look (geode-prefs).
-    const val THEME = "app_theme"
     const val ACCENT_INTENSITY = "gui_accent_intensity"
     const val BACKGROUND_DIM = "gui_background_dim"
-    const val FOLLOW_SYSTEM_DARK = "gui_follow_system_dark"
     const val FONT_COLOR = "gui_font_color"
     const val TEXT_SCALE = "gui_text_scale"
     const val BAR_OPACITY = "gui_opacity"
@@ -26,7 +26,6 @@ internal object SettingsKeys {
     const val CORNER_STYLE = "gui_corner"
     const val COMPACT_PLAYER = "gui_compact_player"
     const val CLEAR_VISUALS_MENU = "gui_clear_visuals_menu"
-    const val BOOT_ANIMATION = "boot_anim"
 
     // Playback (geode-player).
     const val SPEED = "speed"
@@ -44,7 +43,6 @@ internal object SettingsKeys {
     const val REPLAY_GAIN_CLIP_GUARD = "replaygain_clip_guard"
     const val NATIVE_ENGINE = "native_engine"
     const val GAPLESS = "gapless"
-    const val BIT_PERFECT = "bit_perfect"
     const val CROSSFADE = "crossfade_ms"
     const val CROSSFADE_CURVE = "crossfade_curve"
 
@@ -59,14 +57,12 @@ internal object SettingsKeys {
     const val BEAT_SENSITIVITY = "beat_sigma"
     const val BEAT_MIN_INTERVAL = "beat_min_interval_ms"
     const val PRESET_MORPH = "gui_preset_morph_seconds"
-    const val KEY_COLOUR = "gui_key_color"
     const val REACT_TO_MICROPHONE = "gui_mic_reactive"
 
     // Behavior (geode-prefs).
     const val TOUCH_SMEAR = "gui_touch_smear"
     const val TOUCH_SMEAR_STRENGTH = "gui_touch_smear_strength"
     const val TOUCH_TRANSFORM = "gui_touch_transform"
-    const val SECOND_SCREEN = "gui_second_screen"
     const val REDUCED_MOTION = "gui_reduced_motion"
 
     // Export (geode-prefs).
@@ -105,10 +101,8 @@ internal object SettingsKeys {
         mapOf(
             "geode-prefs" to
                 setOf(
-                    THEME,
                     ACCENT_INTENSITY,
                     BACKGROUND_DIM,
-                    FOLLOW_SYSTEM_DARK,
                     FONT_COLOR,
                     TEXT_SCALE,
                     BAR_OPACITY,
@@ -116,16 +110,13 @@ internal object SettingsKeys {
                     CORNER_STYLE,
                     COMPACT_PLAYER,
                     CLEAR_VISUALS_MENU,
-                    BOOT_ANIMATION,
                     BEAT_SENSITIVITY,
                     BEAT_MIN_INTERVAL,
                     PRESET_MORPH,
-                    KEY_COLOUR,
                     REACT_TO_MICROPHONE,
                     TOUCH_SMEAR,
                     TOUCH_SMEAR_STRENGTH,
                     TOUCH_TRANSFORM,
-                    SECOND_SCREEN,
                     REDUCED_MOTION,
                     EXPORT_QUALITY,
                     EXPORT_FPS,
@@ -160,7 +151,6 @@ internal object SettingsKeys {
                     REPLAY_GAIN_CLIP_GUARD,
                     NATIVE_ENGINE,
                     GAPLESS,
-                    BIT_PERFECT,
                     CROSSFADE,
                     CROSSFADE_CURVE,
                 ),

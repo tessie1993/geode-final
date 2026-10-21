@@ -19,6 +19,5 @@
     <int name="crossfade_curve" value="2" />
     <boolean name="gapless" value="false" />
     <boolean name="resume_long_tracks" value="false" />
-    <boolean name="bit_perfect" value="true" />
     <long name="bookmark:content://media/external/audio/media/7" value="1260000" />
 </map>

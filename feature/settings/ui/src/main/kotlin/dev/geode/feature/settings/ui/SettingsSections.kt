@@ -53,15 +53,11 @@ private val NO_SLEEP_TIMER = Minutes(0)
 
 internal fun LazyListScope.lookSection(
     look: LookSettings,
-    themes: List<ThemeChoice>,
     fontColors: List<FontColorChoice>,
     change: (SettingsCommand) -> Unit,
 ) {
     item {
-        SettingsGroup(stringResource(R.string.look_group_theme)) {
-            ChoiceRow(null, themes, themes.firstOrNull { it.id == look.theme }, { it?.name.orEmpty() }) {
-                it?.let { theme -> change(LookCommand.SetTheme(theme.id)) }
-            }
+        SettingsGroup(stringResource(R.string.look_group_colour)) {
             SliderRow(
                 stringResource(R.string.look_accent_intensity, (look.accentIntensity * PERCENT).roundToInt()),
                 look.accentIntensity,
@@ -72,7 +68,6 @@ internal fun LazyListScope.lookSection(
                 look.backgroundDim,
                 LookSettings.BACKGROUND_DIM,
             ) { change(LookCommand.SetBackgroundDim(it)) }
-            SwitchRow(stringResource(R.string.look_follow_system), look.followSystemDark) { change(LookCommand.SetFollowSystemDark(it)) }
         }
     }
     item {
@@ -107,7 +102,6 @@ internal fun LazyListScope.lookSection(
             SwitchRow(stringResource(R.string.look_clear_visuals_menu), look.clearVisualsMenu) {
                 change(LookCommand.SetClearVisualsMenu(it))
             }
-            SwitchRow(stringResource(R.string.look_boot_animation), look.bootAnimation) { change(LookCommand.SetBootAnimation(it)) }
         }
     }
 }
@@ -170,7 +164,6 @@ private fun PlaybackGroup(
     }
     SwitchRow(stringResource(R.string.playback_native_engine), playback.nativeEngine) { change(PlaybackCommand.SetNativeEngine(it)) }
     SwitchRow(stringResource(R.string.playback_gapless), playback.gapless) { change(PlaybackCommand.SetGapless(it)) }
-    SwitchRow(stringResource(R.string.playback_bit_perfect), playback.bitPerfect) { change(PlaybackCommand.SetBitPerfect(it)) }
     SliderRow(
         stringResource(R.string.playback_crossfade, playback.crossfade.value / MILLIS_PER_SECOND),
         playback.crossfade.value.toFloat(),
@@ -234,7 +227,6 @@ private fun AnalysisGroup(
         analysis.presetMorph.value,
         AnalysisSettings.PRESET_MORPH.start.value..AnalysisSettings.PRESET_MORPH.endInclusive.value,
     ) { change(AnalysisCommand.SetPresetMorph(Seconds(it))) }
-    SwitchRow(stringResource(R.string.audio_key_colour), analysis.keyColour) { change(AnalysisCommand.SetKeyColour(it)) }
     SwitchRow(stringResource(R.string.audio_react_mic), analysis.reactToMicrophone) { change(AnalysisCommand.SetReactToMicrophone(it)) }
 }
 
@@ -320,11 +312,6 @@ internal fun LazyListScope.behaviorSection(
             SwitchRow(stringResource(R.string.behavior_touch_transform), behavior.touchTransform) {
                 change(BehaviorCommand.SetTouchTransform(it))
             }
-        }
-    }
-    item {
-        SettingsGroup(stringResource(R.string.behavior_group_display)) {
-            SwitchRow(stringResource(R.string.behavior_display_use), behavior.secondScreen) { change(BehaviorCommand.SetSecondScreen(it)) }
         }
     }
     item {

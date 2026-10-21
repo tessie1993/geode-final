@@ -17,16 +17,6 @@ data class SettingsValues(
     val onboarding: OnboardingSettings = OnboardingSettings(),
 )
 
-/** A theme of the App UI, named by its slug, such as `lapis-lazuli`. The catalog lives with the theme. */
-@JvmInline
-value class ThemeId(
-    val slug: String,
-) {
-    companion object {
-        val DEFAULT = ThemeId("lapis-lazuli")
-    }
-}
-
 /** A colour as 0xAARRGGBB. */
 @JvmInline
 value class Argb(
@@ -90,12 +80,10 @@ enum class CornerStyle {
     PILL,
 }
 
-/** The Look tab: theme, text and layout of the App UI. */
+/** The Look tab: accent, text and layout of the App UI. */
 data class LookSettings(
-    val theme: ThemeId = ThemeId.DEFAULT,
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
     val backgroundDim: Float = BACKGROUND_DIM_DEFAULT,
-    val followSystemDark: Boolean = false,
     /** The text colour chosen over the theme's own, or null for the theme's. */
     val fontColor: Argb? = null,
     val textScale: Float = TEXT_SCALE_DEFAULT,
@@ -104,7 +92,6 @@ data class LookSettings(
     val cornerStyle: CornerStyle = CornerStyle.ROUNDED,
     val compactPlayer: Boolean = false,
     val clearVisualsMenu: Boolean = false,
-    val bootAnimation: Boolean = true,
 ) {
     companion object {
         const val ACCENT_INTENSITY_DEFAULT = 1f
@@ -148,7 +135,6 @@ data class PlaybackSettings(
     val replayGainClipGuard: Boolean = true,
     val nativeEngine: Boolean = false,
     val gapless: Boolean = true,
-    val bitPerfect: Boolean = false,
     val crossfade: Millis = Millis.ZERO,
     val crossfadeCurve: CrossfadeCurve = CrossfadeCurve.EQUAL_POWER,
 ) {
@@ -212,7 +198,6 @@ data class AnalysisSettings(
     val beatMinIntervalMs: Float = BeatTuning.DEFAULT.minIntervalMs,
     /** How long a preset load glides in. */
     val presetMorph: Seconds = PRESET_MORPH_DEFAULT,
-    val keyColour: Boolean = false,
     /** Whether the Visual reacts to the microphone when the app starts. Capture reads it. */
     val reactToMicrophone: Boolean = false,
 ) {
@@ -224,12 +209,11 @@ data class AnalysisSettings(
     }
 }
 
-/** The Behavior tab: touch, a connected display and motion. */
+/** The Behavior tab: touch and motion. */
 data class BehaviorSettings(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = TOUCH_SMEAR_STRENGTH_DEFAULT,
     val touchTransform: Boolean = true,
-    val secondScreen: Boolean = true,
     val reducedMotion: Boolean = false,
 ) {
     companion object {

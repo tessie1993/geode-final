@@ -9,7 +9,6 @@ import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.FolderSettings
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.feature.settings.api.ThemeId
 
 // Previews of every tab, which the screenshot tests render (ADR-0003). The sample values are made
 // up for the previews; the real ones come from Settings.
@@ -17,13 +16,6 @@ import dev.geode.feature.settings.api.ThemeId
 private const val PREVIEW_VERSION = "1.8.0"
 private const val PREVIEW_WIDTH_DP = 411
 private const val PREVIEW_HEIGHT_DP = 891
-
-internal val previewThemes =
-    listOf(
-        ThemeChoice(ThemeId("lapis-lazuli"), "Lapis Lazuli"),
-        ThemeChoice(ThemeId("amethyst"), "Amethyst"),
-        ThemeChoice(ThemeId("onyx"), "Onyx"),
-    )
 
 internal val previewFontColors =
     listOf(
@@ -45,7 +37,7 @@ internal val previewValues =
 internal fun previewModel(
     section: SettingsSection,
     values: SettingsValues? = previewValues,
-): SettingsScreenModel = SettingsScreenModel(section, values, previewThemes, previewFontColors, PREVIEW_VERSION)
+): SettingsScreenModel = SettingsScreenModel(section, values, previewFontColors, PREVIEW_VERSION)
 
 @Composable
 internal fun SettingsPreview(

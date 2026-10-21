@@ -13,10 +13,9 @@
     <string name="settings_off">Off</string>
 
     <!-- Look -->
-    <string name="look_group_theme">Theme</string>
+    <string name="look_group_colour">Colour</string>
     <string name="look_accent_intensity">Accent intensity  %1$d%%</string>
     <string name="look_background_dim">Background dim  %1$d%%</string>
-    <string name="look_follow_system">Follow the system\'s dark mode</string>
     <string name="look_group_text">Text</string>
     <string name="look_font_color">Text colour</string>
     <string name="look_font_color_theme">Theme</string>
@@ -32,7 +31,6 @@
     <string name="look_corner_pill">Pill</string>
     <string name="look_compact_player">Compact player</string>
     <string name="look_clear_visuals_menu">Clear Visuals menu</string>
-    <string name="look_boot_animation">Start-up animation</string>
 
     <!-- Audio -->
     <string name="audio_group_playback">Playback</string>
@@ -55,7 +53,6 @@
     <string name="playback_replaygain_clip_guard">Prevent clipping</string>
     <string name="playback_native_engine">Native audio engine</string>
     <string name="playback_gapless">Gapless playback</string>
-    <string name="playback_bit_perfect">Bit-perfect output</string>
     <string name="playback_crossfade">Crossfade  %1$.1f s</string>
     <string name="playback_crossfade_curve">Crossfade curve</string>
     <string name="playback_crossfade_linear">Linear</string>
@@ -82,7 +79,6 @@
     <string name="audio_slow_track">Slow track</string>
     <string name="audio_default">Default</string>
     <string name="audio_preset_morph">Preset glide  %1$.1f s</string>
-    <string name="audio_key_colour">Colour from the song\'s key</string>
     <string name="audio_react_mic">React to the microphone</string>
 
     <!-- Export -->
@@ -124,8 +120,6 @@
     <string name="behavior_touch_smear">Smear the Visual with a finger</string>
     <string name="behavior_smear_strength">Smear strength  %1$d%%</string>
     <string name="behavior_touch_transform">Pinch and drag the Visual</string>
-    <string name="behavior_group_display">Connected display</string>
-    <string name="behavior_display_use">Show the Visual on a connected display</string>
     <string name="behavior_group_safety">Motion</string>
     <string name="behavior_flash_guidance">The Visual never flashes: fast changes in brightness are always limited.</string>
     <string name="behavior_slow_motion">Reduce motion</string>

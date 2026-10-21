@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.CornerStyle
@@ -24,7 +25,6 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.feature.settings.api.ThemeId
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
 import kotlinx.coroutines.CoroutineScope
@@ -90,7 +90,8 @@ class LegacyPrefsRobolectricTest {
         assertEquals(null, stored[stringPreferencesKey("lfos")])
         assertEquals(null, stored[longPreferencesKey("bookmark:content://media/external/audio/media/7")])
         assertEquals(null, stored[stringPreferencesKey("gui_intent")])
-        assertEquals("clear-quartz", stored[stringPreferencesKey("app_theme")])
+        assertEquals("R9_16", stored[stringPreferencesKey("export_ratio")])
+        assertEquals(setOf("content://tree/music", "content://tree/more"), stored[stringSetPreferencesKey("roots")])
     }
 
     @Test
@@ -115,10 +116,8 @@ class LegacyPrefsRobolectricTest {
             d.copy(
                 look =
                     d.look.copy(
-                        theme = ThemeId("clear-quartz"),
                         accentIntensity = 1.25f,
                         backgroundDim = 0.3f,
-                        followSystemDark = true,
                         fontColor = Argb(0xFFFFFFFF.toInt()),
                         textScale = 1.15f,
                         barOpacity = 0.5f,
@@ -126,7 +125,6 @@ class LegacyPrefsRobolectricTest {
                         cornerStyle = CornerStyle.PILL,
                         compactPlayer = true,
                         clearVisualsMenu = true,
-                        bootAnimation = false,
                     ),
                 playback =
                     d.playback.copy(
@@ -145,7 +143,6 @@ class LegacyPrefsRobolectricTest {
                         replayGainClipGuard = false,
                         nativeEngine = true,
                         gapless = false,
-                        bitPerfect = true,
                         crossfade = Millis(4_000),
                         crossfadeCurve = CrossfadeCurve.SMOOTH,
                     ),
@@ -161,7 +158,6 @@ class LegacyPrefsRobolectricTest {
                         beatSensitivity = 5f,
                         beatMinIntervalMs = 450f,
                         presetMorph = Seconds(3f),
-                        keyColour = true,
                         reactToMicrophone = true,
                     ),
                 behavior =
@@ -169,7 +165,6 @@ class LegacyPrefsRobolectricTest {
                         touchSmear = true,
                         touchSmearStrength = 1.5f,
                         touchTransform = false,
-                        secondScreen = false,
                         reducedMotion = true,
                     ),
                 export =
