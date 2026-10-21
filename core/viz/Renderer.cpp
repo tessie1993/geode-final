@@ -19,7 +19,7 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
     : assets_(assets),
       cacheDir_(std::move(cacheDir)),
       deviceGl_(cacheDir_),
-      registry_(assets_, &programCache_, &profile_,
+      registry_(assets_, &programCache_,
                 SceneHost{[this](const std::string& m) { fail(m); },
                           [this] { return thermal_.pacedFps(); },
                           [this](const std::string& path) { notePresetLoaded(path); },

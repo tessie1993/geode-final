@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.annotation.WorkerThread
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import org.json.JSONObject
@@ -325,7 +326,12 @@ class PresetStore(
             val o = JSONObject(json)
             return Preset(
                 name = o.getString("name"),
-                sceneId = if (o.has(LEGACY_USER_SHADER_KEY)) SceneIds.DEFAULT else SceneId(o.getString("sceneId")),
+                sceneId =
+                    if (o.has(LEGACY_USER_SHADER_KEY)) {
+                        SceneIds.DEFAULT
+                    } else {
+                        SceneCapabilities.storedOrDefault(SceneId(o.getString("sceneId")))
+                    },
                 attack = o.getDouble("attack").toFloat(),
                 decay = o.getDouble("decay").toFloat(),
                 milkPreset = if (o.has("milkPreset")) o.getString("milkPreset") else null,

@@ -31,6 +31,19 @@ class PresetFormatTest {
     }
 
     @Test
+    fun `a saved preset naming a deleted Silk Style loads the default Style and keeps the rest`() {
+        val saved = """{"name":"Old web","sceneId":"silk_web","attack":0.4,"decay":0.2,"speed":1.5}"""
+
+        val preset = PresetStore.fromJson(saved)
+
+        assertEquals(SceneIds.DEFAULT, preset.sceneId)
+        assertEquals(PresetId("Old web"), preset.id)
+        assertEquals(0.4f, preset.attack, EXACT)
+        assertEquals(0.2f, preset.decay, EXACT)
+        assertEquals(1.5f, preset.params.speed, EXACT)
+    }
+
+    @Test
     fun `a preset saved with a user shader loads on the default Style and keeps its Customization`() {
         val old =
             """{"name":"Mine","sceneId":"julia","attack":0.4,"decay":0.2,"zoom":1.7,""" +

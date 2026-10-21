@@ -18,6 +18,15 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   bindings are gone; no code path compiles a user-supplied shader. A saved
   preset or preset link that still carries a `customShader` loads on the
   default Style, keeping its Customization.
+- **Removed the Silk Style family (#86).** All ten Silk Styles, their scene,
+  their step and present shaders, the compute-layer simulation only they ran
+  (`core/viz/compute`), their catalogue entries on both sides of the bridge,
+  and the Silk tab in the Styles picker are gone. Trails and Trail length
+  now apply to Curl Flow only. The default Style is now Aurora, a calm shader
+  Style standing in until the real default is chosen (`SceneIds.DEFAULT`). A
+  saved preset, the live settings or a Studio clip that names a Style that no
+  longer exists loads the default Style instead, with no error, and keeps
+  everything else it stores.
 - **No-flash rule: one limiter on every frame; Strobe and Flash removed (#89).**
   `core/viz/FlashLimiter` measures the finished frame (whole frame and nine
   quarter-frame regions, relative luminance and saturated red) on a 4x4 GPU

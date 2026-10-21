@@ -22,25 +22,6 @@ struct CymaticsStyle {
     int modeCap = 8;
 };
 
-struct SilkStyle {
-    const char* id;
-    int field;
-    float flow = 1.0f;
-    float fieldScale = 1.0f;
-    float strokes = 1.0f;
-    float elong = 1.0f;
-    float decay = 0.985f;
-    int fold = 0;
-    float swirl = 0.25f;
-    float exposure = 1.35f;
-    float hueOffset = 0.0f;
-    float hueSpan = 1.0f;
-    float bBase = 0.17f;
-    float bAmp = 0.05f;
-    float bPeriod = 37.0f;
-    float slabRate = 0.02f;
-};
-
 struct LifeStyle {
     const char* id;
     int rule;
@@ -126,14 +107,12 @@ struct FluidStyle {
 
 const CymaticsStyle* cymatics(const std::string& id);
 const FluidStyle* fluid(const std::string& id);
-const SilkStyle* silk(const std::string& id);
 const LifeStyle* life(const std::string& id);
 const AcidStyle* acid(const std::string& id);
 const MycoStyle* myco(const std::string& id);
 
 std::vector<std::string> cymaticsIds();
 std::vector<std::string> fluidIds();
-std::vector<std::string> silkIds();
 std::vector<std::string> lifeIds();
 std::vector<std::string> acidIds();
 std::vector<std::string> mycoIds();

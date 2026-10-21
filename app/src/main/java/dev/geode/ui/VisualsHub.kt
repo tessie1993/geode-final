@@ -500,19 +500,18 @@ private fun StylesTab(
             }
         }
         CrystalTabs(
-            titles = listOf("Silk", "Life", "Mycelium", "Acid", "Shaders", "Fluid", "Cymatics", "MilkDrop"),
+            titles = listOf("Life", "Mycelium", "Acid", "Shaders", "Fluid", "Cymatics", "MilkDrop"),
             selected = sub,
             onSelect = { sub = it },
         )
         when (sub) {
-            0 -> SceneList(VisualStyleCatalog.silkIds, viz.sceneId, pickScene)
-            1 -> SceneList(VisualStyleCatalog.lifeIds, viz.sceneId, pickScene)
-            2 -> SceneList(VisualStyleCatalog.mycoIds, viz.sceneId, pickScene)
-            3 -> SceneList(VisualStyleCatalog.acidIds, viz.sceneId, pickScene)
-            4 -> SceneList(SceneCapabilities.SHADER_SCENES.keys.toList(), viz.sceneId, pickScene)
-            5 -> SceneList(VisualStyleCatalog.fluidIds + listOf(SceneIds.CURLFLOW, SceneIds.WATER), viz.sceneId, pickScene)
-            6 -> SceneList(VisualStyleCatalog.cymaticsIds, viz.sceneId, pickScene)
-            7 -> MilkDropTab(viewModel, visualizerView, onOpenTextures)
+            0 -> SceneList(VisualStyleCatalog.lifeIds, viz.sceneId, pickScene)
+            1 -> SceneList(VisualStyleCatalog.mycoIds, viz.sceneId, pickScene)
+            2 -> SceneList(VisualStyleCatalog.acidIds, viz.sceneId, pickScene)
+            3 -> SceneList(SceneCapabilities.SHADER_SCENES.keys.toList(), viz.sceneId, pickScene)
+            4 -> SceneList(VisualStyleCatalog.fluidIds + listOf(SceneIds.CURLFLOW, SceneIds.WATER), viz.sceneId, pickScene)
+            5 -> SceneList(VisualStyleCatalog.cymaticsIds, viz.sceneId, pickScene)
+            6 -> MilkDropTab(viewModel, visualizerView, onOpenTextures)
         }
     }
 }
