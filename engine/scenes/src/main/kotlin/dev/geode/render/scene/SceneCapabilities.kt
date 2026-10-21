@@ -137,6 +137,4 @@ object SceneCapabilities {
     fun hasParticleLayer(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW
 
     fun usesPointSprites(sceneId: SceneId): Boolean = hasParticleLayer(sceneId)
-
-    fun hasShaderLook(sceneId: SceneId): Boolean = sceneId in SHADER_SCENES
 }

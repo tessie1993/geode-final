@@ -39,13 +39,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -136,7 +134,7 @@ fun VisualsHub(
                 when (tab) {
                     0 -> PresetsTreeTab(viewModel, visualizerView)
                     1 -> StylesTab(viewModel, visualizerView, onOpenTextures = { tab = 3 })
-                    2 -> CustomizePanel(viewModel, visualizerView)
+                    2 -> CustomizePanel(viewModel)
                     3 -> TexturesHubTab(viewModel, visualizerView)
                 }
             }
@@ -316,11 +314,7 @@ private fun PresetsTreeTab(
                         if (existing != null) {
                             replacingPreset = existing
                         } else {
-                            visualsViewModel.savePreset(
-                                saveName.trim(),
-                                visualizerView.visualizerRenderer.customShaderFor(viewModel.vizState.value.sceneId),
-                                saveFolder,
-                            )
+                            visualsViewModel.savePreset(saveName.trim(), saveFolder)
                             saveName = ""
                         }
                     }
@@ -402,11 +396,7 @@ private fun PresetsTreeTab(
             },
             confirmButton = {
                 CrystalButton(onClick = {
-                    visualsViewModel.savePreset(
-                        saveName.trim(),
-                        visualizerView.visualizerRenderer.customShaderFor(viewModel.vizState.value.sceneId),
-                        saveFolder,
-                    )
+                    visualsViewModel.savePreset(saveName.trim(), saveFolder)
                     saveName = ""
                     replacingPreset = null
                 }) { Text("Replace") }
@@ -800,18 +790,13 @@ private fun selectMilk(
 }
 
 @Composable
-internal fun CustomizePanel(
-    viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
-) {
+internal fun CustomizePanel(viewModel: PlayerViewModel) {
     val visualsViewModel: VisualsViewModel = geodeViewModel()
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     var sub by rememberSaveable { mutableStateOf(0) }
     var query by rememberSaveable { mutableStateOf("") }
-    val isShader = SceneCapabilities.hasShaderLook(viz.sceneId)
-    val tabs: List<CustomizeTab?> =
-        CustomizeTab.entries.filter { tabAppliesTo(it, viz.sceneId) } + if (isShader) listOf(null) else emptyList()
-    val titles = tabs.map { it?.title ?: "GLSL" }
+    val tabs: List<CustomizeTab> = CustomizeTab.entries.filter { tabAppliesTo(it, viz.sceneId) }
+    val titles = tabs.map { it.title }
     var shownTitle by rememberSaveable { mutableStateOf(titles.getOrNull(sub)) }
     LaunchedEffect(titles) {
         if (titles.getOrNull(sub) != shownTitle) {
@@ -828,7 +813,7 @@ internal fun CustomizePanel(
                 shownTitle = titles[it]
             },
         )
-        CustomizeToolbar(viewModel, visualizerView, viz.params, tabs.getOrNull(sub), query) { query = it }
+        CustomizeToolbar(viz.params, tabs.getOrNull(sub), query) { query = it }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             val locked by visualsViewModel.lockedParams.collectAsStateWithLifecycle()
             androidx.compose.runtime.CompositionLocalProvider(
@@ -836,11 +821,11 @@ internal fun CustomizePanel(
             ) {
                 ParamSurface(sceneId = viz.sceneId, query = query) {
                     if (query.isBlank()) {
-                        CustomizeTabBody(viewModel, visualizerView, tabs.getOrNull(sub))
+                        tabs.getOrNull(sub)?.let { tab -> CustomizeTabBody(viewModel, tab) }
                     } else {
                         // Search reaches EVERY tab, not just the one on screen: "where did the
                         // vignette slider go" is exactly the question search exists to answer.
-                        tabs.filterNotNull().forEach { tab -> CustomizeTabBody(viewModel, visualizerView, tab) }
+                        tabs.forEach { tab -> CustomizeTabBody(viewModel, tab) }
                     }
                 }
             }
@@ -874,8 +859,7 @@ private fun tabAppliesTo(
 @Composable
 private fun CustomizeTabBody(
     viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
-    tab: CustomizeTab?,
+    tab: CustomizeTab,
 ) {
     val visualsViewModel: VisualsViewModel = geodeViewModel()
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
@@ -912,24 +896,13 @@ private fun CustomizeTabBody(
         }
         CustomizeTab.COLOR -> ColorTab(p, onChange)
         CustomizeTab.FX -> FxTab(p, onChange)
-        CustomizeTab.FLUID ->
-            FluidTab(
-                p,
-                onChange,
-                injectionError = if (SceneCapabilities.isFluid(viz.sceneId)) viz.shaderError else null,
-                onApplyInjectionShaders = { force, dye ->
-                    visualizerView.visualizerRenderer.submitFluidInjectionShaders(force, dye)
-                },
-            )
+        CustomizeTab.FLUID -> FluidTab(p, onChange)
         CustomizeTab.CYMATICS -> CymaticsTab(p, onChange)
-        null -> GlslHubTab(viewModel, visualizerView)
     }
 }
 
 @Composable
 private fun CustomizeToolbar(
-    viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
     params: dev.geode.render.scene.SceneParams,
     tab: CustomizeTab?,
     query: String,
@@ -1033,10 +1006,7 @@ private fun CustomizeToolbar(
             },
             confirmButton = {
                 CrystalButton(enabled = presetName.isNotBlank(), onClick = {
-                    visualsViewModel.savePreset(
-                        presetName.trim(),
-                        visualizerView.visualizerRenderer.customShaderFor(viewModel.vizState.value.sceneId),
-                    )
+                    visualsViewModel.savePreset(presetName.trim())
                     presetName = ""
                     savingPreset = false
                 }) { Text("Save") }
@@ -1116,49 +1086,5 @@ private fun TexturesHubTab(
                 TextButton(onClick = { deletingTexture = null }) { Text("Cancel") }
             },
         )
-    }
-}
-
-private const val MAX_SAVED_SHADER_DRAFT_CHARS = 8 * 1024
-
-private val ShaderDraftSaver =
-    Saver<String, String>(
-        save = { draft -> draft.takeIf { it.length <= MAX_SAVED_SHADER_DRAFT_CHARS } },
-        restore = { it },
-    )
-
-@Composable
-private fun GlslHubTab(
-    viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
-) {
-    val viz by viewModel.vizState.collectAsStateWithLifecycle()
-    var source by rememberSaveable(viz.sceneId, stateSaver = ShaderDraftSaver) {
-        mutableStateOf(visualizerView.visualizerRenderer.customShaderFor(viz.sceneId) ?: "")
-    }
-    Column {
-        Text(
-            "Fragment source for this shader scene (view(), pal(), grade() and " +
-                "the audio uniforms are available). When FlowField is enabled " +
-                "the fluid velocity field is bound as `uniform sampler2D uFlow` " +
-                "with `uniform float uFlowStrength` - declare and sample it for " +
-                "fluid-driven distortion.",
-            style = MaterialTheme.typography.labelSmall,
-        )
-        OutlinedTextField(
-            value = source,
-            onValueChange = { source = it },
-            modifier = Modifier.fillMaxWidth().height(360.dp),
-            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-        )
-        viz.shaderError?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CrystalButton(onClick = { viewModel.applyCustomShader(source) }) { Text("Apply shader") }
-            TextButton(onClick = {
-                source = visualizerView.visualizerRenderer.customShaderFor(viz.sceneId) ?: ""
-            }) { Text("Revert") }
-        }
     }
 }

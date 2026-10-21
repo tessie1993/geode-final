@@ -11,6 +11,13 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Removed user GLSL shaders (#87).** The Customize panel's GLSL tab, the
+  Fluid tab's force and dye injection editors, the renderer's custom-shader
+  and fluid-injection paths, their C ABI (`geode_viz_set_custom_shader`,
+  `geode_viz_custom_shader`, `geode_viz_set_fluid_injection`) and JNI
+  bindings are gone; no code path compiles a user-supplied shader. A saved
+  preset or preset link that still carries a `customShader` loads on the
+  default Style, keeping its Customization.
 - **No-flash rule: one limiter on every frame; Strobe and Flash removed (#89).**
   `core/viz/FlashLimiter` measures the finished frame (whole frame and nine
   quarter-frame regions, relative luminance and saturated red) on a 4x4 GPU
