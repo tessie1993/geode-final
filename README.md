@@ -18,9 +18,8 @@ ABIs arm64-v8a and x86_64. The full version history is in
   multi-term search; timed lyrics (`.lrc`), A-B repeat, fades, sleep timer, a
   ten-band equalizer, ReplayGain, playback speed/pitch, skip silence, resume
   position for tracks over twenty minutes; tag editing that can write back
-  into the file. An optional native audio engine adds gapless joins,
-  crossfades and, on Android 14+, a bit-perfect USB output toggle. Android
-  Auto browsing (tracks, albums, artists, playlists, favourites, recently
+  into the file. An optional native audio engine adds gapless joins and
+  crossfades. Android Auto browsing (tracks, albums, artists, playlists, favourites, recently
   played) and a home-screen now-playing widget.
 - **Visual scenes** — particle, simulation and fragment-shader scenes with an
   in-app GLSL editor; the GPU fluid family (nine Fluid looks over one solver,
@@ -39,9 +38,9 @@ ABIs arm64-v8a and x86_64. The full version history is in
   device has no HEVC encoder.
 - **Live wallpaper** — the visualizer as a home-screen wallpaper, with an idle
   drive so it keeps moving without audio.
-- **Other apps' audio** — Android 10+ playback capture feeds the same PCM ring
-  buffer the player's tap and the microphone share, so every scene, the
-  exporter and the wallpaper work unchanged on foreign audio.
+- **Live input** — the microphone, or a USB or line-in source in its place,
+  feeds the same PCM ring buffer as the player's tap, so every scene reacts to
+  the room unchanged.
 
 ## Build
 

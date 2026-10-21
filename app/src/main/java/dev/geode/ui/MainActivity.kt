@@ -40,31 +40,10 @@ class MainActivity : ComponentActivity() {
         intent.data = null
     }
 
-    /**
-     * Mirrors [importSharedPreset]: only consumes the intent's data once it is confirmed
-     * to be a template link, so a preset link that reached here first is left alone for
-     * it to have handled and a link neither of them recognises is left for the platform.
-     */
-    private fun importSharedTemplate(intent: Intent?) {
-        val data = intent?.data?.toString() ?: return
-        if (!visualsViewModel.isTemplateLink(data)) return
-        intent.data = null
-        visualsViewModel.importSharedTemplate(data) { result ->
-            val message =
-                when (result) {
-                    is TemplateLinkImport.Imported -> getString(R.string.template_link_imported, result.name)
-                    is TemplateLinkImport.Replaced -> getString(R.string.template_link_imported, result.name)
-                    is TemplateLinkImport.Unreadable -> getString(R.string.template_link_unreadable)
-                }
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-        }
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         importSharedPreset(intent)
-        importSharedTemplate(intent)
         playFromSearch(intent)
     }
 
@@ -94,7 +73,6 @@ class MainActivity : ComponentActivity() {
         keepSplashUntilUserDataLoaded()
         if (savedInstanceState == null) {
             importSharedPreset(intent)
-            importSharedTemplate(intent)
             playFromSearch(intent)
         }
     }

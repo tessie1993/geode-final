@@ -51,7 +51,7 @@ internal fun CrystalMaterialTheme(
     gui: GuiPrefs,
     content: @Composable () -> Unit,
 ) {
-    val fontColor = pack.resolvedFontColor(gui.fontColorOverride, gui.backgroundDim)
+    val fontColor = gui.fontColorOverride
     val scheme =
         pack.colorScheme(
             accentIntensity = gui.accentIntensity,
