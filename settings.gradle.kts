@@ -65,6 +65,12 @@ include(
     ":feature:settings:ui",
 )
 
+// Customization (#39): the model and its reducer. Its :handlers and :ui come with later tickets.
+include(
+    ":feature:customization:api",
+    ":feature:customization:core",
+)
+
 // Library (#37): browse, search, sort and filter the phone's music, with favourites, song info edits,
 // excluded folders and M3U playlists. Plays everything through Playback's :api.
 include(
