@@ -43,7 +43,7 @@ void TrailPass::apply(const SceneParams& p, float keep, float timeSeconds, float
 
 void TrailPass::drawTrailWarp(const SceneParams& p, float retention, float timeSeconds, float dt, const Framebuffer& sceneTarget,
                               GLuint quadVao, int renderWidth, int renderHeight) {
-    if (!trail_.ensure(renderWidth, renderHeight)) {
+    if (!trail_.resizePreserving(renderWidth, renderHeight) || trail_.width() != renderWidth || trail_.height() != renderHeight) {
         drawFadeQuad(fadeAlpha(retention, dt), quadVao);
         return;
     }

@@ -42,6 +42,9 @@ void LifeScene::init() {
 void LifeScene::resize(int width, int height) {
     width_ = std::max(width, 1);
     height_ = std::max(height, 1);
+    // The field keeps its declared grid: a resize that leaves the grid where it was (a change of
+    // render scale) keeps the colony; only a real change of grid (rotation, fold) reseeds it.
+    if (state_ && !fluid::gridChanges({state_->width(), state_->height()}, fluid::gridFor(kSimRes, width_, height_))) return;
     if (state_) state_->release();
     state_.reset();
     seedRemain_ = kSeedSeconds;
@@ -122,7 +125,7 @@ void LifeScene::draw(float timeSeconds) {
     const float drive = safeAudioDrive(p.audioDrive);
     envTreble_ = slewEnvelope(envTreble_, clampedBand(f.treble), dt, kEnvRisePerSec, kEnvFallPerSec);
     const float hit = live::hit(f);
-    beatPulse_ = std::clamp(std::max(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), beatPulse_ - dt * 3.0f), 0.0f, 1.5f);
+    beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
     kick_ = std::max(kick_ - dt * 5.0f, 0.0f);
     if (hit * p.beatResponse > kBeatThreshold) {
         kick_ = (0.4f + 0.6f * std::clamp(hit, 0.0f, 1.5f)) * drive;

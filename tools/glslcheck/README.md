@@ -16,7 +16,14 @@ node check.mjs --shader kifs --out out/kifs.png
 node check.mjs --all --size 96                 # every fragment style, compile + frame stats
 node check.mjs --fluid-display --out out/fluid # every SHADING/BLOOM/SUNRAYS x LOOK variant
 node check.mjs --shader curl_bloom --time 61   # a different point on the clocks
+node check.mjs --all --resize --size 96        # each style's picture across a scene-target resize
 ```
+
+`--resize` draws one frame into a scene target, resizes the target the way
+`Framebuffer::resizePreserving` does (a linear blit into the new target,
+never a clear) and writes what the resized target holds: the picture the
+renderer's next frame starts from after the load scale moves. It fails when
+that picture comes out darker than half the one before the resize.
 
 ## How it stays honest
 

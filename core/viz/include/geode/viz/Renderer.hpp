@@ -12,12 +12,15 @@
 
 #include "geode/api/geode_api.h"
 #include "geode/viz/Adsr.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
 #include "geode/viz/Lfo.hpp"
+#include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
 #include "geode/viz/Params.hpp"
+#include "geode/viz/RenderScale.hpp"
 #include "geode/render/ProgramBinaryCache.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/viz/SceneRegistry.hpp"
@@ -66,6 +69,9 @@ public:
     void setOverlayRgba(const uint32_t* pixels, int width, int height);
     void setUnderlayRgba(const uint32_t* pixels, int width, int height, int blend, float amount);
     ThermalGovernor& thermal() { return thermal_; }
+    // Any thread: the frame pacer's latest window (frames in it, 95th percentile interval in ms),
+    // which the load scale follows. Sampled by the host about once a second.
+    void setFrameLoad(int frames, float p95Ms);
     // Any thread: returns a copy (see Renderer.cpp) since fail() mutates lastError_ concurrently.
     std::string lastError() const;
     bool knows(const std::string& sceneId) const { return registry_.knows(sceneId); }
@@ -91,8 +97,13 @@ private:
     Scene* builtScene(const std::string& id);
     std::unique_ptr<Scene> buildScene(const std::string& id);
     float beginFrame(double timeSeconds);
-    void applyRenderScale();
-    static float supersampleFactor(int width, int height);
+    // Steps the load scale and resizes the scene targets when the render size it gives has moved.
+    void updateRenderSize(float dt, const Scene* scene);
+    scale::ScaleInputs scaleInputs(const Scene* scene);
+    // Moves every scene target to `size`, keeping the picture (Framebuffer::resizePreserving).
+    void applyRenderSize(scale::RenderSize size);
+    // The render scale the Style's manifest declares; read once per Style.
+    float styleScaleFor(const std::string& sceneId);
     Scene* resolveActiveScene();
     SceneParams resolveParams(float dt);
     void resolveLayerScene();
@@ -100,7 +111,7 @@ private:
     float drawSecondaryTargets(const SceneParams& p, float dt);
     void bindSecondaryTarget();
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
-    void composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo);
+    void composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
     void wireFlow(Scene& target, const SceneParams& p);
@@ -127,8 +138,11 @@ private:
     TrailPass trailPass_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
-    FlashBudget flashBudget_;
+    // The No-flash rule: every finished frame passes through it (CONTEXT.md).
+    NoFlashPass noFlash_;
     ThermalGovernor thermal_;
+    scale::LoadScaleController loadScale_;
+    std::vector<std::pair<std::string, float>> styleScales_;
     LfoEngine lfo_;
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
@@ -146,6 +160,7 @@ private:
     std::string transitionId_ = "fade";
     int64_t transitionDurationMs_ = 1200;
     std::atomic<bool> reducedMotion_{false};
+    scale::FrameLoad frameLoad_;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
     std::vector<float> pcm_;
@@ -187,6 +202,7 @@ private:
     float postRotationAngle_ = 0.0f;
     float postCyclePhase_ = 0.0f;
     float postBeatPulse_ = 0.0f;
+    BeatEnvelope postBeat_;
     Scene* activeScene_ = nullptr;
     Scene* outgoingScene_ = nullptr;
     Scene* layerScene_ = nullptr;
@@ -197,7 +213,6 @@ private:
     int height_ = 1;
     int renderWidth_ = 1;
     int renderHeight_ = 1;
-    ThermalTier appliedTier_ = ThermalTier::Full;
     double lastTimeS_ = -1.0;
     double frameNowS_ = 0.0;
     float timeSeconds_ = 0.0f;
