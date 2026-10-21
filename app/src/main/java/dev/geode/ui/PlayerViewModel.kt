@@ -190,8 +190,6 @@ class PlayerViewModel
 
         fun reportShaderError(error: String?) = session.reportShaderError(error)
 
-        fun applyCustomShader(source: String) = session.applyCustomShader(source)
-
         fun setTransitionStyle(style: TransitionStyle) = session.setTransitionStyle(style)
 
         fun setTransitionId(id: String) = session.setTransitionId(id)

@@ -177,16 +177,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizQueueTouchStroke(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetFluidInjection(JNIEnv* env, jobject, jlong handle, jstring force, jstring dye) {
-    return vizCall(env, "vizSetFluidInjection", handle, [&](geode_viz* v) {
-        Utf8Chars forceSrc(env, force);
-        Utf8Chars dyeSrc(env, dye);
-        geode_viz_set_fluid_injection(v, forceSrc.get(), dyeSrc.get());
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizLoadMilkPreset(JNIEnv* env, jobject, jlong handle, jstring path) {
     return vizCall(env, "vizLoadMilkPreset", handle, [&](geode_viz* v) {
         Utf8Chars file(env, path);
@@ -234,31 +224,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizPushPcm(JNIEnv* env, jobject, jlong 
         geode_viz_push_pcm(v, data.get(), count < data.length() ? count : data.length());
         return GEODE_STATUS_OK;
     });
-}
-
-JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetCustomShader(JNIEnv* env, jobject, jlong handle, jstring sceneId,
-                                                            jstring fragmentSource) {
-    return vizCall(env, "vizSetCustomShader", handle, [&](geode_viz* v) {
-        Utf8Chars id(env, sceneId);
-        Utf8Chars source(env, fragmentSource);
-        geode_viz_set_custom_shader(v, id.get(), source.get());
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jstring JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizCustomShader(JNIEnv* env, jobject, jlong handle, jstring sceneId) {
-    const std::optional<std::string> source =
-        valueCall(env, "vizCustomShader", std::optional<std::string>(), [&]() -> std::optional<std::string> {
-            Utf8Chars id(env, sceneId);
-            const size_t length = geode_viz_custom_shader(vizOf(handle), id.get(), nullptr, 0);
-            if (length == 0) return std::nullopt;
-            std::vector<char> buffer(length + 1, '\0');
-            geode_viz_custom_shader(vizOf(handle), id.get(), buffer.data(), buffer.size());
-            return std::string(buffer.data());
-        });
-    return optionalString(env, source);
 }
 
 JNIEXPORT jint JNICALL

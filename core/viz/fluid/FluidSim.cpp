@@ -49,8 +49,6 @@ void FluidSim::create() {
         programs_[static_cast<size_t>(i)] = UniformCache(program);
     }
     programsBuilt_ = true;
-    std::lock_guard<std::mutex> lock(injectionLock_);
-    injectionDirty_ = !pendingForceSrc_.empty() || !pendingDyeSrc_.empty();
 }
 
 bool FluidSim::resize(int w, int h) {
@@ -132,49 +130,6 @@ void FluidSim::copyInto(const Fbo& src, const Fbo& dst) {
     quad_.unbind();
 }
 
-void FluidSim::setInjectionShaders(const std::string& forceSrc, const std::string& dyeSrc) {
-    std::lock_guard<std::mutex> lock(injectionLock_);
-    pendingForceSrc_ = forceSrc;
-    pendingDyeSrc_ = dyeSrc;
-    injectionDirty_ = true;
-}
-
-void FluidSim::compileInjectionIfNeeded() {
-    std::string force;
-    std::string dyeSrc;
-    {
-        std::lock_guard<std::mutex> lock(injectionLock_);
-        if (!injectionDirty_) return;
-        injectionDirty_ = false;
-        force = pendingForceSrc_;
-        dyeSrc = pendingDyeSrc_;
-    }
-    std::string firstError;
-    customForce_ = compileCustom(force, std::move(customForce_), &firstError);
-    customDye_ = compileCustom(dyeSrc, std::move(customDye_), &firstError);
-    onShaderError(firstError);
-}
-
-std::optional<UniformCache> FluidSim::compileCustom(const std::string& src, std::optional<UniformCache> current, std::string* firstError) {
-    if (src.empty()) {
-        deleteCustom(current);
-        return std::nullopt;
-    }
-    std::string error;
-    const GLuint p = loader_.buildSource(baseVertSrc_, src, &error);
-    if (p == 0) {
-        if (firstError->empty()) *firstError = error;
-        return current;
-    }
-    deleteCustom(current);
-    return UniformCache(p);
-}
-
-void FluidSim::deleteCustom(std::optional<UniformCache>& custom) {
-    if (custom) glDeleteProgram(custom->program());
-    custom.reset();
-}
-
 void FluidSim::queueSplat(const Splat& s) {
     if (available_) pending_.push_back(s);
 }
@@ -190,7 +145,6 @@ void FluidSim::step(float dtRaw) {
     const Fbo& div = *divergence_;
     const Fbo& crl = *curl_;
     const float dt = std::clamp(dtRaw, 0.0f, 1.0f / 30.0f);
-    compileInjectionIfNeeded();
     glDisable(GL_BLEND);
     quad_.bind();
     const float velInvW = 1.0f / static_cast<float>(vel.width());
@@ -208,7 +162,7 @@ void FluidSim::step(float dtRaw) {
     blitDiscarding(vel.write());
     vel.swap();
 
-    runInjection(vel, 0, customForce_, dt);
+    runInjection(vel, 0);
 
     useProgram(kCurl, crl.width(), crl.height());
     bindTex("uVelocity", vel.read().tex(), 0, kCurl);
@@ -252,7 +206,7 @@ void FluidSim::step(float dtRaw) {
 
     if (!velocityOnly_ && dye_) {
         DoubleFbo& dyeB = *dye_;
-        runInjection(dyeB, 1, customDye_, dt);
+        runInjection(dyeB, 1);
         useProgram(kAdvect, dyeB.width(), dyeB.height());
         bindTex("uVelocity", vel.read().tex(), 0, kAdvect);
         glBindSampler(0, linearSampler_);
@@ -272,9 +226,9 @@ void FluidSim::step(float dtRaw) {
     quad_.unbind();
 }
 
-void FluidSim::runInjection(DoubleFbo& target, int mode, std::optional<UniformCache>& custom, float dt) {
+void FluidSim::runInjection(DoubleFbo& target, int mode) {
     for (const Splat& s : pending_) {
-        UniformCache& cache = custom ? *custom : programs_[kSplat];
+        UniformCache& cache = programs_[kSplat];
         glUseProgram(cache.program());
         glUniform2f(cache.loc("uInvRes"), 1.0f / static_cast<float>(target.width()), 1.0f / static_cast<float>(target.height()));
         glUniform1f(cache.loc("uAspect"), aspect_);
@@ -291,16 +245,6 @@ void FluidSim::runInjection(DoubleFbo& target, int mode, std::optional<UniformCa
         }
         glUniform1i(cache.loc("uMode"), mode);
         glUniform1f(cache.loc("uCeiling"), dyeCeiling);
-        if (custom) {
-            glUniform1f(cache.loc("uDt"), dt);
-            glUniform1f(cache.loc("uDx"), cellSize_);
-            glUniform1f(cache.loc("uTime"), timeSeconds);
-            glUniform1f(cache.loc("uBass"), audioBass);
-            glUniform1f(cache.loc("uMid"), audioMid);
-            glUniform1f(cache.loc("uTreble"), audioTreble);
-            glUniform1f(cache.loc("uEnergy"), audioEnergy);
-            glUniform1f(cache.loc("uBeat"), audioBeat);
-        }
         blit(target.write());
         target.swap();
     }
@@ -336,8 +280,6 @@ void FluidSim::release() {
         programsBuilt_ = false;
     }
     programs_.fill(UniformCache(0));
-    deleteCustom(customForce_);
-    deleteCustom(customDye_);
     quad_.release();
     if (linearSampler_ != 0) glDeleteSamplers(1, &linearSampler_);
     linearSampler_ = 0;

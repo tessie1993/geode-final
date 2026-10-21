@@ -149,17 +149,12 @@ GEODE_API void        geode_viz_begin_param_morph(geode_viz*, float seconds);
 GEODE_API void        geode_viz_set_touch(geode_viz*, const float* xy_ndc, int points);   /* 0 points = all lifted */
 /* One finger sample in 0..1 surface space with its motion, for the fluid smear and the water ripples. */
 GEODE_API void        geode_viz_queue_touch_stroke(geode_viz*, float nx, float ny, float ndx, float ndy, float dt, float strength);
-/* GLSL for the fluid style's force and dye injection; "" restores the built-in splat. */
-GEODE_API void        geode_viz_set_fluid_injection(geode_viz*, const char* force_source, const char* dye_source);
 GEODE_API void        geode_viz_load_milk_preset(geode_viz*, const char* path);
 GEODE_API void        geode_viz_reload_milk_preset(geode_viz*);
 GEODE_API void        geode_viz_set_milk_texture_dir(geode_viz*, const char* dir);
 /* The preset MilkDrop last compiled successfully, once; returns the full length, 0 when none is pending. */
 GEODE_API size_t      geode_viz_take_milk_preset_loaded(geode_viz*, char* out, size_t capacity);
 GEODE_API void        geode_viz_push_pcm(geode_viz*, const float* mono, int count);
-GEODE_API void        geode_viz_set_custom_shader(geode_viz*, const char* scene_id, const char* fragment_source);
-/* The user source the scene last compiled; returns its full length, 0 when it draws the built-in style. */
-GEODE_API size_t      geode_viz_custom_shader(geode_viz*, const char* scene_id, char* out, size_t capacity);
 GEODE_API void        geode_viz_set_lfo(geode_viz*, int slot, const float* config, int count);
 GEODE_API void        geode_viz_set_adsr(geode_viz*, int slot, const float* config, int count);
 GEODE_API void        geode_viz_set_thermal(geode_viz*, int platform_status, float headroom); /* status < 0 = unknown */

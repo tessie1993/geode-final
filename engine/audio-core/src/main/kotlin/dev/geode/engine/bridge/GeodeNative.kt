@@ -303,12 +303,6 @@ object GeodeNative {
         strength: Float,
     ): Int
 
-    external fun vizSetFluidInjection(
-        handle: Long,
-        force: String?,
-        dye: String?,
-    ): Int
-
     external fun vizLoadMilkPreset(
         handle: Long,
         path: String,
@@ -328,17 +322,6 @@ object GeodeNative {
         mono: FloatArray,
         count: Int,
     ): Int
-
-    external fun vizSetCustomShader(
-        handle: Long,
-        sceneId: String,
-        fragmentSource: String,
-    ): Int
-
-    external fun vizCustomShader(
-        handle: Long,
-        sceneId: String,
-    ): String?
 
     external fun vizSetLfo(
         handle: Long,
