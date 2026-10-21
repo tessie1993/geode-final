@@ -740,8 +740,6 @@ class PlayerSession internal constructor(
 
     fun reportShaderError(error: String?) = visual.reportShaderError(error)
 
-    fun applyCustomShader(source: String) = visual.applyCustomShader(source)
-
     fun setTransitionStyle(style: TransitionStyle) = visual.setTransitionStyle(style)
 
     fun setTransitionId(id: String) = visual.setTransitionId(id)
@@ -752,9 +750,8 @@ class PlayerSession internal constructor(
 
     fun savePreset(
         name: String,
-        customShader: String?,
         folder: String = "",
-    ) = presetLibrary.savePreset(name, customShader, folder)
+    ) = presetLibrary.savePreset(name, folder)
 
     internal fun milkPresetPathFor(preset: Preset): String? = presetLibrary.milkPresetPathFor(preset)
 

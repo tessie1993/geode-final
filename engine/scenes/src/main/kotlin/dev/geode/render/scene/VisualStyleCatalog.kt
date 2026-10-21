@@ -184,146 +184,6 @@ object VisualStyleCatalog {
             ),
         )
 
-    data class SilkStyle(
-        val id: SceneId,
-        val label: String,
-        val field: Int,
-        val flow: Float = 1f,
-        val fieldScale: Float = 1f,
-        val strokes: Float = 1f,
-        val elong: Float = 1f,
-        val decay: Float = 0.985f,
-        val fold: Int = 0,
-        val swirl: Float = 0.25f,
-        val exposure: Float = 1.35f,
-        val hueOffset: Float = 0f,
-        val hueSpan: Float = 1f,
-        val bBase: Float = 0.17f,
-        val bAmp: Float = 0.05f,
-        val bPeriod: Float = 37f,
-        val slabRate: Float = 0.02f,
-    )
-
-    val silk: List<SilkStyle> =
-        listOf(
-            SilkStyle(SceneId("silk_web"), "Halvorsen Web", 0),
-            SilkStyle(
-                SceneId("silk_bloom"),
-                "Cosine Bloom",
-                1,
-                flow = 0.85f,
-                fieldScale = 0.8f,
-                decay = 0.988f,
-                swirl = 0.15f,
-                hueOffset = 0.55f,
-                bBase = 0.16f,
-                bAmp = 0.05f,
-                bPeriod = 41f,
-            ),
-            SilkStyle(
-                SceneId("silk_weave"),
-                "Triaxial Weave",
-                2,
-                flow = 1.15f,
-                fieldScale = 1.25f,
-                strokes = 1.3f,
-                elong = 0.7f,
-                decay = 0.975f,
-                hueOffset = 0.12f,
-                bBase = 0.16f,
-                bAmp = 0.045f,
-                bPeriod = 47f,
-            ),
-            SilkStyle(
-                SceneId("silk_shell"),
-                "Concentric Shells",
-                3,
-                flow = 0.9f,
-                fieldScale = 0.9f,
-                strokes = 0.8f,
-                elong = 1.4f,
-                decay = 0.987f,
-                swirl = 0.4f,
-                hueOffset = -0.18f,
-                bBase = 0.18f,
-                bAmp = 0.035f,
-                bPeriod = 38f,
-            ),
-            SilkStyle(
-                SceneId("silk_spiral"),
-                "Phase Spiral",
-                4,
-                flow = 1.2f,
-                fieldScale = 1.05f,
-                elong = 1.8f,
-                decay = 0.982f,
-                swirl = 0.5f,
-                hueOffset = 0.3f,
-                bBase = 0.17f,
-                bAmp = 0.045f,
-                bPeriod = 49f,
-            ),
-            SilkStyle(
-                SceneId("silk_fold"),
-                "Recursive Fold",
-                5,
-                fieldScale = 1.15f,
-                strokes = 1.2f,
-                decay = 0.98f,
-                hueOffset = 0.78f,
-                bBase = 0.2f,
-                bAmp = 0.04f,
-                bPeriod = 44f,
-            ),
-            SilkStyle(
-                SceneId("silk_hyper"),
-                "Hyperbolic Bloom",
-                6,
-                flow = 0.8f,
-                fieldScale = 0.75f,
-                elong = 2.2f,
-                decay = 0.99f,
-                hueOffset = 0.48f,
-                bBase = 0.22f,
-                bAmp = 0.05f,
-                bPeriod = 35f,
-            ),
-            SilkStyle(
-                SceneId("silk_resonance"),
-                "Nested Resonance",
-                7,
-                flow = 1.05f,
-                swirl = 0.3f,
-                hueOffset = 0.06f,
-                bBase = 0.19f,
-                bAmp = 0.04f,
-                bPeriod = 43f,
-            ),
-            SilkStyle(
-                SceneId("silk_curl"),
-                "Curl Weave",
-                8,
-                flow = 1.3f,
-                fieldScale = 1.2f,
-                strokes = 1.4f,
-                elong = 0.9f,
-                decay = 0.978f,
-                hueOffset = 0.62f,
-            ),
-            SilkStyle(
-                SceneId("silk_pendulum"),
-                "Pendulum Garden",
-                9,
-                flow = 0.95f,
-                fieldScale = 0.85f,
-                elong = 1.5f,
-                decay = 0.986f,
-                fold = 3,
-                swirl = 0f,
-                hueOffset = 0.9f,
-            ),
-        )
-
     data class LifeStyle(
         val id: SceneId,
         val label: String,
@@ -879,14 +739,12 @@ object VisualStyleCatalog {
 
     val cymaticsIds: List<SceneId> = cymatics.map { it.id }
     val fluidIds: List<SceneId> = fluid.map { it.id }
-    val silkIds: List<SceneId> = silk.map { it.id }
     val lifeIds: List<SceneId> = life.map { it.id }
     val acidIds: List<SceneId> = acid.map { it.id }
     val mycoIds: List<SceneId> = myco.map { it.id }
 
     private val cymaticsById = cymatics.associateBy { it.id }
     private val fluidById = fluid.associateBy { it.id }
-    private val silkById = silk.associateBy { it.id }
     private val lifeById = life.associateBy { it.id }
     private val acidById = acid.associateBy { it.id }
     private val mycoById = myco.associateBy { it.id }
@@ -894,8 +752,6 @@ object VisualStyleCatalog {
     fun cymatics(id: SceneId): CymaticsStyle? = cymaticsById[id]
 
     fun fluid(id: SceneId): FluidStyle? = fluidById[id]
-
-    fun silk(id: SceneId): SilkStyle? = silkById[id]
 
     fun life(id: SceneId): LifeStyle? = lifeById[id]
 
@@ -911,7 +767,6 @@ object VisualStyleCatalog {
     fun label(id: SceneId): String =
         cymaticsById[id]?.label
             ?: fluidById[id]?.label
-            ?: silkById[id]?.label
             ?: lifeById[id]?.label
             ?: acidById[id]?.label
             ?: mycoById[id]?.label

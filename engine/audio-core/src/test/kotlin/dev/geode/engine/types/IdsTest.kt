@@ -17,7 +17,7 @@ class IdsTest {
 
     @Test
     fun `a scene id prints as the engine's id`() {
-        assertEquals("silk_web", SceneId("silk_web").toString())
+        assertEquals("life_orbium", SceneId("life_orbium").toString())
     }
 
     @Test

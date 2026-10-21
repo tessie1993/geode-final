@@ -59,7 +59,7 @@ the values are ignored.
 
 **The No-flash limiter.** `core/viz/FlashLimiter` (pure, host-tested in
 `core/tests/flash_limiter_test.cpp`) bounds what reaches the screen, whatever produced it: every
-shader and field Style, MilkDrop, user GLSL, Layers, transitions and the composite's effects.
+shader and field Style, MilkDrop, Layers, transitions and the composite's effects.
 `NoFlashPass` draws the composite into a candidate target, averages it on the GPU into a 4x4
 grid of linear relative luminance and saturated-red value (`noflash_measure_frag.glsl`), reads
 those 16 texels back, and asks the limiter how much of the new frame may be shown. The limiter
