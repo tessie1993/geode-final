@@ -24,10 +24,12 @@ import dev.geode.editor.OverlayBlend
 import dev.geode.editor.ParamId
 import dev.geode.editor.ParamValue
 import dev.geode.editor.Timeline
+import dev.geode.engine.types.SceneId
 import dev.geode.export.ClipEdit
 import dev.geode.export.ClipLook
 import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRatio
+import dev.geode.render.scene.SceneCapabilities
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -131,7 +133,12 @@ internal object EditorProjectJson {
 
     private fun content(o: JSONObject): ClipContent =
         when (val type = o.getString("type")) {
-            "scene" -> ClipContent.Scene(o.getString("sceneId"), o.stringOrNull("presetId"), o.stringOrNull("milkPath"))
+            "scene" ->
+                ClipContent.Scene(
+                    SceneCapabilities.storedOrDefault(SceneId(o.getString("sceneId"))).value,
+                    o.stringOrNull("presetId"),
+                    o.stringOrNull("milkPath"),
+                )
             "video" -> ClipContent.Video(o.getString("uri"), o.optJSONObject("edit")?.let(::clipEdit) ?: ClipEdit())
             "still" -> ClipContent.Still(o.getString("uri"), o.optDouble("kenBurns", 0.0).toFloat())
             "text" -> ClipContent.Text(o.getString("text"), o.stringOrNull("styleId"))

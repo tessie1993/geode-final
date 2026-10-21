@@ -4,7 +4,7 @@
 //   render/fluid/FluidHue.kt         - hsv
 //
 // Lifted out of the former hyperspace-math.mjs when that style was removed:
-// FluidHue was never Hyperspace-specific, and the silk, life, acid, myco and
+// FluidHue was never Hyperspace-specific, and the life, acid, myco and
 // emitter drivers all read it.
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

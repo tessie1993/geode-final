@@ -41,7 +41,6 @@ data class VizUiState(
 
 data class VizApply(
     val milkPath: String? = null,
-    val customShader: String? = null,
     val sceneId: SceneId? = null,
 )
 
