@@ -243,7 +243,8 @@ class CustomizationReducerTest {
 
     @Test
     fun `every failure has its own message`() {
-        assertEquals(WorkFailure.entries.size, WorkFailure.entries.map { it.message }.toSet().size)
+        val messages = WorkFailure.entries.map { it.message }
+        assertEquals(WorkFailure.entries.size, messages.toSet().size)
         assertEquals("customization", CUSTOMIZATION_FEATURE)
     }
 }

@@ -39,6 +39,8 @@ void MycoScene::init() {
 void MycoScene::resize(int width, int height) {
     width_ = std::max(width, 1);
     height_ = std::max(height, 1);
+    // Kept unless its declared grid really changes (see fluid::gridChanges).
+    if (trail_ && !fluid::gridChanges({trail_->width(), trail_->height()}, fluid::gridFor(kTrailRes, width_, height_))) return;
     if (trail_) trail_->release();
     trail_.reset();
 }

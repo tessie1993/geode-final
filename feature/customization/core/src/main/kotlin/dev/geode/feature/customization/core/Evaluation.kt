@@ -75,7 +75,12 @@ object Evaluation {
      * those playing. An unlinked Modulator does not run.
      */
     fun running(customization: Customization): Set<ModulatorId> {
-        val listened = customization.reactions.map { it.source }.filterIsInstance<ReactionSource.Generated>().map { it.modulator }.toSet()
+        val listened =
+            customization.reactions
+                .map { it.source }
+                .filterIsInstance<ReactionSource.Generated>()
+                .map { it.modulator }
+                .toSet()
         return customization.modulators
             .filter { it.id in listened && (it.start != StartMode.ByHand || it.playing) }
             .map { it.id }

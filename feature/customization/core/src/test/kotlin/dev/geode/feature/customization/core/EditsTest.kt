@@ -48,7 +48,8 @@ class EditsTest {
         assertEquals("Punch", Edits.renameMacro(julia, 2, "  Punch  ").macros[2].name)
         assertEquals("Energy", Edits.renameMacro(julia, 2, "  Punch  ").macros[0].name)
         assertSame(julia, Edits.renameMacro(julia, 2, "   "))
-        assertEquals(MAX_MACRO_NAME, Edits.renameMacro(julia, 0, "x".repeat(40)).macros[0].name.length)
+        val long = Edits.renameMacro(julia, 0, "x".repeat(40)).macros[0]
+        assertEquals(MAX_MACRO_NAME, long.name.length)
         assertEquals(emptyList<MacroLink>(), Edits.clearMacro(julia, 1).macros[1].links)
         assertEquals(julia.macros[0], Edits.clearMacro(julia, 1).macros[0])
     }

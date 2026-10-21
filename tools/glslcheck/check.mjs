@@ -28,6 +28,12 @@
 //   node check.mjs --shader kifs --out out/kifs.png
 //   node check.mjs --all --size 200
 //   node check.mjs --fluid-display               # every SHADING/BLOOM/SUNRAYS x LOOK variant
+//   node check.mjs --all --resize                # each style's picture across a scene-target resize
+//
+// --resize draws one frame into a scene target, resizes the target to RESIZE_SCALE of its size the
+// way Framebuffer::resizePreserving does (a linear blit into the new target, never a clear), and
+// writes what the resized target holds: the picture the renderer's next frame starts from. It fails
+// when that picture is darker than KEEP_FRACTION of the one before the resize.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,6 +46,11 @@ const SHADERS = path.join(ROOT, 'app', 'src', 'main', 'assets', 'shaders');
 const SHADER_SOURCE_CPP = path.join(ROOT, 'core', 'render', 'ShaderSource.cpp');
 const SCENE_REGISTRY_CPP = path.join(ROOT, 'core', 'viz', 'SceneRegistry.cpp');
 const FLUID_LOOK_HPP = path.join(ROOT, 'core', 'viz', 'fluid', 'FluidLook.hpp');
+
+// One load step down and then some: the renderer's scale moves in 0.05 steps, a Style's own scale
+// and a thermal tier move it further.
+const RESIZE_SCALE = 0.75;
+const KEEP_FRACTION = 0.5;
 
 // ---- includes, as ShaderSource.cpp does them ------------------------------
 
@@ -165,12 +176,13 @@ function withKeywords(src, defines) {
 }
 
 function parseArgs(argv) {
-  const a = { size: 240, shaders: [], all: false, list: false, fluidDisplay: false, out: null, time: null };
+  const a = { size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, out: null, time: null };
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i];
     if (v === '--list') a.list = true;
     else if (v === '--all') a.all = true;
     else if (v === '--fluid-display') a.fluidDisplay = true;
+    else if (v === '--resize') a.resize = true;
     else if (v === '--shader') a.shaders.push(argv[++i]);
     else if (v === '--size') a.size = Number(argv[++i]);
     else if (v === '--out') a.out = argv[++i];
@@ -207,7 +219,14 @@ async function main() {
     const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;
-    jobs.push({ name: id, vert: quadVert, frag, uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size) });
+    const job = { name: id, vert: quadVert, frag, uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size) };
+    if (args.resize) {
+      job.name = `${id} resized`;
+      job.resizeWidth = Math.max(1, Math.round(args.size * RESIZE_SCALE));
+      job.resizeHeight = job.resizeWidth;
+      job.keepFraction = KEEP_FRACTION;
+    }
+    jobs.push(job);
   }
   if (args.fluidDisplay) {
     const vert = fs.readFileSync(path.join(SHADERS, 'fluid_base_vert.glsl'), 'utf8');
@@ -237,7 +256,7 @@ async function main() {
   try {
     const page = await browser.openPage(pathToFileURL(path.join(HERE, 'page.html')).href);
     for (const job of jobs) {
-      const r = await page.call('__render', { ...job, width: args.size, height: args.size });
+      const r = await page.call(job.resizeWidth ? '__renderResized' : '__render', { ...job, width: args.size, height: args.size });
       allOk = report(job.name, r) && allOk;
       if (args.out && r.png) {
         const dest = jobs.length === 1 ? args.out : path.join(args.out, `${job.name.replace(/[^\w]+/g, '_')}.png`);
