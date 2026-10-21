@@ -26,6 +26,8 @@ import dev.geode.data.ExportPrefsStore
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.exportCodecLabel
 import dev.geode.data.exportQualityLabel
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalSegmented
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportPresets
 import dev.geode.export.ExportQuality

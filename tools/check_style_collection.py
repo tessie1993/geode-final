@@ -37,8 +37,8 @@ def main() -> None:
     # SceneCommon.hpp (uploadSceneTouch), not inline in CymaticsScene.cpp itself.
     scene_common = read("core/viz/scenes/SceneCommon.hpp")
     shell = read("app/src/main/java/dev/geode/ui/AppShell.kt")
-    crystal = read("app/src/main/java/dev/geode/ui/Crystal.kt")
-    theme_catalog = read("app/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt")
+    crystal = read("design/src/main/java/dev/geode/design/theme/CrystalTheme.kt")
+    theme_catalog = read("design/src/main/java/dev/geode/design/theme/ThemePackCatalog.kt")
 
     # The Cymatics Styles are packs (docs/style-packs.md); each names a branch of the shared shader.
     index = json.loads((styles / "index.json").read_text(encoding="utf-8"))["styles"]

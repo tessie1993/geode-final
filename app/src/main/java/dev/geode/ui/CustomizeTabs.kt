@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.analysis.IntelligenceMode
+import dev.geode.design.CrystalGem
+import dev.geode.design.CrystalSlider
+import dev.geode.design.luminousHairline
+import dev.geode.design.theme.accentTextColor
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
@@ -349,13 +353,6 @@ internal fun ReactivityTab(
                 "tempo to be worked out, so live input behaves exactly like a file.",
         )
         LabeledSlider(ParamKeys.AUDIO_DRIVE, p.audioDrive, 0.2f..2.5f) { onChange(p.copy(audioDrive = it)) }
-        ControlHint(
-            "Form drive is the superformula: one shape the music keeps redrawing - snares change " +
-                "its lobe count, kicks pinch it, the spectrum fattens or thins it, drops reset it - " +
-                "and every style is moved through it: zoom, spin, warp, twist, tiling, the fluid " +
-                "and plate forces, the palette span. Zero switches it off.",
-        )
-        LabeledSlider(ParamKeys.FORM_DRIVE, p.formDrive, 0f..1f) { onChange(p.copy(formDrive = it)) }
         LabeledSlider(ParamKeys.BEAT_RESPONSE, p.beatResponse, 0f..2f) { onChange(p.copy(beatResponse = it)) }
         LabeledSlider(ParamKeys.BEAT_FLASH, p.flash, 0f..1f) { onChange(p.copy(flash = it)) }
         SectionHeader("Band balance", ParamScope.BAND_GAINS)
