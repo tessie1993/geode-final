@@ -41,7 +41,6 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/ParamsFields.cpp
     viz/Lfo.cpp
     viz/Adsr.cpp
-    viz/FormDrive.cpp
     viz/VisualSafety.cpp
     viz/MilkdropAdaptation.cpp
     viz/fluid/FluidMath.cpp
