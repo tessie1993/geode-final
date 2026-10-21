@@ -113,8 +113,13 @@ object AmbientScene {
         )
     }
 
-    /** [y] brought back into the band from just above the top to just below the bottom. */
+    /**
+     * [y] brought back into the band from just above the top to just below the bottom. A value
+     * already in the band is returned as it is: shifting it out and back would round it, and a
+     * sprite at rest must sit exactly where it was placed.
+     */
     fun wrap(y: Float): Float {
+        if (y >= -WRAP_MARGIN && y < 1f + WRAP_MARGIN) return y
         val span = 1f + 2f * WRAP_MARGIN
         return (y + WRAP_MARGIN).mod(span) - WRAP_MARGIN
     }

@@ -97,7 +97,9 @@ class AmbientSceneTest {
     fun `a sprite wraps round once it is out of sight`() {
         val bottom = 1f + AmbientScene.WRAP_MARGIN
         assertEquals(-AmbientScene.WRAP_MARGIN + PAST, AmbientScene.wrap(bottom + PAST), TOLERANCE)
-        assertEquals(0.5f, AmbientScene.wrap(0.5f), TOLERANCE)
+        for (inBand in listOf(-AmbientScene.WRAP_MARGIN, 0f, 0.1f, 0.3f, 0.7f, 1f, bottom - TOLERANCE)) {
+            assertEquals(inBand, AmbientScene.wrap(inBand))
+        }
         assertEquals(1f, AmbientScene.wrap(1f), TOLERANCE)
         assertEquals(bottom - TOLERANCE * 2f, AmbientScene.wrap(bottom - TOLERANCE * 2f), TOLERANCE)
         assertEquals(0.5f, AmbientScene.wrap(0.5f - (1f + 2f * AmbientScene.WRAP_MARGIN)), TOLERANCE)
