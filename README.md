@@ -84,7 +84,7 @@ in [docs/native-libraries.md](docs/native-libraries.md):
 | `core/util` | JSON, SHA-256, logging |
 | `core/render` | GL plumbing: capability probing, programs and the program binary cache, textures, framebuffers, the fullscreen quad, compute, shader sources |
 | `core/analysis` | FFT (kissfft), bands, onsets, tempo, beats, bars, key, structure, stereo field; the feature frame |
-| `core/viz` | The Visual: the frame graph (scene → trails → composite), the superformula driver (`FormDrive`) that modulates every family's parameters with the music, transitions, safety clamps, every scene family |
+| `core/viz` | The Visual: the frame graph (scene → trails → composite), transitions, safety clamps, every scene family |
 | `core/audio/dsp` | Biquad equalizer, gain, crossfeed, lookahead limiter; the `geode_dsp_*` part of the C ABI |
 | `core/audio/player` | AMediaCodec decode, resampling, a lock-free mixer with gapless and crossfade, Oboe output |
 | `core/library` | TagLib tag reading and writing over a file descriptor |
