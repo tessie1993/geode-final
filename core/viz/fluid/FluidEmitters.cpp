@@ -1,9 +1,9 @@
-#include "viz/fluid/FluidEmitters.hpp"
+#include "geode/viz/fluid/FluidEmitters.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "viz/scenes/SceneCommon.hpp"
+#include "scenes/SceneCommon.hpp"
 
 namespace geode::viz::fluid {
 

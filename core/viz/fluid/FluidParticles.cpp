@@ -1,10 +1,10 @@
-#include "viz/fluid/FluidParticles.hpp"
+#include "fluid/FluidParticles.hpp"
 
 #include <algorithm>
 #include <vector>
 
-#include "util/Log.hpp"
-#include "viz/fluid/FluidMath.hpp"
+#include "geode/util/Log.hpp"
+#include "fluid/FluidMath.hpp"
 
 namespace geode::viz::fluid {
 

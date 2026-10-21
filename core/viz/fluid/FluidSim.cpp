@@ -1,8 +1,8 @@
-#include "viz/fluid/FluidSim.hpp"
+#include "geode/viz/fluid/FluidSim.hpp"
 
 #include <algorithm>
 
-#include "util/Log.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::viz::fluid {
 

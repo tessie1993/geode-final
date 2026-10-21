@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "api/geode_api.h"
+#include "geode/api/geode_api.h"
 
 namespace {
 

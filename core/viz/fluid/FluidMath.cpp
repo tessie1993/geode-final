@@ -1,4 +1,4 @@
-#include "viz/fluid/FluidMath.hpp"
+#include "fluid/FluidMath.hpp"
 
 #include <algorithm>
 #include <cmath>

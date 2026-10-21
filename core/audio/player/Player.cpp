@@ -1,4 +1,4 @@
-#include "audio/player/Player.hpp"
+#include "geode/audio/player/Player.hpp"
 
 #include <unistd.h>
 
@@ -7,7 +7,7 @@
 #include <chrono>
 #include <thread>
 
-#include "util/Log.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::audio::player {
 

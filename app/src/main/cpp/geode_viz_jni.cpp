@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "api/geode_api.h"
+#include "geode/api/geode_api.h"
 #include "jni_util.hpp"
 
 namespace {

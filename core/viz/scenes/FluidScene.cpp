@@ -1,11 +1,11 @@
-#include "viz/scenes/FluidScene.hpp"
+#include "scenes/FluidScene.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "viz/LiveSignal.hpp"
-#include "viz/Quad.hpp"
-#include "viz/fluid/FluidQuality.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "geode/render/Quad.hpp"
+#include "fluid/FluidQuality.hpp"
 
 namespace geode::viz {
 

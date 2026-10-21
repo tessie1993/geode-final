@@ -1,4 +1,4 @@
-#include "audio/player/Resampler.hpp"
+#include "geode/audio/player/Resampler.hpp"
 
 #include <algorithm>
 #include <cmath>

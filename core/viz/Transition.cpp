@@ -1,9 +1,9 @@
-#include "viz/Transition.hpp"
+#include "geode/viz/Transition.hpp"
 
 #include <algorithm>
 
-#include "util/Json.hpp"
-#include "util/Log.hpp"
+#include "geode/util/Json.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::viz {
 

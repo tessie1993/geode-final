@@ -1,11 +1,11 @@
-#include "viz/scenes/LifeScene.hpp"
+#include "scenes/LifeScene.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
-#include "viz/LiveSignal.hpp"
-#include "viz/Quad.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "geode/render/Quad.hpp"
 
 namespace geode::viz {
 

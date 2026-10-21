@@ -1,9 +1,9 @@
-#include "viz/compute/SimPass.hpp"
+#include "compute/SimPass.hpp"
 
 #include <algorithm>
 #include <array>
 
-#include "util/Log.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::viz::sim {
 
