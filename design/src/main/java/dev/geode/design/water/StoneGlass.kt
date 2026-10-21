@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,7 +31,6 @@ import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -45,34 +43,6 @@ import dev.geode.design.forest.LocalForestColors
 import dev.geode.design.forest.LocalForestMode
 import dev.geode.design.forest.LocalForestThemeId
 import kotlin.math.ceil
-
-/**
- * The art behind a screen's frosted stone glass, recorded once per frame so each glass panel can
- * blur the part it covers. It also keeps the screen's [LiveBlurBudget]: at most two panels blur
- * live at once, and any further panel is drawn as [GlassTier.Tinted].
- *
- * Only Compose-drawn art can be a backdrop. The Visual is a GL surface that no Compose blur can
- * sample, so the Player keeps its gradient over the Visual and never puts glass on it.
- */
-@Stable
-class GlassBackdropState internal constructor() {
-    internal var layer: GraphicsLayer? by mutableStateOf(null)
-    internal var origin by mutableStateOf(Offset.Zero)
-    private var budget by mutableStateOf(LiveBlurBudget())
-
-    /** How many live blurred surfaces the screen draws now; never more than [LiveBlurBudget.MAX_LIVE_BLURS]. */
-    val liveBlurs: Int get() = budget.live
-
-    internal fun request(holder: Any) {
-        budget = budget.request(holder)
-    }
-
-    internal fun release(holder: Any) {
-        budget = budget.release(holder)
-    }
-
-    internal fun holds(holder: Any): Boolean = budget.holds(holder)
-}
 
 /** A [GlassBackdropState] for one screen. */
 @Composable
