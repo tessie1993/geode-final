@@ -219,8 +219,7 @@ internal object Listening {
         return core.player(state.copy(sleep = SleepTimer.Off), core.pause(state.player))
     }
 
-    private fun tick(remaining: Millis): PlaybackEffect =
-        StartTimer(SleepTick, minOf(remaining, SLEEP_TICK), PlaybackEvent.SleepTicked)
+    private fun tick(remaining: Millis): PlaybackEffect = StartTimer(SleepTick, minOf(remaining, SLEEP_TICK), PlaybackEvent.SleepTicked)
 
     private fun stopCounting(state: PlaybackState): List<PlaybackEffect> =
         if (state.sleep is SleepTimer.Counting) listOf(CancelTimer(SleepTick)) else emptyList()
@@ -373,8 +372,10 @@ internal object Listening {
     ): List<PlaybackEffect> {
         val ended = state.player as? Ended ?: return emptyList()
         val keepGoing =
-            meantToPlay(before.player) && before.sleep != SleepTimer.AfterTrack &&
-                state.options.repeat == RepeatMode.OFF && state.options.queueEnd == QueueEnd.SIMILAR
+            meantToPlay(before.player) &&
+                before.sleep != SleepTimer.AfterTrack &&
+                state.options.repeat == RepeatMode.OFF &&
+                state.options.queueEnd == QueueEnd.SIMILAR
         return if (keepGoing) listOf(Perform(PlaybackWork.PickSimilar(ended.queue))) else emptyList()
     }
 
