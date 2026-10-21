@@ -29,6 +29,9 @@ protected:
 private:
     static constexpr float kNoiseWrapSeconds = 628.31853f;
     static constexpr float kWallWrapSeconds = 7100.0f;
+    // The declared grid of the curl field (short side, in cells) and the particles riding it.
+    static constexpr int kFieldRes = 96;
+    static constexpr int kParticleCount = 49152;
 
     fluid::Particles particles_;
     fluid::Formats formats_;
