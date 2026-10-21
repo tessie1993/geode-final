@@ -6,8 +6,10 @@
 namespace geode::audio::player {
 
 // What the BufferTuner needs from an output stream, and nothing else. Output adapts the Oboe stream to it;
-// the host tests use a fake. Both calls run on the audio callback thread, so an implementation must not
-// allocate, lock or block.
+// the host tests use a fake. Both calls are made from BufferTuner::onAudioReady() on the audio callback
+// thread, so an implementation must not allocate, lock or block. BufferTuner::reset() also calls
+// setBufferSizeInFrames() once, from the engine thread, before the stream is started, so it never runs
+// concurrently with a callback.
 class TunableStream {
 public:
     virtual ~TunableStream() = default;
