@@ -75,6 +75,8 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     ): Next<PlaybackState, PlaybackEffect> =
         when (command) {
             is PlaybackCommand.Play -> player(state, play(state.player, command.tracks, command.startAt))
+            is PlaybackCommand.PlayNext -> player(state, enqueue(state.player, command.tracks, next = true))
+            is PlaybackCommand.AddToQueue -> player(state, enqueue(state.player, command.tracks, next = false))
             PlaybackCommand.Resume -> player(state, resume(state.player))
             PlaybackCommand.Pause -> player(state, pause(state.player))
             PlaybackCommand.Next -> player(state, next(state.player))
@@ -109,6 +111,35 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             Next(from)
         } else {
             load(from, Queue(tracks, startAt.coerceIn(tracks.indices)), START, playWhenReady = true, LoadReason.PLAY)
+        }
+
+    /**
+     * Adds [tracks] after the current track ([next]) or at the end of the queue, leaving the player
+     * where it is. With no queue yet, they are played.
+     */
+    private fun enqueue(
+        from: PlayerState,
+        tracks: List<Track>,
+        next: Boolean,
+    ): Step {
+        if (tracks.isEmpty()) return Next(from)
+        val queue = queueOf(from) ?: return play(from, tracks, startAt = 0)
+        val at = if (next) queue.index + 1 else queue.tracks.size
+        return Next(withQueue(from, queue.copy(tracks = queue.tracks.take(at) + tracks + queue.tracks.drop(at))))
+    }
+
+    private fun withQueue(
+        state: PlayerState,
+        queue: Queue,
+    ): PlayerState =
+        when (state) {
+            Idle -> state
+            is Loading -> state.copy(queue = queue)
+            is Buffering -> state.copy(queue = queue)
+            is Playing -> state.copy(queue = queue)
+            is Paused -> state.copy(queue = queue)
+            is Ended -> state.copy(queue = queue)
+            is Error -> state.copy(queue = queue)
         }
 
     private fun resume(from: PlayerState): Step =

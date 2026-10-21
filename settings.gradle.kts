@@ -56,3 +56,26 @@ include(
     ":feature:capture:handlers",
     ":feature:capture:ui",
 )
+
+// Settings (#38): today's settings on one store, in DataStore (ADR-0004).
+include(
+    ":feature:settings:api",
+    ":feature:settings:core",
+    ":feature:settings:handlers",
+    ":feature:settings:ui",
+)
+
+// Customization (#39): the model and its reducer. Its :handlers and :ui come with later tickets.
+include(
+    ":feature:customization:api",
+    ":feature:customization:core",
+)
+
+// Library (#37): browse, search, sort and filter the phone's music, with favourites, song info edits,
+// excluded folders and M3U playlists. Plays everything through Playback's :api.
+include(
+    ":feature:library:api",
+    ":feature:library:core",
+    ":feature:library:handlers",
+    ":feature:library:ui",
+)

@@ -62,15 +62,13 @@ geode_core_library(geode_viz viz
     viz/CompositeGrade.cpp
     viz/CompositePass.cpp
     viz/TrailPass.cpp
+    viz/NoFlashPass.cpp
     viz/SceneRegistry.cpp
     viz/Renderer.cpp
     viz/RendererFrame.cpp
     viz/scenes/ShaderScene.cpp
     viz/BlueNoise.cpp
     viz/Overlays.cpp
-    viz/compute/SimField.cpp
-    viz/compute/SimGlsl.cpp
-    viz/compute/SimPass.cpp
     viz/fluid/FluidBuffers.cpp
     viz/fluid/FluidChoreography.cpp
     viz/fluid/FluidEmitters.cpp
@@ -81,7 +79,6 @@ geode_core_library(geode_viz viz
     viz/fluid/FlowField.cpp
     viz/scenes/StyleCatalog.cpp
     viz/scenes/CymaticsScene.cpp
-    viz/scenes/SilkScene.cpp
     viz/scenes/LifeScene.cpp
     viz/scenes/MycoScene.cpp
     viz/scenes/AcidScene.cpp

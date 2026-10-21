@@ -32,28 +32,6 @@ constexpr std::array<CymaticsStyle, 11> kCymatics = {{
      .iridescence = 0.35f, .caustic = 0.55f, .flow = 1.1f, .hueOffset = 0.03f, .hueSpan = 0.6f},
 }};
 
-constexpr std::array<SilkStyle, 10> kSilk = {{
-    {.id = "silk_web", .field = 0},
-    {.id = "silk_bloom", .field = 1, .flow = 0.85f, .fieldScale = 0.8f, .decay = 0.988f, .swirl = 0.15f, .hueOffset = 0.55f,
-     .bBase = 0.16f, .bAmp = 0.05f, .bPeriod = 41.0f},
-    {.id = "silk_weave", .field = 2, .flow = 1.15f, .fieldScale = 1.25f, .strokes = 1.3f, .elong = 0.7f, .decay = 0.975f,
-     .hueOffset = 0.12f, .bBase = 0.16f, .bAmp = 0.045f, .bPeriod = 47.0f},
-    {.id = "silk_shell", .field = 3, .flow = 0.9f, .fieldScale = 0.9f, .strokes = 0.8f, .elong = 1.4f, .decay = 0.987f, .swirl = 0.4f,
-     .hueOffset = -0.18f, .bBase = 0.18f, .bAmp = 0.035f, .bPeriod = 38.0f},
-    {.id = "silk_spiral", .field = 4, .flow = 1.2f, .fieldScale = 1.05f, .elong = 1.8f, .decay = 0.982f, .swirl = 0.5f,
-     .hueOffset = 0.3f, .bBase = 0.17f, .bAmp = 0.045f, .bPeriod = 49.0f},
-    {.id = "silk_fold", .field = 5, .fieldScale = 1.15f, .strokes = 1.2f, .decay = 0.98f, .hueOffset = 0.78f, .bBase = 0.2f,
-     .bAmp = 0.04f, .bPeriod = 44.0f},
-    {.id = "silk_hyper", .field = 6, .flow = 0.8f, .fieldScale = 0.75f, .elong = 2.2f, .decay = 0.99f, .hueOffset = 0.48f,
-     .bBase = 0.22f, .bAmp = 0.05f, .bPeriod = 35.0f},
-    {.id = "silk_resonance", .field = 7, .flow = 1.05f, .swirl = 0.3f, .hueOffset = 0.06f, .bBase = 0.19f, .bAmp = 0.04f,
-     .bPeriod = 43.0f},
-    {.id = "silk_curl", .field = 8, .flow = 1.3f, .fieldScale = 1.2f, .strokes = 1.4f, .elong = 0.9f, .decay = 0.978f,
-     .hueOffset = 0.62f},
-    {.id = "silk_pendulum", .field = 9, .flow = 0.95f, .fieldScale = 0.85f, .elong = 1.5f, .decay = 0.986f, .fold = 3, .swirl = 0.0f,
-     .hueOffset = 0.9f},
-}};
-
 constexpr std::array<LifeStyle, 10> kLife = {{
     {.id = "life_orbium", .rule = 0, .dt = 0.1f, .mu = 0.15f, .sigma = 0.017f, .look = 0},
     {.id = "life_gyre", .rule = 0, .dt = 0.1f, .mu = 0.156f, .sigma = 0.0224f, .look = 3, .hueOffset = 0.5f},
@@ -157,14 +135,12 @@ std::vector<std::string> ids(const Table& table) {
 
 const CymaticsStyle* cymatics(const std::string& id) { return find(kCymatics, id); }
 const FluidStyle* fluid(const std::string& id) { return find(kFluid, id); }
-const SilkStyle* silk(const std::string& id) { return find(kSilk, id); }
 const LifeStyle* life(const std::string& id) { return find(kLife, id); }
 const AcidStyle* acid(const std::string& id) { return find(kAcid, id); }
 const MycoStyle* myco(const std::string& id) { return find(kMyco, id); }
 
 std::vector<std::string> cymaticsIds() { return ids(kCymatics); }
 std::vector<std::string> fluidIds() { return ids(kFluid); }
-std::vector<std::string> silkIds() { return ids(kSilk); }
 std::vector<std::string> lifeIds() { return ids(kLife); }
 std::vector<std::string> acidIds() { return ids(kAcid); }
 std::vector<std::string> mycoIds() { return ids(kMyco); }

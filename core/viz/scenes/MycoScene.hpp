@@ -10,6 +10,7 @@
 #include "geode/viz/scenes/ProgramLoader.hpp"
 #include "scenes/SceneCommon.hpp"
 #include "scenes/StyleCatalog.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 
 namespace geode::viz {
 
@@ -69,6 +70,7 @@ private:
     float envBass_ = 0.0f;
     float envTreble_ = 0.0f;
     float beatPulse_ = 0.0f;
+    BeatEnvelope beatEnvelope_;
     float reaim_ = 0.0f;
     const TouchField* touch_ = nullptr;
 };
