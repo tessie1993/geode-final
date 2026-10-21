@@ -6,8 +6,6 @@ import dev.geode.engine.types.SceneId
 enum class SceneKind {
     SHADER,
 
-    SILK,
-
     LIFE,
 
     MYCELIUM,
@@ -106,11 +104,30 @@ object SceneCapabilities {
     /**
      * The renderer [sceneId] builds.
      *
-     * Unknown ids resolve to [SceneKind.SILK] because [SceneIds.DEFAULT] is a Silk style and
-     * `SceneRegistry` falls back to it, so the Customize panel describes what will actually be
-     * on screen rather than an id nothing can render.
+     * An id no Style has resolves to the kind of [SceneIds.DEFAULT], because a stored id like that
+     * loads as the default Style ([storedOrDefault]), so the Customize panel describes what will
+     * actually be on screen rather than an id nothing can render.
      */
-    fun kindOf(sceneId: SceneId): SceneKind =
+    fun kindOf(sceneId: SceneId): SceneKind = kindOrNull(sceneId) ?: defaultKind
+
+    /** True while some Style is built from [sceneId]. */
+    fun isKnown(sceneId: SceneId): Boolean = kindOrNull(sceneId) != null
+
+    /**
+     * The Style a stored id loads as: [sceneId] itself while a Style still has that id, otherwise
+     * [SceneIds.DEFAULT].
+     *
+     * Saved presets, the live settings, templates, playlists and Studio projects outlive the Styles
+     * they name. One that names a Style that has since been deleted loads the default Style
+     * instead, with no error, and the rest of what it stores is kept.
+     */
+    fun storedOrDefault(sceneId: SceneId): SceneId = if (isKnown(sceneId)) sceneId else SceneIds.DEFAULT
+
+    private val defaultKind: SceneKind by lazy {
+        checkNotNull(kindOrNull(SceneIds.DEFAULT)) { "SceneIds.DEFAULT (${SceneIds.DEFAULT}) names no Style" }
+    }
+
+    private fun kindOrNull(sceneId: SceneId): SceneKind? =
         when {
             sceneId in SHADER_SCENES -> SceneKind.SHADER
             sceneId == SceneIds.MILKDROP -> SceneKind.MILKDROP
@@ -121,7 +138,7 @@ object SceneCapabilities {
             VisualStyleCatalog.life(sceneId) != null -> SceneKind.LIFE
             VisualStyleCatalog.myco(sceneId) != null -> SceneKind.MYCELIUM
             VisualStyleCatalog.acid(sceneId) != null -> SceneKind.ACID
-            else -> SceneKind.SILK
+            else -> null
         }
 
     fun isFluid(sceneId: SceneId): Boolean = VisualStyleCatalog.isFluid(sceneId)
@@ -137,6 +154,4 @@ object SceneCapabilities {
     fun hasParticleLayer(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW
 
     fun usesPointSprites(sceneId: SceneId): Boolean = hasParticleLayer(sceneId)
-
-    fun hasShaderLook(sceneId: SceneId): Boolean = sceneId in SHADER_SCENES
 }

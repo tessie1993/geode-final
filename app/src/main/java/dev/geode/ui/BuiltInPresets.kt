@@ -44,7 +44,6 @@ object BuiltInPresets {
                     audioDrive = 1.6f,
                     beatResponse = 1.9f,
                     pulse = 0.6f,
-                    flash = 0.4f,
                     bloom = 0.5f,
                     contrast = 1.2f,
                     intensity = 1.15f,
@@ -181,15 +180,13 @@ object BuiltInPresets {
                 ),
             ),
             Look(
-                "Strobe",
+                "Surge",
                 0.95f,
                 0.35f,
                 SceneParams(
                     speed = 1.5f,
                     audioDrive = 1.7f,
                     beatResponse = 2.0f,
-                    strobe = 0.5f,
-                    flash = 0.6f,
                     bloom = 0.45f,
                     palette = 1,
                     intensity = 1.2f,
@@ -221,7 +218,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.ORB_LATTICE,
                 attack = 0.45f,
                 decay = 0.1f,
-                customShader = null,
                 params =
                     SceneParams(
                         palette = 3,
@@ -242,7 +238,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.ROD_TUNNEL,
                 attack = 0.7f,
                 decay = 0.18f,
-                customShader = null,
                 params =
                     SceneParams(
                         palette = 1,
@@ -254,7 +249,6 @@ object BuiltInPresets {
                         beatResponse = 1.4f,
                         bloom = 0.6f,
                         contrast = 1.1f,
-                        flash = 0.2f,
                         bassGain = 1.3f,
                     ),
             ),
@@ -263,7 +257,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.NEON_TILES,
                 attack = 0.55f,
                 decay = 0.14f,
-                customShader = null,
                 params =
                     SceneParams(
                         palette = 12,
@@ -285,7 +278,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.CHROMA_ORB,
                 attack = 0.5f,
                 decay = 0.12f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.8f,
@@ -301,7 +293,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.MANDALA_DOME,
                 attack = 0.45f,
                 decay = 0.12f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.7f,
@@ -317,7 +308,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.CURL_BLOOM,
                 attack = 0.5f,
                 decay = 0.15f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.7f,
@@ -333,7 +323,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.NECTAR_FLOW,
                 attack = 0.6f,
                 decay = 0.18f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.85f,
@@ -349,7 +338,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.MERKABA_GRID,
                 attack = 0.5f,
                 decay = 0.14f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.7f,
@@ -365,7 +353,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.SPIRAL_EYE,
                 attack = 0.55f,
                 decay = 0.16f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.9f,
@@ -381,7 +368,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.BLACKLIGHT_BLOOM,
                 attack = 0.45f,
                 decay = 0.12f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.75f,
@@ -397,7 +383,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FRACTAL_TEMPLE,
                 attack = 0.5f,
                 decay = 0.14f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 0.8f,
@@ -413,7 +398,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.BEAD_VORTEX,
                 attack = 0.6f,
                 decay = 0.15f,
-                customShader = null,
                 params =
                     SceneParams(
                         speed = 1.1f,
@@ -429,7 +413,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.WINTER,
                 attack = 0.5f,
                 decay = 0.12f,
-                customShader = null,
                 params =
                     SceneParams(
                         palette = 9,
@@ -454,7 +437,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.LAVA,
                 attack = 0.3f,
                 decay = 0.08f,
-                customShader = null,
                 params =
                     SceneParams(
                         palette = 1,
@@ -481,7 +463,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.35f,
                 decay = 0.5f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 0,
@@ -505,7 +486,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.5f,
                 decay = 0.4f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 1,
@@ -529,7 +509,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.6f,
                 decay = 0.35f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 3,
@@ -553,7 +532,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.4f,
                 decay = 0.55f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidDyeEnabled = false,
@@ -578,7 +556,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.25f,
                 decay = 0.7f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidChromaticAging = 1.0f,
@@ -602,7 +579,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.7f,
                 decay = 0.25f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 2,
@@ -628,7 +604,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.FLUID,
                 attack = 0.45f,
                 decay = 0.45f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidSpawnPath = 2,
@@ -657,7 +632,6 @@ object BuiltInPresets {
                 sceneId = SceneId("fluid_ink"),
                 attack = 0.35f,
                 decay = 0.6f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 2,
@@ -680,7 +654,6 @@ object BuiltInPresets {
                 sceneId = SceneId("fluid_chrome"),
                 attack = 0.3f,
                 decay = 0.5f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 0,
@@ -704,7 +677,6 @@ object BuiltInPresets {
                 sceneId = SceneId("fluid_neon"),
                 attack = 0.6f,
                 decay = 0.3f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 1,
@@ -727,7 +699,6 @@ object BuiltInPresets {
                 sceneId = SceneId("fluid_lava"),
                 attack = 0.25f,
                 decay = 0.7f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 2,
@@ -752,7 +723,6 @@ object BuiltInPresets {
                 sceneId = SceneId("fluid_aurora"),
                 attack = 0.4f,
                 decay = 0.5f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidBeatPattern = 3,
@@ -775,7 +745,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.WATER,
                 attack = 0.45f,
                 decay = 0.35f,
-                customShader = null,
                 params =
                     SceneParams(
                         waterDepth = 0.7f,
@@ -799,7 +768,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.CURLFLOW,
                 attack = 0.4f,
                 decay = 0.5f,
-                customShader = null,
                 params =
                     SceneParams(
                         fluidSpawnPath = 1,
@@ -826,7 +794,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.CYMATICS,
                 attack = 0.35f,
                 decay = 0.4f,
-                customShader = null,
                 params =
                     SceneParams(
                         cymaticsGeometry = 0,
@@ -851,7 +818,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.CYMATICS,
                 attack = 0.3f,
                 decay = 0.5f,
-                customShader = null,
                 params =
                     SceneParams(
                         cymaticsGeometry = 0,
@@ -875,7 +841,6 @@ object BuiltInPresets {
                 sceneId = dev.geode.render.scene.SceneIds.CYMATICS,
                 attack = 0.35f,
                 decay = 0.45f,
-                customShader = null,
                 params =
                     SceneParams(
                         cymaticsGeometry = 1,
@@ -905,7 +870,6 @@ object BuiltInPresets {
                     sceneId = id,
                     attack = look.attack,
                     decay = look.decay,
-                    customShader = null,
                     params = look.params,
                 )
             }

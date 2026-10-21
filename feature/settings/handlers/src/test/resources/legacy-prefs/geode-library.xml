@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <set name="roots">
+        <string>content://tree/music</string>
+        <string>content://tree/more</string>
+    </set>
+</map>

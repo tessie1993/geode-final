@@ -3,7 +3,6 @@ package dev.geode.render.scene
 import dev.geode.engine.types.SceneId
 
 object SceneIds {
-    val DEFAULT = SceneId("silk_web")
     val JULIA = SceneId("julia")
     val TUNNEL = SceneId("tunnel")
     val BARS = SceneId("bars")
@@ -48,4 +47,15 @@ object SceneIds {
     val FRACTAL_TEMPLE = SceneId("fractal_temple")
     val CURL_BLOOM = SceneId("curl_bloom")
     val NECTAR_FLOW = SceneId("nectar_flow")
+
+    /**
+     * The default Style: the one a fresh install opens on, and the one an id no Style has
+     * (a stored preset or setting naming a deleted Style) loads as.
+     *
+     * A stand-in, a calm shader Style, until the owner picks the real default; change it here
+     * only. Declared last so the Style it names is already initialised. The app requests its
+     * Style from the native renderer before every frame, so the native side's starting id
+     * (`Renderer::kStartSceneId`) never decides what is shown.
+     */
+    val DEFAULT = AURORA
 }

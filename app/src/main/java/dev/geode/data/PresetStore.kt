@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.annotation.WorkerThread
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
+import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import org.json.JSONObject
 import java.io.File
@@ -14,7 +16,6 @@ data class Preset(
     val sceneId: SceneId,
     val attack: Float,
     val decay: Float,
-    val customShader: String? = null,
     val params: SceneParams = SceneParams.DEFAULT,
     val milkPreset: String? = null,
 ) {
@@ -211,14 +212,12 @@ class PresetStore(
                 .put("bassGain", p.params.bassGain.toDouble())
                 .put("midGain", p.params.midGain.toDouble())
                 .put("trebGain", p.params.trebGain.toDouble())
-                .put("flash", p.params.flash.toDouble())
                 .put("chromaAb", p.params.chromaAb.toDouble())
                 .put("vignette", p.params.vignette.toDouble())
                 .put("scanlines", p.params.scanlines.toDouble())
                 .put("grain", p.params.grain.toDouble())
                 .put("glitch", p.params.glitch.toDouble())
                 .put("fisheye", p.params.fisheye.toDouble())
-                .put("strobe", p.params.strobe.toDouble())
                 .put("paramFadeSec", p.params.paramFadeSec.toDouble())
                 .put("solarize", p.params.solarize)
                 .put("fluidQuality", p.params.fluidQuality)
@@ -289,11 +288,17 @@ class PresetStore(
                 .put("rippleOverlayEnabled", p.params.rippleOverlayEnabled)
                 .put("rippleOverlayStrength", p.params.rippleOverlayStrength.toDouble())
                 .put("rippleOverlaySpecular", p.params.rippleOverlaySpecular.toDouble())
-                .apply { if (p.customShader != null) put("customShader", p.customShader) }
                 .apply { if (p.milkPreset != null) put("milkPreset", p.milkPreset) }
                 .toString(2)
 
-        internal val ENVELOPE_KEYS = setOf("name", "sceneId", "attack", "decay", "customShader", "milkPreset")
+        internal val ENVELOPE_KEYS = setOf("name", "sceneId", "attack", "decay", "milkPreset")
+
+        /**
+         * The key older versions wrote a user GLSL shader under. User shaders are gone (#87): a
+         * file or link that still carries one loads on the default Style, since the look it
+         * saved was the user's shader rather than the Style its scene id names.
+         */
+        internal const val LEGACY_USER_SHADER_KEY = "customShader"
 
         internal fun milkFileName(presetName: String): String = safeFileName(presetName.removeSuffix(".milk")) + ".milk"
 
@@ -314,17 +319,21 @@ class PresetStore(
         }
 
         internal fun paramsToJson(params: SceneParams): JSONObject =
-            JSONObject(toJson(Preset("", SceneId(""), 0f, 0f, null, params)))
+            JSONObject(toJson(Preset("", SceneId(""), 0f, 0f, params)))
                 .also { o -> ENVELOPE_KEYS.forEach(o::remove) }
 
         internal fun fromJson(json: String): Preset {
             val o = JSONObject(json)
             return Preset(
                 name = o.getString("name"),
-                sceneId = SceneId(o.getString("sceneId")),
+                sceneId =
+                    if (o.has(LEGACY_USER_SHADER_KEY)) {
+                        SceneIds.DEFAULT
+                    } else {
+                        SceneCapabilities.storedOrDefault(SceneId(o.getString("sceneId")))
+                    },
                 attack = o.getDouble("attack").toFloat(),
                 decay = o.getDouble("decay").toFloat(),
-                customShader = if (o.has("customShader")) o.getString("customShader") else null,
                 milkPreset = if (o.has("milkPreset")) o.getString("milkPreset") else null,
                 params =
                     SceneParams(
@@ -393,14 +402,12 @@ class PresetStore(
                         bassGain = o.optDouble("bassGain", 1.0).toFloat(),
                         midGain = o.optDouble("midGain", 1.0).toFloat(),
                         trebGain = o.optDouble("trebGain", 1.0).toFloat(),
-                        flash = o.optDouble("flash", 0.0).toFloat(),
                         chromaAb = o.optDouble("chromaAb", 0.0).toFloat(),
                         vignette = o.optDouble("vignette", 0.0).toFloat(),
                         scanlines = o.optDouble("scanlines", 0.0).toFloat(),
                         grain = o.optDouble("grain", 0.0).toFloat(),
                         glitch = o.optDouble("glitch", 0.0).toFloat(),
                         fisheye = o.optDouble("fisheye", 0.0).toFloat(),
-                        strobe = o.optDouble("strobe", 0.0).toFloat(),
                         paramFadeSec = o.optDouble("paramFadeSec", 0.0).toFloat(),
                         fluidQuality = o.optInt("fluidQuality", 2),
                         fluidAutoQuality = o.optBoolean("fluidAutoQuality", true),

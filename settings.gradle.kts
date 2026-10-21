@@ -57,6 +57,14 @@ include(
     ":feature:capture:ui",
 )
 
+// Settings (#38): today's settings on one store, in DataStore (ADR-0004).
+include(
+    ":feature:settings:api",
+    ":feature:settings:core",
+    ":feature:settings:handlers",
+    ":feature:settings:ui",
+)
+
 // Diagnostics (#62): the "Share diagnostics" file and the hidden developer overlay. Built alongside
 // the old code and not yet wired into :app (ADR-0003).
 include(

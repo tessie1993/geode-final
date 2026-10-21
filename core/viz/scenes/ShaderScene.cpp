@@ -59,12 +59,6 @@ void ShaderScene::setFlow(GLuint texture, float strength) {
     flowStrength_ = strength;
 }
 
-void ShaderScene::setFragmentSource(const std::string& source) {
-    std::lock_guard<std::mutex> lock(pendingLock_);
-    pendingFragment_ = source;
-    pendingIsUserSource_ = true;
-}
-
 void ShaderScene::init() {
     program_ = 0;
     uniforms_ = UniformCache(0);
@@ -159,7 +153,7 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     swell_ = slew(swell_, energy_, dt, kSwellRiseHz, kSwellFallHz);
     const float hit = live::hit(features);
     stepMotion(hit, dt);
-    beatPulse_ = std::max(std::max(hit, beatPulse_ - dt * kPulseDecayPerSecond), 0.0f);
+    beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
     for (int i = 0; i < kAudioTexWidth; ++i) {
@@ -259,7 +253,6 @@ void ShaderScene::uploadParams() {
     set1f("uTwist", p.twist);
     set1f("uTemperature", p.temperature);
     set1f("uSolarize", flag(p.solarize));
-    set1f("uFlash", p.flash);
     set1f("uContrast", p.contrast);
     set1f("uGamma", p.gamma);
 }
@@ -313,12 +306,9 @@ float ShaderScene::marchSteps(float detail) {
 
 void ShaderScene::compilePendingIfAny() {
     std::optional<std::string> pending;
-    bool fromUser = false;
     {
         std::lock_guard<std::mutex> lock(pendingLock_);
         pending.swap(pendingFragment_);
-        fromUser = pendingIsUserSource_;
-        pendingIsUserSource_ = false;
     }
     if (!pending) return;
     std::string error;
@@ -332,7 +322,6 @@ void ShaderScene::compilePendingIfAny() {
     uniforms_ = UniformCache(built);
     currentFragment_ = *pending;
     host_.onShaderError("");
-    if (fromUser) host_.onUserSourceCompiled(id_, currentFragment_);
 }
 
 void ShaderScene::release() {
