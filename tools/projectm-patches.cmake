@@ -1,0 +1,57 @@
+# Geode's copy of projectM: the third_party/projectm submodule, pinned to the stock v4.1.7 tag, plus
+# these local patches, applied at configure time so the submodule itself stays unmodified
+# (tools/build-projectm.md). LGPL-2.1: the patches are the corresponding source of the modification.
+#
+#   projectm-v4.1.7-render-fbo-backport.patch  projectm_opengl_render_frame_fbo, backported from master;
+#                                              MilkdropScene renders into its own framebuffer with it.
+#   projectm-v4.1.7-render-clock.patch         projectm_set_frame_time and projectm_set_random_seed:
+#                                              a Render drives the engine from the render clock with a
+#                                              fixed seed, so the same input gives the same frames.
+#   projectm-eval-render-clock.patch           (in vendor/projectm-eval) lets the seeded instance feed
+#                                              the expression rand() as well.
+#
+# Order matters: the render-clock patch is written against the backport. Applying is idempotent: a
+# reverse check recognises an already-patched tree, which is what every configure after the first
+# (and each per-ABI configure the Android Gradle plugin runs) sees.
+
+set(GEODE_PROJECTM_PATCH_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
+function(geode_apply_patch working_dir patch)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" apply --reverse --check "${patch}"
+        WORKING_DIRECTORY "${working_dir}"
+        RESULT_VARIABLE already_applied
+        OUTPUT_QUIET ERROR_QUIET)
+    if(already_applied EQUAL 0)
+        return()
+    endif()
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" apply "${patch}"
+        WORKING_DIRECTORY "${working_dir}"
+        RESULT_VARIABLE apply_result)
+    if(apply_result EQUAL 0)
+        return()
+    endif()
+    # A parallel configure may have applied it in between; only fail if it is still missing.
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" apply --reverse --check "${patch}"
+        WORKING_DIRECTORY "${working_dir}"
+        RESULT_VARIABLE already_applied
+        OUTPUT_QUIET ERROR_QUIET)
+    if(NOT already_applied EQUAL 0)
+        message(FATAL_ERROR
+            "Could not apply ${patch} in ${working_dir}. "
+            "Run 'git submodule update --init --recursive' and make sure third_party/projectm is at v4.1.7 "
+            "with no other local changes.")
+    endif()
+endfunction()
+
+# Patches the projectM checkout at projectm_dir and keeps the build on the patched, vendored
+# projectm-eval (a system-installed one would not carry the patch).
+function(geode_patch_projectm projectm_dir)
+    find_package(Git REQUIRED)
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.7-render-fbo-backport.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.7-render-clock.patch")
+    geode_apply_patch("${projectm_dir}/vendor/projectm-eval" "${GEODE_PROJECTM_PATCH_DIR}/projectm-eval-render-clock.patch")
+    set(ENABLE_SYSTEM_PROJECTM_EVAL OFF CACHE BOOL "" FORCE)
+endfunction()
