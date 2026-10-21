@@ -1,4 +1,4 @@
-#include "analysis/Spectrum.hpp"
+#include "geode/analysis/Spectrum.hpp"
 
 #include <cmath>
 

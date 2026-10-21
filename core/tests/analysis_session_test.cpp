@@ -1,4 +1,4 @@
-#include "analysis/AnalysisSession.hpp"
+#include "geode/analysis/AnalysisSession.hpp"
 
 #include <gtest/gtest.h>
 

@@ -418,7 +418,7 @@ class NativePlayer(
         const val TAG = "NativePlayer"
         const val POLL_MS = 200L
 
-        // GeodePlayerState in core/api/geode_api.h.
+        // GeodePlayerState in core/api/include/geode/api/geode_api.h.
         const val ENGINE_IDLE = 0
         const val ENGINE_READY = 2
         const val ENGINE_ENDED = 3

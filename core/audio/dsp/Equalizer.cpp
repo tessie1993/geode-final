@@ -1,4 +1,4 @@
-#include "audio/dsp/Equalizer.hpp"
+#include "geode/audio/dsp/Equalizer.hpp"
 
 #include <algorithm>
 

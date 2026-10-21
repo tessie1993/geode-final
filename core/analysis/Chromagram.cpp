@@ -1,4 +1,4 @@
-#include "analysis/Chromagram.hpp"
+#include "geode/analysis/Chromagram.hpp"
 
 #include <algorithm>
 #include <cmath>

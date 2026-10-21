@@ -274,6 +274,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      # Each native library may include only its own headers and its dependencies' public ones
+      # (docs/native-libraries.md). The self-test first proves the check still catches violations.
+      - name: Native library include boundaries
+        run: |
+          python3 tools/ci/check_native_includes.py --self-test
+          python3 tools/ci/check_native_includes.py
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
       - name: Configure
@@ -285,13 +291,34 @@ jobs:
         run: cmake --build build-host --parallel
       - name: Test
         run: ctest --test-dir build-host --output-on-failure
-      # Compiles every viz/ and util/ translation unit with the project flags and links them with
+      # Compiles every viz/, render/ and util/ translation unit with the project flags and links them with
       # --no-undefined against Mesa's GLES: the link the NDK does, without an NDK.
       - name: Host link check (tools/hostlink)
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libgles-dev libegl-dev
           tools/hostlink/hostlink.sh
+
+  # Geode's copy of projectM, built on the host and run under Mesa's software GLES: two Renders of
+  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact").
+  milkdrop-frame-exact:
+    name: MilkDrop Renders are frame-exact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out projectM
+        run: git submodule update --init --recursive --depth 1 third_party/projectm
+      - name: Install Mesa (EGL, GLES 3, software rasterizer)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgles-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
+      - name: Configure
+        run: cmake -S tools/milkdrop-determinism -B build-milkdrop -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-milkdrop --parallel
+      - name: Two Renders, byte for byte
+        run: ctest --test-dir build-milkdrop --output-on-failure
 
   visual-frames:
     name: Visual golden frames (shaders)
