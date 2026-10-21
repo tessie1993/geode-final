@@ -228,7 +228,7 @@ internal object SettingsCodec {
             K.EXPORT_CODEC to export.codec.name,
             K.EXPORT_LOUDNESS to LOUDNESS_IDS.getValue(export.loudness),
             K.PRESET_MIRROR to values.folders.presetMirror?.value,
-            K.MUSIC_FOLDERS to values.folders.musicFolders.map { it.value }.toSet(),
+            K.MUSIC_FOLDERS to values.folders.musicFolders.mapTo(mutableSetOf()) { it.value },
             K.SAFETY_ACKNOWLEDGED to onboarding.safetyAcknowledged,
             K.SETUP_DONE to onboarding.setupDone,
             K.TUTORIAL_SEEN to onboarding.tutorialSeen,

@@ -131,7 +131,7 @@ private fun PlaybackGroup(
     SliderRow(
         stringResource(R.string.playback_fade, playback.fade.value / MILLIS_PER_SECOND),
         playback.fade.value.toFloat(),
-        PlaybackSettings.FADE.start.value.toFloat()..PlaybackSettings.FADE.endInclusive.value.toFloat(),
+        PlaybackSettings.FADE.millisForSlider(),
     ) { change(PlaybackCommand.SetFade(Millis(it.roundToLong()))) }
     SwitchRow(stringResource(R.string.playback_skip_silence), playback.skipSilence) { change(PlaybackCommand.SetSkipSilence(it)) }
     SwitchRow(stringResource(R.string.playback_pause_unplugged), playback.pauseWhenUnplugged) {
@@ -167,7 +167,7 @@ private fun PlaybackGroup(
     SliderRow(
         stringResource(R.string.playback_crossfade, playback.crossfade.value / MILLIS_PER_SECOND),
         playback.crossfade.value.toFloat(),
-        PlaybackSettings.CROSSFADE.start.value.toFloat()..PlaybackSettings.CROSSFADE.endInclusive.value.toFloat(),
+        PlaybackSettings.CROSSFADE.millisForSlider(),
     ) { change(PlaybackCommand.SetCrossfade(Millis(it.roundToLong()))) }
     ChoiceRow(stringResource(R.string.playback_crossfade_curve), CrossfadeCurve.entries, playback.crossfadeCurve, { curveName(it) }) {
         change(PlaybackCommand.SetCrossfadeCurve(it))
@@ -183,7 +183,7 @@ private fun EqualizerGroup(
     ChoiceRow(stringResource(R.string.eq_preset), listOf(null) + EqualizerPreset.entries, equalizer.preset, { presetName(it) }) {
         it?.let { preset -> change(EqualizerCommand.UsePreset(preset)) }
     }
-    val levels = EqualizerSettings.BAND_LEVEL.start.value.toFloat()..EqualizerSettings.BAND_LEVEL.endInclusive.value.toFloat()
+    val levels = EqualizerSettings.BAND_LEVEL.millibelsForSlider()
     equalizer.bands.forEachIndexed { band, level ->
         SliderRow(stringResource(R.string.eq_band, band + 1, level.value / MILLIBELS_PER_DECIBEL), level.value.toFloat(), levels) {
             change(EqualizerCommand.SetBand(band, Millibels(it.roundToInt())))
@@ -197,7 +197,7 @@ private fun EqualizerGroup(
     SliderRow(
         stringResource(R.string.eq_loudness, equalizer.loudness.value / MILLIBELS_PER_DECIBEL),
         equalizer.loudness.value.toFloat(),
-        EqualizerSettings.LOUDNESS.start.value.toFloat()..EqualizerSettings.LOUDNESS.endInclusive.value.toFloat(),
+        EqualizerSettings.LOUDNESS.millibelsForSlider(),
     ) { change(EqualizerCommand.SetLoudness(Millibels(it.roundToInt()))) }
 }
 
@@ -354,3 +354,11 @@ internal fun LazyListScope.aboutSection(appVersion: String) {
         }
     }
 }
+
+/** A range of milliseconds as a slider's range. */
+private fun ClosedRange<Millis>.millisForSlider(): ClosedFloatingPointRange<Float> =
+    start.value.toFloat()..endInclusive.value.toFloat()
+
+/** A range of millibels as a slider's range. */
+private fun ClosedRange<Millibels>.millibelsForSlider(): ClosedFloatingPointRange<Float> =
+    start.value.toFloat()..endInclusive.value.toFloat()

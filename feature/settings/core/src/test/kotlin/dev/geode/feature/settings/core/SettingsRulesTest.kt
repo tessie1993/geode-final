@@ -216,7 +216,10 @@ class SettingsRulesTest {
 
         val moved = SettingsRules.apply(rock, EqualizerCommand.SetBand(1, Millibels(-600)))
 
-        val expected = EqualizerPreset.ROCK.levels.toMutableList().also { it[1] = Millibels(-600) }
+        val expected =
+            EqualizerPreset.ROCK.levels
+                .toMutableList()
+                .also { it[1] = Millibels(-600) }
         assertEquals(equalizer.copy(bands = expected, preset = null), moved.equalizer)
     }
 

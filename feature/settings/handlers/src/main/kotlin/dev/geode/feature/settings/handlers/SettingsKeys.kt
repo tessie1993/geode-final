@@ -84,6 +84,7 @@ internal object SettingsKeys {
     const val TUTORIAL_ON_FIRST_RUN = "gui_tutorial_on_first_run"
 
     // Read only, from older builds: each is turned into a current setting and never written.
+
     /** Before the font colour choice: white text or not. */
     const val LEGACY_WHITE_FONT = "gui_white_font"
 
