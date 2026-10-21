@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "morphogen",
+  "label": "Morphogen",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "detail": "march"
+}

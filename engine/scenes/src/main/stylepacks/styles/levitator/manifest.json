@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "levitator",
+  "label": "Levitator",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 7,
+    "geometryOverride": 1,
+    "scale": 0.88,
+    "fill": 0.45,
+    "line": 0.92,
+    "glow": 1.42,
+    "iridescence": 0.6,
+    "caustic": 0.72,
+    "flow": 0.55,
+    "hueOffset": 0.32,
+    "hueSpan": 0.8,
+    "modeCap": 3
+  }
+}

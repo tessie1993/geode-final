@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "life_hydro",
+  "label": "Hydrogeminium",
+  "family": "life",
+  "parameters": {
+    "rule": 0,
+    "dt": 0.1,
+    "core": 1,
+    "growth": 1,
+    "mu": 0.26,
+    "sigma": 0.036,
+    "radius": 18.0,
+    "rings": 3,
+    "b2": 1.0,
+    "b3": 1.0,
+    "look": 2,
+    "seedJitter": 5.0,
+    "hueOffset": 0.4
+  }
+}

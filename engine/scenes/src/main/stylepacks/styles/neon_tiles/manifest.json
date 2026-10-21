@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "neon_tiles",
+  "label": "Neon Tiles",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

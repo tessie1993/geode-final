@@ -238,28 +238,23 @@ TEST(RenderSize, NeverZero) {
     EXPECT_GE(size.height, 1);
 }
 
-// ---- the Style manifest --------------------------------------------------------------------------
+// ---- the Style's declared render scale -----------------------------------------------------------
 
-TEST(StyleManifest, PathIsTheStyleFolder) {
-    EXPECT_EQ(scale::styleManifestPath("kifs"), "styles/kifs/manifest.json");
+TEST(StyleRenderScale, KeepsTheDeclaredScale) {
+    EXPECT_FLOAT_EQ(scale::styleRenderScale(0.75), 0.75f);
 }
 
-TEST(StyleManifest, ReadsTheDeclaredRenderScale) {
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale(R"({"version": 1, "renderScale": 0.75})"), 0.75f);
-}
-
-TEST(StyleManifest, DefaultsToOneWhenAbsent) {
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale(R"({"version": 1})"), scale::kDefaultStyleRenderScale);
+TEST(StyleRenderScale, DefaultsToOneWhenNothingIsDeclared) {
+    EXPECT_FLOAT_EQ(scale::styleRenderScale(std::nullopt), scale::kDefaultStyleRenderScale);
     EXPECT_FLOAT_EQ(scale::kDefaultStyleRenderScale, 1.0f);
 }
 
-TEST(StyleManifest, DefaultsToOneWhenUnreadable) {
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale("not json"), scale::kDefaultStyleRenderScale);
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale("[0.5]"), scale::kDefaultStyleRenderScale);
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale(R"({"renderScale": "half"})"), scale::kDefaultStyleRenderScale);
+TEST(StyleRenderScale, DefaultsToOneWhenNotFinite) {
+    EXPECT_FLOAT_EQ(scale::styleRenderScale(std::nan("")), scale::kDefaultStyleRenderScale);
+    EXPECT_FLOAT_EQ(scale::styleRenderScale(HUGE_VAL), scale::kDefaultStyleRenderScale);
 }
 
-TEST(StyleManifest, ClampsToTheAllowedRange) {
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale(R"({"renderScale": 0.1})"), scale::kMinStyleRenderScale);
-    EXPECT_FLOAT_EQ(scale::manifestRenderScale(R"({"renderScale": 3})"), scale::kMaxStyleRenderScale);
+TEST(StyleRenderScale, ClampsToTheAllowedRange) {
+    EXPECT_FLOAT_EQ(scale::styleRenderScale(0.1), scale::kMinStyleRenderScale);
+    EXPECT_FLOAT_EQ(scale::styleRenderScale(3.0), scale::kMaxStyleRenderScale);
 }

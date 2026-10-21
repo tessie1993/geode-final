@@ -11,6 +11,16 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Styles are data packs (#59).** Every Style is a folder,
+  `engine/scenes/src/main/stylepacks/styles/<id>/`, holding its manifest
+  (label, family, family parameters, render scale, what Detail drives, and
+  room for generic Extras, default Macros and default Reactions) and, for a
+  shader Style, its shader. `styles/index.json` orders them and
+  `styles/families.json` gives each family's parameters with their ranges.
+  The Kotlin and native sides each build their one Style registry from these
+  files, so the Style tables in `VisualStyleCatalog.kt` and `StyleCatalog.cpp`,
+  the shader id lists on both sides and the scene if-chain are gone. CI
+  validates every pack. Every Style looks as it did. See `docs/style-packs.md`.
 - **Removed user GLSL shaders (#87).** The Customize panel's GLSL tab, the
   Fluid tab's force and dye injection editors, the renderer's custom-shader
   and fluid-injection paths, their C ABI (`geode_viz_set_custom_shader`,

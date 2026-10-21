@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "tunnel",
+  "label": "Tunnel",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

@@ -77,7 +77,6 @@ geode_core_library(geode_viz viz
     viz/fluid/FluidLook.cpp
     viz/fluid/RippleSim.cpp
     viz/fluid/FlowField.cpp
-    viz/scenes/StyleCatalog.cpp
     viz/scenes/CymaticsScene.cpp
     viz/scenes/LifeScene.cpp
     viz/scenes/MycoScene.cpp

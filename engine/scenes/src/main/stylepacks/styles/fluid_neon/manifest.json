@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "fluid_neon",
+  "label": "Neon Contours",
+  "family": "fluid",
+  "parameters": {
+    "look": 3,
+    "curl": 1.1,
+    "densityDissipation": 0.8,
+    "splatRadius": 0.9,
+    "splatForce": 1.2,
+    "bloom": 1.4,
+    "hueOffset": 0.72
+  }
+}

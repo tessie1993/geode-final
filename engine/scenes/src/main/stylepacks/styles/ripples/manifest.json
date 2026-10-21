@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "ripples",
+  "label": "Ripples",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

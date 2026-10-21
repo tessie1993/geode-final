@@ -2,6 +2,11 @@ package dev.geode.render.scene
 
 import dev.geode.engine.types.SceneId
 
+/**
+ * Ids of Styles that built-in content (presets, templates, suggestions) refers to. These are not a
+ * list of the Styles: the Styles are the packs ([StylePacks]), and content naming a Style whose pack
+ * has been removed falls back to [DEFAULT] or drops out ([SceneCapabilities.storedOrDefault]).
+ */
 object SceneIds {
     val JULIA = SceneId("julia")
     val TUNNEL = SceneId("tunnel")
@@ -54,8 +59,7 @@ object SceneIds {
      *
      * A stand-in, a calm shader Style, until the owner picks the real default; change it here
      * only. Declared last so the Style it names is already initialised. The app requests its
-     * Style from the native renderer before every frame, so the native side's starting id
-     * (`Renderer::kStartSceneId`) never decides what is shown.
+     * Style from the native renderer before every frame; the native side names no Style of its own.
      */
     val DEFAULT = AURORA
 }

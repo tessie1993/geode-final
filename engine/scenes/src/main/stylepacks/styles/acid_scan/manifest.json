@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "acid_scan",
+  "label": "Scanline Surge",
+  "family": "acid",
+  "parameters": {
+    "mode": 6,
+    "source": 2,
+    "zoom": 1.006,
+    "rotate": 0.0,
+    "hueRate": 0.03,
+    "feedback": 0.95,
+    "glitch": 0.7,
+    "scanline": 0.8,
+    "curve": 0.6,
+    "hueOffset": 0.55
+  }
+}

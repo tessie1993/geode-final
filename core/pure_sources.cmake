@@ -46,6 +46,8 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/BeatEnvelope.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
+    viz/StylePacks.cpp
+    viz/StyleProfiles.cpp
     viz/ThermalGovernor.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/SimGrid.cpp

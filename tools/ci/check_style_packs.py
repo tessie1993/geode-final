@@ -1,0 +1,406 @@
+#!/usr/bin/env python3
+"""Validates every Style pack against the pack format (docs/style-packs.md).
+
+A Style is a folder engine/scenes/src/main/stylepacks/styles/<id>/ holding manifest.json and, for a
+shader Style, its fragment shader. styles/index.json lists the Styles in picker order and
+styles/families.json declares each family's parameters with their types and ranges. Both the Kotlin
+side (StylePacks.kt) and the native side (geode/viz/StylePacks.hpp) read these files; this check holds
+them to the format, plus the rules that span packs (every folder listed exactly once, an Extra name
+meaning the same range on every Style).
+
+    python3 tools/ci/check_style_packs.py               # check the repository
+    python3 tools/ci/check_style_packs.py --self-test   # prove the check catches violations
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+import math
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+STYLES = ROOT / "engine" / "scenes" / "src" / "main" / "stylepacks" / "styles"
+
+FORMAT_VERSION = 1
+ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+MANIFEST_KEYS = {"version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions"}
+SHADER_FAMILY = "shader"
+PARAMETER_TYPES = {"int", "float"}
+DETAIL_USES = {"none", "march"}
+MIN_RENDER_SCALE = 0.5
+MAX_RENDER_SCALE = 1.0
+MAX_MACROS = 6
+MIN_AMOUNT = -1.0
+MAX_AMOUNT = 1.0
+REACTION_CURVES = {"linear", "ease_in", "ease_out", "smooth"}
+INDEX_FILE = "index.json"
+FAMILIES_FILE = "families.json"
+MANIFEST_FILE = "manifest.json"
+
+
+def is_number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def is_text(value: object) -> bool:
+    return isinstance(value, str) and value.strip() != ""
+
+
+class Report:
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+
+    def error(self, where: str, message: str) -> None:
+        self.errors.append(f"{where}: {message}")
+
+
+def load_json(path: Path, report: Report) -> dict | None:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        report.error(path.name, "missing")
+        return None
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        report.error(str(path), f"not JSON: {e}")
+        return None
+    if not isinstance(doc, dict):
+        report.error(str(path), "not a JSON object")
+        return None
+    if doc.get("version") != FORMAT_VERSION or isinstance(doc.get("version"), bool):
+        report.error(str(path), f'"version" must be {FORMAT_VERSION}')
+        return None
+    return doc
+
+
+def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
+    families: dict[str, dict[str, dict]] = {}
+    entries = doc.get("families")
+    if not isinstance(entries, list):
+        report.error(FAMILIES_FILE, '"families" must be an array')
+        return families
+    for entry in entries:
+        if not isinstance(entry, dict) or not is_text(entry.get("name")) or not isinstance(entry.get("parameters"), list):
+            report.error(FAMILIES_FILE, 'a family needs "name" and "parameters"')
+            continue
+        name = entry["name"]
+        if name in families:
+            report.error(FAMILIES_FILE, f'family "{name}" is declared twice')
+            continue
+        specs: dict[str, dict] = {}
+        for spec in entry["parameters"]:
+            where = f"{FAMILIES_FILE} {name}"
+            if not isinstance(spec, dict) or not is_text(spec.get("key")):
+                report.error(where, 'a parameter needs "key"')
+                continue
+            key = spec["key"]
+            if key in specs:
+                report.error(where, f'parameter "{key}" is declared twice')
+            if spec.get("type") not in PARAMETER_TYPES:
+                report.error(where, f'parameter "{key}" needs "type" of {sorted(PARAMETER_TYPES)}')
+                continue
+            if not is_number(spec.get("min")) or not is_number(spec.get("max")) or spec["min"] > spec["max"]:
+                report.error(where, f'parameter "{key}" needs numbers "min" <= "max"')
+                continue
+            if "default" in spec and not in_range(spec, spec["default"]):
+                report.error(where, f'parameter "{key}" has a default outside its range or type')
+            specs[key] = spec
+        families[name] = specs
+    return families
+
+
+def in_range(spec: dict, value: object) -> bool:
+    if not is_number(value) or not spec["min"] <= value <= spec["max"]:
+        return False
+    return spec["type"] != "int" or float(value).is_integer()
+
+
+def check_index(doc: dict, report: Report) -> list[str]:
+    styles = doc.get("styles")
+    if not isinstance(styles, list):
+        report.error(INDEX_FILE, '"styles" must be an array')
+        return []
+    ids: list[str] = []
+    for entry in styles:
+        if not isinstance(entry, str) or not ID_PATTERN.match(entry):
+            report.error(INDEX_FILE, f"{entry!r} is not a Style id (lowercase letters, digits and _)")
+        elif entry in ids:
+            report.error(INDEX_FILE, f'"{entry}" is listed twice')
+        else:
+            ids.append(entry)
+    return ids
+
+
+def check_parameters(manifest: dict, specs: dict[str, dict], where: str, report: Report) -> None:
+    declared = manifest.get("parameters", {})
+    if not isinstance(declared, dict):
+        report.error(where, '"parameters" must be an object')
+        return
+    for key, value in declared.items():
+        if key not in specs:
+            report.error(where, f'family "{manifest["family"]}" has no parameter "{key}"')
+        elif not in_range(specs[key], value):
+            spec = specs[key]
+            report.error(where, f'parameter "{key}" = {value!r} is not a {spec["type"]} in [{spec["min"]}, {spec["max"]}]')
+    for key, spec in specs.items():
+        if "default" not in spec and key not in declared:
+            report.error(where, f'parameter "{key}" has no default and must be set')
+
+
+def check_list(manifest: dict, key: str, where: str, report: Report) -> list[dict]:
+    value = manifest.get(key, [])
+    if not isinstance(value, list) or not all(isinstance(entry, dict) for entry in value):
+        report.error(where, f'"{key}" must be an array of objects')
+        return []
+    return value
+
+
+def check_amount(entry: dict, where: str, report: Report) -> None:
+    if not is_number(entry.get("amount")) or not MIN_AMOUNT <= entry["amount"] <= MAX_AMOUNT:
+        report.error(where, f'"amount" must be a number in [{MIN_AMOUNT}, {MAX_AMOUNT}]')
+
+
+def check_extras(manifest: dict, where: str, report: Report, extra_ranges: dict[str, tuple[float, float, str]]) -> None:
+    names: set[str] = set()
+    for extra in check_list(manifest, "extras", where, report):
+        name = extra.get("name")
+        if not isinstance(name, str) or not NAME_PATTERN.match(name):
+            report.error(where, 'an extra needs a "name" of lowercase letters, digits and _')
+            continue
+        if name in names:
+            report.error(where, f'extra "{name}" is declared twice')
+        names.add(name)
+        lo, hi, default = extra.get("min"), extra.get("max"), extra.get("default")
+        if not all(is_number(v) for v in (lo, hi, default)) or not lo <= default <= hi:
+            report.error(where, f'extra "{name}" needs numbers "min" <= "default" <= "max"')
+            continue
+        # Extras are generic: one name is one control, with one range, on every Style that has it.
+        seen = extra_ranges.setdefault(name, (lo, hi, where))
+        if (seen[0], seen[1]) != (lo, hi):
+            report.error(where, f'extra "{name}" has range [{lo}, {hi}] but {seen[2]} gives it [{seen[0]}, {seen[1]}]')
+
+
+def check_macros(manifest: dict, where: str, report: Report) -> None:
+    macros = check_list(manifest, "macros", where, report)
+    if len(macros) > MAX_MACROS:
+        report.error(where, f"at most {MAX_MACROS} Macros")
+    names: set[str] = set()
+    for macro in macros:
+        name = macro.get("name")
+        if not isinstance(name, str) or not NAME_PATTERN.match(name):
+            report.error(where, 'a Macro needs a "name" of lowercase letters, digits and _')
+            continue
+        if name in names:
+            report.error(where, f'Macro "{name}" is declared twice')
+        names.add(name)
+        links = macro.get("links")
+        if not isinstance(links, list):
+            report.error(where, f'Macro "{name}" needs "links"')
+            continue
+        for link in links:
+            if not isinstance(link, dict) or not is_text(link.get("target")):
+                report.error(where, f'every link of Macro "{name}" needs a "target"')
+                continue
+            check_amount(link, where, report)
+
+
+def check_reactions(manifest: dict, where: str, report: Report) -> None:
+    for reaction in check_list(manifest, "reactions", where, report):
+        if not is_text(reaction.get("signal")) or not is_text(reaction.get("target")):
+            report.error(where, 'a Reaction needs "signal" and "target"')
+            continue
+        check_amount(reaction, where, report)
+        for key in ("riseMs", "fallMs"):
+            if not is_number(reaction.get(key)) or reaction[key] < 0:
+                report.error(where, f'a Reaction\'s "{key}" must be a number >= 0')
+        if reaction.get("curve") not in REACTION_CURVES:
+            report.error(where, f'a Reaction\'s "curve" must be one of {sorted(REACTION_CURVES)}')
+
+
+def check_manifest(
+    folder: Path,
+    families: dict[str, dict[str, dict]],
+    report: Report,
+    extra_ranges: dict[str, tuple[float, float, str]],
+) -> None:
+    where = folder.name
+    manifest = load_json(folder / MANIFEST_FILE, report)
+    if manifest is None:
+        return
+    unknown = set(manifest) - MANIFEST_KEYS
+    if unknown:
+        report.error(where, f"unknown keys {sorted(unknown)}")
+    if manifest.get("id") != folder.name:
+        report.error(where, f'"id" must be the folder name, "{folder.name}"')
+    if not is_text(manifest.get("label")):
+        report.error(where, '"label" must be a non-empty string')
+    family = manifest.get("family")
+    if family not in families:
+        report.error(where, f'"family" {family!r} is not declared in {FAMILIES_FILE}')
+        return
+    files = {p.name for p in folder.iterdir()}
+    expected = {MANIFEST_FILE}
+    if family == SHADER_FAMILY:
+        shader = manifest.get("shader")
+        if not is_text(shader) or "/" in shader or not (folder / shader).is_file():
+            report.error(where, 'a shader Style needs "shader": a file in its own folder')
+        else:
+            expected.add(shader)
+    elif "shader" in manifest:
+        report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
+    if files != expected:
+        report.error(where, f"the folder holds {sorted(files)}, expected {sorted(expected)}")
+    if "renderScale" in manifest:
+        scale = manifest["renderScale"]
+        if not is_number(scale) or not MIN_RENDER_SCALE <= scale <= MAX_RENDER_SCALE:
+            report.error(where, f'"renderScale" must be a number in [{MIN_RENDER_SCALE}, {MAX_RENDER_SCALE}]')
+    if manifest.get("detail", "none") not in DETAIL_USES:
+        report.error(where, f'"detail" must be one of {sorted(DETAIL_USES)}')
+    check_parameters(manifest, families[family], where, report)
+    check_extras(manifest, where, report, extra_ranges)
+    check_macros(manifest, where, report)
+    check_reactions(manifest, where, report)
+
+
+def check(styles: Path) -> list[str]:
+    report = Report()
+    families_doc = load_json(styles / FAMILIES_FILE, report)
+    index_doc = load_json(styles / INDEX_FILE, report)
+    if families_doc is None or index_doc is None:
+        return report.errors
+    families = check_families(families_doc, report)
+    ids = check_index(index_doc, report)
+    folders = sorted(p.name for p in styles.iterdir() if p.is_dir())
+    for missing in sorted(set(ids) - set(folders)):
+        report.error(INDEX_FILE, f'lists "{missing}", which has no folder')
+    for unlisted in sorted(set(folders) - set(ids)):
+        report.error(unlisted, f"is not listed in {INDEX_FILE}")
+    stray = sorted(p.name for p in styles.iterdir() if p.is_file() and p.name not in (INDEX_FILE, FAMILIES_FILE))
+    if stray:
+        report.error(str(styles), f"stray files {stray}")
+    extra_ranges: dict[str, tuple[float, float, str]] = {}
+    for style_id in ids:
+        if (styles / style_id).is_dir():
+            check_manifest(styles / style_id, families, report, extra_ranges)
+    return report.errors
+
+
+# ---- self-test ------------------------------------------------------------------------------------
+
+GOOD_FAMILIES = {
+    "version": 1,
+    "families": [
+        {"name": "shader", "parameters": []},
+        {"name": "plate", "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
+    ],
+}
+GOOD_MANIFESTS = {
+    "orb": {
+        "version": 1, "id": "orb", "label": "Orb", "family": "shader", "shader": "shader.glsl", "renderScale": 0.75,
+        "detail": "march", "extras": [{"name": "density", "min": 0, "max": 2, "default": 1}],
+        "macros": [{"name": "energy", "links": [{"target": "density", "amount": 0.5}]}],
+        "reactions": [{"signal": "bass", "target": "density", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
+    },
+    "drum": {"version": 1, "id": "drum", "label": "Drum", "family": "plate", "parameters": {"mode": 2}},
+}
+
+
+def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, str]) -> Path:
+    styles = root / "styles"
+    styles.mkdir()
+    (styles / FAMILIES_FILE).write_text(json.dumps(families))
+    (styles / INDEX_FILE).write_text(json.dumps({"version": 1, "styles": index}))
+    for style_id, manifest in manifests.items():
+        (styles / style_id).mkdir()
+        (styles / style_id / MANIFEST_FILE).write_text(json.dumps(manifest))
+    for style_id, name in shaders.items():
+        (styles / style_id / name).write_text("void main() {}\n")
+    return styles
+
+
+def run_case(mutate) -> list[str]:
+    families = copy.deepcopy(GOOD_FAMILIES)
+    manifests = copy.deepcopy(GOOD_MANIFESTS)
+    index = list(manifests)
+    shaders = {"orb": "shader.glsl"}
+    mutate(families, index, manifests, shaders)
+    with tempfile.TemporaryDirectory() as tmp:
+        return check(write_tree(Path(tmp), families, index, manifests, shaders))
+
+
+def self_test() -> int:
+    good = run_case(lambda f, i, m, s: None)
+    if good:
+        print("self-test: the good tree was rejected:\n  " + "\n  ".join(good))
+        return 1
+
+    def setter(path: list, value):
+        def mutate(f, i, m, s):
+            target = m
+            for key in path[:-1]:
+                target = target[key]
+            if value is DELETE:
+                del target[path[-1]]
+            else:
+                target[path[-1]] = value
+        return mutate
+
+    cases = {
+        "unlisted folder": lambda f, i, m, s: i.remove("drum"),
+        "listed twice": lambda f, i, m, s: i.append("orb"),
+        "listed without folder": lambda f, i, m, s: i.append("ghost"),
+        "bad id": lambda f, i, m, s: i.append("Bad-Id"),
+        "id mismatch": setter(["orb", "id"], "other"),
+        "missing label": setter(["orb", "label"], DELETE),
+        "unknown family": setter(["orb", "family"], "hologram"),
+        "unknown key": setter(["orb", "colour"], 1),
+        "wrong version": setter(["orb", "version"], 2),
+        "missing shader file": lambda f, i, m, s: s.clear(),
+        "stray file": lambda f, i, m, s: s.update({"drum": "notes.txt"}),
+        "shader on a non-shader family": setter(["drum", "shader"], "shader.glsl"),
+        "render scale out of range": setter(["orb", "renderScale"], 0.2),
+        "bad detail": setter(["orb", "detail"], "max"),
+        "unknown parameter": setter(["drum", "parameters", "hue"], 1),
+        "parameter out of range": setter(["drum", "parameters", "mode"], 9),
+        "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),
+        "required parameter missing": setter(["drum", "parameters"], {}),
+        "extra default outside range": setter(["orb", "extras"], [{"name": "density", "min": 0, "max": 1, "default": 3}]),
+        "extra range differs between Styles": setter(["drum", "extras"], [{"name": "density", "min": 0, "max": 5, "default": 1}]),
+        "too many Macros": setter(["orb", "macros"], [{"name": f"m{n}", "links": []} for n in range(MAX_MACROS + 1)]),
+        "Macro amount out of range": setter(["orb", "macros"], [{"name": "energy", "links": [{"target": "x", "amount": 2}]}]),
+        "Reaction with negative rise": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": -1, "fallMs": 0, "curve": "linear"}]),
+        "Reaction with unknown curve": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": 0, "fallMs": 0, "curve": "zigzag"}]),
+        "family default outside range": lambda f, i, m, s: f["families"][1]["parameters"][1].update({"default": 7}),
+        "family parameter with unknown type": lambda f, i, m, s: f["families"][1]["parameters"][0].update({"type": "bool"}),
+    }
+    failed = [name for name, mutate in cases.items() if not run_case(mutate)]
+    if failed:
+        print("self-test: these violations were not caught: " + ", ".join(failed))
+        return 1
+    print(f"self-test: the good tree passes and all {len(cases)} violations are caught")
+    return 0
+
+
+DELETE = object()
+
+
+def main() -> int:
+    if "--self-test" in sys.argv[1:]:
+        return self_test()
+    errors = check(STYLES)
+    if errors:
+        print(f"style pack check failed ({len(errors)}):")
+        for error in errors:
+            print(f"  {error}")
+        return 1
+    count = len(json.loads((STYLES / INDEX_FILE).read_text(encoding="utf-8"))["styles"])
+    print(f"style packs ok: {count} Styles")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

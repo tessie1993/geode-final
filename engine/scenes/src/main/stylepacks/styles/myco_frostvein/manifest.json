@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "myco_frostvein",
+  "label": "Frost Veins",
+  "family": "mycelium",
+  "parameters": {
+    "agentRes": 176,
+    "sensorDist": 10.0,
+    "sensorAngle": 0.35,
+    "turnAngle": 0.5,
+    "moveStep": 0.9,
+    "deposit": 0.12,
+    "decay": 0.915,
+    "aniso": 0.8,
+    "look": 1,
+    "hueOffset": 0.52
+  }
+}

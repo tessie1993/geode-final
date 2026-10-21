@@ -14,7 +14,8 @@ namespace geode::viz {
 // Port of WaterScene.kt: the ripple height field with an ink layer, fed by the emitters and the fingers.
 class WaterScene : public FluidSceneBase {
 public:
-    WaterScene(ProgramLoader loader, SceneHost host) : FluidSceneBase("water", kTimeWrapSeconds, loader, std::move(host)), sim_(loader_) {
+    WaterScene(std::string id, ProgramLoader loader, SceneHost host)
+        : FluidSceneBase(std::move(id), kTimeWrapSeconds, loader, std::move(host)), sim_(loader_) {
         sim_.inkEnabled = true;
         emitters_.choreography = &choreography_;
     }

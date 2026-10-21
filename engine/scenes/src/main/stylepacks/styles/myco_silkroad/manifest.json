@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "myco_silkroad",
+  "label": "Silk Roads",
+  "family": "mycelium",
+  "parameters": {
+    "agentRes": 176,
+    "sensorDist": 22.0,
+    "sensorAngle": 0.18,
+    "turnAngle": 0.12,
+    "moveStep": 1.35,
+    "jitter": 0.02,
+    "deposit": 0.1,
+    "decay": 0.93,
+    "look": 1,
+    "hueOffset": -0.2
+  }
+}

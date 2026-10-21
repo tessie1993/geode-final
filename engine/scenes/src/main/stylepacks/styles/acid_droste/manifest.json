@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "acid_droste",
+  "label": "Droste Throat",
+  "family": "acid",
+  "parameters": {
+    "mode": 3,
+    "source": 1,
+    "zoom": 1.0,
+    "rotate": 0.0012,
+    "hueRate": 0.03,
+    "feedback": 0.96,
+    "modulate": 0.3,
+    "hueOffset": 0.72
+  }
+}
