@@ -50,12 +50,16 @@ import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import dev.geode.R
+import dev.geode.design.CrystalPlayButton
+import dev.geode.design.crystalPanel
+import dev.geode.design.glassScrim
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
+import dev.geode.design.theme.accentTextColor
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
 import dev.geode.render.scene.TouchTransform
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
 import kotlin.math.PI
 import kotlin.math.abs
 

@@ -32,8 +32,9 @@ import dev.geode.data.RuleField
 import dev.geode.data.RuleOp
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartRule
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
+import dev.geode.design.CrystalButton
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
 
 /** The smart playlists under the hand-made ones: each row plays its current matches; the editor writes rules. */
 @Composable

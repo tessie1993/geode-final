@@ -22,8 +22,8 @@
 #
 # projectM's public headers come from the exact commit the submodule pins,
 # fetched sparsely (one network round trip, ~2 MB), with the repo's own
-# render-fbo backport patch applied to them - the same patch the root
-# CMakeLists.txt applies at configure time.
+# patches applied to them (render-fbo backport, then render clock) - the same
+# patches tools/projectm-patches.cmake applies at configure time.
 #
 #   tools/hostlink/hostlink.sh            # exit 0 on a clean link
 #   HOSTLINK_KEEP=1 tools/hostlink/hostlink.sh   # keep the work dir
@@ -42,6 +42,7 @@ if [[ ! -d "$WORK/pm" ]]; then
   git -C "$WORK/pm" fetch -q --depth 1 origin "$PM_COMMIT"
   git -C "$WORK/pm" checkout -q FETCH_HEAD
   git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.7-render-fbo-backport.patch"
+  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.7-render-clock.patch"
 fi
 cp "$WORK/pm/src/api/include/projectM-4/"*.h "$WORK/inc/projectM-4/"
 printf '#pragma once\n#define PROJECTM_EXPORT\n' > "$WORK/inc/projectM-4/projectM_export.h"

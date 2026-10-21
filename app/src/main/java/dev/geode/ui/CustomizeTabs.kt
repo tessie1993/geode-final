@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.analysis.IntelligenceMode
+import dev.geode.design.CrystalGem
+import dev.geode.design.CrystalSlider
+import dev.geode.design.luminousHairline
+import dev.geode.design.theme.accentTextColor
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine

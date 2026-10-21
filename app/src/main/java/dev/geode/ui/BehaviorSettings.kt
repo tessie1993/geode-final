@@ -15,6 +15,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalSegmented
+import dev.geode.design.CrystalSlider
 
 @Composable
 internal fun BehaviorSettingsTab(viewModel: SettingsViewModel) {
