@@ -224,3 +224,27 @@ TEST(CurlFlowMath, ParticleBrightness) {
     EXPECT_NEAR(curl::particleBrightness(2.0f), 1.2f, kTol);
     EXPECT_NEAR(curl::particleBrightness(-1.0f), 0.85f, kTol);
 }
+
+TEST(FluidMath, CurlVelocityValues) {
+    // Pinned from the value-noise stream function: three octaves (the third weighted by detail).
+    constexpr float kVelocityTol = 1e-3f;
+    const auto [u1, v1] = math::curlVelocity(0.13f, 0.71f, 0.37f, 3.0f, 1.0f);
+    EXPECT_NEAR(u1, 0.827757299f, kVelocityTol);
+    EXPECT_NEAR(v1, -1.70393145f, kVelocityTol);
+    const auto [u2, v2] = math::curlVelocity(0.5f, 0.25f, 1.2f, 2.0f, 0.0f);
+    EXPECT_NEAR(u2, -1.49463344f, kVelocityTol);
+    EXPECT_NEAR(v2, 0.000332295895f, kVelocityTol);
+    const auto [u3, v3] = math::curlVelocity(-1.3f, 2.4f, 5.5f, 1.5f, 0.5f);
+    EXPECT_NEAR(u3, 0.251930952f, kVelocityTol);
+    EXPECT_NEAR(v3, -0.11433959f, kVelocityTol);
+}
+
+TEST(FluidMath, SegDistAwayFromTheOrigin) {
+    const auto mid = math::segDist(1.0f, 1.0f, 5.0f, 1.0f, 3.0f, 4.0f);
+    EXPECT_NEAR(mid.first, 3.0f, kTol);
+    EXPECT_NEAR(mid.second, 0.5f, kTol);
+    const auto slanted = math::segDist(1.0f, 2.0f, 4.0f, 6.0f, 4.0f, 2.0f);
+    // The projection of (3, 0) on (3, 4) is 9/25 of the way.
+    EXPECT_NEAR(slanted.second, 0.36f, kTol);
+    EXPECT_NEAR(slanted.first, 2.4f, kTol);
+}

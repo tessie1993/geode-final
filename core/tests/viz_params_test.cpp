@@ -66,6 +66,11 @@ TEST(SceneParams, PaletteBaseAndRangeComeFromTheTableUnlessOverridden) {
     EXPECT_FLOAT_EQ(p.palette2Base(), 0.3f);
     p.palette2BaseOverride = SceneParams::kUnsetOverride;
     EXPECT_FALSE(p.usesCustomPalette2());
+    p.palette2 = 1;
+    p.palette2BaseOverride = 0.0f;
+    EXPECT_FLOAT_EQ(p.palette2Base(), 0.0f);
+    p.palette2BaseOverride = SceneParams::kUnsetOverride;
+    EXPECT_FLOAT_EQ(p.palette2Base(), 0.5f);
     p.palette2RangeOverride = 0.0f;
     EXPECT_TRUE(p.usesCustomPalette2());
     EXPECT_FLOAT_EQ(p.palette2Range(), 0.0f);

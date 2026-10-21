@@ -57,6 +57,7 @@ TEST(RippleMath, CflClampedDt) {
     EXPECT_NEAR(ripple::cflClampedDt(1e-7f, 0.1f, 1.0f), 0.1f, kTol);
     EXPECT_NEAR(ripple::cflClampedDt(10.0f, 0.1f, 1.0f), 0.07f, kTol);
     EXPECT_NEAR(ripple::cflClampedDt(1.0f, 0.1f, 1.0f), 0.1f, kTol);
+    EXPECT_NEAR(ripple::cflClampedDt(10.0f, 0.1f, 0.5f), 0.035f, kTol);
 }
 
 TEST(RippleMath, RefractionOffsetIsSoftCapped) {
@@ -205,4 +206,12 @@ TEST(RippleOverlayDrops, ResetRestartsTheFrameCountAndPositions) {
     EXPECT_TRUE(rec.drops.empty());
     drops.tick(frame(0.0f, 0.0f, 0.6f), 1.0f, rec.queue());
     EXPECT_EQ(rec.drops.size(), 1u);
+}
+
+TEST(RippleOverlayDrops, ATransientAtTheHitFloorIsAHit) {
+    ripple::OverlayDrops drops;
+    Recorder rec;
+    drops.tick(frame(geode::viz::live::kHitFloor, 0.0f, 0.0f), 1.0f, rec.queue());
+    ASSERT_EQ(rec.drops.size(), 2u);
+    EXPECT_NEAR(rec.drops[0].amp, 0.22f * geode::viz::live::kHitFloor, kTol);
 }

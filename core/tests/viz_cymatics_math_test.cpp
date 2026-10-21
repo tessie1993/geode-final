@@ -319,3 +319,137 @@ TEST(CymaticsDrops, ResetAndZeroTime) {
     drops.update(0.01f, 1.0f);
     EXPECT_GT(drops.packed()[7], 0.0f);
 }
+
+TEST(CymaticsMath, ApproachHueWrapsAtExactlyHalfATurn) {
+    // A difference of exactly +-0.5 is taken as it is, not wrapped.
+    EXPECT_NEAR(cym::approachHue(0.0f, 0.5f, 0.5f), 0.25f, kTol);
+    EXPECT_NEAR(cym::approachHue(0.5f, 0.0f, 0.5f), 0.25f, kTol);
+    // Past half a turn it is wrapped by one whole turn.
+    EXPECT_NEAR(cym::approachHue(0.2f, 0.9f, 0.25f), 0.125f, kTol);
+    EXPECT_NEAR(cym::approachHue(0.9f, 0.2f, 0.25f), 0.975f, kTol);
+}
+
+TEST(CymaticsPlate, TheHighestModesAreTracked) {
+    // At the lowest fundamental the top band of 64 lands on the last mode, (14, 13).
+    constexpr int kBands = 64;
+    std::array<float, kBands> bands{};
+    bands[kBands - 1] = 1.0f;
+    cym::Plate plate;
+    plate.excite(bands.data(), kBands, kSettle, cym::kMinFundamentalHz, 1.0f, 0.5f, 0.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_EQ(out[0], 14.0f);
+    EXPECT_EQ(out[1], 13.0f);
+    EXPECT_NEAR(plate.dominantWavenumber(), std::sqrt(365.0f), kTol);
+    // Its vibration is capped at 1.6 Hz: a quarter second turns it 1.6 * 2pi / 4.
+    plate.advancePhases(0.25f, 1.0f);
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_NEAR(out[3], 2.5132741f, kTol);
+}
+
+TEST(CymaticsPlate, TheLowestModeCanDominate) {
+    cym::Plate plate;
+    const float bands[] = {1.0f, 0.0f};
+    plate.excite(bands, 2, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    EXPECT_NEAR(plate.dominantWavenumber(), 1.0f, kTol);
+}
+
+TEST(CymaticsPlate, EqualAmplitudesKeepModeOrder) {
+    cym::Plate plate;
+    const float bands[] = {1.0f, 1.0f};
+    plate.excite(bands, 2, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(cym::kMaxRenderedModes, out.data(), static_cast<int>(out.size())), 2);
+    EXPECT_EQ(out[0], 1.0f);
+    EXPECT_EQ(out[1], 0.0f);
+    EXPECT_EQ(out[4], 5.0f);
+    EXPECT_EQ(out[5], 2.0f);
+    EXPECT_NEAR(out[2], 0.5f, kTol);
+    EXPECT_NEAR(out[6], 0.5f, kTol);
+}
+
+TEST(CymaticsPlate, NormalisationTouchesOnlyWrittenModes) {
+    cym::Plate plate;
+    const float bands[] = {2.0f};
+    plate.excite(bands, 1, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(cym::kMaxRenderedModes, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_NEAR(out[2], 1.0f, kTol);
+    EXPECT_EQ(out[6], -1.0f);
+}
+
+TEST(CymaticsPlate, AnAmplitudeAtTheSilenceFloorIsKeptButNotRendered) {
+    cym::Plate plate;
+    const float bands[] = {cym::kSilence};
+    plate.excite(bands, 1, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    EXPECT_NEAR(plate.dominantWavenumber(), std::sqrt(5.0f), kTol);
+    auto out = snapshotBuffer();
+    EXPECT_EQ(plate.snapshot(cym::kMaxRenderedModes, out.data(), static_cast<int>(out.size())), 0);
+}
+
+TEST(CymaticsPlate, NoBandsLeavesTheRingingAlone) {
+    cym::Plate plate;
+    const float bands[] = {1.0f};
+    plate.excite(bands, 1, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    plate.excite(bands, 0, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_NEAR(out[2], 1.0f, kTol);
+}
+
+TEST(CymaticsPlate, ResetClearsThePhases) {
+    cym::Plate plate;
+    const float bands[] = {1.0f};
+    plate.excite(bands, 1, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    plate.advancePhases(1.0f, 1.0f);
+    plate.reset();
+    plate.excite(bands, 1, kSettle, kFundamental, 1.0f, 0.5f, 0.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_EQ(out[3], 0.0f);
+}
+
+TEST(CymaticsPlate, TheMapFollowsTheBandCountAndFundamental) {
+    cym::Plate plate;
+    const float one[] = {1.0f};
+    plate.excite(one, 1, kSettle, kFundamental, 1.0f, 0.01f, 0.0f);
+    // Same fundamental, two bands now: the second band reaches (5, 2).
+    const float two[] = {0.0f, 1.0f};
+    plate.excite(two, 2, kSettle, kFundamental, 1.0f, 0.01f, 0.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_EQ(out[0], 5.0f);
+    EXPECT_EQ(out[1], 2.0f);
+    // Same bands, lowest fundamental: the second band reaches (9, 1).
+    plate.excite(two, 2, kSettle, cym::kMinFundamentalHz, 1.0f, 0.01f, 0.0f);
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_EQ(out[0], 9.0f);
+    EXPECT_EQ(out[1], 1.0f);
+}
+
+TEST(CymaticsPlate, WhiteningAveragesNineBands) {
+    // Band 0 of five sees bands 0..4: a mean of 1/5, whitened (1 - 0.2) * 2.6, at drive 0.25.
+    cym::Plate plate;
+    const float bands[] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+    plate.excite(bands, 5, kSettle, kFundamental, 0.25f, 0.5f, 1.0f);
+    auto out = snapshotBuffer();
+    ASSERT_EQ(plate.snapshot(1, out.data(), static_cast<int>(out.size())), 1);
+    EXPECT_NEAR(out[2], 0.52f, kTol);
+}
+
+TEST(CymaticsDrops, SpawnPositionsAreSeeded) {
+    cym::Drops drops;
+    const auto& p = drops.packed();
+    constexpr float kPositionTol = 0.02f;
+    drops.update(0.1f, 0.5f);
+    EXPECT_NEAR(p[0], 0.97109375f, kPositionTol);
+    EXPECT_NEAR(p[1], 0.584375f, kPositionTol);
+    drops.update(0.1f, 0.5f);
+    drops.update(0.05f, 0.5f);
+    EXPECT_NEAR(p[4], -0.9109375f, kPositionTol);
+    EXPECT_NEAR(p[5], 0.7046875f, kPositionTol);
+    // Spawning slot 1 leaves slot 0 turning; an empty slot does not turn.
+    EXPECT_NEAR(p[2], 0.36f, kTol);
+    EXPECT_EQ(p[6], 0.0f);
+    EXPECT_EQ(p[10], 0.0f);
+}

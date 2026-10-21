@@ -271,7 +271,7 @@ jobs:
             -DGEODE_MUTATE=${{ matrix.library }} -DGEODE_MULL_PLUGIN=/usr/lib/mull-ir-frontend-$LLVM_MAJOR
       - name: Build
         run: cmake --build build-mutation --parallel --target geode_core_tests
-      # Every mutant runs; one no test reaches is reported as NoCoverage and counts as surviving.
+      # Every mutant runs (the build has no coverage filter); one no test reaches survives.
       # mull-runner's own threshold is off: the gate below decides.
       - name: Run every mutant
         run: |

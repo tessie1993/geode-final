@@ -208,3 +208,54 @@ TEST(AdsrEngine, ApplyMovesTheParameterTargets) {
     EXPECT_EQ(idle.zoom, base.zoom);
     EXPECT_EQ(idle.speed, base.speed);
 }
+
+TEST(AdsrEngine, TheGateOpensAtItsThreshold) {
+    AdsrEngine adsr;
+    adsr.configs[0] = envelope();
+    adsr.tick(0.06f, frame(0.5f, 0.8f));
+    adsr.tick(0.06f, frame(0.5f, 0.0f));
+    EXPECT_NEAR(adsr.tick(0.2f, frame(0.1f, 0.0f))[0], 0.4f, kTol);
+    // Exactly at the threshold the release returns to sustain.
+    const float gate = adsr.configs[0].gateThreshold;
+    EXPECT_NEAR(adsr.tick(0.05f, frame(gate, 0.0f))[0], 0.275f, kTol);
+    EXPECT_NEAR(adsr.tick(0.05f, frame(gate, 0.0f))[0], 0.325f, kTol);
+}
+
+TEST(AdsrEngine, TheGateHoldsDownTo85PercentOfItsThreshold) {
+    const float hold = envelope().gateThreshold * 0.85f;
+    for (const float bass : {hold, 0.23f}) {
+        AdsrEngine adsr;
+        adsr.configs[0] = envelope();
+        adsr.tick(0.06f, frame(0.5f, 0.8f));
+        adsr.tick(0.06f, frame(0.5f, 0.0f));
+        adsr.tick(0.1f, frame(0.5f, 0.0f));
+        EXPECT_NEAR(adsr.tick(0.1f, frame(bass, 0.0f))[0], 0.4f, kTol) << bass;
+        // Still sustaining, not released.
+        EXPECT_NEAR(adsr.tick(0.1f, frame(bass, 0.0f))[0], 0.4f, kTol) << bass;
+    }
+}
+
+TEST(AdsrEngine, TrackedSustainDividesByTheGate) {
+    AdsrEngine adsr;
+    AdsrConfig cfg = envelope();
+    cfg.attack = 0.01f;
+    cfg.decay = 0.01f;
+    cfg.sustain = 1.0f;
+    cfg.gateThreshold = 0.5f;
+    cfg.sustainTrack = true;
+    adsr.configs[0] = cfg;
+    EXPECT_NEAR(adsr.tick(0.02f, frame(0.25f, 1.0f))[0], 1.0f, kTol);
+    // 0.25 of a 0.5 gate: half the sustain.
+    EXPECT_NEAR(adsr.tick(0.02f, frame(0.25f, 0.0f))[0], 0.5f, kTol);
+}
+
+TEST(AdsrEngine, DisablingRearmsAnEnvelopeThatDoesNotRetrigger) {
+    AdsrEngine adsr;
+    adsr.configs[0] = envelope();
+    adsr.configs[0].retrigger = false;
+    adsr.tick(0.06f, frame(0.5f, 0.8f));
+    adsr.configs[0].enabled = false;
+    adsr.tick(0.06f, frame(0.5f, 0.0f));
+    adsr.configs[0].enabled = true;
+    EXPECT_NEAR(adsr.tick(0.06f, frame(0.5f, 0.8f))[0], 0.48f, kTol);
+}

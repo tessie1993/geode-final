@@ -21,8 +21,9 @@ get_filename_component(GEODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(GEODE_PURE_LIBRARIES geode_util geode_analysis geode_audio geode_viz)
 
 # Mutation testing with Mull (docs/ci.md, "C++ mutation tests"). GEODE_MUTATE names the one pure
-# library whose code Mull's compiler plugin mutates; the rest of the build is left unmutated. Everything
-# is built with clang's source coverage so Mull can tell a mutant no test reaches from one that
+# library whose code Mull's compiler plugin mutates; the rest of the build is left unmutated. There is
+# no source coverage: with it, Mull 0.34 marks mutants inside switch cases as NoCoverage although the
+# tests run them, and never runs them. Without it every mutant runs, and one no test reaches simply
 # survives. CI only; it changes how the host build is compiled, never what the code does.
 #
 #   MULL_CONFIG=config/mutation/mull.yml cmake -S core/host -B build-mutation \
@@ -43,8 +44,7 @@ if(GEODE_MUTATE)
         message(FATAL_ERROR "GEODE_MULL_PLUGIN='${GEODE_MULL_PLUGIN}' does not exist")
     endif()
     # Mull maps mutants to source lines through debug info, and records the compile command in it.
-    add_compile_options(-O0 -g -grecord-command-line -fprofile-instr-generate -fcoverage-mapping)
-    add_link_options(-fprofile-instr-generate)
+    add_compile_options(-O0 -g -grecord-command-line)
 endif()
 
 # Same kissfft configuration as the device build.
