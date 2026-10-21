@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include "geode/audio/player/BufferTuner.hpp"
 #include "geode/audio/player/Mixer.hpp"
 
 namespace geode::audio::player {
@@ -29,6 +30,8 @@ public:
     bool running() const { return running_.load(std::memory_order_acquire); }
     bool disconnected() const { return disconnected_.load(std::memory_order_acquire); }
     int sampleRate() const { return sampleRate_; }
+    // The output buffer size the BufferTuner last applied, in frames (0 when untuned). Safe from any thread.
+    int32_t bufferSizeFrames() const { return tuner_.sizeFrames(); }
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream, void* audioData, int32_t numFrames) override;
     void onErrorAfterClose(oboe::AudioStream* stream, oboe::Result error) override;
@@ -39,6 +42,7 @@ private:
 
     Mixer& mixer_;
     std::shared_ptr<oboe::AudioStream> stream_;
+    BufferTuner tuner_;
     int sampleRate_ = 0;
     std::atomic<bool> running_{false};
     std::atomic<bool> disconnected_{false};

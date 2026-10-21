@@ -46,8 +46,6 @@ complexity:
     threshold: 1100
     # Pure data catalogs: long by nature, no logic to decompose.
     excludes:
-      - '**/ThemePackCatalog.kt'
-      - '**/VisualStyleCatalog.kt'
       - '**/BuiltInPresets.kt'
 
 potential-bugs:

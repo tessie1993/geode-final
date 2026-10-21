@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- System splash shown while the process cold-starts. Background matches
-         the default Clear Quartz pack background so the handoff to the
-         Compose BootIntro overlay (same color) is seamless. -->
-    <style name="Theme.Geode.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#EEEAE3</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
-        <item name="postSplashScreenTheme">@android:style/Theme.Material.NoActionBar</item>
+         the Lapis Lazuli theme pack's, so the handoff to the App UI is seamless.
+         The platform splash API (Android 12) reads these; the activity keeps
+         this theme afterwards, which is the plain Material one underneath. -->
+    <style name="Theme.Geode.Splash" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#050A20</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
     </style>
 </resources>

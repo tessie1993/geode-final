@@ -62,18 +62,16 @@ class ExportService : Service() {
 
     private fun startForegroundNotification(state: ExportRun.State) {
         val manager = getSystemService(NotificationManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ID,
-                    getString(dev.geode.R.string.export_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
-                ).apply {
-                    description = getString(dev.geode.R.string.export_channel_description)
-                    setShowBadge(false)
-                },
-            )
-        }
+        manager.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_ID,
+                getString(dev.geode.R.string.export_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = getString(dev.geode.R.string.export_channel_description)
+                setShowBadge(false)
+            },
+        )
         val open =
             PendingIntent.getActivity(
                 this,
@@ -121,12 +119,7 @@ class ExportService : Service() {
 
         fun start(context: Context) {
             runCatching {
-                val intent = Intent(context, ExportService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
+                context.startForegroundService(Intent(context, ExportService::class.java))
             }
         }
     }
