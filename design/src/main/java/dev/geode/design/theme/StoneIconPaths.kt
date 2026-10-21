@@ -1,4 +1,4 @@
-package dev.geode.ui.theme
+package dev.geode.design.theme
 
 enum class StoneIcon {
     ADD,
