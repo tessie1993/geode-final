@@ -151,7 +151,7 @@ object NativeTags {
         val outcome: TagWriteOutcome,
     ) : FdResult()
 
-    // Scoped storage throws SecurityException (or, on API 29+, its RecoverableSecurityException
+    // Scoped storage throws SecurityException (in practice its RecoverableSecurityException
     // subclass) when the app never created the file and MediaStore.createWriteRequest consent is
     // required; any other failure to open is not something consent can fix.
     private fun writableFd(

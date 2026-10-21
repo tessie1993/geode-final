@@ -318,15 +318,6 @@ class PresetStore(
             JSONObject(toJson(Preset("", SceneId(""), 0f, 0f, null, params)))
                 .also { o -> ENVELOPE_KEYS.forEach(o::remove) }
 
-        internal fun paramsFromJson(o: JSONObject): SceneParams {
-            val full = JSONObject(o.toString())
-            full.put("name", "")
-            full.put("sceneId", "")
-            full.put("attack", 0.0)
-            full.put("decay", 0.0)
-            return fromJson(full.toString()).params
-        }
-
         internal fun fromJson(json: String): Preset {
             val o = JSONObject(json)
             return Preset(
