@@ -45,7 +45,7 @@ pre-commit deliberately refuses to overwrite that configuration.
 | Merge markers, filename portability, mixed line endings, private keys | Changed files |
 | YAML, TOML, JSON, XML parsing | Changed matching files |
 | clang-format 21.1.8 | Changed first-party C/C++ sources and headers, using [.clang-format](../.clang-format) |
-| Cppcheck (Python wheel 1.5.3) | Changed C/C++ files: bug, performance, and portability diagnostics; C++20 and the `core/` include directory |
+| Cppcheck (Python wheel 1.5.3) | Changed C/C++ files: bug, performance, and portability diagnostics; C++20 and each native library's public `core/<lib>/include` directory |
 | cmake-lint 0.6.13 | Changed CMake files, using [.cmake-format.yaml](../.cmake-format.yaml) |
 | Kotlin ktlint | Changed Kotlin sources/scripts under `app/` and `engine/`, using the existing Gradle plugin and Android rules |
 | Gradle dependencies | Catalog syntax, exact release versions, version/bundle references, and literal Gradle dependency/plugin versions |

@@ -4,13 +4,13 @@
 #include <memory>
 #include <string>
 
-#include "viz/GlProfile.hpp"
-#include "viz/Program.hpp"
-#include "viz/Scene.hpp"
-#include "viz/compute/SimPass.hpp"
-#include "viz/scenes/ProgramLoader.hpp"
-#include "viz/scenes/SceneCommon.hpp"
-#include "viz/scenes/StyleCatalog.hpp"
+#include "geode/render/GlProfile.hpp"
+#include "geode/render/Program.hpp"
+#include "geode/viz/Scene.hpp"
+#include "compute/SimPass.hpp"
+#include "geode/viz/scenes/ProgramLoader.hpp"
+#include "scenes/SceneCommon.hpp"
+#include "scenes/StyleCatalog.hpp"
 
 namespace geode::viz {
 

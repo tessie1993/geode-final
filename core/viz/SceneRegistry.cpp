@@ -1,18 +1,18 @@
-#include "viz/SceneRegistry.hpp"
+#include "geode/viz/SceneRegistry.hpp"
 
 #include <array>
 
-#include "viz/scenes/AcidScene.hpp"
-#include "viz/scenes/CurlFlowScene.hpp"
-#include "viz/scenes/CymaticsScene.hpp"
-#include "viz/scenes/FluidScene.hpp"
-#include "viz/scenes/LifeScene.hpp"
-#include "viz/scenes/MilkdropScene.hpp"
-#include "viz/scenes/MycoScene.hpp"
-#include "viz/scenes/ShaderScene.hpp"
-#include "viz/scenes/SilkScene.hpp"
-#include "viz/scenes/StyleCatalog.hpp"
-#include "viz/scenes/WaterScene.hpp"
+#include "scenes/AcidScene.hpp"
+#include "scenes/CurlFlowScene.hpp"
+#include "scenes/CymaticsScene.hpp"
+#include "scenes/FluidScene.hpp"
+#include "scenes/LifeScene.hpp"
+#include "scenes/MilkdropScene.hpp"
+#include "scenes/MycoScene.hpp"
+#include "scenes/ShaderScene.hpp"
+#include "scenes/SilkScene.hpp"
+#include "scenes/StyleCatalog.hpp"
+#include "scenes/WaterScene.hpp"
 
 namespace geode::viz {
 

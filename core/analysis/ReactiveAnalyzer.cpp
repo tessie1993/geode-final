@@ -1,4 +1,4 @@
-#include "analysis/ReactiveAnalyzer.hpp"
+#include "geode/analysis/ReactiveAnalyzer.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "api/geode_api.h"
-#include "viz/Renderer.hpp"
+#include "geode/api/geode_api.h"
+#include "geode/viz/Renderer.hpp"
 
 struct geode_viz {
     geode_viz(AAssetManager* assets, std::string cacheDir) : renderer(assets, std::move(cacheDir)) {}

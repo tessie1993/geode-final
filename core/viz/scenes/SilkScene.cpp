@@ -1,12 +1,12 @@
-#include "viz/scenes/SilkScene.hpp"
+#include "scenes/SilkScene.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "util/Log.hpp"
-#include "viz/LiveSignal.hpp"
-#include "viz/Quad.hpp"
-#include "viz/fluid/FluidBuffers.hpp"
+#include "geode/util/Log.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "geode/render/Quad.hpp"
+#include "geode/viz/fluid/FluidBuffers.hpp"
 
 namespace geode::viz {
 

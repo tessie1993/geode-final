@@ -7,12 +7,12 @@
 #include <unordered_map>
 #include <variant>
 
-#include "viz/Compute.hpp"
-#include "viz/GlProfile.hpp"
-#include "viz/Program.hpp"
-#include "viz/ProgramBinaryCache.hpp"
-#include "viz/compute/SimField.hpp"
-#include "viz/compute/SimGlsl.hpp"
+#include "geode/render/Compute.hpp"
+#include "geode/render/GlProfile.hpp"
+#include "geode/render/Program.hpp"
+#include "geode/render/ProgramBinaryCache.hpp"
+#include "compute/SimField.hpp"
+#include "compute/SimGlsl.hpp"
 
 namespace geode::viz::sim {
 

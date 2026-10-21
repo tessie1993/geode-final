@@ -52,8 +52,7 @@ object TextScale {
 }
 
 /** The App UI's type scale, at [textScale] times its designed size (kept within [TextScale]). */
-fun crystalTypography(textScale: Float = TextScale.DEFAULT): Typography =
-    stoneTypography(textScale.coerceIn(TextScale.MIN, TextScale.MAX))
+fun crystalTypography(textScale: Float = TextScale.DEFAULT): Typography = stoneTypography(textScale.coerceIn(TextScale.MIN, TextScale.MAX))
 
 /**
  * The App UI's theme: the colours of [pack] (with the accent and dimming the person chose), its stone

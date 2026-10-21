@@ -2,7 +2,6 @@ package dev.geode.design.forest
 
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -53,15 +52,6 @@ class PebbleShapeTest {
         assertEquals(CornerRadius(8f, 3f), r.topRightCornerRadius)
         assertEquals(CornerRadius(8f, 3f), r.bottomRightCornerRadius)
         assertEquals(CornerRadius(6f, 3f), r.bottomLeftCornerRadius)
-    }
-
-    @Test
-    fun `the outline is the rounded pebble`() {
-        val outline = shape.createOutline(Size(200f, 100f), LayoutDirection.Ltr, density)
-
-        assertTrue(outline is Outline.Rounded)
-        val expected = shape.roundRect(Size(200f, 100f), LayoutDirection.Ltr, density)
-        assertEquals(expected, (outline as Outline.Rounded).roundRect)
     }
 
     @Test

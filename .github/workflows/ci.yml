@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -133,7 +133,7 @@ jobs:
       # The JVM modules (audio-core, :arch:*, and every feature's :api and :core) run their tests
       # under `test`, not `testDebugUnitTest`.
       - name: Unit tests (every module)
-        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test testDebugUnitTest --continue --stacktrace --no-daemon
+        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test testDebugUnitTest --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -187,6 +187,10 @@ jobs:
             task: ":arch:audio:pitest"
             dir: arch/audio
             name: arch-audio
+          - module: ":feature:capture:core"
+            task: ":feature:capture:core:pitest"
+            dir: feature/capture/core
+            name: capture-core
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -215,6 +219,11 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: write
+    # Every module that takes App UI screenshots: :app and each feature's :ui (geode.screenshots).
+    env:
+      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots
+      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug"
+      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -233,17 +242,19 @@ jobs:
       - name: Verify screenshots against the goldens
         if: steps.mode.outputs.record == 'false'
         run: |
-          if ! ls app/src/test/screenshots/*.png > /dev/null 2>&1; then
-            echo "::error::no App UI goldens in app/src/test/screenshots; record them (docs/ci.md)"
-            exit 1
-          fi
-          ./gradlew :app:verifyRoborazziDebug --stacktrace --no-daemon
+          for dir in $SCREENSHOT_DIRS; do
+            if ! ls "$dir"/*.png > /dev/null 2>&1; then
+              echo "::error::no App UI goldens in $dir; record them (docs/ci.md)"
+              exit 1
+            fi
+          done
+          ./gradlew $SCREENSHOT_MODULES_VERIFY --stacktrace --no-daemon
       - name: Record screenshots
         if: steps.mode.outputs.record == 'true'
-        run: ./gradlew :app:recordRoborazziDebug --stacktrace --no-daemon
+        run: ./gradlew $SCREENSHOT_MODULES_RECORD --stacktrace --no-daemon
       - name: Push recorded screenshots
         if: steps.mode.outputs.record == 'true' && github.event_name == 'pull_request'
-        run: tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record App UI screenshot goldens" app/src/test/screenshots
+        run: tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record App UI screenshot goldens" $SCREENSHOT_DIRS
       - name: Upload screenshot diffs
         if: failure()
         uses: actions/upload-artifact@v7
@@ -252,6 +263,8 @@ jobs:
           path: |
             app/build/outputs/roborazzi/
             app/build/reports/tests/
+            feature/*/ui/build/outputs/roborazzi/
+            feature/*/ui/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -261,6 +274,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      # Each native library may include only its own headers and its dependencies' public ones
+      # (docs/native-libraries.md). The self-test first proves the check still catches violations.
+      - name: Native library include boundaries
+        run: |
+          python3 tools/ci/check_native_includes.py --self-test
+          python3 tools/ci/check_native_includes.py
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
       - name: Configure
@@ -272,13 +291,34 @@ jobs:
         run: cmake --build build-host --parallel
       - name: Test
         run: ctest --test-dir build-host --output-on-failure
-      # Compiles every viz/ and util/ translation unit with the project flags and links them with
+      # Compiles every viz/, render/ and util/ translation unit with the project flags and links them with
       # --no-undefined against Mesa's GLES: the link the NDK does, without an NDK.
       - name: Host link check (tools/hostlink)
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libgles-dev libegl-dev
           tools/hostlink/hostlink.sh
+
+  # Geode's copy of projectM, built on the host and run under Mesa's software GLES: two Renders of
+  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact").
+  milkdrop-frame-exact:
+    name: MilkDrop Renders are frame-exact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out projectM
+        run: git submodule update --init --recursive --depth 1 third_party/projectm
+      - name: Install Mesa (EGL, GLES 3, software rasterizer)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgles-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
+      - name: Configure
+        run: cmake -S tools/milkdrop-determinism -B build-milkdrop -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-milkdrop --parallel
+      - name: Two Renders, byte for byte
+        run: ctest --test-dir build-milkdrop --output-on-failure
 
   visual-frames:
     name: Visual golden frames (shaders)

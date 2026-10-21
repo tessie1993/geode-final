@@ -46,11 +46,8 @@ class WcagContrastTest {
 
         assertEquals(top, WcagContrast.over(top, 1f, bottom))
         assertEquals(bottom, WcagContrast.over(top, 0f, bottom))
-        val half = WcagContrast.over(top, 0.5f, bottom)
-        assertEquals(0.5f, half.red, TOLERANCE)
-        assertEquals(0.5f, half.green, TOLERANCE)
-        assertEquals(0.5f, half.blue, TOLERANCE)
-        assertEquals(1f, half.alpha, TOLERANCE)
+        // Each channel lands half way: 0x20 and 0xE0 meet at 0x80, and so on. The result is opaque.
+        assertEquals(Color(0xFF808080), WcagContrast.over(top, 0.5f, bottom))
     }
 
     @Test

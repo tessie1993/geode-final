@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "viz/Program.hpp"
-#include "viz/Scene.hpp"
-#include "viz/Texture.hpp"
+#include "geode/render/Program.hpp"
+#include "geode/viz/Scene.hpp"
+#include "geode/render/Texture.hpp"
 
 namespace geode::viz {
 

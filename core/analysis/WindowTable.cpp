@@ -1,4 +1,4 @@
-#include "analysis/WindowTable.hpp"
+#include "geode/analysis/WindowTable.hpp"
 
 #include <cmath>
 

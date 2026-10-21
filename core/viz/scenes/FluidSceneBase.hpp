@@ -4,12 +4,12 @@
 #include <array>
 #include <string>
 
-#include "viz/Scene.hpp"
-#include "viz/ThermalGovernor.hpp"
-#include "viz/fluid/FluidChoreography.hpp"
-#include "viz/fluid/FluidParticles.hpp"
-#include "viz/scenes/ProgramLoader.hpp"
-#include "viz/scenes/SceneCommon.hpp"
+#include "geode/viz/Scene.hpp"
+#include "geode/viz/ThermalGovernor.hpp"
+#include "geode/viz/fluid/FluidChoreography.hpp"
+#include "fluid/FluidParticles.hpp"
+#include "geode/viz/scenes/ProgramLoader.hpp"
+#include "scenes/SceneCommon.hpp"
 
 namespace geode::viz {
 
