@@ -46,3 +46,10 @@ include(
     ":feature:playback:handlers",
     ":feature:playback:ui",
 )
+
+include(
+    ":feature:capture:api",
+    ":feature:capture:core",
+    ":feature:capture:handlers",
+    ":feature:capture:ui",
+)
