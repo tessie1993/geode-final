@@ -1,5 +1,5 @@
 {
-  "comment": "The one schema for what crosses the native bridge (ADR-0005, Native code). tools/bridge_schema/generate.py turns it into the C and C++ types under core/ and the Kotlin types in :engine:audio-core; CI fails when the generated files are stale. Change this file, run the generator, and commit both.",
+  "comment": "The one schema for what crosses the native bridge (ADR-0005, Native code). tools/bridge_schema/generate.py turns it into the C and C++ types under core/ and the Kotlin types in :engine:audio-core; CI fails when the generated files are stale. An array's count is the product of the engine constants it names, read from their headers, so the snapshot follows the engine's own sizes. Change this file or one of those constants, run the generator, and commit the result.",
   "statuses": [
     {"name": "OK", "doc": "The call did what was asked."},
     {"name": "NULL_HANDLE", "doc": "The handle was 0: it was never created, or it was already destroyed. Nothing happened."},
@@ -18,9 +18,9 @@
     "fields": [
       {"name": "revision", "type": "u32", "doc": "Counts up each time Kotlin sends a changed Customization."},
       {"name": "reducedMotion", "type": "bool", "reader": "draw", "doc": "The system's reduce-motion setting, which calms every Style."},
-      {"name": "params", "type": "f32", "count": 135, "reader": "draw", "doc": "Every scene parameter, in geode_viz_param_name order; ints and flags as floats."},
-      {"name": "lfo", "type": "f32", "count": 24, "reader": "draw", "doc": "The LFO Modulators: GEODE_LFO_SLOTS slots of GEODE_LFO_CONFIG_FLOATS each."},
-      {"name": "adsr", "type": "f32", "count": 20, "reader": "draw", "doc": "The hit-envelope Modulators: GEODE_ADSR_SLOTS slots of GEODE_ADSR_CONFIG_FLOATS each."},
+      {"name": "params", "type": "f32", "count": [{"file": "core/viz/include/geode/viz/Params.hpp", "constant": "kFieldCount"}], "reader": "draw", "doc": "Every scene parameter, in geode_viz_param_name order; ints and flags as floats."},
+      {"name": "lfo", "type": "f32", "count": [{"file": "core/api/include/geode/api/geode_api.h", "constant": "GEODE_LFO_SLOTS"}, {"file": "core/api/include/geode/api/geode_api.h", "constant": "GEODE_LFO_CONFIG_FLOATS"}], "reader": "draw", "doc": "The LFO Modulators: GEODE_LFO_SLOTS slots of GEODE_LFO_CONFIG_FLOATS each."},
+      {"name": "adsr", "type": "f32", "count": [{"file": "core/api/include/geode/api/geode_api.h", "constant": "GEODE_ADSR_SLOTS"}, {"file": "core/api/include/geode/api/geode_api.h", "constant": "GEODE_ADSR_CONFIG_FLOATS"}], "reader": "draw", "doc": "The hit-envelope Modulators: GEODE_ADSR_SLOTS slots of GEODE_ADSR_CONFIG_FLOATS each."},
       {"name": "soundSensitivity", "type": "f32", "reader": "audio", "doc": "How readily a Sound signal fires: the onset sensitivity."},
       {"name": "soundRefractoryMs", "type": "f32", "reader": "audio", "doc": "The shortest gap between two onsets, in milliseconds."},
       {"name": "soundAttackSeconds", "type": "f32", "reader": "audio", "doc": "How fast the level followers rise, in seconds."},

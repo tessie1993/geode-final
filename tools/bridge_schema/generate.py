@@ -13,6 +13,9 @@ down (ADR-0005, Native code), so Kotlin and C++ cannot drift. This script writes
     python3 tools/bridge_schema/generate.py           # rewrite the generated files
     python3 tools/bridge_schema/generate.py --check   # CI: fail when a generated file is stale
 
+An array field's "count" lists engine constants ({"file", "constant"}: a `constexpr ... NAME = N` or a
+`#define NAME N`); its size is their product, so a change to one of them shows up here as stale output.
+
 Wire format (little-endian): a header of magic (u32), version (u16), reserved (u16, always 0) and
 payload length (u32), then every field in schema order. bool is one byte (0 or 1), u32 four bytes,
 f32 an IEEE-754 float; an array is its elements back to back. The reader rejects anything else.
@@ -21,6 +24,7 @@ f32 an IEEE-754 float; an array is its elements back to back. The reader rejects
 from __future__ import annotations
 
 import json
+import re
 import sys
 import textwrap
 from pathlib import Path
@@ -49,6 +53,28 @@ def kdoc(text: str, indent: str) -> list[str]:
         return [one]
     body = textwrap.wrap(text, KOTLIN_LINE - len(indent) - 3)
     return [f"{indent}/**"] + [f"{indent} * {line}" for line in body] + [f"{indent} */"]
+
+
+def constant_value(file: str, name: str) -> int:
+    """The integer an engine header gives `name`, as `NAME = N` or `#define NAME N`."""
+    text = (ROOT / file).read_text(encoding="utf-8")
+    found = re.search(rf"\b{re.escape(name)}\s*=\s*(\d+)\b", text) or re.search(
+        rf"#\s*define\s+{re.escape(name)}\s+(\d+)\b", text)
+    if not found:
+        raise SystemExit(f"{file} defines no integer {name}")
+    return int(found.group(1))
+
+
+def resolve_counts(schema: dict) -> dict:
+    """The schema with every array count turned into the number of elements it stands for."""
+    for field in schema["snapshot"]["fields"]:
+        count = field.get("count")
+        if isinstance(count, list):
+            total = 1
+            for factor in count:
+                total *= constant_value(factor["file"], factor["constant"])
+            field["count"] = total
+    return schema
 
 
 def snake_upper(name: str) -> str:
@@ -326,7 +352,7 @@ def outputs(schema: dict) -> dict[str, str]:
 
 
 def main(argv: list[str]) -> int:
-    schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+    schema = resolve_counts(json.loads(SCHEMA.read_text(encoding="utf-8")))
     stale = []
     for rel, text in outputs(schema).items():
         path = ROOT / rel

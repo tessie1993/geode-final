@@ -28,8 +28,9 @@ constexpr size_t kAdsrAt = kLfoAt + geode::bridge::kSnapshotLfoCount * sizeof(fl
 constexpr size_t kSoundAt = kAdsrAt + geode::bridge::kSnapshotAdsrCount * sizeof(float);
 constexpr size_t kSoundFields = 4;
 
-// The same snapshot CustomizationSnapshotTest.kt encodes; both sides must produce this digest.
-constexpr const char* kFixtureDigest = "28c77ee2534e53acf098e386e091f8818e54b5f88802a9c53092c055daf1d63c";
+// The same snapshot CustomizationSnapshotTest.kt encodes; both sides must produce this digest. It changes
+// whenever the schema's layout does (an array count included): recompute it then, on both sides.
+constexpr const char* kFixtureDigest = "d96ea5983f68a14c5ef26a351c57bcb4c45a54370bdcf00f4f69ae559360c056";
 
 CustomizationSnapshot fixture() {
     CustomizationSnapshot s;
