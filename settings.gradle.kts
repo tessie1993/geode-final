@@ -64,3 +64,9 @@ include(
     ":feature:settings:handlers",
     ":feature:settings:ui",
 )
+
+// Customization (#39): the model and its reducer. Its :handlers and :ui come with later tickets.
+include(
+    ":feature:customization:api",
+    ":feature:customization:core",
+)
