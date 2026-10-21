@@ -53,3 +53,12 @@ include(
     ":feature:capture:handlers",
     ":feature:capture:ui",
 )
+
+// Library (#37): browse, search, sort and filter the phone's music, with favourites, song info edits,
+// excluded folders and M3U playlists. Plays everything through Playback's :api.
+include(
+    ":feature:library:api",
+    ":feature:library:core",
+    ":feature:library:handlers",
+    ":feature:library:ui",
+)

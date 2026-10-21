@@ -162,6 +162,19 @@ sealed interface PlaybackCommand {
         val startAt: Int = 0,
     ) : PlaybackCommand
 
+    /**
+     * Puts [tracks] right after the current track, keeping what plays now. With nothing queued yet,
+     * plays them (#37: Library's "Play next").
+     */
+    data class PlayNext(
+        val tracks: List<Track>,
+    ) : PlaybackCommand
+
+    /** Puts [tracks] at the end of the queue. With nothing queued yet, plays them (#37: Library's "Add to queue"). */
+    data class AddToQueue(
+        val tracks: List<Track>,
+    ) : PlaybackCommand
+
     data object Resume : PlaybackCommand
 
     data object Pause : PlaybackCommand
