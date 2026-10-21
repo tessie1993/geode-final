@@ -12,9 +12,9 @@ Always high end. References come only from top-tier work: Dribbble's featured de
 
 ## Tools and sources
 
-- **Shipped assets** are rendered in Blender (Cycles) from CC0 scans and HDRIs from Poly Haven. Every source and its licence is recorded in an asset manifest, and the owner reviews each asset sheet before anything ships.
-- **Free AI image generators** are for mood and concept exploration only, never shipped. A test of a free FLUX generator came out mid-quality and watermarked, below the bar.
-- **Post-processing** (cropping, compositing, export to WebP at each screen density) uses ImageMagick and Blender's compositor.
+- **Assets are made with top-tier AI image generators**, not Blender. The first choice is Nano Banana (Gemini's image model, free tier); the alternatives are FLUX.1 Krea and Qwen-Image. Each asset is generated on a plain background, edited, given a transparent background, and exported. The owner reviews every asset sheet before anything ships. Each asset's model, prompt and the model's licence terms are recorded in an asset manifest.
+- **Textures** may also use CC0 scans from Poly Haven.
+- **Post-processing** (background removal, cropping, compositing, export to WebP at each screen density) uses ImageMagick and similar free tools.
 
 ## Decided
 
@@ -48,7 +48,7 @@ Always high end. References come only from top-tier work: Dribbble's featured de
   - **12:** blur only, and a pre-rendered ring stands in for the ripple.
 - **Glass and text:** glass that carries text stays at least about 88% opaque, rising over bright backdrops, so text meets WCAG AA. The research gives contrast-checked colour values for each theme.
 - **Live blur:** at most two live blurred surfaces on screen. Library cards use artwork blurred in advance.
-- **Floating assets are custom 3D renders.** Each is modelled and lit per theme in Blender from real reference photos, using CC0 Poly Haven scans. They are rendered at three depth layers with focus blur baked in, with at most about 12 on screen. The owner reviews every asset before it ships.
+- **Floating assets are high-end generated images.** Each is art-directed per theme with consistent lighting, generated with a top-tier image model and finished by hand. They come at three depth layers with focus blur baked in, with at most about 12 on screen. The owner reviews every asset before it ships.
 - **Icons are commissioned from an icon designer.** We write the brief and the asset spec.
 
 ## Open
