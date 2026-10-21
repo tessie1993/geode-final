@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.design.CrystalButton
 
 /**
  * The first-run photosensitivity notice.
