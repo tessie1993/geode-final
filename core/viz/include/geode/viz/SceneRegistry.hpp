@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-#include "geode/render/GlProfile.hpp"
 #include "geode/render/ProgramBinaryCache.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/ShaderSource.hpp"
@@ -14,8 +13,8 @@ namespace geode::viz {
 // Port of SceneRegistry.createScene: an id is known when a native scene class can build it.
 class SceneRegistry {
 public:
-    SceneRegistry(const ShaderSource& assets, ProgramBinaryCache* cache, const GlProfile* profile, SceneHost host)
-        : loader_{assets, cache}, profile_(profile), host_(std::move(host)) {}
+    SceneRegistry(const ShaderSource& assets, ProgramBinaryCache* cache, SceneHost host)
+        : loader_{assets, cache}, host_(std::move(host)) {}
 
     bool knows(const std::string& id) const;
     // Every id in the order the Kotlin registry listed them.
@@ -25,7 +24,6 @@ public:
 
 private:
     ProgramLoader loader_;
-    const GlProfile* profile_;
     SceneHost host_;
 };
 

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 
-#include "geode/viz/LiveSignal.hpp"
 #include "geode/render/Quad.hpp"
 #include "fluid/FluidQuality.hpp"
 
@@ -67,12 +66,6 @@ void FluidScene::draw(float timeSeconds) {
     sim_.densityDissipation =
         std::clamp(p.fluidDensityDissipation * style_.densityDissipation, 0.0f, 4.0f) * (1.0f + p.fluidFadeAudio * (1.0f - energy));
     sim_.chromaticAging = std::clamp(p.fluidChromaticAging, 0.0f, 1.0f);
-    sim_.audioBass = f.bass;
-    sim_.audioMid = f.mid;
-    sim_.audioTreble = f.treble;
-    sim_.audioEnergy = energy;
-    sim_.audioBeat = live::hit(f);
-    sim_.timeSeconds = time_;
 
     configureChoreography();
     emitters_.applyParams(p);

@@ -35,7 +35,6 @@ public:
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
-    void setFragmentSource(const std::string& source) override;
 
 private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -127,7 +126,6 @@ private:
 
     std::mutex pendingLock_;
     std::optional<std::string> pendingFragment_;
-    bool pendingIsUserSource_ = false;
 
     std::array<float, kAudioTexWidth * 2> texData_{};
     float bass_ = 0.0f;

@@ -72,12 +72,6 @@ internal class VisualSettingsController(
         state.update { it.copy(shaderError = error) }
     }
 
-    fun applyCustomShader(source: String) {
-        val sceneId = state.value.sceneId
-        state.update { it.copy(shaderError = null) }
-        _vizApply.tryEmit(VizApply(customShader = source, sceneId = sceneId))
-    }
-
     fun setTransitionStyle(style: TransitionStyle) {
         state.update { it.copy(transitionStyle = style, transitionId = style.name.lowercase()) }
         vizStateStore.persist()
@@ -111,9 +105,6 @@ internal class VisualSettingsController(
         }
         vizStateStore.persist()
         emitPresetMorph()
-        preset.customShader?.let {
-            _vizApply.tryEmit(VizApply(customShader = it, sceneId = preset.sceneId))
-        }
         host.milkPathFor(preset)?.let {
             _vizApply.tryEmit(VizApply(milkPath = it, sceneId = preset.sceneId))
         }

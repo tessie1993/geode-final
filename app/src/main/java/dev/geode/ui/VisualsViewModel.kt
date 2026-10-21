@@ -104,9 +104,8 @@ class VisualsViewModel
 
         fun savePreset(
             name: String,
-            customShader: String?,
             folder: String = "",
-        ) = session.savePreset(name, customShader, folder)
+        ) = session.savePreset(name, folder)
 
         fun deletePreset(name: PresetId) = session.deletePreset(name)
 
