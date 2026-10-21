@@ -55,6 +55,8 @@ public:
     void onFrame(float dtSeconds);
     void onSurfaceRecreated();
     void beginOffscreenRender() { offscreenDepth_.fetch_add(1); }
+    // True between beginOffscreenRender() and its endOffscreenRender(): a Render is running.
+    bool offscreen() const { return offscreenDepth_.load() > 0; }
     void endOffscreenRender();
 
 private:
