@@ -56,9 +56,14 @@ void FluidSim::create() {
 bool FluidSim::resize(int w, int h) {
     if (!available_) return false;
     if (w == width_ && h == height_ && velocity_) return false;
+    const bool keep = velocity_ && !gridChanges({velocity_->width(), velocity_->height()}, gridFor(simRes, w, h)) &&
+                      (velocityOnly_ || !dye_ || !gridChanges({dye_->width(), dye_->height()}, gridFor(dyeRes, w, h)));
     width_ = w;
     height_ = h;
     aspect_ = static_cast<float>(w) / static_cast<float>(std::max(h, 1));
+    // Grids that stay where they were (a change of render scale alone) are kept as they are, and the
+    // caller's particles with them.
+    if (keep) return false;
     allocGrids(true);
     return true;
 }

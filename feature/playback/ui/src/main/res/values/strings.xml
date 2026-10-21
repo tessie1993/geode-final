@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playback_nothing_playing">Nothing playing</string>
+    <string name="playback_nothing_playing_hint">Pick a song in the Library</string>
+    <string name="playback_opening">Opening…</string>
+    <string name="playback_buffering">Buffering…</string>
+    <string name="playback_ended">End of the queue</string>
+    <string name="playback_error_engine">The player is not responding. Press play to try again.</string>
+    <string name="playback_action_play">Play</string>
+    <string name="playback_action_pause">Pause</string>
+    <string name="playback_action_next">Next</string>
+    <string name="playback_action_previous">Previous</string>
+    <string name="playback_action_seek">Position in the song</string>
+    <string name="playback_action_open_player">Open the player</string>
+</resources>

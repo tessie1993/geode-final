@@ -39,9 +39,13 @@ void RippleSim::create() {
 bool RippleSim::resize(int w, int h) {
     if (!available_) return false;
     if (w == width_ && h == height_ && grid_) return false;
+    const bool keep = grid_ && !gridChanges({grid_->width(), grid_->height()}, gridFor(simRes_, w, h));
     width_ = w;
     height_ = h;
     aspect_ = static_cast<float>(w) / static_cast<float>(std::max(h, 1));
+    // The water keeps its declared grid: a change of render scale alone leaves it, and its ink,
+    // exactly as they were.
+    if (keep) return false;
     allocGrid();
     return true;
 }

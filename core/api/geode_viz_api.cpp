@@ -198,6 +198,10 @@ void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
 
+void geode_viz_set_frame_load(geode_viz* v, int frames, float p95_ms) {
+    if (v) v->renderer.setFrameLoad(frames, p95_ms);
+}
+
 void geode_viz_set_offscreen(geode_viz* v, int on) {
     if (!v) return;
     if (on) {
