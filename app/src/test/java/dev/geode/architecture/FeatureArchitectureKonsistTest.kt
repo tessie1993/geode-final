@@ -43,6 +43,7 @@ class FeatureArchitectureKonsistTest {
     @Test
     fun `the scan reaches the architecture modules`() {
         assertTrue("the kernel module was not found", modules.any { it.path == ":arch:kernel" })
+        assertTrue("the design module was not found", modules.any { it.path == ":design" })
         assertTrue("no kernel source was read", pureSources.any { it.module == ":arch:kernel" })
     }
 
