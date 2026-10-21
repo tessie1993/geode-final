@@ -1,0 +1,708 @@
+diff --git a/src/api/include/projectM-4/parameters.h b/src/api/include/projectM-4/parameters.h
+index 2d9c70c89..4b0c12728 100644
+--- a/src/api/include/projectM-4/parameters.h
++++ b/src/api/include/projectM-4/parameters.h
+@@ -197,6 +197,33 @@ PROJECTM_EXPORT void projectm_set_fps(projectm_handle instance, int32_t fps);
+  */
+ PROJECTM_EXPORT int32_t projectm_get_fps(projectm_handle instance);
+ 
++/**
++ * @brief Drives this instance's clock from the host instead of the wall clock.
++ *
++ * Geode patch (tools/projectm-v4.1.7-render-clock.patch). The value is used as the time of every
++ * frame rendered after this call, including the preset transition timing, until it is set again.
++ * A host rendering frame by frame sets it before each frame; a negative value returns the
++ * instance to the wall clock.
++ *
++ * @param instance The projectM instance handle.
++ * @param seconds_since_first_frame The time of the next rendered frame, in seconds.
++ */
++PROJECTM_EXPORT void projectm_set_frame_time(projectm_handle instance, double seconds_since_first_frame);
++
++/**
++ * @brief Seeds this instance's own random generator.
++ *
++ * Geode patch (tools/projectm-v4.1.7-render-clock.patch). Every random value the instance draws
++ * from then on - preset state, shader randoms, noise textures, random textures, the transition
++ * effect and the expression rand() - comes from this seed, and no other instance shares it. Seed
++ * before setting the texture search paths and loading the first preset: together with
++ * projectm_set_frame_time(), the same input then renders the same pixels every time.
++ *
++ * @param instance The projectM instance handle.
++ * @param seed The seed.
++ */
++PROJECTM_EXPORT void projectm_set_random_seed(projectm_handle instance, uint32_t seed);
++
+ /**
+  * @brief Enabled or disables aspect ratio correction in presets that support it.
+  *
+diff --git a/src/libprojectM/CMakeLists.txt b/src/libprojectM/CMakeLists.txt
+index 65d5b9b56..729b1ec09 100644
+--- a/src/libprojectM/CMakeLists.txt
++++ b/src/libprojectM/CMakeLists.txt
+@@ -21,6 +21,8 @@ add_library(projectM_main OBJECT
+         ProjectM.hpp
+         ProjectMCWrapper.cpp
+         ProjectMCWrapper.hpp
++        RandomSource.cpp
++        RandomSource.hpp
+         TimeKeeper.cpp
+         TimeKeeper.hpp
+         Utils.cpp
+@@ -37,6 +39,8 @@ target_link_libraries(projectM_main
+         SOIL2
+         libprojectM::API
+         ${PROJECTM_FILESYSTEM_LIBRARY}
++        PRIVATE
++        projectM::Eval # RandomSource hands projectm-eval its random source (Geode render-clock patch)
+         )
+ 
+ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+diff --git a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+index fa769d5c7..289331215 100644
+--- a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
++++ b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include "PerFrameContext.hpp"
+ #include "PresetState.hpp"
++#include "RandomSource.hpp"
+ #include "Utils.hpp"
+ 
+ #include <MilkdropStaticShaders.hpp>
+@@ -21,7 +22,7 @@ namespace MilkdropPreset {
+ 
+ using libprojectM::MilkdropPreset::MilkdropStaticShaders;
+ 
+-static auto floatRand = []() { return static_cast<float>(rand() % 7381) / 7380.0f; };
++static auto floatRand = []() { return static_cast<float>(RandomSource::Next() % 7381) / 7380.0f; };
+ 
+ MilkdropShader::MilkdropShader(ShaderType type)
+     : m_type(type)
+diff --git a/src/libprojectM/MilkdropPreset/PresetState.cpp b/src/libprojectM/MilkdropPreset/PresetState.cpp
+index 7ff872a55..e05a3636e 100644
+--- a/src/libprojectM/MilkdropPreset/PresetState.cpp
++++ b/src/libprojectM/MilkdropPreset/PresetState.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include "MilkdropStaticShaders.hpp"
+ #include "PresetFileParser.hpp"
++#include "RandomSource.hpp"
+ 
+ #include <glm/gtc/matrix_transform.hpp>
+ 
+@@ -22,8 +23,7 @@ PresetState::PresetState()
+     texturedShader.CompileProgram(staticShaders->GetTexturedDrawVertexShader(),
+                                   staticShaders->GetTexturedDrawFragmentShader());
+ 
+-    std::random_device randomDevice;
+-    std::mt19937 randomGenerator(randomDevice());
++    std::mt19937 randomGenerator(RandomSource::Next());
+     std::uniform_int_distribution<> distrib(0, std::numeric_limits<int>::max());
+ 
+     hueRandomOffsets[0] = static_cast<float>(distrib(randomGenerator) % 64841L) * 0.01f;
+diff --git a/src/libprojectM/ProjectM.cpp b/src/libprojectM/ProjectM.cpp
+index 547faab10..afdf2cf0f 100644
+--- a/src/libprojectM/ProjectM.cpp
++++ b/src/libprojectM/ProjectM.cpp
+@@ -55,6 +55,7 @@ void ProjectM::PresetSwitchFailedEvent(const std::string&, const std::string&) c
+ 
+ void ProjectM::LoadPresetFile(const std::string& presetFilename, bool smoothTransition)
+ {
++    RandomSource::Scope randomScope(m_seededRandom.get());
+     try
+     {
+         m_textureManager->PurgeTextures();
+@@ -68,6 +69,7 @@ void ProjectM::LoadPresetFile(const std::string& presetFilename, bool smoothTran
+ 
+ void ProjectM::LoadPresetData(std::istream& presetData, bool smoothTransition)
+ {
++    RandomSource::Scope randomScope(m_seededRandom.get());
+     try
+     {
+         m_textureManager->PurgeTextures();
+@@ -81,12 +83,14 @@ void ProjectM::LoadPresetData(std::istream& presetData, bool smoothTransition)
+ 
+ void ProjectM::SetTexturePaths(std::vector<std::string> texturePaths)
+ {
++    RandomSource::Scope randomScope(m_seededRandom.get());
+     m_textureSearchPaths = std::move(texturePaths);
+     m_textureManager = std::make_unique<Renderer::TextureManager>(m_textureSearchPaths);
+ }
+ 
+ void ProjectM::ResetTextures()
+ {
++    RandomSource::Scope randomScope(m_seededRandom.get());
+     m_textureManager = std::make_unique<Renderer::TextureManager>(m_textureSearchPaths);
+ }
+ 
+@@ -98,6 +102,8 @@ void ProjectM::RenderFrame(uint32_t targetFramebufferObject)
+         return;
+     }
+ 
++    RandomSource::Scope randomScope(m_seededRandom.get());
++
+     // Update FPS and other timer values.
+     m_timeKeeper->UpdateTimers();
+ 
+@@ -150,7 +156,7 @@ void ProjectM::RenderFrame(uint32_t targetFramebufferObject)
+ 
+     if (m_transition != nullptr && m_transitioningPreset != nullptr)
+     {
+-        if (m_transition->IsDone())
++        if (m_transition->IsDone(m_timeKeeper->GetRunningTime()))
+         {
+             m_activePreset = std::move(m_transitioningPreset);
+             m_transitioningPreset.reset();
+@@ -183,7 +189,7 @@ void ProjectM::RenderFrame(uint32_t targetFramebufferObject)
+ 
+     if (m_transition != nullptr && m_transitioningPreset != nullptr)
+     {
+-        m_transition->Draw(*m_activePreset, *m_transitioningPreset, renderContext, audioData);
++        m_transition->Draw(*m_activePreset, *m_transitioningPreset, renderContext, audioData, m_timeKeeper->GetRunningTime());
+     }
+     else
+     {
+@@ -228,6 +234,16 @@ void ProjectM::LoadIdlePreset()
+     assert(m_activePreset);
+ }
+ 
++void ProjectM::SetFrameTime(double secondsSinceFirstFrame)
++{
++    m_timeKeeper->SetFrameTime(secondsSinceFirstFrame);
++}
++
++void ProjectM::SetRandomSeed(uint32_t seed)
++{
++    m_seededRandom = std::make_unique<RandomSource::Engine>(seed);
++}
++
+ void ProjectM::SetWindowSize(uint32_t width, uint32_t height)
+ {
+     /** Stash the new dimensions */
+@@ -267,7 +283,7 @@ void ProjectM::StartPresetTransition(std::unique_ptr<Preset>&& preset, bool hard
+     {
+         m_transitioningPreset = std::move(preset);
+         m_timeKeeper->StartSmoothing();
+-        m_transition = std::make_unique<Renderer::PresetTransition>(m_transitionShaderManager->RandomTransition(), m_softCutDuration);
++        m_transition = std::make_unique<Renderer::PresetTransition>(m_transitionShaderManager->RandomTransition(), m_softCutDuration, m_timeKeeper->GetRunningTime());
+     }
+ }
+ 
+diff --git a/src/libprojectM/ProjectM.hpp b/src/libprojectM/ProjectM.hpp
+index 844597128..41d4a3893 100644
+--- a/src/libprojectM/ProjectM.hpp
++++ b/src/libprojectM/ProjectM.hpp
+@@ -26,6 +26,8 @@
+ 
+ #include <Audio/PCM.hpp>
+ 
++#include "RandomSource.hpp"
++
+ #include <memory>
+ #include <string>
+ #include <vector>
+@@ -175,6 +177,20 @@ public:
+ 
+     auto WindowHeight() -> int;
+ 
++    /**
++     * @brief Drives projectM's clock from the host (Geode render-clock patch).
++     * @param secondsSinceFirstFrame The time of the next rendered frame; negative returns to the wall clock.
++     */
++    void SetFrameTime(double secondsSinceFirstFrame);
++
++    /**
++     * @brief Seeds this instance's own random generator (Geode render-clock patch).
++     *
++     * From now on every random draw this instance makes - preset state, shader randoms, noise
++     * textures, random textures, transitions and the expression rand() - comes from this seed.
++     */
++    void SetRandomSeed(uint32_t seed);
++
+ private:
+     void Initialize();
+ 
+@@ -217,6 +233,7 @@ private:
+     std::unique_ptr<Preset> m_transitioningPreset;                                //!< Destination preset when smooth preset switching.
+     std::unique_ptr<Renderer::PresetTransition> m_transition;                     //!< Transition effect used for blending.
+     std::unique_ptr<TimeKeeper> m_timeKeeper;                                     //!< Keeps the different timers used to render and switch presets.
++    std::unique_ptr<RandomSource::Engine> m_seededRandom;                         //!< This instance's generator once seeded; null draws from the thread's.
+ };
+ 
+ } // namespace libprojectM
+diff --git a/src/libprojectM/ProjectMCWrapper.cpp b/src/libprojectM/ProjectMCWrapper.cpp
+index d73374227..558fdbfdf 100644
+--- a/src/libprojectM/ProjectMCWrapper.cpp
++++ b/src/libprojectM/ProjectMCWrapper.cpp
+@@ -276,6 +276,18 @@ void projectm_set_fps(projectm_handle instance, int32_t fps)
+     projectMInstance->SetTargetFramesPerSecond(fps);
+ }
+ 
++void projectm_set_frame_time(projectm_handle instance, double seconds_since_first_frame)
++{
++    auto projectMInstance = handle_to_instance(instance);
++    projectMInstance->SetFrameTime(seconds_since_first_frame);
++}
++
++void projectm_set_random_seed(projectm_handle instance, uint32_t seed)
++{
++    auto projectMInstance = handle_to_instance(instance);
++    projectMInstance->SetRandomSeed(seed);
++}
++
+ void projectm_set_aspect_correction(projectm_handle instance, bool enabled)
+ {
+     auto projectMInstance = handle_to_instance(instance);
+diff --git a/src/libprojectM/RandomSource.cpp b/src/libprojectM/RandomSource.cpp
+new file mode 100644
+index 000000000..22d463b16
+--- /dev/null
++++ b/src/libprojectM/RandomSource.cpp
+@@ -0,0 +1,61 @@
++#include "RandomSource.hpp"
++
++#include <projectm-eval.h>
++
++namespace libprojectM {
++
++namespace {
++
++thread_local RandomSource::Engine* currentEngine{nullptr};
++
++auto FallbackEngine() -> RandomSource::Engine&
++{
++    thread_local RandomSource::Engine fallback{std::random_device{}()};
++    return fallback;
++}
++
++// projectm-eval's rand() keeps Milkdrop's own process-wide generator; inside a seeded scope it
++// draws from the instance's engine instead, so expression code is reproducible per instance too.
++auto EvalRandomSource(uint32_t* value) -> int
++{
++    if (!RandomSource::Seeded())
++    {
++        return 0;
++    }
++    *value = RandomSource::Next();
++    return 1;
++}
++
++} // namespace
++
++RandomSource::Scope::Scope(Engine* engine)
++    : m_previous(currentEngine)
++{
++    if (engine != nullptr)
++    {
++        projectm_eval_set_random_source(&EvalRandomSource);
++        currentEngine = engine;
++    }
++}
++
++RandomSource::Scope::~Scope()
++{
++    currentEngine = m_previous;
++}
++
++auto RandomSource::Current() -> Engine&
++{
++    return currentEngine != nullptr ? *currentEngine : FallbackEngine();
++}
++
++auto RandomSource::Next() -> uint32_t
++{
++    return static_cast<uint32_t>(Current()());
++}
++
++auto RandomSource::Seeded() -> bool
++{
++    return currentEngine != nullptr;
++}
++
++} // namespace libprojectM
+diff --git a/src/libprojectM/RandomSource.hpp b/src/libprojectM/RandomSource.hpp
+new file mode 100644
+index 000000000..2c1799bcd
+--- /dev/null
++++ b/src/libprojectM/RandomSource.hpp
+@@ -0,0 +1,55 @@
++#pragma once
++
++#include <cstdint>
++#include <random>
++
++namespace libprojectM {
++
++/**
++ * @brief The one generator every random draw in libprojectM takes from.
++ *
++ * Geode patch (tools/projectm-v4.1.7-render-clock.patch). An instance given a seed with
++ * projectm_set_random_seed() owns an engine and makes it current on the calling thread for the
++ * duration of every call that can draw a random number (see Scope), so two instances never share
++ * random state and a seeded instance draws the same numbers every time. Outside a seeded scope,
++ * Current() is a per-thread engine seeded from std::random_device, which is what stock projectM
++ * did everywhere.
++ */
++class RandomSource
++{
++public:
++    using Engine = std::mt19937;
++
++    /**
++     * @brief Makes @a engine current on this thread until the scope ends; null keeps the current one.
++     * Scopes nest; the previous engine is restored on exit.
++     */
++    class Scope
++    {
++    public:
++        explicit Scope(Engine* engine);
++        ~Scope();
++        Scope(const Scope&) = delete;
++        auto operator=(const Scope&) -> Scope& = delete;
++
++    private:
++        Engine* m_previous;
++    };
++
++    /**
++     * @brief The engine of the innermost seeded scope on this thread, or this thread's fallback engine.
++     */
++    static auto Current() -> Engine&;
++
++    /**
++     * @brief A 32-bit value drawn from the current engine.
++     */
++    static auto Next() -> uint32_t;
++
++    /**
++     * @brief True inside a seeded scope.
++     */
++    static auto Seeded() -> bool;
++};
++
++} // namespace libprojectM
+diff --git a/src/libprojectM/Renderer/MilkdropNoise.cpp b/src/libprojectM/Renderer/MilkdropNoise.cpp
+index bb742d3b0..dae8e7903 100644
+--- a/src/libprojectM/Renderer/MilkdropNoise.cpp
++++ b/src/libprojectM/Renderer/MilkdropNoise.cpp
+@@ -1,6 +1,7 @@
+ #include "MilkdropNoise.hpp"
+ 
+ #include "projectM-opengl.h"
++#include "RandomSource.hpp"
+ 
+ #include <chrono>
+ #include <random>
+@@ -108,7 +109,7 @@ auto MilkdropNoise::GetPreferredInternalFormat() -> int
+ 
+ auto MilkdropNoise::generate2D(int size, int zoomFactor) -> std::vector<uint32_t>
+ {
+-    uint32_t randomSeed = static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count());
++    uint32_t randomSeed = RandomSource::Next();
+     std::default_random_engine randomGenerator(randomSeed);
+     std::uniform_int_distribution<int> randomDistribution(0, INT32_MAX);
+ 
+@@ -195,7 +196,7 @@ auto MilkdropNoise::generate2D(int size, int zoomFactor) -> std::vector<uint32_t
+ 
+ auto MilkdropNoise::generate3D(int size, int zoomFactor) -> std::vector<uint32_t>
+ {
+-    uint32_t randomSeed = static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count());
++    uint32_t randomSeed = RandomSource::Next();
+     std::default_random_engine randomGenerator(randomSeed);
+     std::uniform_int_distribution<int> randomDistribution(0, INT32_MAX);
+ 
+diff --git a/src/libprojectM/Renderer/PresetTransition.cpp b/src/libprojectM/Renderer/PresetTransition.cpp
+index 2a27f0021..a476e30ed 100644
+--- a/src/libprojectM/Renderer/PresetTransition.cpp
++++ b/src/libprojectM/Renderer/PresetTransition.cpp
+@@ -2,6 +2,8 @@
+ 
+ #include "TextureManager.hpp"
+ 
++#include "RandomSource.hpp"
++
+ #include <array>
+ #include <cmath>
+ #include <cstddef>
+@@ -11,11 +13,13 @@ namespace Renderer {
+ 
+ constexpr double PI = 3.14159265358979323846;
+ 
+-PresetTransition::PresetTransition(const std::shared_ptr<Shader>& transitionShader, double durationSeconds)
++PresetTransition::PresetTransition(const std::shared_ptr<Shader>& transitionShader, double durationSeconds, double startSeconds)
+     : m_transitionShader(transitionShader)
+     , m_durationSeconds(durationSeconds)
++    , m_transitionStartTime(startSeconds)
++    , m_lastFrameTime(startSeconds)
+ {
+-    std::mt19937 rand32(m_randomDevice());
++    auto& rand32 = RandomSource::Current();
+     m_staticRandomValues = {rand32(), rand32(), rand32(), rand32()};
+ 
+     RenderItem::Init();
+@@ -33,28 +37,27 @@ void PresetTransition::InitVertexAttrib()
+     glBufferData(GL_ARRAY_BUFFER, sizeof(points), points.data(), GL_STATIC_DRAW);
+ }
+ 
+-auto PresetTransition::IsDone() const -> bool
++auto PresetTransition::IsDone(double nowSeconds) const -> bool
+ {
+-    const auto secondsSinceStart = std::chrono::duration<double>(std::chrono::system_clock::now() - m_transitionStartTime).count();
++    const auto secondsSinceStart = nowSeconds - m_transitionStartTime;
+     return m_durationSeconds <= 0.0 || secondsSinceStart >= m_durationSeconds;
+ }
+ 
+ void PresetTransition::Draw(const Preset& oldPreset,
+                             const Preset& newPreset,
+                             const RenderContext& context,
+-                            const libprojectM::Audio::FrameAudioData& audioData)
++                            const libprojectM::Audio::FrameAudioData& audioData,
++                            double nowSeconds)
+ {
+-    using namespace std::chrono_literals;
+-
+     if (m_transitionShader == nullptr)
+     {
+         return;
+     }
+ 
+-    std::mt19937 rand32(m_randomDevice());
++    auto& rand32 = RandomSource::Current();
+ 
+     // Calculate progress values
+-    const auto secondsSinceStart = std::chrono::duration<double>(std::chrono::system_clock::now() - m_transitionStartTime).count();
++    const auto secondsSinceStart = nowSeconds - m_transitionStartTime;
+ 
+     // If duration is zero,
+     double linearProgress{1.0};
+@@ -81,7 +84,7 @@ void PresetTransition::Draw(const Preset& oldPreset,
+                                                             m_durationSeconds});
+ 
+     m_transitionShader->SetUniformFloat2("timeParams", {secondsSinceStart,
+-                                                        std::chrono::duration<float>(std::chrono::system_clock::now() - m_lastFrameTime).count()});
++                                                        static_cast<float>(nowSeconds - m_lastFrameTime)});
+ 
+     m_transitionShader->SetUniformInt4("iRandStatic", m_staticRandomValues);
+ 
+@@ -130,7 +133,7 @@ void PresetTransition::Draw(const Preset& oldPreset,
+     Shader::Unbind();
+ 
+     // Update last frame time.
+-    m_lastFrameTime = std::chrono::system_clock::now();
++    m_lastFrameTime = nowSeconds;
+ }
+ 
+ } // namespace Renderer
+diff --git a/src/libprojectM/Renderer/PresetTransition.hpp b/src/libprojectM/Renderer/PresetTransition.hpp
+index 2623324a7..c4f8b9463 100644
+--- a/src/libprojectM/Renderer/PresetTransition.hpp
++++ b/src/libprojectM/Renderer/PresetTransition.hpp
+@@ -8,8 +8,10 @@
+ 
+ #include <glm/glm.hpp>
+ 
+-#include <chrono>
+-#include <random>
++#include <memory>
++#include <string>
++#include <vector>
++
+ 
+ namespace libprojectM {
+ namespace Renderer {
+@@ -22,15 +24,20 @@ class PresetTransition : public RenderItem
+ public:
+     PresetTransition() = delete;
+ 
+-    explicit PresetTransition(const std::shared_ptr<Shader>& transitionShader, double durationSeconds);
++    /**
++     * @param startSeconds The projectM clock time the transition starts at (Geode render-clock patch:
++     *                     transitions run on projectM's clock, not the wall clock).
++     */
++    explicit PresetTransition(const std::shared_ptr<Shader>& transitionShader, double durationSeconds, double startSeconds);
+ 
+     void InitVertexAttrib() override;
+ 
+     /**
+      * @brief Returns true if the transition is done.
++     * @param nowSeconds The current projectM clock time.
+      * @return false if the transition is still in progress, true if it's done.
+      */
+-    auto IsDone() const -> bool;
++    auto IsDone(double nowSeconds) const -> bool;
+ 
+     /**
+      * @brief Updates the transition variables and renders the shader quad to the current FBO.
+@@ -38,11 +45,13 @@ public:
+      * @param newPreset A reference to the new (fading in) preset.
+      * @param context The rendering context used to render the presets.
+      * @param audioData Current audio data and beat detection values.
++     * @param nowSeconds The current projectM clock time.
+      */
+     void Draw(const Preset& oldPreset,
+               const Preset& newPreset,
+               const RenderContext& context,
+-              const libprojectM::Audio::FrameAudioData& audioData);
++              const libprojectM::Audio::FrameAudioData& audioData,
++              double nowSeconds);
+ 
+ private:
+     std::vector<std::string> m_noiseTextureNames{"noise_lq",
+@@ -60,12 +69,11 @@ private:
+     std::shared_ptr<Sampler> m_presetSampler{std::make_shared<Sampler>(GL_CLAMP_TO_EDGE, GL_LINEAR)}; //!< Sampler for preset textures. Uses bilinear interpolation and no repeat.
+ 
+     double m_durationSeconds{3.0};                                                                              //!< Transition duration in seconds.
+-    std::chrono::time_point<std::chrono::system_clock> m_transitionStartTime{std::chrono::system_clock::now()}; //!< Start time of this transition. Duration is measured from this point.
+-    std::chrono::time_point<std::chrono::system_clock> m_lastFrameTime{std::chrono::system_clock::now()};       //!< Time when the previous frame was rendered.
++    double m_transitionStartTime{};                                                                             //!< Start time of this transition on projectM's clock. Duration is measured from this point.
++    double m_lastFrameTime{};                                                                                   //!< projectM clock time when the previous frame was rendered.
+ 
+     glm::ivec4 m_staticRandomValues{}; //!< Four random integers, remaining static during the whole transition.
+ 
+-    std::random_device m_randomDevice; //!< Seed for the random number generator
+ };
+ 
+ } // namespace Renderer
+diff --git a/src/libprojectM/Renderer/TextureManager.cpp b/src/libprojectM/Renderer/TextureManager.cpp
+index 9def56c93..7c12a28af 100644
+--- a/src/libprojectM/Renderer/TextureManager.cpp
++++ b/src/libprojectM/Renderer/TextureManager.cpp
+@@ -3,6 +3,7 @@
+ #include "FileScanner.hpp"
+ #include "IdleTextures.hpp"
+ #include "MilkdropNoise.hpp"
++#include "RandomSource.hpp"
+ #include "Texture.hpp"
+ #include "Utils.hpp"
+ 
+@@ -236,8 +237,7 @@ auto TextureManager::GetRandomTexture(const std::string& randomName) -> TextureS
+ {
+     std::string selectedFilename;
+ 
+-    std::random_device rndDevice;
+-    std::default_random_engine rndEngine(rndDevice());
++    std::default_random_engine rndEngine(RandomSource::Next());
+ 
+     ScanTextures();
+ 
+diff --git a/src/libprojectM/Renderer/TransitionShaderManager.cpp b/src/libprojectM/Renderer/TransitionShaderManager.cpp
+index 28ea1fbc2..aaa272959 100644
+--- a/src/libprojectM/Renderer/TransitionShaderManager.cpp
++++ b/src/libprojectM/Renderer/TransitionShaderManager.cpp
+@@ -2,6 +2,8 @@
+ 
+ #include "BuiltInTransitionsResources.hpp"
+ 
++#include "RandomSource.hpp"
++
+ #include <iostream>
+ 
+ namespace libprojectM {
+@@ -14,7 +16,6 @@ TransitionShaderManager::TransitionShaderManager()
+                            CompileTransitionShader(kTransitionShaderBuiltInSweepGlsl330),
+                            CompileTransitionShader(kTransitionShaderBuiltInWarpGlsl330),
+                            CompileTransitionShader(kTransitionShaderBuiltInZoomBlurGlsl330)})
+-    , m_mersenneTwister(m_randomDevice())
+ {
+ }
+ 
+@@ -25,7 +26,7 @@ auto TransitionShaderManager::RandomTransition() -> std::shared_ptr<Shader>
+         return {};
+     }
+ 
+-    return m_transitionShaders.at(m_mersenneTwister() % m_transitionShaders.size());
++    return m_transitionShaders.at(RandomSource::Next() % m_transitionShaders.size());
+ }
+ 
+ auto TransitionShaderManager::CompileTransitionShader(const std::string& shaderBodyCode) -> std::shared_ptr<Shader>
+diff --git a/src/libprojectM/Renderer/TransitionShaderManager.hpp b/src/libprojectM/Renderer/TransitionShaderManager.hpp
+index cc5c3b0ed..2191f39e2 100644
+--- a/src/libprojectM/Renderer/TransitionShaderManager.hpp
++++ b/src/libprojectM/Renderer/TransitionShaderManager.hpp
+@@ -30,8 +30,6 @@ private:
+ 
+     std::vector<std::shared_ptr<Shader>> m_transitionShaders; //!< Currently loaded and compiled transition shaders.
+ 
+-    std::random_device m_randomDevice; //!< Seed for the random number generator
+-    std::mt19937 m_mersenneTwister; //!< Random engine to select shader
+ };
+ 
+ } // namespace Renderer
+diff --git a/src/libprojectM/TimeKeeper.cpp b/src/libprojectM/TimeKeeper.cpp
+index 612b0ab33..61dc071f0 100644
+--- a/src/libprojectM/TimeKeeper.cpp
++++ b/src/libprojectM/TimeKeeper.cpp
+@@ -1,5 +1,7 @@
+ #include "TimeKeeper.hpp"
+ 
++#include "RandomSource.hpp"
++
+ #include <algorithm>
+ #include <random>
+ 
+@@ -16,15 +18,24 @@ TimeKeeper::TimeKeeper(double presetDuration, double smoothDuration, double hard
+ 
+ void TimeKeeper::UpdateTimers()
+ {
+-    auto currentTime = std::chrono::high_resolution_clock::now();
+-
+-    double currentFrameTime = std::chrono::duration<double>(currentTime - m_startTime).count();
+-    m_secondsSinceLastFrame = currentFrameTime - m_currentTime;
++    double currentFrameTime = m_frameTimeOverride;
++    if (currentFrameTime < 0.0)
++    {
++        auto currentTime = std::chrono::high_resolution_clock::now();
++        currentFrameTime = std::chrono::duration<double>(currentTime - m_startTime).count();
++    }
++    // A clock handed over between frames must not run backwards into the audio smoothing.
++    m_secondsSinceLastFrame = std::max(0.0, currentFrameTime - m_currentTime);
+     m_currentTime = currentFrameTime;
+     m_presetFrameA++;
+     m_presetFrameB++;
+ }
+ 
++void TimeKeeper::SetFrameTime(double secondsSinceFirstFrame)
++{
++    m_frameTimeOverride = secondsSinceFirstFrame;
++}
++
+ void TimeKeeper::StartPreset()
+ {
+     m_isSmoothing = false;
+@@ -112,7 +123,7 @@ double TimeKeeper::sampledPresetDuration()
+     }
+ 
+     std::normal_distribution<double> gaussianDistribution(m_presetDuration, m_easterEgg);
+-    return std::max<double>(1.0, gaussianDistribution(m_randomGenerator));
++    return std::max<double>(1.0, gaussianDistribution(RandomSource::Current()));
+ }
+ 
+ } // namespace libprojectM
+diff --git a/src/libprojectM/TimeKeeper.hpp b/src/libprojectM/TimeKeeper.hpp
+index 23d17df6c..75ab6af70 100644
+--- a/src/libprojectM/TimeKeeper.hpp
++++ b/src/libprojectM/TimeKeeper.hpp
+@@ -13,6 +13,12 @@ public:
+ 
+     void UpdateTimers();
+ 
++    /**
++     * @brief Drives the clock from the host instead of the wall clock (Geode render-clock patch).
++     * @param secondsSinceFirstFrame The time of the next frame; a negative value returns to the wall clock.
++     */
++    void SetFrameTime(double secondsSinceFirstFrame);
++
+     void StartPreset();
+ 
+     void StartSmoothing();
+@@ -90,8 +96,7 @@ private:
+     /* The first ticks value of the application */
+     std::chrono::high_resolution_clock::time_point m_startTime{std::chrono::high_resolution_clock::now()};
+ 
+-    std::random_device m_randomDevice{};
+-    std::mt19937 m_randomGenerator{m_randomDevice()};
++    double m_frameTimeOverride{-1.0}; //!< Host-driven frame time; negative means the wall clock.
+ 
+     double m_secondsSinceLastFrame{};
+ 

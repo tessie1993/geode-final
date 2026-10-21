@@ -1,4 +1,4 @@
-#include "viz/VisualSafety.hpp"
+#include "geode/viz/VisualSafety.hpp"
 
 #include <algorithm>
 #include <limits>

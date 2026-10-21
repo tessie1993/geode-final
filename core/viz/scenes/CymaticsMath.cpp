@@ -1,4 +1,4 @@
-#include "viz/scenes/CymaticsMath.hpp"
+#include "scenes/CymaticsMath.hpp"
 
 #include <algorithm>
 #include <cmath>

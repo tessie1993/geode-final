@@ -1,6 +1,6 @@
 package dev.geode.engine.audio
 
-/** The one-hop Sound signals, in the order of the native frame's `events` (core/api/geode_api.h). */
+/** The one-hop Sound signals, in the order of the native frame's `events` (core/api/include/geode/api/geode_api.h). */
 enum class SoundEvent {
     BEAT,
     TRANSIENT,

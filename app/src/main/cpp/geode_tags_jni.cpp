@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 
-#include "api/geode_api.h"
+#include "geode/api/geode_api.h"
 
 namespace {
 

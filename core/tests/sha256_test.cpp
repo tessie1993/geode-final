@@ -1,4 +1,4 @@
-#include "viz/Sha256.hpp"
+#include "geode/util/Sha256.hpp"
 
 #include <gtest/gtest.h>
 

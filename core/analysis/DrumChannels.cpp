@@ -1,4 +1,4 @@
-#include "analysis/DrumChannels.hpp"
+#include "geode/analysis/DrumChannels.hpp"
 
 namespace geode::analysis {
 
