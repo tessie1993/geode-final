@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -133,7 +133,7 @@ jobs:
       # The JVM modules (audio-core, :arch:*, and every feature's :api and :core) run their tests
       # under `test`, not `testDebugUnitTest`.
       - name: Unit tests (every module)
-        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test testDebugUnitTest --continue --stacktrace --no-daemon
+        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:diagnostics:api:test :feature:diagnostics:core:test testDebugUnitTest --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -183,6 +183,10 @@ jobs:
             task: ":arch:audio:pitest"
             dir: arch/audio
             name: arch-audio
+          - module: ":feature:diagnostics:core"
+            task: ":feature:diagnostics:core:pitest"
+            dir: feature/diagnostics/core
+            name: feature-diagnostics-core
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -233,13 +237,13 @@ jobs:
             echo "::error::no App UI goldens in app/src/test/screenshots; record them (docs/ci.md)"
             exit 1
           fi
-          ./gradlew :app:verifyRoborazziDebug --stacktrace --no-daemon
+          ./gradlew :app:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug --stacktrace --no-daemon
       - name: Record screenshots
         if: steps.mode.outputs.record == 'true'
-        run: ./gradlew :app:recordRoborazziDebug --stacktrace --no-daemon
+        run: ./gradlew :app:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug --stacktrace --no-daemon
       - name: Push recorded screenshots
         if: steps.mode.outputs.record == 'true' && github.event_name == 'pull_request'
-        run: tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record App UI screenshot goldens" app/src/test/screenshots
+        run: tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record App UI screenshot goldens" app/src/test/screenshots feature/diagnostics/ui/src/test/screenshots
       - name: Upload screenshot diffs
         if: failure()
         uses: actions/upload-artifact@v7
@@ -248,6 +252,8 @@ jobs:
           path: |
             app/build/outputs/roborazzi/
             app/build/reports/tests/
+            feature/*/ui/build/outputs/roborazzi/
+            feature/*/ui/build/reports/tests/
           if-no-files-found: ignore
           retention-days: 14
 
