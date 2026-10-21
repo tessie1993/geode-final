@@ -22,6 +22,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalSlider
 import dev.geode.editor.AutoCut
 import dev.geode.editor.AutoCutMiss
 import dev.geode.editor.AutoCutResult
@@ -29,8 +31,6 @@ import dev.geode.editor.AutoCutSettings
 import dev.geode.editor.TransientEnvelope
 import dev.geode.editor.TransientHit
 import dev.geode.editor.TransientSource
-import dev.geode.ui.CrystalButton
-import dev.geode.ui.CrystalSlider
 
 /** Runs [AutoCut] over the analysed track and hands the accepted hits back as markers or clips. */
 @OptIn(ExperimentalMaterial3Api::class)
