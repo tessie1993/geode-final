@@ -32,8 +32,21 @@ Always high end. References come only from top-tier work: Dribbble's featured de
 - **Glass layering:** frosted panels sit at most one or two layers deep over the living backdrop, never glass on glass.
 - **Navigation:** a bottom bar with Player, Library, Visuals and Studio; Settings sits behind an icon. Landscape and tablets use a side navigation rail.
 - **Player:** the live Visual fills the background, with track info and controls on a soft gradient at the bottom. A tap hides the controls for full screen.
-- **Library:** its layout is designed per theme, and every theme keeps a quick list toggle for big libraries. The per-theme layouts are proposed in the design spec for the owner to review.
+- **Library, per theme** (each one keeps a grid/list toggle and a dense list for big libraries):
+  - **Deep forest + stone: Stream.** Albums float down a gently curving stream. It is a flowing single column of large artwork that drifts slightly as you scroll, with water caustics under the cards.
+  - **Night forest: Moonlit pond.** Artwork floats in a grid on dark water, with soft mirror reflections beneath. The playing album glows like a lily lantern.
+  - **Earth + lichen: Terraced pools.** Stepped horizontal rows, like rice-terrace pools, each holding one category. Water spills between the levels as you scroll.
+- **Glass over the Visual:** the Visual is a GL surface that can't be blurred, so the Player uses a soft gradient over it. Frosted glass goes on the bottom bar, sheets and Library.
+- **Effects by Android version:**
+  - **13 and later:** full glass, with shader ripples.
+  - **12:** blur only, and a pre-rendered ring stands in for the ripple.
+- **Glass and text:** glass that carries text stays at least about 88% opaque, rising over bright backdrops, so text meets WCAG AA. The research gives contrast-checked colour values for each theme.
+- **Live blur:** at most two live blurred surfaces on screen. Library cards use artwork blurred in advance.
+- **Floating assets are custom 3D renders.** Each is modelled and lit per theme in Blender from real reference photos, using CC0 Poly Haven scans. They are rendered at three depth layers with focus blur baked in, with at most about 12 on screen. The owner reviews every asset before it ships.
+- **Icons are commissioned from an icon designer.** We write the brief and the asset spec.
 
 ## Open
 
-- **Library layout per theme:** to be proposed.
+- The icon brief for the commissioned designer.
+
+Research and references: `research-high-end-references.md`.
