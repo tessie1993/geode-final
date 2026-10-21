@@ -98,8 +98,6 @@ object SceneCapabilities {
 
     fun usesPointSprites(sceneId: SceneId): Boolean = hasParticleLayer(sceneId)
 
-    fun hasShaderLook(sceneId: SceneId): Boolean = isKind(sceneId, SceneKind.SHADER)
-
     /**
      * The Cymatics geometry a Cymatics Style forces (its pack's `geometryOverride`), as an index into
      * [SceneParams.CYMATICS_GEOMETRIES]; null when the user's own choice applies.

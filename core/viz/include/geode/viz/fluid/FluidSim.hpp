@@ -3,7 +3,6 @@
 
 #include <array>
 #include <functional>
-#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -33,12 +32,6 @@ public:
     float curlStrength = 30.0f;
     float dyeCeiling = 0.0f;
     float chromaticAging = 0.0f;
-    float audioBass = 0.0f;
-    float audioMid = 0.0f;
-    float audioTreble = 0.0f;
-    float audioEnergy = 0.0f;
-    float audioBeat = 0.0f;
-    float timeSeconds = 0.0f;
     std::function<void(const std::string&)> onShaderError = [](const std::string&) {};
 
     bool available() const { return available_; }
@@ -52,7 +45,6 @@ public:
     void create();
     bool resize(int w, int h);
     bool applyResolution(int newSimRes, int newDyeRes);
-    void setInjectionShaders(const std::string& forceSrc, const std::string& dyeSrc);
     void queueSplat(const Splat& s);
     void step(float dtRaw);
     void drawDisplay();
@@ -64,9 +56,7 @@ private:
 
     void allocGrids(bool preserve);
     void copyInto(const Fbo& src, const Fbo& dst);
-    void compileInjectionIfNeeded();
-    std::optional<UniformCache> compileCustom(const std::string& src, std::optional<UniformCache> current, std::string* firstError);
-    void runInjection(DoubleFbo& target, int mode, std::optional<UniformCache>& custom, float dt);
+    void runInjection(DoubleFbo& target, int mode);
     void useProgram(int prog, int gridW, int gridH);
     void blitDiscarding(const Fbo& target);
     void blit(const Fbo& target);
@@ -75,7 +65,6 @@ private:
     void set1f(int prog, const char* name, float v) { glUniform1f(loc(prog, name), v); }
     void set2f(int prog, const char* name, float a, float b) { glUniform2f(loc(prog, name), a, b); }
     void set3f(int prog, const char* name, float a, float b, float c) { glUniform3f(loc(prog, name), a, b, c); }
-    void deleteCustom(std::optional<UniformCache>& custom);
 
     const ProgramLoader& loader_;
     bool velocityOnly_;
@@ -98,12 +87,6 @@ private:
     std::array<UniformCache, kProgCount> programs_;
     bool programsBuilt_ = false;
     std::vector<Splat> pending_;
-    std::optional<UniformCache> customForce_;
-    std::optional<UniformCache> customDye_;
-    std::mutex injectionLock_;
-    std::string pendingForceSrc_;
-    std::string pendingDyeSrc_;
-    bool injectionDirty_ = false;
     bool available_ = false;
 };
 

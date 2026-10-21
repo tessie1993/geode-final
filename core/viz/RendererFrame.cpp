@@ -31,18 +31,13 @@ float Renderer::beginFrame(double timeSeconds) {
     lastTimeS_ = timeSeconds;
     thermal_.onFrame(dt);
     timeSeconds_ = std::fmod(timeSeconds_ + dt, kTimeWrapSeconds);
-    std::vector<std::pair<std::string, std::string>> pending;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
-        pending.swap(pendingShaders_);
         frameFeatures_ = features_;
         frameLayerMix_ = layerMix_;
         frameLayerBlend_ = layerBlend_;
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
-    }
-    for (const auto& [id, src] : pending) {
-        if (Scene* scene = builtScene(id)) scene->setFragmentSource(src);
     }
     applyMilkRequests();
     applyOverlayUploads();
@@ -100,7 +95,7 @@ SceneParams Renderer::resolveParams(float dt) {
     lastFinalParams_ = p;
     postRotationAngle_ = grade::integrateRotation(postRotationAngle_, p.rotation, dt);
     postCyclePhase_ = grade::integrateCyclePhase(postCyclePhase_, p.cycleSpeed, dt, p.colorCycle);
-    postBeatPulse_ = grade::integrateBeatPulse(postBeatPulse_, live::hit(frameFeatures_), dt);
+    postBeatPulse_ = postBeat_.step(live::hit(frameFeatures_), dt);
     return p;
 }
 
@@ -193,9 +188,14 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
     scene.draw(timeSeconds_);
 }
 
-void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo) {
-    glBindFramebuffer(GL_FRAMEBUFFER, targetFbo);
-    glViewport(0, 0, width_, height_);
+void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo, float dt) {
+    // The composite draws into the No-flash limiter's candidate target, and the limiter draws the
+    // frame that is shown. Only if its targets cannot be made does the composite go straight out.
+    const bool limited = noFlash_.bindCandidate(width_, height_);
+    if (!limited) {
+        glBindFramebuffer(GL_FRAMEBUFFER, targetFbo);
+        glViewport(0, 0, width_, height_);
+    }
     glDisable(GL_BLEND);
     CompositePass::Inputs& in = compositeInputs_;
     in.texA = fboA_.tex();
@@ -234,8 +234,6 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     const float hit = live::hit(frameFeatures_);
     in.hitImpulse = hit;
     const SceneParams& fx = lastFinalParams_;
-    in.flash = fx.flash * flashBudget_.gainFor(timeSeconds_, safety::flashImpulse(fx.flash, hit));
-    in.strobeHz = safety::strobeHz();
     in.postRotationAngle = postRotationAngle_;
     in.postCyclePhase = postCyclePhase_;
     in.postBeatPulse = postBeatPulse_;
@@ -250,6 +248,7 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.underlayBlend = compositePass_.underlayBlendMode();
     in.underlayAmount = compositePass_.underlayAmount();
     compositePass_.draw(in);
+    if (limited) noFlash_.present(dt, targetFbo, quadVao_);
     // W00: overlay is its own draw call, over whatever composite() just wrote to targetFbo, so it
     // never enters postFx/transitions/Layers and comes out identical live, in the wallpaper and in
     // the offscreen export.
@@ -287,12 +286,11 @@ void Renderer::render(double timeSeconds, GLuint targetFbo) {
         return;
     }
     const SceneParams p = resolveParams(dt);
-    applyPendingFluidInjection();
     resolveLayerScene();
     stepOverlays(*scene, p, dt);
     const float progress = drawSecondaryTargets(p, dt);
     drawSceneTarget(*scene, p, dt);
-    composite(*scene, p, progress, targetFbo);
+    composite(*scene, p, progress, targetFbo, dt);
 }
 
 }  // namespace geode::viz

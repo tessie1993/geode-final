@@ -14,6 +14,7 @@
 #include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/viz/scenes/ProgramLoader.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 
 namespace geode::viz {
 
@@ -113,6 +114,7 @@ private:
     float zoomPhase_ = 0.0f;
     float cyclePhase_ = 0.0f;
     float beatPulse_ = 0.0f;
+    BeatEnvelope beatEnvelope_;
     double lastLoadSeconds_ = 0.0;
     SceneParams params_;
     int diagFrames_ = 0;

@@ -11,6 +11,7 @@
 #include "geode/viz/scenes/ProgramLoader.hpp"
 #include "scenes/SceneCommon.hpp"
 #include "geode/viz/StyleProfiles.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 
 namespace geode::viz {
 
@@ -72,6 +73,7 @@ private:
     bool programOk_ = false;
     GLuint vao_ = 0;
     float beatPulse_ = 0.0f;
+    BeatEnvelope beatEnvelope_;
     PcmPulse pcmPulse_;
     float pcmStrike_ = 0.0f;
     float swirlPhase_ = 0.0f;
