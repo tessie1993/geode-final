@@ -495,19 +495,23 @@ index 2a27f0021..a476e30ed 100644
  
  } // namespace Renderer
 diff --git a/src/libprojectM/Renderer/PresetTransition.hpp b/src/libprojectM/Renderer/PresetTransition.hpp
-index 2623324a7..dc44f6abf 100644
+index 2623324a7..c4f8b9463 100644
 --- a/src/libprojectM/Renderer/PresetTransition.hpp
 +++ b/src/libprojectM/Renderer/PresetTransition.hpp
-@@ -8,8 +8,6 @@
+@@ -8,8 +8,10 @@
  
  #include <glm/glm.hpp>
  
 -#include <chrono>
 -#include <random>
++#include <memory>
++#include <string>
++#include <vector>
++
  
  namespace libprojectM {
  namespace Renderer {
-@@ -22,15 +20,20 @@ class PresetTransition : public RenderItem
+@@ -22,15 +24,20 @@ class PresetTransition : public RenderItem
  public:
      PresetTransition() = delete;
  
@@ -530,7 +534,7 @@ index 2623324a7..dc44f6abf 100644
  
      /**
       * @brief Updates the transition variables and renders the shader quad to the current FBO.
-@@ -38,11 +41,13 @@ public:
+@@ -38,11 +45,13 @@ public:
       * @param newPreset A reference to the new (fading in) preset.
       * @param context The rendering context used to render the presets.
       * @param audioData Current audio data and beat detection values.
@@ -545,7 +549,7 @@ index 2623324a7..dc44f6abf 100644
  
  private:
      std::vector<std::string> m_noiseTextureNames{"noise_lq",
-@@ -60,12 +65,11 @@ private:
+@@ -60,12 +69,11 @@ private:
      std::shared_ptr<Sampler> m_presetSampler{std::make_shared<Sampler>(GL_CLAMP_TO_EDGE, GL_LINEAR)}; //!< Sampler for preset textures. Uses bilinear interpolation and no repeat.
  
      double m_durationSeconds{3.0};                                                                              //!< Transition duration in seconds.
