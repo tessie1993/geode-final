@@ -224,7 +224,8 @@ def trim(rgba: np.ndarray, blur_px: float, name: str) -> np.ndarray:
 
 def to_premultiplied_image(rgba: np.ndarray) -> Image.Image:
     pixels = np.round(rgba * CHANNEL_MAX).astype(np.uint8)
-    return Image.fromarray(pixels, "RGBA").convert("RGBa")
+    # An H x W x 4 uint8 array is RGBA; Pillow 13 no longer takes a mode here.
+    return Image.fromarray(pixels).convert("RGBa")
 
 
 def bake_blur(image: Image.Image, blur_px: float) -> Image.Image:

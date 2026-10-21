@@ -1,4 +1,5 @@
 # The floating-asset pipeline (build_floating_assets.py). Free, open-source libraries only:
-# Pillow (MIT-CMU licence) and NumPy (BSD-3-Clause). Exact pins, like the rest of the tooling.
-pillow==11.3.0
+# Pillow (MIT-CMU licence) and NumPy (BSD-3-Clause). Exact pins, like the rest of the tooling;
+# Pillow 13.0.0 is the first release with every known advisory fixed. Pillow 13 needs Python 3.11+.
+pillow==13.0.0
 numpy==2.2.6
