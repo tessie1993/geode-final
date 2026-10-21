@@ -1,4 +1,4 @@
-#include "viz/ThermalGovernor.hpp"
+#include "geode/viz/ThermalGovernor.hpp"
 
 #include <algorithm>
 

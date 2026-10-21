@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <array>
 
-#include "viz/Scene.hpp"
+#include "geode/viz/Scene.hpp"
 
 namespace geode::viz::grade {
 

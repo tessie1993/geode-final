@@ -1,4 +1,4 @@
-#include "viz/scenes/StyleCatalog.hpp"
+#include "scenes/StyleCatalog.hpp"
 
 #include <array>
 #include <cstring>

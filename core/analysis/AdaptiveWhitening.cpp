@@ -1,4 +1,4 @@
-#include "analysis/AdaptiveWhitening.hpp"
+#include "geode/analysis/AdaptiveWhitening.hpp"
 
 #include <algorithm>
 #include <cmath>
