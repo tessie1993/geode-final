@@ -87,3 +87,41 @@ _Avoid_: Project, timeline, sequence
 **Short**:
 An Edit made for social feeds, typically vertical and under a minute.
 _Avoid_: Reel, clip
+
+### Architecture
+
+**Feature**:
+One part of the app (Playback, Library, Customization, Capture, Studio, Settings), built as four Gradle modules: its interface, its state machine, its handlers and its screens (ADR-0005). Other features and screens reach it only through its interface: its read-only state, `send(Command)` and its `events`.
+_Avoid_: slice, controller
+
+**Feature interface**:
+A feature's `:api` module: the state the outside may read, its Commands and its events. The only part of a feature that anything outside it may depend on.
+_Avoid_: contract, facade
+
+**Feature store**:
+The one app-scoped holder of a feature's state. It runs every command and result through the feature's reducer on the main thread and carries out the effects the reducer decides.
+_Avoid_: ViewModel, session, controller
+
+**Effect**:
+Something a reducer asks to have done: work for the feature's handlers, starting or cancelling a timer, publishing one of the feature's events, or reporting a failure. What the work finds out comes back to the reducer as an event.
+_Avoid_: side effect, action
+
+**Handlers**:
+A feature's `:handlers` module: the code that carries out its effects (IO, the database, the audio adapter, the system) on a background thread and reports the results back as events.
+_Avoid_: repository, use case, interactor
+
+**Kernel**:
+The shared base every feature store is built from (`:arch:kernel`): the store, effects, timers and the error channel. It is not a feature.
+_Avoid_: framework, base feature
+
+**Error channel**:
+The one app-wide channel every feature reports its failures to, shown in one App UI banner and written to the local log (ADR-0004). Reporting never stops the audio or the Visual.
+_Avoid_: event bus, crash reporter
+
+**Audio adapter**:
+The one interface features use to reach the shared native audio pipeline (`:arch:audio`): the player, live capture from the microphone or a USB or line input, and the analysis that feeds the Visual. It announces what happens rather than being polled. It sits beneath Playback and Capture and is not a feature.
+_Avoid_: audio service, player session
+
+**Announcement**:
+A change the audio adapter reports as it happens, such as playback started, paused, seeked, track changed, ended or failed, or a capture running, gone quiet or lost.
+_Avoid_: callback, status poll

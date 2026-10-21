@@ -1,6 +1,5 @@
 package dev.geode.ui
 
-import android.content.Intent
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
@@ -59,17 +58,11 @@ class PlayerViewModel
 
         val micState: StateFlow<MicState> get() = session.micState
 
-        val externalAudio: StateFlow<ExternalAudioState> get() = session.externalAudio
-
         val historyTick: StateFlow<Int> get() = session.historyTick
 
         val favourites: StateFlow<Set<TrackId>> get() = session.favourites
 
-        val artPaletteNote: StateFlow<String?> get() = session.artPaletteNote
-
         val lyrics: StateFlow<Lyrics?> get() = session.lyrics
-
-        val autoMode: StateFlow<Int> get() = session.autoMode
 
         val sleepTimerRemaining: StateFlow<Millis?> get() = session.sleepTimerRemaining
 
@@ -81,21 +74,11 @@ class PlayerViewModel
 
         fun hasMicPermission(): Boolean = session.hasMicPermission()
 
-        fun noteExternalAudioConsentPending() = session.noteExternalAudioConsentPending()
-
-        fun noteExternalAudioConsentDenied() = session.noteExternalAudioConsentDenied()
-
-        fun stopExternalAudio() = session.stopExternalAudio()
-
-        fun notificationAccessIntent(): Intent = session.notificationAccessIntent()
-
         fun toggleShuffle() = session.toggleShuffle()
 
         fun cycleRepeatMode() = session.cycleRepeatMode()
 
         fun applyLiveInputProfile(profile: LiveInputProfile) = session.applyLiveInputProfile(profile)
-
-        fun enrichFeatures(f: AudioFeatures): AudioFeatures = session.enrichFeatures(f)
 
         fun latestPcm(): PcmChunk? = session.latestPcm()
 
@@ -122,14 +105,6 @@ class PlayerViewModel
             onDone: (MilkPackImporter.Report) -> Unit,
         ) = session.importMilkFolderAsync(treeUri, onDone)
 
-        fun applyKeyColor(key: String) = session.applyKeyColor(key)
-
-        fun setKeyColor(enabled: Boolean) = session.setKeyColor(enabled)
-
-        fun applyArtworkPalette() = session.applyArtworkPalette()
-
-        fun currentTrackKey(): String? = session.currentTrackKey()
-
         fun setIntelligenceMode(mode: IntelligenceMode) = session.setIntelligenceMode(mode)
 
         fun analyzeCurrentTrack() = session.analyzeCurrentTrack()
@@ -137,36 +112,6 @@ class PlayerViewModel
         fun startSleepTimer(minutes: Int) = session.startSleepTimer(minutes)
 
         fun cancelSleepTimer() = session.cancelSleepTimer()
-
-        fun addToVizPlaylist(entry: VizPlaylistEntry) = session.addToVizPlaylist(entry)
-
-        fun removeVizPlaylistAt(index: Int) = session.removeVizPlaylistAt(index)
-
-        fun setVizPlaylistEnabled(enabled: Boolean) = session.setVizPlaylistEnabled(enabled)
-
-        fun setVizPlaylistIntelligent(enabled: Boolean) = session.setVizPlaylistIntelligent(enabled)
-
-        fun setVizPlaylistInterval(seconds: Int) = session.setVizPlaylistInterval(seconds)
-
-        fun setRandomEnabled(enabled: Boolean) = session.setRandomEnabled(enabled)
-
-        fun setRandomInterval(seconds: Int) = session.setRandomInterval(seconds)
-
-        fun setRandomOnBeat(enabled: Boolean) = session.setRandomOnBeat(enabled)
-
-        fun setRandomIncludeStyles(enabled: Boolean) = session.setRandomIncludeStyles(enabled)
-
-        fun setRandomIncludePresets(enabled: Boolean) = session.setRandomIncludePresets(enabled)
-
-        fun setRandomIncludeMilk(enabled: Boolean) = session.setRandomIncludeMilk(enabled)
-
-        fun setRandomizeColors(enabled: Boolean) = session.setRandomizeColors(enabled)
-
-        fun setSectionStaging(enabled: Boolean) = session.setSectionStaging(enabled)
-
-        fun randomStepNow() = session.randomStepNow()
-
-        fun applyVizEntry(entry: VizPlaylistEntry) = session.applyVizEntry(entry)
 
         fun recentlyPlayed() = session.recentlyPlayed()
 
@@ -188,8 +133,6 @@ class PlayerViewModel
         fun togglePlayPauseFaded() = session.togglePlayPauseFaded()
 
         fun resumeLastPlayed() = session.resumeLastPlayed()
-
-        fun cycleAutoMode() = session.cycleAutoMode()
 
         fun playNext(uri: TrackId) = session.playNext(uri)
 
@@ -264,9 +207,8 @@ class PlayerViewModel
             destination: Uri? = null,
             loopSafe: Boolean = false,
             range: ExportRange? = null,
-            sceneFactoryFor: ((SceneId) -> SceneFactory)? = null,
             codec: ExportCodec = ExportCodec.H264,
-        ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, sceneFactoryFor, codec)
+        ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, codec)
 
         fun startLoopRender(
             aspect: ExportAspect,

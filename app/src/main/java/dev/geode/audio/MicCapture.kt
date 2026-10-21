@@ -3,6 +3,7 @@ package dev.geode.audio
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -35,11 +36,19 @@ class MicCapture(
     fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Starts capturing. [device] routes the recording to one input, such as a USB interface or a
+     * line input; null keeps the system's choice, which is the built-in microphone.
+     */
     @Synchronized
-    fun start(onSampleRate: (Int) -> Unit = {}): Failure? {
+    fun start(
+        device: AudioDeviceInfo? = null,
+        onSampleRate: (Int) -> Unit = {},
+    ): Failure? {
         if (active) return null
         if (!hasPermission()) return Failure.PERMISSION
         val rec = openRecord() ?: return Failure.UNAVAILABLE
+        if (device != null) rec.setPreferredDevice(device)
         if (!startPump(rec, 1, onSampleRate)) return Failure.UNAVAILABLE
         return null
     }
@@ -58,11 +67,21 @@ class MicCapture(
         val now = nowMs()
         if (peak > SILENCE_EPSILON) {
             lastAudibleAtMs = now
-            silenceLikely = false
+            noteSilence(false)
         } else {
             val quietSince = if (lastAudibleAtMs == 0L) startedAtMs else lastAudibleAtMs
-            if (now - quietSince > SILENCE_GRACE_MS) silenceLikely = true
+            if (now - quietSince > SILENCE_GRACE_MS) noteSilence(true)
         }
+    }
+
+    /** Called on the pump's thread each time [silenceLikely] changes while capturing. */
+    @Volatile
+    var onSilenceChanged: ((Boolean) -> Unit)? = null
+
+    private fun noteSilence(likely: Boolean) {
+        if (silenceLikely == likely) return
+        silenceLikely = likely
+        onSilenceChanged?.invoke(likely)
     }
 
     override fun resetLevel() {
