@@ -62,7 +62,7 @@
     {
       "file": "M0Rf30 - Aurora Cathedral.milk",
       "name": "Aurora Cathedral",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "presets/M0Rf30 - Aurora Cathedral.milk",
       "sha256": "62a728e576da1305c657798c4635662fc696e5fced285e9aacbd1de1d39710af"
@@ -70,7 +70,7 @@
     {
       "file": "M0Rf30 - Tramonto sul Golfo.milk",
       "name": "Gulf Sunset",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "presets/M0Rf30 - Tramonto sul Golfo.milk",
       "sha256": "adcc6d68c69458905f4e85d4d30c744d04d3ba5ea80e2153d1281c841b00a745"
@@ -78,7 +78,7 @@
     {
       "file": "M0Rf30 - Liquid Chrome Kaleidoscope.milk",
       "name": "Liquid Chrome",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "presets/M0Rf30 - Liquid Chrome Kaleidoscope.milk",
       "sha256": "fb863737789cec35d6ec0838216f3fd8caf4497bf6017d16b443e4be869fbd55"
@@ -86,7 +86,7 @@
     {
       "file": "M0Rf30 - Nebula Forge.milk",
       "name": "Nebula Forge",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "presets/M0Rf30 - Nebula Forge.milk",
       "sha256": "9da28fbd9296be56d312228c8a251d389ee58fc46105c6d1268f83cc58a19cc7"
@@ -94,7 +94,7 @@
     {
       "file": "M0Rf30 - Bioluminescent Abyss.milk",
       "name": "Bioluminescent Abyss",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "presets/M0Rf30 - Bioluminescent Abyss.milk",
       "sha256": "d3b65fd7ea6e5d5f1fb29a2633d08195317d134fbce6062756038bd8541492a2"
@@ -102,7 +102,7 @@
     {
       "file": "M0Rf30 - Neon Sacred Geometry.milk",
       "name": "Sacred Geometry",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "presets/M0Rf30 - Neon Sacred Geometry.milk",
       "sha256": "b39c20a39de3c537b61c3efff14b447639739459c3704cd146731ac568a5d455"
@@ -110,7 +110,7 @@
     {
       "file": "M0Rf30 - Fractal Sanctum (A).milk",
       "name": "Fractal Sanctum: Julia",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "milk2/src/fractal-sanctum/a.milk",
       "sha256": "1ff1bce86c72633bea930505c1aa88dcabea241c99a7835e9c5f17c9feee96b2"
@@ -118,7 +118,7 @@
     {
       "file": "M0Rf30 - Fractal Sanctum (B).milk",
       "name": "Fractal Sanctum: Nebula",
-      "author": "M0Rf30 (Gianluca Boiano)",
+      "author": "Gianluca Boiano (M0Rf30)",
       "source": "m0rf30",
       "path": "milk2/src/fractal-sanctum/b.milk",
       "sha256": "3667e877207ae24025d0c3bc61e2c80389e531c5de8903d9874b7674aae8f4be"
@@ -132,12 +132,12 @@
       "sha256": "8841ac6355ff2d2c3846316892b41c8386f89ce674e0195004bae269694fbe6e"
     },
     {
-      "file": "martin - mandelbox explorer - high speed demo version (LamersAss Remix).milk",
-      "name": "Mandelbox Explorer",
-      "author": "martin, LamersAss",
+      "file": "Rovastar + Loadus + Geiss - FractalDrop (Cauliflower Mix).milk",
+      "name": "Fractal Bloom",
+      "author": "Rovastar, Loadus, Geiss",
       "source": "cream-of-the-crop",
-      "path": "Fractal/Mandelbox/martin - mandelbox explorer - high speed demo version (LamersAss Remix).milk",
-      "sha256": "b89e791fe064ec304b3ca8b750c0870e3baa2ace14575846b57137e105d9c5e5"
+      "path": "Fractal/Core/Rovastar + Loadus + Geiss - FractalDrop (Cauliflower Mix).milk",
+      "sha256": "2ff25d1a6bb7cbc662726e5f1c540f6e4db95cbd71d6bb70bf5b4831ab2346da"
     },
     {
       "file": "martin - frosty caves 2.milk",
@@ -300,12 +300,12 @@
       "sha256": "b9caeba0e1bd5ae6d93c6bd554622118b83eefc906c1cac0f725bfb748ba39d8"
     },
     {
-      "file": "Flexi - spatialist.milk",
-      "name": "Spatialist",
+      "file": "Flexi - smashing fractals [acid etching mix].milk",
+      "name": "Acid Etching",
       "author": "Flexi",
       "source": "cream-of-the-crop",
-      "path": "Hypnotic/Polar Mirror/Flexi - spatialist.milk",
-      "sha256": "c67684d80b17adda1834b124bdefe5821731c71a50907d44534fdc3e93bcb13a"
+      "path": "Fractal/Core/Flexi - smashing fractals [acid etching mix].milk",
+      "sha256": "2d7fd99e77ae79e06cd8af4b4221347a2e9088bbac63822421b1c2ac1cc55a79"
     },
     {
       "file": "Waltra - Heaven.milk",
