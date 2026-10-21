@@ -1,4 +1,4 @@
-package dev.geode.ui
+package dev.geode.design
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,16 +41,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import dev.geode.ui.theme.StoneComponent
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
-import dev.geode.ui.theme.StoneState
-import dev.geode.ui.theme.StoneSurfaceArt
-import dev.geode.ui.theme.rememberStoneInteraction
-import dev.geode.ui.theme.rememberStoneState
-import dev.geode.ui.theme.stonePress
+import dev.geode.design.theme.LocalFontColor
+import dev.geode.design.theme.StoneComponent
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
+import dev.geode.design.theme.StoneState
+import dev.geode.design.theme.StoneSurfaceArt
+import dev.geode.design.theme.accentTextColor
+import dev.geode.design.theme.rememberStoneInteraction
+import dev.geode.design.theme.rememberStoneState
+import dev.geode.design.theme.stonePress
 
 @Composable
 fun CrystalButton(
@@ -74,19 +74,22 @@ fun CrystalButton(
         modifier
             .stonePress(interaction)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
-            .defaultMinSize(minHeight = if (compact) 36.dp else 48.dp),
+            .defaultMinSize(minHeight = if (compact) CrystalSize.CompactButtonMinHeight else CrystalSize.ButtonMinHeight),
     ) {
         StoneSurfaceArt(component, state, Modifier.matchParentSize())
         Row(
             Modifier
                 .align(Alignment.Center)
-                .padding(horizontal = if (compact) 16.dp else 22.dp, vertical = if (compact) 6.dp else 10.dp),
+                .padding(
+                    horizontal = if (compact) CrystalSpacing.CompactButtonHorizontal else CrystalSpacing.ButtonHorizontal,
+                    vertical = if (compact) CrystalSpacing.CompactButtonVertical else CrystalSpacing.ButtonVertical,
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            val label = (LocalFontColor.current ?: cs.onSurface).copy(alpha = if (enabled) 1f else 0.55f)
+            val label = (LocalFontColor.current ?: cs.onSurface).copy(alpha = if (enabled) 1f else CrystalAlpha.DISABLED_CONTENT)
             CompositionLocalProvider(LocalContentColor provides label) {
-                ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.8.sp)) {
+                ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(letterSpacing = CrystalLetterSpacing.Button)) {
                     content()
                 }
             }
@@ -107,9 +110,9 @@ fun CrystalPlayButton(
     val state = rememberStoneState(interaction, enabled = enabled)
     Box(
         modifier
-            .size(60.dp)
+            .size(CrystalSize.PlayButton)
             .stonePress(interaction)
-            .then(if (enabled) Modifier.softGlow(cs.primary, 14.dp, 0.5f) else Modifier)
+            .then(if (enabled) Modifier.softGlow(cs.primary, CrystalGlow.PlayButton, CrystalGlow.PLAY_BUTTON_STRENGTH) else Modifier)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -117,7 +120,7 @@ fun CrystalPlayButton(
         StoneIconArt(
             icon,
             contentDescription,
-            tint = (LocalFontColor.current ?: cs.onSurface).copy(alpha = if (enabled) 1f else 0.55f),
+            tint = (LocalFontColor.current ?: cs.onSurface).copy(alpha = if (enabled) 1f else CrystalAlpha.DISABLED_CONTENT),
         )
     }
 }
@@ -144,13 +147,13 @@ fun CrystalSlider(
         enabled = enabled,
         interactionSource = interaction,
         thumb = {
-            StoneSurfaceArt(StoneComponent.SLIDER_THUMB, thumbState, Modifier.size(24.dp))
+            StoneSurfaceArt(StoneComponent.SLIDER_THUMB, thumbState, Modifier.size(CrystalSize.SliderThumb))
         },
         track = {
             val span = valueRange.endInclusive - valueRange.start
             val fraction = if (span > 0f) ((value - valueRange.start) / span).coerceIn(0f, 1f) else 0f
-            val dim = if (enabled) 1f else 0.4f
-            Box(Modifier.fillMaxWidth().height(14.dp)) {
+            val dim = if (enabled) 1f else CrystalAlpha.DISABLED_SLIDER
+            Box(Modifier.fillMaxWidth().height(CrystalSize.SliderTrack)) {
                 StoneSurfaceArt(
                     StoneComponent.SLIDER_TRACK,
                     if (enabled) StoneState.DEFAULT else StoneState.DISABLED,
@@ -162,8 +165,8 @@ fun CrystalSlider(
                         for (i in 1..steps) {
                             val x = size.width * i / (steps + 1)
                             drawCircle(
-                                cs.onSurface.copy(alpha = 0.30f * dim),
-                                radius = 1.5.dp.toPx(),
+                                cs.onSurface.copy(alpha = CrystalAlpha.SLIDER_TICK * dim),
+                                radius = CrystalSize.SliderTickRadius.toPx(),
                                 center = Offset(x, y),
                             )
                         }
@@ -178,14 +181,14 @@ fun CrystalSlider(
                                 ),
                             start = Offset(0f, y),
                             end = Offset(endX, y),
-                            strokeWidth = 3.5.dp.toPx(),
+                            strokeWidth = CrystalSize.SliderFillStroke.toPx(),
                             cap = StrokeCap.Round,
                         )
                         drawLine(
-                            color = cs.primary.copy(alpha = 0.20f * dim),
+                            color = cs.primary.copy(alpha = CrystalAlpha.SLIDER_FILL_GLOW * dim),
                             start = Offset(0f, y),
                             end = Offset(endX, y),
-                            strokeWidth = 8.dp.toPx(),
+                            strokeWidth = CrystalSize.SliderFillGlowStroke.toPx(),
                             cap = StrokeCap.Round,
                         )
                     }
@@ -208,24 +211,25 @@ fun CrystalNavBar(
     opacity: Float,
 ) {
     val cs = MaterialTheme.colorScheme
-    Box(Modifier.fillMaxWidth().graphicsLayer { alpha = (0.55f + 0.45f * opacity).coerceIn(0f, 1f) }) {
+    val barAlpha = (CrystalAlpha.NAV_BAR_MIN + CrystalAlpha.NAV_BAR_RANGE * opacity).coerceIn(0f, 1f)
+    Box(Modifier.fillMaxWidth().graphicsLayer { alpha = barAlpha }) {
         StoneSurfaceArt(StoneComponent.NAVIGATION_BAR, StoneState.DEFAULT, Modifier.matchParentSize())
         Row(
             Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .height(68.dp)
+                .height(CrystalSize.NavBarHeight)
                 .selectableGroup(),
         ) {
             val selectedLabel = accentTextColor()
             items.forEachIndexed { i, item ->
                 val sel = i == selected
                 val tint by animateColorAsState(
-                    if (sel) cs.primary else cs.onSurfaceVariant.copy(alpha = 0.75f),
+                    if (sel) cs.primary else cs.onSurfaceVariant.copy(alpha = CrystalAlpha.UNSELECTED_CONTENT),
                     label = "crystalNavTint",
                 )
                 val labelTint by animateColorAsState(
-                    if (sel) selectedLabel else cs.onSurfaceVariant.copy(alpha = 0.75f),
+                    if (sel) selectedLabel else cs.onSurfaceVariant.copy(alpha = CrystalAlpha.UNSELECTED_CONTENT),
                     label = "crystalNavLabel",
                 )
                 val gemAlpha by animateFloatAsState(if (sel) 1f else 0f, label = "crystalNavGem")
@@ -237,15 +241,15 @@ fun CrystalNavBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Box(Modifier.size(7.dp).graphicsLayer { alpha = gemAlpha }) {
-                        CrystalGem(cs.primary, size = 7.dp)
+                    Box(Modifier.size(CrystalSize.Gem).graphicsLayer { alpha = gemAlpha }) {
+                        CrystalGem(cs.primary, size = CrystalSize.Gem)
                     }
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(CrystalSpacing.GemToLabel))
                     StoneIconArt(item.icon, item.label, tint = tint)
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(CrystalSpacing.IconToLabel))
                     Text(
                         item.label,
-                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = CrystalLetterSpacing.NavLabel),
                         fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
                         color = labelTint,
                     )
@@ -266,11 +270,11 @@ fun CrystalTabs(
     ScrollableTabRow(
         selectedTabIndex = selected,
         modifier = modifier,
-        edgePadding = 8.dp,
+        edgePadding = CrystalSpacing.TabEdge,
         containerColor = Color.Transparent,
         indicator = { },
         divider = {
-            Box(Modifier.fillMaxWidth().height(1.dp).luminousHairline(cs.primary.copy(alpha = 0.45f)))
+            Box(Modifier.fillMaxWidth().height(CrystalSize.Hairline).luminousHairline(cs.primary.copy(alpha = CrystalAlpha.TAB_DIVIDER)))
         },
     ) {
         titles.forEachIndexed { i, title ->
@@ -279,7 +283,7 @@ fun CrystalTabs(
                 selected = sel,
                 onClick = { onSelect(i) },
                 selectedContentColor = accentTextColor(),
-                unselectedContentColor = cs.onSurfaceVariant.copy(alpha = 0.7f),
+                unselectedContentColor = cs.onSurfaceVariant.copy(alpha = CrystalAlpha.UNSELECTED_TAB),
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
@@ -287,10 +291,10 @@ fun CrystalTabs(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
                         )
-                        Spacer(Modifier.height(3.dp))
+                        Spacer(Modifier.height(CrystalSpacing.GemToLabel))
                         val gemAlpha by animateFloatAsState(if (sel) 1f else 0f, label = "crystalTabGem")
-                        Box(Modifier.size(5.dp).graphicsLayer { alpha = gemAlpha }) {
-                            CrystalGem(cs.primary, size = 5.dp)
+                        Box(Modifier.size(CrystalSize.TabGem).graphicsLayer { alpha = gemAlpha }) {
+                            CrystalGem(cs.primary, size = CrystalSize.TabGem)
                         }
                     }
                 },
@@ -307,7 +311,7 @@ fun CrystalSegmented(
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(CrystalSpacing.SegmentGap)) {
         options.forEachIndexed { i, label ->
             val sel = i == selected
             val interaction = rememberStoneInteraction()
@@ -316,7 +320,7 @@ fun CrystalSegmented(
                 Modifier
                     .weight(1f)
                     .stonePress(interaction)
-                    .defaultMinSize(minHeight = 40.dp)
+                    .defaultMinSize(minHeight = CrystalSize.SegmentMinHeight)
                     .selectable(
                         selected = sel,
                         role = Role.RadioButton,
@@ -329,13 +333,13 @@ fun CrystalSegmented(
                 StoneSurfaceArt(StoneComponent.CHIP, state, Modifier.matchParentSize())
                 Text(
                     label,
-                    Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    Modifier.padding(horizontal = CrystalSpacing.SegmentHorizontal, vertical = CrystalSpacing.SegmentVertical),
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center,
                     fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
                     color =
                         (LocalFontColor.current ?: cs.onSurface)
-                            .copy(alpha = if (sel) 1f else 0.75f),
+                            .copy(alpha = if (sel) 1f else CrystalAlpha.UNSELECTED_CONTENT),
                 )
             }
         }

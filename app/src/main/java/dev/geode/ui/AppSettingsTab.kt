@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.design.CrystalOverline
+import dev.geode.design.CrystalTabs
+import dev.geode.design.crystalPanel
 
 @Composable
 internal fun AppSettingsTab(

@@ -1,5 +1,6 @@
-package dev.geode.ui
+package dev.geode.design.theme
 
+import androidx.compose.ui.graphics.Color
 import kotlin.math.roundToInt
 
 object ColorDerive {
@@ -42,3 +43,16 @@ object ColorDerive {
         return (argb and 0xFF000000.toInt()) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 }
+
+/** This colour as packed ARGB, each channel rounded to the nearest of its 256 steps. */
+internal fun Color.toArgbInt(): Int =
+    ((alpha * CHANNEL_MAX + ROUND_HALF).toInt() shl ALPHA_SHIFT) or
+        ((red * CHANNEL_MAX + ROUND_HALF).toInt() shl RED_SHIFT) or
+        ((green * CHANNEL_MAX + ROUND_HALF).toInt() shl GREEN_SHIFT) or
+        (blue * CHANNEL_MAX + ROUND_HALF).toInt()
+
+private const val CHANNEL_MAX = 255f
+private const val ROUND_HALF = 0.5f
+private const val ALPHA_SHIFT = 24
+private const val RED_SHIFT = 16
+private const val GREEN_SHIFT = 8
