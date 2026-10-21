@@ -1,4 +1,4 @@
-package dev.geode.ui.theme
+package dev.geode.design.theme
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size

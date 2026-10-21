@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -175,6 +175,10 @@ jobs:
             task: ":app:pitestDebug"
             dir: app
             name: app
+          - module: ":design"
+            task: ":design:pitestDebug"
+            dir: design
+            name: design
           - module: ":arch:kernel"
             task: ":arch:kernel:pitest"
             dir: arch/kernel
@@ -294,6 +298,27 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q libgles-dev libegl-dev
           tools/hostlink/hostlink.sh
+
+  # Geode's copy of projectM, built on the host and run under Mesa's software GLES: two Renders of
+  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact").
+  milkdrop-frame-exact:
+    name: MilkDrop Renders are frame-exact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out projectM
+        run: git submodule update --init --recursive --depth 1 third_party/projectm
+      - name: Install Mesa (EGL, GLES 3, software rasterizer)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgles-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
+      - name: Configure
+        run: cmake -S tools/milkdrop-determinism -B build-milkdrop -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-milkdrop --parallel
+      - name: Two Renders, byte for byte
+        run: ctest --test-dir build-milkdrop --output-on-failure
 
   visual-frames:
     name: Visual golden frames (shaders)

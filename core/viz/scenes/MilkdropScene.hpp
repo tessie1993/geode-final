@@ -11,6 +11,7 @@
 
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/Program.hpp"
+#include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/viz/scenes/ProgramLoader.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
@@ -20,6 +21,12 @@ namespace geode::viz {
 // One projectM instance rendering into a scene-owned framebuffer (projectm_opengl_render_frame_fbo,
 // backported onto v4.1.7 by tools/projectm-v4.1.7-render-fbo-backport.patch), graded by pm_post_frag.
 // The engine never touches the window surface, so the scene is independent of the EGL config.
+//
+// The engine buffer follows the window size (setWindowSize), not the supersampled scene target.
+// Live, it adapts to load mesh-first: the warp mesh steps down at once, the buffer only at the next
+// preset change (milkdrop::LoadAdapter), and projectM is told the real paced frame rate. During a
+// Render the engine is rebuilt seeded and driven by the render clock (projectm_set_frame_time,
+// tools/projectm-v4.1.7-render-clock.patch) at full detail, so the same input gives the same frames.
 class MilkdropScene : public Scene {
 public:
     MilkdropScene(ProgramLoader loader, SceneHost host) : loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
@@ -30,6 +37,7 @@ public:
     void init() override;
     void setParams(const SceneParams& params) override { params_ = params; }
     void resize(int width, int height) override;
+    void setWindowSize(int width, int height) override;
     void update(const GeodeFeatureFrame& features, float dt) override;
     void draw(float timeSeconds) override;
     void release() override;
@@ -62,6 +70,12 @@ private:
     // freshly created engine loads it on the very next frame instead of waiting one window out.
     void armLastPreset();
     void loadPendingPreset(double now);
+    // Enters or leaves Render mode when the host's flag changes; the engine is rebuilt either way.
+    void followRenderMode();
+    // Sizes the engine buffer from the window at the adapter's buffer step.
+    void applyEngineSize();
+    // Mesh, frame rate and clock for the frame about to render.
+    void applyFrameSettings();
     std::optional<std::string> takeError();
     void diagnoseBlackFrame();
     void drainEngineErrors();
@@ -80,6 +94,17 @@ private:
     Framebuffer frame_{"milkdrop"};
     int engineWidth_ = 0;
     int engineHeight_ = 0;
+    int windowWidth_ = 0;
+    int windowHeight_ = 0;
+    milkdrop::LoadAdapter adapter_;
+    milkdrop::RenderClock renderClock_;
+    milkdrop::MeshSize appliedMesh_{0, 0};
+    int appliedFps_ = 0;
+    float lastDt_ = 0.0f;
+    bool rendering_ = false;
+    // Whether the engine has loaded a preset since it was created: a Render's first preset is a
+    // hard cut, since the unseeded idle preset it would blend from differs from run to run.
+    bool presetSinceCreate_ = false;
     GLuint postProgram_ = 0;
     bool postProgramOk_ = false;
     UniformCache postLocs_{0};
