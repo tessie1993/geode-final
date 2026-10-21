@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "viz/Compute.hpp"
+#include "geode/render/Compute.hpp"
 
 namespace geode::viz::sim {
 

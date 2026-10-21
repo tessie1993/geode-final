@@ -1,11 +1,11 @@
-#include "viz/scenes/ShaderScene.hpp"
+#include "scenes/ShaderScene.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 
-#include "viz/LiveSignal.hpp"
-#include "viz/scenes/SceneCommon.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "scenes/SceneCommon.hpp"
 
 namespace geode::viz {
 

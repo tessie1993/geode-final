@@ -73,14 +73,19 @@ Gradle modules, package `dev.geode`:
 
 The native core lives outside the modules and is built by the root
 `CMakeLists.txt` into one `libgeode.so` (plus `libprojectM-4.so`, LGPL,
-dynamically linked):
+dynamically linked). It is a set of static libraries, one per directory, each
+with its public headers in `core/<lib>/include/geode/<lib>/` and everything
+else private; the dependency graph and the CI check that keeps it one-way are
+in [docs/native-libraries.md](docs/native-libraries.md):
 
 | Directory | What it holds |
 |---|---|
-| `core/api` | `geode_api.h`, the `extern "C"` ABI — the only thing JNI calls |
+| `core/api` | `geode/api/geode_api.h`, the `extern "C"` ABI — the only thing JNI calls — and its implementation over the libraries below |
+| `core/util` | JSON, SHA-256, logging |
+| `core/render` | GL plumbing: capability probing, programs and the program binary cache, textures, framebuffers, the fullscreen quad, compute, shader sources |
 | `core/analysis` | FFT (kissfft), bands, onsets, tempo, beats, bars, key, structure, stereo field; the feature frame |
-| `core/viz` | GL capability probing, program cache, the frame graph (scene → trails → composite), the superformula driver (`FormDrive`) that modulates every family's parameters with the music, transitions, safety clamps, every scene family |
-| `core/audio/dsp` | Biquad equalizer, gain, crossfeed, lookahead limiter |
+| `core/viz` | The Visual: the frame graph (scene → trails → composite), the superformula driver (`FormDrive`) that modulates every family's parameters with the music, transitions, safety clamps, every scene family |
+| `core/audio/dsp` | Biquad equalizer, gain, crossfeed, lookahead limiter; the `geode_dsp_*` part of the C ABI |
 | `core/audio/player` | AMediaCodec decode, resampling, a lock-free mixer with gapless and crossfade, Oboe output |
 | `core/library` | TagLib tag reading and writing over a file descriptor |
 | `app/src/main/cpp` | The JNI files: no logic, only marshalling into `core/api` |

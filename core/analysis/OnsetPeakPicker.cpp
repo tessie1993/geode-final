@@ -1,4 +1,4 @@
-#include "analysis/OnsetPeakPicker.hpp"
+#include "geode/analysis/OnsetPeakPicker.hpp"
 
 #include <algorithm>
 #include <climits>

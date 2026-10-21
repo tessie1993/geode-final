@@ -20,7 +20,7 @@ node check.mjs --shader curl_bloom --time 61   # a different point on the clocks
 
 ## How it stays honest
 
-- Includes are resolved the way `core/viz/ShaderSource.cpp` resolves them:
+- Includes are resolved the way `core/render/ShaderSource.cpp` resolves them:
   the registered names are parsed out of that file's `kIncludes`, the line
   pattern is the same anchored `//#include <name>`, and an unknown name is a
   hard error.

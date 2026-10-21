@@ -1,4 +1,4 @@
-#include "analysis/StereoField.hpp"
+#include "StereoField.hpp"
 
 #include <algorithm>
 #include <cmath>

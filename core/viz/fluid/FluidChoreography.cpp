@@ -1,4 +1,4 @@
-#include "viz/fluid/FluidChoreography.hpp"
+#include "geode/viz/fluid/FluidChoreography.hpp"
 
 #include <algorithm>
 #include <cmath>

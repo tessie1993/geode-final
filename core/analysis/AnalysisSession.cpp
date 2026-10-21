@@ -1,9 +1,9 @@
-#include "analysis/AnalysisSession.hpp"
+#include "geode/analysis/AnalysisSession.hpp"
 
 #include <algorithm>
 #include <cstring>
 
-#include "analysis/StereoField.hpp"
+#include "StereoField.hpp"
 
 namespace geode::analysis {
 

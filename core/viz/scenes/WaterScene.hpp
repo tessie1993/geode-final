@@ -4,10 +4,10 @@
 #include <random>
 #include <vector>
 
-#include "viz/Quad.hpp"
-#include "viz/fluid/FluidEmitters.hpp"
-#include "viz/fluid/RippleSim.hpp"
-#include "viz/scenes/FluidSceneBase.hpp"
+#include "geode/render/Quad.hpp"
+#include "geode/viz/fluid/FluidEmitters.hpp"
+#include "geode/viz/fluid/RippleSim.hpp"
+#include "scenes/FluidSceneBase.hpp"
 
 namespace geode::viz {
 

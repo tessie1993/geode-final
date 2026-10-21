@@ -1,11 +1,11 @@
-#include "analysis/PulseReplay.hpp"
+#include "geode/analysis/PulseReplay.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "analysis/BeatGrid.hpp"
-#include "analysis/OnsetPeakPicker.hpp"
-#include "analysis/TempoTracker.hpp"
+#include "geode/analysis/BeatGrid.hpp"
+#include "geode/analysis/OnsetPeakPicker.hpp"
+#include "geode/analysis/TempoTracker.hpp"
 
 namespace geode::analysis::pulse {
 

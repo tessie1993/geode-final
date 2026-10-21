@@ -1,8 +1,8 @@
-#include "viz/Adsr.hpp"
+#include "geode/viz/Adsr.hpp"
 
 #include <algorithm>
 
-#include "viz/LiveSignal.hpp"
+#include "geode/viz/LiveSignal.hpp"
 
 namespace geode::viz {
 

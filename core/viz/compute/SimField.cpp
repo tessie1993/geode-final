@@ -1,8 +1,8 @@
-#include "viz/compute/SimField.hpp"
+#include "compute/SimField.hpp"
 
 #include <utility>
 
-#include "util/Log.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::viz::sim {
 

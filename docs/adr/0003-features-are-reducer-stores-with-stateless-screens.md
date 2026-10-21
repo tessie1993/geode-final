@@ -1,5 +1,7 @@
 # Features are app-scoped reducer stores behind stateless screens; PlayerSession is replaced in one switch-over
 
+> **Amended by ADR-0005:** features are Gradle modules (`:feature:<name>:api`, `:core`, `:handlers` and `:ui`), not packages in `:app`.
+
 Every feature (Playback, Library, Customization, Capture, Studio, Settings) is one package in `:app`, `feature/<name>/core` and `feature/<name>/ui`. Its core is a pure reducer, `reduce(state, event) → Next(state, effects)`. States are sealed types matched with exhaustive `when` (no `else`). Effects are plain data carried out by the feature's effect runner, and their results come back as events. Timers are effects too: started on entering a state, cancelled on leaving it, and tested with a fake clock. No MVI library.
 
 Each feature runs in one app-scoped `@Singleton` store, so switching tabs or leaving full-screen visual mode never restarts the music, the Visual or a Recording. The per-frame path (audio → Sound signals → Reactions → pixels) stays in C++ (ADR-0002). The reducer only runs when something changes.

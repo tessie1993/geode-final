@@ -1,0 +1,48 @@
+#pragma once
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+#include "geode/analysis/Chromagram.hpp"
+#include "geode/analysis/KeyDetector.hpp"
+#include "geode/analysis/ReactiveAnalyzer.hpp"
+#include "geode/api/geode_api.h"
+
+namespace geode::analysis {
+
+class AnalysisSession {
+public:
+    AnalysisSession(int sampleRateHz, int fftSize, float hopRateHz);
+
+    void setSampleRateHz(int value);
+    void setTuning(float sensitivity, float refractoryMs, float attackSeconds, float releaseSeconds);
+    void reset();
+    void analyze(const float* mid, const float* side, size_t frames, float dtSeconds, GeodeFeatureFrame& out);
+    void push(const float* interleaved, size_t frames, int channels);
+    bool pull(GeodeFeatureFrame& out);
+    std::string key() const { return key_.finish(); }
+
+private:
+    void fill(const float* mid, const float* side, GeodeFeatureFrame& out) const;
+    void sequence(GeodeFeatureFrame& out);
+    void averagedWaveform(const float* mid, float* out) const;
+    void decimatedWaveform(const float* mid, float* out) const;
+
+    int sampleRateHz_;
+    int fftSize_;
+    float hopRateHz_;
+    int hopSamples_;
+    ReactiveAnalyzer analyzer_;
+    Chromagram chroma_;
+    KeyDetector key_;
+    std::vector<float> spectrum_;
+    std::vector<float> buffer_;
+    std::vector<float> sideBuffer_;
+    size_t buffered_ = 0;
+    std::array<uint32_t, GEODE_EVENT_COUNT> eventSeq_{};
+    std::array<float, GEODE_EVENT_COUNT> eventStrength_{};
+};
+
+}  // namespace geode::analysis
