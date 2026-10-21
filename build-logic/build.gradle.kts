@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.ktlint.gradle)
     implementation(libs.detekt.gradle)
     implementation(libs.kotlin.gradle.plugin)
+    implementation(libs.kotlin.compose.gradle.plugin)
     implementation(libs.android.gradle.plugin)
     implementation(libs.pitest.gradle)
     implementation(libs.pitest.android.gradle)

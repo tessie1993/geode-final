@@ -207,6 +207,9 @@ dependencies {
     // What the removed :engine:runtime aggregator re-exported to :app via api(...).
     implementation(project(":engine:scenes"))
     implementation(project(":engine:audio-android"))
+    // The feature architecture (ADR-0005). :app only wires: Hilt bindings and the real adapters.
+    implementation(project(":arch:kernel"))
+    implementation(project(":arch:audio"))
 
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)
@@ -233,6 +236,9 @@ dependencies {
     // The real org.json: with isReturnDefaultValues the android.jar stub returns defaults, so a
     // store test that parses JSON would pass without parsing anything.
     testImplementation(libs.org.json)
+    // The architecture test of ADR-0003: feature cores stay plain Kotlin, features use each other
+    // only through their interface, and the feature graph has no cycles.
+    testImplementation(libs.konsist)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

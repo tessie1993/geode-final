@@ -22,6 +22,13 @@ abstract class AudioCapturePump(
 
     val active: Boolean get() = running
 
+    /**
+     * Called on the pump's thread when a capture ends by itself, because a read failed. Never called
+     * for a capture that [stop] ended.
+     */
+    @Volatile
+    var onEnded: (() -> Unit)? = null
+
     @Volatile
     var sampleRateHz: Int = defaultRateHz
         protected set
@@ -98,7 +105,10 @@ abstract class AudioCapturePump(
                 // generation moved on, since nobody else will.
                 bestEffort(TAG, "rec.stop()") { rec.stop() }
                 bestEffort(TAG, "rec.release()") { rec.release() }
-                if (runGeneration == generation) running = false
+                if (runGeneration == generation) {
+                    running = false
+                    onEnded?.invoke()
+                }
             }
         return true
     }

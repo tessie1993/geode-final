@@ -30,3 +30,10 @@ include(
     ":engine:scenes",
     ":engine:audio-android",
 )
+
+// The feature architecture (ADR-0005). Each feature adds :feature:<name>:api, :core, :handlers and
+// :ui, built with the geode.feature-* convention plugins in build-logic.
+include(
+    ":arch:kernel",
+    ":arch:audio",
+)
