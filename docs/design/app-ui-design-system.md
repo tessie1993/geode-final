@@ -28,11 +28,12 @@ Always high end. References come only from top-tier work: Dribbble's featured de
 - **Icons:** a custom organic set of hand-drawn-feeling line icons, with water, leaf and stone motifs where natural. They are drawn as vectors in `:design`.
 - **Motion:** organic and springy, as if things settle onto water and moss: soft springs, gentle overshoot and slow fades. Android's "remove animations" setting is respected.
 - **Haptics:** fluid and watery (droplets, ripples), and they can be switched off in Settings.
+- **Typography:** Fraunces for display and Figtree for body text, both under the SIL Open Font License and bundled as font files (the app has no internet permission, so Android's downloadable fonts are not used). Fraunces' softness axis rounds its letters like water-worn stone. Each screen has one expressive headline, and everything else stays quiet with generous space.
+- **Glass layering:** frosted panels sit at most one or two layers deep over the living backdrop, never glass on glass.
 - **Navigation:** a bottom bar with Player, Library, Visuals and Studio; Settings sits behind an icon. Landscape and tablets use a side navigation rail.
 - **Player:** the live Visual fills the background, with track info and controls on a soft gradient at the bottom. A tap hides the controls for full screen.
 - **Library:** its layout is designed per theme, and every theme keeps a quick list toggle for big libraries. The per-theme layouts are proposed in the design spec for the owner to review.
 
 ## Open
 
-- **Typography:** chosen from type styles seen on Dribbble. The fonts must be bundled, since the app has no internet permission, and open-licensed.
 - **Library layout per theme:** to be proposed.
