@@ -104,6 +104,19 @@ class PresetRulesTest {
     }
 
     @Test
+    fun `unticked parts leave the current ones alone`() {
+        val noSound = PresetRules.capture("Look", edited, PresetRules.ALL_PARTS - PresetPart.SOUND).copy(signals = edited.signals)
+        val applied = PresetRules.apply(julia, noSound, styles)
+        assertEquals(julia.signals, applied.signals)
+        assertEquals(edited.extras, applied.extras)
+        val shapeOnly = PresetRules.capture("Shape", edited, setOf(PresetPart.MODULATORS)).copy(extras = edited.extras)
+        val shaped = PresetRules.apply(julia, shapeOnly, styles)
+        assertEquals(julia.extras, shaped.extras)
+        assertEquals(edited.modulators, shaped.modulators)
+        assertEquals(julia.reactions, shaped.reactions)
+    }
+
+    @Test
     fun `a kept Style is switched to first`() {
         assertEquals(edited, PresetRules.apply(tunnel, PresetRules.capture("All", edited, PresetRules.ALL_PARTS), styles))
         val gone = PresetRules.capture("Gone", edited, PresetRules.ALL_PARTS).copy(style = SceneId("silk_web"))
