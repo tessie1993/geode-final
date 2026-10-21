@@ -123,6 +123,107 @@ function upload(program, u) {
   return true;
 }
 
+function frameStats(width, height) {
+  const px = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  let sum = 0, max = 0, black = 0, blown = 0;
+  const n = width * height;
+  for (let i = 0; i < n; i++) {
+    const r = px[i * 4] / 255, g = px[i * 4 + 1] / 255, b = px[i * 4 + 2] / 255;
+    const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    sum += l;
+    if (l > max) max = l;
+    if (l < 0.02) black++;
+    if (r > 0.95 && g > 0.95 && b > 0.95) blown++;
+  }
+  return { meanLuma: sum / n, maxLuma: max, fracBlack: black / n, fracBlown: blown / n };
+}
+
+// The scene target: an RGBA8 texture behind an FBO, as core/render/Framebuffer.cpp allocate()s it
+// (linear filtering, clamped, no clear).
+function makeTarget(w, h) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  const fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('scene target incomplete');
+  return { tex, fbo, w, h };
+}
+
+function dropTarget(t) {
+  gl.deleteFramebuffer(t.fbo);
+  gl.deleteTexture(t.tex);
+}
+
+// Framebuffer::resizePreserving, step for step: a new target, the old picture blitted into it with
+// linear filtering, the old target deleted. Nothing is cleared.
+function resizePreserving(old, w, h) {
+  const next = makeTarget(w, h);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, old.fbo);
+  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, next.fbo);
+  gl.blitFramebuffer(0, 0, old.w, old.h, 0, 0, w, h, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  dropTarget(old);
+  return next;
+}
+
+// Draws one frame into a scene target at the job's size, resizes the target to resizeWidth x
+// resizeHeight the way the renderer does when the load scale moves, and reports what the resized
+// target holds before anything is drawn into it again: the picture the next frame starts from.
+window.__renderResized = async function (job) {
+  const out = { dropped: [] };
+  let program = null;
+  let target = null;
+  try {
+    program = link(job.vert, job.frag);
+    gl.useProgram(program);
+    let unit = 0;
+    for (const u of job.uniforms) {
+      if (u.texture) u.unit = unit++;
+      if (!upload(program, u)) out.dropped.push(u.name);
+    }
+    gl.disableVertexAttribArray(0);
+    target = makeTarget(job.width, job.height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    gl.viewport(0, 0, job.width, job.height);
+    gl.disable(gl.BLEND);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    const before = frameStats(job.width, job.height);
+    target = resizePreserving(target, job.resizeWidth, job.resizeHeight);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    Object.assign(out, frameStats(job.resizeWidth, job.resizeHeight));
+    out.meanLumaBefore = before.meanLuma;
+    canvas.width = job.resizeWidth;
+    canvas.height = job.resizeHeight;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, target.fbo);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    gl.blitFramebuffer(0, 0, job.resizeWidth, job.resizeHeight, 0, 0, job.resizeWidth, job.resizeHeight, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.finish();
+    const err = gl.getError();
+    out.glError = err === gl.NO_ERROR ? 0 : err;
+    if (out.meanLuma < before.meanLuma * job.keepFraction) {
+      throw new Error(`the picture went dark across the resize: mean ${before.meanLuma.toFixed(3)} -> ${out.meanLuma.toFixed(3)}`);
+    }
+    out.png = canvas.toDataURL('image/png').split(',')[1];
+  } catch (e) {
+    out.error = String(e.message || e).replace(/\n/g, ' | ');
+  } finally {
+    if (target) dropTarget(target);
+    if (program) gl.deleteProgram(program);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  return out;
+};
+
 window.__render = async function (job) {
   const out = { dropped: [] };
   let program = null;

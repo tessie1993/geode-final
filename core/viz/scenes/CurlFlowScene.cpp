@@ -26,7 +26,7 @@ void CurlFlowScene::init() {
         return;
     }
     fieldUniforms_ = UniformCache(program);
-    particles_.create(49152, formats_);
+    particles_.create(kParticleCount, formats_);
     if (!particles_.available()) {
         host_.onShaderError("Curl Flow unavailable: this GPU refused the particle state buffers");
         release();
@@ -36,9 +36,11 @@ void CurlFlowScene::init() {
 void CurlFlowScene::resize(int width, int height) {
     if (!available_) return;
     aspect_ = static_cast<float>(width) / static_cast<float>(std::max(height, 1));
+    const fluid::GridSize wanted = fluid::gridFor(kFieldRes, width, height);
+    // The field and the particles riding it are kept unless the declared grid really changes.
+    if (field_ && !fluid::gridChanges({field_->width(), field_->height()}, wanted)) return;
     if (field_) field_->release();
-    const auto [fw, fh] = fluid::resolution(96, width, height);
-    field_.emplace(fw, fh, formats_.rg, true);
+    field_.emplace(wanted.width, wanted.height, formats_.rg, true);
     field_->create();
     if (!field_->ok()) {
         field_->release();
