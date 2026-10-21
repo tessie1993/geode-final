@@ -14,7 +14,6 @@
 #include "geode/viz/Adsr.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
-#include "geode/viz/FormDrive.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
 #include "geode/viz/Lfo.hpp"
@@ -98,7 +97,6 @@ private:
     static float supersampleFactor(int width, int height);
     Scene* resolveActiveScene();
     SceneParams resolveParams(float dt);
-    void feedFormDrive();
     void resolveLayerScene();
     bool ensureTargets();
     float drawSecondaryTargets(const SceneParams& p, float dt);
@@ -136,7 +134,6 @@ private:
     ThermalGovernor thermal_;
     LfoEngine lfo_;
     AdsrEngine adsr_;
-    FormDrive formDrive_;
     Framebuffer fboA_{"sceneA"};
     Framebuffer fboB_{"sceneB"};
     GLuint quadVao_ = 0;
@@ -155,13 +152,9 @@ private:
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
     std::vector<float> pcm_;
+    // Never cleared, by design: the scenes keep drawing the last waveform
+    // between pushes.
     int pcmCount_ = 0;
-    // Bumped by every pushPcm; what tells the frame a block is new rather than
-    // the one it already read (pcmCount_ is never cleared, by design: the
-    // scenes keep drawing the last waveform between pushes).
-    unsigned int pcmSerial_ = 0;
-    unsigned int pcmSerialSeen_ = 0;
-    std::vector<float> pcmScratch_;
     std::vector<float> pcmDeliverScratch_;
     std::vector<std::pair<std::string, std::string>> pendingShaders_;
     std::vector<std::pair<std::string, std::string>> customShaders_;

@@ -124,7 +124,6 @@ const std::array<SceneParams::FloatField, SceneParams::kLerpedFloatCount>& Scene
         {"cymaticsSwirl", &SceneParams::cymaticsSwirl},
         {"rippleOverlayStrength", &SceneParams::rippleOverlayStrength},
         {"rippleOverlaySpecular", &SceneParams::rippleOverlaySpecular},
-        {"formDrive", &SceneParams::formDrive},
     }};
     return kFields;
 }
@@ -269,7 +268,6 @@ bool SceneParams::set(std::string_view name, float value) {
         {"cymaticsSwirl", &SceneParams::cymaticsSwirl},
         {"rippleOverlayStrength", &SceneParams::rippleOverlayStrength},
         {"rippleOverlaySpecular", &SceneParams::rippleOverlaySpecular},
-        {"formDrive", &SceneParams::formDrive},
     };
     // NaN slips through std::clamp/std::min in the safety clamps and lerpParams keeps it forever.
     if (!std::isfinite(value)) return false;

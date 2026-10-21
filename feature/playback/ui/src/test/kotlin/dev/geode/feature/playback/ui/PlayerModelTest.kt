@@ -1,0 +1,84 @@
+package dev.geode.feature.playback.ui
+
+import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.LoadReason
+import dev.geode.feature.playback.api.PlayMark
+import dev.geode.feature.playback.api.PlaybackCommand
+import dev.geode.feature.playback.api.PlaybackFailure
+import dev.geode.feature.playback.api.PlaybackState
+import dev.geode.feature.playback.api.PlayerState
+import dev.geode.feature.playback.api.Queue
+import dev.geode.feature.playback.api.Track
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+/** The screens' model follows Playback's state, and their actions become Commands. */
+class PlayerModelTest {
+    private val a = Track(TrackId("content://a"), "Alpha", "Ann", Millis(200_000))
+    private val b = Track(TrackId("content://b"), "Beta", "Bob", Millis(180_000))
+    private val queue = Queue(listOf(a, b), 0)
+    private val moving = PlayMark(Millis(10_000), Millis(1_000), moving = true)
+
+    @Test
+    fun `the position moves with the clock while playing`() {
+        val model = PlaybackState(PlayerState.Playing(queue, moving)).toPlayerModel(Millis(4_000))
+
+        assertEquals(
+            PlayerModel(PlayerStatus.PLAYING, a, Millis(13_000), meantToPlay = true, canGoPrevious = true, canGoNext = true),
+            model,
+        )
+    }
+
+    @Test
+    fun `the position never runs past the track`() {
+        val model = PlaybackState(PlayerState.Buffering(queue, moving)).toPlayerModel(Millis(900_000))
+
+        assertEquals(a.duration, model.position)
+        assertEquals(PlayerStatus.BUFFERING, model.status)
+    }
+
+    @Test
+    fun `every state has its status`() {
+        val states =
+            listOf(
+                PlayerState.Idle,
+                PlayerState.Loading(queue, PlayMark.still(Millis(5_000)), playWhenReady = false, LoadReason.RESTORE),
+                PlayerState.Paused(queue, PlayMark.still(Millis(7_000))),
+                PlayerState.Ended(queue.next()),
+                PlayerState.Error(PlaybackFailure.ENGINE_NOT_RESPONDING, queue),
+            )
+
+        val models = states.map { PlaybackState(it).toPlayerModel(Millis.ZERO) }
+
+        assertEquals(
+            listOf(PlayerStatus.IDLE, PlayerStatus.LOADING, PlayerStatus.PAUSED, PlayerStatus.ENDED, PlayerStatus.ERROR),
+            models.map { it.status },
+        )
+        assertEquals(listOf(Millis.ZERO, Millis(5_000), Millis(7_000), b.duration, Millis.ZERO), models.map { it.position })
+        assertEquals(PlaybackFailure.ENGINE_NOT_RESPONDING, models.last().failure)
+        assertEquals(false, models[3].canGoNext)
+    }
+
+    @Test
+    fun `actions become Commands`() {
+        val playing = PlaybackState(PlayerState.Playing(queue, moving)).toPlayerModel(Millis.ZERO)
+        val paused = playing.copy(meantToPlay = false)
+
+        assertEquals(PlaybackCommand.Pause, PlayerAction.PlayPause.toCommand(playing))
+        assertEquals(PlaybackCommand.Resume, PlayerAction.PlayPause.toCommand(paused))
+        assertEquals(PlaybackCommand.Next, PlayerAction.Next.toCommand(playing))
+        assertEquals(PlaybackCommand.Previous, PlayerAction.Previous.toCommand(playing))
+        assertEquals(PlaybackCommand.SeekTo(Millis(3_000)), PlayerAction.SeekTo(Millis(3_000)).toCommand(playing))
+        assertNull(PlayerAction.Expand.toCommand(playing))
+    }
+
+    @Test
+    fun `times print as the player shows them`() {
+        assertEquals("0:00", formatTime(Millis.ZERO))
+        assertEquals("3:07", formatTime(Millis(187_400)))
+        assertEquals("1:02:09", formatTime(Millis(3_729_000)))
+        assertEquals("0:00", formatTime(Millis(-5)))
+    }
+}
