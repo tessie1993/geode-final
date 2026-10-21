@@ -65,6 +65,12 @@ include(
     ":feature:settings:ui",
 )
 
+// Customization (#39): the model and its reducer. Its :handlers and :ui come with later tickets.
+include(
+    ":feature:customization:api",
+    ":feature:customization:core",
+)
+
 // Diagnostics (#62): the "Share diagnostics" file and the hidden developer overlay. Built alongside
 // the old code and not yet wired into :app (ADR-0003).
 include(

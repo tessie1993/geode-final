@@ -133,7 +133,7 @@ jobs:
       # The JVM modules (audio-core, :arch:*, and every feature's :api and :core) run their tests
       # under `test`, not `testDebugUnitTest`.
       - name: Unit tests (every module)
-        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test testDebugUnitTest --continue --stacktrace --no-daemon
+        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test testDebugUnitTest --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -199,6 +199,10 @@ jobs:
             task: ":feature:settings:core:pitest"
             dir: feature/settings/core
             name: feature-settings-core
+          - module: ":feature:customization:core"
+            task: ":feature:customization:core:pitest"
+            dir: feature/customization/core
+            name: customization-core
           - module: ":feature:diagnostics:core"
             task: ":feature:diagnostics:core:pitest"
             dir: feature/diagnostics/core
