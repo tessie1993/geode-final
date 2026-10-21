@@ -76,7 +76,7 @@ internal object LibraryPages {
         filter: Filter,
     ): Boolean =
         (filter.formats.isEmpty() || song.format in filter.formats) &&
-            (filter.folder == null || within(song.folder, filter.folder)) &&
+            filter.folder.let { it == null || within(song.folder, it) } &&
             (!filter.hideShortClips || song.duration >= SHORT_CLIP)
 
     /** The name [song] is grouped under for [kind]; null for playlists, which Playback keeps. */
