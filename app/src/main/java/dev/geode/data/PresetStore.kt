@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.annotation.WorkerThread
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneParams
 import org.json.JSONObject
 import java.io.File
@@ -331,7 +332,7 @@ class PresetStore(
             val o = JSONObject(json)
             return Preset(
                 name = o.getString("name"),
-                sceneId = SceneId(o.getString("sceneId")),
+                sceneId = SceneCapabilities.storedOrDefault(SceneId(o.getString("sceneId"))),
                 attack = o.getDouble("attack").toFloat(),
                 decay = o.getDouble("decay").toFloat(),
                 customShader = if (o.has("customShader")) o.getString("customShader") else null,

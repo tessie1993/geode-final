@@ -3,6 +3,7 @@ package dev.geode.ui
 import android.content.SharedPreferences
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -89,12 +90,23 @@ class AutoVisualsPrefsStore(
                         val o = arr.optJSONObject(i) ?: continue
                         val sceneId = o.optString("sceneId", "")
                         if (sceneId.isEmpty()) continue
+                        val stored = SceneId(sceneId)
+                        val resolved = SceneCapabilities.storedOrDefault(stored)
+                        val presetName = o.optString("presetName", "").takeIf { it.isNotEmpty() }?.let(::PresetId)
+                        // A bare Style entry whose Style is gone plays the default Style, so it
+                        // takes the default's label too; a preset entry keeps its preset's name.
+                        val label =
+                            if (resolved != stored && presetName == null) {
+                                sceneDisplayLabel(resolved)
+                            } else {
+                                o.optString("label", "").ifEmpty { sceneId }
+                            }
                         add(
                             VizPlaylistEntry(
-                                sceneId = SceneId(sceneId),
-                                presetName = o.optString("presetName", "").takeIf { it.isNotEmpty() }?.let(::PresetId),
+                                sceneId = resolved,
+                                presetName = presetName,
                                 milkPath = o.optString("milkPath", "").takeIf { it.isNotEmpty() },
-                                label = o.optString("label", "").ifEmpty { sceneId },
+                                label = label,
                             ),
                         )
                     }

@@ -114,8 +114,8 @@ enum class ParamScope {
             ENDLESS_ZOOM -> kind == SceneKind.SHADER || kind == SceneKind.MILKDROP
             TURBULENCE -> kind in TURBULENCE_READERS
             DYE_DENSITY -> kind == SceneKind.FLUID
-            TRAIL_TOGGLE -> kind == SceneKind.SILK || kind == SceneKind.CURL_FLOW
-            TRAIL_LENGTH -> kind == SceneKind.SILK || kind == SceneKind.CURL_FLOW
+            TRAIL_TOGGLE -> kind == SceneKind.CURL_FLOW
+            TRAIL_LENGTH -> kind == SceneKind.CURL_FLOW
             TRAIL_ECHO -> kind == SceneKind.CURL_FLOW
             PARTICLE_SPRITE -> kind == SceneKind.FLUID || kind == SceneKind.CURL_FLOW
             MILKDROP -> kind == SceneKind.MILKDROP
@@ -289,7 +289,6 @@ enum class ParamScope {
         private val BASS_READERS =
             setOf(
                 SceneKind.SHADER,
-                SceneKind.SILK,
                 SceneKind.MYCELIUM,
                 SceneKind.ACID,
                 SceneKind.FLUID,
@@ -299,7 +298,6 @@ enum class ParamScope {
         private val MID_READERS =
             setOf(
                 SceneKind.SHADER,
-                SceneKind.SILK,
                 SceneKind.ACID,
                 SceneKind.FLUID,
                 SceneKind.CURL_FLOW,
@@ -309,7 +307,6 @@ enum class ParamScope {
         private val TREBLE_READERS =
             setOf(
                 SceneKind.SHADER,
-                SceneKind.SILK,
                 SceneKind.LIFE,
                 SceneKind.MYCELIUM,
                 SceneKind.ACID,

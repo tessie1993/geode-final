@@ -30,7 +30,7 @@ const state = {
   composite: null,
   compositeLocs: new Map(),
   sceneFbo: null,
-  // The field-sim pipeline (silk/life/acid/myco): named programs and named
+  // The field-sim pipeline (life/acid/myco): named programs and named
   // ping-pong targets, driven by a per-frame pass list. Null for the classic
   // single-program scenes.
   fieldSim: null,
@@ -328,7 +328,7 @@ class Melt {
 function round4(x) { return Math.round(x * 10000) / 10000; }
 
 // --------------------------------------------------------------------------
-// the field sims: SILK / LIFE / ACID / MYCO, with the app's real shaders
+// the field sims: LIFE / ACID / MYCO, with the app's real shaders
 // --------------------------------------------------------------------------
 //
 // A generic multipass pipeline: named ping-pong targets, named programs, and

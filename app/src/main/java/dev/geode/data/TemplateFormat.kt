@@ -74,6 +74,8 @@
 
 package dev.geode.data
 
+import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import dev.geode.ui.PresetLink
@@ -314,6 +316,10 @@ object TemplateFormat {
             .also { out -> look.milkPreset?.let { out.put(KEY_MILK_PRESET, it) } }
             .mergeForeign(look.foreign)
 
+    /** A missing id, or one naming a Style that no longer exists, loads the default Style. */
+    private fun storedSceneId(raw: String): String =
+        if (raw.isBlank()) SceneIds.DEFAULT.value else SceneCapabilities.storedOrDefault(SceneId(raw)).value
+
     private fun readLook(source: JSONObject?): TemplateLook {
         val paramsSource = source?.optJSONObject(KEY_PARAMS)
         val params =
@@ -322,7 +328,7 @@ object TemplateFormat {
                 ?: SceneParams.DEFAULT
         val bare =
             TemplateLook(
-                sceneId = source?.optString(KEY_SCENE_ID).orEmpty().ifBlank { SceneIds.DEFAULT.value },
+                sceneId = storedSceneId(source?.optString(KEY_SCENE_ID).orEmpty()),
                 attack = optFloat(source, KEY_ATTACK, TemplateLook.DEFAULT_ATTACK),
                 decay = optFloat(source, KEY_DECAY, TemplateLook.DEFAULT_DECAY),
                 params = params,

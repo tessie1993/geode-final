@@ -2,6 +2,7 @@ package dev.geode.data
 
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneIds
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -26,5 +27,18 @@ class PresetFormatTest {
         val preset = PresetStore.fromJson(old)
         assertEquals(SceneId("fluid_ink"), preset.sceneId)
         assertEquals(PresetId("Kyanite"), preset.id)
+    }
+
+    @Test
+    fun `a saved preset naming a deleted Silk Style loads the default Style and keeps the rest`() {
+        val saved = """{"name":"Old web","sceneId":"silk_web","attack":0.4,"decay":0.2,"speed":1.5}"""
+
+        val preset = PresetStore.fromJson(saved)
+
+        assertEquals(SceneIds.DEFAULT, preset.sceneId)
+        assertEquals(PresetId("Old web"), preset.id)
+        assertEquals(0.4f, preset.attack, 0f)
+        assertEquals(0.2f, preset.decay, 0f)
+        assertEquals(1.5f, preset.params.speed, 0f)
     }
 }

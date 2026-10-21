@@ -19,7 +19,7 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
     : assets_(assets),
       cacheDir_(std::move(cacheDir)),
       deviceGl_(cacheDir_),
-      registry_(assets_, &programCache_, &profile_,
+      registry_(assets_, &programCache_,
                 SceneHost{[this](const std::string& m) { fail(m); },
                           [this](const std::string& id, const std::string& src) { rememberCustomShader(id, src); },
                           [this] { return thermal_.pacedFps(); },

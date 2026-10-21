@@ -1,5 +1,7 @@
 package dev.geode.data
 
+import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneParams
 import org.json.JSONArray
 import org.json.JSONObject
@@ -128,7 +130,9 @@ object PerformanceTake {
         }
 
         private fun apply(e: JSONObject) {
-            e.optString("s", "").takeIf { it.isNotEmpty() }?.let { sceneId = it }
+            e.optString("s", "").takeIf { it.isNotEmpty() }?.let {
+                sceneId = SceneCapabilities.storedOrDefault(SceneId(it)).value
+            }
             e.optString("m", "").takeIf { it.isNotEmpty() }?.let { milkPath = it }
             val p = e.optJSONObject("p") ?: return
             for (key in p.keys()) accum.put(key, p.get(key))

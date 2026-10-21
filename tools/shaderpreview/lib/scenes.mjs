@@ -12,7 +12,6 @@ import * as H from './palette.mjs';
 import { marchSteps } from './march.mjs';
 import { MeltEmitters } from './emitters.mjs';
 import { audioTexRows, motionImpulse, beatImpulseOf } from './audio.mjs';
-import { simEncoding, simFragmentStep, simDisplayShader, SIM_FULLSCREEN_VERTEX } from './simglsl.mjs';
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
@@ -211,29 +210,29 @@ export function createShaderSceneDriver({ params, width, height }) {
 }
 
 // ---------------------------------------------------------------------------
-// The four FIELD-SIM families - SILK / LIFE / ACID / MYCO
+// The three FIELD-SIM families - LIFE / ACID / MYCO
 // ---------------------------------------------------------------------------
 //
 // Each of these scenes is a multipass GPU state machine: one or two ping-pong
 // textures stepped by the app's own fragment shaders, then a present pass.
 // The drivers below mirror the corresponding Kotlin draw() methods
-// (render/scene/{Silk,Life,Acid,Myco}Scene.kt) uniform for uniform, and emit
+// (render/scene/{Life,Acid,Myco}Scene.kt) uniform for uniform, and emit
 // a PER-FRAME PASS LIST the page executes generically: each pass names a
 // program, a target ('screen' or a ping-pong name), the textures to bind,
 // the draw call and the blend state. page/harness.html owns nothing but GL.
 //
 // Constants are copied from the Kotlin with the comment that justifies them,
 // so a drift is visible in a diff. Style tables are verbatim mirrors of
-// render/scene/VisualStyleCatalog.kt (silk/life/acid/myco lists).
+// render/scene/VisualStyleCatalog.kt (life/acid/myco lists).
 //
-// STAND-INS shared by all four (named per-driver too):
+// STAND-INS shared by all three (named per-driver too):
 //  - uStrike / the PCM strike: the app's PcmSink taps raw session PCM; the
 //    harness feeds the PcmPulse mirror the audio MODEL's 128-sample waveform.
 //    Same envelope machine, plausible but not real amplitudes.
 //  - ACID's uChroma: the audio models synthesize a triad chromagram (see
 //    lib/audio.mjs); the app sends zeros only when no chromagram ran.
 
-/** Shared scene clock wrap (each of the four scenes' TIME_WRAP_SECONDS). */
+/** Shared scene clock wrap (each of the three scenes' TIME_WRAP_SECONDS). */
 const FIELD_TIME_WRAP = 628.31853;
 
 /** CymaticsMath.safeDrive: finite, clamped to 0..MAX_DRIVE (4). */
@@ -277,8 +276,8 @@ function slewEnv(current, target, dt, risePerSec, fallPerSec) {
 /**
  * The touch block (render/scene/SceneTouch.kt), at TouchField's untouched values.
  *
- * Every one of these four families now reads the fingers in its step pass -
- * silk deposits dye, life seeds the state, acid draws into the feedback source,
+ * Every one of these three families now reads the fingers in its step pass -
+ * life seeds the state, acid draws into the feedback source,
  * myco is reborn under the fingertip. This harness has no pointer to model, so
  * it supplies the app's own zero: `uTouchCount = 0` is the exact idle test each
  * shader breaks on, which is a real state the app spends most of its life in
@@ -296,7 +295,7 @@ function untouched() {
 const TOUCH_SUPPLIES = ['uTouchPoints', 'uTouchCount'];
 
 /**
- * SceneParams.DEFAULT, the subset these four scenes read. palette 0 is
+ * SceneParams.DEFAULT, the subset these three scenes read. palette 0 is
  * "Spectrum" (base 0.0, range 1.0) - see SceneParams.PALETTES.
  */
 const FIELD_PARAM_DEFAULTS = {
@@ -310,64 +309,6 @@ const FIELD_PARAM_DEFAULTS = {
 // Do NOT edit numbers here without editing the catalog; the file is cited so
 // the drift is findable. Defaults are each data class's defaults.
 // ---------------------------------------------------------------------------
-
-/** VisualStyleCatalog.SilkStyle defaults. */
-const SILK_DEFAULTS = {
-  flow: 1, fieldScale: 1, strokes: 1, elong: 1, decay: 0.985, fold: 0,
-  swirl: 0.25, exposure: 1.35, hueOffset: 0, hueSpan: 1,
-  bBase: 0.17, bAmp: 0.05, bPeriod: 37, slabRate: 0.02,
-};
-
-/** VisualStyleCatalog.silk. */
-export const SILK_STYLES = [
-  { id: 'silk_web', label: 'Halvorsen Web', field: 0 },
-  {
-    id: 'silk_bloom', label: 'Cosine Bloom', field: 1,
-    flow: 0.85, fieldScale: 0.8, decay: 0.988, swirl: 0.15,
-    hueOffset: 0.55, bBase: 0.16, bAmp: 0.05, bPeriod: 41,
-  },
-  {
-    id: 'silk_weave', label: 'Triaxial Weave', field: 2,
-    flow: 1.15, fieldScale: 1.25, strokes: 1.3, elong: 0.7,
-    decay: 0.975, hueOffset: 0.12, bBase: 0.16, bAmp: 0.045, bPeriod: 47,
-  },
-  {
-    id: 'silk_shell', label: 'Concentric Shells', field: 3,
-    flow: 0.9, fieldScale: 0.9, strokes: 0.8, elong: 1.4,
-    decay: 0.987, swirl: 0.4, hueOffset: -0.18,
-    bBase: 0.18, bAmp: 0.035, bPeriod: 38,
-  },
-  {
-    id: 'silk_spiral', label: 'Phase Spiral', field: 4,
-    flow: 1.2, fieldScale: 1.05, elong: 1.8, decay: 0.982,
-    swirl: 0.5, hueOffset: 0.3, bBase: 0.17, bAmp: 0.045, bPeriod: 49,
-  },
-  {
-    id: 'silk_fold', label: 'Recursive Fold', field: 5,
-    fieldScale: 1.15, strokes: 1.2, decay: 0.98,
-    hueOffset: 0.78, bBase: 0.2, bAmp: 0.04, bPeriod: 44,
-  },
-  {
-    id: 'silk_hyper', label: 'Hyperbolic Bloom', field: 6,
-    flow: 0.8, fieldScale: 0.75, elong: 2.2, decay: 0.99,
-    hueOffset: 0.48, bBase: 0.22, bAmp: 0.05, bPeriod: 35,
-  },
-  {
-    id: 'silk_resonance', label: 'Nested Resonance', field: 7,
-    flow: 1.05, swirl: 0.3, hueOffset: 0.06,
-    bBase: 0.19, bAmp: 0.04, bPeriod: 43,
-  },
-  {
-    id: 'silk_curl', label: 'Curl Weave', field: 8,
-    flow: 1.3, fieldScale: 1.2, strokes: 1.4, elong: 0.9,
-    decay: 0.978, hueOffset: 0.62,
-  },
-  {
-    id: 'silk_pendulum', label: 'Pendulum Garden', field: 9,
-    flow: 0.95, fieldScale: 0.85, elong: 1.5, decay: 0.986,
-    fold: 3, swirl: 0, hueOffset: 0.9,
-  },
-].map((s) => ({ ...SILK_DEFAULTS, ...s }));
 
 /** VisualStyleCatalog.LifeStyle defaults. */
 const LIFE_DEFAULTS = {
@@ -537,187 +478,6 @@ export const MYCO_STYLES = [
     look: 1, hueOffset: 0.52,
   },
 ].map((s) => ({ ...MYCO_DEFAULTS, ...s }));
-
-// ---------------------------------------------------------------------------
-// SILK - render/scene/SilkScene.kt
-// ---------------------------------------------------------------------------
-//
-// One ping-pong dye texture (three band lanes), stepped by silk_step and
-// presented by silk_show. Pass structure per frame, as draw() sequences
-// it: step (advect + inject, blend off) into the write side, swap, then show
-// to the renderer's target.
-//
-// THE TWO SHADERS ARE BODIES, NOT WHOLE SHADERS. SilkScene routes its step
-// through SimPass, so the app compiles silk_step.glsl wrapped by SimGlsl -
-// as a `310 es` compute kernel where the device proved it has one and as a
-// `300 es` fragment step everywhere else - and silk_show.glsl wrapped by
-// SimPass.displayShader. This harness is WebGL2 and therefore has only the
-// fragment half; it assembles it through lib/simglsl.mjs. See that file for
-// what this consequently CANNOT tell you about the compute path (everything).
-
-export function createSilkDriver({ style, params, width, height, floatSim = true }) {
-  const p = { ...FIELD_PARAM_DEFAULTS, ...params };
-  /** SilkScene.SIM_RES = 320: "the dye is soft by nature; 320 is plenty". */
-  const [simW, simH] = fluidResolution(320, width, height);
-  const TAU = Math.PI * 2;
-
-  const pulse = new PcmPulse();
-  let time = 0;
-  let envBass = 0;
-  let envMid = 0;
-  let envTreble = 0;
-  let beatPulse = 0;
-  let ringRadius = -1;
-  let slabTurn = 0;
-  let foldPhase = 0;
-  let drift = 0;
-
-  // FormatPolicy.advectedField, decided here the way DeviceGl decides it on a
-  // phone: RGBA16F where the probe proves it renderable, and the pre-scaled
-  // RGBA8 fallback otherwise. --no-float-sim is that second world, and it is
-  // the only way to see it here - SwiftShader always has
-  // EXT_color_buffer_float. SilkScene.BYTE_STATE_SCALE = 8.
-  const enc = simEncoding(floatSim ? {} : { stateScale: 8 });
-
-  const supplies = new Set([
-    // step. uSimState and uSimSize are the layer's, not the scene's: SimPass
-    // binds the state and sets both before handing the binder the program.
-    'uSimState', 'uSimSize',
-    'uField', 'uB', 'uAdvect', 'uDecay', 'uFieldScale', 'uSwirl',
-    'uSlabX', 'uSlabY', 'uSeedEpoch', 'uDrift', 'uStrokes', 'uElong', 'uDrive',
-    'uBass', 'uMid', 'uTreble', 'uBeat', 'uStrike', 'uBeatRing',
-    ...TOUCH_SUPPLIES,
-    // show (uSimState/uSimSize recur, bound by SimPass.bindStateFor)
-    'uRes', 'uBaseHue', 'uHueSpan', 'uExposure', 'uFold', 'uFoldPhase', 'uEnergy',
-  ]);
-
-  function step(f, dt) {
-    // SilkScene.update()
-    time = (time + dt) % FIELD_TIME_WRAP;
-    pulse.accept(f.waveform);
-    const pcmStrike = pulse.tick(dt);
-
-    // SilkScene.draw()
-    const d = clamp(dt, 0, 1 / 15);
-    const speed = clamp(p.speed, 0.05, 4);
-    // ENV_RISE_PER_SEC = 8, ENV_FALL_PER_SEC = 2.2
-    envBass = slewEnv(envBass, clamp(f.bass, 0, 1.5), d, 8, 2.2);
-    envMid = slewEnv(envMid, clamp(f.mid, 0, 1.5), d, 8, 2.2);
-    envTreble = slewEnv(envTreble, clamp(f.treble, 0, 1.5), d, 8, 2.2);
-    beatPulse = clamp(
-      Math.max(motionImpulse(f) * clamp(p.beatResponse, 0, 2), beatPulse - d * 3), 0, 1.5,
-    );
-    // BEAT_THRESHOLD = 0.28; beatResponse deliberately unclamped here, as in
-    // the Kotlin.
-    if (beatImpulseOf(f) * p.beatResponse > 0.28) ringRadius = 0;
-    if (ringRadius >= 0) {
-      // RING_SPEED = 2.6, RING_MAX = 3.4
-      ringRadius += d * 2.6 * speed;
-      if (ringRadius > 3.4) ringRadius = -1;
-    }
-
-    slabTurn = (slabTurn + d * style.slabRate * speed) % 1;
-    foldPhase = (foldPhase + d * 0.03 * speed * TAU) % TAU;
-    drift = (drift + d * 0.05 * speed) % 1024;
-    const b = style.bBase + style.bAmp * Math.sin(TAU * time / style.bPeriod);
-    // SEED_EPOCH_SECONDS = 9; Kotlin (time / 9f).toInt() truncates.
-    const seedEpoch = Math.trunc(time / 9);
-
-    // Feedback survival, frame-rate compensated; Trails lengthens it.
-    let decay = style.decay;
-    if (p.trails) decay += (1 - decay) * 0.6 * clamp(p.trailLength, 0, 1);
-    const frameDecay = Math.pow(decay, d * 60);
-
-    const stepU = {
-      // SimGlsl.STATE_TEXTURE_UNIT = 0; the grid arrives as ivec2, not the
-      // vec2 uRes the hand-written step used to take, and simStep() derives
-      // its aspect from it.
-      uSimState: { t: 'tex', v: 0 },
-      uSimSize: { t: '2i', v: [simW, simH] },
-      uField: { t: '1i', v: style.field },
-      uB: { t: '1f', v: b },
-      uAdvect: { t: '1f', v: d * 0.18 * style.flow * speed },
-      uDecay: { t: '1f', v: frameDecay },
-      uFieldScale: { t: '1f', v: style.fieldScale },
-      uSwirl: { t: '1f', v: style.swirl },
-      uSlabX: { t: '1f', v: Math.cos(slabTurn * TAU) },
-      uSlabY: { t: '1f', v: Math.sin(slabTurn * TAU) },
-      uSeedEpoch: { t: '1f', v: seedEpoch },
-      uDrift: { t: '1f', v: drift },
-      uStrokes: { t: '1f', v: style.strokes },
-      uElong: { t: '1f', v: style.elong },
-      uDrive: { t: '1f', v: safeDrive(p.audioDrive) },
-      uBass: { t: '1f', v: envBass },
-      uMid: { t: '1f', v: envMid },
-      uTreble: { t: '1f', v: envTreble },
-      uBeat: { t: '1f', v: beatPulse },
-      uStrike: { t: '1f', v: clamp(pcmStrike, 0, 1.5) },
-      uBeatRing: { t: '1f', v: ringRadius },
-      // No uStateScale any more: the dye's range is a compile-time constant
-      // SimGlsl folds into simLoad/simSample, so there is nothing per-frame to
-      // send and nothing for a caller to forget.
-      ...untouched(),
-    };
-    const showU = {
-      uSimState: { t: 'tex', v: 0 },
-      uSimSize: { t: '2i', v: [simW, simH] },
-      uRes: { t: '2f', v: [width, height] },
-      uBaseHue: { t: '1f', v: H.FluidHue.base(p.paletteBase) + style.hueOffset },
-      uHueSpan: { t: '1f', v: H.FluidHue.span(p.hueRange, p.paletteRange) * style.hueSpan },
-      uExposure: { t: '1f', v: style.exposure },
-      uFold: { t: '1i', v: style.fold },
-      uFoldPhase: { t: '1f', v: foldPhase },
-      uEnergy: { t: '1f', v: clamp(f.rms, 0, 1.5) },
-    };
-
-    return {
-      uniforms: null,
-      melt: null,
-      passes: [
-        {
-          program: 'step', target: 'dye', draw: 'triangle', blend: null, swap: true,
-          textures: [{ unit: 0, target: 'dye', side: 'read' }],
-          uniforms: stepU,
-        },
-        {
-          program: 'show', target: 'screen', draw: 'triangle', blend: null,
-          textures: [{ unit: 0, target: 'dye', side: 'read' }],
-          uniforms: showU,
-        },
-      ],
-      debug: { time: round4(time), b: round4(b), ringRadius: round4(ringRadius), beatPulse: round4(beatPulse) },
-    };
-  }
-
-  /** Free-running clocks only; the dye does not age. */
-  function jumpClock(seconds) {
-    time = (time + seconds) % FIELD_TIME_WRAP;
-  }
-
-  return {
-    id: 'silk', supplies, step, jumpClock,
-    meltConfig: { enabled: false },
-    fieldPrograms: {
-      step: ['quad_vert', 'silk_step'],
-      show: ['quad_vert', 'silk_show'],
-    },
-    // Both files are SimPass bodies; the wrapper around each is generated, not
-    // loaded. The step's vertex stage is generated too - SimGlsl's own
-    // attribute-less triangle, which carries no varying at all, where
-    // quad_vert carries vUv the generated fragment stage does not read.
-    fieldAssemble: (name, { vertSrc, fragSrc }) => (name === 'step'
-      ? { vertSrc: SIM_FULLSCREEN_VERTEX, fragSrc: simFragmentStep(enc, fragSrc) }
-      : { vertSrc, fragSrc: simDisplayShader(enc, fragSrc) }),
-    // SimField allocates the state pair at FormatPolicy.advectedField, which
-    // is RGBA16F with linear filtering wherever the probe proves it.
-    fieldTargets: { dye: { width: simW, height: simH, format: 'rgba16f', filter: 'linear' } },
-    standIns: [
-      'uStrike is a stand-in: PcmPulse fed the audio model\'s waveform, not the app\'s raw PCM tap',
-      'step + show are assembled by lib/simglsl.mjs, a mirror of SimGlsl.kt\'s FRAGMENT path; '
-        + 'the ES 3.1 compute path this scene also builds is not representable in WebGL2 and is not measured here',
-    ],
-  };
-}
 
 // ---------------------------------------------------------------------------
 // LIFE - render/scene/LifeScene.kt
@@ -1258,12 +1018,6 @@ function round4(x) {
 // ---------------------------------------------------------------------------
 
 export const FIELD_FAMILIES = {
-  silk: {
-    styles: SILK_STYLES,
-    create: createSilkDriver,
-    kotlin: 'render/scene/SilkScene.kt',
-    blurb: 'SilkScene.kt + silk_step/silk_show',
-  },
   life: {
     styles: LIFE_STYLES,
     create: createLifeDriver,

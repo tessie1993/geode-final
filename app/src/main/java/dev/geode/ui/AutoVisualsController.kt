@@ -238,8 +238,7 @@ internal class AutoVisualsController(
         lastRandomSwitchMs = android.os.SystemClock.elapsedRealtime()
         val choices = mutableListOf<VizPlaylistEntry>()
         val sceneIds =
-            dev.geode.render.scene.VisualStyleCatalog.silkIds +
-                dev.geode.render.scene.VisualStyleCatalog.lifeIds +
+            dev.geode.render.scene.VisualStyleCatalog.lifeIds +
                 dev.geode.render.scene.VisualStyleCatalog.mycoIds +
                 dev.geode.render.scene.VisualStyleCatalog.acidIds +
                 dev.geode.render.scene.SceneCapabilities.SHADER_SCENES.keys

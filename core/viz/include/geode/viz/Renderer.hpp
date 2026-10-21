@@ -150,10 +150,15 @@ private:
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
+    // What the renderer holds before the app's first setScene. The app requests its Style
+    // (SceneIds.DEFAULT, the one place the default Style is chosen) before every frame, so this
+    // only needs to name a Style that always builds.
+    static constexpr const char* kStartSceneId = "aurora";
+
     mutable std::mutex stateLock_;
     SceneParams requestedParams_;
     GeodeFeatureFrame features_{};
-    std::string requestedSceneId_ = "silk_web";
+    std::string requestedSceneId_ = kStartSceneId;
     std::string layerSceneId_;
     float layerMix_ = 0.5f;
     int layerBlend_ = static_cast<int>(BlendMode::Screen);

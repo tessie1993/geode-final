@@ -11,6 +11,16 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Removed the Silk Style family (#86).** All ten Silk Styles, their scene,
+  their step and present shaders, the compute-layer simulation only they ran
+  (`core/viz/compute`), their catalogue entries on both sides of the bridge,
+  the Silk tab in the Styles picker and their entries in the random Style
+  pool are gone. Trails and Trail length now apply to Curl Flow only. The
+  default Style is now Aurora, a calm shader Style standing in until the real
+  default is chosen (`SceneIds.DEFAULT`). A saved preset, the live settings, a
+  template, a Style playlist entry or a Studio clip that names a Style that no
+  longer exists loads the default Style instead, with no error, and keeps
+  everything else it stores.
 - **Form drive: the superformula as the one driver every visual is fed
   through.** `core/viz/FormDrive` sits in `Renderer::resolveParams`, after
   the LFO and ADSR slots and before the safety clamp, so every family's
