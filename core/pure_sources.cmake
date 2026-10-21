@@ -11,6 +11,7 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Equalizer.cpp
     audio/dsp/Crossfeed.cpp
     audio/dsp/Limiter.cpp
+    audio/player/BufferTuner.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
