@@ -11,6 +11,7 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Equalizer.cpp
     audio/dsp/Crossfeed.cpp
     audio/dsp/Limiter.cpp
+    audio/player/BufferTuner.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
@@ -42,6 +43,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Adsr.cpp
     viz/FormDrive.cpp
     viz/VisualSafety.cpp
+    viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
     viz/ThermalGovernor.cpp
     viz/fluid/FluidMath.cpp

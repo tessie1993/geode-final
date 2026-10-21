@@ -44,6 +44,8 @@ public:
     int64_t durationUs() const { return durationUs_.load(std::memory_order_acquire); }
     int64_t currentToken() const { return token_.load(std::memory_order_acquire); }
     int outputSampleRate() const { return outRate_.load(std::memory_order_acquire); }
+    // The self-tuned output buffer size in frames, for diagnostics (0 while untuned). Safe from any thread.
+    int32_t outputBufferFrames() const { return output_.bufferSizeFrames(); }
     std::string lastError() const;
     size_t readTap(float* stereo, size_t frames) { return mixer_.readTap(stereo, frames); }
 

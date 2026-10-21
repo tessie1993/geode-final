@@ -1,6 +1,5 @@
 package dev.geode.render
 
-import android.os.Build
 import android.view.Choreographer
 import android.view.Surface
 import kotlin.math.ceil
@@ -199,7 +198,7 @@ class FramePacer(
      * blanks for a moment mid-track is a worse artefact than the frame rate we were trying to fix.
      */
     fun applyTo(surface: Surface) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && surface.isValid) {
+        if (surface.isValid) {
             // Zero is the platform's "no preference": it clears any standing request instead of
             // leaving the last cap latched on a surface that has since changed its mind.
             val requested =

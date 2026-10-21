@@ -1,0 +1,75 @@
+diff --git a/projectm-eval/TreeFunctions.c b/projectm-eval/TreeFunctions.c
+index cf1a2c0..5d2a72f 100644
+--- a/projectm-eval/TreeFunctions.c
++++ b/projectm-eval/TreeFunctions.c
+@@ -8,6 +8,7 @@
+ 
+ #include <math.h>
+ #include <assert.h>
++#include <stddef.h>
+ #include <stdint.h>
+ 
+ #if PRJM_F_SIZE == 4
+@@ -162,6 +163,14 @@ void prjm_eval_intrinsic_functions(prjm_eval_intrinsic_function_list_ptr list, u
+     *list = intrinsic_function_table;
+ }
+ 
++/* Geode patch: the host's random source, asked before Milkdrop's own generator. */
++static projectm_eval_random_source prjm_eval_host_random_source = NULL;
++
++void projectm_eval_set_random_source(projectm_eval_random_source source)
++{
++    prjm_eval_host_random_source = source;
++}
++
+ /* This is Milkdrop's original rand() implementation. */
+ static uint32_t prjm_eval_genrand_int32(void)
+ {
+@@ -1177,7 +1186,13 @@ prjm_eval_function_decl(rand)
+         rand_max = 1.;
+     }
+ 
+-    assign_ret_val((PRJM_EVAL_F) (prjm_eval_genrand_int32() * (1.0 / (double) 0xFFFFFFFF) * rand_max));
++    uint32_t random_value;
++    if (prjm_eval_host_random_source == NULL || !prjm_eval_host_random_source(&random_value))
++    {
++        random_value = prjm_eval_genrand_int32();
++    }
++
++    assign_ret_val((PRJM_EVAL_F) (random_value * (1.0 / (double) 0xFFFFFFFF) * rand_max));
+ }
+ 
+ prjm_eval_function_decl(invsqrt)
+diff --git a/projectm-eval/api/projectm-eval.h b/projectm-eval/api/projectm-eval.h
+index ab90e51..285b714 100644
+--- a/projectm-eval/api/projectm-eval.h
++++ b/projectm-eval/api/projectm-eval.h
+@@ -6,6 +6,8 @@
+  */
+ #pragma once
+ 
++#include <stdint.h>
++
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+@@ -58,6 +60,19 @@ void projectm_eval_memory_host_lock_mutex();
+  */
+ void projectm_eval_memory_host_unlock_mutex();
+ 
++/**
++ * @brief Host-supplied random source for the rand() expression function.
++ * Geode patch (tools/projectm-eval-render-clock.patch). Returns non-zero after writing a value to
++ * @a value, or zero to let rand() draw from Milkdrop's own generator as before.
++ */
++typedef int (*projectm_eval_random_source)(uint32_t* value);
++
++/**
++ * @brief Installs the random source rand() asks first. NULL restores the stock behaviour.
++ * @param source The host's random source, or NULL.
++ */
++void projectm_eval_set_random_source(projectm_eval_random_source source);
++
+ /**
+  * @brief Allocates an empty memory buffer to hold gmegabuf data.
+  * @return A handle to a buffer which can be passed to @a projectm_eval_context_create().

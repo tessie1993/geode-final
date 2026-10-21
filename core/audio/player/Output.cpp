@@ -6,7 +6,29 @@ namespace geode::audio::player {
 
 namespace {
 constexpr int64_t kStateTimeoutNs = 500'000'000;
-}
+
+// Adapts the Oboe stream to the BufferTuner. Both calls are plain AAudio/OpenSL ES queries with no
+// allocation or locking, safe from the data callback (Oboe's own LatencyTuner makes them there too).
+class OboeTunableStream final : public TunableStream {
+public:
+    explicit OboeTunableStream(oboe::AudioStream& stream) : stream_(stream) {}
+
+    std::optional<int32_t> xrunCount() override {
+        const auto result = stream_.getXRunCount();
+        if (!result) return std::nullopt;
+        return result.value();
+    }
+
+    std::optional<int32_t> setBufferSizeInFrames(int32_t frames) override {
+        const auto result = stream_.setBufferSizeInFrames(frames);
+        if (!result) return std::nullopt;
+        return result.value();
+    }
+
+private:
+    oboe::AudioStream& stream_;
+};
+}  // namespace
 
 bool Output::open(std::string& error) {
     close();
@@ -16,7 +38,10 @@ bool Output::open(std::string& error) {
         return false;
     }
     sampleRate_ = stream_->getSampleRate();
-    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 2);
+    // Starts the buffer at the device burst; on InvalidStreamGeometry or Rejected the device keeps its own
+    // default size and the tuner stays inactive, which is no worse than an untuned stream.
+    OboeTunableStream tunable(*stream_);
+    tuner_.reset(tunable, stream_->getFramesPerBurst(), stream_->getBufferCapacityInFrames(), sampleRate_);
     return true;
 }
 
@@ -68,7 +93,7 @@ bool Output::settle(oboe::StreamState leaving, oboe::StreamState wanted) {
     return stream_->getState() == wanted;
 }
 
-oboe::DataCallbackResult Output::onAudioReady(oboe::AudioStream*, void* audioData, int32_t numFrames) {
+oboe::DataCallbackResult Output::onAudioReady(oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
     auto* out = static_cast<float*>(audioData);
     size_t remaining = numFrames > 0 ? static_cast<size_t>(numFrames) : 0;
     while (remaining > 0) {
@@ -76,6 +101,10 @@ oboe::DataCallbackResult Output::onAudioReady(oboe::AudioStream*, void* audioDat
         mixer_.render(out, n);
         out += n * Mixer::kChannels;
         remaining -= n;
+    }
+    if (stream != nullptr) {
+        OboeTunableStream tunable(*stream);
+        tuner_.onAudioReady(tunable, numFrames);
     }
     return oboe::DataCallbackResult::Continue;
 }
