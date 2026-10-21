@@ -10,6 +10,7 @@
 #include "geode/render/Program.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 
 namespace geode::viz {
 
@@ -40,7 +41,6 @@ private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
     static constexpr float kTwoPi = 6.2831853f;
     static constexpr float kPulsePhaseHz = 0.6f;
-    static constexpr float kPulseDecayPerSecond = 3.0f;
     static constexpr float kAudioClamp = 1.5f;
 
     // ---- the smoothed motion layer -----------------------------------------
@@ -135,6 +135,7 @@ private:
     float treble_ = 0.0f;
     float energy_ = 0.0f;
     float beatPulse_ = 0.0f;
+    BeatEnvelope beatEnvelope_;
     float pulsePhase_ = 0.0f;
 
     // The motion layer's integrated state. All of it survives from frame to

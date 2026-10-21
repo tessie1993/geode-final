@@ -13,9 +13,9 @@ namespace geode::bridge {
 inline constexpr uint32_t kSnapshotMagic = 0x31534347u;  // "GCS1"
 inline constexpr uint16_t kSnapshotVersion = 1;
 inline constexpr size_t kSnapshotHeaderBytes = 12;
-inline constexpr size_t kSnapshotPayloadBytes = 733;
+inline constexpr size_t kSnapshotPayloadBytes = 725;
 inline constexpr size_t kSnapshotWireBytes = kSnapshotHeaderBytes + kSnapshotPayloadBytes;
-inline constexpr size_t kSnapshotParamsCount = 134;
+inline constexpr size_t kSnapshotParamsCount = 132;
 inline constexpr size_t kSnapshotLfoCount = 24;
 inline constexpr size_t kSnapshotAdsrCount = 20;
 

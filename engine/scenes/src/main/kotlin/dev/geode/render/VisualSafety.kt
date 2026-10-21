@@ -12,7 +12,9 @@ import dev.geode.render.scene.SceneParams
  * numbers.
  *
  * The threshold is the accepted one: no more than three flashes in any one second, with the
- * luminance change of anything faster held under [MAX_FLASH_DEPTH].
+ * luminance change of anything faster held under [MAX_FLASH_DEPTH]. These are per-parameter caps;
+ * the finished frame is bounded by the native No-flash limiter (core/viz/FlashLimiter), which
+ * every frame of every Style passes through. There is no strobe and no flash parameter.
  *
  * Reduced motion is deliberately *not* part of this. It is a vestibular accessibility preference
  * about how much the picture moves, not a photosensitivity guard, so it stays a choice the user
@@ -24,10 +26,6 @@ object VisualSafety {
 
     /** Ceiling on how far luminance may swing within one flash. */
     const val MAX_FLASH_DEPTH = 0.25f
-
-    const val STROBE_SHADER_DEPTH = 0.85f
-
-    const val FLASH_SHADER_DEPTH = 0.6f
 
     const val REDUCED_MOTION_SCALE = 0.4f
 
@@ -44,8 +42,6 @@ object VisualSafety {
     ): SceneParams {
         var out =
             p.copy(
-                strobe = p.strobe.coerceIn(0f, MAX_FLASH_DEPTH / STROBE_SHADER_DEPTH),
-                flash = p.flash.coerceIn(0f, MAX_FLASH_DEPTH / FLASH_SHADER_DEPTH),
                 glitch = p.glitch.coerceAtMost(MAX_FLASH_DEPTH),
                 bloom = p.bloom.coerceAtMost(MAX_FLASH_DEPTH),
                 brightness = p.brightness.coerceIn(0f, 1f + MAX_FLASH_DEPTH),
@@ -69,14 +65,6 @@ object VisualSafety {
         }
         return out
     }
-
-    fun flashImpulse(
-        flash: Float,
-        beatImpulse: Float,
-    ): Float = flash * beatImpulse * FLASH_SHADER_DEPTH
-
-    /** The strobe rate any scene may run at. Fixed at the limit. */
-    fun strobeHz(): Float = WCAG_FLASHES_PER_SECOND
 
     /** Holds an LFO driving a luminance target down to the flash limit. */
     fun limitLfoRate(
