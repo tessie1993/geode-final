@@ -7,6 +7,7 @@
 #include "geode/render/GlProfile.hpp"
 #include "geode/render/Program.hpp"
 #include "geode/viz/Scene.hpp"
+#include "geode/viz/fluid/SimGrid.hpp"
 #include "compute/SimPass.hpp"
 #include "geode/viz/scenes/ProgramLoader.hpp"
 #include "scenes/SceneCommon.hpp"
@@ -58,6 +59,8 @@ private:
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
     std::unique_ptr<sim::SimPass> sim_;
+    // The grid last asked of sim_ (it allocates on its next step).
+    fluid::GridSize simGrid_;
     GLuint showProgram_ = 0;
     UniformCache showLocs_{0};
     bool programOk_ = false;

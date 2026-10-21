@@ -27,6 +27,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.design.CrystalGem
+import dev.geode.design.CrystalSegmented
+import dev.geode.design.CrystalSlider
+import dev.geode.design.crystalShardShape
+import dev.geode.design.theme.accentTextColor
 
 @Composable
 internal fun LookSettingsTab(viewModel: SettingsViewModel) {

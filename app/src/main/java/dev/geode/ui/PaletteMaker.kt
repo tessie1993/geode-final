@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.data.CustomPalette
 import dev.geode.data.PaletteStore
+import dev.geode.design.CrystalSlider
 import dev.geode.render.scene.SceneParams
 
 @Stable

@@ -50,6 +50,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.data.Preset
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalGem
+import dev.geode.design.CrystalOverline
+import dev.geode.design.CrystalSlider
+import dev.geode.design.CrystalTabs
+import dev.geode.design.GlowTitle
+import dev.geode.design.readingPlate
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
+import dev.geode.design.theme.accentTextColor
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.render.VisualizerView
@@ -57,8 +67,6 @@ import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.VisualStyleCatalog
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
