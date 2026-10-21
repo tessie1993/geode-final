@@ -181,7 +181,6 @@ object AnimatableParams {
             ) { p, v -> p.copy(milkdropBlendPresets = v) },
             scalar("audioDrive", ParamKeys.AUDIO_DRIVE, 0.2f, 2.5f, { it.audioDrive }) { p, v -> p.copy(audioDrive = v) },
             scalar("beatResponse", ParamKeys.BEAT_RESPONSE, 0f, 2f, { it.beatResponse }) { p, v -> p.copy(beatResponse = v) },
-            scalar("flash", ParamKeys.BEAT_FLASH, 0f, 1f, { it.flash }) { p, v -> p.copy(flash = v) },
             scalar("bassGain", ParamKeys.BASS_GAIN, 0f, 2f, { it.bassGain }) { p, v -> p.copy(bassGain = v) },
             scalar("midGain", ParamKeys.MID_GAIN, 0f, 2f, { it.midGain }) { p, v -> p.copy(midGain = v) },
             scalar("trebGain", ParamKeys.TREBLE_GAIN, 0f, 2f, { it.trebGain }) { p, v -> p.copy(trebGain = v) },
@@ -214,7 +213,6 @@ object AnimatableParams {
             scalar("grain", ParamKeys.FILM_GRAIN, 0f, 1f, { it.grain }) { p, v -> p.copy(grain = v) },
             scalar("glitch", ParamKeys.GLITCH, 0f, 1f, { it.glitch }) { p, v -> p.copy(glitch = v) },
             scalar("fisheye", ParamKeys.FISHEYE, -1f, 1f, { it.fisheye }) { p, v -> p.copy(fisheye = v) },
-            scalar("strobe", ParamKeys.STROBE, 0f, 1f, { it.strobe }) { p, v -> p.copy(strobe = v) },
             scalar(
                 "waterRippleStrength",
                 ParamKeys.RIPPLE_STRENGTH,

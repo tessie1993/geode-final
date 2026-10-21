@@ -71,7 +71,6 @@ uniform float uTile;
 uniform float uTwist;
 uniform float uTemperature;
 uniform float uSolarize;
-uniform float uFlash;
 
 // ---- where the fingers are ------------------------------------------------
 //
