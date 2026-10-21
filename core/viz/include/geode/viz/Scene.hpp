@@ -40,7 +40,9 @@ public:
     virtual void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
         (void) nx; (void) ny; (void) ndx; (void) ndy; (void) dt; (void) strength;
     }
-    // The surface size in pixels, which MilkDrop renders at rather than the supersampled target.
+    // The surface size in pixels, unscaled: no supersampling and no thermal render scale. resize()
+    // gives the scene target; MilkDrop sizes its engine buffer from this instead (times its load
+    // step) and its post pass scales the result onto the scene target.
     virtual void setWindowSize(int width, int height) { (void) width; (void) height; }
     virtual void queueMilkPreset(const std::string& path) { (void) path; }
     virtual void reloadMilkPreset() {}
@@ -53,6 +55,9 @@ struct SceneHost {
     // The rate the display is being asked for (0 = free-running), for the fluid quality ladder.
     std::function<float()> pacedFps;
     std::function<void(const std::string& path)> onMilkPresetLoaded;
+    // True while the engine is producing a Render: frame by frame on the render clock, never
+    // adapting to load, so the same input gives the same frames (ADR-0005).
+    std::function<bool()> rendering;
 };
 
 }  // namespace geode::viz

@@ -114,6 +114,10 @@ _Avoid_: repository, use case, interactor
 The shared base every feature store is built from (`:arch:kernel`): the store, effects, timers and the error channel. It is not a feature.
 _Avoid_: framework, base feature
 
+**Design system**:
+The App UI's design tokens (colours, type, spacing, sizes, corners), its theme and its common components, in the `:design` module (ADR-0005). Every feature's screens may use it; it holds nothing of the Visual and depends on no feature. Each feature keeps its own strings.
+_Avoid_: UI kit, common UI, theme module
+
 **Error channel**:
 The one app-wide channel every feature reports its failures to, shown in one App UI banner and written to the local log (ADR-0004). Reporting never stops the audio or the Visual.
 _Avoid_: event bus, crash reporter

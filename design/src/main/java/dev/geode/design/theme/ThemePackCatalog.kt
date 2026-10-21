@@ -1,7 +1,7 @@
-package dev.geode.ui.theme
+package dev.geode.design.theme
 
 import androidx.compose.ui.graphics.Color
-import dev.geode.R
+import dev.geode.design.R
 
 /** The App UI's one theme until the App UI redesign. */
 object ThemePackCatalog {
