@@ -53,10 +53,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.geode.R
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalOverline
+import dev.geode.design.crystalPanel
+import dev.geode.design.theme.StoneIcon
+import dev.geode.design.theme.StoneIconArt
+import dev.geode.design.theme.accentTextColor
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
-import dev.geode.ui.theme.StoneIcon
-import dev.geode.ui.theme.StoneIconArt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 

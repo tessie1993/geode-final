@@ -20,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.analysis.PlaybackMath
 import dev.geode.data.PlayerPrefs
+import dev.geode.design.CrystalSlider
+import dev.geode.design.theme.accentTextColor
 import dev.geode.playback.ReplayGain
 
 private val SLEEP_TIMER_CHOICES = listOf(0, 15, 30, 45, 60)

@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -175,6 +175,10 @@ jobs:
             task: ":app:pitestDebug"
             dir: app
             name: app
+          - module: ":design"
+            task: ":design:pitestDebug"
+            dir: design
+            name: design
           - module: ":arch:kernel"
             task: ":arch:kernel:pitest"
             dir: arch/kernel
