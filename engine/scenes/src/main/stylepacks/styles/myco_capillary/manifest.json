@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "myco_capillary",
+  "label": "Capillaries",
+  "family": "mycelium",
+  "parameters": {
+    "agentRes": 208,
+    "sensorDist": 5.0,
+    "sensorAngle": 0.85,
+    "turnAngle": 1.1,
+    "moveStep": 0.75,
+    "deposit": 0.14,
+    "decay": 0.9,
+    "look": 5,
+    "exposure": 3.8,
+    "hueOffset": 0.98
+  }
+}

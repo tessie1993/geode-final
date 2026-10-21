@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "myco_rivals",
+  "label": "Rival Colonies",
+  "family": "mycelium",
+  "parameters": {
+    "sensorDist": 11.0,
+    "speciesMix": 0.5,
+    "crossAb": -1.0,
+    "crossBa": -1.0,
+    "reaim": 0.2,
+    "look": 1,
+    "exposure": 2.6,
+    "hueSpan": 1.2
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "life_coral",
+  "label": "Coral Bloom",
+  "family": "life",
+  "parameters": {
+    "rule": 1,
+    "dt": 1.0,
+    "feed": 0.0545,
+    "kill": 0.062,
+    "substeps": 5,
+    "look": 2,
+    "seedJitter": 8.0,
+    "hueOffset": 0.02
+  }
+}

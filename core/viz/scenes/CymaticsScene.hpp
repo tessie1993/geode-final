@@ -10,7 +10,7 @@
 #include "scenes/CymaticsMath.hpp"
 #include "geode/viz/scenes/ProgramLoader.hpp"
 #include "scenes/SceneCommon.hpp"
-#include "scenes/StyleCatalog.hpp"
+#include "geode/viz/StyleProfiles.hpp"
 
 namespace geode::viz {
 

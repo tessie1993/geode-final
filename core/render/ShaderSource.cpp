@@ -54,6 +54,15 @@ std::optional<std::string> ShaderSource::load(const std::string& name, std::stri
     return resolveIncludes(*raw, error);
 }
 
+std::optional<std::string> ShaderSource::loadAsset(const std::string& path, std::string* error) const {
+    const auto raw = readAsset(path);
+    if (!raw) {
+        if (error) *error = "missing shader asset '" + path + "'";
+        return std::nullopt;
+    }
+    return resolveIncludes(*raw, error);
+}
+
 std::optional<std::string> ShaderSource::readAsset(const std::string& path) const {
     if (!assets_) return std::nullopt;
     std::unique_ptr<AAsset, AssetClose> asset(AAssetManager_open(assets_, path.c_str(), AASSET_MODE_BUFFER));

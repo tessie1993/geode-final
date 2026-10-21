@@ -11,7 +11,7 @@ it come out non-black - and nothing more.
 
 ```sh
 cd tools/glslcheck
-node check.mjs --list                          # the fragment style ids, from SceneRegistry.cpp
+node check.mjs --list                          # the shader Style ids, from the Style packs
 node check.mjs --shader kifs --out out/kifs.png
 node check.mjs --all --size 96                 # every fragment style, compile + frame stats
 node check.mjs --fluid-display --out out/fluid # every SHADING/BLOOM/SUNRAYS x LOOK variant

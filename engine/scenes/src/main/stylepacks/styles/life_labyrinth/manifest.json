@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "life_labyrinth",
+  "label": "Living Ink",
+  "family": "life",
+  "parameters": {
+    "rule": 1,
+    "dt": 1.0,
+    "feed": 0.026,
+    "kill": 0.055,
+    "substeps": 5,
+    "look": 1,
+    "seedJitter": 7.0,
+    "hueOffset": 0.09
+  }
+}

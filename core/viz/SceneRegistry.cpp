@@ -1,7 +1,12 @@
 #include "geode/viz/SceneRegistry.hpp"
 
 #include <array>
+#include <functional>
+#include <string_view>
+#include <utility>
 
+#include "geode/util/Log.hpp"
+#include "geode/viz/StyleProfiles.hpp"
 #include "scenes/AcidScene.hpp"
 #include "scenes/CurlFlowScene.hpp"
 #include "scenes/CymaticsScene.hpp"
@@ -10,79 +15,91 @@
 #include "scenes/MilkdropScene.hpp"
 #include "scenes/MycoScene.hpp"
 #include "scenes/ShaderScene.hpp"
-#include "scenes/StyleCatalog.hpp"
 #include "scenes/WaterScene.hpp"
 
 namespace geode::viz {
 
 namespace {
 
-// Port of SceneCapabilities.SHADER_SCENES: id -> shaders/<id>_frag.glsl, in the catalog's order.
-constexpr std::array<const char*, 39> kShaderIds = {
-    "julia",     "tunnel",  "mandel",    "kaleido",   "plasma",    "bars",       "ring",      "scope",
-    "liss",      "warp",    "grid",      "voronoi",   "metaballs", "ripples",    "starfield", "waves",
-    "hexgrid",   "spiral",  "aurora",    "solar",     "winter",    "lava",       "vanishing", "morphogen",
-    "nebula",    "noneuclid", "kifs",    "orb_lattice", "rod_tunnel", "neon_tiles",
-    "chroma_orb", "mandala_dome", "bead_vortex",
-    "merkaba_grid", "spiral_eye", "blacklight_bloom", "fractal_temple",
-    "curl_bloom", "nectar_flow",
+constexpr const char* kTag = "SceneRegistry";
+
+struct Build {
+    const packs::StylePack& pack;
+    const ProgramLoader& loader;
+    const SceneHost& host;
+    const std::string& quadVert;
 };
 
-constexpr const char* kMilkdrop = "milkdrop";
-constexpr const char* kCurlFlow = "curlflow";
-constexpr const char* kWater = "water";
+using Factory = std::function<std::unique_ptr<Scene>(const Build&)>;
 
-bool isShaderId(const std::string& id) {
-    for (const char* known : kShaderIds) {
-        if (id == known) return true;
+std::unique_ptr<Scene> buildShader(const Build& b) {
+    std::string error;
+    const auto fragment = b.loader.assets.loadAsset(b.pack.shaderPath, &error);
+    if (!fragment) {
+        b.host.onShaderError(error);
+        return nullptr;
     }
-    return false;
+    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host);
 }
 
-void append(std::vector<std::string>& out, std::vector<std::string> ids) {
-    out.insert(out.end(), ids.begin(), ids.end());
+// One renderer per family. A Style is a pack naming one of these; nothing here names a Style.
+const std::array<std::pair<std::string_view, Factory>, 9>& factories() {
+    static const std::array<std::pair<std::string_view, Factory>, 9> table = {{
+        {styles::family::kShader, buildShader},
+        {styles::family::kLife,
+         [](const Build& b) { return std::make_unique<LifeScene>(styles::lifeProfile(b.pack), b.loader, b.host); }},
+        {styles::family::kMycelium,
+         [](const Build& b) { return std::make_unique<MycoScene>(styles::mycoProfile(b.pack), b.loader, b.host); }},
+        {styles::family::kAcid,
+         [](const Build& b) { return std::make_unique<AcidScene>(styles::acidProfile(b.pack), b.loader, b.host); }},
+        {styles::family::kMilkdrop, [](const Build& b) { return std::make_unique<MilkdropScene>(b.pack.id, b.loader, b.host); }},
+        {styles::family::kFluid,
+         [](const Build& b) { return std::make_unique<FluidScene>(styles::fluidProfile(b.pack), b.loader, b.host); }},
+        {styles::family::kCurlFlow, [](const Build& b) { return std::make_unique<CurlFlowScene>(b.pack.id, b.loader, b.host); }},
+        {styles::family::kWater, [](const Build& b) { return std::make_unique<WaterScene>(b.pack.id, b.loader, b.host); }},
+        {styles::family::kCymatics,
+         [](const Build& b) { return std::make_unique<CymaticsScene>(styles::cymaticsProfile(b.pack), b.loader, b.host); }},
+    }};
+    return table;
+}
+
+const Factory* factoryFor(const std::string& family) {
+    for (const auto& [name, factory] : factories()) {
+        if (name == family) return &factory;
+    }
+    return nullptr;
 }
 
 }  // namespace
 
+SceneRegistry::SceneRegistry(const ShaderSource& assets, ProgramBinaryCache* cache, SceneHost host)
+    : loader_{assets, cache},
+      host_(std::move(host)),
+      packs_(packs::StylePackRegistry::load([&assets](const std::string& path) { return assets.readAsset(path); })) {
+    for (const packs::PackProblem& problem : packs_.problems()) {
+        GEODE_LOGW(kTag, "style pack %s: %s %s", problem.where.c_str(), packs::describe(problem.error), problem.detail.c_str());
+    }
+}
+
 bool SceneRegistry::knows(const std::string& id) const {
-    return isShaderId(id) || styles::cymatics(id) || styles::life(id) || styles::acid(id) || styles::myco(id) ||
-           styles::fluid(id) || id == kMilkdrop || id == kCurlFlow || id == kWater;
+    const packs::StylePack* found = packs_.find(id);
+    return found != nullptr && factoryFor(found->family) != nullptr;
 }
 
 std::vector<std::string> SceneRegistry::availableIds() const {
     std::vector<std::string> out;
-    append(out, styles::lifeIds());
-    append(out, styles::mycoIds());
-    append(out, styles::acidIds());
-    out.insert(out.end(), kShaderIds.begin(), kShaderIds.end());
-    out.emplace_back(kMilkdrop);
-    append(out, styles::fluidIds());
-    out.emplace_back(kCurlFlow);
-    out.emplace_back(kWater);
-    append(out, styles::cymaticsIds());
+    for (const packs::StylePack& style : packs_.styles()) {
+        if (factoryFor(style.family) != nullptr) out.push_back(style.id);
+    }
     return out;
 }
 
 std::unique_ptr<Scene> SceneRegistry::create(const std::string& id, const std::string& quadVert) const {
-    if (isShaderId(id)) {
-        std::string error;
-        const auto fragment = loader_.assets.load(id + "_frag.glsl", &error);
-        if (!fragment) {
-            host_.onShaderError(error);
-            return nullptr;
-        }
-        return std::make_unique<ShaderScene>(id, quadVert, *fragment, loader_.cache, host_);
-    }
-    if (const auto* style = styles::cymatics(id)) return std::make_unique<CymaticsScene>(*style, loader_, host_);
-    if (const auto* style = styles::life(id)) return std::make_unique<LifeScene>(*style, loader_, host_);
-    if (const auto* style = styles::acid(id)) return std::make_unique<AcidScene>(*style, loader_, host_);
-    if (const auto* style = styles::myco(id)) return std::make_unique<MycoScene>(*style, loader_, host_);
-    if (id == kMilkdrop) return std::make_unique<MilkdropScene>(loader_, host_);
-    if (const auto* style = styles::fluid(id)) return std::make_unique<FluidScene>(*style, loader_, host_);
-    if (id == kCurlFlow) return std::make_unique<CurlFlowScene>(loader_, host_);
-    if (id == kWater) return std::make_unique<WaterScene>(loader_, host_);
-    return nullptr;
+    const packs::StylePack* found = packs_.find(id);
+    if (found == nullptr) return nullptr;
+    const Factory* factory = factoryFor(found->family);
+    if (factory == nullptr) return nullptr;
+    return (*factory)(Build{*found, loader_, host_, quadVert});
 }
 
 }  // namespace geode::viz

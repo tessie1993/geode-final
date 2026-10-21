@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "noneuclid",
+  "label": "Noneuclid",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "detail": "march"
+}

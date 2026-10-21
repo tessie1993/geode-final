@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "bars",
+  "label": "Bars",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

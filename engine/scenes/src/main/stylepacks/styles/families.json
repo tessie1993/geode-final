@@ -1,0 +1,566 @@
+{
+  "version": 1,
+  "families": [
+    {
+      "name": "shader",
+      "parameters": []
+    },
+    {
+      "name": "life",
+      "parameters": [
+        {
+          "key": "rule",
+          "type": "int",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "key": "dt",
+          "type": "float",
+          "min": 0.01,
+          "max": 1.0
+        },
+        {
+          "key": "core",
+          "type": "int",
+          "min": 0,
+          "max": 2,
+          "default": 0
+        },
+        {
+          "key": "growth",
+          "type": "int",
+          "min": 0,
+          "max": 1,
+          "default": 0
+        },
+        {
+          "key": "mu",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.15
+        },
+        {
+          "key": "sigma",
+          "type": "float",
+          "min": 0.001,
+          "max": 0.2,
+          "default": 0.017
+        },
+        {
+          "key": "radius",
+          "type": "float",
+          "min": 4.0,
+          "max": 32.0,
+          "default": 13.0
+        },
+        {
+          "key": "rings",
+          "type": "int",
+          "min": 1,
+          "max": 3,
+          "default": 1
+        },
+        {
+          "key": "b1",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0
+        },
+        {
+          "key": "b2",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "b3",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "feed",
+          "type": "float",
+          "min": 0.0,
+          "max": 0.12,
+          "default": 0.0
+        },
+        {
+          "key": "kill",
+          "type": "float",
+          "min": 0.0,
+          "max": 0.1,
+          "default": 0.0
+        },
+        {
+          "key": "aniso",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "substeps",
+          "type": "int",
+          "min": 1,
+          "max": 8,
+          "default": 1
+        },
+        {
+          "key": "look",
+          "type": "int",
+          "min": 0,
+          "max": 5,
+          "default": 0
+        },
+        {
+          "key": "seedJitter",
+          "type": "float",
+          "min": 0.0,
+          "max": 16.0,
+          "default": 9.0
+        },
+        {
+          "key": "hueOffset",
+          "type": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "hueSpan",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        }
+      ]
+    },
+    {
+      "name": "mycelium",
+      "parameters": [
+        {
+          "key": "agentRes",
+          "type": "int",
+          "min": 64,
+          "max": 256,
+          "default": 192
+        },
+        {
+          "key": "sensorDist",
+          "type": "float",
+          "min": 1.0,
+          "max": 32.0,
+          "default": 9.0
+        },
+        {
+          "key": "sensorAngle",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.5708,
+          "default": 0.3927
+        },
+        {
+          "key": "turnAngle",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.5708,
+          "default": 0.7854
+        },
+        {
+          "key": "moveStep",
+          "type": "float",
+          "min": 0.25,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "jitter",
+          "type": "float",
+          "min": 0.0,
+          "max": 0.5,
+          "default": 0.06
+        },
+        {
+          "key": "deposit",
+          "type": "float",
+          "min": 0.0,
+          "max": 0.5,
+          "default": 0.12
+        },
+        {
+          "key": "decay",
+          "type": "float",
+          "min": 0.5,
+          "max": 0.99,
+          "default": 0.905
+        },
+        {
+          "key": "speciesMix",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "selfA",
+          "type": "float",
+          "min": -2.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "crossAb",
+          "type": "float",
+          "min": -2.0,
+          "max": 2.0,
+          "default": 0.0
+        },
+        {
+          "key": "crossBa",
+          "type": "float",
+          "min": -2.0,
+          "max": 2.0,
+          "default": 0.0
+        },
+        {
+          "key": "selfB",
+          "type": "float",
+          "min": -2.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "snap",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.5708,
+          "default": 0.0
+        },
+        {
+          "key": "reaim",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "aniso",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "look",
+          "type": "int",
+          "min": 0,
+          "max": 5,
+          "default": 0
+        },
+        {
+          "key": "exposure",
+          "type": "float",
+          "min": 0.5,
+          "max": 8.0,
+          "default": 3.4
+        },
+        {
+          "key": "hueOffset",
+          "type": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "hueSpan",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        }
+      ]
+    },
+    {
+      "name": "acid",
+      "parameters": [
+        {
+          "key": "mode",
+          "type": "int",
+          "min": 0,
+          "max": 9
+        },
+        {
+          "key": "source",
+          "type": "int",
+          "min": 0,
+          "max": 3
+        },
+        {
+          "key": "zoom",
+          "type": "float",
+          "min": 0.95,
+          "max": 1.05,
+          "default": 1.01
+        },
+        {
+          "key": "rotate",
+          "type": "float",
+          "min": -0.01,
+          "max": 0.01,
+          "default": 0.0015
+        },
+        {
+          "key": "hueRate",
+          "type": "float",
+          "min": 0.0,
+          "max": 0.2,
+          "default": 0.04
+        },
+        {
+          "key": "feedback",
+          "type": "float",
+          "min": 0.8,
+          "max": 0.99,
+          "default": 0.955
+        },
+        {
+          "key": "modulate",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.35
+        },
+        {
+          "key": "glitch",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "overdrive",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "liquid",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "scanline",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "curve",
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "saturation",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.05
+        },
+        {
+          "key": "hueOffset",
+          "type": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "hueSpan",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        }
+      ]
+    },
+    {
+      "name": "milkdrop",
+      "parameters": []
+    },
+    {
+      "name": "fluid",
+      "parameters": [
+        {
+          "key": "look",
+          "type": "int",
+          "min": 0,
+          "max": 8,
+          "default": 0
+        },
+        {
+          "key": "curl",
+          "type": "float",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0
+        },
+        {
+          "key": "velocityDissipation",
+          "type": "float",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0
+        },
+        {
+          "key": "densityDissipation",
+          "type": "float",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0
+        },
+        {
+          "key": "splatRadius",
+          "type": "float",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0
+        },
+        {
+          "key": "splatForce",
+          "type": "float",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0
+        },
+        {
+          "key": "bloom",
+          "type": "float",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0
+        },
+        {
+          "key": "hueOffset",
+          "type": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        }
+      ]
+    },
+    {
+      "name": "curl_flow",
+      "parameters": []
+    },
+    {
+      "name": "water",
+      "parameters": []
+    },
+    {
+      "name": "cymatics",
+      "parameters": [
+        {
+          "key": "shaderStyle",
+          "type": "int",
+          "min": 0,
+          "max": 10
+        },
+        {
+          "key": "geometryOverride",
+          "type": "int",
+          "min": -1,
+          "max": 1,
+          "default": -1
+        },
+        {
+          "key": "scale",
+          "type": "float",
+          "min": 0.25,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "fill",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "line",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "glow",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "iridescence",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "caustic",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "flow",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "swirl",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "hueOffset",
+          "type": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0
+        },
+        {
+          "key": "hueSpan",
+          "type": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0
+        },
+        {
+          "key": "modeCap",
+          "type": "int",
+          "min": 1,
+          "max": 8,
+          "default": 8
+        }
+      ]
+    }
+  ]
+}

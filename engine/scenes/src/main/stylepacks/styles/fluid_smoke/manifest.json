@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "fluid_smoke",
+  "label": "Smoke",
+  "family": "fluid",
+  "parameters": {
+    "look": 5,
+    "curl": 1.5,
+    "velocityDissipation": 0.5,
+    "densityDissipation": 1.4,
+    "splatRadius": 1.6,
+    "splatForce": 0.6,
+    "bloom": 0.3,
+    "hueOffset": 0.62
+  }
+}

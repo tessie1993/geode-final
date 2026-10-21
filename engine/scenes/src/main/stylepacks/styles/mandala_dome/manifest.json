@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "mandala_dome",
+  "label": "Mandala Dome",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "hexgrid",
+  "label": "Hexgrid",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "fluid_ink",
+  "label": "Ink Wash",
+  "family": "fluid",
+  "parameters": {
+    "look": 1,
+    "curl": 0.6,
+    "velocityDissipation": 1.6,
+    "densityDissipation": 0.5,
+    "splatRadius": 1.3,
+    "splatForce": 0.7,
+    "bloom": 0.4,
+    "hueOffset": 0.58
+  }
+}

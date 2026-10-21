@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "spiral_eye",
+  "label": "Spiral Eye",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "bead_vortex",
+  "label": "Bead Vortex",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

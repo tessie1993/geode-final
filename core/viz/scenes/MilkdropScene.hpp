@@ -21,7 +21,8 @@ namespace geode::viz {
 // The engine never touches the window surface, so the scene is independent of the EGL config.
 class MilkdropScene : public Scene {
 public:
-    MilkdropScene(ProgramLoader loader, SceneHost host) : loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
+    MilkdropScene(std::string id, ProgramLoader loader, SceneHost host)
+        : id_(std::move(id)), loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
     ~MilkdropScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -66,7 +67,7 @@ private:
     void drainEngineErrors();
     void set1f(const char* name, float value) { glUniform1f(postLocs_.loc(name), value); }
 
-    std::string id_ = "milkdrop";
+    std::string id_;
     ProgramLoader loader_;
     SceneHost host_;
     std::vector<float> pcm_;

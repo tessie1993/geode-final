@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "acid_well",
+  "label": "Phosphor Well",
+  "family": "acid",
+  "parameters": {
+    "mode": 1,
+    "source": 1,
+    "zoom": 1.035,
+    "rotate": 0.001,
+    "hueRate": 0.015,
+    "feedback": 0.965,
+    "modulate": 0.2,
+    "scanline": 0.45,
+    "curve": 0.5,
+    "saturation": 0.8,
+    "hueOffset": 0.33
+  }
+}

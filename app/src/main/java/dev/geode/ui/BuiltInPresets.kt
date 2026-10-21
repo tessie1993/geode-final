@@ -3,7 +3,9 @@ package dev.geode.ui
 import dev.geode.data.Preset
 import dev.geode.engine.types.SceneId
 import dev.geode.render.scene.SceneCapabilities
+import dev.geode.render.scene.SceneKind
 import dev.geode.render.scene.SceneParams
+import dev.geode.render.scene.StylePacks
 
 object BuiltInPresets {
     private data class Look(
@@ -897,8 +899,12 @@ object BuiltInPresets {
             ),
         )
 
+    /**
+     * Every built-in preset whose Style still ships. A preset naming a Style whose pack has been removed
+     * drops out here, so removing a Style stays a change to the packs alone.
+     */
     val ALL: List<Preset> =
-        SceneCapabilities.SHADER_SCENES.keys.flatMap { id ->
+        StylePacks.idsOf(SceneKind.SHADER).flatMap { id ->
             LOOKS.map { look ->
                 Preset(
                     name = "${id.value} · ${look.name}",
@@ -909,7 +915,7 @@ object BuiltInPresets {
                     params = look.params,
                 )
             }
-        } + SHADER_VARIANTS + FLUID_VARIANTS + CYMATICS_VARIANTS
+        } + (SHADER_VARIANTS + FLUID_VARIANTS + CYMATICS_VARIANTS).filter { SceneCapabilities.isKnown(it.sceneId) }
 
     fun isBuiltIn(name: String): Boolean = name.contains(" · ")
 }

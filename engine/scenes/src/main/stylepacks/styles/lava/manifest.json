@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "lava",
+  "label": "Lava",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

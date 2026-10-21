@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "fluid_lava",
+  "label": "Lava",
+  "family": "fluid",
+  "parameters": {
+    "look": 6,
+    "curl": 0.5,
+    "velocityDissipation": 2.0,
+    "densityDissipation": 0.35,
+    "splatRadius": 1.5,
+    "splatForce": 0.5,
+    "bloom": 1.5,
+    "hueOffset": 0.02
+  }
+}

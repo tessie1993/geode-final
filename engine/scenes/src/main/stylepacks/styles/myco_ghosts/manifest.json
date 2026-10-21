@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "myco_ghosts",
+  "label": "Ghost Veil",
+  "family": "mycelium",
+  "parameters": {
+    "agentRes": 160,
+    "sensorDist": 14.0,
+    "jitter": 0.12,
+    "deposit": 0.05,
+    "decay": 0.955,
+    "look": 2,
+    "exposure": 4.2,
+    "hueOffset": 0.58
+  }
+}

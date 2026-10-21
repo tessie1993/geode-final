@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "solar",
+  "label": "Solar",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "liss",
+  "label": "Liss",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

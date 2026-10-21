@@ -6,7 +6,7 @@
 #include "fluid/FluidParticles.hpp"
 #include "geode/viz/fluid/FluidSim.hpp"
 #include "scenes/FluidSceneBase.hpp"
-#include "scenes/StyleCatalog.hpp"
+#include "geode/viz/StyleProfiles.hpp"
 
 namespace geode::viz {
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -29,50 +30,31 @@ def uploaded_uniforms(scene: str) -> set[str]:
 
 
 def main() -> None:
-    catalog = read("engine/scenes/src/main/kotlin/dev/geode/render/scene/VisualStyleCatalog.kt")
+    styles = ROOT / "engine/scenes/src/main/stylepacks/styles"
     cym_shader = read("app/src/main/assets/shaders/cymatics_field_frag.glsl")
     cym_scene = read("core/viz/scenes/CymaticsScene.cpp")
     # The touch-point uniforms are uploaded through the shared helper in
     # SceneCommon.hpp (uploadSceneTouch), not inline in CymaticsScene.cpp itself.
     scene_common = read("core/viz/scenes/SceneCommon.hpp")
-    scene_registry = read("core/viz/SceneRegistry.cpp")
-    hub = read("app/src/main/java/dev/geode/ui/VisualsHub.kt")
     shell = read("app/src/main/java/dev/geode/ui/AppShell.kt")
     crystal = read("app/src/main/java/dev/geode/ui/Crystal.kt")
     theme_catalog = read("app/src/main/java/dev/geode/ui/theme/ThemePackCatalog.kt")
 
-    # \s* after the paren: ktlint wraps long constructor calls onto their own
-    # lines, so the id literal is not necessarily on the same line as the name.
-    cym_ids = re.findall(r'CymaticsStyle\(\s*"([^" ]+)"', catalog)
-    require(len(cym_ids) == 10, f"expected 10 Cymatics substyles, got {len(cym_ids)}")
-    require(len(set(cym_ids)) == 10, "style IDs collide")
-
-    for family, shader in (("Cymatics", cym_shader),):
-        require("uniform int uStyle;" in shader, f"{family} shader lacks uStyle")
-        for style in range(1, 11):
-            require(f"uStyle == {style}" in shader, f"{family} shader lacks branch {style}")
+    # The Cymatics Styles are packs (docs/style-packs.md); each names a branch of the shared shader.
+    index = json.loads((styles / "index.json").read_text(encoding="utf-8"))["styles"]
+    manifests = [json.loads((styles / i / "manifest.json").read_text(encoding="utf-8")) for i in index]
+    cym = [m for m in manifests if m["family"] == "cymatics"]
+    cym_ids = [m["id"] for m in cym]
+    require(len(set(cym_ids)) == len(cym_ids), "style IDs collide")
+    require("uniform int uStyle;" in cym_shader, "Cymatics shader lacks uStyle")
+    for m in cym:
+        branch = m.get("parameters", {}).get("shaderStyle", 0)
+        require(branch == 0 or f"uStyle == {branch}" in cym_shader, f"Cymatics shader lacks branch {branch} for {m['id']}")
 
     require(
         declared_uniforms(cym_shader) == uploaded_uniforms(cym_scene + scene_common),
         "Cymatics uniform parity drift",
     )
-
-    # Scene resolution moved out of Kotlin (VisualizerRenderer just calls into
-    # the native renderer) and into core/viz/SceneRegistry.cpp, which is what
-    # actually lists, resolves and instantiates the Cymatics substyles now.
-    require(
-        "append(out, styles::cymaticsIds());" in scene_registry,
-        "native scene registry does not offer Cymatics variants",
-    )
-    require(
-        "styles::cymatics(id)" in scene_registry,
-        "native scene registry does not resolve Cymatics variants",
-    )
-    require(
-        "std::make_unique<CymaticsScene>(*style, loader_, host_)" in scene_registry,
-        "native scene registry no longer routes Cymatics creation through the shared style lookup",
-    )
-    require("SceneList(VisualStyleCatalog.cymaticsIds" in hub, "Cymatics variants are absent from the picker")
 
     # The mineral texture system (CrystalTextureKind) was replaced by the
     # ThemePack catalog; each named stone is a top-level val in ThemePackCatalog.kt.

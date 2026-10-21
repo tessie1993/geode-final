@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "orb_lattice",
+  "label": "Orb Lattice",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

@@ -57,9 +57,9 @@ import dev.geode.render.scene.MarchBudget
 import dev.geode.render.scene.ParamKeys
 import dev.geode.render.scene.ParamRandomizer
 import dev.geode.render.scene.ParamScope
+import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
-import dev.geode.render.scene.VisualStyleCatalog
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -954,9 +954,8 @@ internal fun CymaticsTab(
             ParamScope.CYMATICS,
         )
         val forcedGeometry =
-            VisualStyleCatalog
-                .cymatics(activeSceneId)
-                ?.geometryOverride
+            SceneCapabilities
+                .cymaticsGeometryOverride(activeSceneId)
                 ?.let { SceneParams.CYMATICS_GEOMETRIES.getOrNull(it) }
         if (forcedGeometry != null) {
             ControlHint("Geometry set by this style: $forcedGeometry.", ParamScope.CYMATICS)
