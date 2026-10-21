@@ -37,3 +37,11 @@ include(
     ":arch:kernel",
     ":arch:audio",
 )
+
+// Settings (#38): today's settings on one store, in DataStore (ADR-0004).
+include(
+    ":feature:settings:api",
+    ":feature:settings:core",
+    ":feature:settings:handlers",
+    ":feature:settings:ui",
+)

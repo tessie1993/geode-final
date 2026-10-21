@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="enabled" value="true" />
+    <string name="band_levels">100,200,300,400,500,-100,-200,-300,-400,-500</string>
+    <int name="preset" value="-1" />
+    <int name="bass" value="300" />
+    <int name="loudness" value="150" />
+</map>

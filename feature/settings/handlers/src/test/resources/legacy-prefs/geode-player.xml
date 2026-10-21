@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <boolean name="shuffle" value="true" />
+    <int name="repeat_mode" value="2" />
+    <float name="speed" value="1.25" />
+    <float name="pitch_semitones" value="-2.0" />
+    <boolean name="skip_silence" value="true" />
+    <boolean name="pause_on_noisy" value="false" />
+    <boolean name="keep_screen_on" value="true" />
+    <boolean name="auto_resume" value="true" />
+    <int name="sleep_timer_minutes" value="45" />
+    <boolean name="sleep_finish_track" value="true" />
+    <int name="fade_ms" value="1500" />
+    <int name="replaygain_mode" value="2" />
+    <float name="replaygain_preamp_db" value="-3.5" />
+    <boolean name="replaygain_clip_guard" value="false" />
+    <boolean name="native_engine" value="true" />
+    <int name="crossfade_ms" value="4000" />
+    <int name="crossfade_curve" value="2" />
+    <boolean name="gapless" value="false" />
+    <boolean name="resume_long_tracks" value="false" />
+    <boolean name="bit_perfect" value="true" />
+    <long name="bookmark:content://media/external/audio/media/7" value="1260000" />
+</map>
