@@ -4,7 +4,7 @@ import dev.geode.render.scene.SceneParams
 
 /** Packs [SceneParams] in `geode_viz_param_name` order; [verify] proves that order against the library once. */
 object SceneParamsCodec {
-    const val FIELDS = 135
+    const val FIELDS = 134
 
     val NAMES: List<String> =
         listOf(
@@ -142,7 +142,6 @@ object SceneParamsCodec {
             "rippleOverlayEnabled",
             "rippleOverlayStrength",
             "rippleOverlaySpecular",
-            "formDrive",
         )
 
     fun verify(nativeNames: String) {
@@ -289,7 +288,6 @@ object SceneParamsCodec {
         out[131] = flag(p.rippleOverlayEnabled)
         out[132] = p.rippleOverlayStrength
         out[133] = p.rippleOverlaySpecular
-        out[134] = p.formDrive
     }
 
     private fun flag(on: Boolean): Float = if (on) 1f else 0f

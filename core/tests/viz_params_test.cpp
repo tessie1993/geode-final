@@ -137,8 +137,8 @@ TEST(SceneParams, LerpGlidesFloatsAndTakesTheRestFromTheTarget) {
     SceneParams to;
     from.speed = 1.0f;
     to.speed = 3.0f;
-    from.formDrive = 0.0f;
-    to.formDrive = 1.0f;
+    from.rippleOverlaySpecular = 0.0f;
+    to.rippleOverlaySpecular = 1.0f;
     to.symmetry = 3;
     to.mirror = true;
     to.paletteBaseOverride = 0.25f;
@@ -146,7 +146,7 @@ TEST(SceneParams, LerpGlidesFloatsAndTakesTheRestFromTheTarget) {
 
     const SceneParams q = lerpParams(from, to, 0.25f);
     EXPECT_NEAR(q.speed, 1.5f, kTol);
-    EXPECT_NEAR(q.formDrive, 0.25f, kTol);
+    EXPECT_NEAR(q.rippleOverlaySpecular, 0.25f, kTol);
     EXPECT_EQ(q.symmetry, 3);
     EXPECT_TRUE(q.mirror);
     EXPECT_FLOAT_EQ(q.paletteBaseOverride, 0.25f);
