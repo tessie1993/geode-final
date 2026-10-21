@@ -24,9 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.design.CrystalButton
 import dev.geode.editor.ClipTransition
 import dev.geode.render.TransitionCatalog
-import dev.geode.ui.CrystalButton
 
 /** Picks the GL Transition a clip opens with, and how long it runs; "None" clears it. */
 @OptIn(ExperimentalMaterial3Api::class)
