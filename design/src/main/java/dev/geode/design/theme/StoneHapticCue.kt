@@ -1,11 +1,10 @@
-package dev.geode.ui.theme
+package dev.geode.design.theme
 
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.HapticFeedbackConstants
 import android.view.View
-import androidx.core.content.getSystemService
 
 enum class StoneHapticCue(
     private val minApi: Int,
@@ -33,6 +32,6 @@ fun View.performStoneHaptic(cue: StoneHapticCue) {
         performHapticFeedback(cue.platformConstant())
         return
     }
-    val vibrator = context.getSystemService<Vibrator>() ?: return
+    val vibrator = context.getSystemService(Vibrator::class.java) ?: return
     if (vibrator.hasVibrator()) vibrator.vibrate(cue.waveform())
 }
