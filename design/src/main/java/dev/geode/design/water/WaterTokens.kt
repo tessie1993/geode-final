@@ -1,8 +1,8 @@
 package dev.geode.design.water
 
 import androidx.compose.ui.unit.Density
-import dev.geode.design.forest.ForestMotion
 import androidx.compose.ui.unit.dp
+import dev.geode.design.forest.ForestMotion
 
 /** The named sizes and timings of glass and water (`docs/design/research-high-end-references.md`, section 3). */
 object WaterTokens {

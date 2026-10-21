@@ -24,8 +24,7 @@ enum class GlassTier {
             sdkInt: Int,
             reduceTransparency: Boolean,
             blurGranted: Boolean,
-        ): GlassTier =
-            if (sdkInt >= BLUR_MIN_SDK && !reduceTransparency && blurGranted) Frosted else Tinted
+        ): GlassTier = if (sdkInt >= BLUR_MIN_SDK && !reduceTransparency && blurGranted) Frosted else Tinted
     }
 }
 
@@ -90,8 +89,7 @@ data class LiveBlurBudget(
     fun holds(holder: Any): Boolean = holder in holders
 
     /** The budget after [holder] asks for a slot: granted while one is free, refused once both are taken. */
-    fun request(holder: Any): LiveBlurBudget =
-        if (holds(holder) || live >= MAX_LIVE_BLURS) this else copy(holders = holders + holder)
+    fun request(holder: Any): LiveBlurBudget = if (holds(holder) || live >= MAX_LIVE_BLURS) this else copy(holders = holders + holder)
 
     /** The budget after [holder] gives its slot back. */
     fun release(holder: Any): LiveBlurBudget = if (holds(holder)) copy(holders = holders - holder) else this
