@@ -272,7 +272,7 @@ jobs:
             build-mutation/geode_core_tests
       - name: Mutation score gate
         run: |
-          python3 tools/ci/native_mutation_gate.py --report-only ${{ matrix.library }} \
+          python3 tools/ci/native_mutation_gate.py ${{ matrix.library }} \
             mutation-report/${{ matrix.library }}.json ${{ matrix.dir }} config/mutation/native-thresholds.properties
       - name: Upload mutation report
         if: success() || failure()
