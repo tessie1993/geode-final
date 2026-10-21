@@ -1,12 +1,12 @@
-#include "api/geode_api.h"
+#include "geode/api/geode_api.h"
 
 #include <algorithm>
 #include <cstring>
 #include <memory>
 
-#include "analysis/AnalysisSession.hpp"
-#include "analysis/DrumChannels.hpp"
-#include "analysis/PulseReplay.hpp"
+#include "geode/analysis/AnalysisSession.hpp"
+#include "geode/analysis/DrumChannels.hpp"
+#include "geode/analysis/PulseReplay.hpp"
 
 static_assert(sizeof(GeodeFeatureFrame) == GEODE_FEATURE_FRAME_FLOATS * sizeof(float));
 static_assert(sizeof(geode::analysis::pulse::Frame) == 6 * sizeof(float));

@@ -5,12 +5,12 @@
 #include <optional>
 #include <string>
 
-#include "viz/Program.hpp"
-#include "viz/Scene.hpp"
-#include "viz/fluid/FluidBuffers.hpp"
-#include "viz/scenes/ProgramLoader.hpp"
-#include "viz/scenes/SceneCommon.hpp"
-#include "viz/scenes/StyleCatalog.hpp"
+#include "geode/render/Program.hpp"
+#include "geode/viz/Scene.hpp"
+#include "geode/viz/fluid/FluidBuffers.hpp"
+#include "geode/viz/scenes/ProgramLoader.hpp"
+#include "scenes/SceneCommon.hpp"
+#include "scenes/StyleCatalog.hpp"
 
 namespace geode::viz {
 

@@ -1,4 +1,4 @@
-#include "analysis/HarmonicBalance.hpp"
+#include "geode/analysis/HarmonicBalance.hpp"
 
 #include <algorithm>
 #include <cmath>

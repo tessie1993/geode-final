@@ -1,4 +1,4 @@
-#include "analysis/StructureTracker.hpp"
+#include "geode/analysis/StructureTracker.hpp"
 
 #include <algorithm>
 #include <cmath>

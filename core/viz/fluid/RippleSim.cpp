@@ -1,10 +1,10 @@
-#include "viz/fluid/RippleSim.hpp"
+#include "geode/viz/fluid/RippleSim.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "util/Log.hpp"
-#include "viz/fluid/RippleMath.hpp"
+#include "geode/util/Log.hpp"
+#include "geode/viz/fluid/RippleMath.hpp"
 
 namespace geode::viz::fluid {
 

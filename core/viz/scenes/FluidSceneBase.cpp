@@ -1,10 +1,10 @@
-#include "viz/scenes/FluidSceneBase.hpp"
+#include "scenes/FluidSceneBase.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "viz/fluid/FluidMath.hpp"
-#include "viz/fluid/FluidQuality.hpp"
+#include "fluid/FluidMath.hpp"
+#include "fluid/FluidQuality.hpp"
 
 namespace geode::viz {
 

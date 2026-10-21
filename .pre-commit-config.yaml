@@ -50,7 +50,14 @@ repos:
           - --suppress=missingIncludeSystem
           - --template=gcc
           - --quiet
-          - -Icore
+          # The native libraries' public include dirs (docs/native-libraries.md).
+          - -Icore/api/include
+          - -Icore/util/include
+          - -Icore/render/include
+          - -Icore/analysis/include
+          - -Icore/audio/include
+          - -Icore/library/include
+          - -Icore/viz/include
         types_or: [c, c++]
         require_serial: true
       - id: staged-whitespace

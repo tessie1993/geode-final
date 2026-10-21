@@ -1,10 +1,10 @@
-#include "viz/FormDrive.hpp"
+#include "geode/viz/FormDrive.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "analysis/FrameLevels.hpp"
-#include "viz/VisualSafety.hpp"
+#include "geode/analysis/FrameLevels.hpp"
+#include "geode/viz/VisualSafety.hpp"
 
 namespace geode::viz {
 

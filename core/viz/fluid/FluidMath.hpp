@@ -1,7 +1,7 @@
 #pragma once
 #include <utility>
 
-#include "api/geode_api.h"
+#include "geode/api/geode_api.h"
 
 namespace geode::viz::fluid {
 
