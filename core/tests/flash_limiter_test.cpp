@@ -71,15 +71,15 @@ private:
     std::vector<double> times_;
 };
 
-struct Run {
+struct LimiterRun {
     std::vector<float> amounts;
     std::vector<LumaGrid> shown;
 };
 
 // Drives the limiter over `frames` synthetic frames and replays what it shows: the frame before,
 // crossfaded toward the candidate by the returned amount, as NoFlashPass draws it.
-Run drive(FlashLimiter& limiter, int frames, const std::function<LumaGrid(int)>& source) {
-    Run run;
+LimiterRun drive(FlashLimiter& limiter, int frames, const std::function<LumaGrid(int)>& source) {
+    LimiterRun run;
     LumaGrid shown;
     for (int i = 0; i < frames; ++i) {
         const LumaGrid candidate = source(i);
@@ -106,7 +106,7 @@ std::array<float, noflash::kAreaCount> means(const std::array<float, noflash::kC
 }
 
 // Transitions the shown frames make in one area, counted independently.
-IndependentCounter countGeneral(const Run& run, int area) {
+IndependentCounter countGeneral(const LimiterRun& run, int area) {
     IndependentCounter counter(noflash::kGeneralFlashDelta, noflash::kGeneralFlashDarkLimit);
     for (size_t i = 0; i < run.shown.size(); ++i) {
         counter.feed(static_cast<double>(i) * kFrameDt, means(run.shown[i].luminance)[static_cast<size_t>(area)]);
@@ -114,7 +114,7 @@ IndependentCounter countGeneral(const Run& run, int area) {
     return counter;
 }
 
-IndependentCounter countRed(const Run& run, int area) {
+IndependentCounter countRed(const LimiterRun& run, int area) {
     IndependentCounter counter(noflash::kRedFlashDelta, noflash::kNoDarkLimit);
     for (size_t i = 0; i < run.shown.size(); ++i) {
         counter.feed(static_cast<double>(i) * kFrameDt, means(run.shown[i].red)[static_cast<size_t>(area)]);
@@ -122,11 +122,11 @@ IndependentCounter countRed(const Run& run, int area) {
     return counter;
 }
 
-bool anyDamped(const Run& run) {
+bool anyDamped(const LimiterRun& run) {
     return std::any_of(run.amounts.begin(), run.amounts.end(), [](float a) { return a < 1.0f; });
 }
 
-bool noneDamped(const Run& run) {
+bool noneDamped(const LimiterRun& run) {
     return std::all_of(run.amounts.begin(), run.amounts.end(), [](float a) { return a == 1.0f; });
 }
 
@@ -233,7 +233,7 @@ TEST(TransitionTracker, RedHasNoDarkLimit) {
 
 TEST(FlashLimiter, WholeFrameStrobeIsHeldToThreeFlashesPerSecond) {
     FlashLimiter limiter;
-    const Run run = drive(limiter, 4 * kFramesPerSecond, [](int i) {
+    const LimiterRun run = drive(limiter, 4 * kFramesPerSecond, [](int i) {
         return LumaGrid::uniform(strobeOn(i, kStrobeHalfPeriodFrames) ? 1.0f : 0.0f);
     });
     for (int area = 0; area < noflash::kAreaCount; ++area) {
@@ -252,7 +252,7 @@ TEST(FlashLimiter, StrobeInOneRegionIsCaughtEvenWhenTheWholeFrameBarelyMoves) {
     FlashLimiter limiter;
     // Only cell 0 strobes, full swing, over grey: the whole frame moves by 1/16, under 0.1.
     constexpr float kGrey = 0.3f;
-    const Run run = drive(limiter, 4 * kFramesPerSecond, [&](int i) {
+    const LimiterRun run = drive(limiter, 4 * kFramesPerSecond, [&](int i) {
         LumaGrid g = LumaGrid::uniform(kGrey);
         g.luminance[0] = strobeOn(i, kStrobeHalfPeriodFrames) ? 1.0f : 0.0f;
         return g;
@@ -269,7 +269,7 @@ TEST(FlashLimiter, StrobeInOneRegionIsCaughtEvenWhenTheWholeFrameBarelyMoves) {
 
 TEST(FlashLimiter, StrobeInTheCentreQuarterIsHeldInEveryAreaItTouches) {
     FlashLimiter limiter;
-    const Run run = drive(limiter, 4 * kFramesPerSecond, [](int i) {
+    const LimiterRun run = drive(limiter, 4 * kFramesPerSecond, [](int i) {
         LumaGrid g = LumaGrid::uniform(0.1f);
         const float v = strobeOn(i, kStrobeHalfPeriodFrames) ? 1.0f : 0.1f;
         for (const int cell : {5, 6, 9, 10}) g.luminance[static_cast<size_t>(cell)] = v;
@@ -285,7 +285,7 @@ TEST(FlashLimiter, StrobeInTheCentreQuarterIsHeldInEveryAreaItTouches) {
 TEST(FlashLimiter, RedStrobeIsHeldEvenWhenLuminanceIsSteady) {
     FlashLimiter limiter;
     constexpr float kRed = 0.3f;
-    const Run run = drive(limiter, 4 * kFramesPerSecond, [&](int i) {
+    const LimiterRun run = drive(limiter, 4 * kFramesPerSecond, [&](int i) {
         return LumaGrid::uniform(0.2f, strobeOn(i, kStrobeHalfPeriodFrames) ? kRed : 0.0f);
     });
     EXPECT_EQ(countGeneral(run, noflash::kWholeFrame).total(), 0);
@@ -298,7 +298,7 @@ TEST(FlashLimiter, RedStrobeIsHeldEvenWhenLuminanceIsSteady) {
 
 TEST(FlashLimiter, FastStrobeAtEveryFrameIsHeldToo) {
     FlashLimiter limiter;
-    const Run run = drive(limiter, 3 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(i % 2 == 1 ? 1.0f : 0.0f); });
+    const LimiterRun run = drive(limiter, 3 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(i % 2 == 1 ? 1.0f : 0.0f); });
     EXPECT_LE(countGeneral(run, noflash::kWholeFrame).mostInAnyWindow(noflash::kWindowSeconds), noflash::kMaxTransitionsPerWindow);
     EXPECT_EQ(limiter.transitionsInWindow(), noflash::kMaxTransitionsPerWindow);
 }
@@ -307,7 +307,7 @@ TEST(FlashLimiter, BudgetComesBackOnceTheOldestTransitionIsASecondOld) {
     FlashLimiter limiter;
     // Six transitions on frames 3..18, then steady dark for well over a second, then one more rise.
     constexpr int kQuietUntil = 3 * kFramesPerSecond;
-    const Run run = drive(limiter, kQuietUntil + 1, [&](int i) {
+    const LimiterRun run = drive(limiter, kQuietUntil + 1, [&](int i) {
         if (i < kFirstDampedStrobeFrame) return LumaGrid::uniform(strobeOn(i, kStrobeHalfPeriodFrames) ? 1.0f : 0.0f);
         return LumaGrid::uniform(i == kQuietUntil ? 1.0f : 0.0f);
     });
@@ -332,7 +332,7 @@ TEST(FlashLimiter, ResetForgetsTheBudget) {
 TEST(FlashLimiter, TwoFlashesASecondPassUntouched) {
     FlashLimiter limiter;
     // Full swing every 15 frames: four transitions a second, within the six allowed.
-    const Run run = drive(limiter, 5 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(strobeOn(i, 15) ? 1.0f : 0.0f); });
+    const LimiterRun run = drive(limiter, 5 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(strobeOn(i, 15) ? 1.0f : 0.0f); });
     EXPECT_TRUE(noneDamped(run));
     EXPECT_EQ(countGeneral(run, noflash::kWholeFrame).mostInAnyWindow(noflash::kWindowSeconds), 4);
 }
@@ -340,7 +340,7 @@ TEST(FlashLimiter, TwoFlashesASecondPassUntouched) {
 TEST(FlashLimiter, SlowSwellPassesUntouched) {
     FlashLimiter limiter;
     constexpr float kSwellHz = 0.5f;
-    const Run run = drive(limiter, 6 * kFramesPerSecond, [&](int i) {
+    const LimiterRun run = drive(limiter, 6 * kFramesPerSecond, [&](int i) {
         const float t = static_cast<float>(i) * kFrameDt;
         return LumaGrid::uniform(0.45f + 0.4f * std::sin(6.2831853f * kSwellHz * t));
     });
@@ -351,7 +351,7 @@ TEST(FlashLimiter, BrightObjectSweepingAcrossPassesUntouched) {
     FlashLimiter limiter;
     // One white cell on a dark ground, moving one cell every 8 frames along the bottom row.
     constexpr int kFramesPerCell = 8;
-    const Run run = drive(limiter, 6 * kFramesPerSecond, [&](int i) {
+    const LimiterRun run = drive(limiter, 6 * kFramesPerSecond, [&](int i) {
         LumaGrid g = LumaGrid::uniform(0.05f);
         g.luminance[static_cast<size_t>((i / kFramesPerCell) % noflash::kGridColumns)] = 1.0f;
         return g;
@@ -362,13 +362,13 @@ TEST(FlashLimiter, BrightObjectSweepingAcrossPassesUntouched) {
 
 TEST(FlashLimiter, FlickerUnderTheThresholdPassesUntouched) {
     FlashLimiter limiter;
-    const Run run = drive(limiter, 3 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(i % 2 == 1 ? 0.38f : 0.3f); });
+    const LimiterRun run = drive(limiter, 3 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(i % 2 == 1 ? 0.38f : 0.3f); });
     EXPECT_TRUE(noneDamped(run));
 }
 
 TEST(FlashLimiter, FlickerAmongBrightStatesPassesUntouched) {
     FlashLimiter limiter;
-    const Run run = drive(limiter, 3 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(strobeOn(i, kStrobeHalfPeriodFrames) ? 1.0f : 0.85f); });
+    const LimiterRun run = drive(limiter, 3 * kFramesPerSecond, [](int i) { return LumaGrid::uniform(strobeOn(i, kStrobeHalfPeriodFrames) ? 1.0f : 0.85f); });
     EXPECT_TRUE(noneDamped(run));
 }
 
