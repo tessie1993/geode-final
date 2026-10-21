@@ -11,6 +11,13 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Removed user GLSL shaders (#87).** The Customize panel's GLSL tab, the
+  Fluid tab's force and dye injection editors, the renderer's custom-shader
+  and fluid-injection paths, their C ABI (`geode_viz_set_custom_shader`,
+  `geode_viz_custom_shader`, `geode_viz_set_fluid_injection`) and JNI
+  bindings are gone; no code path compiles a user-supplied shader. A saved
+  preset or preset link that still carries a `customShader` loads on the
+  default Style, keeping its Customization.
 - **Removed the Silk Style family (#86).** All ten Silk Styles, their scene,
   their step and present shaders, the compute-layer simulation only they ran
   (`core/viz/compute`), their catalogue entries on both sides of the bridge,

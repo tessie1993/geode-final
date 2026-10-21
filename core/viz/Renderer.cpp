@@ -21,7 +21,6 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
       deviceGl_(cacheDir_),
       registry_(assets_, &programCache_,
                 SceneHost{[this](const std::string& m) { fail(m); },
-                          [this](const std::string& id, const std::string& src) { rememberCustomShader(id, src); },
                           [this] { return thermal_.pacedFps(); },
                           [this](const std::string& path) { notePresetLoaded(path); },
                           [this] { return thermal_.offscreen(); }}),
@@ -79,24 +78,12 @@ void Renderer::pushPcm(const float* samples, int count) {
     pcmCount_ = n;
 }
 
-void Renderer::setCustomShader(const std::string& sceneId, const std::string& fragmentSource) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    pendingShaders_.emplace_back(sceneId, fragmentSource);
-}
-
 double Renderer::monotonicSeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 void Renderer::queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
     overlays_.queueTouchStroke(nx, ny, ndx, ndy, dt, strength, monotonicSeconds());
-}
-
-void Renderer::setFluidInjectionShaders(const std::string& forceSrc, const std::string& dyeSrc) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    fluidForceSrc_ = forceSrc;
-    fluidDyeSrc_ = dyeSrc;
-    fluidInjectionDirty_ = true;
 }
 
 void Renderer::loadMilkPreset(const std::string& path) {
@@ -149,31 +136,6 @@ void Renderer::applyMilkRequests() {
     if (reload) milk->reloadMilkPreset();
 }
 
-void Renderer::applyPendingFluidInjection() {
-    std::string force;
-    std::string dye;
-    {
-        std::lock_guard<std::mutex> lock(stateLock_);
-        if (!fluidInjectionDirty_) return;
-        force = fluidForceSrc_;
-        dye = fluidDyeSrc_;
-    }
-    // Every built scene on the fluid solver, not only the one named "fluid":
-    // the fluid styles are profiles over the same engine and the user's
-    // injection shaders belong to all of them.
-    bool applied = false;
-    for (auto& entry : scenes_) {
-        if (!entry.second->isFluid()) continue;
-        entry.second->setInjectionShaders(force, dye);
-        applied = true;
-    }
-    if (!applied) return;
-    {
-        std::lock_guard<std::mutex> lock(stateLock_);
-        fluidInjectionDirty_ = false;
-    }
-}
-
 // Any thread. Copies the pixel buffer under stateLock_ into the retained overlay buffer; the
 // actual GL upload (and the ARGB->RGBA conversion) happens on the GL thread in
 // applyOverlayUploads(), matching pushPcm()'s copy-now/convert-later split.
@@ -209,10 +171,10 @@ void Renderer::setUnderlayRgba(const uint32_t* pixels, int width, int height, in
     underlayDirty_ = true;
 }
 
-// GL thread, called once per frame from beginFrame(). Copies (not swaps, unlike
-// applyPendingFluidInjection: the source buffers are retained state that must survive a surface
-// recreation, not a one-shot request) the latched pixels out from under stateLock_, then does the
-// actual conversion and glTexImage2D/glTexSubImage2D upload unlocked.
+// GL thread, called once per frame from beginFrame(). Copies (not swaps: the source buffers are
+// retained state that must survive a surface recreation, not a one-shot request) the latched
+// pixels out from under stateLock_, then does the actual conversion and
+// glTexImage2D/glTexSubImage2D upload unlocked.
 void Renderer::applyOverlayUploads() {
     bool overlayDirty = false;
     std::vector<uint32_t> overlayPixels;
@@ -284,25 +246,6 @@ std::string Renderer::lastError() const {
     return lastError_;
 }
 
-void Renderer::rememberCustomShader(const std::string& sceneId, const std::string& source) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    for (auto& entry : customShaders_) {
-        if (entry.first == sceneId) {
-            entry.second = source;
-            return;
-        }
-    }
-    customShaders_.emplace_back(sceneId, source);
-}
-
-std::string Renderer::customShaderFor(const std::string& sceneId) const {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    for (const auto& entry : customShaders_) {
-        if (entry.first == sceneId) return entry.second;
-    }
-    return {};
-}
-
 void Renderer::onSurfaceCreated() {
     profile_ = deviceGl_.profileWithCurrentContext();
     GEODE_LOGI(kTag, "surface created: %s", profile_.summary().c_str());
@@ -332,7 +275,6 @@ void Renderer::onSurfaceCreated() {
     overlays_.recreate();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
-        if (!fluidForceSrc_.empty() || !fluidDyeSrc_.empty()) fluidInjectionDirty_ = true;
         // W00: the compositePass_.releaseStaleTextures() call above already dropped the overlay/
         // underlay GL textures, so re-arm from the retained pixel buffers to reupload them once
         // compositePass_.create() (below) has rebuilt the overlay program.
@@ -475,15 +417,11 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     // do all the (non-locked) scene setup below so no scene call happens
     // while stateLock_ is held.
     SceneParams initialParams;
-    std::string force;
-    std::string dye;
     std::string preset;
     std::string textureDir;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
         initialParams = requestedParams_;
-        force = fluidForceSrc_;
-        dye = fluidDyeSrc_;
         preset = lastMilkPreset_;
         textureDir = milkTextureDir_;
     }
@@ -492,9 +430,6 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);
-    const std::string custom = customShaderFor(id);
-    if (!custom.empty()) scene->setFragmentSource(custom);
-    if (!force.empty() || !dye.empty()) scene->setInjectionShaders(force, dye);
     scene->setWindowSize(width_, height_);
     if (!textureDir.empty()) scene->setMilkTextureDir(textureDir);
     if (!preset.empty()) scene->queueMilkPreset(preset);

@@ -39,8 +39,7 @@ the original numbering as cited by the changelog.
   gradient-derived normal (chrome, oil slick, marble). Confirm the Fluid
   Customize controls still move on every style (the style values are
   multipliers), that a `fluid ·` preset applies on any fluid style, that a
-  saved preset naming `fluid_ink` etc. survives process death, and that the
-  GLSL injection editor reaches a styled fluid scene.
+  saved preset naming `fluid_ink` etc. survives process death.
 - **41** — The raymarched styles on `lib_dmt`. On the same two devices:
   `kifs`, `noneuclid`, `morphogen`, `vanishing`, `curl_bloom`, `rod_tunnel`,
   `nectar_flow`, `nebula` at Detail minimum and maximum. Look for the
