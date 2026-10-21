@@ -34,7 +34,6 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -724,8 +723,6 @@ private fun CheckRow(
 internal fun FluidTab(
     p: SceneParams,
     onChange: (SceneParams) -> Unit,
-    injectionError: String? = null,
-    onApplyInjectionShaders: (String?, String?) -> Unit = { _, _ -> },
 ) {
     val sceneId = LocalSceneId.current
     val isFluidScene = ParamScope.FLUID_SIM.appliesTo(sceneId)
@@ -864,68 +861,6 @@ internal fun FluidTab(
             }
             LabeledSlider(ParamKeys.RIPPLE_GLINT, p.rippleOverlaySpecular, 0f..1f) { onChange(p.copy(rippleOverlaySpecular = it)) }
         }
-        if (isFluidScene && sectionVisible()) {
-            InjectionShaderEditors(injectionError, onApplyInjectionShaders)
-        }
-    }
-}
-
-@Composable
-private fun InjectionShaderEditors(
-    injectionError: String?,
-    onApplyInjectionShaders: (String?, String?) -> Unit,
-) {
-    SectionHeader("Injection shaders (advanced)")
-    ControlHint(
-        "The force and dye injection passes are user-replaceable GLSL. " +
-            "Both start from the built-in capsule splat (uMode 0 = " +
-            "velocity, 1 = dye); a failed compile keeps the last good " +
-            "program. Extra uniforms: uDt, uDx, uTime, uBass, uMid, " +
-            "uTreble, uEnergy, uBeat. Clear the text to restore built-ins.",
-    )
-    val ctx = androidx.compose.ui.platform.LocalContext.current
-    val template =
-        remember {
-            dev.geode.render.fluid.FluidShaderTemplate
-                .splat(ctx)
-        }
-    var forceSrc by remember { mutableStateOf(template) }
-    var dyeSrc by remember { mutableStateOf(template) }
-    var editorsUsed by remember { mutableStateOf(false) }
-    Text("Force shader", style = MaterialTheme.typography.labelSmall)
-    OutlinedTextField(
-        value = forceSrc,
-        onValueChange = {
-            forceSrc = it
-            editorsUsed = true
-        },
-        modifier = Modifier.fillMaxWidth().height(180.dp),
-        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-    )
-    Text("Dye shader", style = MaterialTheme.typography.labelSmall)
-    OutlinedTextField(
-        value = dyeSrc,
-        onValueChange = {
-            dyeSrc = it
-            editorsUsed = true
-        },
-        modifier = Modifier.fillMaxWidth().height(180.dp),
-        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-    )
-    if (injectionError != null) {
-        Text(injectionError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(onClick = {
-            val f = forceSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
-            val d = dyeSrc.takeIf { editorsUsed && it.isNotBlank() && it != template }
-            onApplyInjectionShaders(f, d)
-        }) { Text("Apply shaders") }
-        TextButton(onClick = {
-            forceSrc = template
-            dyeSrc = template
-            onApplyInjectionShaders(null, null)
-        }) { Text("Reset to built-in") }
     }
 }
 

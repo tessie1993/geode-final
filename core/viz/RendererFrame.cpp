@@ -31,18 +31,13 @@ float Renderer::beginFrame(double timeSeconds) {
     lastTimeS_ = timeSeconds;
     thermal_.onFrame(dt);
     timeSeconds_ = std::fmod(timeSeconds_ + dt, kTimeWrapSeconds);
-    std::vector<std::pair<std::string, std::string>> pending;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
-        pending.swap(pendingShaders_);
         frameFeatures_ = features_;
         frameLayerMix_ = layerMix_;
         frameLayerBlend_ = layerBlend_;
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
-    }
-    for (const auto& [id, src] : pending) {
-        if (Scene* scene = builtScene(id)) scene->setFragmentSource(src);
     }
     applyMilkRequests();
     applyOverlayUploads();
@@ -305,7 +300,6 @@ void Renderer::render(double timeSeconds, GLuint targetFbo) {
         return;
     }
     const SceneParams p = resolveParams(dt);
-    applyPendingFluidInjection();
     resolveLayerScene();
     stepOverlays(*scene, p, dt);
     const float progress = drawSecondaryTargets(p, dt);

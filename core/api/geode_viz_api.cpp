@@ -105,10 +105,6 @@ void geode_viz_queue_touch_stroke(geode_viz* v, float nx, float ny, float ndx, f
     if (v) v->renderer.queueTouchStroke(nx, ny, ndx, ndy, dt, strength);
 }
 
-void geode_viz_set_fluid_injection(geode_viz* v, const char* force_source, const char* dye_source) {
-    if (v) v->renderer.setFluidInjectionShaders(text(force_source), text(dye_source));
-}
-
 void geode_viz_load_milk_preset(geode_viz* v, const char* path) {
     if (v && path) v->renderer.loadMilkPreset(path);
 }
@@ -134,21 +130,6 @@ size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacit
 
 void geode_viz_push_pcm(geode_viz* v, const float* mono, int count) {
     if (v && mono && count > 0) v->renderer.pushPcm(mono, count);
-}
-
-void geode_viz_set_custom_shader(geode_viz* v, const char* scene_id, const char* fragment_source) {
-    if (v && scene_id && fragment_source) v->renderer.setCustomShader(scene_id, fragment_source);
-}
-
-size_t geode_viz_custom_shader(geode_viz* v, const char* scene_id, char* out, size_t capacity) {
-    if (!v || !scene_id) return 0;
-    const std::string source = v->renderer.customShaderFor(scene_id);
-    if (out && capacity > 0) {
-        const size_t n = std::min(capacity - 1, source.size());
-        std::memcpy(out, source.data(), n);
-        out[n] = '\0';
-    }
-    return source.size();
 }
 
 void geode_viz_set_lfo(geode_viz* v, int slot, const float* c, int count) {

@@ -21,8 +21,8 @@ ABIs arm64-v8a and x86_64. The full version history is in
   into the file. An optional native audio engine adds gapless joins and
   crossfades. Android Auto browsing (tracks, albums, artists, playlists, favourites, recently
   played) and a home-screen now-playing widget.
-- **Visual scenes** — particle, simulation and fragment-shader scenes with an
-  in-app GLSL editor; the GPU fluid family (nine Fluid looks over one solver,
+- **Visual scenes** — particle, simulation and fragment-shader scenes; the GPU
+  fluid family (nine Fluid looks over one solver,
   plus Curl Flow and Water);
   Cymatics; MilkDrop via projectM 4 built in-tree from a git submodule. Every
   scene is rendered by the native core; the Customize panel exposes every

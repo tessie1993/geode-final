@@ -35,7 +35,7 @@ One large control in the basic Customize view. It is a single value: changing it
 _Avoid_: Preset knob, master slider
 
 **Shared core**:
-The controls every Style has, MilkDrop and user shaders included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, and colour grading.
+The controls every Style has, MilkDrop included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, and colour grading.
 _Avoid_: Global params, common FX
 
 **Extras**:

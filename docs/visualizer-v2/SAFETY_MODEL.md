@@ -64,11 +64,10 @@ off would only produce a dead control.
 ask the shader to do. §11.2's limiter is defined over *measured* temporal luminance and
 saturated-red change, which needs a downsampled target and an asynchronous readback.
 
-Three paths therefore still reach the screen outside all of it, because none passes through
-`uPostFlash` or `SceneParams`:
+Two paths therefore still reach the screen outside all of it, because neither passes through
+`uPostFlash` or `SceneParams` (user GLSL, once a third, was removed in #87):
 
 - **projectM** renders MilkDrop presets itself and can strobe internally;
-- **Shader Studio** runs user GLSL;
 - a scene's **own internal brightness** swings.
 
 Making the clamp unconditional closed the *opt-out*; it did not close these. Until a measured
