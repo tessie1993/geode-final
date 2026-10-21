@@ -316,7 +316,8 @@ TEST(ShippedStylePacks, EveryFamilyHasARendererProfileMatchingItsParameters) {
 }
 
 TEST(ShippedStylePacks, EveryShaderStyleNamesItsShader) {
-    for (const packs::StylePack& pack : shipped().styles()) {
+    const auto registry = shipped();
+    for (const packs::StylePack& pack : registry.styles()) {
         if (pack.family != styles::family::kShader) continue;
         EXPECT_FALSE(pack.shaderPath.empty()) << pack.id;
         EXPECT_TRUE(readShipped(pack.shaderPath).has_value()) << pack.shaderPath;
