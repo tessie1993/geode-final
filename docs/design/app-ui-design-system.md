@@ -6,6 +6,10 @@ This is the brief for the new **App UI** (the app's own screens and controls). I
 
 "Nature meets life": a brand-new design system with **water as the main element**, set among forest and stone. Frosted stone glass, natural shapes and floating assets.
 
+## Quality bar
+
+Always high end. References come only from top-tier work: Dribbble's featured designers, Behance's featured case studies, shipped apps on Mobbin, Awwwards, and Apple Design Award winners. Assets are art-directed and hand-crafted or professionally rendered, such as rendered stones, water and leaves, photographic or painterly textures, and carefully drawn vector icons. Low-quality procedural art (noise blobs, generated filler shapes, clip-art) is never used.
+
 ## Decided
 
 - **Themes:** three, chosen in Settings. Each theme has a dark version (the default) and a light version.
