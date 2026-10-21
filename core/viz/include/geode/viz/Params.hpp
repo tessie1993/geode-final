@@ -69,14 +69,12 @@ struct SceneParams {
     float bassGain = 1.0f;
     float midGain = 1.0f;
     float trebGain = 1.0f;
-    float flash = 0.0f;
     float chromaAb = 0.0f;
     float vignette = 0.0f;
     float scanlines = 0.0f;
     float grain = 0.0f;
     float glitch = 0.0f;
     float fisheye = 0.0f;
-    float strobe = 0.0f;
     float paramFadeSec = 0.0f;
     int fluidQuality = 2;
     bool fluidAutoQuality = true;
@@ -170,11 +168,11 @@ struct SceneParams {
     // pointer-to-member is not a compile error. It was declared as 98 over 95
     // entries, and lerpParams/blendParams wrote through the three null members
     // on every fade. Count again whenever a lerped float is added.
-    static constexpr int kLerpedFloatCount = 95;
+    static constexpr int kLerpedFloatCount = 93;
     static const std::array<FloatField, kLerpedFloatCount>& lerpedFloats();
 
     // Every field in declaration order; the wire order of geode_viz_set_params.
-    static constexpr int kFieldCount = 134;
+    static constexpr int kFieldCount = 132;
     static const std::array<const char*, kFieldCount>& fieldNames();
 
     // Sets a field by its Kotlin property name; ints and bools are taken from the float's value.

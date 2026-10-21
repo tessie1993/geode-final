@@ -1,0 +1,1102 @@
+public abstract interface class dev/geode/feature/settings/api/AnalysisCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/AnalysisCommand$SetBeatMinInterval : dev/geode/feature/settings/api/AnalysisCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/AnalysisCommand$SetBeatMinInterval;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/AnalysisCommand$SetBeatMinInterval;FILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$SetBeatMinInterval;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMilliseconds ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisCommand$SetBeatSensitivity : dev/geode/feature/settings/api/AnalysisCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/AnalysisCommand$SetBeatSensitivity;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/AnalysisCommand$SetBeatSensitivity;FILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$SetBeatSensitivity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSensitivity ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisCommand$SetPresetMorph : dev/geode/feature/settings/api/AnalysisCommand {
+	public synthetic fun <init> (FLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-mTnqTo4 ()F
+	public final fun copy-jnU7TCE (F)Ldev/geode/feature/settings/api/AnalysisCommand$SetPresetMorph;
+	public static synthetic fun copy-jnU7TCE$default (Ldev/geode/feature/settings/api/AnalysisCommand$SetPresetMorph;FILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$SetPresetMorph;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLength-mTnqTo4 ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisCommand$SetReactToMicrophone : dev/geode/feature/settings/api/AnalysisCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/AnalysisCommand$SetReactToMicrophone;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/AnalysisCommand$SetReactToMicrophone;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$SetReactToMicrophone;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisCommand$UseBeatTuning : dev/geode/feature/settings/api/AnalysisCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/BeatTuning;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/BeatTuning;
+	public final fun copy (Ldev/geode/feature/settings/api/BeatTuning;)Ldev/geode/feature/settings/api/AnalysisCommand$UseBeatTuning;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/AnalysisCommand$UseBeatTuning;Ldev/geode/feature/settings/api/BeatTuning;ILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$UseBeatTuning;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTuning ()Ldev/geode/feature/settings/api/BeatTuning;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisSettings {
+	public static final field Companion Ldev/geode/feature/settings/api/AnalysisSettings$Companion;
+	public synthetic fun <init> (FFFZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()F
+	public final fun component2 ()F
+	public final fun component3-mTnqTo4 ()F
+	public final fun component4 ()Z
+	public final fun copy-ZTKKQuU (FFFZ)Ldev/geode/feature/settings/api/AnalysisSettings;
+	public static synthetic fun copy-ZTKKQuU$default (Ldev/geode/feature/settings/api/AnalysisSettings;FFFZILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBeatMinIntervalMs ()F
+	public final fun getBeatSensitivity ()F
+	public final fun getPresetMorph-mTnqTo4 ()F
+	public final fun getReactToMicrophone ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisSettings$Companion {
+	public final fun getBEAT_MIN_INTERVAL_MS ()Lkotlin/ranges/ClosedFloatingPointRange;
+	public final fun getBEAT_SENSITIVITY ()Lkotlin/ranges/ClosedFloatingPointRange;
+	public final fun getPRESET_MORPH ()Lkotlin/ranges/ClosedRange;
+	public final fun getPRESET_MORPH_DEFAULT-mTnqTo4 ()F
+}
+
+public final class dev/geode/feature/settings/api/Argb {
+	public static final synthetic fun box-impl (I)Ldev/geode/feature/settings/api/Argb;
+	public static fun constructor-impl (I)I
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (ILjava/lang/Object;)Z
+	public static final fun equals-impl0 (II)Z
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public static fun hashCode-impl (I)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (I)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()I
+}
+
+public final class dev/geode/feature/settings/api/BeatTuning : java/lang/Enum {
+	public static final field DEFAULT Ldev/geode/feature/settings/api/BeatTuning;
+	public static final field SLOW_TRACK Ldev/geode/feature/settings/api/BeatTuning;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getMinIntervalMs ()F
+	public final fun getSensitivity ()F
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/BeatTuning;
+	public static fun values ()[Ldev/geode/feature/settings/api/BeatTuning;
+}
+
+public abstract interface class dev/geode/feature/settings/api/BehaviorCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/BehaviorCommand$SetReducedMotion : dev/geode/feature/settings/api/BehaviorCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/BehaviorCommand$SetReducedMotion;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/BehaviorCommand$SetReducedMotion;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/BehaviorCommand$SetReducedMotion;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/BehaviorCommand$SetTouchSmear : dev/geode/feature/settings/api/BehaviorCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchSmear;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchSmear;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchSmear;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/BehaviorCommand$SetTouchSmearStrength : dev/geode/feature/settings/api/BehaviorCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchSmearStrength;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchSmearStrength;FILjava/lang/Object;)Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchSmearStrength;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStrength ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/BehaviorCommand$SetTouchTransform : dev/geode/feature/settings/api/BehaviorCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchTransform;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchTransform;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/BehaviorCommand$SetTouchTransform;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/BehaviorSettings {
+	public static final field Companion Ldev/geode/feature/settings/api/BehaviorSettings$Companion;
+	public static final field TOUCH_SMEAR_STRENGTH_DEFAULT F
+	public fun <init> ()V
+	public fun <init> (ZFZZ)V
+	public synthetic fun <init> (ZFZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()F
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun copy (ZFZZ)Ldev/geode/feature/settings/api/BehaviorSettings;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/BehaviorSettings;ZFZZILjava/lang/Object;)Ldev/geode/feature/settings/api/BehaviorSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReducedMotion ()Z
+	public final fun getTouchSmear ()Z
+	public final fun getTouchSmearStrength ()F
+	public final fun getTouchTransform ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/BehaviorSettings$Companion {
+	public final fun getTOUCH_SMEAR_STRENGTH ()Lkotlin/ranges/ClosedFloatingPointRange;
+}
+
+public final class dev/geode/feature/settings/api/CornerStyle : java/lang/Enum {
+	public static final field PILL Ldev/geode/feature/settings/api/CornerStyle;
+	public static final field ROUNDED Ldev/geode/feature/settings/api/CornerStyle;
+	public static final field SHARP Ldev/geode/feature/settings/api/CornerStyle;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/CornerStyle;
+	public static fun values ()[Ldev/geode/feature/settings/api/CornerStyle;
+}
+
+public final class dev/geode/feature/settings/api/CrossfadeCurve : java/lang/Enum {
+	public static final field EQUAL_POWER Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public static final field LINEAR Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public static final field SMOOTH Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public static fun values ()[Ldev/geode/feature/settings/api/CrossfadeCurve;
+}
+
+public final class dev/geode/feature/settings/api/Decibels : java/lang/Comparable {
+	public static final synthetic fun box-impl (F)Ldev/geode/feature/settings/api/Decibels;
+	public synthetic fun compareTo (Ljava/lang/Object;)I
+	public fun compareTo-19VAEfk (F)I
+	public static fun compareTo-19VAEfk (FF)I
+	public static fun constructor-impl (F)F
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (FLjava/lang/Object;)Z
+	public static final fun equals-impl0 (FF)Z
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public static fun hashCode-impl (F)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (F)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()F
+}
+
+public abstract interface class dev/geode/feature/settings/api/EqualizerCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/EqualizerCommand$SetBand : dev/geode/feature/settings/api/EqualizerCommand {
+	public synthetic fun <init> (IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2-VLpBzPg ()I
+	public final fun copy-KXrFKkY (II)Ldev/geode/feature/settings/api/EqualizerCommand$SetBand;
+	public static synthetic fun copy-KXrFKkY$default (Ldev/geode/feature/settings/api/EqualizerCommand$SetBand;IIILjava/lang/Object;)Ldev/geode/feature/settings/api/EqualizerCommand$SetBand;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBand ()I
+	public final fun getLevel-VLpBzPg ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerCommand$SetBassBoost : dev/geode/feature/settings/api/EqualizerCommand {
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Ldev/geode/feature/settings/api/EqualizerCommand$SetBassBoost;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/EqualizerCommand$SetBassBoost;IILjava/lang/Object;)Ldev/geode/feature/settings/api/EqualizerCommand$SetBassBoost;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStrength ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerCommand$SetEnabled : dev/geode/feature/settings/api/EqualizerCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/EqualizerCommand$SetEnabled;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/EqualizerCommand$SetEnabled;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/EqualizerCommand$SetEnabled;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerCommand$SetLoudness : dev/geode/feature/settings/api/EqualizerCommand {
+	public synthetic fun <init> (ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-VLpBzPg ()I
+	public final fun copy-aaZz0sE (I)Ldev/geode/feature/settings/api/EqualizerCommand$SetLoudness;
+	public static synthetic fun copy-aaZz0sE$default (Ldev/geode/feature/settings/api/EqualizerCommand$SetLoudness;IILjava/lang/Object;)Ldev/geode/feature/settings/api/EqualizerCommand$SetLoudness;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGain-VLpBzPg ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerCommand$UsePreset : dev/geode/feature/settings/api/EqualizerCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/EqualizerPreset;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/EqualizerPreset;
+	public final fun copy (Ldev/geode/feature/settings/api/EqualizerPreset;)Ldev/geode/feature/settings/api/EqualizerCommand$UsePreset;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/EqualizerCommand$UsePreset;Ldev/geode/feature/settings/api/EqualizerPreset;ILjava/lang/Object;)Ldev/geode/feature/settings/api/EqualizerCommand$UsePreset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPreset ()Ldev/geode/feature/settings/api/EqualizerPreset;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerPreset : java/lang/Enum {
+	public static final field BASS Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static final field ELECTRONIC Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static final field FLAT Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static final field ROCK Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static final field TREBLE Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static final field VOCAL Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getLevels ()Ljava/util/List;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/EqualizerPreset;
+	public static fun values ()[Ldev/geode/feature/settings/api/EqualizerPreset;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerSettings {
+	public static final field BANDS I
+	public static final field Companion Ldev/geode/feature/settings/api/EqualizerSettings$Companion;
+	public synthetic fun <init> (ZLjava/util/List;Ldev/geode/feature/settings/api/EqualizerPreset;IIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZLjava/util/List;Ldev/geode/feature/settings/api/EqualizerPreset;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ldev/geode/feature/settings/api/EqualizerPreset;
+	public final fun component4 ()I
+	public final fun component5-VLpBzPg ()I
+	public final fun copy-j6HUMJM (ZLjava/util/List;Ldev/geode/feature/settings/api/EqualizerPreset;II)Ldev/geode/feature/settings/api/EqualizerSettings;
+	public static synthetic fun copy-j6HUMJM$default (Ldev/geode/feature/settings/api/EqualizerSettings;ZLjava/util/List;Ldev/geode/feature/settings/api/EqualizerPreset;IIILjava/lang/Object;)Ldev/geode/feature/settings/api/EqualizerSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBands ()Ljava/util/List;
+	public final fun getBassBoost ()I
+	public final fun getEnabled ()Z
+	public final fun getLoudness-VLpBzPg ()I
+	public final fun getPreset ()Ldev/geode/feature/settings/api/EqualizerPreset;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/EqualizerSettings$Companion {
+	public final fun getBAND_LEVEL ()Lkotlin/ranges/ClosedRange;
+	public final fun getBASS_BOOST ()Lkotlin/ranges/IntRange;
+	public final fun getLOUDNESS ()Lkotlin/ranges/ClosedRange;
+}
+
+public final class dev/geode/feature/settings/api/ExportCodec : java/lang/Enum {
+	public static final field H264 Ldev/geode/feature/settings/api/ExportCodec;
+	public static final field HEVC Ldev/geode/feature/settings/api/ExportCodec;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/ExportCodec;
+	public static fun values ()[Ldev/geode/feature/settings/api/ExportCodec;
+}
+
+public abstract interface class dev/geode/feature/settings/api/ExportCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/ExportCommand$SetCodec : dev/geode/feature/settings/api/ExportCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/ExportCodec;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ExportCodec;
+	public final fun copy (Ldev/geode/feature/settings/api/ExportCodec;)Ldev/geode/feature/settings/api/ExportCommand$SetCodec;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportCommand$SetCodec;Ldev/geode/feature/settings/api/ExportCodec;ILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportCommand$SetCodec;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCodec ()Ldev/geode/feature/settings/api/ExportCodec;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/ExportCommand$SetFrameRate : dev/geode/feature/settings/api/ExportCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/ExportFrameRate;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ExportFrameRate;
+	public final fun copy (Ldev/geode/feature/settings/api/ExportFrameRate;)Ldev/geode/feature/settings/api/ExportCommand$SetFrameRate;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportCommand$SetFrameRate;Ldev/geode/feature/settings/api/ExportFrameRate;ILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportCommand$SetFrameRate;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFrameRate ()Ldev/geode/feature/settings/api/ExportFrameRate;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/ExportCommand$SetLoopSafe : dev/geode/feature/settings/api/ExportCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/ExportCommand$SetLoopSafe;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportCommand$SetLoopSafe;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportCommand$SetLoopSafe;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/ExportCommand$SetLoudness : dev/geode/feature/settings/api/ExportCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/ExportLoudness;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ExportLoudness;
+	public final fun copy (Ldev/geode/feature/settings/api/ExportLoudness;)Ldev/geode/feature/settings/api/ExportCommand$SetLoudness;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportCommand$SetLoudness;Ldev/geode/feature/settings/api/ExportLoudness;ILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportCommand$SetLoudness;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLoudness ()Ldev/geode/feature/settings/api/ExportLoudness;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/ExportCommand$SetQuality : dev/geode/feature/settings/api/ExportCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/ExportQuality;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ExportQuality;
+	public final fun copy (Ldev/geode/feature/settings/api/ExportQuality;)Ldev/geode/feature/settings/api/ExportCommand$SetQuality;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportCommand$SetQuality;Ldev/geode/feature/settings/api/ExportQuality;ILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportCommand$SetQuality;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getQuality ()Ldev/geode/feature/settings/api/ExportQuality;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/ExportCommand$SetRatio : dev/geode/feature/settings/api/ExportCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/ExportRatio;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ExportRatio;
+	public final fun copy (Ldev/geode/feature/settings/api/ExportRatio;)Ldev/geode/feature/settings/api/ExportCommand$SetRatio;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportCommand$SetRatio;Ldev/geode/feature/settings/api/ExportRatio;ILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportCommand$SetRatio;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getRatio ()Ldev/geode/feature/settings/api/ExportRatio;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/ExportFrameRate : java/lang/Enum {
+	public static final field FPS30 Ldev/geode/feature/settings/api/ExportFrameRate;
+	public static final field FPS60 Ldev/geode/feature/settings/api/ExportFrameRate;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getFps ()I
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/ExportFrameRate;
+	public static fun values ()[Ldev/geode/feature/settings/api/ExportFrameRate;
+}
+
+public final class dev/geode/feature/settings/api/ExportLoudness : java/lang/Enum {
+	public static final field LEAVE_AS_IS Ldev/geode/feature/settings/api/ExportLoudness;
+	public static final field SHORTS_AND_TIKTOK Ldev/geode/feature/settings/api/ExportLoudness;
+	public static final field YOUTUBE Ldev/geode/feature/settings/api/ExportLoudness;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/ExportLoudness;
+	public static fun values ()[Ldev/geode/feature/settings/api/ExportLoudness;
+}
+
+public final class dev/geode/feature/settings/api/ExportQuality : java/lang/Enum {
+	public static final field FHD1080 Ldev/geode/feature/settings/api/ExportQuality;
+	public static final field HD720 Ldev/geode/feature/settings/api/ExportQuality;
+	public static final field UHD4K Ldev/geode/feature/settings/api/ExportQuality;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/ExportQuality;
+	public static fun values ()[Ldev/geode/feature/settings/api/ExportQuality;
+}
+
+public final class dev/geode/feature/settings/api/ExportRatio : java/lang/Enum {
+	public static final field R16_9 Ldev/geode/feature/settings/api/ExportRatio;
+	public static final field R1_1 Ldev/geode/feature/settings/api/ExportRatio;
+	public static final field R21_9 Ldev/geode/feature/settings/api/ExportRatio;
+	public static final field R4_3 Ldev/geode/feature/settings/api/ExportRatio;
+	public static final field R4_5 Ldev/geode/feature/settings/api/ExportRatio;
+	public static final field R9_16 Ldev/geode/feature/settings/api/ExportRatio;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/ExportRatio;
+	public static fun values ()[Ldev/geode/feature/settings/api/ExportRatio;
+}
+
+public final class dev/geode/feature/settings/api/ExportSettings {
+	public fun <init> ()V
+	public fun <init> (Ldev/geode/feature/settings/api/ExportQuality;Ldev/geode/feature/settings/api/ExportFrameRate;Ldev/geode/feature/settings/api/ExportRatio;ZLdev/geode/feature/settings/api/ExportCodec;Ldev/geode/feature/settings/api/ExportLoudness;)V
+	public synthetic fun <init> (Ldev/geode/feature/settings/api/ExportQuality;Ldev/geode/feature/settings/api/ExportFrameRate;Ldev/geode/feature/settings/api/ExportRatio;ZLdev/geode/feature/settings/api/ExportCodec;Ldev/geode/feature/settings/api/ExportLoudness;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ExportQuality;
+	public final fun component2 ()Ldev/geode/feature/settings/api/ExportFrameRate;
+	public final fun component3 ()Ldev/geode/feature/settings/api/ExportRatio;
+	public final fun component4 ()Z
+	public final fun component5 ()Ldev/geode/feature/settings/api/ExportCodec;
+	public final fun component6 ()Ldev/geode/feature/settings/api/ExportLoudness;
+	public final fun copy (Ldev/geode/feature/settings/api/ExportQuality;Ldev/geode/feature/settings/api/ExportFrameRate;Ldev/geode/feature/settings/api/ExportRatio;ZLdev/geode/feature/settings/api/ExportCodec;Ldev/geode/feature/settings/api/ExportLoudness;)Ldev/geode/feature/settings/api/ExportSettings;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/ExportSettings;Ldev/geode/feature/settings/api/ExportQuality;Ldev/geode/feature/settings/api/ExportFrameRate;Ldev/geode/feature/settings/api/ExportRatio;ZLdev/geode/feature/settings/api/ExportCodec;Ldev/geode/feature/settings/api/ExportLoudness;ILjava/lang/Object;)Ldev/geode/feature/settings/api/ExportSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCodec ()Ldev/geode/feature/settings/api/ExportCodec;
+	public final fun getFrameRate ()Ldev/geode/feature/settings/api/ExportFrameRate;
+	public final fun getLoopSafe ()Z
+	public final fun getLoudness ()Ldev/geode/feature/settings/api/ExportLoudness;
+	public final fun getQuality ()Ldev/geode/feature/settings/api/ExportQuality;
+	public final fun getRatio ()Ldev/geode/feature/settings/api/ExportRatio;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/settings/api/FolderCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/FolderCommand$AddMusicFolder : dev/geode/feature/settings/api/FolderCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-5agCEG0 ()Ljava/lang/String;
+	public final fun copy-_Kn6y2c (Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderCommand$AddMusicFolder;
+	public static synthetic fun copy-_Kn6y2c$default (Ldev/geode/feature/settings/api/FolderCommand$AddMusicFolder;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderCommand$AddMusicFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-5agCEG0 ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/FolderCommand$RemoveMusicFolder : dev/geode/feature/settings/api/FolderCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-5agCEG0 ()Ljava/lang/String;
+	public final fun copy-_Kn6y2c (Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderCommand$RemoveMusicFolder;
+	public static synthetic fun copy-_Kn6y2c$default (Ldev/geode/feature/settings/api/FolderCommand$RemoveMusicFolder;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderCommand$RemoveMusicFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-5agCEG0 ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/FolderCommand$SetPresetMirror : dev/geode/feature/settings/api/FolderCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-oLgjRmI ()Ljava/lang/String;
+	public final fun copy-tBzkrdA (Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderCommand$SetPresetMirror;
+	public static synthetic fun copy-tBzkrdA$default (Ldev/geode/feature/settings/api/FolderCommand$SetPresetMirror;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderCommand$SetPresetMirror;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-oLgjRmI ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/FolderSettings {
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-oLgjRmI ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Set;
+	public final fun copy-28v1Dhc (Ljava/lang/String;Ljava/util/Set;)Ldev/geode/feature/settings/api/FolderSettings;
+	public static synthetic fun copy-28v1Dhc$default (Ldev/geode/feature/settings/api/FolderSettings;Ljava/lang/String;Ljava/util/Set;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMusicFolders ()Ljava/util/Set;
+	public final fun getPresetMirror-oLgjRmI ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/FolderUri {
+	public static final synthetic fun box-impl (Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderUri;
+	public static fun constructor-impl (Ljava/lang/String;)Ljava/lang/String;
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (Ljava/lang/String;Ljava/lang/Object;)Z
+	public static final fun equals-impl0 (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public static fun hashCode-impl (Ljava/lang/String;)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (Ljava/lang/String;)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/settings/api/LookCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetAccentIntensity : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/LookCommand$SetAccentIntensity;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetAccentIntensity;FILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetAccentIntensity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIntensity ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetBackgroundDim : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/LookCommand$SetBackgroundDim;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetBackgroundDim;FILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetBackgroundDim;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDim ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetBarOpacity : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/LookCommand$SetBarOpacity;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetBarOpacity;FILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetBarOpacity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOpacity ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetClearVisualsMenu : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/LookCommand$SetClearVisualsMenu;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetClearVisualsMenu;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetClearVisualsMenu;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetCompactPlayer : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/LookCommand$SetCompactPlayer;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetCompactPlayer;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetCompactPlayer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetCornerStyle : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/CornerStyle;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/CornerStyle;
+	public final fun copy (Ldev/geode/feature/settings/api/CornerStyle;)Ldev/geode/feature/settings/api/LookCommand$SetCornerStyle;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetCornerStyle;Ldev/geode/feature/settings/api/CornerStyle;ILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetCornerStyle;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStyle ()Ldev/geode/feature/settings/api/CornerStyle;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetFontColor : dev/geode/feature/settings/api/LookCommand {
+	public synthetic fun <init> (Ldev/geode/feature/settings/api/Argb;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-d84J29s ()Ldev/geode/feature/settings/api/Argb;
+	public final fun copy-5YyRXxU (Ldev/geode/feature/settings/api/Argb;)Ldev/geode/feature/settings/api/LookCommand$SetFontColor;
+	public static synthetic fun copy-5YyRXxU$default (Ldev/geode/feature/settings/api/LookCommand$SetFontColor;Ldev/geode/feature/settings/api/Argb;ILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetFontColor;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getColor-d84J29s ()Ldev/geode/feature/settings/api/Argb;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetPlayerPosition : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/PlayerPosition;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/PlayerPosition;
+	public final fun copy (Ldev/geode/feature/settings/api/PlayerPosition;)Ldev/geode/feature/settings/api/LookCommand$SetPlayerPosition;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetPlayerPosition;Ldev/geode/feature/settings/api/PlayerPosition;ILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetPlayerPosition;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPosition ()Ldev/geode/feature/settings/api/PlayerPosition;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookCommand$SetTextScale : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/LookCommand$SetTextScale;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetTextScale;FILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetTextScale;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getScale ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookSettings {
+	public static final field ACCENT_INTENSITY_DEFAULT F
+	public static final field BACKGROUND_DIM_DEFAULT F
+	public static final field BAR_OPACITY_DEFAULT F
+	public static final field Companion Ldev/geode/feature/settings/api/LookSettings$Companion;
+	public static final field TEXT_SCALE_DEFAULT F
+	public synthetic fun <init> (FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()F
+	public final fun component2 ()F
+	public final fun component3-d84J29s ()Ldev/geode/feature/settings/api/Argb;
+	public final fun component4 ()F
+	public final fun component5 ()F
+	public final fun component6 ()Ldev/geode/feature/settings/api/PlayerPosition;
+	public final fun component7 ()Ldev/geode/feature/settings/api/CornerStyle;
+	public final fun component8 ()Z
+	public final fun component9 ()Z
+	public final fun copy-se-rIJQ (FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZ)Ldev/geode/feature/settings/api/LookSettings;
+	public static synthetic fun copy-se-rIJQ$default (Ldev/geode/feature/settings/api/LookSettings;FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZILjava/lang/Object;)Ldev/geode/feature/settings/api/LookSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccentIntensity ()F
+	public final fun getBackgroundDim ()F
+	public final fun getBarOpacity ()F
+	public final fun getClearVisualsMenu ()Z
+	public final fun getCompactPlayer ()Z
+	public final fun getCornerStyle ()Ldev/geode/feature/settings/api/CornerStyle;
+	public final fun getFontColor-d84J29s ()Ldev/geode/feature/settings/api/Argb;
+	public final fun getPlayerPosition ()Ldev/geode/feature/settings/api/PlayerPosition;
+	public final fun getTextScale ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/LookSettings$Companion {
+	public final fun getACCENT_INTENSITY ()Lkotlin/ranges/ClosedFloatingPointRange;
+	public final fun getBACKGROUND_DIM ()Lkotlin/ranges/ClosedFloatingPointRange;
+	public final fun getBAR_OPACITY ()Lkotlin/ranges/ClosedFloatingPointRange;
+	public final fun getTEXT_SCALE ()Lkotlin/ranges/ClosedFloatingPointRange;
+}
+
+public final class dev/geode/feature/settings/api/Millibels : java/lang/Comparable {
+	public static final synthetic fun box-impl (I)Ldev/geode/feature/settings/api/Millibels;
+	public synthetic fun compareTo (Ljava/lang/Object;)I
+	public fun compareTo-aaZz0sE (I)I
+	public static fun compareTo-aaZz0sE (II)I
+	public static fun constructor-impl (I)I
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (ILjava/lang/Object;)Z
+	public static final fun equals-impl0 (II)Z
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public static fun hashCode-impl (I)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (I)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()I
+}
+
+public final class dev/geode/feature/settings/api/Minutes : java/lang/Comparable {
+	public static final synthetic fun box-impl (I)Ldev/geode/feature/settings/api/Minutes;
+	public synthetic fun compareTo (Ljava/lang/Object;)I
+	public fun compareTo-XddC4e4 (I)I
+	public static fun compareTo-XddC4e4 (II)I
+	public static fun constructor-impl (I)I
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (ILjava/lang/Object;)Z
+	public static final fun equals-impl0 (II)Z
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public static fun hashCode-impl (I)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (I)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()I
+}
+
+public abstract interface class dev/geode/feature/settings/api/OnboardingCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/OnboardingCommand$AcknowledgeSafety : dev/geode/feature/settings/api/OnboardingCommand {
+	public static final field INSTANCE Ldev/geode/feature/settings/api/OnboardingCommand$AcknowledgeSafety;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/OnboardingCommand$FinishSetup : dev/geode/feature/settings/api/OnboardingCommand {
+	public static final field INSTANCE Ldev/geode/feature/settings/api/OnboardingCommand$FinishSetup;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/OnboardingCommand$FinishTutorial : dev/geode/feature/settings/api/OnboardingCommand {
+	public static final field INSTANCE Ldev/geode/feature/settings/api/OnboardingCommand$FinishTutorial;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/OnboardingCommand$SetTutorialOnFirstRun : dev/geode/feature/settings/api/OnboardingCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/OnboardingCommand$SetTutorialOnFirstRun;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/OnboardingCommand$SetTutorialOnFirstRun;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/OnboardingCommand$SetTutorialOnFirstRun;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/OnboardingSettings {
+	public fun <init> ()V
+	public fun <init> (ZZZZ)V
+	public synthetic fun <init> (ZZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun copy (ZZZZ)Ldev/geode/feature/settings/api/OnboardingSettings;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/OnboardingSettings;ZZZZILjava/lang/Object;)Ldev/geode/feature/settings/api/OnboardingSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSafetyAcknowledged ()Z
+	public final fun getSetupDone ()Z
+	public final fun getTutorialOnFirstRun ()Z
+	public final fun getTutorialSeen ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/settings/api/PlaybackCommand : dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetAutoResume : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetAutoResume;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetAutoResume;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetAutoResume;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetCrossfade : dev/geode/feature/settings/api/PlaybackCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun copy-TrJcsQA (J)Ldev/geode/feature/settings/api/PlaybackCommand$SetCrossfade;
+	public static synthetic fun copy-TrJcsQA$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetCrossfade;JILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetCrossfade;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCrossfade-CmsKos8 ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetCrossfadeCurve : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/CrossfadeCurve;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public final fun copy (Ldev/geode/feature/settings/api/CrossfadeCurve;)Ldev/geode/feature/settings/api/PlaybackCommand$SetCrossfadeCurve;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetCrossfadeCurve;Ldev/geode/feature/settings/api/CrossfadeCurve;ILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetCrossfadeCurve;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCurve ()Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetFade : dev/geode/feature/settings/api/PlaybackCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun copy-TrJcsQA (J)Ldev/geode/feature/settings/api/PlaybackCommand$SetFade;
+	public static synthetic fun copy-TrJcsQA$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetFade;JILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetFade;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFade-CmsKos8 ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetGapless : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetGapless;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetGapless;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetGapless;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetKeepScreenOn : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetKeepScreenOn;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetKeepScreenOn;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetKeepScreenOn;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetNativeEngine : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetNativeEngine;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetNativeEngine;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetNativeEngine;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetPauseWhenUnplugged : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetPauseWhenUnplugged;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetPauseWhenUnplugged;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetPauseWhenUnplugged;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetPitch : dev/geode/feature/settings/api/PlaybackCommand {
+	public synthetic fun <init> (FLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-XuNvzMQ ()F
+	public final fun copy-WZ5d-9Y (F)Ldev/geode/feature/settings/api/PlaybackCommand$SetPitch;
+	public static synthetic fun copy-WZ5d-9Y$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetPitch;FILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetPitch;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPitch-XuNvzMQ ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetReplayGain : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/ReplayGainMode;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/ReplayGainMode;
+	public final fun copy (Ldev/geode/feature/settings/api/ReplayGainMode;)Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGain;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGain;Ldev/geode/feature/settings/api/ReplayGainMode;ILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGain;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMode ()Ldev/geode/feature/settings/api/ReplayGainMode;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetReplayGainClipGuard : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGainClipGuard;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGainClipGuard;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGainClipGuard;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetReplayGainPreamp : dev/geode/feature/settings/api/PlaybackCommand {
+	public synthetic fun <init> (FLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-HT4dDpk ()F
+	public final fun copy-19VAEfk (F)Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGainPreamp;
+	public static synthetic fun copy-19VAEfk$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGainPreamp;FILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetReplayGainPreamp;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPreamp-HT4dDpk ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetResumeLongTracks : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetResumeLongTracks;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetResumeLongTracks;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetResumeLongTracks;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetSkipSilence : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetSkipSilence;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetSkipSilence;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetSkipSilence;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetSleepFinishTrack : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/settings/api/PlaybackCommand$SetSleepFinishTrack;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetSleepFinishTrack;ZILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetSleepFinishTrack;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetSleepTimer : dev/geode/feature/settings/api/PlaybackCommand {
+	public synthetic fun <init> (ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-N-HtNQw ()I
+	public final fun copy-XddC4e4 (I)Ldev/geode/feature/settings/api/PlaybackCommand$SetSleepTimer;
+	public static synthetic fun copy-XddC4e4$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetSleepTimer;IILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetSleepTimer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLength-N-HtNQw ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackCommand$SetSpeed : dev/geode/feature/settings/api/PlaybackCommand {
+	public fun <init> (F)V
+	public final fun component1 ()F
+	public final fun copy (F)Ldev/geode/feature/settings/api/PlaybackCommand$SetSpeed;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/PlaybackCommand$SetSpeed;FILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackCommand$SetSpeed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSpeed ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackSettings {
+	public static final field Companion Ldev/geode/feature/settings/api/PlaybackSettings$Companion;
+	public static final field SPEED_DEFAULT F
+	public synthetic fun <init> (FFZZZZZIZJLdev/geode/feature/settings/api/ReplayGainMode;FZZZJLdev/geode/feature/settings/api/CrossfadeCurve;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFZZZZZIZJLdev/geode/feature/settings/api/ReplayGainMode;FZZZJLdev/geode/feature/settings/api/CrossfadeCurve;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()F
+	public final fun component10-CmsKos8 ()J
+	public final fun component11 ()Ldev/geode/feature/settings/api/ReplayGainMode;
+	public final fun component12-HT4dDpk ()F
+	public final fun component13 ()Z
+	public final fun component14 ()Z
+	public final fun component15 ()Z
+	public final fun component16-CmsKos8 ()J
+	public final fun component17 ()Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public final fun component2-XuNvzMQ ()F
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Z
+	public final fun component6 ()Z
+	public final fun component7 ()Z
+	public final fun component8-N-HtNQw ()I
+	public final fun component9 ()Z
+	public final fun copy-5u3_UZI (FFZZZZZIZJLdev/geode/feature/settings/api/ReplayGainMode;FZZZJLdev/geode/feature/settings/api/CrossfadeCurve;)Ldev/geode/feature/settings/api/PlaybackSettings;
+	public static synthetic fun copy-5u3_UZI$default (Ldev/geode/feature/settings/api/PlaybackSettings;FFZZZZZIZJLdev/geode/feature/settings/api/ReplayGainMode;FZZZJLdev/geode/feature/settings/api/CrossfadeCurve;ILjava/lang/Object;)Ldev/geode/feature/settings/api/PlaybackSettings;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAutoResume ()Z
+	public final fun getCrossfade-CmsKos8 ()J
+	public final fun getCrossfadeCurve ()Ldev/geode/feature/settings/api/CrossfadeCurve;
+	public final fun getFade-CmsKos8 ()J
+	public final fun getGapless ()Z
+	public final fun getKeepScreenOn ()Z
+	public final fun getNativeEngine ()Z
+	public final fun getPauseWhenUnplugged ()Z
+	public final fun getPitch-XuNvzMQ ()F
+	public final fun getReplayGain ()Ldev/geode/feature/settings/api/ReplayGainMode;
+	public final fun getReplayGainClipGuard ()Z
+	public final fun getReplayGainPreamp-HT4dDpk ()F
+	public final fun getResumeLongTracks ()Z
+	public final fun getSkipSilence ()Z
+	public final fun getSleepFinishTrack ()Z
+	public final fun getSleepTimer-N-HtNQw ()I
+	public final fun getSpeed ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/PlaybackSettings$Companion {
+	public final fun getCROSSFADE ()Lkotlin/ranges/ClosedRange;
+	public final fun getFADE ()Lkotlin/ranges/ClosedRange;
+	public final fun getPITCH ()Lkotlin/ranges/ClosedRange;
+	public final fun getREPLAY_GAIN_PREAMP ()Lkotlin/ranges/ClosedRange;
+	public final fun getSLEEP_TIMER_CHOICES ()Ljava/util/List;
+	public final fun getSPEED ()Lkotlin/ranges/ClosedFloatingPointRange;
+}
+
+public final class dev/geode/feature/settings/api/PlayerPosition : java/lang/Enum {
+	public static final field BOTTOM Ldev/geode/feature/settings/api/PlayerPosition;
+	public static final field TOP Ldev/geode/feature/settings/api/PlayerPosition;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/PlayerPosition;
+	public static fun values ()[Ldev/geode/feature/settings/api/PlayerPosition;
+}
+
+public final class dev/geode/feature/settings/api/ReplayGainMode : java/lang/Enum {
+	public static final field ALBUM Ldev/geode/feature/settings/api/ReplayGainMode;
+	public static final field OFF Ldev/geode/feature/settings/api/ReplayGainMode;
+	public static final field TRACK Ldev/geode/feature/settings/api/ReplayGainMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/ReplayGainMode;
+	public static fun values ()[Ldev/geode/feature/settings/api/ReplayGainMode;
+}
+
+public final class dev/geode/feature/settings/api/Seconds : java/lang/Comparable {
+	public static final synthetic fun box-impl (F)Ldev/geode/feature/settings/api/Seconds;
+	public synthetic fun compareTo (Ljava/lang/Object;)I
+	public fun compareTo-jnU7TCE (F)I
+	public static fun compareTo-jnU7TCE (FF)I
+	public static fun constructor-impl (F)F
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (FLjava/lang/Object;)Z
+	public static final fun equals-impl0 (FF)Z
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public static fun hashCode-impl (F)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (F)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()F
+}
+
+public final class dev/geode/feature/settings/api/Semitones : java/lang/Comparable {
+	public static final synthetic fun box-impl (F)Ldev/geode/feature/settings/api/Semitones;
+	public synthetic fun compareTo (Ljava/lang/Object;)I
+	public fun compareTo-WZ5d-9Y (F)I
+	public static fun compareTo-WZ5d-9Y (FF)I
+	public static fun constructor-impl (F)F
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (FLjava/lang/Object;)Z
+	public static final fun equals-impl0 (FF)Z
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public static fun hashCode-impl (F)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (F)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()F
+}
+
+public abstract interface class dev/geode/feature/settings/api/SettingsCommand {
+}
+
+public abstract interface class dev/geode/feature/settings/api/SettingsState {
+}
+
+public final class dev/geode/feature/settings/api/SettingsState$Loading : dev/geode/feature/settings/api/SettingsState {
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Ldev/geode/feature/settings/api/SettingsState$Loading;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/SettingsState$Loading;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/settings/api/SettingsState$Loading;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPending ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/SettingsState$Ready : dev/geode/feature/settings/api/SettingsState {
+	public fun <init> (Ldev/geode/feature/settings/api/SettingsValues;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/SettingsValues;
+	public final fun copy (Ldev/geode/feature/settings/api/SettingsValues;)Ldev/geode/feature/settings/api/SettingsState$Ready;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/SettingsState$Ready;Ldev/geode/feature/settings/api/SettingsValues;ILjava/lang/Object;)Ldev/geode/feature/settings/api/SettingsState$Ready;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValues ()Ldev/geode/feature/settings/api/SettingsValues;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/SettingsValues {
+	public fun <init> ()V
+	public fun <init> (Ldev/geode/feature/settings/api/LookSettings;Ldev/geode/feature/settings/api/PlaybackSettings;Ldev/geode/feature/settings/api/EqualizerSettings;Ldev/geode/feature/settings/api/AnalysisSettings;Ldev/geode/feature/settings/api/BehaviorSettings;Ldev/geode/feature/settings/api/ExportSettings;Ldev/geode/feature/settings/api/FolderSettings;Ldev/geode/feature/settings/api/OnboardingSettings;)V
+	public synthetic fun <init> (Ldev/geode/feature/settings/api/LookSettings;Ldev/geode/feature/settings/api/PlaybackSettings;Ldev/geode/feature/settings/api/EqualizerSettings;Ldev/geode/feature/settings/api/AnalysisSettings;Ldev/geode/feature/settings/api/BehaviorSettings;Ldev/geode/feature/settings/api/ExportSettings;Ldev/geode/feature/settings/api/FolderSettings;Ldev/geode/feature/settings/api/OnboardingSettings;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/LookSettings;
+	public final fun component2 ()Ldev/geode/feature/settings/api/PlaybackSettings;
+	public final fun component3 ()Ldev/geode/feature/settings/api/EqualizerSettings;
+	public final fun component4 ()Ldev/geode/feature/settings/api/AnalysisSettings;
+	public final fun component5 ()Ldev/geode/feature/settings/api/BehaviorSettings;
+	public final fun component6 ()Ldev/geode/feature/settings/api/ExportSettings;
+	public final fun component7 ()Ldev/geode/feature/settings/api/FolderSettings;
+	public final fun component8 ()Ldev/geode/feature/settings/api/OnboardingSettings;
+	public final fun copy (Ldev/geode/feature/settings/api/LookSettings;Ldev/geode/feature/settings/api/PlaybackSettings;Ldev/geode/feature/settings/api/EqualizerSettings;Ldev/geode/feature/settings/api/AnalysisSettings;Ldev/geode/feature/settings/api/BehaviorSettings;Ldev/geode/feature/settings/api/ExportSettings;Ldev/geode/feature/settings/api/FolderSettings;Ldev/geode/feature/settings/api/OnboardingSettings;)Ldev/geode/feature/settings/api/SettingsValues;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/SettingsValues;Ldev/geode/feature/settings/api/LookSettings;Ldev/geode/feature/settings/api/PlaybackSettings;Ldev/geode/feature/settings/api/EqualizerSettings;Ldev/geode/feature/settings/api/AnalysisSettings;Ldev/geode/feature/settings/api/BehaviorSettings;Ldev/geode/feature/settings/api/ExportSettings;Ldev/geode/feature/settings/api/FolderSettings;Ldev/geode/feature/settings/api/OnboardingSettings;ILjava/lang/Object;)Ldev/geode/feature/settings/api/SettingsValues;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnalysis ()Ldev/geode/feature/settings/api/AnalysisSettings;
+	public final fun getBehavior ()Ldev/geode/feature/settings/api/BehaviorSettings;
+	public final fun getEqualizer ()Ldev/geode/feature/settings/api/EqualizerSettings;
+	public final fun getExport ()Ldev/geode/feature/settings/api/ExportSettings;
+	public final fun getFolders ()Ldev/geode/feature/settings/api/FolderSettings;
+	public final fun getLook ()Ldev/geode/feature/settings/api/LookSettings;
+	public final fun getOnboarding ()Ldev/geode/feature/settings/api/OnboardingSettings;
+	public final fun getPlayback ()Ldev/geode/feature/settings/api/PlaybackSettings;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+

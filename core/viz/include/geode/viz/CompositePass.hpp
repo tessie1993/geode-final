@@ -56,8 +56,6 @@ public:
         float ratio = 1.0f;
         float timeSeconds = 0.0f;
         float hitImpulse = 0.0f;
-        float flash = 0.0f;
-        float strobeHz = 0.0f;
         float postRotationAngle = 0.0f;
         float postCyclePhase = 0.0f;
         float postBeatPulse = 0.0f;
