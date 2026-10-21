@@ -35,6 +35,8 @@ void AcidScene::init() {
 void AcidScene::resize(int width, int height) {
     width_ = std::max(width, 1);
     height_ = std::max(height, 1);
+    // Kept unless its declared grid really changes (see fluid::gridChanges).
+    if (state_ && !fluid::gridChanges({state_->width(), state_->height()}, fluid::gridFor(kSimRes, width_, height_))) return;
     if (state_) state_->release();
     state_.reset();
 }
