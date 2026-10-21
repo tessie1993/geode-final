@@ -24,9 +24,12 @@ data class SourceFile(
  * Each feature is four modules: `:feature:x:api`, `:core`, `:handlers` and `:ui`. What each may
  * depend on is the table in ADR-0005, with the owner's later ruling that handlers may use another
  * feature's `:api` (to call its `send` or read its state); `:app` only wires, and may depend on
- * anything.
+ * anything. `:design` holds the App UI's tokens, theme and common components: a feature's `:ui` and
+ * `:app` may use it, nothing else may, and it depends on nothing in this build (no feature, no `:arch`,
+ * nothing of the Visual).
  */
 object FeatureRules {
+    private const val DESIGN = ":design"
     private val platformPrefixes = listOf("android.", "androidx.", "org.jetbrains.compose.")
     private val pureParts = setOf("api", "core")
 
@@ -74,9 +77,11 @@ object FeatureRules {
         val feature = featureOf(from)
         val target = featureOf(to)
         return when {
+            from == DESIGN -> false
             feature != null -> allowedFromFeature(feature, from.substringAfterLast(':'), to)
-            from.startsWith(":arch:") -> target == null
-            else -> target == null || from == ":app"
+            from == ":app" -> true
+            to == DESIGN -> false
+            else -> target == null
         }
     }
 
@@ -91,7 +96,7 @@ object FeatureRules {
             "api" -> to == ":arch:kernel"
             "core" -> to == ":arch:kernel" || otherApi
             "handlers" -> to == "$own:core" || to == "$own:api" || to.startsWith(":arch:") || otherApi
-            "ui" -> to == "$own:api"
+            "ui" -> to == "$own:api" || to == DESIGN
             else -> false
         }
     }
