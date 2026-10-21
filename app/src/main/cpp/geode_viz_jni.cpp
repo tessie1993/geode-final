@@ -99,13 +99,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizQueueTouchStroke(JNIEnv*, jobject, j
 }
 
 JNIEXPORT void JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetFluidInjection(JNIEnv* env, jobject, jlong handle, jstring force, jstring dye) {
-    Utf8Chars forceSrc(env, force);
-    Utf8Chars dyeSrc(env, dye);
-    geode_viz_set_fluid_injection(vizOf(handle), forceSrc.get(), dyeSrc.get());
-}
-
-JNIEXPORT void JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizLoadMilkPreset(JNIEnv* env, jobject, jlong handle, jstring path) {
     Utf8Chars file(env, path);
     geode_viz_load_milk_preset(vizOf(handle), file.get());
@@ -137,24 +130,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizPushPcm(JNIEnv* env, jobject, jlong 
     FloatElements data(env, mono);
     if (!data.get()) return;
     geode_viz_push_pcm(vizOf(handle), data.get(), count < data.length() ? count : data.length());
-}
-
-JNIEXPORT void JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetCustomShader(JNIEnv* env, jobject, jlong handle, jstring sceneId,
-                                                            jstring fragmentSource) {
-    Utf8Chars id(env, sceneId);
-    Utf8Chars source(env, fragmentSource);
-    geode_viz_set_custom_shader(vizOf(handle), id.get(), source.get());
-}
-
-JNIEXPORT jstring JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizCustomShader(JNIEnv* env, jobject, jlong handle, jstring sceneId) {
-    Utf8Chars id(env, sceneId);
-    const size_t length = geode_viz_custom_shader(vizOf(handle), id.get(), nullptr, 0);
-    if (length == 0) return nullptr;
-    std::vector<char> buffer(length + 1, '\0');
-    geode_viz_custom_shader(vizOf(handle), id.get(), buffer.data(), buffer.size());
-    return env->NewStringUTF(buffer.data());
 }
 
 JNIEXPORT void JNICALL

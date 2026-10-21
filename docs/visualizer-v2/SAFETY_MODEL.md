@@ -46,13 +46,31 @@ modulator can push it back into the hazardous range.
 
 | Lever | What it bounds |
 |---|---|
-| `apply` | strobe, flash, glitch, bloom, brightness, intensity, contrast |
-| `strobeHz` | the strobe's oscillator rate — dimming a 9 Hz flicker leaves a 9 Hz flicker |
+| `apply` | glitch, bloom, brightness, intensity, contrast |
 | `limitLfoRate` | an LFO aimed at a luminance target; the rate is the hazard, not the amplitude |
 | `beatMinIntervalMs` | the floor between beat-driven hits |
 | `layerMix` | ADD and DIFFERENCE blends, which reach the screen after `apply` |
 | `transitionStyle` / `transitionId` | a hard cut becomes a crossfade |
-| `FlashBudget` | how *often* the flash may fire — three rising edges per rolling second |
+| `FlashLimiter` | the finished frame itself — see below |
+| `BeatEnvelope` | the beat pulse every Style reads rises over 0.1 s instead of jumping |
+
+There is no Strobe and no Flash parameter any more (#89); presets that carry them still load and
+the values are ignored.
+
+**The No-flash limiter.** `core/viz/FlashLimiter` (pure, host-tested in
+`core/tests/flash_limiter_test.cpp`) bounds what reaches the screen, whatever produced it: every
+shader and field Style, MilkDrop, Layers, transitions and the composite's effects.
+`NoFlashPass` draws the composite into a candidate target, averages it on the GPU into a 4x4
+grid of linear relative luminance and saturated-red value (`noflash_measure_frag.glsl`), reads
+those 16 texels back, and asks the limiter how much of the new frame may be shown. The limiter
+follows WCAG 2.3.1: a transition is a change of at least 0.1 in relative luminance with the
+darker state below 0.8, or of at least 20 in (R - G - B) * 320 over saturated red; a flash is a
+pair of them. It tracks the whole frame and the nine overlapping quarter-of-the-frame regions of
+the grid, each with its own budget of six transitions in any one second. While a budget is
+spent, the frame is crossfaded in linear light from the one shown before toward the new one by
+just enough that no spent area completes another transition (`noflash_mix_frag.glsl`). Normal
+motion changes an area a few times a second at most and never reaches a budget, so it passes
+unchanged. The readback is synchronous (16 texels), which costs the CPU/GPU overlap of one frame.
 
 Inversion and solarize are deliberately **not** forced off. A statically inverted picture is not a
 flash; the hazard is toggling it quickly, which the rate limits above already bound. Forcing them
@@ -60,21 +78,8 @@ off would only produce a dead control.
 
 ## 4. What this does not cover
 
-**No frame is measured.** Every limit above is computed from parameters — what the app is about to
-ask the shader to do. §11.2's limiter is defined over *measured* temporal luminance and
-saturated-red change, which needs a downsampled target and an asynchronous readback.
-
-Three paths therefore still reach the screen outside all of it, because none passes through
-`uPostFlash` or `SceneParams`:
-
-- **projectM** renders MilkDrop presets itself and can strobe internally;
-- **Shader Studio** runs user GLSL;
-- a scene's **own internal brightness** swings.
-
-Making the clamp unconditional closed the *opt-out*; it did not close these. Until a measured
-final-frame limiter exists, an imported `.milk` preset can still flash outside the limit, so the
-product promise that "no imported file can exceed the flash limit" is **not yet true**. That work
-is **V2-0-02c**.
-
-Also absent: the saturated-red analysis, the alternating-stripe and red-transition vectors (both
-need frame content), safety telemetry in debug builds, and the thermal half of §11.4.
+The limiter measures region means on a coarse grid, not WCAG's per-pixel area rule: a flash
+confined to well under a sixteenth of the frame, or a fine pattern, is not seen. Its red measure
+is exact for the mean but the crossfade's effect on it is only approximately linear. The overlay
+layer (cover art, text) is drawn after the limiter and is not measured. Also absent: the
+alternating-stripe vectors, safety telemetry in debug builds, and the thermal half of §11.4.

@@ -57,6 +57,14 @@ include(
     ":feature:capture:ui",
 )
 
+// Settings (#38): today's settings on one store, in DataStore (ADR-0004).
+include(
+    ":feature:settings:api",
+    ":feature:settings:core",
+    ":feature:settings:handlers",
+    ":feature:settings:ui",
+)
+
 // Customization (#39): the model and its reducer. Its :handlers and :ui come with later tickets.
 include(
     ":feature:customization:api",
