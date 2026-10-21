@@ -169,11 +169,10 @@ internal object Listening {
         event: PlaybackEvent.TrackChanged,
     ): Change {
         val player = state.player
-        val queue = settled(player)?.first
-        val following = queue?.let { following(it, state.options) }?.takeIf { state.options.joinsTracks }
-        if (queue == null || following == null || event.track == queue.current.id || event.track != following.current.id) {
-            return core.player(state, core.trackChanged(player, event))
-        }
+        val asBefore = core.player(state, core.trackChanged(player, event))
+        val queue = settled(player)?.first ?: return asBefore
+        val following = following(queue, state.options)?.takeIf { state.options.joinsTracks } ?: return asBefore
+        if (event.track == queue.current.id || event.track != following.current.id) return asBefore
         val heard = forget(state, queue.current)
         val afterTrack = state.sleep == SleepTimer.AfterTrack
         val effects =
