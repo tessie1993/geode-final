@@ -11,6 +11,34 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Removed user GLSL shaders (#87).** The Customize panel's GLSL tab, the
+  Fluid tab's force and dye injection editors, the renderer's custom-shader
+  and fluid-injection paths, their C ABI (`geode_viz_set_custom_shader`,
+  `geode_viz_custom_shader`, `geode_viz_set_fluid_injection`) and JNI
+  bindings are gone; no code path compiles a user-supplied shader. A saved
+  preset or preset link that still carries a `customShader` loads on the
+  default Style, keeping its Customization.
+- **Removed the Silk Style family (#86).** All ten Silk Styles, their scene,
+  their step and present shaders, the compute-layer simulation only they ran
+  (`core/viz/compute`), their catalogue entries on both sides of the bridge,
+  and the Silk tab in the Styles picker are gone. Trails and Trail length
+  now apply to Curl Flow only. The default Style is now Aurora, a calm shader
+  Style standing in until the real default is chosen (`SceneIds.DEFAULT`). A
+  saved preset, the live settings or a Studio clip that names a Style that no
+  longer exists loads the default Style instead, with no error, and keeps
+  everything else it stores.
+- **No-flash rule: one limiter on every frame; Strobe and Flash removed (#89).**
+  `core/viz/FlashLimiter` measures the finished frame (whole frame and nine
+  quarter-frame regions, relative luminance and saturated red) on a 4x4 GPU
+  grid read back each frame by `NoFlashPass`, and crossfades toward the frame
+  shown before whenever an area would exceed three WCAG 2.3.1 flashes in a
+  second. It runs after the composite, so every Style, MilkDrop included,
+  passes through it; it replaces `FlashBudget`, which only covered the
+  composite Flash. The Strobe and Flash parameters are gone from Kotlin, the
+  C ABI wire order, the composite and all 39 shader Styles; presets that carry
+  them still load. Beat pulses (`uBeat` and the scene-side copies) rise over
+  0.1 s through `BeatEnvelope` instead of jumping, and Acid's own glitch is
+  held to the shared 0.25 cap. The built-in "Strobe" look is now "Surge".
 - **Removed the features ruled out of the product (#9).** Takes; second-screen
   output; the boot ripple intro; key and artwork colours; video templates and
   `geode://template` links; auto visuals (random switching, visual playlists,

@@ -10,6 +10,7 @@ import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
 import dev.geode.render.BlendMode
+import dev.geode.render.FrameStats
 import dev.geode.render.LfoConfig
 import dev.geode.render.LfoEngine
 import dev.geode.render.scene.SceneParams
@@ -122,13 +123,6 @@ class NativeViz(
         if (handle != 0L) GeodeNative.vizQueueTouchStroke(handle, nx, ny, ndx, ndy, dt, strength)
     }
 
-    fun setFluidInjectionShaders(
-        force: String?,
-        dye: String?,
-    ) {
-        if (handle != 0L) GeodeNative.vizSetFluidInjection(handle, force, dye)
-    }
-
     fun loadMilkPreset(path: String) {
         if (handle != 0L) GeodeNative.vizLoadMilkPreset(handle, path)
     }
@@ -146,15 +140,6 @@ class NativeViz(
     ) {
         if (handle != 0L && count > 0) GeodeNative.vizPushPcm(handle, mono, count)
     }
-
-    fun setCustomShader(
-        sceneId: SceneId,
-        fragmentSource: String,
-    ) {
-        if (handle != 0L) GeodeNative.vizSetCustomShader(handle, sceneId.value, fragmentSource)
-    }
-
-    fun customShaderFor(sceneId: SceneId): String? = if (handle == 0L) null else GeodeNative.vizCustomShader(handle, sceneId.value)
 
     fun setLfoConfigs(configs: List<LfoConfig>) {
         if (handle == 0L) return
@@ -175,6 +160,11 @@ class NativeViz(
 
     fun setPacedFps(fps: Float) {
         if (handle != 0L) GeodeNative.vizSetPacedFps(handle, fps)
+    }
+
+    /** The frame pacer's latest window, which the scene and trail buffers scale with. */
+    fun setFrameLoad(stats: FrameStats) {
+        if (handle != 0L) GeodeNative.vizSetFrameLoad(handle, stats.frames, stats.p95Ms)
     }
 
     fun setOffscreen(on: Boolean) {

@@ -10,7 +10,6 @@
 #include "scenes/MilkdropScene.hpp"
 #include "scenes/MycoScene.hpp"
 #include "scenes/ShaderScene.hpp"
-#include "scenes/SilkScene.hpp"
 #include "scenes/StyleCatalog.hpp"
 #include "scenes/WaterScene.hpp"
 
@@ -47,13 +46,12 @@ void append(std::vector<std::string>& out, std::vector<std::string> ids) {
 }  // namespace
 
 bool SceneRegistry::knows(const std::string& id) const {
-    return isShaderId(id) || styles::cymatics(id) || styles::silk(id) || styles::life(id) || styles::acid(id) || styles::myco(id) ||
+    return isShaderId(id) || styles::cymatics(id) || styles::life(id) || styles::acid(id) || styles::myco(id) ||
            styles::fluid(id) || id == kMilkdrop || id == kCurlFlow || id == kWater;
 }
 
 std::vector<std::string> SceneRegistry::availableIds() const {
     std::vector<std::string> out;
-    append(out, styles::silkIds());
     append(out, styles::lifeIds());
     append(out, styles::mycoIds());
     append(out, styles::acidIds());
@@ -77,7 +75,6 @@ std::unique_ptr<Scene> SceneRegistry::create(const std::string& id, const std::s
         return std::make_unique<ShaderScene>(id, quadVert, *fragment, loader_.cache, host_);
     }
     if (const auto* style = styles::cymatics(id)) return std::make_unique<CymaticsScene>(*style, loader_, host_);
-    if (const auto* style = styles::silk(id)) return std::make_unique<SilkScene>(*style, loader_, profile_, host_);
     if (const auto* style = styles::life(id)) return std::make_unique<LifeScene>(*style, loader_, host_);
     if (const auto* style = styles::acid(id)) return std::make_unique<AcidScene>(*style, loader_, host_);
     if (const auto* style = styles::myco(id)) return std::make_unique<MycoScene>(*style, loader_, host_);

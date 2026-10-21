@@ -110,24 +110,6 @@ class VisualizerRenderer(
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
     fun releaseScenes() = nativeViz.destroy()
 
-    fun submitShader(
-        sceneId: SceneId,
-        fragmentSrc: String,
-    ) {
-        nativeViz.create()
-        nativeViz.setCustomShader(sceneId, fragmentSrc)
-    }
-
-    fun customShaderFor(sceneId: SceneId): String? = nativeViz.customShaderFor(sceneId)
-
-    fun submitFluidInjectionShaders(
-        force: String?,
-        dye: String?,
-    ) {
-        nativeViz.create()
-        nativeViz.setFluidInjectionShaders(force, dye)
-    }
-
     fun loadMilkPreset(path: String) {
         lastMilkPreset = path
         nativeViz.create()
@@ -211,6 +193,7 @@ class VisualizerRenderer(
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
             nativeThermalSampleMs = now
             nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
+            nativeViz.setFrameLoad(FramePacer.activeStats())
         }
         pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }

@@ -3,6 +3,8 @@
 
 #include <utility>
 
+#include "geode/viz/fluid/SimGrid.hpp"
+
 namespace geode::viz::fluid {
 
 struct TexFormat {
@@ -24,7 +26,6 @@ struct Formats {
 };
 
 Formats probeFormats();
-std::pair<int, int> resolution(int res, int width, int height);
 
 // Port of FluidBuffers.Fbo: one texture behind one framebuffer, cleared to opaque black on creation.
 class Fbo {

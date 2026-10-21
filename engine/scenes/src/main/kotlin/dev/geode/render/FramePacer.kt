@@ -98,7 +98,7 @@ class FramePacer(
      * Seconds between the last two drawn frames, clamped to [MIN_DT_SECONDS]..[MAX_DT_SECONDS].
      *
      * The upper bound matches the clamp the field-simulation scenes already apply to their own
-     * step (`AcidScene`, `CymaticsScene`, `LifeScene`, `MycoScene`, `SilkScene`
+     * step (`AcidScene`, `CymaticsScene`, `LifeScene`, `MycoScene`
      * all use 1/15 s): past that, an integrator that was tuned at 60 Hz stops being merely slow
      * and starts diverging. A single stalled frame must not be allowed to blow up a simulation
      * that has been running all evening.
@@ -346,6 +346,14 @@ class FramePacer(
          * without being that entry leaves the value alone.
          */
         private val runningStack = mutableListOf<FramePacer>()
+
+        /**
+         * The frame-time window of the most recently started pacer that is still running, the same
+         * pacer whose cap [ThermalGovernor.pacedFps] reflects; [FrameStats.EMPTY] when none runs.
+         * The native renderer scales the Visual's scene and trail buffers with it. Allocates like
+         * [stats], so poll it at thermal-sampling rates.
+         */
+        fun activeStats(): FrameStats = synchronized(runningStack) { runningStack.lastOrNull() }?.stats() ?: FrameStats.EMPTY
 
         /**
          * The rate the scenes are authored and tuned at. Above it the fragment cost of a

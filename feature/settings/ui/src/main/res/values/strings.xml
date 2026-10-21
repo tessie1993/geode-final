@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_loading">Loading your settings…</string>
+
+    <string name="settings_section_look">Look</string>
+    <string name="settings_section_audio">Audio</string>
+    <string name="settings_section_export">Export</string>
+    <string name="settings_section_folders">Folders</string>
+    <string name="settings_section_behavior">Behavior</string>
+    <string name="settings_section_help">Help</string>
+    <string name="settings_section_about">About</string>
+
+    <string name="settings_off">Off</string>
+
+    <!-- Look -->
+    <string name="look_group_colour">Colour</string>
+    <string name="look_accent_intensity">Accent intensity  %1$d%%</string>
+    <string name="look_background_dim">Background dim  %1$d%%</string>
+    <string name="look_group_text">Text</string>
+    <string name="look_font_color">Text colour</string>
+    <string name="look_font_color_theme">Theme</string>
+    <string name="look_text_size">Text size  %1$d%%</string>
+    <string name="look_group_layout">Layout</string>
+    <string name="look_bar_opacity">Bar opacity  %1$d%%</string>
+    <string name="look_player_position">Player position</string>
+    <string name="look_position_top">Top</string>
+    <string name="look_position_bottom">Bottom</string>
+    <string name="look_corner_style">Corners</string>
+    <string name="look_corner_sharp">Sharp</string>
+    <string name="look_corner_rounded">Rounded</string>
+    <string name="look_corner_pill">Pill</string>
+    <string name="look_compact_player">Compact player</string>
+    <string name="look_clear_visuals_menu">Clear Visuals menu</string>
+
+    <!-- Audio -->
+    <string name="audio_group_playback">Playback</string>
+    <string name="playback_speed">Speed  %1$.2f×</string>
+    <string name="playback_pitch">Pitch  %1$+.1f semitones</string>
+    <string name="playback_fade">Fade on pause and play  %1$.2f s</string>
+    <string name="playback_skip_silence">Skip silence</string>
+    <string name="playback_pause_unplugged">Pause when headphones are unplugged</string>
+    <string name="playback_keep_screen_on">Keep the screen on</string>
+    <string name="playback_auto_resume">Resume when headphones connect</string>
+    <string name="playback_resume_long_tracks">Remember where long tracks were left</string>
+    <string name="playback_sleep_timer">Sleep timer</string>
+    <string name="playback_sleep_minutes">%1$d min</string>
+    <string name="playback_sleep_finish_track">Finish the track first</string>
+    <string name="playback_replaygain">ReplayGain</string>
+    <string name="playback_replaygain_off">Off</string>
+    <string name="playback_replaygain_track">Track</string>
+    <string name="playback_replaygain_album">Album</string>
+    <string name="playback_replaygain_preamp">Preamp  %1$+.1f dB</string>
+    <string name="playback_replaygain_clip_guard">Prevent clipping</string>
+    <string name="playback_native_engine">Native audio engine</string>
+    <string name="playback_gapless">Gapless playback</string>
+    <string name="playback_crossfade">Crossfade  %1$.1f s</string>
+    <string name="playback_crossfade_curve">Crossfade curve</string>
+    <string name="playback_crossfade_linear">Linear</string>
+    <string name="playback_crossfade_equal_power">Equal power</string>
+    <string name="playback_crossfade_smooth">Smooth</string>
+
+    <string name="audio_group_equalizer">Equalizer</string>
+    <string name="eq_enabled">Equalizer on</string>
+    <string name="eq_preset">Preset</string>
+    <string name="eq_preset_custom">Custom</string>
+    <string name="eq_preset_flat">Flat</string>
+    <string name="eq_preset_bass">Bass</string>
+    <string name="eq_preset_treble">Treble</string>
+    <string name="eq_preset_vocal">Vocal</string>
+    <string name="eq_preset_rock">Rock</string>
+    <string name="eq_preset_electronic">Electronic</string>
+    <string name="eq_band">Band %1$d  %2$+.1f dB</string>
+    <string name="eq_bass_boost">Bass boost  %1$d%%</string>
+    <string name="eq_loudness">Loudness  %1$+.1f dB</string>
+
+    <string name="audio_group_analysis">Analysis</string>
+    <string name="audio_beat_sensitivity">Beat sensitivity  %1$.1f</string>
+    <string name="audio_beat_min_gap">Shortest gap between beats  %1$d ms</string>
+    <string name="audio_slow_track">Slow track</string>
+    <string name="audio_default">Default</string>
+    <string name="audio_preset_morph">Preset glide  %1$.1f s</string>
+    <string name="audio_react_mic">React to the microphone</string>
+
+    <!-- Export -->
+    <string name="export_group_defaults">New renders start with</string>
+    <string name="export_quality">Quality</string>
+    <string name="export_quality_720">720p</string>
+    <string name="export_quality_1080">1080p</string>
+    <string name="export_quality_4k">4K</string>
+    <string name="export_frame_rate">Frame rate</string>
+    <string name="export_fps">%1$d fps</string>
+    <string name="export_aspect_ratio">Shape</string>
+    <string name="export_ratio_16_9">16:9</string>
+    <string name="export_ratio_9_16">9:16</string>
+    <string name="export_ratio_1_1">1:1</string>
+    <string name="export_ratio_4_5">4:5</string>
+    <string name="export_ratio_4_3">4:3</string>
+    <string name="export_ratio_21_9">21:9</string>
+    <string name="export_loop_safe">Loop-safe length</string>
+    <string name="export_codec">Codec</string>
+    <string name="export_codec_h264">H.264</string>
+    <string name="export_codec_hevc">HEVC</string>
+    <string name="export_loudness">Loudness</string>
+    <string name="export_loudness_youtube">YouTube</string>
+    <string name="export_loudness_shorts">Shorts and TikTok</string>
+    <string name="export_loudness_as_is">Leave as mixed</string>
+
+    <!-- Folders -->
+    <string name="folders_group_presets">Preset folder</string>
+    <string name="folders_presets_none">Presets are kept in the app only.</string>
+    <string name="folders_presets_choose">Choose folder</string>
+    <string name="folders_presets_stop">Stop mirroring</string>
+    <string name="folders_group_music">Music folders</string>
+    <string name="folders_music_none">No folders added. The library shows the music Android finds.</string>
+    <string name="folders_music_add">Add folder</string>
+    <string name="folders_music_remove">Remove</string>
+
+    <!-- Behavior -->
+    <string name="behavior_group_touch">Touch</string>
+    <string name="behavior_touch_smear">Smear the Visual with a finger</string>
+    <string name="behavior_smear_strength">Smear strength  %1$d%%</string>
+    <string name="behavior_touch_transform">Pinch and drag the Visual</string>
+    <string name="behavior_group_safety">Motion</string>
+    <string name="behavior_flash_guidance">The Visual never flashes: fast changes in brightness are always limited.</string>
+    <string name="behavior_slow_motion">Reduce motion</string>
+    <string name="behavior_group_wallpaper">Live wallpaper</string>
+    <string name="behavior_wallpaper_button">Set as live wallpaper</string>
+
+    <!-- Help -->
+    <string name="help_tutorial_group">Walkthrough</string>
+    <string name="help_tutorial_start">Start the walkthrough</string>
+    <string name="help_tutorial_replay">Replay the walkthrough</string>
+    <string name="help_tutorial_on_first_run">Offer it when the app starts</string>
+
+    <!-- About -->
+    <string name="about_group">Geode</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_private">Offline and private: nothing leaves your phone.</string>
+</resources>

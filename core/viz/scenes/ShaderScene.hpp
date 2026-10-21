@@ -10,6 +10,7 @@
 #include "geode/render/Program.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/viz/BeatEnvelope.hpp"
 
 namespace geode::viz {
 
@@ -34,13 +35,11 @@ public:
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
-    void setFragmentSource(const std::string& source) override;
 
 private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
     static constexpr float kTwoPi = 6.2831853f;
     static constexpr float kPulsePhaseHz = 0.6f;
-    static constexpr float kPulseDecayPerSecond = 3.0f;
     static constexpr float kAudioClamp = 1.5f;
 
     // ---- the smoothed motion layer -----------------------------------------
@@ -127,7 +126,6 @@ private:
 
     std::mutex pendingLock_;
     std::optional<std::string> pendingFragment_;
-    bool pendingIsUserSource_ = false;
 
     std::array<float, kAudioTexWidth * 2> texData_{};
     float bass_ = 0.0f;
@@ -135,6 +133,7 @@ private:
     float treble_ = 0.0f;
     float energy_ = 0.0f;
     float beatPulse_ = 0.0f;
+    BeatEnvelope beatEnvelope_;
     float pulsePhase_ = 0.0f;
 
     // The motion layer's integrated state. All of it survives from frame to
