@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.annotation.OptIn
-import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
@@ -221,14 +220,14 @@ class PlaybackService : MediaLibraryService() {
         }
 
         fun ensureRunning(context: Context) {
-            // startService() throws IllegalStateException on API 26+ when called while the app is
+            // startService() throws IllegalStateException when called while the app is
             // backgrounded (this is invoked from onIsPlayingChanged, which can fire off-screen), and
             // runCatching used to swallow that silently, leaving the service never started.
             // startForegroundService() is allowed from the background, and MediaSessionService (which
             // PlaybackService extends) promotes itself to the foreground and posts the playback
             // notification as soon as its session's player reports isPlaying, satisfying the 5s window.
             runCatching {
-                ContextCompat.startForegroundService(context, Intent(context, PlaybackService::class.java))
+                context.startForegroundService(Intent(context, PlaybackService::class.java))
             }.onFailure { RingLog.note("PlaybackService.ensureRunning", "startForegroundService failed", it) }
         }
 

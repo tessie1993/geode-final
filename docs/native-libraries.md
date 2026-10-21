@@ -21,7 +21,7 @@ Each library exports only `core/<lib>/include` (`target_include_directories(... 
 | `geode_bridge` | `core/bridge` | What crosses between Kotlin and the engine: the Customization snapshot and its codec (generated from `core/bridge/schema/native_bridge.json`), the lock-free triple-buffer hand-off to the drawing and audio threads, and the guard that turns any C++ exception into a `GeodeStatus` | `api_types` / — |
 | `geode_render` | `core/render` | GL plumbing: capability probing, GL profile, programs and the program binary cache, textures, framebuffers, the fullscreen quad, compute, shader sources | — / `util` |
 | `geode_analysis` | `core/analysis` | FFT, bands, onsets, tempo, beats, key, structure, the feature frame | `api_types` / — |
-| `geode_audio` | `core/audio` | `dsp/` (equalizer, crossfeed, limiter, and `geode_dsp_*`, the DSP part of the C ABI, which the mixer itself calls) and `player/` (decode, resample, mixer, Oboe output) | `api_types` / `util` |
+| `geode_audio` | `core/audio` | `dsp/` (equalizer, crossfeed, limiter, and `geode_dsp_*`, the DSP part of the C ABI, which the mixer itself calls) and `player/` (decode, resample, mixer, Oboe output with its self-tuning buffer) | `api_types` / `util` |
 | `geode_library` | `core/library` | TagLib tag reading and writing | — |
 | `geode_viz` | `core/viz` | The Visual: renderer, frame graph, parameter model, modulators, scenes | `api_types`, `render` / `analysis`, `util` |
 | `geode_api` | `core/api` | The rest of the C ABI implementation (analysis, Visual, tags, player, Customization snapshots) | `api_types` / `analysis`, `audio`, `bridge`, `library`, `viz`, `util` |

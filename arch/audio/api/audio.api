@@ -1,0 +1,148 @@
+public abstract interface class dev/geode/audio/adapter/AudioAdapter {
+	public abstract fun captureSources (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getAnnouncements ()Lkotlinx/coroutines/flow/Flow;
+	public abstract fun load-u8bPXO0 (Ljava/lang/String;JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun seekTo-zo5JZLk (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun setPlaying (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun startCapture (Ldev/geode/audio/adapter/CaptureSource;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun stopCapture (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class dev/geode/audio/adapter/AudioAnnouncement {
+}
+
+public abstract interface class dev/geode/audio/adapter/CaptureAnnouncement : dev/geode/audio/adapter/AudioAnnouncement {
+}
+
+public final class dev/geode/audio/adapter/CaptureAnnouncement$Lost : dev/geode/audio/adapter/CaptureAnnouncement {
+	public fun <init> (Ldev/geode/audio/adapter/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/audio/adapter/CaptureSource;
+	public final fun copy (Ldev/geode/audio/adapter/CaptureSource;)Ldev/geode/audio/adapter/CaptureAnnouncement$Lost;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/CaptureAnnouncement$Lost;Ldev/geode/audio/adapter/CaptureSource;ILjava/lang/Object;)Ldev/geode/audio/adapter/CaptureAnnouncement$Lost;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/audio/adapter/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/CaptureAnnouncement$QuietChanged : dev/geode/audio/adapter/CaptureAnnouncement {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/audio/adapter/CaptureAnnouncement$QuietChanged;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/CaptureAnnouncement$QuietChanged;ZILjava/lang/Object;)Ldev/geode/audio/adapter/CaptureAnnouncement$QuietChanged;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getQuiet ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/CaptureAnnouncement$Running : dev/geode/audio/adapter/CaptureAnnouncement {
+	public fun <init> (Ldev/geode/audio/adapter/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/audio/adapter/CaptureSource;
+	public final fun copy (Ldev/geode/audio/adapter/CaptureSource;)Ldev/geode/audio/adapter/CaptureAnnouncement$Running;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/CaptureAnnouncement$Running;Ldev/geode/audio/adapter/CaptureSource;ILjava/lang/Object;)Ldev/geode/audio/adapter/CaptureAnnouncement$Running;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/audio/adapter/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/CaptureFailure : java/lang/Enum {
+	public static final field PERMISSION Ldev/geode/audio/adapter/CaptureFailure;
+	public static final field UNAVAILABLE Ldev/geode/audio/adapter/CaptureFailure;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/audio/adapter/CaptureFailure;
+	public static fun values ()[Ldev/geode/audio/adapter/CaptureFailure;
+}
+
+public final class dev/geode/audio/adapter/CaptureSource : java/lang/Enum {
+	public static final field LINE_IN Ldev/geode/audio/adapter/CaptureSource;
+	public static final field MICROPHONE Ldev/geode/audio/adapter/CaptureSource;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/audio/adapter/CaptureSource;
+	public static fun values ()[Ldev/geode/audio/adapter/CaptureSource;
+}
+
+public abstract interface class dev/geode/audio/adapter/PlaybackAnnouncement : dev/geode/audio/adapter/AudioAnnouncement {
+}
+
+public final class dev/geode/audio/adapter/PlaybackAnnouncement$Ended : dev/geode/audio/adapter/PlaybackAnnouncement {
+	public static final field INSTANCE Ldev/geode/audio/adapter/PlaybackAnnouncement$Ended;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/PlaybackAnnouncement$Failed : dev/geode/audio/adapter/PlaybackAnnouncement {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Failed;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/PlaybackAnnouncement$Failed;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReason ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/PlaybackAnnouncement$Paused : dev/geode/audio/adapter/PlaybackAnnouncement {
+	public fun <init> (Ldev/geode/audio/adapter/PlaybackMark;)V
+	public final fun component1 ()Ldev/geode/audio/adapter/PlaybackMark;
+	public final fun copy (Ldev/geode/audio/adapter/PlaybackMark;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Paused;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/PlaybackAnnouncement$Paused;Ldev/geode/audio/adapter/PlaybackMark;ILjava/lang/Object;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Paused;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/audio/adapter/PlaybackMark;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/PlaybackAnnouncement$Seeked : dev/geode/audio/adapter/PlaybackAnnouncement {
+	public fun <init> (Ldev/geode/audio/adapter/PlaybackMark;)V
+	public final fun component1 ()Ldev/geode/audio/adapter/PlaybackMark;
+	public final fun copy (Ldev/geode/audio/adapter/PlaybackMark;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Seeked;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/PlaybackAnnouncement$Seeked;Ldev/geode/audio/adapter/PlaybackMark;ILjava/lang/Object;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Seeked;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/audio/adapter/PlaybackMark;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/PlaybackAnnouncement$Started : dev/geode/audio/adapter/PlaybackAnnouncement {
+	public fun <init> (Ldev/geode/audio/adapter/PlaybackMark;)V
+	public final fun component1 ()Ldev/geode/audio/adapter/PlaybackMark;
+	public final fun copy (Ldev/geode/audio/adapter/PlaybackMark;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Started;
+	public static synthetic fun copy$default (Ldev/geode/audio/adapter/PlaybackAnnouncement$Started;Ldev/geode/audio/adapter/PlaybackMark;ILjava/lang/Object;)Ldev/geode/audio/adapter/PlaybackAnnouncement$Started;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/audio/adapter/PlaybackMark;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/PlaybackAnnouncement$TrackChanged : dev/geode/audio/adapter/PlaybackAnnouncement {
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/audio/adapter/PlaybackMark;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-euwFSgs ()Ljava/lang/String;
+	public final fun component2 ()Ldev/geode/audio/adapter/PlaybackMark;
+	public final fun copy-a6b4e_I (Ljava/lang/String;Ldev/geode/audio/adapter/PlaybackMark;)Ldev/geode/audio/adapter/PlaybackAnnouncement$TrackChanged;
+	public static synthetic fun copy-a6b4e_I$default (Ldev/geode/audio/adapter/PlaybackAnnouncement$TrackChanged;Ljava/lang/String;Ldev/geode/audio/adapter/PlaybackMark;ILjava/lang/Object;)Ldev/geode/audio/adapter/PlaybackAnnouncement$TrackChanged;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/audio/adapter/PlaybackMark;
+	public final fun getTrack-euwFSgs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/audio/adapter/PlaybackMark {
+	public synthetic fun <init> (JJZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun component2-CmsKos8 ()J
+	public final fun component3 ()Z
+	public final fun copy-iBeTg3A (JJZ)Ldev/geode/audio/adapter/PlaybackMark;
+	public static synthetic fun copy-iBeTg3A$default (Ldev/geode/audio/adapter/PlaybackMark;JJZILjava/lang/Object;)Ldev/geode/audio/adapter/PlaybackMark;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAt-CmsKos8 ()J
+	public final fun getMoving ()Z
+	public final fun getPosition-CmsKos8 ()J
+	public fun hashCode ()I
+	public final fun positionAt-BWnaxpk (J)J
+	public fun toString ()Ljava/lang/String;
+}
+

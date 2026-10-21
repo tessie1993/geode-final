@@ -3,7 +3,7 @@ package dev.geode.analysis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.scene.SceneIds
 
-enum class IntelligenceMode { MANUAL, SUGGEST, AUTO }
+enum class IntelligenceMode { MANUAL, SUGGEST }
 
 object SceneSuggester {
     val SCENE_JULIA = SceneIds.JULIA
