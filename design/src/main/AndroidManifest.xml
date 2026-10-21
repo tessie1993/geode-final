@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- The press haptics (StoneHapticCue) fall back to the vibrator below API 30. The app already
-         asks for this permission; declaring it here keeps the library honest about what it uses. -->
+    <!-- The press haptics (StoneHapticCue) fall back to the vibrator below API 30, and the watery
+         haptics compose their droplets and ripples on it. The app already asks for this permission;
+         declaring it here keeps the library honest about what it uses. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

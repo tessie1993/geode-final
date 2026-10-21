@@ -11,6 +11,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 /** The colours of the forest theme in use, for what Material's colour scheme has no role for. */
 val LocalForestColors = staticCompositionLocalOf { ForestPalettes.DeepForestDark }
 
+/** The forest theme in use, for materials that differ by theme beyond colour (the stone of the glass). */
+val LocalForestThemeId = staticCompositionLocalOf { ForestThemeId.Default }
+
+/** Whether the forest theme in use is dark or light. */
+val LocalForestMode = staticCompositionLocalOf { ForestMode.Default }
+
 /** [colors] mapped onto Material's colour roles. */
 fun forestColorScheme(
     colors: ForestColors,
@@ -59,7 +65,11 @@ fun ForestTheme(
     content: @Composable () -> Unit,
 ) {
     val colors = ForestPalettes.of(theme, mode)
-    CompositionLocalProvider(LocalForestColors provides colors) {
+    CompositionLocalProvider(
+        LocalForestColors provides colors,
+        LocalForestThemeId provides theme,
+        LocalForestMode provides mode,
+    ) {
         MaterialTheme(
             colorScheme = forestColorScheme(colors, mode),
             typography = forestTypography(),

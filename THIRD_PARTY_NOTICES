@@ -1204,3 +1204,18 @@ INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
 DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
+
+Poly Haven stone textures (frosted stone glass grain)
+-----------------------------------------------------
+design/src/main/res/drawable-nodpi/design_stone_grain_*.webp are baked by
+tools/design/bake_stone_grain.sh from these photographic scans, published by
+Poly Haven under CC0 1.0 (public domain dedication; no attribution required):
+
+  slate     https://polyhaven.com/a/rock_01       (Rob Tuytel)
+  obsidian  https://polyhaven.com/a/rock_2        (Rob Tuytel)
+  basalt    https://polyhaven.com/a/rock_surface  (Amal Kumar)
+
+  https://creativecommons.org/publicdomain/zero/1.0/
+
+design/src/main/res/drawable-nodpi/design_ripple_ring.webp is Geode's own
+offline render (tools/design/render_ripple_ring.py).
