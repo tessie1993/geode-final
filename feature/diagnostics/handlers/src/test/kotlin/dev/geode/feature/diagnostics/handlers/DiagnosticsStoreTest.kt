@@ -53,11 +53,10 @@ class DiagnosticsStoreTest {
         reportFiles: ReportFiles = files,
         sheet: ShareSheet = shareSheet,
         settingsSource: SettingsSource = settings,
-    ) =
-        diagnosticsStore(
-            DiagnosticsHandlers(FakeSystemFacts(), log, settingsSource, engine, reportFiles, sheet, clock = { Millis(REPORT_TIME) }),
-            inPlaceRuntime(clock, failures),
-        )
+    ) = diagnosticsStore(
+        DiagnosticsHandlers(FakeSystemFacts(), log, settingsSource, engine, reportFiles, sheet, clock = { Millis(REPORT_TIME) }),
+        inPlaceRuntime(clock, failures),
+    )
 
     @Test
     fun `sharing writes the report and opens the share sheet with it`() {
