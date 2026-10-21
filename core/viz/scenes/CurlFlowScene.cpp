@@ -4,7 +4,7 @@
 #include <cmath>
 
 #include "geode/viz/LiveSignal.hpp"
-#include "fluid/FluidMath.hpp"
+#include "geode/viz/fluid/FluidMath.hpp"
 
 namespace geode::viz {
 
