@@ -26,12 +26,6 @@ const val AUTHORITY_SUFFIX = ".diagnostics"
 
 private const val PARTIAL_SUFFIX = ".partial"
 
-/** No optional package information is asked for: the version is all the report needs. */
-private const val NO_PACKAGE_FLAGS = 0
-
-/** [NO_PACKAGE_FLAGS] as the `Long` that `PackageInfoFlags` takes from API 33. */
-private const val NO_PACKAGE_INFO_FLAGS = 0L
-
 /** The provider the diagnostics file is shared through (see the module's manifest). */
 class DiagnosticsFileProvider : FileProvider()
 
@@ -104,13 +98,15 @@ class AndroidSystemFacts(
             sdk = Build.VERSION.SDK_INT,
         )
 
+    // No optional package information is asked for (flags 0): the version is all the report needs.
+    // Lint accepts only a literal 0 or the PackageManager constants as these flags.
     private fun packageInfo(): PackageInfo {
         val packages = context.packageManager
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packages.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(NO_PACKAGE_INFO_FLAGS))
+            packages.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0L))
         } else {
             @Suppress("DEPRECATION")
-            packages.getPackageInfo(context.packageName, NO_PACKAGE_FLAGS)
+            packages.getPackageInfo(context.packageName, 0)
         }
     }
 }
