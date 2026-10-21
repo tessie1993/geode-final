@@ -59,12 +59,6 @@ void ShaderScene::setFlow(GLuint texture, float strength) {
     flowStrength_ = strength;
 }
 
-void ShaderScene::setFragmentSource(const std::string& source) {
-    std::lock_guard<std::mutex> lock(pendingLock_);
-    pendingFragment_ = source;
-    pendingIsUserSource_ = true;
-}
-
 void ShaderScene::init() {
     program_ = 0;
     uniforms_ = UniformCache(0);
@@ -312,12 +306,9 @@ float ShaderScene::marchSteps(float detail) {
 
 void ShaderScene::compilePendingIfAny() {
     std::optional<std::string> pending;
-    bool fromUser = false;
     {
         std::lock_guard<std::mutex> lock(pendingLock_);
         pending.swap(pendingFragment_);
-        fromUser = pendingIsUserSource_;
-        pendingIsUserSource_ = false;
     }
     if (!pending) return;
     std::string error;
@@ -331,7 +322,6 @@ void ShaderScene::compilePendingIfAny() {
     uniforms_ = UniformCache(built);
     currentFragment_ = *pending;
     host_.onShaderError("");
-    if (fromUser) host_.onUserSourceCompiled(id_, currentFragment_);
 }
 
 void ShaderScene::release() {

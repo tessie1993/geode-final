@@ -1,0 +1,922 @@
+public final class dev/geode/feature/customization/api/Customization {
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Map;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Ljava/util/Map;
+	public final fun copy-JvCHomo (Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)Ldev/geode/feature/customization/api/Customization;
+	public static synthetic fun copy-JvCHomo$default (Ldev/geode/feature/customization/api/Customization;Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Customization;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExtras ()Ljava/util/Map;
+	public final fun getMacros ()Ljava/util/List;
+	public final fun getModulators ()Ljava/util/List;
+	public final fun getReactions ()Ljava/util/List;
+	public final fun getShared ()Ljava/util/Map;
+	public final fun getSignals ()Ljava/util/Map;
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/customization/api/CustomizationCommand {
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$AddModulator : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/Modulator;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Modulator;
+	public final fun copy (Ldev/geode/feature/customization/api/Modulator;)Ldev/geode/feature/customization/api/CustomizationCommand$AddModulator;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$AddModulator;Ldev/geode/feature/customization/api/Modulator;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$AddModulator;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getModulator ()Ldev/geode/feature/customization/api/Modulator;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$AddReaction : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/Reaction;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Reaction;
+	public final fun copy (Ldev/geode/feature/customization/api/Reaction;)Ldev/geode/feature/customization/api/CustomizationCommand$AddReaction;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$AddReaction;Ldev/geode/feature/customization/api/Reaction;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$AddReaction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReaction ()Ldev/geode/feature/customization/api/Reaction;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$ApplyPreset : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/Preset;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Preset;
+	public final fun copy (Ldev/geode/feature/customization/api/Preset;)Ldev/geode/feature/customization/api/CustomizationCommand$ApplyPreset;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$ApplyPreset;Ldev/geode/feature/customization/api/Preset;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$ApplyPreset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPreset ()Ldev/geode/feature/customization/api/Preset;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$ChooseStyle : dev/geode/feature/customization/api/CustomizationCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun copy-TBnmCe8 (Ljava/lang/String;)Ldev/geode/feature/customization/api/CustomizationCommand$ChooseStyle;
+	public static synthetic fun copy-TBnmCe8$default (Ldev/geode/feature/customization/api/CustomizationCommand$ChooseStyle;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$ChooseStyle;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$ClearMacro : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Ldev/geode/feature/customization/api/CustomizationCommand$ClearMacro;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$ClearMacro;IILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$ClearMacro;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIndex ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$LinkMacro : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (ILdev/geode/feature/customization/api/MacroLink;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ldev/geode/feature/customization/api/MacroLink;
+	public final fun copy (ILdev/geode/feature/customization/api/MacroLink;)Ldev/geode/feature/customization/api/CustomizationCommand$LinkMacro;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$LinkMacro;ILdev/geode/feature/customization/api/MacroLink;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$LinkMacro;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIndex ()I
+	public final fun getLink ()Ldev/geode/feature/customization/api/MacroLink;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$LoadPreset : dev/geode/feature/customization/api/CustomizationCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-6unTwu0 ()Ljava/lang/String;
+	public final fun copy-nGqtyvE (Ljava/lang/String;)Ldev/geode/feature/customization/api/CustomizationCommand$LoadPreset;
+	public static synthetic fun copy-nGqtyvE$default (Ldev/geode/feature/customization/api/CustomizationCommand$LoadPreset;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$LoadPreset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-6unTwu0 ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$PlayModulator : dev/geode/feature/customization/api/CustomizationCommand {
+	public synthetic fun <init> (IZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ejnLCck ()I
+	public final fun component2 ()Z
+	public final fun copy-lDi_aFI (IZ)Ldev/geode/feature/customization/api/CustomizationCommand$PlayModulator;
+	public static synthetic fun copy-lDi_aFI$default (Ldev/geode/feature/customization/api/CustomizationCommand$PlayModulator;IZILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$PlayModulator;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-ejnLCck ()I
+	public final fun getPlaying ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$Redo : dev/geode/feature/customization/api/CustomizationCommand {
+	public static final field INSTANCE Ldev/geode/feature/customization/api/CustomizationCommand$Redo;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$RemoveModulator : dev/geode/feature/customization/api/CustomizationCommand {
+	public synthetic fun <init> (ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ejnLCck ()I
+	public final fun copy-sKAIT_o (I)Ldev/geode/feature/customization/api/CustomizationCommand$RemoveModulator;
+	public static synthetic fun copy-sKAIT_o$default (Ldev/geode/feature/customization/api/CustomizationCommand$RemoveModulator;IILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$RemoveModulator;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-ejnLCck ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$RemoveReaction : dev/geode/feature/customization/api/CustomizationCommand {
+	public synthetic fun <init> (ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-DhJekIE ()I
+	public final fun copy-QmIEcXg (I)Ldev/geode/feature/customization/api/CustomizationCommand$RemoveReaction;
+	public static synthetic fun copy-QmIEcXg$default (Ldev/geode/feature/customization/api/CustomizationCommand$RemoveReaction;IILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$RemoveReaction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-DhJekIE ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$RenameMacro : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (ILjava/lang/String;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (ILjava/lang/String;)Ldev/geode/feature/customization/api/CustomizationCommand$RenameMacro;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$RenameMacro;ILjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$RenameMacro;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIndex ()I
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$ResetToStyle : dev/geode/feature/customization/api/CustomizationCommand {
+	public static final field INSTANCE Ldev/geode/feature/customization/api/CustomizationCommand$ResetToStyle;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$SavePreset : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ljava/lang/String;Ljava/util/Set;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Set;
+	public final fun copy (Ljava/lang/String;Ljava/util/Set;)Ldev/geode/feature/customization/api/CustomizationCommand$SavePreset;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$SavePreset;Ljava/lang/String;Ljava/util/Set;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$SavePreset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getParts ()Ljava/util/Set;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$SetExtra : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/ExtraKind;F)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/ExtraKind;
+	public final fun component2 ()F
+	public final fun copy (Ldev/geode/feature/customization/api/ExtraKind;F)Ldev/geode/feature/customization/api/CustomizationCommand$SetExtra;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$SetExtra;Ldev/geode/feature/customization/api/ExtraKind;FILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$SetExtra;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKind ()Ldev/geode/feature/customization/api/ExtraKind;
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$SetMacro : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (IF)V
+	public final fun component1 ()I
+	public final fun component2 ()F
+	public final fun copy (IF)Ldev/geode/feature/customization/api/CustomizationCommand$SetMacro;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$SetMacro;IFILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$SetMacro;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIndex ()I
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$SetShared : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/SharedProperty;F)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/SharedProperty;
+	public final fun component2 ()F
+	public final fun copy (Ldev/geode/feature/customization/api/SharedProperty;F)Ldev/geode/feature/customization/api/CustomizationCommand$SetShared;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$SetShared;Ldev/geode/feature/customization/api/SharedProperty;FILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$SetShared;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProperty ()Ldev/geode/feature/customization/api/SharedProperty;
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$TrimSignal : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/SoundSignal;Ldev/geode/feature/customization/api/SignalTrim;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/SoundSignal;
+	public final fun component2 ()Ldev/geode/feature/customization/api/SignalTrim;
+	public final fun copy (Ldev/geode/feature/customization/api/SoundSignal;Ldev/geode/feature/customization/api/SignalTrim;)Ldev/geode/feature/customization/api/CustomizationCommand$TrimSignal;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$TrimSignal;Ldev/geode/feature/customization/api/SoundSignal;Ldev/geode/feature/customization/api/SignalTrim;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$TrimSignal;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSignal ()Ldev/geode/feature/customization/api/SoundSignal;
+	public final fun getTrim ()Ldev/geode/feature/customization/api/SignalTrim;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$Undo : dev/geode/feature/customization/api/CustomizationCommand {
+	public static final field INSTANCE Ldev/geode/feature/customization/api/CustomizationCommand$Undo;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$UnlinkMacro : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (ILdev/geode/feature/customization/api/Target;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ldev/geode/feature/customization/api/Target;
+	public final fun copy (ILdev/geode/feature/customization/api/Target;)Ldev/geode/feature/customization/api/CustomizationCommand$UnlinkMacro;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$UnlinkMacro;ILdev/geode/feature/customization/api/Target;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$UnlinkMacro;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIndex ()I
+	public final fun getTarget ()Ldev/geode/feature/customization/api/Target;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$UpdateModulator : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/Modulator;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Modulator;
+	public final fun copy (Ldev/geode/feature/customization/api/Modulator;)Ldev/geode/feature/customization/api/CustomizationCommand$UpdateModulator;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$UpdateModulator;Ldev/geode/feature/customization/api/Modulator;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$UpdateModulator;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getModulator ()Ldev/geode/feature/customization/api/Modulator;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationCommand$UpdateReaction : dev/geode/feature/customization/api/CustomizationCommand {
+	public fun <init> (Ldev/geode/feature/customization/api/Reaction;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Reaction;
+	public final fun copy (Ldev/geode/feature/customization/api/Reaction;)Ldev/geode/feature/customization/api/CustomizationCommand$UpdateReaction;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationCommand$UpdateReaction;Ldev/geode/feature/customization/api/Reaction;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationCommand$UpdateReaction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getReaction ()Ldev/geode/feature/customization/api/Reaction;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/customization/api/CustomizationFact {
+}
+
+public final class dev/geode/feature/customization/api/CustomizationFact$StyleChanged : dev/geode/feature/customization/api/CustomizationFact {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun copy-TBnmCe8 (Ljava/lang/String;)Ldev/geode/feature/customization/api/CustomizationFact$StyleChanged;
+	public static synthetic fun copy-TBnmCe8$default (Ldev/geode/feature/customization/api/CustomizationFact$StyleChanged;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationFact$StyleChanged;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/CustomizationState {
+	public fun <init> (Ldev/geode/feature/customization/api/Customization;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ldev/geode/feature/customization/api/Customization;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Customization;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ldev/geode/feature/customization/api/Customization;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/customization/api/CustomizationState;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/CustomizationState;Ldev/geode/feature/customization/api/Customization;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/customization/api/CustomizationState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCurrent ()Ldev/geode/feature/customization/api/Customization;
+	public final fun getRedo ()Ljava/util/List;
+	public final fun getUndo ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ExtraKind : java/lang/Enum {
+	public static final field CENTER_X Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field CENTER_Y Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field COMPLEXITY Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field COUNT Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field DECAY Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field DRIFT Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field EDGE Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field FLIGHT Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field FOG Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field FORCE Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field GROWTH Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field HOLD Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field ORBIT Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field REACH Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field SCALE Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field SIZE Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field SPIN Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field SPREAD Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field SWIRL Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field THICKNESS Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field TURN Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field VARIANT Ldev/geode/feature/customization/api/ExtraKind;
+	public static final field VISCOSITY Ldev/geode/feature/customization/api/ExtraKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/ExtraKind;
+	public static fun values ()[Ldev/geode/feature/customization/api/ExtraKind;
+}
+
+public final class dev/geode/feature/customization/api/ExtraSpec {
+	public fun <init> (Ldev/geode/feature/customization/api/ExtraKind;FFFZ)V
+	public synthetic fun <init> (Ldev/geode/feature/customization/api/ExtraKind;FFFZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/ExtraKind;
+	public final fun component2 ()F
+	public final fun component3 ()F
+	public final fun component4 ()F
+	public final fun component5 ()Z
+	public final fun copy (Ldev/geode/feature/customization/api/ExtraKind;FFFZ)Ldev/geode/feature/customization/api/ExtraSpec;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/ExtraSpec;Ldev/geode/feature/customization/api/ExtraKind;FFFZILjava/lang/Object;)Ldev/geode/feature/customization/api/ExtraSpec;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDefault ()F
+	public final fun getKind ()Ldev/geode/feature/customization/api/ExtraKind;
+	public final fun getNativeMax ()F
+	public final fun getNativeMin ()F
+	public final fun getStepped ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/Macro {
+	public fun <init> (Ljava/lang/String;FLjava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/String;FLjava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()F
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;FLjava/util/List;)Ldev/geode/feature/customization/api/Macro;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/Macro;Ljava/lang/String;FLjava/util/List;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Macro;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLinks ()Ljava/util/List;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getValue ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/MacroLink {
+	public fun <init> (Ldev/geode/feature/customization/api/Target;FF)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Target;
+	public final fun component2 ()F
+	public final fun component3 ()F
+	public final fun copy (Ldev/geode/feature/customization/api/Target;FF)Ldev/geode/feature/customization/api/MacroLink;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/MacroLink;Ldev/geode/feature/customization/api/Target;FFILjava/lang/Object;)Ldev/geode/feature/customization/api/MacroLink;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHigh ()F
+	public final fun getLow ()F
+	public final fun getTarget ()Ldev/geode/feature/customization/api/Target;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/MacroRole : java/lang/Enum {
+	public static final field CALM Ldev/geode/feature/customization/api/MacroRole;
+	public static final field DEPTH Ldev/geode/feature/customization/api/MacroRole;
+	public static final field DETAIL Ldev/geode/feature/customization/api/MacroRole;
+	public static final field ENERGY Ldev/geode/feature/customization/api/MacroRole;
+	public static final field FLOW Ldev/geode/feature/customization/api/MacroRole;
+	public static final field WARMTH Ldev/geode/feature/customization/api/MacroRole;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getTitle ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/MacroRole;
+	public static fun values ()[Ldev/geode/feature/customization/api/MacroRole;
+}
+
+public final class dev/geode/feature/customization/api/MacrosKt {
+	public static final field MACRO_COUNT I
+	public static final field MACRO_REST F
+}
+
+public final class dev/geode/feature/customization/api/Modulator {
+	public static final field Companion Ldev/geode/feature/customization/api/Modulator$Companion;
+	public static final field DEFAULT_RATE F
+	public static final field MAX_RATE F
+	public static final field MIN_RATE F
+	public synthetic fun <init> (ILdev/geode/feature/customization/api/ModulatorShape;Ldev/geode/feature/customization/api/StartMode;FFZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ILdev/geode/feature/customization/api/ModulatorShape;Ldev/geode/feature/customization/api/StartMode;FFZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ejnLCck ()I
+	public final fun component2 ()Ldev/geode/feature/customization/api/ModulatorShape;
+	public final fun component3 ()Ldev/geode/feature/customization/api/StartMode;
+	public final fun component4 ()F
+	public final fun component5 ()F
+	public final fun component6 ()Z
+	public final fun copy-XlZ1kEQ (ILdev/geode/feature/customization/api/ModulatorShape;Ldev/geode/feature/customization/api/StartMode;FFZ)Ldev/geode/feature/customization/api/Modulator;
+	public static synthetic fun copy-XlZ1kEQ$default (Ldev/geode/feature/customization/api/Modulator;ILdev/geode/feature/customization/api/ModulatorShape;Ldev/geode/feature/customization/api/StartMode;FFZILjava/lang/Object;)Ldev/geode/feature/customization/api/Modulator;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDepth ()F
+	public final fun getId-ejnLCck ()I
+	public final fun getPlaying ()Z
+	public final fun getRate ()F
+	public final fun getShape ()Ldev/geode/feature/customization/api/ModulatorShape;
+	public final fun getStart ()Ldev/geode/feature/customization/api/StartMode;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/Modulator$Companion {
+}
+
+public final class dev/geode/feature/customization/api/ModulatorId {
+	public static final synthetic fun box-impl (I)Ldev/geode/feature/customization/api/ModulatorId;
+	public static fun constructor-impl (I)I
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (ILjava/lang/Object;)Z
+	public static final fun equals-impl0 (II)Z
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public static fun hashCode-impl (I)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (I)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()I
+}
+
+public final class dev/geode/feature/customization/api/ModulatorParameter : java/lang/Enum {
+	public static final field DEPTH Ldev/geode/feature/customization/api/ModulatorParameter;
+	public static final field PATTERN Ldev/geode/feature/customization/api/ModulatorParameter;
+	public static final field RATE Ldev/geode/feature/customization/api/ModulatorParameter;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/ModulatorParameter;
+	public static fun values ()[Ldev/geode/feature/customization/api/ModulatorParameter;
+}
+
+public abstract interface class dev/geode/feature/customization/api/ModulatorShape {
+}
+
+public final class dev/geode/feature/customization/api/ModulatorShape$HitEnvelope : dev/geode/feature/customization/api/ModulatorShape {
+	public synthetic fun <init> (Ldev/geode/feature/customization/api/SoundSignal;JJFLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/SoundSignal;
+	public final fun component2-CmsKos8 ()J
+	public final fun component3-CmsKos8 ()J
+	public final fun component4 ()F
+	public final fun copy-S48SyDU (Ldev/geode/feature/customization/api/SoundSignal;JJF)Ldev/geode/feature/customization/api/ModulatorShape$HitEnvelope;
+	public static synthetic fun copy-S48SyDU$default (Ldev/geode/feature/customization/api/ModulatorShape$HitEnvelope;Ldev/geode/feature/customization/api/SoundSignal;JJFILjava/lang/Object;)Ldev/geode/feature/customization/api/ModulatorShape$HitEnvelope;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAttack-CmsKos8 ()J
+	public final fun getRelease-CmsKos8 ()J
+	public final fun getSignal ()Ldev/geode/feature/customization/api/SoundSignal;
+	public final fun getThreshold ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ModulatorShape$Lfo : dev/geode/feature/customization/api/ModulatorShape {
+	public synthetic fun <init> (Ldev/geode/feature/customization/api/Wave;JZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ldev/geode/feature/customization/api/Wave;JZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/Wave;
+	public final fun component2-CmsKos8 ()J
+	public final fun component3 ()Z
+	public final fun copy-1U8jkOA (Ldev/geode/feature/customization/api/Wave;JZ)Ldev/geode/feature/customization/api/ModulatorShape$Lfo;
+	public static synthetic fun copy-1U8jkOA$default (Ldev/geode/feature/customization/api/ModulatorShape$Lfo;Ldev/geode/feature/customization/api/Wave;JZILjava/lang/Object;)Ldev/geode/feature/customization/api/ModulatorShape$Lfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBeatSync ()Z
+	public final fun getPeriod-CmsKos8 ()J
+	public final fun getWave ()Ldev/geode/feature/customization/api/Wave;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ModulatorShape$RandomDrift : dev/geode/feature/customization/api/ModulatorShape {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun copy-TrJcsQA (J)Ldev/geode/feature/customization/api/ModulatorShape$RandomDrift;
+	public static synthetic fun copy-TrJcsQA$default (Ldev/geode/feature/customization/api/ModulatorShape$RandomDrift;JILjava/lang/Object;)Ldev/geode/feature/customization/api/ModulatorShape$RandomDrift;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPeriod-CmsKos8 ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ModulatorShape$StepSequencer : dev/geode/feature/customization/api/ModulatorShape {
+	public synthetic fun <init> (Ljava/util/List;JZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;JZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2-CmsKos8 ()J
+	public final fun component3 ()Z
+	public final fun copy-1U8jkOA (Ljava/util/List;JZ)Ldev/geode/feature/customization/api/ModulatorShape$StepSequencer;
+	public static synthetic fun copy-1U8jkOA$default (Ldev/geode/feature/customization/api/ModulatorShape$StepSequencer;Ljava/util/List;JZILjava/lang/Object;)Ldev/geode/feature/customization/api/ModulatorShape$StepSequencer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBeatSync ()Z
+	public final fun getStepLength-CmsKos8 ()J
+	public final fun getSteps ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/Preset {
+	public synthetic fun <init> (ILjava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ILjava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component10 ()Ljava/util/Map;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3-7EMWfhs ()Ljava/lang/String;
+	public final fun component4 ()Ljava/util/Set;
+	public final fun component5 ()Ljava/util/Map;
+	public final fun component6 ()Ljava/util/Map;
+	public final fun component7 ()Ljava/util/List;
+	public final fun component8 ()Ljava/util/List;
+	public final fun component9 ()Ljava/util/List;
+	public final fun copy-7m5gxfk (ILjava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)Ldev/geode/feature/customization/api/Preset;
+	public static synthetic fun copy-7m5gxfk$default (Ldev/geode/feature/customization/api/Preset;ILjava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/util/Map;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Preset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExtras ()Ljava/util/Map;
+	public final fun getMacros ()Ljava/util/List;
+	public final fun getModulators ()Ljava/util/List;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getParts ()Ljava/util/Set;
+	public final fun getReactions ()Ljava/util/List;
+	public final fun getShared ()Ljava/util/Map;
+	public final fun getSignals ()Ljava/util/Map;
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public final fun getVersion ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/PresetPart : java/lang/Enum {
+	public static final field CAMERA Ldev/geode/feature/customization/api/PresetPart;
+	public static final field COLOUR Ldev/geode/feature/customization/api/PresetPart;
+	public static final field COLOUR_GRADING Ldev/geode/feature/customization/api/PresetPart;
+	public static final field DETAIL_AND_GLOW Ldev/geode/feature/customization/api/PresetPart;
+	public static final field EXTRAS Ldev/geode/feature/customization/api/PresetPart;
+	public static final field GLITCH_AND_PIXELATE Ldev/geode/feature/customization/api/PresetPart;
+	public static final field KALEIDOSCOPE_AND_MIRROR Ldev/geode/feature/customization/api/PresetPart;
+	public static final field LENS Ldev/geode/feature/customization/api/PresetPart;
+	public static final field MACROS Ldev/geode/feature/customization/api/PresetPart;
+	public static final field MODULATORS Ldev/geode/feature/customization/api/PresetPart;
+	public static final field PARTICLES Ldev/geode/feature/customization/api/PresetPart;
+	public static final field REACTIONS Ldev/geode/feature/customization/api/PresetPart;
+	public static final field SOUND Ldev/geode/feature/customization/api/PresetPart;
+	public static final field SPEED_AND_ENERGY Ldev/geode/feature/customization/api/PresetPart;
+	public static final field STYLE Ldev/geode/feature/customization/api/PresetPart;
+	public static final field TRAILS_AND_ECHO Ldev/geode/feature/customization/api/PresetPart;
+	public static final field WARP_AND_RIPPLE Ldev/geode/feature/customization/api/PresetPart;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getGroup ()Ldev/geode/feature/customization/api/SharedGroup;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/PresetPart;
+	public static fun values ()[Ldev/geode/feature/customization/api/PresetPart;
+}
+
+public final class dev/geode/feature/customization/api/PresetsKt {
+	public static final field PRESET_VERSION I
+}
+
+public final class dev/geode/feature/customization/api/Reaction {
+	public synthetic fun <init> (ILdev/geode/feature/customization/api/ReactionSource;Ldev/geode/feature/customization/api/Target;FZJJFFLdev/geode/feature/customization/api/ResponseCurve;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ILdev/geode/feature/customization/api/ReactionSource;Ldev/geode/feature/customization/api/Target;FZJJFFLdev/geode/feature/customization/api/ResponseCurve;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-DhJekIE ()I
+	public final fun component10 ()Ldev/geode/feature/customization/api/ResponseCurve;
+	public final fun component2 ()Ldev/geode/feature/customization/api/ReactionSource;
+	public final fun component3 ()Ldev/geode/feature/customization/api/Target;
+	public final fun component4 ()F
+	public final fun component5 ()Z
+	public final fun component6-CmsKos8 ()J
+	public final fun component7-CmsKos8 ()J
+	public final fun component8 ()F
+	public final fun component9 ()F
+	public final fun copy-kRj1rK4 (ILdev/geode/feature/customization/api/ReactionSource;Ldev/geode/feature/customization/api/Target;FZJJFFLdev/geode/feature/customization/api/ResponseCurve;)Ldev/geode/feature/customization/api/Reaction;
+	public static synthetic fun copy-kRj1rK4$default (Ldev/geode/feature/customization/api/Reaction;ILdev/geode/feature/customization/api/ReactionSource;Ldev/geode/feature/customization/api/Target;FZJJFFLdev/geode/feature/customization/api/ResponseCurve;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Reaction;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAmount ()F
+	public final fun getCurve ()Ldev/geode/feature/customization/api/ResponseCurve;
+	public final fun getFall-CmsKos8 ()J
+	public final fun getHigh ()F
+	public final fun getId-DhJekIE ()I
+	public final fun getInvert ()Z
+	public final fun getLow ()F
+	public final fun getRise-CmsKos8 ()J
+	public final fun getSource ()Ldev/geode/feature/customization/api/ReactionSource;
+	public final fun getTarget ()Ldev/geode/feature/customization/api/Target;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ReactionId {
+	public static final synthetic fun box-impl (I)Ldev/geode/feature/customization/api/ReactionId;
+	public static fun constructor-impl (I)I
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (ILjava/lang/Object;)Z
+	public static final fun equals-impl0 (II)Z
+	public final fun getValue ()I
+	public fun hashCode ()I
+	public static fun hashCode-impl (I)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (I)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()I
+}
+
+public abstract interface class dev/geode/feature/customization/api/ReactionSource {
+}
+
+public final class dev/geode/feature/customization/api/ReactionSource$Generated : dev/geode/feature/customization/api/ReactionSource {
+	public synthetic fun <init> (ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ejnLCck ()I
+	public final fun copy-sKAIT_o (I)Ldev/geode/feature/customization/api/ReactionSource$Generated;
+	public static synthetic fun copy-sKAIT_o$default (Ldev/geode/feature/customization/api/ReactionSource$Generated;IILjava/lang/Object;)Ldev/geode/feature/customization/api/ReactionSource$Generated;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getModulator-ejnLCck ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ReactionSource$Sound : dev/geode/feature/customization/api/ReactionSource {
+	public fun <init> (Ldev/geode/feature/customization/api/SoundSignal;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/SoundSignal;
+	public final fun copy (Ldev/geode/feature/customization/api/SoundSignal;)Ldev/geode/feature/customization/api/ReactionSource$Sound;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/ReactionSource$Sound;Ldev/geode/feature/customization/api/SoundSignal;ILjava/lang/Object;)Ldev/geode/feature/customization/api/ReactionSource$Sound;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSignal ()Ldev/geode/feature/customization/api/SoundSignal;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ResponseCurve : java/lang/Enum {
+	public static final field EXPONENTIAL Ldev/geode/feature/customization/api/ResponseCurve;
+	public static final field LINEAR Ldev/geode/feature/customization/api/ResponseCurve;
+	public static final field LOGARITHMIC Ldev/geode/feature/customization/api/ResponseCurve;
+	public static final field S_CURVE Ldev/geode/feature/customization/api/ResponseCurve;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/ResponseCurve;
+	public static fun values ()[Ldev/geode/feature/customization/api/ResponseCurve;
+}
+
+public final class dev/geode/feature/customization/api/SharedGroup : java/lang/Enum {
+	public static final field CAMERA Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field COLOUR Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field COLOUR_GRADING Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field DETAIL_AND_GLOW Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field GLITCH_AND_PIXELATE Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field KALEIDOSCOPE_AND_MIRROR Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field LENS Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field PARTICLES Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field SPEED_AND_ENERGY Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field TRAILS_AND_ECHO Ldev/geode/feature/customization/api/SharedGroup;
+	public static final field WARP_AND_RIPPLE Ldev/geode/feature/customization/api/SharedGroup;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/SharedGroup;
+	public static fun values ()[Ldev/geode/feature/customization/api/SharedGroup;
+}
+
+public final class dev/geode/feature/customization/api/SharedProperty : java/lang/Enum {
+	public static final field AUDIO_DRIVE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field BRIGHTNESS Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field CHROMATIC Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field COLOUR_CYCLE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field CONTRAST Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field CYCLE_SPEED Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field DETAIL Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field DIVE_SPEED Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field DRIFT_X Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field DRIFT_Y Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field DUOTONE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ENDLESS_ZOOM Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field FISHEYE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field GAMMA Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field GLITCH Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field GLOW Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field GRAIN Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field HUE_RANGE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field HUE_SHIFT Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field INTENSITY Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field INVERT Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field KALEIDOSCOPE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field LUT Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field MIRROR Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field MORPH Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field MOTION_BLUR Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ORBIT_PITCH Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ORBIT_YAW Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PALETTE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PALETTE_2 Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PALETTE_MIX Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PARTICLES Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PARTICLE_KIND Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PARTICLE_SIZE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PIXELATE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field POSTERIZE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PUSH_IN Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field RIPPLE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ROTATION Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SATURATION Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SCANLINES Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SHAKE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SOFT_FOCUS Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SOLARIZE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SPEED Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SWAY Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SYMMETRY Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TEMPERATURE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TILE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TRAILS Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TRAIL_WARP Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TRAIL_ZOOM Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TRAVEL Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TURBULENCE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TWIST Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field VIGNETTE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field WARP Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ZOOM Ldev/geode/feature/customization/api/SharedProperty;
+	public final fun getDefault ()F
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getGroup ()Ldev/geode/feature/customization/api/SharedGroup;
+	public final fun getKind ()Ldev/geode/feature/customization/api/ValueKind;
+	public final fun getLuminous ()Z
+	public final fun getMax ()F
+	public final fun getMin ()F
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/SharedProperty;
+	public static fun values ()[Ldev/geode/feature/customization/api/SharedProperty;
+}
+
+public final class dev/geode/feature/customization/api/SignalTrim {
+	public static final field Companion Ldev/geode/feature/customization/api/SignalTrim$Companion;
+	public static final field MAX_FLOOR F
+	public static final field MAX_GAIN F
+	public static final field MIN_GAIN F
+	public static final field NEUTRAL_GAIN F
+	public fun <init> ()V
+	public fun <init> (FF)V
+	public synthetic fun <init> (FFILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()F
+	public final fun component2 ()F
+	public final fun copy (FF)Ldev/geode/feature/customization/api/SignalTrim;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/SignalTrim;FFILjava/lang/Object;)Ldev/geode/feature/customization/api/SignalTrim;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFloor ()F
+	public final fun getGain ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/SignalTrim$Companion {
+	public final fun getNEUTRAL ()Ldev/geode/feature/customization/api/SignalTrim;
+}
+
+public final class dev/geode/feature/customization/api/SoundSignal : java/lang/Enum {
+	public static final field BASS Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field BEAT Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field BRIGHTNESS Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field BUILD_UP Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field CHANGE Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field ENERGY Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field HAT Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field HIT Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field KICK Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field LEVEL Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field MID Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field MID_HIT Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field STEREO_PAN Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field STEREO_WIDTH Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field SURGE Ldev/geode/feature/customization/api/SoundSignal;
+	public static final field TREBLE Ldev/geode/feature/customization/api/SoundSignal;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/SoundSignal;
+	public static fun values ()[Ldev/geode/feature/customization/api/SoundSignal;
+}
+
+public abstract interface class dev/geode/feature/customization/api/StartMode {
+}
+
+public final class dev/geode/feature/customization/api/StartMode$ByHand : dev/geode/feature/customization/api/StartMode {
+	public static final field INSTANCE Ldev/geode/feature/customization/api/StartMode$ByHand;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/StartMode$OnSound : dev/geode/feature/customization/api/StartMode {
+	public fun <init> (Ldev/geode/feature/customization/api/SoundSignal;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/SoundSignal;
+	public final fun copy (Ldev/geode/feature/customization/api/SoundSignal;)Ldev/geode/feature/customization/api/StartMode$OnSound;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/StartMode$OnSound;Ldev/geode/feature/customization/api/SoundSignal;ILjava/lang/Object;)Ldev/geode/feature/customization/api/StartMode$OnSound;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSignal ()Ldev/geode/feature/customization/api/SoundSignal;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/StartMode$WhilePlaying : dev/geode/feature/customization/api/StartMode {
+	public static final field INSTANCE Ldev/geode/feature/customization/api/StartMode$WhilePlaying;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/StyleFamily : java/lang/Enum {
+	public static final field ACID Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field CURL_FLOW Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field CYMATICS Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field FLUID Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field LIFE Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field MILKDROP Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field MYCELIUM Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field SHADER Ldev/geode/feature/customization/api/StyleFamily;
+	public static final field WATER Ldev/geode/feature/customization/api/StyleFamily;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/StyleFamily;
+	public static fun values ()[Ldev/geode/feature/customization/api/StyleFamily;
+}
+
+public final class dev/geode/feature/customization/api/StyleManifest {
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/customization/api/StyleFamily;ZLjava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun component2 ()Ldev/geode/feature/customization/api/StyleFamily;
+	public final fun component3 ()Z
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/util/Map;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Ljava/util/List;
+	public final fun copy-JvCHomo (Ljava/lang/String;Ldev/geode/feature/customization/api/StyleFamily;ZLjava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/customization/api/StyleManifest;
+	public static synthetic fun copy-JvCHomo$default (Ldev/geode/feature/customization/api/StyleManifest;Ljava/lang/String;Ldev/geode/feature/customization/api/StyleFamily;ZLjava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/customization/api/StyleManifest;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getExtras ()Ljava/util/List;
+	public final fun getFamily ()Ldev/geode/feature/customization/api/StyleFamily;
+	public final fun getId-7EMWfhs ()Ljava/lang/String;
+	public final fun getMacros ()Ljava/util/List;
+	public final fun getOwnFlight ()Z
+	public final fun getReactions ()Ljava/util/List;
+	public final fun getShared ()Ljava/util/Map;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/customization/api/Target {
+}
+
+public final class dev/geode/feature/customization/api/Target$Extra : dev/geode/feature/customization/api/Target {
+	public fun <init> (Ldev/geode/feature/customization/api/ExtraKind;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/ExtraKind;
+	public final fun copy (Ldev/geode/feature/customization/api/ExtraKind;)Ldev/geode/feature/customization/api/Target$Extra;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/Target$Extra;Ldev/geode/feature/customization/api/ExtraKind;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Target$Extra;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKind ()Ldev/geode/feature/customization/api/ExtraKind;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/Target$MacroSlot : dev/geode/feature/customization/api/Target {
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Ldev/geode/feature/customization/api/Target$MacroSlot;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/Target$MacroSlot;IILjava/lang/Object;)Ldev/geode/feature/customization/api/Target$MacroSlot;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getIndex ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/Target$ModulatorField : dev/geode/feature/customization/api/Target {
+	public synthetic fun <init> (ILdev/geode/feature/customization/api/ModulatorParameter;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-ejnLCck ()I
+	public final fun component2 ()Ldev/geode/feature/customization/api/ModulatorParameter;
+	public final fun copy-lDi_aFI (ILdev/geode/feature/customization/api/ModulatorParameter;)Ldev/geode/feature/customization/api/Target$ModulatorField;
+	public static synthetic fun copy-lDi_aFI$default (Ldev/geode/feature/customization/api/Target$ModulatorField;ILdev/geode/feature/customization/api/ModulatorParameter;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Target$ModulatorField;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getModulator-ejnLCck ()I
+	public final fun getParameter ()Ldev/geode/feature/customization/api/ModulatorParameter;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/Target$Shared : dev/geode/feature/customization/api/Target {
+	public fun <init> (Ldev/geode/feature/customization/api/SharedProperty;)V
+	public final fun component1 ()Ldev/geode/feature/customization/api/SharedProperty;
+	public final fun copy (Ldev/geode/feature/customization/api/SharedProperty;)Ldev/geode/feature/customization/api/Target$Shared;
+	public static synthetic fun copy$default (Ldev/geode/feature/customization/api/Target$Shared;Ldev/geode/feature/customization/api/SharedProperty;ILjava/lang/Object;)Ldev/geode/feature/customization/api/Target$Shared;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProperty ()Ldev/geode/feature/customization/api/SharedProperty;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ValueKind : java/lang/Enum {
+	public static final field CONTINUOUS Ldev/geode/feature/customization/api/ValueKind;
+	public static final field STEPPED Ldev/geode/feature/customization/api/ValueKind;
+	public static final field SWITCH Ldev/geode/feature/customization/api/ValueKind;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/ValueKind;
+	public static fun values ()[Ldev/geode/feature/customization/api/ValueKind;
+}
+
+public final class dev/geode/feature/customization/api/Wave : java/lang/Enum {
+	public static final field RANDOM Ldev/geode/feature/customization/api/Wave;
+	public static final field SAW Ldev/geode/feature/customization/api/Wave;
+	public static final field SINE Ldev/geode/feature/customization/api/Wave;
+	public static final field SQUARE Ldev/geode/feature/customization/api/Wave;
+	public static final field TRIANGLE Ldev/geode/feature/customization/api/Wave;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/customization/api/Wave;
+	public static fun values ()[Ldev/geode/feature/customization/api/Wave;
+}
+

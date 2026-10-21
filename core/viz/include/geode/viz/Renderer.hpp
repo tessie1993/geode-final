@@ -51,11 +51,7 @@ public:
     void beginParamMorph(float seconds);
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
     void pushPcm(const float* samples, int count);
-    void setCustomShader(const std::string& sceneId, const std::string& fragmentSource);
-    // The user source a scene last compiled successfully; "" when it draws its built-in style.
-    std::string customShaderFor(const std::string& sceneId) const;
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
-    void setFluidInjectionShaders(const std::string& forceSrc, const std::string& dyeSrc);
     void loadMilkPreset(const std::string& path);
     void reloadMilkPreset();
     void setMilkTextureDir(const std::string& dir);
@@ -115,13 +111,11 @@ private:
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
     void wireFlow(Scene& target, const SceneParams& p);
-    void applyPendingFluidInjection();
     void applyMilkRequests();
     void applyOverlayUploads();
     void notePresetLoaded(const std::string& path);
     static double monotonicSeconds();
     void fail(const std::string& message);
-    void rememberCustomShader(const std::string& sceneId, const std::string& source);
 
     ShaderSource assets_;
     std::string cacheDir_;
@@ -150,10 +144,15 @@ private:
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
+    // What the renderer holds before the app's first setScene. The app requests its Style
+    // (SceneIds.DEFAULT, the one place the default Style is chosen) before every frame, so this
+    // only needs to name a Style that always builds.
+    static constexpr const char* kStartSceneId = "aurora";
+
     mutable std::mutex stateLock_;
     SceneParams requestedParams_;
     GeodeFeatureFrame features_{};
-    std::string requestedSceneId_ = "silk_web";
+    std::string requestedSceneId_ = kStartSceneId;
     std::string layerSceneId_;
     float layerMix_ = 0.5f;
     int layerBlend_ = static_cast<int>(BlendMode::Screen);
@@ -168,14 +167,9 @@ private:
     // between pushes.
     int pcmCount_ = 0;
     std::vector<float> pcmDeliverScratch_;
-    std::vector<std::pair<std::string, std::string>> pendingShaders_;
-    std::vector<std::pair<std::string, std::string>> customShaders_;
-    std::string fluidForceSrc_;
-    std::string fluidDyeSrc_;
-    bool fluidInjectionDirty_ = false;
     // W00: overlay/underlay layers. Retained (not just "pending") so a surface recreation can
-    // re-arm the dirty flag and re-upload, the same way fluidForceSrc_/fluidDyeSrc_ do above;
-    // see onSurfaceCreated() and applyOverlayUploads(). Empty = cleared.
+    // re-arm the dirty flag and re-upload; see onSurfaceCreated() and applyOverlayUploads().
+    // Empty = cleared.
     std::vector<uint32_t> overlayPixels_;
     int overlayWidth_ = 0;
     int overlayHeight_ = 0;
