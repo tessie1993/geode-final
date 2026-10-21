@@ -16,6 +16,13 @@ extensions.configure<com.android.build.api.dsl.LibraryExtension> {
     buildFeatures {
         compose = true
     }
+    // Robolectric needs the merged manifest and resources: the screenshot tests start the test
+    // activity from compose-ui-test-manifest and the screens read their own strings.
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
