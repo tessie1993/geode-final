@@ -45,10 +45,7 @@ fun VisualizerEngineBindings(
         visualizerView.visualizerRenderer.onShaderError = viewModel::reportShaderError
         visualizerView.visualizerRenderer.pcmProvider = { viewModel.latestPcm() }
         LayersBus.availableScenes.value = visualizerView.visualizerRenderer.availableSceneIds()
-        viewModel.features.collect {
-            val enriched = viewModel.enrichFeatures(it)
-            visualizerView.visualizerRenderer.features = enriched
-        }
+        viewModel.features.collect { visualizerView.visualizerRenderer.features = it }
     }
     LaunchedEffect(viz.sceneId) {
         visualizerView.visualizerRenderer.requestedSceneId = viz.sceneId

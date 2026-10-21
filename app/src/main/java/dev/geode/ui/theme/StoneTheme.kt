@@ -3,7 +3,6 @@ package dev.geode.ui.theme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -15,7 +14,7 @@ import androidx.compose.ui.unit.sp
 import dev.geode.R
 import dev.geode.ui.ThemeContrast
 
-val LocalThemePack = staticCompositionLocalOf { ThemePackCatalog.all.first() }
+val LocalThemePack = staticCompositionLocalOf { ThemePackCatalog.lapisLazuli }
 
 val MaliFamily =
     FontFamily(
@@ -85,49 +84,26 @@ fun ThemePack.colorScheme(
     val onBackground = readableOn(p.onBackground, background, ThemeContrast.BODY_CONTRAST_MIN)
     val onSurface = readableOn(p.onSurface, surface, ThemeContrast.BODY_CONTRAST_MIN)
     val base =
-        if (isLight) {
-            lightColorScheme(
-                primary = primary,
-                onPrimary = p.onSurface,
-                secondary = secondary,
-                tertiary = p.accent.intensity(),
-                background = background,
-                onBackground = onBackground,
-                surface = surface,
-                onSurface = onSurface,
-                surfaceVariant = surfaceHigh,
-                onSurfaceVariant = readableOn(p.muted, surfaceHigh, ThemeContrast.HINT_CONTRAST_MIN),
-                surfaceContainer = surface,
-                surfaceContainerHigh = surfaceHigh,
-                primaryContainer = surfaceHigh,
-                onPrimaryContainer = readableOn(p.accent, surfaceHigh, ThemeContrast.HINT_CONTRAST_MIN),
-                secondaryContainer = surfaceHigh,
-                onSecondaryContainer = readableOn(p.onSurface, surfaceHigh, ThemeContrast.BODY_CONTRAST_MIN),
-                outline = p.outline,
-                error = p.danger,
-            )
-        } else {
-            darkColorScheme(
-                primary = primary,
-                onPrimary = p.background,
-                secondary = secondary,
-                tertiary = p.accent.intensity(),
-                background = background,
-                onBackground = onBackground,
-                surface = surface,
-                onSurface = onSurface,
-                surfaceVariant = surfaceHigh,
-                onSurfaceVariant = readableOn(p.muted, surfaceHigh, ThemeContrast.HINT_CONTRAST_MIN),
-                surfaceContainer = surface,
-                surfaceContainerHigh = surfaceHigh,
-                primaryContainer = surfaceHigh,
-                onPrimaryContainer = readableOn(p.accent, surfaceHigh, ThemeContrast.HINT_CONTRAST_MIN),
-                secondaryContainer = surfaceHigh,
-                onSecondaryContainer = readableOn(p.onSurface, surfaceHigh, ThemeContrast.BODY_CONTRAST_MIN),
-                outline = p.outline,
-                error = p.danger,
-            )
-        }
+        darkColorScheme(
+            primary = primary,
+            onPrimary = p.background,
+            secondary = secondary,
+            tertiary = p.accent.intensity(),
+            background = background,
+            onBackground = onBackground,
+            surface = surface,
+            onSurface = onSurface,
+            surfaceVariant = surfaceHigh,
+            onSurfaceVariant = readableOn(p.muted, surfaceHigh, ThemeContrast.HINT_CONTRAST_MIN),
+            surfaceContainer = surface,
+            surfaceContainerHigh = surfaceHigh,
+            primaryContainer = surfaceHigh,
+            onPrimaryContainer = readableOn(p.accent, surfaceHigh, ThemeContrast.HINT_CONTRAST_MIN),
+            secondaryContainer = surfaceHigh,
+            onSecondaryContainer = readableOn(p.onSurface, surfaceHigh, ThemeContrast.BODY_CONTRAST_MIN),
+            outline = p.outline,
+            error = p.danger,
+        )
     return if (fontColorOverride != null) {
         base.copy(
             onBackground = fontColorOverride,

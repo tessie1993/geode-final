@@ -1,6 +1,5 @@
 package dev.geode.editor
 
-import dev.geode.data.PerformanceTake
 import kotlin.math.abs
 
 /*
@@ -353,96 +352,6 @@ data class KeyframeSheet(
         clipId: ClipId,
         deltaMs: Long,
     ): KeyframeSheet = copy(tracks = tracks.map { if (it.clipId == clipId) it.shiftedBy(deltaMs) else it })
-}
-
-/** One instant of a recorded performance, already reduced to the parameters the editor exposes. */
-data class PerformanceSample(
-    val atMs: Long,
-    val values: Map<ParamId, ParamValue>,
-)
-
-/**
- * Dropping a recorded take onto the timeline.
- *
- * A [PerformanceTake] is a stream of parameter deltas; the editor wants ordinary keyframe tracks
- * that can be dragged, re-curved and deleted like any other. Nothing here is special-cased on the
- * way out: once imported, a take is indistinguishable from keys placed by hand.
- */
-object PerformanceKeyframes {
-    /**
-     * Sample a stored take into tracks.
-     *
-     * [read] turns a take's state into the parameters the editor exposes — the take stores whole
-     * scene state, and only the caller knows which of it is worth animating. Sampling walks
-     * forwards at the recorder's own resolution: finer steps cannot recover detail the recorder
-     * never wrote, and [PerformanceTake.Timeline.stateAt] is built for a forward scan.
-     */
-    fun fromTake(
-        take: PerformanceTake.Timeline,
-        read: (PerformanceTake.State) -> Map<ParamId, ParamValue>,
-        idFor: (ParamId, Long) -> KeyframeId,
-        sampleEveryMs: Long = PerformanceTake.MIN_KEYFRAME_GAP_MS,
-        offsetMs: Long = take.trackOffsetMs,
-        interpolation: Interpolation = Interpolation.Linear,
-    ): List<KeyframeTrack> {
-        val step = sampleEveryMs.coerceAtLeast(1L)
-        val lastMs = take.lastEventMs()
-        val samples = ArrayList<PerformanceSample>()
-        var atMs = 0L
-        while (atMs <= lastMs) {
-            take.stateAt(atMs)?.let { samples += PerformanceSample((atMs + offsetMs).coerceAtLeast(0L), read(it)) }
-            atMs += step
-        }
-        return fromSamples(samples, idFor, interpolation)
-    }
-
-    /**
-     * Reduce sampled values to keys. Repeated values collapse to the two keys that bracket the
-     * plateau, so a parameter the performer held still stays still instead of drifting across it.
-     */
-    fun fromSamples(
-        samples: List<PerformanceSample>,
-        idFor: (ParamId, Long) -> KeyframeId,
-        interpolation: Interpolation = Interpolation.Linear,
-    ): List<KeyframeTrack> {
-        val paramIds = samples.flatMapTo(LinkedHashSet()) { it.values.keys }
-        return paramIds
-            .map { paramId ->
-                KeyframeTrack(paramId = paramId, keys = reduceToKeys(paramId, samples, idFor, interpolation))
-            }.filterNot { it.isEmpty }
-    }
-
-    private fun reduceToKeys(
-        paramId: ParamId,
-        samples: List<PerformanceSample>,
-        idFor: (ParamId, Long) -> KeyframeId,
-        interpolation: Interpolation,
-    ): List<Keyframe> {
-        val keys = ArrayList<Keyframe>()
-        var held: ParamValue? = null
-        var plateauEndMs: Long? = null
-        for (sample in samples) {
-            val value = sample.values[paramId] ?: continue
-            if (value == held) {
-                plateauEndMs = sample.atMs
-            } else {
-                val previous = held
-                val plateau = plateauEndMs
-                if (previous != null && plateau != null) {
-                    keys += Keyframe(idFor(paramId, plateau), plateau, previous, interpolation)
-                }
-                keys += Keyframe(idFor(paramId, sample.atMs), sample.atMs, value, interpolation)
-                held = value
-                plateauEndMs = null
-            }
-        }
-        val tail = held
-        val tailAtMs = plateauEndMs
-        if (tail != null && tailAtMs != null) {
-            keys += Keyframe(idFor(paramId, tailAtMs), tailAtMs, tail, interpolation)
-        }
-        return keys
-    }
 }
 
 internal fun lerp(
