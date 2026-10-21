@@ -57,12 +57,12 @@ target_link_libraries(geode_library PUBLIC tag)
 
 geode_core_library(geode_viz viz
     ${GEODE_VIZ_PURE_SOURCES}
-    viz/ThermalGovernor.cpp
     viz/TouchField.cpp
     viz/Transition.cpp
     viz/CompositeGrade.cpp
     viz/CompositePass.cpp
     viz/TrailPass.cpp
+    viz/NoFlashPass.cpp
     viz/SceneRegistry.cpp
     viz/Renderer.cpp
     viz/RendererFrame.cpp

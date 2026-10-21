@@ -216,7 +216,7 @@ void MilkdropScene::update(const GeodeFeatureFrame& features, float dt) {
     rotationAngle_ = std::fmod(rotationAngle_ + p.rotation * dt, kTwoPi);
     zoomPhase_ = p.endlessZoom ? std::fmod(zoomPhase_ + p.endlessZoomSpeed * dt, 1.0f) : 0.0f;
     if (p.colorCycle) cyclePhase_ = std::fmod(cyclePhase_ + p.cycleSpeed * dt, 1.0f);
-    beatPulse_ = std::max(std::max(live::hit(features), beatPulse_ - dt * 3.0f), 0.0f);
+    beatPulse_ = beatEnvelope_.step(live::hit(features), dt);
     followRenderMode();
     lastDt_ = dt;
     if (rendering_) {

@@ -153,7 +153,7 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     swell_ = slew(swell_, energy_, dt, kSwellRiseHz, kSwellFallHz);
     const float hit = live::hit(features);
     stepMotion(hit, dt);
-    beatPulse_ = std::max(std::max(hit, beatPulse_ - dt * kPulseDecayPerSecond), 0.0f);
+    beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
     for (int i = 0; i < kAudioTexWidth; ++i) {
@@ -253,7 +253,6 @@ void ShaderScene::uploadParams() {
     set1f("uTwist", p.twist);
     set1f("uTemperature", p.temperature);
     set1f("uSolarize", flag(p.solarize));
-    set1f("uFlash", p.flash);
     set1f("uContrast", p.contrast);
     set1f("uGamma", p.gamma);
 }

@@ -62,13 +62,6 @@ Formats probeFormats() {
     return out;
 }
 
-std::pair<int, int> resolution(int res, int width, int height) {
-    if (width <= 0 || height <= 0) return {res, res};
-    const float aspect = static_cast<float>(width) / static_cast<float>(height);
-    if (aspect >= 1.0f) return {std::max(static_cast<int>(std::lround(res * aspect)), 2), res};
-    return {res, std::max(static_cast<int>(std::lround(res / aspect)), 2)};
-}
-
 Fbo& Fbo::operator=(Fbo&& o) noexcept {
     if (this != &o) {
         release();

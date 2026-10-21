@@ -340,6 +340,12 @@ object GeodeNative {
         fps: Float,
     )
 
+    external fun vizSetFrameLoad(
+        handle: Long,
+        frames: Int,
+        p95Ms: Float,
+    )
+
     external fun vizSetOffscreen(
         handle: Long,
         on: Boolean,
