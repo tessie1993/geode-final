@@ -38,6 +38,13 @@ include(
     ":arch:audio",
 )
 
+include(
+    ":feature:capture:api",
+    ":feature:capture:core",
+    ":feature:capture:handlers",
+    ":feature:capture:ui",
+)
+
 // Diagnostics (#62): the "Share diagnostics" file and the hidden developer overlay. Built alongside
 // the old code and not yet wired into :app (ADR-0003).
 include(
