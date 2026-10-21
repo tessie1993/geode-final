@@ -1,0 +1,338 @@
+public final class dev/geode/feature/playback/api/LoadReason : java/lang/Enum {
+	public static final field PLAY Ldev/geode/feature/playback/api/LoadReason;
+	public static final field RECOVER Ldev/geode/feature/playback/api/LoadReason;
+	public static final field RESTORE Ldev/geode/feature/playback/api/LoadReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/playback/api/LoadReason;
+	public static fun values ()[Ldev/geode/feature/playback/api/LoadReason;
+}
+
+public final class dev/geode/feature/playback/api/PlayMark {
+	public static final field Companion Ldev/geode/feature/playback/api/PlayMark$Companion;
+	public synthetic fun <init> (JJZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun component2-CmsKos8 ()J
+	public final fun component3 ()Z
+	public final fun copy-iBeTg3A (JJZ)Ldev/geode/feature/playback/api/PlayMark;
+	public static synthetic fun copy-iBeTg3A$default (Ldev/geode/feature/playback/api/PlayMark;JJZILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayMark;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAt-CmsKos8 ()J
+	public final fun getMoving ()Z
+	public final fun getPosition-CmsKos8 ()J
+	public fun hashCode ()I
+	public final fun positionAt-BWnaxpk (J)J
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayMark$Companion {
+	public final fun still-TrJcsQA (J)Ldev/geode/feature/playback/api/PlayMark;
+}
+
+public abstract interface class dev/geode/feature/playback/api/PlaybackCommand {
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$CreatePlaylist : dev/geode/feature/playback/api/PlaybackCommand {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;)Ldev/geode/feature/playback/api/PlaybackCommand$CreatePlaylist;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$CreatePlaylist;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$CreatePlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getTracks ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$DeletePlaylist : dev/geode/feature/playback/api/PlaybackCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-cFbpt2M ()J
+	public final fun copy-2XDVLKk (J)Ldev/geode/feature/playback/api/PlaybackCommand$DeletePlaylist;
+	public static synthetic fun copy-2XDVLKk$default (Ldev/geode/feature/playback/api/PlaybackCommand$DeletePlaylist;JILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$DeletePlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-cFbpt2M ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$Next : dev/geode/feature/playback/api/PlaybackCommand {
+	public static final field INSTANCE Ldev/geode/feature/playback/api/PlaybackCommand$Next;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$Pause : dev/geode/feature/playback/api/PlaybackCommand {
+	public static final field INSTANCE Ldev/geode/feature/playback/api/PlaybackCommand$Pause;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$Play : dev/geode/feature/playback/api/PlaybackCommand {
+	public fun <init> (Ljava/util/List;I)V
+	public synthetic fun <init> (Ljava/util/List;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()I
+	public final fun copy (Ljava/util/List;I)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$Play;Ljava/util/List;IILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStartAt ()I
+	public final fun getTracks ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$PlayPlaylist : dev/geode/feature/playback/api/PlaybackCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-cFbpt2M ()J
+	public final fun copy-2XDVLKk (J)Ldev/geode/feature/playback/api/PlaybackCommand$PlayPlaylist;
+	public static synthetic fun copy-2XDVLKk$default (Ldev/geode/feature/playback/api/PlaybackCommand$PlayPlaylist;JILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$PlayPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-cFbpt2M ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$Previous : dev/geode/feature/playback/api/PlaybackCommand {
+	public static final field INSTANCE Ldev/geode/feature/playback/api/PlaybackCommand$Previous;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$Resume : dev/geode/feature/playback/api/PlaybackCommand {
+	public static final field INSTANCE Ldev/geode/feature/playback/api/PlaybackCommand$Resume;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$SaveHistoryAsPlaylist : dev/geode/feature/playback/api/PlaybackCommand {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/geode/feature/playback/api/PlaybackCommand$SaveHistoryAsPlaylist;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$SaveHistoryAsPlaylist;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$SaveHistoryAsPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$SeekTo : dev/geode/feature/playback/api/PlaybackCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun copy-TrJcsQA (J)Ldev/geode/feature/playback/api/PlaybackCommand$SeekTo;
+	public static synthetic fun copy-TrJcsQA$default (Ldev/geode/feature/playback/api/PlaybackCommand$SeekTo;JILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$SeekTo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPosition-CmsKos8 ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/playback/api/PlaybackFact {
+}
+
+public final class dev/geode/feature/playback/api/PlaybackFact$PlaylistSaved : dev/geode/feature/playback/api/PlaybackFact {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/geode/feature/playback/api/PlaybackFact$PlaylistSaved;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackFact$PlaylistSaved;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackFact$PlaylistSaved;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackFailure : java/lang/Enum {
+	public static final field ENGINE_NOT_RESPONDING Ldev/geode/feature/playback/api/PlaybackFailure;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/playback/api/PlaybackFailure;
+	public static fun values ()[Ldev/geode/feature/playback/api/PlaybackFailure;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackState {
+	public fun <init> ()V
+	public fun <init> (Ldev/geode/feature/playback/api/PlayerState;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ldev/geode/feature/playback/api/PlayerState;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/PlayerState;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ldev/geode/feature/playback/api/PlayerState;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/playback/api/PlaybackState;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackState;Ldev/geode/feature/playback/api/PlayerState;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHistory ()Ljava/util/List;
+	public final fun getPlayer ()Ldev/geode/feature/playback/api/PlayerState;
+	public final fun getPlaylists ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayedTrack {
+	public synthetic fun <init> (Ldev/geode/feature/playback/api/Track;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/Track;
+	public final fun component2-CmsKos8 ()J
+	public final fun copy-Z95vogQ (Ldev/geode/feature/playback/api/Track;J)Ldev/geode/feature/playback/api/PlayedTrack;
+	public static synthetic fun copy-Z95vogQ$default (Ldev/geode/feature/playback/api/PlayedTrack;Ldev/geode/feature/playback/api/Track;JILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayedTrack;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPlayedAt-CmsKos8 ()J
+	public final fun getTrack ()Ldev/geode/feature/playback/api/Track;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/playback/api/PlayerState {
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Buffering : dev/geode/feature/playback/api/PlayerState {
+	public fun <init> (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/Queue;
+	public final fun component2 ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun copy (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;)Ldev/geode/feature/playback/api/PlayerState$Buffering;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlayerState$Buffering;Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayerState$Buffering;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun getQueue ()Ldev/geode/feature/playback/api/Queue;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Ended : dev/geode/feature/playback/api/PlayerState {
+	public fun <init> (Ldev/geode/feature/playback/api/Queue;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/Queue;
+	public final fun copy (Ldev/geode/feature/playback/api/Queue;)Ldev/geode/feature/playback/api/PlayerState$Ended;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlayerState$Ended;Ldev/geode/feature/playback/api/Queue;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayerState$Ended;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getQueue ()Ldev/geode/feature/playback/api/Queue;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Error : dev/geode/feature/playback/api/PlayerState {
+	public fun <init> (Ldev/geode/feature/playback/api/PlaybackFailure;Ldev/geode/feature/playback/api/Queue;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/PlaybackFailure;
+	public final fun component2 ()Ldev/geode/feature/playback/api/Queue;
+	public final fun copy (Ldev/geode/feature/playback/api/PlaybackFailure;Ldev/geode/feature/playback/api/Queue;)Ldev/geode/feature/playback/api/PlayerState$Error;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlayerState$Error;Ldev/geode/feature/playback/api/PlaybackFailure;Ldev/geode/feature/playback/api/Queue;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayerState$Error;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFailure ()Ldev/geode/feature/playback/api/PlaybackFailure;
+	public final fun getQueue ()Ldev/geode/feature/playback/api/Queue;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Idle : dev/geode/feature/playback/api/PlayerState {
+	public static final field INSTANCE Ldev/geode/feature/playback/api/PlayerState$Idle;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Loading : dev/geode/feature/playback/api/PlayerState {
+	public fun <init> (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;ZLdev/geode/feature/playback/api/LoadReason;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/Queue;
+	public final fun component2 ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun component3 ()Z
+	public final fun component4 ()Ldev/geode/feature/playback/api/LoadReason;
+	public final fun copy (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;ZLdev/geode/feature/playback/api/LoadReason;)Ldev/geode/feature/playback/api/PlayerState$Loading;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlayerState$Loading;Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;ZLdev/geode/feature/playback/api/LoadReason;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayerState$Loading;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFrom ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun getPlayWhenReady ()Z
+	public final fun getQueue ()Ldev/geode/feature/playback/api/Queue;
+	public final fun getReason ()Ldev/geode/feature/playback/api/LoadReason;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Paused : dev/geode/feature/playback/api/PlayerState {
+	public fun <init> (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/Queue;
+	public final fun component2 ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun copy (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;)Ldev/geode/feature/playback/api/PlayerState$Paused;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlayerState$Paused;Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayerState$Paused;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun getQueue ()Ldev/geode/feature/playback/api/Queue;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlayerState$Playing : dev/geode/feature/playback/api/PlayerState {
+	public fun <init> (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;)V
+	public final fun component1 ()Ldev/geode/feature/playback/api/Queue;
+	public final fun component2 ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun copy (Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;)Ldev/geode/feature/playback/api/PlayerState$Playing;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlayerState$Playing;Ldev/geode/feature/playback/api/Queue;Ldev/geode/feature/playback/api/PlayMark;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlayerState$Playing;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/feature/playback/api/PlayMark;
+	public final fun getQueue ()Ldev/geode/feature/playback/api/Queue;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaylistId {
+	public static final synthetic fun box-impl (J)Ldev/geode/feature/playback/api/PlaylistId;
+	public static fun constructor-impl (J)J
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (JLjava/lang/Object;)Z
+	public static final fun equals-impl0 (JJ)Z
+	public final fun getValue ()J
+	public fun hashCode ()I
+	public static fun hashCode-impl (J)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (J)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()J
+}
+
+public final class dev/geode/feature/playback/api/PlaylistSummary {
+	public synthetic fun <init> (JLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-cFbpt2M ()J
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()I
+	public final fun copy-h96Tkmc (JLjava/lang/String;I)Ldev/geode/feature/playback/api/PlaylistSummary;
+	public static synthetic fun copy-h96Tkmc$default (Ldev/geode/feature/playback/api/PlaylistSummary;JLjava/lang/String;IILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaylistSummary;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-cFbpt2M ()J
+	public final fun getName ()Ljava/lang/String;
+	public final fun getTrackCount ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/Queue {
+	public fun <init> (Ljava/util/List;I)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()I
+	public final fun copy (Ljava/util/List;I)Ldev/geode/feature/playback/api/Queue;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/Queue;Ljava/util/List;IILjava/lang/Object;)Ldev/geode/feature/playback/api/Queue;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun first ()Ldev/geode/feature/playback/api/Queue;
+	public final fun getCurrent ()Ldev/geode/feature/playback/api/Track;
+	public final fun getHasNext ()Z
+	public final fun getHasPrevious ()Z
+	public final fun getIndex ()I
+	public final fun getTracks ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun next ()Ldev/geode/feature/playback/api/Queue;
+	public final fun previous ()Ldev/geode/feature/playback/api/Queue;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/Track {
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-dcKIlnY ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4-CmsKos8 ()J
+	public final fun copy-UgsLKB4 (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)Ldev/geode/feature/playback/api/Track;
+	public static synthetic fun copy-UgsLKB4$default (Ldev/geode/feature/playback/api/Track;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JILjava/lang/Object;)Ldev/geode/feature/playback/api/Track;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getArtist ()Ljava/lang/String;
+	public final fun getDuration-CmsKos8 ()J
+	public final fun getId-dcKIlnY ()Ljava/lang/String;
+	public final fun getTitle ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+

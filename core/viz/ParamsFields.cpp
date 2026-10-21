@@ -24,7 +24,7 @@ const std::array<const char*, SceneParams::kFieldCount>& SceneParams::fieldNames
         "waterSpecular", "waterFlow", "waterLiquid", "waterLiquidFlow", "waterLiquidFade", "cymaticsGeometry",
         "cymaticsFundamental", "cymaticsModes", "cymaticsRing", "cymaticsFocus", "cymaticsScale", "cymaticsFill",
         "cymaticsLine", "cymaticsGlow", "cymaticsIridescence", "cymaticsCaustic", "cymaticsFlow", "cymaticsSwirl",
-        "rippleOverlayEnabled", "rippleOverlayStrength", "rippleOverlaySpecular", "formDrive",
+        "rippleOverlayEnabled", "rippleOverlayStrength", "rippleOverlaySpecular",
     }};
     return kNames;
 }
