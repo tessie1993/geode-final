@@ -302,6 +302,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetPacedFps(JNIEnv* env, jobject, jl
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetFrameLoad(JNIEnv* env, jobject, jlong handle, jint frames, jfloat p95Ms) {
+    return vizCall(env, "vizSetFrameLoad", handle, [&](geode_viz* v) {
+        geode_viz_set_frame_load(v, frames, p95Ms);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetOffscreen(JNIEnv* env, jobject, jlong handle, jboolean on) {
     return vizCall(env, "vizSetOffscreen", handle, [&](geode_viz* v) {
         geode_viz_set_offscreen(v, on == JNI_TRUE);

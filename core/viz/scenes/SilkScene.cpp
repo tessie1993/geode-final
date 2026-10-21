@@ -16,6 +16,7 @@ constexpr const char* kTag = "SilkScene";
 
 void SilkScene::init() {
     sim_.reset();
+    simGrid_ = {};
     showProgram_ = 0;
     vao_ = 0;
     programOk_ = false;
@@ -50,8 +51,11 @@ void SilkScene::resize(int width, int height) {
 }
 
 void SilkScene::applySimSize() {
-    const auto [w, h] = fluid::resolution(kSimRes, width_, height_);
-    sim_->resize(w, h);
+    const fluid::GridSize wanted = fluid::gridFor(kSimRes, width_, height_);
+    // The state keeps its declared grid unless that grid really changes (see fluid::gridChanges).
+    if (!simGrid_.empty() && !fluid::gridChanges(simGrid_, wanted)) return;
+    simGrid_ = wanted;
+    sim_->resize(wanted.width, wanted.height);
 }
 
 void SilkScene::update(const GeodeFeatureFrame& features, float dt) {
@@ -142,6 +146,7 @@ void SilkScene::bindStep(sim::SimUniforms& u) {
 void SilkScene::release() {
     if (sim_) sim_->release();
     sim_.reset();
+    simGrid_ = {};
     if (showProgram_ != 0) glDeleteProgram(showProgram_);
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
     showProgram_ = 0;
