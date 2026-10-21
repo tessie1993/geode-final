@@ -40,3 +40,10 @@ include(
     ":arch:kernel",
     ":arch:audio",
 )
+
+include(
+    ":feature:capture:api",
+    ":feature:capture:core",
+    ":feature:capture:handlers",
+    ":feature:capture:ui",
+)
