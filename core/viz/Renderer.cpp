@@ -23,7 +23,8 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
                 SceneHost{[this](const std::string& m) { fail(m); },
                           [this](const std::string& id, const std::string& src) { rememberCustomShader(id, src); },
                           [this] { return thermal_.pacedFps(); },
-                          [this](const std::string& path) { notePresetLoaded(path); }}),
+                          [this](const std::string& path) { notePresetLoaded(path); },
+                          [this] { return thermal_.offscreen(); }}),
       compositePass_(assets_, &programCache_),
       pcm_(kPcmCapacity, 0.0f),
       pcmScratch_(kPcmCapacity, 0.0f),
@@ -400,8 +401,8 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     in.surfaceHeight = height_;
     in.offscreen = thermal_.offscreen();
     in.thermalCeiling = thermal_.renderCeiling();
-    // MilkDrop's own buffers may change size only at a preset change (#56), so load leaves it alone;
-    // the thermal ceiling still applies, as it always has.
+    // MilkDrop follows load on its own (MilkdropAdaptation: mesh first, buffers only at a preset
+    // change), so the load scale leaves its scene target alone; the thermal ceiling still applies.
     const bool followsLoad = scene == nullptr || scene->family() != SceneFamily::Milkdrop;
     in.loadScale = followsLoad ? loadScale_.scale() : scale::LoadScaleConfig{}.maxScale;
     in.styleScale = scene != nullptr ? styleScaleFor(scene->id()) : scale::kDefaultStyleRenderScale;

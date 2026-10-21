@@ -33,10 +33,6 @@ internal class VisualSettingsController(
     private val _morphFade = MutableSharedFlow<Float>(extraBufferCapacity = 4)
     val morphFade: SharedFlow<Float> = _morphFade
 
-    fun emitApply(apply: VizApply) {
-        _vizApply.tryEmit(apply)
-    }
-
     fun selectScene(sceneId: SceneId) {
         state.update { it.copy(sceneId = sceneId) }
         vizStateStore.persist()

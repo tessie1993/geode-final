@@ -145,8 +145,9 @@ battle-tested.
   any copied portion.
 - **LGPL-2.1 (projectM)** requires dynamic linking (satisfied), the licence notice
   (satisfied), and the corresponding source of the *modified* library. The engine is built
-  from the submodule with one local patch (`tools/projectm-v4.1.7-render-fbo-backport.patch`,
-  applied by the root `CMakeLists.txt`); the build recipe is `tools/build-projectm.md`.
+  from the submodule with the local patches in `tools/projectm-*.patch` (listed and applied by
+  `tools/projectm-patches.cmake`, which the root `CMakeLists.txt` includes); the build recipe is
+  `tools/build-projectm.md`.
   The scene that links against it is `core/viz/scenes/MilkdropScene.cpp`, inside `libgeode.so`.
 
 There is no `checkThirdPartyNotices` task in the tree. Notice checking is done by

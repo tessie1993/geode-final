@@ -16,9 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal class VizStateStore(
     private val prefs: SharedPreferences,
     private val scope: CoroutineScope,
-    autoVisualsPrefsStore: AutoVisualsPrefsStore,
 ) {
-    val state = MutableStateFlow(restore(autoVisualsPrefsStore))
+    val state = MutableStateFlow(restore())
 
     private val _activeMilkPath =
         MutableStateFlow(prefs.getString(KEY_MILK_PATH, null)?.takeIf { File(it).isFile })
@@ -29,8 +28,8 @@ internal class VizStateStore(
 
     private val scheduled = AtomicBoolean(false)
 
-    private fun restore(store: AutoVisualsPrefsStore): VizUiState {
-        var base = store.applyTo(VizUiState(presets = BuiltInPresets.ALL))
+    private fun restore(): VizUiState {
+        var base = VizUiState(presets = BuiltInPresets.ALL)
         // Restore the transition id first, then re-derive the style from it (falling back to
         // whatever default the style key carries) so the two never disagree after a restore.
         val transitionId = prefs.getString(KEY_TRANSITION_ID, null)

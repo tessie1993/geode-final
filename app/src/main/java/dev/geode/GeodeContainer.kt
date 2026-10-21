@@ -3,9 +3,9 @@ package dev.geode
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.data.RetiredFeatureData
 import dev.geode.ui.SharedPrefsUserDataRepository
 import dev.geode.ui.UserDataRepository
 import dev.geode.util.bestEffort
@@ -27,6 +27,14 @@ class GeodeContainer(
     init {
         sweepStaleRenderScratch(context.applicationContext.cacheDir)
         sweepOrphanedPendingExports(context.applicationContext)
+        sweepRetiredFeatureData(context.applicationContext)
+    }
+
+    /** Deletes, once per install, the files and preferences of features that no longer exist. */
+    private fun sweepRetiredFeatureData(context: Context) {
+        appScope.launch(Dispatchers.IO) {
+            bestEffort(TAG, "sweep retired feature data") { RetiredFeatureData.sweepOnce(context) }
+        }
     }
 
     /**
@@ -63,12 +71,10 @@ class GeodeContainer(
      * finishes on its own. It would otherwise sit in Movies/Geode or Pictures/Geode forever, a
      * broken, unplayable, ever-growing invisible file.
      *
-     * `IS_PENDING` only exists from API 29 (scoped storage), so there is nothing to sweep below
-     * it. A short grace period (rather than sweeping every pending row on sight) keeps this from
+     * A short grace period (rather than sweeping every pending row on sight) keeps this from
      * racing a render that is genuinely in flight in this same process.
      */
     private fun sweepOrphanedPendingExports(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         appScope.launch(Dispatchers.IO) {
             bestEffort(TAG, "sweep orphaned pending exports") {
                 val cutoffSeconds = (System.currentTimeMillis() - PENDING_EXPORT_GRACE_MS) / 1000
