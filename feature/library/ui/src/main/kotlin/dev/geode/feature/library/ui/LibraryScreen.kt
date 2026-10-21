@@ -449,7 +449,8 @@ private fun GroupItem(
                 if (playlist) {
                     MenuItem(R.string.library_action_delete_playlist) {
                         menu = false
-                        row.key.name.toLongOrNull()?.let { send(LibraryCommand.DeletePlaylist(PlaylistRef(it))) }
+                        val id = row.key.name.toLongOrNull()
+                        if (id != null) send(LibraryCommand.DeletePlaylist(PlaylistRef(id)))
                     }
                 } else {
                     MenuItem(R.string.library_action_play_next) {
