@@ -322,6 +322,27 @@ jobs:
           TSAN_OPTIONS: halt_on_error=1 second_deadlock_stack=1
         run: ctest --test-dir build-tsan --output-on-failure --no-tests=error -R 'TripleBuffer|SnapshotExchange'
 
+  # Geode's copy of projectM, built on the host and run under Mesa's software GLES: two Renders of
+  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact").
+  milkdrop-frame-exact:
+    name: MilkDrop Renders are frame-exact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out projectM
+        run: git submodule update --init --recursive --depth 1 third_party/projectm
+      - name: Install Mesa (EGL, GLES 3, software rasterizer)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgles-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
+      - name: Configure
+        run: cmake -S tools/milkdrop-determinism -B build-milkdrop -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build-milkdrop --parallel
+      - name: Two Renders, byte for byte
+        run: ctest --test-dir build-milkdrop --output-on-failure
+
   visual-frames:
     name: Visual golden frames (shaders)
     runs-on: ubuntu-latest

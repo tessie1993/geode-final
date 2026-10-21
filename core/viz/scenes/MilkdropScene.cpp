@@ -113,8 +113,25 @@ void MilkdropScene::resize(int width, int height) {
     height_ = height;
 }
 
-// The engine renders at the size the renderer asked for in resize(), like every other scene; the
-// frame target is (re)built to the same size, so projectM's viewport and the FBO always agree.
+void MilkdropScene::setWindowSize(int width, int height) {
+    windowWidth_ = width;
+    windowHeight_ = height;
+}
+
+// The engine renders at the window size (Scene::setWindowSize) times the load adapter's buffer step,
+// not at the supersampled scene target; the post pass scales its frame onto the target. A new window
+// size applies at once. A new buffer step reaches here only through loadPendingPreset(), at a preset
+// change. The frame target is (re)built to the engine size, so projectM's viewport and the FBO agree.
+void MilkdropScene::applyEngineSize() {
+    const int windowWidth = windowWidth_ > 0 ? windowWidth_ : width_;
+    const int windowHeight = windowHeight_ > 0 ? windowHeight_ : height_;
+    const milkdrop::BufferSize size = milkdrop::bufferSize(windowWidth, windowHeight, adapter_.bufferScale());
+    if (size.width == engineWidth_ && size.height == engineHeight_) return;
+    projectm_set_window_size(engine_.get(), static_cast<size_t>(size.width), static_cast<size_t>(size.height));
+    engineWidth_ = size.width;
+    engineHeight_ = size.height;
+}
+
 void MilkdropScene::ensureEngine(double now) {
     if (width_ <= 1 || height_ <= 1) return;
     if (!engine_) {
@@ -134,8 +151,14 @@ void MilkdropScene::ensureEngine(double now) {
             return;
         }
         reportedCreateFailure_ = false;
-        projectm_set_fps(engine_.get(), 60);
-        projectm_set_mesh_size(engine_.get(), 48, 32);
+        if (rendering_) {
+            // Before the texture paths and the first preset, which draw from the seed.
+            projectm_set_random_seed(engine_.get(), milkdrop::kRenderSeed);
+            projectm_set_frame_time(engine_.get(), renderClock_.seconds());
+        }
+        appliedMesh_ = {0, 0};
+        appliedFps_ = 0;
+        presetSinceCreate_ = false;
         projectm_set_soft_cut_duration(engine_.get(), 3.0);
         projectm_set_preset_duration(engine_.get(), 999999.0);
         projectm_set_preset_locked(engine_.get(), true);
@@ -143,12 +166,39 @@ void MilkdropScene::ensureEngine(double now) {
         projectm_set_preset_switch_failed_event_callback(engine_.get(), onPresetSwitchFailed, this);
         armLastPreset();
         engineWidth_ = 0;
+        engineHeight_ = 0;
     }
-    if (engineWidth_ != width_ || engineHeight_ != height_) {
-        projectm_set_window_size(engine_.get(), static_cast<size_t>(width_), static_cast<size_t>(height_));
-        engineWidth_ = width_;
-        engineHeight_ = height_;
+    applyEngineSize();
+}
+
+// The host raises the flag for the whole of a Render. Either way the engine starts over: a Render
+// needs a fresh one, seeded before anything random is drawn, and the live Visual must not inherit
+// the render clock.
+void MilkdropScene::followRenderMode() {
+    const bool rendering = host_.rendering && host_.rendering();
+    if (rendering == rendering_) return;
+    rendering_ = rendering;
+    engine_.reset();
+    engineWidth_ = 0;
+    engineHeight_ = 0;
+    reportedCreateFailure_ = false;
+    adapter_.reset();
+    renderClock_.reset();
+}
+
+void MilkdropScene::applyFrameSettings() {
+    const milkdrop::MeshSize mesh = adapter_.mesh();
+    if (mesh != appliedMesh_) {
+        projectm_set_mesh_size(engine_.get(), static_cast<size_t>(mesh.columns), static_cast<size_t>(mesh.rows));
+        appliedMesh_ = mesh;
     }
+    const int fps = rendering_ ? milkdrop::renderFps(lastDt_)
+                               : milkdrop::engineFps(host_.pacedFps ? host_.pacedFps() : 0.0f, adapter_.averageFps());
+    if (fps != appliedFps_) {
+        projectm_set_fps(engine_.get(), fps);
+        appliedFps_ = fps;
+    }
+    if (rendering_) projectm_set_frame_time(engine_.get(), renderClock_.seconds());
 }
 
 // The engine is destroyed and rebuilt whenever the context is - a trip to the background and
@@ -167,6 +217,13 @@ void MilkdropScene::update(const GeodeFeatureFrame& features, float dt) {
     zoomPhase_ = p.endlessZoom ? std::fmod(zoomPhase_ + p.endlessZoomSpeed * dt, 1.0f) : 0.0f;
     if (p.colorCycle) cyclePhase_ = std::fmod(cyclePhase_ + p.cycleSpeed * dt, 1.0f);
     beatPulse_ = std::max(std::max(live::hit(features), beatPulse_ - dt * 3.0f), 0.0f);
+    followRenderMode();
+    lastDt_ = dt;
+    if (rendering_) {
+        renderClock_.advance(dt);
+    } else {
+        adapter_.onFrame(dt, host_.pacedFps ? host_.pacedFps() : 0.0f);
+    }
     if (!engine_) return;
     if (pcmCount_ > 0) {
         const int n = std::min(pcmCount_, kEnginePcmSamples);
@@ -184,7 +241,9 @@ void MilkdropScene::loadPendingPreset(double now) {
     std::string shared;
     {
         std::lock_guard<std::mutex> lock(presetLock_);
-        if (pendingPresetPath_.empty() || now - lastLoadSeconds_ < kLoadDebounceSeconds) return;
+        // A Render loads its preset on the frame it asks for it: the debounce is for a person
+        // scrolling through presets, and waiting on the wall clock would make frames differ.
+        if (pendingPresetPath_.empty() || (!rendering_ && now - lastLoadSeconds_ < kLoadDebounceSeconds)) return;
         path.swap(pendingPresetPath_);
         shared = sharedTextureDir_;
     }
@@ -200,11 +259,16 @@ void MilkdropScene::loadPendingPreset(double now) {
         std::lock_guard<std::mutex> lock(errorLock_);
         lastError_.clear();
     }
-    projectm_load_preset_file(engine_.get(), path.c_str(), params_.milkdropBlendPresets);
+    // The preset change is where a new buffer step lands: the incoming preset starts at the new
+    // size and blends from the old picture, so the resize never shows.
+    if (adapter_.onPresetChange()) applyEngineSize();
+    const bool blend = params_.milkdropBlendPresets && !(rendering_ && !presetSinceCreate_);
+    projectm_load_preset_file(engine_.get(), path.c_str(), blend);
     projectm_set_preset_locked(engine_.get(), true);
     const auto error = takeError();
     host_.onShaderError(error.value_or(""));
     if (!error) {
+        presetSinceCreate_ = true;
         {
             std::lock_guard<std::mutex> lock(presetLock_);
             lastPresetPath_ = path;
@@ -228,8 +292,11 @@ void MilkdropScene::draw(float timeSeconds) {
     resetFrameState();
     const double now = nowSeconds();
     ensureEngine(now);
-    if (!engine_ || !frame_.ensure(engineWidth_, engineHeight_)) return;
+    if (!engine_) return;
+    // Mesh, rate and clock first: a preset loaded this frame initialises against them.
+    applyFrameSettings();
     loadPendingPreset(now);
+    if (!frame_.ensure(engineWidth_, engineHeight_)) return;
     const SceneParams& p = params_;
     projectm_set_beat_sensitivity(engine_.get(), std::clamp(0.2f + p.beatResponse, 0.2f, 3.0f));
 
@@ -318,6 +385,7 @@ void MilkdropScene::release() {
     engine_.reset();
     engineWidth_ = 0;
     engineHeight_ = 0;
+    adapter_.reset();
     frame_.release();
     if (postProgram_ != 0) glDeleteProgram(postProgram_);
     postProgram_ = 0;
