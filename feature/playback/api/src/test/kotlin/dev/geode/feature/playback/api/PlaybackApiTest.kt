@@ -42,4 +42,12 @@ class PlaybackApiTest {
         assertEquals(Millis(10_000), moving.copy(moving = false).positionAt(Millis(502_500)))
         assertEquals(Millis(3_000), PlayMark.still(Millis(3_000)).positionAt(Millis(900_000)))
     }
+
+    @Test
+    fun `tracks join ahead of time with gapless or a crossfade`() {
+        assertTrue(ListeningOptions().joinsTracks)
+        assertTrue(ListeningOptions(gapless = false, crossfade = Millis(1)).joinsTracks)
+        assertFalse(ListeningOptions(gapless = false).joinsTracks)
+        assertEquals("bookmark 4", BookmarkId(4).toString())
+    }
 }

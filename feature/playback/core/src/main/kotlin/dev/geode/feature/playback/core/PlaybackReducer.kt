@@ -1,7 +1,9 @@
 package dev.geode.feature.playback.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.LoadReason
+import dev.geode.feature.playback.api.MAX_CROSSFADE
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
@@ -28,7 +30,7 @@ import dev.geode.kernel.Reducer
 import dev.geode.kernel.ReportFailure
 import dev.geode.kernel.StartTimer
 
-private typealias Step = Next<PlayerState, PlaybackEffect>
+internal typealias Step = Next<PlayerState, PlaybackEffect>
 
 /**
  * Playback's state machine (#34): Idle, Loading, Buffering, Playing, Paused, Ended and Error, driven by
@@ -40,9 +42,17 @@ private typealias Step = Next<PlayerState, PlaybackEffect>
  * - A pause while a track opens wins: the track opens paused, and a start it announces is paused again.
  * - A failure under a track that was already playing does not stop it: it is loaded again where it was.
  *   A track that fails while it opens is skipped silently (owner decision, #34).
+ *
+ * The listening tools (#35) — the queue, shuffle and repeat, crossfade and gapless, the sleep timer,
+ * the A-B loop, bookmarks and the resume points of long tracks — are in [Listening].
  */
 object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     override fun reduce(
+        state: PlaybackState,
+        event: PlaybackEvent,
+    ): Next<PlaybackState, PlaybackEffect> = Listening.settle(state, event, decide(state, event))
+
+    private fun decide(
         state: PlaybackState,
         event: PlaybackEvent,
     ): Next<PlaybackState, PlaybackEffect> =
@@ -52,19 +62,25 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is PlaybackEvent.HistoryChanged -> Next(state.copy(history = event.history))
             is PlaybackEvent.PlaylistSaved -> Next(state, listOf(Emit(PlaybackFact.PlaylistSaved(event.name))))
             is PlaybackEvent.StorageFailed -> Next(state, listOf(ReportFailure(describe(event.failure))))
-            is PlaybackEvent.PlaylistOpened -> player(state, play(state.player, event.tracks, startAt = 0))
+            is PlaybackEvent.PlaylistOpened -> Listening.play(state, event.tracks, startAt = 0)
             is PlaybackEvent.Started -> player(state, started(state.player, event.mark))
             is PlaybackEvent.Paused -> player(state, paused(state.player, event.mark))
             is PlaybackEvent.Seeked -> player(state, seeked(state.player, event.mark))
-            is PlaybackEvent.TrackChanged -> player(state, trackChanged(state.player, event))
-            PlaybackEvent.Ended -> player(state, ended(state.player))
+            is PlaybackEvent.TrackChanged -> Listening.trackChanged(state, event)
+            PlaybackEvent.Ended -> Listening.ending(state)
             PlaybackEvent.Failed -> player(state, failed(state.player))
             PlaybackEvent.LoadTimedOut -> player(state, loadTimedOut(state.player))
             PlaybackEvent.BufferingGraceOver -> player(state, bufferingGraceOver(state.player))
             is PlaybackEvent.Restored -> player(state, restored(state.player, event))
+            PlaybackEvent.SleepTicked -> Listening.sleepTicked(state)
+            PlaybackEvent.LoopEndReached -> Listening.loopEndReached(state)
+            is PlaybackEvent.ListeningRestored -> Listening.options(state, event.options, save = false)
+            is PlaybackEvent.BookmarksChanged -> Next(state.copy(bookmarks = event.bookmarks))
+            is PlaybackEvent.ResumePointsChanged -> Next(state.copy(resumePoints = event.points))
+            is PlaybackEvent.SimilarPicked -> Listening.similarPicked(state, event.tracks)
         }
 
-    private fun player(
+    internal fun player(
         state: PlaybackState,
         step: Step,
     ): Next<PlaybackState, PlaybackEffect> = Next(state.copy(player = step.state), step.effects)
@@ -74,10 +90,10 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         command: PlaybackCommand,
     ): Next<PlaybackState, PlaybackEffect> =
         when (command) {
-            is PlaybackCommand.Play -> player(state, play(state.player, command.tracks, command.startAt))
+            is PlaybackCommand.Play -> Listening.play(state, command.tracks, command.startAt)
             PlaybackCommand.Resume -> player(state, resume(state.player))
             PlaybackCommand.Pause -> player(state, pause(state.player))
-            PlaybackCommand.Next -> player(state, next(state.player))
+            PlaybackCommand.Next -> Listening.next(state)
             PlaybackCommand.Previous -> player(state, previous(state.player))
             is PlaybackCommand.SeekTo -> player(state, seekTo(state.player, command.position))
             is PlaybackCommand.PlayPlaylist -> Next(state, listOf(Perform(PlaybackWork.OpenPlaylist(command.id))))
@@ -85,6 +101,25 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is PlaybackCommand.SaveHistoryAsPlaylist ->
                 createPlaylist(state, command.name, state.history.map { it.track }.distinctBy { it.id })
             is PlaybackCommand.DeletePlaylist -> Next(state, listOf(Perform(PlaybackWork.DeletePlaylist(command.id))))
+            is PlaybackCommand.PlayNext -> Listening.insert(state, command.tracks, next = true)
+            is PlaybackCommand.AddToQueue -> Listening.insert(state, command.tracks, next = false)
+            is PlaybackCommand.PlayQueueItem -> Listening.playQueueItem(state, command.index)
+            is PlaybackCommand.RemoveFromQueue -> Listening.remove(state, command.index)
+            is PlaybackCommand.MoveInQueue -> Listening.move(state, command.from, command.to)
+            is PlaybackCommand.SetShuffle -> Listening.shuffle(state, command.on)
+            is PlaybackCommand.SetRepeat -> Listening.options(state, state.options.copy(repeat = command.mode))
+            is PlaybackCommand.SetCrossfade ->
+                Listening.options(state, state.options.copy(crossfade = command.length.coerceIn(Millis.ZERO, MAX_CROSSFADE)))
+            is PlaybackCommand.SetGapless -> Listening.options(state, state.options.copy(gapless = command.on))
+            is PlaybackCommand.SetQueueEnd -> Listening.options(state, state.options.copy(queueEnd = command.end))
+            is PlaybackCommand.StartSleepTimer -> Listening.startSleep(state, command.after, command.finishTrack)
+            PlaybackCommand.SleepAfterTrack -> Listening.sleepAfterTrack(state)
+            PlaybackCommand.CancelSleepTimer -> Listening.cancelSleep(state)
+            is PlaybackCommand.MarkLoop -> Listening.markLoop(state, command.at)
+            PlaybackCommand.ClearLoop -> Next(state.copy(loop = AbLoop.Off))
+            PlaybackCommand.AddBookmark -> Listening.addBookmark(state)
+            is PlaybackCommand.RemoveBookmark -> Next(state, listOf(Perform(PlaybackWork.DeleteBookmark(command.id))))
+            is PlaybackCommand.GoToBookmark -> Listening.goToBookmark(state, command.id)
         }
 
     private fun createPlaylist(
@@ -100,7 +135,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
 
     // Commands.
 
-    private fun play(
+    internal fun play(
         from: PlayerState,
         tracks: List<Track>,
         startAt: Int,
@@ -121,7 +156,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is Error -> load(from, from.queue, START, playWhenReady = true, LoadReason.PLAY)
         }
 
-    private fun pause(from: PlayerState): Step =
+    internal fun pause(from: PlayerState): Step =
         when (from) {
             Idle, is Paused, is Ended, is Error -> Next(from)
             is Loading ->
@@ -130,7 +165,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is Playing -> go(from, Paused(from.queue, from.mark), drive(EngineStep.Pause), save(from.queue, from.mark))
         }
 
-    private fun next(from: PlayerState): Step {
+    internal fun next(from: PlayerState): Step {
         val queue = queueOf(from) ?: return Next(from)
         return if (queue.hasNext) load(from, queue.next(), START, wantsToPlay(from), LoadReason.PLAY) else Next(from)
     }
@@ -228,7 +263,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is Paused -> Next(from.copy(mark = mark), listOf(save(from.queue, mark)))
         }
 
-    private fun trackChanged(
+    internal fun trackChanged(
         from: PlayerState,
         event: PlaybackEvent.TrackChanged,
     ): Step =
@@ -250,7 +285,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         return Next(settled.state, settled.effects + record + save(from.queue, mark))
     }
 
-    private fun ended(from: PlayerState): Step =
+    internal fun ended(from: PlayerState): Step =
         when (from) {
             Idle, is Loading, is Ended, is Error -> Next(from)
             is Buffering -> advance(from, from.queue, playWhenReady = true)
@@ -299,7 +334,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     // Moves.
 
     /** On to the queue's next track, or to Ended at the end of it. */
-    private fun advance(
+    internal fun advance(
         from: PlayerState,
         queue: Queue,
         playWhenReady: Boolean,
@@ -310,7 +345,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             go(from, Ended(queue), save(queue, START))
         }
 
-    private fun load(
+    internal fun load(
         from: PlayerState,
         queue: Queue,
         at: PlayMark,
@@ -332,7 +367,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     ): Step = go(from, Buffering(queue, mark), StartTimer(BufferingGrace, BUFFERING_GRACE, PlaybackEvent.BufferingGraceOver), *effects)
 
     /** Moves to [to], first cancelling the timer of the state being left when it is a different state. */
-    private fun go(
+    internal fun go(
         from: PlayerState,
         to: PlayerState,
         vararg effects: PlaybackEffect,
@@ -352,7 +387,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             }
         }
 
-    private fun queueOf(state: PlayerState): Queue? =
+    internal fun queueOf(state: PlayerState): Queue? =
         when (state) {
             Idle -> null
             is Loading -> state.queue
@@ -364,21 +399,21 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         }
 
     /** Whether the player is meant to be playing: what moving to another track keeps. */
-    private fun wantsToPlay(state: PlayerState): Boolean =
+    internal fun wantsToPlay(state: PlayerState): Boolean =
         when (state) {
             is Loading -> state.playWhenReady
             is Buffering, is Playing, is Ended, is Error -> true
             Idle, is Paused -> false
         }
 
-    private fun drive(vararg steps: EngineStep): PlaybackEffect = Perform(Drive(steps.toList()))
+    internal fun drive(vararg steps: EngineStep): PlaybackEffect = Perform(Drive(steps.toList()))
 
-    private fun save(
+    internal fun save(
         queue: Queue,
         mark: PlayMark,
     ): PlaybackEffect = Perform(PlaybackWork.SaveSession(queue, mark))
 
-    private val START = PlayMark.still(Millis.ZERO)
+    internal val START = PlayMark.still(Millis.ZERO)
 }
 
 /** What the error channel's banner says about [failure]. */
@@ -395,4 +430,8 @@ fun describe(failure: StorageFailure): String =
         StorageFailure.SAVE_SESSION -> "Could not save where playback was left off"
         StorageFailure.SAVE_PLAYLIST -> "Could not save the playlist"
         StorageFailure.DELETE_PLAYLIST -> "Could not delete the playlist"
+        StorageFailure.SAVE_LISTENING -> "Could not save the listening settings"
+        StorageFailure.SAVE_BOOKMARK -> "Could not save the bookmark"
+        StorageFailure.DELETE_BOOKMARK -> "Could not delete the bookmark"
+        StorageFailure.SAVE_RESUME_POINT -> "Could not save where the long track was left off"
     }

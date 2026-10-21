@@ -13,18 +13,29 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Playback's own database (ADR-0004, ADR-0005): the playlists, the play history and where playback
- * was left off. Nothing outside Playback opens it; other features read through Playback's `:api`.
+ * was left off, and since version 2 the listening tools' bookmarks, resume points and options (#35).
+ * Nothing outside Playback opens it; other features read through Playback's `:api`.
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`, which the
  * migration test opens at the current version to prove that nothing is lost.
  */
 @Database(
-    entities = [PlaylistRow::class, PlaylistTrackRow::class, PlayRow::class, SessionRow::class, SessionTrackRow::class],
+    entities = [
+        PlaylistRow::class,
+        PlaylistTrackRow::class,
+        PlayRow::class,
+        SessionRow::class,
+        SessionTrackRow::class,
+        BookmarkRow::class,
+        ResumePointRow::class,
+        ListeningRow::class,
+    ],
     version = PlaybackDatabase.VERSION,
     exportSchema = false,
 )
@@ -32,11 +43,11 @@ abstract class PlaybackDatabase : RoomDatabase() {
     abstract fun dao(): PlaybackDao
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
         const val NAME = "playback.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(AddListeningTools)
 
         fun open(
             context: Context,
@@ -46,6 +57,26 @@ abstract class PlaybackDatabase : RoomDatabase() {
                 .databaseBuilder(context, PlaybackDatabase::class.java, name)
                 .apply { MIGRATIONS.forEach { addMigrations(it) } }
                 .build()
+    }
+}
+
+/** Version 2 (#35): the bookmarks, the resume points of long tracks and the listening options. */
+object AddListeningTools : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `bookmarks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`trackId` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT NOT NULL, `durationMs` INTEGER NOT NULL, " +
+                "`positionMs` INTEGER NOT NULL, `createdAtMs` INTEGER NOT NULL)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `resume_points` (`trackId` TEXT NOT NULL, `positionMs` INTEGER NOT NULL, " +
+                "`savedAtMs` INTEGER NOT NULL, PRIMARY KEY(`trackId`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `listening` (`id` INTEGER NOT NULL, `shuffle` INTEGER NOT NULL, " +
+                "`repeatMode` TEXT NOT NULL, `crossfadeMs` INTEGER NOT NULL, `gapless` INTEGER NOT NULL, " +
+                "`queueEnd` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        )
     }
 }
 
@@ -92,6 +123,33 @@ data class SessionTrackRow(
     @Embedded val track: TrackColumns,
 )
 
+@Entity(tableName = "bookmarks")
+data class BookmarkRow(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @Embedded val track: TrackColumns,
+    val positionMs: Long,
+    val createdAtMs: Long,
+)
+
+/** Where a long track was left off. */
+@Entity(tableName = "resume_points")
+data class ResumePointRow(
+    @PrimaryKey val trackId: String,
+    val positionMs: Long,
+    val savedAtMs: Long,
+)
+
+/** The one row of listening options; the choices are kept by name. */
+@Entity(tableName = "listening")
+data class ListeningRow(
+    @PrimaryKey val id: Int = LISTENING_ID,
+    val shuffle: Boolean,
+    val repeatMode: String,
+    val crossfadeMs: Long,
+    val gapless: Boolean,
+    val queueEnd: String,
+)
+
 data class PlaylistCount(
     val id: Long,
     val name: String,
@@ -106,6 +164,9 @@ data class SessionRows(
 
 /** The id of the one row in the session table. */
 const val SESSION_ID = 0
+
+/** The id of the one row in the listening table. */
+const val LISTENING_ID = 0
 
 @Dao
 abstract class PlaybackDao {
@@ -155,6 +216,59 @@ abstract class PlaybackDao {
 
     @Transaction
     open suspend fun loadSession(): SessionRows? = session()?.let { SessionRows(it, sessionTracks()) }
+
+    @Query("SELECT * FROM bookmarks ORDER BY createdAtMs DESC, id DESC")
+    abstract fun bookmarks(): Flow<List<BookmarkRow>>
+
+    @Insert
+    abstract suspend fun insertBookmark(row: BookmarkRow): Long
+
+    @Query("DELETE FROM bookmarks WHERE id = :id")
+    abstract suspend fun deleteBookmark(id: Long)
+
+    @Query("SELECT * FROM resume_points")
+    abstract fun resumePoints(): Flow<List<ResumePointRow>>
+
+    @Transaction
+    open suspend fun saveResumePoint(
+        row: ResumePointRow,
+        keep: Int,
+    ) {
+        putResumePoint(row)
+        trimResumePoints(keep)
+    }
+
+    @Query("DELETE FROM resume_points WHERE trackId = :trackId")
+    abstract suspend fun forgetResumePoint(trackId: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun putListening(row: ListeningRow)
+
+    @Query("SELECT * FROM listening WHERE id = $LISTENING_ID")
+    abstract suspend fun listening(): ListeningRow?
+
+    /** The songs of the history, each once, the most played first. */
+    @Query(
+        "SELECT trackId, title, artist, durationMs FROM plays GROUP BY trackId " +
+            "ORDER BY COUNT(*) DESC, MAX(playedAtMs) DESC, trackId",
+    )
+    abstract suspend fun playedTracks(): List<TrackColumns>
+
+    /** The songs of the playlists, each once. */
+    @Query(
+        "SELECT trackId, title, artist, durationMs FROM playlist_tracks GROUP BY trackId " +
+            "ORDER BY MIN(playlistId), MIN(position), trackId",
+    )
+    abstract suspend fun playlistedTracks(): List<TrackColumns>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract suspend fun putResumePoint(row: ResumePointRow)
+
+    @Query(
+        "DELETE FROM resume_points WHERE trackId NOT IN " +
+            "(SELECT trackId FROM resume_points ORDER BY savedAtMs DESC, trackId LIMIT :keep)",
+    )
+    protected abstract suspend fun trimResumePoints(keep: Int)
 
     @Insert
     protected abstract suspend fun insertPlaylist(row: PlaylistRow): Long
