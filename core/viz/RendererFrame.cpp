@@ -1,11 +1,11 @@
-#include "viz/Renderer.hpp"
+#include "geode/viz/Renderer.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "viz/CompositeGrade.hpp"
-#include "viz/LiveSignal.hpp"
-#include "viz/Quad.hpp"
+#include "CompositeGrade.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "geode/render/Quad.hpp"
 
 namespace geode::viz {
 

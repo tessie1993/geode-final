@@ -1,10 +1,10 @@
-#include "analysis/KeyDetector.hpp"
+#include "geode/analysis/KeyDetector.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
-#include "analysis/Chromagram.hpp"
+#include "geode/analysis/Chromagram.hpp"
 
 namespace geode::analysis {
 

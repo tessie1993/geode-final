@@ -26,12 +26,23 @@ set(KISSFFT_TOOLS OFF CACHE BOOL "" FORCE)
 set(KISSFFT_PKGCONFIG OFF CACHE BOOL "" FORCE)
 add_subdirectory("${GEODE_ROOT}/third_party/kissfft" kissfft)
 
+# The pure part of each native library (core/pure_sources.cmake), built as the same targets with the
+# same public and private include directories as the device build (core/native_libraries.cmake).
 include("${GEODE_ROOT}/core/pure_sources.cmake")
-list(TRANSFORM GEODE_CORE_PURE_SOURCES PREPEND "${GEODE_ROOT}/core/")
-add_library(geode_core_pure STATIC ${GEODE_CORE_PURE_SOURCES})
-target_include_directories(geode_core_pure PUBLIC "${GEODE_ROOT}/core")
-target_compile_options(geode_core_pure PRIVATE -Wall -Wextra)
-target_link_libraries(geode_core_pure PUBLIC kissfft::kissfft)
+include("${GEODE_ROOT}/core/native_libraries.cmake")
+geode_api_types_library()
+geode_core_library(geode_util util ${GEODE_UTIL_PURE_SOURCES})
+geode_core_library(geode_analysis analysis ${GEODE_ANALYSIS_PURE_SOURCES})
+target_link_libraries(geode_analysis PUBLIC geode_api_types kissfft::kissfft)
+geode_core_library(geode_audio audio ${GEODE_AUDIO_PURE_SOURCES})
+target_link_libraries(geode_audio PUBLIC geode_api_types PRIVATE geode_util)
+geode_core_library(geode_viz viz ${GEODE_VIZ_PURE_SOURCES})
+target_link_libraries(geode_viz PUBLIC geode_api_types PRIVATE geode_analysis geode_util)
+foreach(geode_lib geode_util geode_analysis geode_audio geode_viz)
+    target_compile_options(${geode_lib} PRIVATE -Wall -Wextra)
+endforeach()
+add_library(geode_core_pure INTERFACE)
+target_link_libraries(geode_core_pure INTERFACE geode_util geode_analysis geode_audio geode_viz)
 
 include(FetchContent)
 FetchContent_Declare(

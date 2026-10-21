@@ -1,10 +1,10 @@
-#include "viz/scenes/WaterScene.hpp"
+#include "scenes/WaterScene.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "util/Log.hpp"
-#include "viz/fluid/FluidMath.hpp"
+#include "geode/util/Log.hpp"
+#include "fluid/FluidMath.hpp"
 
 namespace geode::viz {
 

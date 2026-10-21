@@ -270,6 +270,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+      # Each native library may include only its own headers and its dependencies' public ones
+      # (docs/native-libraries.md). The self-test first proves the check still catches violations.
+      - name: Native library include boundaries
+        run: |
+          python3 tools/ci/check_native_includes.py --self-test
+          python3 tools/ci/check_native_includes.py
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
       - name: Configure
@@ -281,7 +287,7 @@ jobs:
         run: cmake --build build-host --parallel
       - name: Test
         run: ctest --test-dir build-host --output-on-failure
-      # Compiles every viz/ and util/ translation unit with the project flags and links them with
+      # Compiles every viz/, render/ and util/ translation unit with the project flags and links them with
       # --no-undefined against Mesa's GLES: the link the NDK does, without an NDK.
       - name: Host link check (tools/hostlink)
         run: |

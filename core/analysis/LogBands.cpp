@@ -1,9 +1,9 @@
-#include "analysis/LogBands.hpp"
+#include "geode/analysis/LogBands.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "analysis/AdaptiveRange.hpp"
+#include "geode/analysis/AdaptiveRange.hpp"
 
 namespace geode::analysis {
 

@@ -1,14 +1,14 @@
-#include "viz/scenes/MilkdropScene.hpp"
+#include "scenes/MilkdropScene.hpp"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 
-#include "util/Log.hpp"
-#include "viz/CompositeGrade.hpp"
-#include "viz/LiveSignal.hpp"
-#include "viz/Quad.hpp"
+#include "geode/util/Log.hpp"
+#include "CompositeGrade.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "geode/render/Quad.hpp"
 
 namespace geode::viz {
 

@@ -1,11 +1,18 @@
-# The part of the native core that needs neither Android, GLES, projectM, Oboe nor TagLib: audio
-# analysis, the DSP chain, the parameter model and the maths behind the Visual. It is listed once
-# here so the device build (core/CMakeLists.txt) and the host test build (core/host/CMakeLists.txt)
-# compile exactly the same files. Paths are relative to core/.
-set(GEODE_CORE_PURE_SOURCES
+# The part of each native library that needs neither Android, GLES, projectM, Oboe nor TagLib: audio
+# analysis, the DSP chain, the parameter model and the maths behind the Visual. Each library's list is
+# kept once here so the device build (core/CMakeLists.txt) and the host test build
+# (core/host/CMakeLists.txt) compile exactly the same files per library. Only host-testable pure code
+# belongs here. Paths are relative to core/. The libraries and their dependency graph: docs/native-libraries.md.
+set(GEODE_UTIL_PURE_SOURCES
+    util/Json.cpp
+    util/Sha256.cpp
+)
+set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Equalizer.cpp
     audio/dsp/Crossfeed.cpp
     audio/dsp/Limiter.cpp
+)
+set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
     analysis/Spectrum.cpp
     analysis/AdaptiveRange.cpp
@@ -27,7 +34,8 @@ set(GEODE_CORE_PURE_SOURCES
     analysis/PulseReplay.cpp
     analysis/ReactiveAnalyzer.cpp
     analysis/AnalysisSession.cpp
-    viz/Sha256.cpp
+)
+set(GEODE_VIZ_PURE_SOURCES
     viz/Params.cpp
     viz/ParamsFields.cpp
     viz/Lfo.cpp
@@ -37,5 +45,13 @@ set(GEODE_CORE_PURE_SOURCES
     viz/fluid/FluidMath.cpp
     viz/fluid/RippleMath.cpp
     viz/scenes/CymaticsMath.cpp
-    util/Json.cpp
+)
+# The render library (GL plumbing) and the library library (TagLib) have no pure part.
+
+# Every pure source, for tools that want the whole set.
+set(GEODE_CORE_PURE_SOURCES
+    ${GEODE_UTIL_PURE_SOURCES}
+    ${GEODE_AUDIO_PURE_SOURCES}
+    ${GEODE_ANALYSIS_PURE_SOURCES}
+    ${GEODE_VIZ_PURE_SOURCES}
 )

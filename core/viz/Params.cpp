@@ -1,4 +1,4 @@
-#include "viz/Params.hpp"
+#include "geode/viz/Params.hpp"
 
 #include <algorithm>
 #include <cmath>

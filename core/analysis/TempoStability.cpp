@@ -1,4 +1,4 @@
-#include "analysis/TempoStability.hpp"
+#include "geode/analysis/TempoStability.hpp"
 
 #include <algorithm>
 #include <cmath>
