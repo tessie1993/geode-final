@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
 import dev.geode.data.GeodePrefsFiles
+import dev.geode.data.RetiredFeatureData
 import dev.geode.ui.SharedPrefsUserDataRepository
 import dev.geode.ui.UserDataRepository
 import dev.geode.util.bestEffort
@@ -26,6 +27,14 @@ class GeodeContainer(
     init {
         sweepStaleRenderScratch(context.applicationContext.cacheDir)
         sweepOrphanedPendingExports(context.applicationContext)
+        sweepRetiredFeatureData(context.applicationContext)
+    }
+
+    /** Deletes, once per install, the files and preferences of features that no longer exist. */
+    private fun sweepRetiredFeatureData(context: Context) {
+        appScope.launch(Dispatchers.IO) {
+            bestEffort(TAG, "sweep retired feature data") { RetiredFeatureData.sweepOnce(context) }
+        }
     }
 
     /**

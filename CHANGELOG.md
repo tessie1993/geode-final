@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Removed the features ruled out of the product (#9).** Takes; second-screen
+  output; the boot ripple intro; key and artwork colours; video templates and
+  `geode://template` links; auto visuals (random switching, visual playlists,
+  section staging and the AUTO intelligence mode); nine of the ten App UI
+  theme packs (Lapis Lazuli stays until the App UI redesign); bit-perfect USB
+  output and `MODIFY_AUDIO_SETTINGS`; capturing other apps' audio, with its
+  MediaProjection consent, `mediaProjection` foreground-service type and
+  permission, and the now-playing notification listener. Live input keeps the
+  microphone and a USB or line-in source. The live path no longer enriches
+  frames with whole-song progress and sections (ADR-0001). An existing install
+  clears what those features stored, once, on first launch
+  (`RetiredFeatureData`). Playlist-file import stays.
 - **Form drive: the superformula as the one driver every visual is fed
   through.** `core/viz/FormDrive` sits in `Renderer::resolveParams`, after
   the LFO and ADSR slots and before the safety clamp, so every family's
