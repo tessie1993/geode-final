@@ -356,8 +356,7 @@ internal fun LazyListScope.aboutSection(appVersion: String) {
 }
 
 /** A range of milliseconds as a slider's range. */
-private fun ClosedRange<Millis>.millisForSlider(): ClosedFloatingPointRange<Float> =
-    start.value.toFloat()..endInclusive.value.toFloat()
+private fun ClosedRange<Millis>.millisForSlider(): ClosedFloatingPointRange<Float> = start.value.toFloat()..endInclusive.value.toFloat()
 
 /** A range of millibels as a slider's range. */
 private fun ClosedRange<Millibels>.millibelsForSlider(): ClosedFloatingPointRange<Float> =
