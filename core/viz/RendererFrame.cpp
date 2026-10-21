@@ -119,8 +119,10 @@ void Renderer::resolveLayerScene() {
 }
 
 bool Renderer::ensureTargets() {
-    if (!fboA_.ensure(renderWidth_, renderHeight_)) return false;
-    if (!fboB_.ensure(renderWidth_, renderHeight_)) {
+    // Allocates on first use; after that applyRenderSize has already moved them, keeping the picture.
+    if (!fboA_.resizePreserving(renderWidth_, renderHeight_)) return false;
+    if (fboA_.width() != renderWidth_ || fboA_.height() != renderHeight_) return false;
+    if (!fboB_.resizePreserving(renderWidth_, renderHeight_) || fboB_.width() != renderWidth_ || fboB_.height() != renderHeight_) {
         layerScene_ = nullptr;
         outgoingScene_ = nullptr;
         outgoingParams_.reset();
@@ -275,8 +277,8 @@ void Renderer::wireFlow(Scene& target, const SceneParams& p) {
 
 void Renderer::render(double timeSeconds, GLuint targetFbo) {
     const float dt = beginFrame(timeSeconds);
-    if (thermal_.tier() != appliedTier_) applyRenderScale();
     Scene* scene = resolveActiveScene();
+    updateRenderSize(dt, scene);
     if (!scene || !ensureTargets()) {
         glBindFramebuffer(GL_FRAMEBUFFER, targetFbo);
         glViewport(0, 0, width_, height_);

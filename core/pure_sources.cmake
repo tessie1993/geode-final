@@ -43,7 +43,10 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Adsr.cpp
     viz/VisualSafety.cpp
     viz/MilkdropAdaptation.cpp
+    viz/RenderScale.cpp
+    viz/ThermalGovernor.cpp
     viz/fluid/FluidMath.cpp
+    viz/fluid/SimGrid.cpp
     viz/fluid/RippleMath.cpp
     viz/scenes/CymaticsMath.cpp
 )

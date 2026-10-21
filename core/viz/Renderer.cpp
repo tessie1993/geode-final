@@ -318,6 +318,11 @@ void Renderer::onSurfaceCreated() {
         quadVao_ = 0;
     }
     touchField_.reset();
+    loadScale_.reset();
+    {
+        std::lock_guard<std::mutex> lock(stateLock_);
+        frameLoad_ = {};
+    }
     fboA_.release();
     fboB_.release();
     compositePass_.releaseStaleTextures();
@@ -369,28 +374,65 @@ void Renderer::surfaceChanged(int width, int height) {
     width_ = std::max(width, 1);
     height_ = std::max(height, 1);
     glViewport(0, 0, width_, height_);
-    applyRenderScale();
+    applyRenderSize(scale::renderSize(scaleInputs(activeScene_)));
 }
 
-void Renderer::applyRenderScale() {
-    appliedTier_ = thermal_.tier();
-    const float scale = supersampleFactor(width_, height_) * thermalTierInfo(appliedTier_).renderScale;
-    renderWidth_ = std::max(static_cast<int>(width_ * scale), 1);
-    renderHeight_ = std::max(static_cast<int>(height_ * scale), 1);
+void Renderer::setFrameLoad(int frames, float p95Ms) {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    frameLoad_ = {frames, p95Ms};
+}
+
+float Renderer::styleScaleFor(const std::string& sceneId) {
+    for (const auto& entry : styleScales_) {
+        if (entry.first == sceneId) return entry.second;
+    }
+    const auto manifest = assets_.readAsset(scale::styleManifestPath(sceneId));
+    const float declared = manifest ? scale::manifestRenderScale(*manifest) : scale::kDefaultStyleRenderScale;
+    styleScales_.emplace_back(sceneId, declared);
+    return declared;
+}
+
+scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = width_;
+    in.surfaceHeight = height_;
+    in.offscreen = thermal_.offscreen();
+    in.thermalCeiling = thermal_.renderCeiling();
+    // MilkDrop follows load on its own (MilkdropAdaptation: mesh first, buffers only at a preset
+    // change), so the load scale leaves its scene target alone; the thermal ceiling still applies.
+    const bool followsLoad = scene == nullptr || scene->family() != SceneFamily::Milkdrop;
+    in.loadScale = followsLoad ? loadScale_.scale() : scale::LoadScaleConfig{}.maxScale;
+    in.styleScale = scene != nullptr ? styleScaleFor(scene->id()) : scale::kDefaultStyleRenderScale;
+    return in;
+}
+
+void Renderer::updateRenderSize(float dt, const Scene* scene) {
+    if (!thermal_.offscreen()) {
+        scale::FrameLoad load;
+        {
+            std::lock_guard<std::mutex> lock(stateLock_);
+            load = frameLoad_;
+        }
+        loadScale_.step(dt, load, scale::frameBudgetMs(thermal_.pacedFps()));
+    }
+    const scale::RenderSize size = scale::renderSize(scaleInputs(scene));
+    if (size.width != renderWidth_ || size.height != renderHeight_) applyRenderSize(size);
+}
+
+void Renderer::applyRenderSize(scale::RenderSize size) {
+    if (fboA_.ok()) {
+        // The picture moves to the new size; if the new target cannot be had, nothing changes.
+        fboA_.resizePreserving(size.width, size.height);
+        if (fboA_.width() != size.width || fboA_.height() != size.height) return;
+        if (fboB_.ok()) fboB_.resizePreserving(size.width, size.height);
+    }
+    renderWidth_ = size.width;
+    renderHeight_ = size.height;
     for (auto& entry : scenes_) {
         entry.second->resize(renderWidth_, renderHeight_);
         entry.second->setWindowSize(width_, height_);
     }
     overlays_.resize(renderWidth_, renderHeight_);
-    fboA_.ensure(renderWidth_, renderHeight_);
-    fboB_.ensure(renderWidth_, renderHeight_);
-}
-
-float Renderer::supersampleFactor(int width, int height) {
-    const int longest = std::max(width, height);
-    if (longest >= 2200) return 1.0f;
-    if (longest >= 1600) return 1.25f;
-    return 1.4f;
 }
 
 bool Renderer::setScene(const std::string& sceneId) {
