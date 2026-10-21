@@ -12,6 +12,7 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 | Lint | detekt (every module, with per-module baselines), ktlint, and Android lint (every Android module). | `config/detekt/detekt.yml`, `build-logic/…/geode.kotlin-common.gradle.kts` |
 | Kotlin unit tests and coverage | Every module's unit tests, including the JVM module `:engine:audio-core`. Line coverage per module is written to the job summary. | Kover, applied in `geode.kotlin-common` |
 | Mutation tests | One job per module runs **every** mutant (Pitest), then `tools/ci/mutation_gate.py` checks the score. | `config/mutation/thresholds.properties`, `geode.mutation-jvm` / `geode.mutation-android` |
+| C++ mutation tests | One job per pure native library (`geode_util`, `geode_audio`, `geode_analysis`, `geode_viz`) runs **every** mutant (Mull) over the host GoogleTest suite, then `tools/ci/native_mutation_gate.py` checks the score. | `config/mutation/native-thresholds.properties`, `config/mutation/mull.yml`, `core/host/CMakeLists.txt` (`GEODE_MUTATE`) |
 | App UI screenshots | Roborazzi screenshots of App UI composables match the goldens in `app/src/test/screenshots`. | `geode.screenshots` |
 | Native library boundaries | Each native library includes only its own headers and the public headers (`core/<lib>/include/geode/<lib>/`) of the libraries it depends on; the dependency graph has no cycles. Runs first in the C++ job, after a self-test that proves it still catches violations. | `tools/ci/check_native_includes.py`, [native-libraries.md](native-libraries.md) |
 | C++ unit tests | GoogleTest suite in `core/tests`, built on the host under AddressSanitizer and UndefinedBehaviorSanitizer against the pure part of each native library, plus the `tools/hostlink` link check of `viz`, `render` and `util`. | `core/host/CMakeLists.txt`, `core/pure_sources.cmake`, `core/native_libraries.cmake` |
@@ -32,6 +33,16 @@ The mutation score counts every mutant. A mutant no test reaches counts as survi
 - **Feature cores.** Every feature core package (`dev.geode.feature.<name>.core`) must score at least `feature-core` (80%), whatever its module scores overall (ADR-0003).
 
 The job log lists the surviving mutants, and the HTML report is attached to the run.
+
+## C++ mutation tests
+
+The pure part of each native library (the sources in `core/pure_sources.cmake`: audio analysis, the DSP maths, the parameter model and Visual maths, JSON and SHA-256) is mutation tested with [Mull](https://github.com/mull-project/mull), one job per library, in the same way as the Kotlin modules.
+
+- **How it runs.** The host build is configured with `-DGEODE_MUTATE=<library>`: Mull's compiler plugin builds every mutant of that one library into the test binary, and everything is compiled with clang's source coverage. `mull-runner` then switches the mutants on one at a time and runs the whole GoogleTest suite against each. Which operators run, and which paths may be mutated, is in `config/mutation/mull.yml` (all of Mull's operators). Mull and its LLVM are pinned in `ci.yml` (Mull 0.34.1 for LLVM 18, the runner's clang), by package hash.
+- **Score.** Killed, timed-out and crashed mutants are detected. A mutant no test reaches (`NoCoverage`) counts as surviving, as on the Kotlin side. Only mutants in the library's own directory (`core/<lib>/`) count.
+- **Floors.** Each library has a floor in `config/mutation/native-thresholds.properties`, keyed by its CMake target. They ratchet the same way as the module floors: raise one when the score improves, never lower one. A library with no floor fails the gate. A new pure library gets a matrix entry in the `native-mutation` job, a `GEODE_PURE_LIBRARIES` entry in `core/host/CMakeLists.txt`, its directory in `includePaths` in `mull.yml`, and a floor set at its first measured score, rounded down.
+- **Results.** The job log lists every surviving and uncovered mutant (file, line, operator); the job summary has the score. The Mutation Testing Elements report (`<library>.json` and an `.html` viewer for it) is attached to the run as `native-mutation-<library>-<run>`.
+- **Not mutated.** `render` and `library` have no pure part, and the device-only sources of `audio` and `viz` (Oboe, GLES, projectM) are outside the host build.
 
 ## Re-recording goldens
 
