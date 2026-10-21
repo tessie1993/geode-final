@@ -37,3 +37,12 @@ include(
     ":arch:kernel",
     ":arch:audio",
 )
+
+// Playback (#34): play, pause, seek and next as one state machine over the audio adapter, with its
+// playlists and play history in its own Room database.
+include(
+    ":feature:playback:api",
+    ":feature:playback:core",
+    ":feature:playback:handlers",
+    ":feature:playback:ui",
+)
