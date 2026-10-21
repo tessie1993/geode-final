@@ -121,6 +121,148 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+MilkDrop presets: M0Rf30/projectm-presets
+-----------------------------------------
+These 8 MilkDrop presets in app/src/main/assets/milk/ are by Gianluca Boiano
+(M0Rf30), taken unmodified from:
+
+  https://github.com/M0Rf30/projectm-presets
+  at commit ec5b03901e5715e2ddb30b7d1b0c3b7bf1a9b845
+
+  Aurora Cathedral: "M0Rf30 - Aurora Cathedral.milk"
+  Gulf Sunset: "M0Rf30 - Tramonto sul Golfo.milk"
+  Liquid Chrome: "M0Rf30 - Liquid Chrome Kaleidoscope.milk"
+  Nebula Forge: "M0Rf30 - Nebula Forge.milk"
+  Bioluminescent Abyss: "M0Rf30 - Bioluminescent Abyss.milk"
+  Sacred Geometry: "M0Rf30 - Neon Sacred Geometry.milk"
+  Fractal Sanctum: Julia: "M0Rf30 - Fractal Sanctum (A).milk" (milk2/src/fractal-sanctum/a.milk upstream)
+  Fractal Sanctum: Nebula: "M0Rf30 - Fractal Sanctum (B).milk" (milk2/src/fractal-sanctum/b.milk upstream)
+
+MIT License
+
+Copyright (c) 2026 Gianluca Boiano (M0Rf30)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+MilkDrop presets: projectM Cream of the Crop
+--------------------------------------------
+These 42 MilkDrop presets in app/src/main/assets/milk/ come unmodified from
+the Cream of the Crop pack, curated by Jason Fletcher (ISOSCELES) for the
+projectM project:
+
+  https://github.com/projectM-visualizer/presets-cream-of-the-crop
+  at commit 0180df21f5e0bd39b9060cc5de420ed2f1f9e509
+
+They have no licence. Their authors, most of them known only by an alias,
+published them freely without any licence terms; each author keeps the
+copyright in their own work. The pack's own notice says the projectM team
+assumes they are in the public domain and will remove any preset whose author
+asks. Geode does the same: if you wrote one of these presets and do not want
+it in Geode, say so and it will be removed. Display name, file name and
+author(s) of each:
+
+  Castle in the Air: "martin - castle in the air.milk"
+    by martin
+  Mandelbox Explorer: "martin - mandelbox explorer - high speed demo version (LamersAss Remix).milk"
+    by martin, LamersAss
+  Frosty Caves: "martin - frosty caves 2.milk"
+    by martin
+  Tunnel Race: "martin - tunnel race.milk"
+    by martin
+  Underwater Cathedral: "Martin - underwater cathedral.milk"
+    by martin
+  Night Forest: "martin - night in the forest.milk"
+    by martin
+  Crystal Palace: "martin - crystal palace.milk"
+    by martin
+  Glass Corridor: "martin - glass corridor nz2 disingenius.milk"
+    by martin
+  Ghost City: "martin - ghost city.milk"
+    by martin
+  Deep Blue: "martin - deep blue.milk"
+    by martin
+  Starfield Sectors: "martin - starfield sectors.milk"
+    by martin
+  Massif Central: "martin - massif central [we are the dreamer of the dreams].milk"
+    by martin
+  Polar Lights: "martin - polar lights.milk"
+    by martin
+  Fractal Haze: "Rovastar + Loadus + Geiss - FractalDrop (Atmospheric Mix).milk"
+    by Rovastar, Loadus, Geiss
+  Fractal Mirror: "Rovastar + Loadus + Geiss - Tone-mapped FractalDrop 7c.milk"
+    by Rovastar, Loadus, Geiss
+  Slow Flowers: "Stahlregen & Aderrasi + EoS + Geiss + Rovastar + Unchained + Zylot - Slowflowers (MashUp 8 - Oozing Resistance RMX).milk"
+    by Stahlregen, Aderrasi, EoS, Geiss, Rovastar, Unchained, Zylot
+  Fractopia Kaleidoscope: "Stahlregen & AdamFx + EoS + Flexi + Geiss + Phat + Rovastar + Zylot - Fractopia Kaleidoscope (MashUp 32 RMX).milk"
+    by Stahlregen, AdamFx, EoS, Flexi, Geiss, Phat, Rovastar, Zylot
+  Embossed Julia: "flexi - a julia fractal for hexcollie embossed (Jelly).milk"
+    by Flexi
+  Candy Spheres: "EVET + Flexi - Gobbstopper.milk"
+    by EVET, Flexi
+  Lab-Grown: "suksma - lab-grown lab.milk"
+    by suksma
+  Potion of Resurrection: "Flexi, BDRV, Aderrasi et al - Potion of Resurrection [rosswell].milk"
+    by Flexi, BDRV, Aderrasi et al
+  Frosted Mosaic: "stahlregen + flexi + goody + martin + others - frosted mosaik [moebius'ed].milk"
+    by Stahlregen, Flexi, Goody, martin et al
+  Spatialist: "Flexi - spatialist.milk"
+    by Flexi
+  Heaven: "Waltra - Heaven.milk"
+    by Waltra
+  Water Gate: "EVET - Waterrgate.milk"
+    by EVET
+  Aurora Flower: "Jc - Flower.milk"
+    by Jc
+  Star Formation: "Jc - Neon Star Formation.milk"
+    by Jc
+  So Far Away: "akish - placard - you were always so far away.milk"
+    by akish
+  Artifact Plasma: "Geiss - Artifact Plasma.milk"
+    by Geiss
+  Mind Blob: "Flexi - mindblob 2-0.milk"
+    by Flexi
+  Jellyfish Mandala: "flexi - jelly fish mandala.milk"
+    by Flexi
+  Colour Drops: "Flexi - color drops [neon blend].milk"
+    by Flexi
+  Crushed Ice: "Flexi - crush ice 42.milk"
+    by Flexi
+  Soft Jelly: "Flexi - truly soft piece of software - this is generic texturing (Jelly).milk"
+    by Flexi
+  Undercurrents: "flexi - undercurrents 3 [geiss bipolar 1 mix] (Jelly 5-5).milk"
+    by Flexi, Geiss
+  Don't Panic: "Flexi - don't panic.milk"
+    by Flexi
+  Mosaic Mitosis: "shifter - mosaic mitosis - j4.milk"
+    by shifter
+  Dark Tides: "shifter - dark tides (EoS+phat_whisps of doom mix) zhiafu.milk"
+    by shifter, EoS, Phat
+  Marble Clouds: "cope + flexi - colorful marble (ghost mix).milk"
+    by cope, Flexi
+  Surface Turbulence: "Martin - QBikal - Surface Turbulence IIeeeee hakanh mash-up k10.milk"
+    by martin, QBikal, hakanh
+  Liquid Palace: "Serge + martin - crystal palace kad001.milk"
+    by Serge, martin
+  Brain Zoom: "Geiss - Brain Zoom 4 (Jelly).milk"
+    by Geiss
+
+
 AndroidX / Jetpack (Compose, Media3, DocumentFile, Activity, Lifecycle)
 -----------------------------------------------------------------------
 Copyright The Android Open Source Project. Licensed under the Apache

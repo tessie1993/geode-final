@@ -11,6 +11,16 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
+  joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
+  from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the
+  owner accepted that risk. File names and authors are kept; each preset has a
+  short display name in `assets/milk/catalog.json`, shown with its author in
+  the MilkDrop tab. The licences screen carries the MIT notice and credits
+  every Cream of the Crop author. Existing installs receive the new presets
+  once (`MilkStarterPack` version 2). CI now renders every bundled preset on
+  projectM and fails one whose warp or composite shader silently falls back to
+  the default.
 - **Removed the features ruled out of the product (#9).** Takes; second-screen
   output; the boot ripple intro; key and artwork colours; video templates and
   `geode://template` links; auto visuals (random switching, visual playlists,

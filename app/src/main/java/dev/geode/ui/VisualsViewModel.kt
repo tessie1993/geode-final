@@ -145,6 +145,8 @@ class VisualsViewModel
 
         fun userMilkPresets(): List<File> = session.userMilkPresets()
 
+        fun milkCatalog(): dev.geode.data.MilkCatalog = session.milkCatalog()
+
         fun noteMilkPreset(path: String) = session.noteMilkPreset(path)
 
         internal fun milkPresetPathFor(preset: Preset): String? = session.milkPresetPathFor(preset)

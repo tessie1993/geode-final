@@ -2,6 +2,7 @@ package dev.geode.ui
 
 import android.app.Application
 import android.net.Uri
+import dev.geode.data.MilkCatalog
 import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
 import dev.geode.data.PresetRepository
@@ -54,6 +55,12 @@ internal class PresetLibraryController(
             relistPresets()
         }
     }
+
+    private val catalog: MilkCatalog by lazy { MilkCatalog.load(application) }
+
+    /** Display names and credits of the bundled MilkDrop presets. Reads an asset on first use. */
+    @androidx.annotation.WorkerThread
+    fun milkCatalog(): MilkCatalog = catalog
 
     fun userMilkPresets(): List<java.io.File> {
         val dir = java.io.File(application.filesDir, "milk")

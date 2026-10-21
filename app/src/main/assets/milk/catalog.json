@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 1,
+  "note": "The MilkDrop presets bundled in this folder: display name, author and where each file came from. MilkStarterPack copies every .milk here into the user's preset folder; MilkCatalog reads this file. File names are the upstream ones, except the two halves of M0Rf30's Fractal Sanctum double preset (a.milk and b.milk upstream), which are renamed so they can share a folder. The credits and licences are in third_party_notices.txt.",
+  "sources": [
+    {
+      "id": "geode",
+      "name": "Geode",
+      "licence": "Geode's own"
+    },
+    {
+      "id": "m0rf30",
+      "name": "M0Rf30/projectm-presets",
+      "url": "https://github.com/M0Rf30/projectm-presets",
+      "commit": "ec5b03901e5715e2ddb30b7d1b0c3b7bf1a9b845",
+      "licence": "MIT"
+    },
+    {
+      "id": "cream-of-the-crop",
+      "name": "projectM Cream of the Crop",
+      "url": "https://github.com/projectM-visualizer/presets-cream-of-the-crop",
+      "commit": "0180df21f5e0bd39b9060cc5de420ed2f1f9e509",
+      "licence": "none"
+    }
+  ],
+  "presets": [
+    {
+      "file": "aurora_veil.milk",
+      "name": "Aurora Veil",
+      "author": "Geode",
+      "source": "geode"
+    },
+    {
+      "file": "tidal_drift.milk",
+      "name": "Tidal Drift",
+      "author": "Geode",
+      "source": "geode"
+    },
+    {
+      "file": "prism_well.milk",
+      "name": "Prism Well",
+      "author": "Geode",
+      "source": "geode"
+    },
+    {
+      "file": "geode_bloom.milk",
+      "name": "Geode Bloom",
+      "author": "Geode",
+      "source": "geode"
+    },
+    {
+      "file": "slow_orbit.milk",
+      "name": "Slow Orbit",
+      "author": "Geode",
+      "source": "geode"
+    },
+    {
+      "file": "fracture.milk",
+      "name": "Fracture",
+      "author": "Geode",
+      "source": "geode"
+    },
+    {
+      "file": "M0Rf30 - Aurora Cathedral.milk",
+      "name": "Aurora Cathedral",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "presets/M0Rf30 - Aurora Cathedral.milk",
+      "sha256": "62a728e576da1305c657798c4635662fc696e5fced285e9aacbd1de1d39710af"
+    },
+    {
+      "file": "M0Rf30 - Tramonto sul Golfo.milk",
+      "name": "Gulf Sunset",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "presets/M0Rf30 - Tramonto sul Golfo.milk",
+      "sha256": "adcc6d68c69458905f4e85d4d30c744d04d3ba5ea80e2153d1281c841b00a745"
+    },
+    {
+      "file": "M0Rf30 - Liquid Chrome Kaleidoscope.milk",
+      "name": "Liquid Chrome",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "presets/M0Rf30 - Liquid Chrome Kaleidoscope.milk",
+      "sha256": "fb863737789cec35d6ec0838216f3fd8caf4497bf6017d16b443e4be869fbd55"
+    },
+    {
+      "file": "M0Rf30 - Nebula Forge.milk",
+      "name": "Nebula Forge",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "presets/M0Rf30 - Nebula Forge.milk",
+      "sha256": "9da28fbd9296be56d312228c8a251d389ee58fc46105c6d1268f83cc58a19cc7"
+    },
+    {
+      "file": "M0Rf30 - Bioluminescent Abyss.milk",
+      "name": "Bioluminescent Abyss",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "presets/M0Rf30 - Bioluminescent Abyss.milk",
+      "sha256": "d3b65fd7ea6e5d5f1fb29a2633d08195317d134fbce6062756038bd8541492a2"
+    },
+    {
+      "file": "M0Rf30 - Neon Sacred Geometry.milk",
+      "name": "Sacred Geometry",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "presets/M0Rf30 - Neon Sacred Geometry.milk",
+      "sha256": "b39c20a39de3c537b61c3efff14b447639739459c3704cd146731ac568a5d455"
+    },
+    {
+      "file": "M0Rf30 - Fractal Sanctum (A).milk",
+      "name": "Fractal Sanctum: Julia",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "milk2/src/fractal-sanctum/a.milk",
+      "sha256": "1ff1bce86c72633bea930505c1aa88dcabea241c99a7835e9c5f17c9feee96b2"
+    },
+    {
+      "file": "M0Rf30 - Fractal Sanctum (B).milk",
+      "name": "Fractal Sanctum: Nebula",
+      "author": "M0Rf30 (Gianluca Boiano)",
+      "source": "m0rf30",
+      "path": "milk2/src/fractal-sanctum/b.milk",
+      "sha256": "3667e877207ae24025d0c3bc61e2c80389e531c5de8903d9874b7674aae8f4be"
+    },
+    {
+      "file": "martin - castle in the air.milk",
+      "name": "Castle in the Air",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Mandelbox/martin - castle in the air.milk",
+      "sha256": "8841ac6355ff2d2c3846316892b41c8386f89ce674e0195004bae269694fbe6e"
+    },
+    {
+      "file": "martin - mandelbox explorer - high speed demo version (LamersAss Remix).milk",
+      "name": "Mandelbox Explorer",
+      "author": "martin, LamersAss",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Mandelbox/martin - mandelbox explorer - high speed demo version (LamersAss Remix).milk",
+      "sha256": "b89e791fe064ec304b3ca8b750c0870e3baa2ace14575846b57137e105d9c5e5"
+    },
+    {
+      "file": "martin - frosty caves 2.milk",
+      "name": "Frosty Caves",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Mandelbox/martin - frosty caves 2.milk",
+      "sha256": "119924a3061b03a24f8eb4e69d579d6fff8fb4610f10a592c23b36d783dc4916"
+    },
+    {
+      "file": "martin - tunnel race.milk",
+      "name": "Tunnel Race",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Geometric/Tunnel Spheres/martin - tunnel race.milk",
+      "sha256": "9a59ceaa8df7427a15ba812be26281f273d15e931888c1f548f8ab036c081ec4"
+    },
+    {
+      "file": "Martin - underwater cathedral.milk",
+      "name": "Underwater Cathedral",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Geometric/Cathedral/Martin - underwater cathedral.milk",
+      "sha256": "5a3522a66a4cf6a43300ccb9a93feb922e9dcc6143bf1a5cfca302a597ffd10f"
+    },
+    {
+      "file": "martin - night in the forest.milk",
+      "name": "Night Forest",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Geometric/Landscape/martin - night in the forest.milk",
+      "sha256": "7c203d04ade3e66fb08a3fa0aed01a5177ed94ecdb3fe1ff532973ba2798df80"
+    },
+    {
+      "file": "martin - crystal palace.milk",
+      "name": "Crystal Palace",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Sparkle/Jewel/martin - crystal palace.milk",
+      "sha256": "a2a4a6d9c4ea66ca214b988fd2ed9898eaca1028aa16396a0cd18cd47df473bc"
+    },
+    {
+      "file": "martin - glass corridor nz2 disingenius.milk",
+      "name": "Glass Corridor",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Geometric/Cube Fly/martin - glass corridor nz2 disingenius.milk",
+      "sha256": "1b349a38ea41ce71525394cd60cb7e78f57fcd6b93948c0457c94eb0ded72e47"
+    },
+    {
+      "file": "martin - ghost city.milk",
+      "name": "Ghost City",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Geometric/Cube Fly/martin - ghost city.milk",
+      "sha256": "0dc0f6fbd3164b4a36f420fff04745a03048d45ebffdc92375490228fdd34d20"
+    },
+    {
+      "file": "martin - deep blue.milk",
+      "name": "Deep Blue",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Viscera/martin - deep blue.milk",
+      "sha256": "313e6935d3aa34b8a1c0094521ca3fe3a898c66a0f40d26d9a7ea1d16843d64b"
+    },
+    {
+      "file": "martin - starfield sectors.milk",
+      "name": "Starfield Sectors",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Sparkle/Glimmer Tunnel/martin - starfield sectors.milk",
+      "sha256": "4ef93a3f97b3e7f0a6fc8118dd175af73e6c88df223ce6661f95c7c092806b31"
+    },
+    {
+      "file": "martin - massif central [we are the dreamer of the dreams].milk",
+      "name": "Massif Central",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Hypnotic/Polar Static/martin - massif central [we are the dreamer of the dreams].milk",
+      "sha256": "ce3972a5ba8c6e0e92661dee2d00ec4bdbf10b073a636a255ad82d07e502e365"
+    },
+    {
+      "file": "martin - polar lights.milk",
+      "name": "Polar Lights",
+      "author": "martin",
+      "source": "cream-of-the-crop",
+      "path": "Particles/Points/martin - polar lights.milk",
+      "sha256": "0eb7a114e9ea1957b8fd73d1ed4e4fb692ba8c9ff8714925f00bd79c70da4e64"
+    },
+    {
+      "file": "Rovastar + Loadus + Geiss - FractalDrop (Atmospheric Mix).milk",
+      "name": "Fractal Haze",
+      "author": "Rovastar, Loadus, Geiss",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Core/Rovastar + Loadus + Geiss - FractalDrop (Atmospheric Mix).milk",
+      "sha256": "47205ab38b08d0347dc5dfeb9cf9a50dedc172f33b9e6136fd8ea40ba366575a"
+    },
+    {
+      "file": "Rovastar + Loadus + Geiss - Tone-mapped FractalDrop 7c.milk",
+      "name": "Fractal Mirror",
+      "author": "Rovastar, Loadus, Geiss",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Core Mirror/Rovastar + Loadus + Geiss - Tone-mapped FractalDrop 7c.milk",
+      "sha256": "7b2c6e7c8d963b7731f84120010e0636650c7cd6e1df131b335b01677ae80df4"
+    },
+    {
+      "file": "Stahlregen & Aderrasi + EoS + Geiss + Rovastar + Unchained + Zylot - Slowflowers (MashUp 8 - Oozing Resistance RMX).milk",
+      "name": "Slow Flowers",
+      "author": "Stahlregen, Aderrasi, EoS, Geiss, Rovastar, Unchained, Zylot",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Lattice/Stahlregen & Aderrasi + EoS + Geiss + Rovastar + Unchained + Zylot - Slowflowers (MashUp 8 - Oozing Resistance RMX).milk",
+      "sha256": "c96b922df4af25a1c3f9676eed12be722bb062c92dc894e62fba60a4ed14766f"
+    },
+    {
+      "file": "Stahlregen & AdamFx + EoS + Flexi + Geiss + Phat + Rovastar + Zylot - Fractopia Kaleidoscope (MashUp 32 RMX).milk",
+      "name": "Fractopia Kaleidoscope",
+      "author": "Stahlregen, AdamFx, EoS, Flexi, Geiss, Phat, Rovastar, Zylot",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Lattice Mirror/Stahlregen & AdamFx + EoS + Flexi + Geiss + Phat + Rovastar + Zylot - Fractopia Kaleidoscope (MashUp 32 RMX).milk",
+      "sha256": "5edcdfd07157f6b8c7634a566ac362888967fb99c012e926686fd2122621d61f"
+    },
+    {
+      "file": "flexi - a julia fractal for hexcollie embossed (Jelly).milk",
+      "name": "Embossed Julia",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Lattice/flexi - a julia fractal for hexcollie embossed (Jelly).milk",
+      "sha256": "32041049d4da1b22e8015c5c77c717220a65fbeb3a614ced302ace026a9b532b"
+    },
+    {
+      "file": "EVET + Flexi - Gobbstopper.milk",
+      "name": "Candy Spheres",
+      "author": "EVET, Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Core Mirror/EVET + Flexi - Gobbstopper.milk",
+      "sha256": "ae7c5c1214f8a514c3b1a69af271e90371da6c1e3ec01ba7173de7c2f549820b"
+    },
+    {
+      "file": "suksma - lab-grown lab.milk",
+      "name": "Lab-Grown",
+      "author": "suksma",
+      "source": "cream-of-the-crop",
+      "path": "Fractal/Core Tunnel/suksma - lab-grown lab.milk",
+      "sha256": "b16f92eca7fbc830071d4813c3aad767a88975e23fe7ad8389068f5afb8161da"
+    },
+    {
+      "file": "Flexi, BDRV, Aderrasi et al - Potion of Resurrection [rosswell].milk",
+      "name": "Potion of Resurrection",
+      "author": "Flexi, BDRV, Aderrasi et al",
+      "source": "cream-of-the-crop",
+      "path": "Hypnotic/Polar Rolling/Flexi, BDRV, Aderrasi et al - Potion of Resurrection [rosswell].milk",
+      "sha256": "463777a6af872de0576e6cdec7637082be6a666011b27d50e5ef25777b6cca3c"
+    },
+    {
+      "file": "stahlregen + flexi + goody + martin + others - frosted mosaik [moebius'ed].milk",
+      "name": "Frosted Mosaic",
+      "author": "Stahlregen, Flexi, Goody, martin et al",
+      "source": "cream-of-the-crop",
+      "path": "Hypnotic/Polar Rolling/stahlregen + flexi + goody + martin + others - frosted mosaik [moebius'ed].milk",
+      "sha256": "b9caeba0e1bd5ae6d93c6bd554622118b83eefc906c1cac0f725bfb748ba39d8"
+    },
+    {
+      "file": "Flexi - spatialist.milk",
+      "name": "Spatialist",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Hypnotic/Polar Mirror/Flexi - spatialist.milk",
+      "sha256": "c67684d80b17adda1834b124bdefe5821731c71a50907d44534fdc3e93bcb13a"
+    },
+    {
+      "file": "Waltra - Heaven.milk",
+      "name": "Heaven",
+      "author": "Waltra",
+      "source": "cream-of-the-crop",
+      "path": "Supernova/Gas/Waltra - Heaven.milk",
+      "sha256": "cda129c061241de538f76b1b6f20f20e1c709a45f938fa780ce1506a97094452"
+    },
+    {
+      "file": "EVET - Waterrgate.milk",
+      "name": "Water Gate",
+      "author": "EVET",
+      "source": "cream-of-the-crop",
+      "path": "Supernova/Gas/EVET - Waterrgate.milk",
+      "sha256": "d536b9db653be60e42e0b1c12e599ca8c1f02e16e39095e08b55535ba25a8edf"
+    },
+    {
+      "file": "Jc - Flower.milk",
+      "name": "Aurora Flower",
+      "author": "Jc",
+      "source": "cream-of-the-crop",
+      "path": "Dancer/Aurora/Jc - Flower.milk",
+      "sha256": "4fb3d807c3f0233850848ac9098834f7c087f4226c1735b0ec52d91c9aad03e8"
+    },
+    {
+      "file": "Jc - Neon Star Formation.milk",
+      "name": "Star Formation",
+      "author": "Jc",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Jc - Neon Star Formation.milk",
+      "sha256": "798ddc4c8a060501771bd7ffab788f6b07246be72b9bebaaf1946ec19a485ab3"
+    },
+    {
+      "file": "akish - placard - you were always so far away.milk",
+      "name": "So Far Away",
+      "author": "akish",
+      "source": "cream-of-the-crop",
+      "path": "Geometric/Sphere Array/akish - placard - you were always so far away.milk",
+      "sha256": "31babaf78d9155e14ff9bd66cdf09a37003cf2c864a0a9bdc949807248bfc83d"
+    },
+    {
+      "file": "Geiss - Artifact Plasma.milk",
+      "name": "Artifact Plasma",
+      "author": "Geiss",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Simmering/Geiss - Artifact Plasma.milk",
+      "sha256": "83cf5238fd205c4115ea4cf7724aaac3cbf8a93af2ba7e294aa0f4dddda37888"
+    },
+    {
+      "file": "Flexi - mindblob 2-0.milk",
+      "name": "Mind Blob",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Flexi - mindblob 2-0.milk",
+      "sha256": "bfaa2364ee27766cefd4891158c4d78ec71761347757e60067d302938aac5d7c"
+    },
+    {
+      "file": "flexi - jelly fish mandala.milk",
+      "name": "Jellyfish Mandala",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Blobby/flexi - jelly fish mandala.milk",
+      "sha256": "10acba649f75a87a79571480ba28206e083d075b85ba41062716c055d89e4f2b"
+    },
+    {
+      "file": "Flexi - color drops [neon blend].milk",
+      "name": "Colour Drops",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Flexi - color drops [neon blend].milk",
+      "sha256": "693ae4fcc562832f07eea3a51248e05ababb9dc03287c65c7709b73a022ce070"
+    },
+    {
+      "file": "Flexi - crush ice 42.milk",
+      "name": "Crushed Ice",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Flexi - crush ice 42.milk",
+      "sha256": "f1f521e30f854e905e0bc696513c73ec13aa2c0992935ae218c561b8403aaaea"
+    },
+    {
+      "file": "Flexi - truly soft piece of software - this is generic texturing (Jelly).milk",
+      "name": "Soft Jelly",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Flexi - truly soft piece of software - this is generic texturing (Jelly).milk",
+      "sha256": "e84db543c8c7a554c7aff051386b76dee08544e0178374370ff1e5d2415b7770"
+    },
+    {
+      "file": "flexi - undercurrents 3 [geiss bipolar 1 mix] (Jelly 5-5).milk",
+      "name": "Undercurrents",
+      "author": "Flexi, Geiss",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/flexi - undercurrents 3 [geiss bipolar 1 mix] (Jelly 5-5).milk",
+      "sha256": "ac549115cfc4b674b95a07239266444e4b6656901eb669cb91d1a8780eabb311"
+    },
+    {
+      "file": "Flexi - don't panic.milk",
+      "name": "Don't Panic",
+      "author": "Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Flexi - don't panic.milk",
+      "sha256": "101e56a2c4ad38d4a368c0932d3d8c9ed117958bfcb94454f6729e727d4344e4"
+    },
+    {
+      "file": "shifter - mosaic mitosis - j4.milk",
+      "name": "Mosaic Mitosis",
+      "author": "shifter",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Crystalize/shifter - mosaic mitosis - j4.milk",
+      "sha256": "6a72098852f034bcf135a21f46ea60599876294e9cef360276ba2ccee6a03b7c"
+    },
+    {
+      "file": "shifter - dark tides (EoS+phat_whisps of doom mix) zhiafu.milk",
+      "name": "Dark Tides",
+      "author": "shifter, EoS, Phat",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Blobby/shifter - dark tides (EoS+phat_whisps of doom mix) zhiafu.milk",
+      "sha256": "80ca54c0e2c41076e0eafef47201b346bd173204dee474d1e1697f1fd943cd18"
+    },
+    {
+      "file": "cope + flexi - colorful marble (ghost mix).milk",
+      "name": "Marble Clouds",
+      "author": "cope, Flexi",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Cloudy/cope + flexi - colorful marble (ghost mix).milk",
+      "sha256": "e41aed9a66f76f6e5b7a13772eb2de7532d64ad00d465216b8b601ea62a3b04c"
+    },
+    {
+      "file": "Martin - QBikal - Surface Turbulence IIeeeee hakanh mash-up k10.milk",
+      "name": "Surface Turbulence",
+      "author": "martin, QBikal, hakanh",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Simmering/Martin - QBikal - Surface Turbulence IIeeeee hakanh mash-up k10.milk",
+      "sha256": "5d7e6434c83ab2285b71d346114e3fb57547d7f5c811f8a49f35b4f4d2bfbd56"
+    },
+    {
+      "file": "Serge + martin - crystal palace kad001.milk",
+      "name": "Liquid Palace",
+      "author": "Serge, martin",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Liquid Ripples/Serge + martin - crystal palace kad001.milk",
+      "sha256": "6e875d6784c16dbeefd653998268d7a9efb102ece48c15c90b3d3c7ad1e9bfe4"
+    },
+    {
+      "file": "Geiss - Brain Zoom 4 (Jelly).milk",
+      "name": "Brain Zoom",
+      "author": "Geiss",
+      "source": "cream-of-the-crop",
+      "path": "Reaction/Growth/Geiss - Brain Zoom 4 (Jelly).milk",
+      "sha256": "013442ddb87878d33859967cafab5a224fed07cd54116eba9ff3248073260827"
+    }
+  ]
+}
