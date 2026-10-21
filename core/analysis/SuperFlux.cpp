@@ -1,4 +1,4 @@
-#include "analysis/SuperFlux.hpp"
+#include "geode/analysis/SuperFlux.hpp"
 
 #include <algorithm>
 

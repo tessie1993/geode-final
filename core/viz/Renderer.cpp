@@ -1,10 +1,10 @@
-#include "viz/Renderer.hpp"
+#include "geode/viz/Renderer.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 
-#include "util/Log.hpp"
+#include "geode/util/Log.hpp"
 
 namespace geode::viz {
 
@@ -23,7 +23,8 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
                 SceneHost{[this](const std::string& m) { fail(m); },
                           [this](const std::string& id, const std::string& src) { rememberCustomShader(id, src); },
                           [this] { return thermal_.pacedFps(); },
-                          [this](const std::string& path) { notePresetLoaded(path); }}),
+                          [this](const std::string& path) { notePresetLoaded(path); },
+                          [this] { return thermal_.offscreen(); }}),
       compositePass_(assets_, &programCache_),
       pcm_(kPcmCapacity, 0.0f),
       pcmScratch_(kPcmCapacity, 0.0f),

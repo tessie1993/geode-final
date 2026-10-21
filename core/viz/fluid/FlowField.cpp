@@ -1,4 +1,4 @@
-#include "viz/fluid/FlowField.hpp"
+#include "geode/viz/fluid/FlowField.hpp"
 
 #include <algorithm>
 

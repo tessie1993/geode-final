@@ -1,10 +1,10 @@
 #pragma once
 #include <optional>
 
-#include "viz/Quad.hpp"
-#include "viz/fluid/FluidBuffers.hpp"
-#include "viz/fluid/FluidParticles.hpp"
-#include "viz/scenes/FluidSceneBase.hpp"
+#include "geode/render/Quad.hpp"
+#include "geode/viz/fluid/FluidBuffers.hpp"
+#include "fluid/FluidParticles.hpp"
+#include "scenes/FluidSceneBase.hpp"
 
 namespace geode::viz {
 

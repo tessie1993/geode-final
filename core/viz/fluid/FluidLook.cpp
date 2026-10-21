@@ -1,10 +1,10 @@
-#include "viz/fluid/FluidLook.hpp"
+#include "fluid/FluidLook.hpp"
 
 #include <algorithm>
 #include <string>
 
-#include "util/Log.hpp"
-#include "viz/BlueNoise.hpp"
+#include "geode/util/Log.hpp"
+#include "BlueNoise.hpp"
 
 namespace geode::viz::fluid {
 

@@ -1,4 +1,4 @@
-#include "viz/fluid/RippleMath.hpp"
+#include "geode/viz/fluid/RippleMath.hpp"
 
 #include <algorithm>
 #include <cmath>

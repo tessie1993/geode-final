@@ -2,8 +2,8 @@
 #include <optional>
 #include <string>
 
-#include "api/geode_api.h"
-#include "library/Tags.hpp"
+#include "geode/api/geode_api.h"
+#include "geode/library/Tags.hpp"
 
 struct geode_tags {
     geode::library::TrackTags tags;

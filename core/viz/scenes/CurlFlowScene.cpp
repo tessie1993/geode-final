@@ -1,10 +1,10 @@
-#include "viz/scenes/CurlFlowScene.hpp"
+#include "scenes/CurlFlowScene.hpp"
 
 #include <algorithm>
 #include <cmath>
 
-#include "viz/LiveSignal.hpp"
-#include "viz/fluid/FluidMath.hpp"
+#include "geode/viz/LiveSignal.hpp"
+#include "fluid/FluidMath.hpp"
 
 namespace geode::viz {
 

@@ -1,4 +1,4 @@
-#include "viz/TrailPass.hpp"
+#include "geode/viz/TrailPass.hpp"
 
 #include <algorithm>
 #include <cmath>

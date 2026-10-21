@@ -1,4 +1,4 @@
-#include "analysis/AdaptiveRange.hpp"
+#include "geode/analysis/AdaptiveRange.hpp"
 
 #include <algorithm>
 #include <cmath>
