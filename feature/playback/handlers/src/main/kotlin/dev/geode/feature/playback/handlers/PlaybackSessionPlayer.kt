@@ -86,20 +86,21 @@ class PlaybackSessionPlayer(
 
     private companion object {
         /** What every session offers, whatever the state: Playback answers or ignores each of these. */
-        val ALWAYS =
-            intArrayOf(
-                Player.COMMAND_PLAY_PAUSE,
-                Player.COMMAND_STOP,
-                Player.COMMAND_RELEASE,
-                Player.COMMAND_GET_CURRENT_MEDIA_ITEM,
-                Player.COMMAND_GET_TIMELINE,
-                Player.COMMAND_GET_METADATA,
-            )
+        val ALWAYS: Player.Commands =
+            Player.Commands
+                .Builder()
+                .add(Player.COMMAND_PLAY_PAUSE)
+                .add(Player.COMMAND_STOP)
+                .add(Player.COMMAND_RELEASE)
+                .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
+                .add(Player.COMMAND_GET_TIMELINE)
+                .add(Player.COMMAND_GET_METADATA)
+                .build()
 
         fun commandsOf(view: SessionView): Player.Commands =
             Player.Commands
                 .Builder()
-                .addAll(*ALWAYS)
+                .addAll(ALWAYS)
                 .addIf(Player.COMMAND_SEEK_TO_MEDIA_ITEM, view.queue != null)
                 .addIf(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM, view.canSeek)
                 .addIf(Player.COMMAND_SEEK_BACK, view.canSeek)
