@@ -53,6 +53,6 @@ Always high end. References come only from top-tier work: Dribbble's featured de
 
 ## Open
 
-- The icon brief for the commissioned designer.
+- The commissioned icon set. The brief to send to the designer is `icon-brief.md`.
 
 Research and references: `research-high-end-references.md`.
