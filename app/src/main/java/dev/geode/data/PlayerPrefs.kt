@@ -24,7 +24,6 @@ data class PlayerPrefs(
     val crossfadeCurve: Int = 1,
     val gapless: Boolean = true,
     val resumeLongTracks: Boolean = true,
-    val bitPerfect: Boolean = false,
 ) {
     fun coerced(): PlayerPrefs =
         copy(
@@ -76,7 +75,6 @@ class PlayerPrefsStore(
             crossfadeCurve = prefs.getInt(KEY_CROSSFADE_CURVE, 1),
             gapless = prefs.getBoolean(KEY_GAPLESS, true),
             resumeLongTracks = prefs.getBoolean(KEY_RESUME_LONG, true),
-            bitPerfect = prefs.getBoolean(KEY_BIT_PERFECT, false),
         ).coerced()
 
     fun save(p: PlayerPrefs) {
@@ -101,7 +99,6 @@ class PlayerPrefsStore(
             .putInt(KEY_CROSSFADE_CURVE, p.crossfadeCurve)
             .putBoolean(KEY_GAPLESS, p.gapless)
             .putBoolean(KEY_RESUME_LONG, p.resumeLongTracks)
-            .putBoolean(KEY_BIT_PERFECT, p.bitPerfect)
             .apply()
     }
 
@@ -125,7 +122,6 @@ class PlayerPrefsStore(
         const val KEY_CROSSFADE_CURVE = "crossfade_curve"
         const val KEY_GAPLESS = "gapless"
         const val KEY_RESUME_LONG = "resume_long_tracks"
-        const val KEY_BIT_PERFECT = "bit_perfect"
     }
 }
 
