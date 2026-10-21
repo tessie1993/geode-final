@@ -6,6 +6,7 @@ import androidx.compose.material3.Shapes
 import androidx.core.content.edit
 import dev.geode.R
 import dev.geode.analysis.BeatTuning
+import dev.geode.design.ambient.AmbientMode
 import dev.geode.design.theme.CornerShapes
 import dev.geode.design.theme.TextScale
 
@@ -92,6 +93,11 @@ data class GuiPrefs(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = 1f,
     val touchTransform: Boolean = true,
+    /**
+     * How the floating assets behind the App UI behave: drifting (the default), still or off.
+     * Battery saver and reduced motion still turn drifting into still when the layer resolves it.
+     */
+    val ambientMode: AmbientMode = AmbientMode.Default,
 ) {
     val fontColorOverride: Int?
         get() = fontColorArgb ?: FontColorChoice.WHITE_ARGB.takeIf { whiteFont }
@@ -167,8 +173,16 @@ class ThemeStore(
             touchSmearStrength = prefs.getFloat(KEY_TOUCH_SMEAR_STRENGTH, 1f).coerceIn(0.2f, 2f),
             touchTransform = prefs.getBoolean(KEY_TOUCH_TRANSFORM, true),
             micReactive = prefs.getBoolean(KEY_MIC_REACTIVE, false),
+            ambientMode = loadAmbientMode(),
         )
     }
+
+    /** An unknown or missing value (a fresh install, or a mode a later build removed) falls back to the default. */
+    private fun loadAmbientMode(): AmbientMode =
+        prefs
+            .getString(KEY_AMBIENT_MODE, null)
+            ?.let { stored -> AmbientMode.entries.firstOrNull { it.name == stored } }
+            ?: AmbientMode.Default
 
     /**
      * Anyone who answered the old three-way safety question has already been shown the notice, so
@@ -220,6 +234,7 @@ class ThemeStore(
             putFloat(KEY_TOUCH_SMEAR_STRENGTH, gui.touchSmearStrength)
             putBoolean(KEY_TOUCH_TRANSFORM, gui.touchTransform)
             putBoolean(KEY_MIC_REACTIVE, gui.micReactive)
+            putString(KEY_AMBIENT_MODE, gui.ambientMode.name)
         }
     }
 
@@ -258,5 +273,6 @@ class ThemeStore(
         const val KEY_TOUCH_SMEAR_STRENGTH = "gui_touch_smear_strength"
         const val KEY_TOUCH_TRANSFORM = "gui_touch_transform"
         const val KEY_MIC_REACTIVE = "gui_mic_reactive"
+        const val KEY_AMBIENT_MODE = "gui_ambient_mode"
     }
 }
