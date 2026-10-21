@@ -1,4 +1,4 @@
-package dev.geode.ui.theme
+package dev.geode.design.theme
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.RawRes

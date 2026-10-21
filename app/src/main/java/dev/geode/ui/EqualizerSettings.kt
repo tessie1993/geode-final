@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.audio.AudioFxFormat
 import dev.geode.audio.AudioFxState
+import dev.geode.design.CrystalSlider
 
 @Composable
 fun EqualizerSettings(viewModel: SettingsViewModel) {
