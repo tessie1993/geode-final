@@ -10,9 +10,6 @@
 # definition fails here the way it fails in the NDK link, without an SDK, an
 # NDK or a device.
 #
-# analysis/FrameLevels.cpp is pulled in too: FormDrive calls its level helpers,
-# and it depends on nothing outside the standard library.
-#
 # What it does not prove: anything about the Android toolchain (clang, the
 # NDK's libc++, 16 KB page alignment, LTO), the rest of the audio/analysis/library trees
 # (they need kissfft, oboe, taglib and mediandk), or that anything runs.
@@ -96,7 +93,7 @@ HDR
 # include dir (core/*/include), as in the CMake build; tools/ci/check_native_includes.py
 # enforces which of those it may actually use.
 mapfile -t SRCS < <(cat "$ROOT/core/CMakeLists.txt" "$ROOT/core/pure_sources.cmake" \
-  | grep -E '^\s+((viz|render|util)/|analysis/FrameLevels\.cpp)' | tr -d ' ' | sort -u)
+  | grep -E '^\s+(viz|render|util)/' | tr -d ' ' | sort -u)
 PUBLIC_INCS=()
 for d in "$ROOT"/core/*/include; do PUBLIC_INCS+=(-I "$d"); done
 echo "hostlink: compiling ${#SRCS[@]} translation units"
