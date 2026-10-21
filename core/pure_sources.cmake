@@ -43,6 +43,8 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Adsr.cpp
     viz/FormDrive.cpp
     viz/VisualSafety.cpp
+    viz/FlashLimiter.cpp
+    viz/BeatEnvelope.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/RippleMath.cpp
     viz/scenes/CymaticsMath.cpp

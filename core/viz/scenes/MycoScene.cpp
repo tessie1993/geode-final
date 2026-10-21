@@ -99,7 +99,7 @@ void MycoScene::draw(float timeSeconds) {
     envBass_ = slewEnvelope(envBass_, clampedBand(f.bass), dt, kEnvRisePerSec, kEnvFallPerSec);
     envTreble_ = slewEnvelope(envTreble_, clampedBand(f.treble), dt, kEnvRisePerSec, kEnvFallPerSec);
     const float hit = live::hit(f);
-    beatPulse_ = std::clamp(std::max(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), beatPulse_ - dt * 3.0f), 0.0f, 1.5f);
+    beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
     reaim_ = hit * p.beatResponse > kBeatThreshold ? style_.reaim : 0.0f;
 
     glDisable(GL_BLEND);

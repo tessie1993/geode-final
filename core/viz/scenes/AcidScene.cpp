@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "geode/viz/LiveSignal.hpp"
+#include "geode/viz/VisualSafety.hpp"
 #include "geode/render/Quad.hpp"
 
 namespace geode::viz {
@@ -78,7 +79,7 @@ void AcidScene::draw(float timeSeconds) {
     envMid_ = slewEnvelope(envMid_, clampedBand(f.mid), dt, kEnvRisePerSec, kEnvFallPerSec);
     envTreble_ = slewEnvelope(envTreble_, clampedBand(f.treble), dt, kEnvRisePerSec, kEnvFallPerSec);
     const float hit = live::hit(f);
-    beatPulse_ = std::clamp(std::max(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), beatPulse_ - dt * 3.0f), 0.0f, 1.5f);
+    beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
     if (hit * p.beatResponse > kGlitchThreshold) {
         glitch_ = 1.0f;
         glitchEpoch_ = std::fmod(glitchEpoch_ + 1.0f, 1024.0f);
@@ -110,7 +111,8 @@ void AcidScene::draw(float timeSeconds) {
     glUniform1f(step_.loc("uHueShift"), hueShift);
     glUniform1f(step_.loc("uFeedback"), feedback);
     glUniform1f(step_.loc("uModulate"), style_.modulate);
-    glUniform1f(step_.loc("uGlitch"), glitch_ * style_.glitch);
+    // The Style's own glitch is held to the same cap as the shared one (VisualSafety).
+    glUniform1f(step_.loc("uGlitch"), std::min(glitch_ * style_.glitch, safety::kMaxFlashDepth));
     glUniform1f(step_.loc("uEpoch"), glitchEpoch_);
     glUniform1f(step_.loc("uTime"), time_);
     glUniform1f(step_.loc("uBass"), envBass_);

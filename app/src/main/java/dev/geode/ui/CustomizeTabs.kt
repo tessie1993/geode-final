@@ -357,7 +357,6 @@ internal fun ReactivityTab(
         )
         LabeledSlider(ParamKeys.FORM_DRIVE, p.formDrive, 0f..1f) { onChange(p.copy(formDrive = it)) }
         LabeledSlider(ParamKeys.BEAT_RESPONSE, p.beatResponse, 0f..2f) { onChange(p.copy(beatResponse = it)) }
-        LabeledSlider(ParamKeys.BEAT_FLASH, p.flash, 0f..1f) { onChange(p.copy(flash = it)) }
         SectionHeader("Band balance", ParamScope.BAND_GAINS)
         LabeledSlider(ParamKeys.BASS_GAIN, p.bassGain, 0f..2f) { onChange(p.copy(bassGain = it)) }
         LabeledSlider(ParamKeys.MID_GAIN, p.midGain, 0f..2f) { onChange(p.copy(midGain = it)) }
@@ -500,7 +499,6 @@ internal fun FxTab(
         LabeledSlider(ParamKeys.FILM_GRAIN, p.grain, 0f..1f) { onChange(p.copy(grain = it)) }
         LabeledSlider(ParamKeys.GLITCH, p.glitch, 0f..1f) { onChange(p.copy(glitch = it)) }
         LabeledSlider(ParamKeys.FISHEYE, p.fisheye, -1f..1f) { onChange(p.copy(fisheye = it)) }
-        LabeledSlider(ParamKeys.STROBE, p.strobe, 0f..1f) { onChange(p.copy(strobe = it)) }
         if (sectionVisible()) LayersSection()
     }
 }
