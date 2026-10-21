@@ -21,14 +21,11 @@ import dev.geode.design.CrystalSlider
 
 @Composable
 internal fun BehaviorSettingsTab(viewModel: SettingsViewModel) {
-    val playerViewModel: PlayerViewModel = geodeViewModel()
     val gui by viewModel.guiPrefs.collectAsStateWithLifecycle()
     SettingsTabColumn {
         item { SettingsGroup(stringResource(R.string.behavior_group_intent)) { IntentGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_touch)) { TouchGroup(viewModel, gui) } }
-        item { SettingsGroup(stringResource(R.string.behavior_group_display)) { ConnectedDisplayGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_safety)) { VisualSafetyGroup(viewModel, gui) } }
-        item { SettingsGroup(stringResource(R.string.behavior_group_auto)) { AutoVisualsGroup(playerViewModel) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_wallpaper)) { LiveWallpaperGroup() } }
     }
 }
@@ -100,32 +97,6 @@ private fun TouchGroup(
         }
         Text(
             stringResource(R.string.behavior_touch_transform_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun ConnectedDisplayGroup(
-    viewModel: SettingsViewModel,
-    gui: GuiPrefs,
-) {
-    val external = rememberExternalDisplay()
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.behavior_display_use), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Switch(
-                checked = gui.secondScreen,
-                onCheckedChange = { viewModel.setGuiPrefs(gui.copy(secondScreen = it)) },
-            )
-        }
-        Text(
-            if (external != null) {
-                stringResource(R.string.behavior_display_connected, external.name)
-            } else {
-                stringResource(R.string.behavior_display_none)
-            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

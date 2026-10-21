@@ -74,25 +74,6 @@ class StudioViewModel
 
         val exportState: StateFlow<ExportUiState> get() = session.exportState
 
-        val takeState: StateFlow<TakeUiState> get() = session.takeState
-
-        fun startRecording() = session.startRecording()
-
-        fun stopRecording(name: String? = null) = session.stopRecording(name)
-
-        fun playTake(name: String) = session.playTake(name)
-
-        fun stopReplay() = session.stopReplay()
-
-        fun deleteTake(name: String) = session.deleteTake(name)
-
-        fun renameTake(
-            from: String,
-            to: String,
-        ) = session.renameTake(from, to)
-
-        fun setExportTake(name: String?) = session.setExportTake(name)
-
         fun cancelExport() = session.cancelExport()
 
         fun resetExportState() = session.resetExportState()

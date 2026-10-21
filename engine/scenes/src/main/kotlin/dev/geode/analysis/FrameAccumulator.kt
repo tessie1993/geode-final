@@ -58,18 +58,7 @@ class FrameAccumulator(
             b: TimelineFrame,
         ): TimelineFrame {
             val fa = a.features
-            val fb = b.features
-            val merged =
-                fa.copy(
-                    beat = fa.beat || fb.beat,
-                    onset = maxOf(fa.onset, fb.onset),
-                    flux = maxOf(fa.flux, fb.flux),
-                    beatStrength = maxOf(fa.beatStrength, fb.beatStrength),
-                    transient = maxOf(fa.transient, fb.transient),
-                    kick = maxOf(fa.kick, fb.kick),
-                    snare = maxOf(fa.snare, fb.snare),
-                    hat = maxOf(fa.hat, fb.hat),
-                )
+            val merged = fa.foldedWith(b.features)
             return if (merged == fa) a else TimelineFrame(a.timeMs, merged)
         }
 

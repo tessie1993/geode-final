@@ -72,6 +72,7 @@ private:
 
     float oscillator(int i, const LfoConfig& c, float dt);
     float follow(int i, float value, float dt);
+    float followHit(int i, float value, float dt);
     float followBipolar(int i, float value, float dt);
 
     std::array<float, kSlots> phases_{};

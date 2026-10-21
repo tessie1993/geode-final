@@ -40,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.analysis.IntelligenceMode
-import dev.geode.design.CrystalButton
 import dev.geode.design.CrystalGem
 import dev.geode.design.CrystalSlider
 import dev.geode.design.luminousHairline
@@ -412,20 +411,10 @@ internal fun ReactivityTab(
 internal fun ColorTab(
     p: SceneParams,
     onChange: (SceneParams) -> Unit,
-    onTakeArtworkPalette: (() -> Unit)? = null,
-    artworkNote: String? = null,
 ) {
     val palettes = rememberSavedPalettes()
     Column {
         SectionHeader("Palettes")
-        if (onTakeArtworkPalette != null && sectionVisible()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(compact = true, filled = false, onClick = onTakeArtworkPalette) {
-                    Text("Take the colours from the artwork")
-                }
-            }
-            artworkNote?.let { ControlHint(it) }
-        }
         if (visible(ParamKeys.PALETTE, ParamScope.UNIVERSAL)) {
             LockableChipLabel(ParamKeys.PALETTE)
             PaletteSlotSelector(p, onChange, palettes)

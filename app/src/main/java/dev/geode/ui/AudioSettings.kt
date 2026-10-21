@@ -35,13 +35,11 @@ internal fun AudioSettingsTab(viewModel: PlayerViewModel) {
         item { EqualizerSettings(settingsViewModel) }
         item { SettingsGroup(stringResource(R.string.audio_group_analysis)) { AnalysisGroup(settingsViewModel) } }
         item { SettingsGroup(stringResource(R.string.source_live_input)) { LiveInputGroup(viewModel) } }
-        item { SettingsGroup(stringResource(R.string.source_other_apps)) { ExternalAudioSettings(viewModel) } }
     }
 }
 
 @Composable
 private fun AnalysisGroup(viewModel: SettingsViewModel) {
-    val playerViewModel: PlayerViewModel = geodeViewModel()
     val gui by viewModel.guiPrefs.collectAsStateWithLifecycle()
     Column {
         Text(
@@ -96,21 +94,6 @@ private fun AnalysisGroup(viewModel: SettingsViewModel) {
             value = gui.presetMorphSeconds,
             onValueChange = { viewModel.setGuiPrefs(gui.copy(presetMorphSeconds = it)) },
             valueRange = 0f..ThemeStore.PRESET_MORPH_SECONDS_MAX,
-        )
-    }
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.audio_key_colour),
-                Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Switch(checked = gui.keyColor, onCheckedChange = playerViewModel::setKeyColor)
-        }
-        Text(
-            stringResource(R.string.audio_key_colour_explainer),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

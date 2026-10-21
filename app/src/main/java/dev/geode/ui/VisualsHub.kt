@@ -22,14 +22,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LayersClear
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -49,12 +45,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.geode.R
 import dev.geode.data.Preset
 import dev.geode.design.CrystalButton
 import dev.geode.design.CrystalGem
@@ -66,7 +60,6 @@ import dev.geode.design.readingPlate
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
 import dev.geode.design.theme.accentTextColor
-import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.render.VisualizerView
@@ -85,11 +78,9 @@ fun VisualsHub(
     liveBackdrop: Boolean = false,
 ) {
     val settingsViewModel: SettingsViewModel = geodeViewModel()
-    val studioViewModel: StudioViewModel = geodeViewModel()
     var tab by rememberSaveable { mutableStateOf(0) }
-    val tabs = listOf("Presets", "Styles", "Customize", "Textures", "Takes")
+    val tabs = listOf("Presets", "Styles", "Customize", "Textures")
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
-    val takes by studioViewModel.takeState.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize()) {
         if (liveBackdrop) {
             VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
@@ -125,29 +116,10 @@ fun VisualsHub(
                 ) {
                     Column(Modifier.weight(1f)) {
                         CrystalOverline(
-                            when {
-                                takes.recording -> "● Recording  ${Millis(takes.recordedMs).minutesSeconds()}"
-                                takes.replaying != null -> "▶ ${takes.replaying}"
-                                liveBackdrop -> "Live overlay"
-                                else -> "Geode"
-                            },
-                            color = if (takes.recording) MaterialTheme.colorScheme.error else accentTextColor(),
+                            if (liveBackdrop) "Live overlay" else "Geode",
+                            color = accentTextColor(),
                         )
                         GlowTitle("Visuals")
-                    }
-                    IconButton(onClick = {
-                        if (takes.recording) studioViewModel.stopRecording() else studioViewModel.startRecording()
-                    }) {
-                        Icon(
-                            if (takes.recording) Icons.Filled.StopCircle else Icons.Filled.FiberManualRecord,
-                            if (takes.recording) "Stop recording this take" else "Record a take",
-                            tint =
-                                if (takes.recording) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    LocalContentColor.current
-                                },
-                        )
                     }
                     IconButton(onClick = {
                         settingsViewModel.setGuiPrefs(gui.copy(clearVisualsMenu = !gui.clearVisualsMenu))
@@ -166,17 +138,11 @@ fun VisualsHub(
                     1 -> StylesTab(viewModel, visualizerView, onOpenTextures = { tab = 3 })
                     2 -> CustomizePanel(viewModel, visualizerView)
                     3 -> TexturesHubTab(viewModel, visualizerView)
-                    4 -> TakesTab(studioViewModel)
                 }
             }
         }
     }
 }
-
-internal fun vizPlaylistIndexOf(
-    playlist: List<VizPlaylistEntry>,
-    presetName: PresetId,
-): Int = playlist.indexOfFirst { it.presetName == presetName }
 
 internal fun presetReplaceTarget(
     rawName: String,
@@ -215,7 +181,6 @@ private fun PresetsTreeTab(
     var movingPreset by remember { mutableStateOf<PresetId?>(null) }
     var deletingPreset by remember { mutableStateOf<PresetId?>(null) }
     var replacingPreset by remember { mutableStateOf<String?>(null) }
-    var showTemplates by remember { mutableStateOf(false) }
     val userPresets = viz.presets.filterNot { BuiltInPresets.isBuiltIn(it.name) }.distinctBy { it.name }
     val byFolder = userPresets.groupBy { presetFolders.folderOf(it.id) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -245,9 +210,6 @@ private fun PresetsTreeTab(
                 CrystalButton(compact = true, filled = false, onClick = {
                     presetFilePicker.launch(arrayOf("*/*"))
                 }) { Text("Open a preset file") }
-                CrystalButton(compact = true, filled = false, onClick = { showTemplates = true }) {
-                    Text(stringResource(R.string.template_entry_point))
-                }
             }
             importNote?.let { note ->
                 Text(
@@ -306,25 +268,6 @@ private fun PresetsTreeTab(
                     }
                     IconButton(onClick = { sharePreset(context, visualsViewModel, p.id) }) {
                         StoneIconArt(StoneIcon.SHARE, "Share this preset")
-                    }
-                    val playlistIndex = vizPlaylistIndexOf(viz.vizPlaylist, p.id)
-                    val inPlaylist = playlistIndex >= 0
-                    IconButton(
-                        onClick = {
-                            if (inPlaylist) {
-                                viewModel.removeVizPlaylistAt(playlistIndex)
-                            } else {
-                                viewModel.addToVizPlaylist(
-                                    VizPlaylistEntry(sceneId = p.sceneId, presetName = p.id, label = p.name),
-                                )
-                            }
-                        },
-                    ) {
-                        StoneIconArt(
-                            StoneIcon.FAVORITE,
-                            if (inPlaylist) "Remove from visual playlist" else "Add to visual playlist",
-                            tint = if (inPlaylist) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                        )
                     }
                     IconButton(onClick = { movingPreset = p.id }) {
                         StoneIconArt(StoneIcon.FOLDER, "Move to another folder")
@@ -491,9 +434,6 @@ private fun PresetsTreeTab(
                 TextButton(onClick = { deletingPreset = null }) { Text("Cancel") }
             },
         )
-    }
-    if (showTemplates) {
-        TemplatesSheet(viewModel, visualizerView, onDismiss = { showTemplates = false })
     }
 }
 
@@ -970,15 +910,7 @@ private fun CustomizeTabBody(
                 onAdsrChange = visualsViewModel::setAdsr,
             )
         }
-        CustomizeTab.COLOR -> {
-            val artNote by viewModel.artPaletteNote.collectAsStateWithLifecycle()
-            ColorTab(
-                p,
-                onChange,
-                onTakeArtworkPalette = viewModel::applyArtworkPalette,
-                artworkNote = artNote,
-            )
-        }
+        CustomizeTab.COLOR -> ColorTab(p, onChange)
         CustomizeTab.FX -> FxTab(p, onChange)
         CustomizeTab.FLUID ->
             FluidTab(
@@ -1130,168 +1062,6 @@ private fun CustomizeToolbar(
             },
             dismissButton = {
                 TextButton(onClick = { confirmReset = false }) { Text("Cancel") }
-            },
-        )
-    }
-}
-
-internal fun takeRenameError(
-    from: String,
-    proposed: String,
-    existingNames: List<String>,
-): String? =
-    when {
-        proposed.isEmpty() -> "A take needs a name."
-        !proposed.equals(from, ignoreCase = true) &&
-            existingNames.any { it.equals(proposed, ignoreCase = true) } ->
-            "There is already a take called \"$proposed\"."
-        else -> null
-    }
-
-@Composable
-private fun TakesTab(viewModel: StudioViewModel) {
-    val studioViewModel = viewModel
-    val takes by studioViewModel.takeState.collectAsStateWithLifecycle()
-    var renaming by remember { mutableStateOf<String?>(null) }
-    var renameText by remember { mutableStateOf("") }
-    var deleting by remember { mutableStateOf<String?>(null) }
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        item {
-            Text(
-                if (takes.recording) {
-                    "Recording — ${takes.recordedEvents} keyframes, ${Millis(takes.recordedMs).minutesSeconds()}. " +
-                        "Go and perform; press the stop button in the header when you are done."
-                } else {
-                    "A take stores what the visuals were doing, moment by moment — every slider, " +
-                        "colour and style change, as you made them. It replays over the live canvas " +
-                        "and can be re-rendered at any quality later. Press ● in the header to start."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 8.dp),
-            )
-        }
-        if (takes.replaying != null) {
-            item {
-                Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                    Text(
-                        "Replaying ${takes.replaying} — ${Millis(takes.replayMs).minutesSeconds()} / " +
-                            Millis(takes.replayEndMs).minutesSeconds(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = accentTextColor(),
-                    )
-                    LinearProgressIndicator(
-                        progress = {
-                            if (takes.replayEndMs > 0) {
-                                (takes.replayMs.toFloat() / takes.replayEndMs).coerceIn(0f, 1f)
-                            } else {
-                                0f
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(2.dp).padding(top = 4.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-        }
-        items(takes.takes, key = { "take_${it.name}" }) { take ->
-            val playing = takes.replaying == take.name
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                    Text(take.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "${Millis(take.durationMs).minutesSeconds()} · ${take.eventCount} keyframes · " +
-                            "${take.sizeBytes / 1024} KB" +
-                            if (takes.exportTake == take.name) " · exports this" else "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(onClick = {
-                    if (playing) studioViewModel.stopReplay() else studioViewModel.playTake(take.name)
-                }) {
-                    if (playing) {
-                        Icon(Icons.Filled.Stop, "Stop replay", tint = MaterialTheme.colorScheme.primary)
-                    } else {
-                        StoneIconArt(StoneIcon.PLAY, "Replay this take", tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                IconButton(onClick = {
-                    studioViewModel.setExportTake(if (takes.exportTake == take.name) null else take.name)
-                }) {
-                    StoneIconArt(
-                        StoneIcon.FAVORITE,
-                        "Render this take on the next export",
-                        tint =
-                            if (takes.exportTake == take.name) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                LocalContentColor.current
-                            },
-                    )
-                }
-                IconButton(onClick = {
-                    renaming = take.name
-                    renameText = take.name
-                }) { StoneIconArt(StoneIcon.EDIT, "Rename") }
-                IconButton(onClick = { deleting = take.name }) {
-                    StoneIconArt(StoneIcon.DELETE, "Delete", tint = MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-        if (takes.takes.isEmpty() && !takes.recording) {
-            item {
-                Text("No takes recorded yet.", style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-    renaming?.let { old ->
-        val proposed = renameText.trim()
-        val renameError = takeRenameError(old, proposed, takes.takes.map { it.name })
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { renaming = null },
-            title = { Text("Rename take") },
-            text = {
-                Column {
-                    OutlinedTextField(value = renameText, onValueChange = { renameText = it }, singleLine = true)
-                    renameError?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                CrystalButton(enabled = renameError == null, onClick = {
-                    studioViewModel.renameTake(old, proposed)
-                    renaming = null
-                }) { Text("Rename") }
-            },
-            dismissButton = { TextButton(onClick = { renaming = null }) { Text("Cancel") } },
-        )
-    }
-    deleting?.let { name ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { deleting = null },
-            title = { Text("Delete take \"$name\"?") },
-            text = {
-                Text("Deletes this recorded performance for good — there is no undo.")
-            },
-            confirmButton = {
-                CrystalButton(onClick = {
-                    studioViewModel.deleteTake(name)
-                    deleting = null
-                }) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text("Cancel") }
             },
         )
     }

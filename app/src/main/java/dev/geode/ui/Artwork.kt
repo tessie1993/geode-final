@@ -1,9 +1,7 @@
 package dev.geode.ui
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
 import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -113,34 +111,11 @@ object VideoFrameCache {
                 retriever.setDataSource(context, Uri.parse(uri))
                 val atUs = (atMs * 1000L).coerceAtLeast(0L)
                 val option = android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                    retriever.getScaledFrameAtTime(atUs, option, FRAME_PX, FRAME_PX)
-                } else {
-                    retriever.getFrameAtTime(atUs, option)?.let(::downscaled)
-                }?.asImageBitmap()
+                retriever.getScaledFrameAtTime(atUs, option, FRAME_PX, FRAME_PX)?.asImageBitmap()
             } finally {
                 retriever.release()
             }
         }.getOrNull()
-
-    /**
-     * API 26 has no scaled variant, so the full frame is decoded once and reduced immediately;
-     * the original is recycled rather than left for the collector to find.
-     */
-    private fun downscaled(source: Bitmap): Bitmap {
-        val longest = maxOf(source.width, source.height)
-        if (longest <= FRAME_PX) return source
-        val scale = FRAME_PX.toFloat() / longest
-        val scaled =
-            Bitmap.createScaledBitmap(
-                source,
-                (source.width * scale).toInt().coerceAtLeast(1),
-                (source.height * scale).toInt().coerceAtLeast(1),
-                true,
-            )
-        if (scaled !== source) source.recycle()
-        return scaled
-    }
 }
 
 @Composable

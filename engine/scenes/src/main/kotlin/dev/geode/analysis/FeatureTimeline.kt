@@ -2,7 +2,6 @@ package dev.geode.analysis
 
 import dev.geode.engine.audio.DrumChannels
 import dev.geode.engine.audio.PulseReplay
-import kotlin.math.sqrt
 
 data class TimelineFrame(
     val timeMs: Long,
@@ -104,89 +103,35 @@ class FeatureTimeline(
             0
         }
 
+    /**
+     * The features to draw at [timeMs]. With a [spanMs], the span is one rendered frame: the
+     * continuous values are those at [timeMs], and every one-hop event of the frames timed in
+     * (timeMs, timeMs + spanMs] is folded in (flags or'ed, strengths and onset/flux maxed). Spans of
+     * consecutive frames tile the timeline, so each event is drawn on exactly one rendered frame
+     * at any frame rate.
+     */
     fun featuresAt(
         timeMs: Long,
         spanMs: Long = 0L,
     ): AudioFeatures {
         if (frames.isEmpty()) return AudioFeatures.empty()
-        val first = indexAt(timeMs)
-        val f = frames[first].features
-        if (spanMs <= 0L || frameSpacingMs <= 0.0) return f
-        val last = (indexAt(timeMs + spanMs) - 1).coerceIn(first, frames.size - 1)
-        if (last <= first) return f
-        var beat = f.beat
-        var onset = f.onset
-        var flux = f.flux
-        var strength = f.beatStrength
-        var transient = f.transient
-        for (i in first + 1..last) {
-            val g = frames[i].features
-            beat = beat || g.beat
-            onset = maxOf(onset, g.onset)
-            flux = maxOf(flux, g.flux)
-            strength = maxOf(strength, g.beatStrength)
-            transient = maxOf(transient, g.transient)
+        val f = frames[indexAt(timeMs)].features
+        if (spanMs <= 0L) return f
+        var folded = f.withoutEvents()
+        for (i in framesUpTo(timeMs) until framesUpTo(timeMs + spanMs)) {
+            folded = folded.foldedWith(frames[i].features)
         }
-        if (beat == f.beat && onset == f.onset && flux == f.flux && strength == f.beatStrength && transient == f.transient) return f
-        return f.copy(beat = beat, onset = onset, flux = flux, beatStrength = strength, transient = transient)
+        return folded
     }
 
-    fun progressionAt(
-        timeMs: Long,
-        sections: List<Long>,
-        spanMs: Long = 0L,
-    ): AudioFeatures {
-        val f = featuresAt(timeMs, spanMs)
-        if (durationMs <= 0L) return f
-        var idx = 0
-        for (s in sections) {
-            if (s <= timeMs) idx++ else break
+    /** How many frames are timed at or before [timeMs]. */
+    private fun framesUpTo(timeMs: Long): Int {
+        var lo = 0
+        var hi = frames.size
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (frames[mid].timeMs <= timeMs) lo = mid + 1 else hi = mid
         }
-        return f.copy(
-            progress = (timeMs.toFloat() / durationMs).coerceIn(0f, 1f),
-            sectionIndex = idx,
-            sectionCount = sections.size + 1,
-        )
-    }
-
-    fun detectSections(
-        windowFrames: Int = 90,
-        minGapFrames: Int = 300,
-    ): List<Long> {
-        if (frames.size < windowFrames * 2) return emptyList()
-        val novelty = FloatArray(frames.size)
-        val bandCount = frames[0].features.bands.size
-        val before = FloatArray(bandCount)
-        val after = FloatArray(bandCount)
-        for (i in windowFrames until frames.size - windowFrames) {
-            java.util.Arrays.fill(before, 0f)
-            java.util.Arrays.fill(after, 0f)
-            for (w in 0 until windowFrames) {
-                val fb = frames[i - 1 - w].features.bands
-                val fa = frames[i + w].features.bands
-                for (b in 0 until bandCount) {
-                    before[b] += fb[b]
-                    after[b] += fa[b]
-                }
-            }
-            var dist = 0f
-            for (b in 0 until bandCount) {
-                val d = (after[b] - before[b]) / windowFrames
-                dist += d * d
-            }
-            novelty[i] = sqrt(dist)
-        }
-        val mean = novelty.average().toFloat()
-        val threshold = mean * 2f
-        val boundaries = mutableListOf<Long>()
-        var lastPeak = -minGapFrames
-        for (i in 1 until novelty.size - 1) {
-            val isPeak = novelty[i] > threshold && novelty[i] >= novelty[i - 1] && novelty[i] >= novelty[i + 1]
-            if (isPeak && i - lastPeak >= minGapFrames) {
-                boundaries += frames[i].timeMs
-                lastPeak = i
-            }
-        }
-        return boundaries
+        return lo
     }
 }

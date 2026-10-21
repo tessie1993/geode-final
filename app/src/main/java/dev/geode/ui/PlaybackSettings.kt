@@ -22,7 +22,6 @@ import dev.geode.analysis.PlaybackMath
 import dev.geode.data.PlayerPrefs
 import dev.geode.design.CrystalSlider
 import dev.geode.design.theme.accentTextColor
-import dev.geode.playback.BitPerfectOutput
 import dev.geode.playback.ReplayGain
 
 private val SLEEP_TIMER_CHOICES = listOf(0, 15, 30, 45, 60)
@@ -228,16 +227,6 @@ private fun NativeEngineSettings(
         if (!prefs.nativeEngine) return
         PlaybackSwitchRow(stringResource(R.string.playback_gapless), prefs.gapless) {
             onChange(prefs.copy(gapless = it))
-        }
-        if (BitPerfectOutput.supported) {
-            PlaybackSwitchRow(stringResource(R.string.playback_bit_perfect), prefs.bitPerfect) {
-                onChange(prefs.copy(bitPerfect = it))
-            }
-            Text(
-                stringResource(R.string.playback_bit_perfect_explainer),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
         Text(
             if (prefs.crossfadeMs <= 0) {

@@ -410,8 +410,8 @@ jobs:
       - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          # 29 is the floor for the scoped-storage paths these tests cover.
-          api-level: 30
+          # minSdk: the oldest Android the app installs on.
+          api-level: 31
           target: google_apis
           arch: x86_64
           disable-animations: true

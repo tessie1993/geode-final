@@ -41,5 +41,9 @@ object FeatureFrameLayout {
     const val BANDS = 33
     const val WAVEFORM = BANDS + BAND_COUNT
     const val CHROMA = WAVEFORM + WAVEFORM_POINTS
-    const val FLOATS = CHROMA + CHROMA_BINS
+
+    /** `GeodeEvent events[GEODE_EVENT_COUNT]`: a sequence number then a strength per event, in `SoundEvent` order. */
+    const val EVENT_COUNT = 9
+    const val EVENTS = CHROMA + CHROMA_BINS
+    const val FLOATS = EVENTS + 2 * EVENT_COUNT
 }

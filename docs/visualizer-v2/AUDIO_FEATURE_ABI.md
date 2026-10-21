@@ -15,9 +15,12 @@ Every captured frame carries an absolute input sample index, sample rate, channe
 source epoch and discontinuity generation. Analysis hops are triggered by new sample
 availability, never by a wall-clock timer.
 
-Today's engine does the opposite: the live analyzer runs a **62.5 Hz wall-clock loop** taking
-"newest window", while the offline path is 60 Hz sample-locked. Different hop *and* different
-alignment, and under load the live one silently drops or repeats audio.
+The engine used to do the opposite: the live analyzer ran a 62.5 Hz wall-clock loop taking
+"newest window", while the offline path was 60 Hz sample-locked. Since #15 both push PCM into the
+native session and pull one frame per hop of `AnalysisHop` (dt = hop / sample rate); the live
+path reads the ring forward through `SampleCursor`. One-hop events also carry a sequence number
+(`GeodeEvent` in `geode_api.h`), so a reader that samples once per display frame edge-detects
+each one exactly once instead of relying on a held pulse.
 
 ### 1.1 Reading the ring
 

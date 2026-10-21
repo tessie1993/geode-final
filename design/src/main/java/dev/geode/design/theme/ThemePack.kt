@@ -6,9 +6,6 @@ import androidx.compose.ui.graphics.Color
 
 data class ThemePack(
     val slug: String,
-    val name: String,
-    val stone: String,
-    val isLight: Boolean,
     val palette: StonePalette,
     val motion: StoneMotion,
     val material: StoneMaterial,

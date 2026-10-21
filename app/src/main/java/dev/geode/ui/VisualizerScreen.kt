@@ -50,8 +50,6 @@ import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import dev.geode.R
-import dev.geode.design.CrystalBackground
-import dev.geode.design.CrystalOverline
 import dev.geode.design.CrystalPlayButton
 import dev.geode.design.crystalPanel
 import dev.geode.design.glassScrim
@@ -69,20 +67,17 @@ import kotlin.math.abs
 fun VisualizerScreen(
     viewModel: PlayerViewModel,
     visualizerView: VisualizerView,
-    externalDisplayName: String? = null,
     onCollapse: () -> Unit,
     onOpenVisuals: () -> Unit,
 ) {
     val settingsViewModel: SettingsViewModel = geodeViewModel()
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val autoMode by viewModel.autoMode.collectAsStateWithLifecycle()
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
     val waveform by viewModel.waveform.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val queue by viewModel.queue.collectAsStateWithLifecycle()
     val favourites by viewModel.favourites.collectAsStateWithLifecycle()
     val abLoop by viewModel.abLoop.collectAsStateWithLifecycle()
-    val external by viewModel.externalAudio.collectAsStateWithLifecycle()
     val currentUri = remember(state.title, state.artist, state.queueIndex) { viewModel.currentTrackUri() }
     val isFavourite = currentUri != null && currentUri in favourites
     var panel by remember { mutableStateOf(PlayerPanel.TRANSPORT) }
@@ -106,28 +101,7 @@ fun VisualizerScreen(
                 onTransform = viewModel::nudgeTransform,
             ),
     ) {
-        if (externalDisplayName == null) {
-            VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
-        } else {
-            CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
-            Column(
-                Modifier.align(Alignment.Center).padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                CrystalOverline(stringResource(R.string.second_screen_showing_on))
-                Text(
-                    externalDisplayName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    stringResource(R.string.second_screen_explainer),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-        }
+        VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
 
         if (controlsVisible) {
             Row(
@@ -150,29 +124,15 @@ fun VisualizerScreen(
                     Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.action_collapse))
                 }
                 Column(Modifier.weight(1f, fill = false)) {
-                    val foreign = external.active
-                    val foreignTrack = external.nowPlaying?.takeIf { it.title.isNotBlank() }
                     val appName = stringResource(R.string.app_name)
                     Text(
-                        when {
-                            foreign -> foreignTrack?.title ?: stringResource(R.string.source_other_apps)
-                            else -> state.title?.ifBlank { appName } ?: appName
-                        },
+                        state.title?.ifBlank { appName } ?: appName,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val subtitle =
-                        when {
-                            foreign ->
-                                listOfNotNull(
-                                    foreignTrack?.artist?.takeIf { it.isNotBlank() },
-                                    external.nowPlaying?.appLabel,
-                                ).joinToString(" · ")
-                                    .ifBlank { stringResource(R.string.subtitle_captured_from_another_app) }
-                            else -> state.artist?.takeIf { it.isNotBlank() }.orEmpty()
-                        }
+                    val subtitle = state.artist?.takeIf { it.isNotBlank() }.orEmpty()
                     if (subtitle.isNotEmpty()) {
                         Text(
                             subtitle,
@@ -183,7 +143,7 @@ fun VisualizerScreen(
                         )
                     }
                 }
-                if (state.hasMedia && !external.active) {
+                if (state.hasMedia) {
                     IconButton(onClick = { viewModel.toggleFavourite() }) {
                         StoneIconArt(
                             StoneIcon.FAVORITE,
@@ -328,20 +288,6 @@ fun VisualizerScreen(
                         TextButton(onClick = onOpenVisuals) {
                             StoneIconArt(StoneIcon.SETTINGS, null)
                             Text("  " + stringResource(R.string.nav_visuals))
-                        }
-                        TextButton(onClick = viewModel::cycleAutoMode) {
-                            StoneIconArt(StoneIcon.QUEUE, null)
-                            Text(
-                                "  " +
-                                    stringResource(
-                                        when (autoMode) {
-                                            1 -> R.string.auto_random
-                                            2 -> R.string.auto_smart
-                                            3 -> R.string.auto_sections
-                                            else -> R.string.auto_off
-                                        },
-                                    ),
-                            )
                         }
                     }
                     Row(
@@ -610,7 +556,7 @@ private class VisualizerTouch(
     ) {
         if (transform && TouchTransform.isTransform(zoomChange, rotationChange)) {
             // Pinch and twist drive the real Zoom and Rotation params rather than a
-            // view-only transform, which is why a gesture survives into presets, takes and
+            // view-only transform, which is why a gesture survives into presets and
             // exports instead of evaporating when the screen is left.
             onTransform(zoomChange, rotationChange)
         } else if (smear) {
