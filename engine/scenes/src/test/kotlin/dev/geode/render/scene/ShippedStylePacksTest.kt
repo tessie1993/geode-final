@@ -1,5 +1,6 @@
 package dev.geode.render.scene
 
+import dev.geode.engine.types.SceneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -48,6 +49,6 @@ class ShippedStylePacksTest {
     @Test
     fun `the label of a Style is its pack's and an unknown id is title-cased`() {
         registry.styles.forEach { assertEquals(it.label, SceneCapabilities.label(it.id)) }
-        assertEquals("No Such Style", SceneCapabilities.label(dev.geode.engine.types.SceneId("no_such_style")))
+        assertEquals("No Such Style", SceneCapabilities.label(SceneId("no_such_style")))
     }
 }

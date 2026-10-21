@@ -159,8 +159,7 @@ class StylePackFormatTest {
         assertEquals(ParameterSpec("gain", ParameterType.FLOAT, 0f, 2f, 1.25f), cymatics.parameters[1])
     }
 
-    private fun familyWith(parameter: String): String =
-        """{"version": 1, "families": [{"name": "shader", "parameters": [$parameter]}]}"""
+    private fun familyWith(parameter: String): String = """{"version": 1, "families": [{"name": "shader", "parameters": [$parameter]}]}"""
 
     @Test
     fun `broken families are rejected with a typed error`() {
