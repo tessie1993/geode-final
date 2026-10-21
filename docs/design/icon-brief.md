@@ -16,6 +16,8 @@ The new App UI is called "Nature meets life". **Water is the main element**, set
 
 A complete, original set of about 125 line icons (section 7), each in an outline and a filled state, drawn on a strict 24dp grid. They should feel organic and drawn by hand, with water, leaf and stone motifs where they come naturally, while staying instantly readable at small sizes.
 
+The commission also includes the **home-screen app icon** (section 9), drawn in the same style family.
+
 ## 3. Style
 
 **In one sentence:** calm, hand-tuned line icons that look like they were drawn with a good pen on smooth river stone.
@@ -35,7 +37,7 @@ A complete, original set of about 125 line icons (section 7), each in an outline
 | **Material 3 Expressive** shapes (cookie, pill, gem outlines) | Irregular, organic shapes that still sit on a strict grid and read clearly | Shapes drawn freehand with no grid or keylines | Optical sizes drift and the set stops looking like one family |
 | **Opal**: art-directed objects used sparingly | Few, considered motifs with a clear meaning | Clip-art leaves, emoji-style nature icons, flat vector pebbles with gradient fills | Clichés that make the app look like a template |
 | **Apple Liquid Glass** controls: crisp glyphs that stay legible on glass | Icons stay readable over a busy, blurred backdrop | Thin hairline strokes, tiny interior details | They disappear over frosted glass and fail contrast |
-| **Endel** and **Oak**: very few elements per screen, quiet glyphs | Restraint makes a dark theme feel premium | Free icon packs or traced stock icons as a starting point | Mixed licences and visual clichés (section 10) |
+| **Endel** and **Oak**: very few elements per screen, quiet glyphs | Restraint makes a dark theme feel premium | Free icon packs or traced stock icons as a starting point | Mixed licences and visual clichés (section 11) |
 
 The full list of references, with links, is in `research-high-end-references.md`, section 1.
 
@@ -70,7 +72,7 @@ All icons are drawn on a **24 × 24dp grid** (one unit = 1dp) and exported with 
 | Inside corners | Radius at least **0.5dp** |
 | Smallest detail | **1.5dp** (a dot, a gap or a counter). Anything smaller disappears on a phone. |
 
-The final vectors are delivered **outlined**: every stroke converted to a filled shape. This keeps the taper and varied terminals exactly as drawn, because Android vector strokes cannot change width along their length. Keep the stroked version in the source file (section 9).
+The final vectors are delivered **outlined**: every stroke converted to a filled shape. This keeps the taper and varied terminals exactly as drawn, because Android vector strokes cannot change width along their length. Keep the stroked version in the source file (section 10).
 
 ## 6. Sizes and states
 
@@ -280,13 +282,49 @@ These follow Android's own rules, so they are simpler than the in-app icons.
 | `stat_capture` | Status-bar icon while capturing audio or exporting video | Drawable `ic_stat_capture` (`audio/PlaybackCaptureService.kt`, `export/ExportService.kt`) | White on transparent, a single flat silhouette with no fine detail, 24dp with a 22dp live area. Android shows only its shape. |
 | `stat_playing` | Status-bar icon while music plays | New | As `stat_capture` |
 
-The launcher (home-screen) icon is **not** part of this commission. It is quoted separately if wanted.
+The home-screen app icon is part of this commission, with its own rules in section 9.
 
 ## 8. Contrast
 
 Icons and control outlines must reach at least **3:1** contrast against the worst plausible backdrop in every theme, both dark and light (WCAG 2.x, as worked out in `research-high-end-references.md`, section 2). Because the art is a single tinted colour, this is mostly the app's job. The designer's part is to keep strokes at the weights in section 5, so that the icons stay solid over frosted glass.
 
-## 9. Deliverables
+## 9. App icon
+
+The app icon is the first thing people see of Geode, on the home screen and in the Play Store. Today's icon (`app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml` and its three layers in `app/src/main/res/drawable/`) is replaced.
+
+### Style
+
+- **Same family as the in-app icons.** It uses the same drawing language: organic curves, soft pebble geometry, round terminals and the hand-tuned line. It may be bolder and more detailed than a 24dp glyph, because it is shown larger.
+- **One clear idea.** A single motif that reads at a glance, such as a geode, a river stone or a ripple on water. It should not be a collage of every motif. It must still read at 48dp on a busy wallpaper.
+- **Colour.** Unlike the in-app icons, the app icon is in colour, taken from the default theme (Deep forest + stone): the pine-black base, moss and a small amber highlight (`research-high-end-references.md`, section 2.1). No text and no letters.
+
+### Adaptive icon (Android 8 and later)
+
+Geode's lowest supported Android version already uses adaptive icons, so no older-style square icons are needed. The icon is built from three layers, each on a **108 × 108dp canvas**:
+
+| Layer | What it holds | Rules |
+|---|---|---|
+| **Foreground** | The motif | Keep everything that matters inside the central **72 × 72dp safe zone**. Android masks the icon into a circle, a squircle or a rounded square depending on the phone, and can clip the corners of the safe zone, so keep the key shape inside a 66dp circle at its centre. The 18dp margin around the safe zone is used for the parallax and pulse effects some launchers add. |
+| **Background** | A plain colour or a calm surface (for example a dark stone or deep water) | It fills the whole 108dp canvas, with no important detail near the edges. A vector is preferred. If it needs a texture, deliver a bitmap at 432 × 432px. |
+| **Monochrome** | A single-colour silhouette of the motif, for themed icons on Android 13 and later | One flat shape, with no colour, gradients or fine detail. The system tints it to match the wallpaper. Same canvas and safe zone as the foreground. |
+
+Check the icon in every mask shape (circle, squircle, rounded square and teardrop), on light and dark wallpapers, and with themed icons switched on.
+
+### Play Store icon
+
+- **512 × 512px PNG**, 32-bit with alpha, at most 1024KB.
+- A full square with no rounded corners and no drop shadow. Google Play adds the corner mask and the shadow itself.
+- The same art as the adaptive icon: the foreground over the background, at the same proportions.
+
+### Concept rounds
+
+The app icon is developed in its own track, alongside the in-app set:
+
+1. **Concepts.** Three distinct concepts, each shown at Play Store size, at 48dp on a home screen in two mask shapes, and as a monochrome themed icon. The owner chooses one.
+2. **Refinement.** The chosen concept is refined. The number of refinement rounds is set in the contract (section 13).
+3. **Final.** Delivered as in section 10.
+
+## 10. Deliverables
 
 For every icon and every state it has:
 
@@ -298,6 +336,13 @@ And for the set as a whole:
 3. **Source file** (Figma preferred, or Illustrator) with the grid and keylines, the **stroked** master of every icon next to its outlined export, and the 16dp and 40dp versions on their own pages.
 4. **Contact sheet** (PDF and PNG) showing every icon in both states at 16, 24 and 40dp, in dark and light on the default theme.
 5. **Index** (a CSV) with one row per file: name, state, size, meaning (copied from section 7).
+
+For the app icon (section 9):
+
+6. **Adaptive icon layers** as Android vector drawables on a 108 × 108dp canvas: `ic_launcher_foreground.xml`, `ic_launcher_background.xml` (or `ic_launcher_background.png` at 432 × 432px if it needs a texture) and `ic_launcher_monochrome.xml`, plus an SVG of each.
+7. **Play Store icon:** `play_store_icon_512.png`.
+8. **App icon source** in the same source file as the in-app icons, with the 108dp canvas, the 72dp safe zone and the 66dp circle shown as guides.
+9. **App icon preview sheet** showing it in every mask shape, on light and dark wallpapers, and as a themed (monochrome) icon.
 
 ### Naming
 
@@ -317,25 +362,26 @@ Examples: `ic_play_outline.xml`, `ic_play_filled_40.xml`, `ic_close_outline_16.x
 
 The vector drawables live in the App UI's shared `:design` module (ADR-0005), never in an engine module, because the icons belong to the App UI and never to the Visual. Engineering adds them to the app; the designer only delivers files.
 
-## 10. Licensing and ownership
+## 11. Licensing and ownership
 
 - **Original work.** Every icon is drawn from scratch for Geode. No free or paid icon packs, fonts, traced stock icons, or AI-generated drawings may be used as a starting point or inside the final art. Reference boards and mood images are fine for inspiration.
-- **Ownership.** On payment, the designer assigns to the owner all copyright and other rights in the icons, the source files and the exports, worldwide and for the full term, for any use: the app on every platform, its store listings, marketing, and future versions and derived works. Where an assignment is not possible, the designer grants an exclusive, perpetual, irrevocable, worldwide, royalty-free licence with the right to sublicense and change the work.
+- **Ownership.** On payment, the designer assigns to the owner all copyright and other rights in the icons, the app icon, the source files and the exports, worldwide and for the full term, for any use: the app on every platform, its store listings, marketing, and future versions and derived works. Where an assignment is not possible, the designer grants an exclusive, perpetual, irrevocable, worldwide, royalty-free licence with the right to sublicense and change the work.
 - **Moral rights.** The designer waives moral rights (or agrees not to assert them) where the law allows, so the icons can be changed, recoloured, combined and resized without approval.
 - **Credit.** The designer may be credited on the About screen, if they want, and may show the set in their portfolio once the app version using it is released.
 - **Warranty.** The designer confirms the work is original and does not infringe anyone else's rights.
 - **Records.** The signed agreement and the final source files are kept with the owner's records, next to the asset manifest for the other App UI art.
 
-## 11. Review process
+## 12. Review process
 
 The owner reviews and approves every stage. Nothing ships without the owner's approval.
 
-1. **Style tiles.** Six test icons: `player`, `library`, `visuals`, `studio`, `settings` and `favorite`, in outline and filled, at 16, 24 and 40dp, shown on all three themes in dark and light, plus over a frosted glass panel. The owner chooses a direction. Up to two rounds of changes.
-2. **Full set, first pass.** Every icon at 24dp in outline, as a contact sheet. The owner checks meaning and consistency. Up to two rounds of changes.
-3. **Full set, final.** All states and sizes, delivered as in section 9.
-4. **Engineering check.** The files import into `:design` without warnings; every name, state and size in the index is present; the art tints correctly; nothing breaks the grid or the minimum detail size.
-5. **In the app.** The icons are wired into the App UI. Continuous integration re-records the App UI screenshots (`docs/ci.md`), and the owner reviews them on a phone in every theme, dark and light, and at the largest system font size. Any fixes go back to the designer as one consolidated list.
-6. **Sign-off.** The owner signs off, the final payment is made, and the rights transfer (section 10) takes effect.
+1. **Style tiles.** Six test icons: `player`, `library`, `visuals`, `studio`, `settings` and `favorite`, in outline and filled, at 16, 24 and 40dp, shown on all three themes in dark and light, plus over a frosted glass panel. The owner chooses a direction, with rounds of changes as set in the contract (section 13).
+2. **Full set, first pass.** Every icon at 24dp in outline, as a contact sheet. The owner checks meaning and consistency, with rounds of changes as set in the contract.
+3. **Full set, final.** All states and sizes, delivered as in section 10.
+4. **Engineering check.** The files import into `:design` (and the app icon layers into the app) without warnings; every name, state and size in the index is present; the art tints correctly; nothing breaks the grid or the minimum detail size.
+5. **App icon.** In parallel with steps 1 to 3, the app icon goes through its concept rounds (section 9) and is reviewed on a real phone: in two or more mask shapes, on light and dark wallpapers, with themed icons on, and as the Play Store image.
+6. **In the app.** The icons and the app icon are wired into the app. Continuous integration re-records the App UI screenshots (`docs/ci.md`), and the owner reviews them on a phone in every theme, dark and light, and at the largest system font size. Any fixes go back to the designer as one consolidated list.
+7. **Sign-off.** The owner signs off, the final payment is made, and the rights transfer (section 11) takes effect.
 
 ### What to send for each review
 
@@ -343,7 +389,6 @@ The owner reviews and approves every stage. Nothing ships without the owner's ap
 - Each icon labelled with its name from section 7.
 - Any icon whose meaning the designer thinks is unclear, flagged with a question.
 
-## 12. Questions for the owner before sending
+## 13. Questions for the owner before sending
 
 - Budget, timeline and number of change rounds in the contract.
-- Whether the launcher icon should be added to this commission (section 7.8).
