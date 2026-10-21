@@ -122,6 +122,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         tracks: List<Track>,
         next: Boolean,
     ): Step {
+        if (tracks.isEmpty()) return Next(from)
         val queue = queueOf(from) ?: return play(from, tracks, startAt = 0)
         val at = if (next) queue.index + 1 else queue.tracks.size
         return Next(withQueue(from, queue.copy(tracks = queue.tracks.take(at) + tracks + queue.tracks.drop(at))))
