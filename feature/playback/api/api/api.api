@@ -31,6 +31,17 @@ public final class dev/geode/feature/playback/api/PlayMark$Companion {
 public abstract interface class dev/geode/feature/playback/api/PlaybackCommand {
 }
 
+public final class dev/geode/feature/playback/api/PlaybackCommand$AddToQueue : dev/geode/feature/playback/api/PlaybackCommand {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Ldev/geode/feature/playback/api/PlaybackCommand$AddToQueue;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$AddToQueue;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$AddToQueue;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTracks ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/playback/api/PlaybackCommand$CreatePlaylist : dev/geode/feature/playback/api/PlaybackCommand {
 	public fun <init> (Ljava/lang/String;Ljava/util/List;)V
 	public final fun component1 ()Ljava/lang/String;
@@ -78,6 +89,17 @@ public final class dev/geode/feature/playback/api/PlaybackCommand$Play : dev/geo
 	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$Play;Ljava/util/List;IILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getStartAt ()I
+	public final fun getTracks ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$PlayNext : dev/geode/feature/playback/api/PlaybackCommand {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Ldev/geode/feature/playback/api/PlaybackCommand$PlayNext;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$PlayNext;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$PlayNext;
+	public fun equals (Ljava/lang/Object;)Z
 	public final fun getTracks ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
