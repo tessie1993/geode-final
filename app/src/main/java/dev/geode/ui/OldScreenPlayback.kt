@@ -133,21 +133,12 @@ class OldScreenPlayback internal constructor(
 
     fun shuffleAllHistory() = playAll(recentlyPlayed().take(HISTORY_SHUFFLE), shuffled = true)
 
+    /** Plays [tracks] from [startUri]; a song that is not in the list plays on its own, as the old player did. */
     fun playFrom(
         tracks: List<QueueTrack>,
         startUri: TrackId,
     ) {
-        val list =
-            tracks.ifEmpty { listOf(QueueTrack(startUri)) }.let {
-                if (it.any { t ->
-                        t.uri == startUri
-                    }
-                ) {
-                    it
-                } else {
-                    listOf(QueueTrack(startUri))
-                }
-            }
+        val list = if (tracks.any { it.uri == startUri }) tracks else listOf(QueueTrack(startUri))
         withDetails(list) { known -> OldScreenModels.playFrom(known, startUri)?.let(::send) }
     }
 

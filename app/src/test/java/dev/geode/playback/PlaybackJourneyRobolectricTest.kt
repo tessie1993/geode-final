@@ -21,6 +21,7 @@ import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.core.BUFFERING_GRACE
 import dev.geode.feature.playback.handlers.PlaybackClocks
 import dev.geode.feature.playback.handlers.playbackStore
 import dev.geode.feature.playback.ui.MiniPlayerRoute
@@ -131,7 +132,7 @@ class PlaybackJourneyRobolectricTest {
         audio.announce(PlaybackAnnouncement.Paused(heard(10, moving = false)))
         assertTrue(playback.state.value.player is PlayerState.Buffering)
 
-        clock.advanceBy(Millis(BUFFERING_GRACE_MS))
+        clock.advanceBy(BUFFERING_GRACE + Millis(1))
 
         assertTrue("it gives way to Paused", playback.state.value.player is PlayerState.Paused)
         assertEquals(
@@ -192,10 +193,5 @@ class PlaybackJourneyRobolectricTest {
             visualStarted++
             onDispose { visualStopped++ }
         }
-    }
-
-    private companion object {
-        /** Playback's grace for buffering (`BUFFERING_GRACE` in its core), and a little more. */
-        const val BUFFERING_GRACE_MS = 1_600L
     }
 }

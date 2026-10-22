@@ -259,6 +259,8 @@ dependencies {
     // dependencies alone; as testImplementation, VisualsRoute failed with NoClassDefFoundError on
     // dev.geode.feature.visuals.ui.R$string.
     implementation(project(":feature:visuals:ui"))
+    // The Playback journey test (#17) reads Playback's own timings.
+    testImplementation(project(":feature:playback:core"))
     testImplementation(project(":feature:customization:api"))
     testImplementation(project(":feature:customization:core"))
     testImplementation(project(":feature:visuals:api"))
