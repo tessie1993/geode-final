@@ -1,0 +1,197 @@
+public final class dev/geode/feature/diagnostics/api/BufferSize {
+	public fun <init> (II)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun copy (II)Ldev/geode/feature/diagnostics/api/BufferSize;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/BufferSize;IIILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/BufferSize;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHeight ()I
+	public final fun getWidth ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/diagnostics/api/DeveloperState {
+}
+
+public final class dev/geode/feature/diagnostics/api/DeveloperState$Locked : dev/geode/feature/diagnostics/api/DeveloperState {
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Ldev/geode/feature/diagnostics/api/DeveloperState$Locked;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/DeveloperState$Locked;IILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/DeveloperState$Locked;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTaps ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/DeveloperState$Unlocked : dev/geode/feature/diagnostics/api/DeveloperState {
+	public fun <init> (Ldev/geode/feature/diagnostics/api/OverlayState;)V
+	public final fun component1 ()Ldev/geode/feature/diagnostics/api/OverlayState;
+	public final fun copy (Ldev/geode/feature/diagnostics/api/OverlayState;)Ldev/geode/feature/diagnostics/api/DeveloperState$Unlocked;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/DeveloperState$Unlocked;Ldev/geode/feature/diagnostics/api/OverlayState;ILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/DeveloperState$Unlocked;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOverlay ()Ldev/geode/feature/diagnostics/api/OverlayState;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/diagnostics/api/DiagnosticsCommand {
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsCommand$DismissProblem : dev/geode/feature/diagnostics/api/DiagnosticsCommand {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/DiagnosticsCommand$DismissProblem;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsCommand$SetOverlay : dev/geode/feature/diagnostics/api/DiagnosticsCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/diagnostics/api/DiagnosticsCommand$SetOverlay;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/DiagnosticsCommand$SetOverlay;ZILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/DiagnosticsCommand$SetOverlay;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getVisible ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsCommand$Share : dev/geode/feature/diagnostics/api/DiagnosticsCommand {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/DiagnosticsCommand$Share;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsCommand$TapVersion : dev/geode/feature/diagnostics/api/DiagnosticsCommand {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/DiagnosticsCommand$TapVersion;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/diagnostics/api/DiagnosticsFact {
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsFact$DeveloperUnlocked : dev/geode/feature/diagnostics/api/DiagnosticsFact {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/DiagnosticsFact$DeveloperUnlocked;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsKt {
+	public static final field UNLOCK_TAPS I
+}
+
+public final class dev/geode/feature/diagnostics/api/DiagnosticsState {
+	public fun <init> ()V
+	public fun <init> (Ldev/geode/feature/diagnostics/api/ShareState;Ldev/geode/feature/diagnostics/api/DeveloperState;)V
+	public synthetic fun <init> (Ldev/geode/feature/diagnostics/api/ShareState;Ldev/geode/feature/diagnostics/api/DeveloperState;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/diagnostics/api/ShareState;
+	public final fun component2 ()Ldev/geode/feature/diagnostics/api/DeveloperState;
+	public final fun copy (Ldev/geode/feature/diagnostics/api/ShareState;Ldev/geode/feature/diagnostics/api/DeveloperState;)Ldev/geode/feature/diagnostics/api/DiagnosticsState;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/DiagnosticsState;Ldev/geode/feature/diagnostics/api/ShareState;Ldev/geode/feature/diagnostics/api/DeveloperState;ILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/DiagnosticsState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDeveloper ()Ldev/geode/feature/diagnostics/api/DeveloperState;
+	public final fun getShare ()Ldev/geode/feature/diagnostics/api/ShareState;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/EngineRunState : java/lang/Enum {
+	public static final field FAILED Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public static final field PAUSED Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public static final field RUNNING Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public static final field STARTING Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public static final field STOPPED Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public static fun values ()[Ldev/geode/feature/diagnostics/api/EngineRunState;
+}
+
+public final class dev/geode/feature/diagnostics/api/EngineStats {
+	public synthetic fun <init> (JJLdev/geode/feature/diagnostics/api/BufferSize;JLdev/geode/feature/diagnostics/api/EngineRunState;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-_k6pwj0 ()J
+	public final fun component2-t5s8UKQ ()J
+	public final fun component3 ()Ldev/geode/feature/diagnostics/api/BufferSize;
+	public final fun component4 ()J
+	public final fun component5 ()Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public final fun copy-faikJrM (JJLdev/geode/feature/diagnostics/api/BufferSize;JLdev/geode/feature/diagnostics/api/EngineRunState;)Ldev/geode/feature/diagnostics/api/EngineStats;
+	public static synthetic fun copy-faikJrM$default (Ldev/geode/feature/diagnostics/api/EngineStats;JJLdev/geode/feature/diagnostics/api/BufferSize;JLdev/geode/feature/diagnostics/api/EngineRunState;ILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/EngineStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAudioBuffer-t5s8UKQ ()J
+	public final fun getEngine ()Ldev/geode/feature/diagnostics/api/EngineRunState;
+	public final fun getFrameTime-_k6pwj0 ()J
+	public final fun getUnderruns ()J
+	public final fun getVisualBuffer ()Ldev/geode/feature/diagnostics/api/BufferSize;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/diagnostics/api/OverlayState {
+}
+
+public final class dev/geode/feature/diagnostics/api/OverlayState$Hidden : dev/geode/feature/diagnostics/api/OverlayState {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/OverlayState$Hidden;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/OverlayState$Shown : dev/geode/feature/diagnostics/api/OverlayState {
+	public fun <init> (Ldev/geode/feature/diagnostics/api/EngineStats;)V
+	public final fun component1 ()Ldev/geode/feature/diagnostics/api/EngineStats;
+	public final fun copy (Ldev/geode/feature/diagnostics/api/EngineStats;)Ldev/geode/feature/diagnostics/api/OverlayState$Shown;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/OverlayState$Shown;Ldev/geode/feature/diagnostics/api/EngineStats;ILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/OverlayState$Shown;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStats ()Ldev/geode/feature/diagnostics/api/EngineStats;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/ShareProblem : java/lang/Enum {
+	public static final field NO_SHARE_TARGET Ldev/geode/feature/diagnostics/api/ShareProblem;
+	public static final field TIMED_OUT Ldev/geode/feature/diagnostics/api/ShareProblem;
+	public static final field WRITE_FAILED Ldev/geode/feature/diagnostics/api/ShareProblem;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/diagnostics/api/ShareProblem;
+	public static fun values ()[Ldev/geode/feature/diagnostics/api/ShareProblem;
+}
+
+public abstract interface class dev/geode/feature/diagnostics/api/ShareState {
+}
+
+public final class dev/geode/feature/diagnostics/api/ShareState$Failed : dev/geode/feature/diagnostics/api/ShareState {
+	public fun <init> (Ldev/geode/feature/diagnostics/api/ShareProblem;)V
+	public final fun component1 ()Ldev/geode/feature/diagnostics/api/ShareProblem;
+	public final fun copy (Ldev/geode/feature/diagnostics/api/ShareProblem;)Ldev/geode/feature/diagnostics/api/ShareState$Failed;
+	public static synthetic fun copy$default (Ldev/geode/feature/diagnostics/api/ShareState$Failed;Ldev/geode/feature/diagnostics/api/ShareProblem;ILjava/lang/Object;)Ldev/geode/feature/diagnostics/api/ShareState$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProblem ()Ldev/geode/feature/diagnostics/api/ShareProblem;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/ShareState$Idle : dev/geode/feature/diagnostics/api/ShareState {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/ShareState$Idle;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/ShareState$Preparing : dev/geode/feature/diagnostics/api/ShareState {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/ShareState$Preparing;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/diagnostics/api/ShareState$Sharing : dev/geode/feature/diagnostics/api/ShareState {
+	public static final field INSTANCE Ldev/geode/feature/diagnostics/api/ShareState$Sharing;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+

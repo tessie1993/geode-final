@@ -29,19 +29,21 @@ from pathlib import Path
 LIBRARY_DEPS: dict[str, set[str]] = {
     "api_types": set(),
     "util": set(),
+    "bridge": {"api_types"},
     "render": {"util"},
     "analysis": {"api_types"},
     "audio": {"api_types", "util"},
     "library": set(),
     "viz": {"api_types", "render", "analysis", "util"},
-    "api": {"api_types", "util", "analysis", "audio", "library", "viz"},
+    "api": {"api_types", "util", "analysis", "audio", "bridge", "library", "viz"},
 }
 # Consumers that are not libraries: the host unit tests (pure parts only) and the app's JNI layer.
 CONSUMER_DEPS: dict[str, set[str]] = {
-    "tests": {"api_types", "util", "analysis", "audio", "viz"},
-    "jni": {"api_types"},
+    "tests": {"api_types", "util", "bridge", "analysis", "audio", "viz"},
+    # The JNI layer calls the C ABI and runs every call through the bridge's guard (geode/bridge/Guard.hpp).
+    "jni": {"api_types", "bridge"},
 }
-LIBRARY_DIRS = ("api", "util", "render", "analysis", "audio", "library", "viz")
+LIBRARY_DIRS = ("api", "util", "bridge", "render", "analysis", "audio", "library", "viz")
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".h", ".hpp"}
 INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.M)
 

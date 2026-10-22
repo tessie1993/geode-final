@@ -1,5 +1,6 @@
 package dev.geode.render.bridge
 
+import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.render.scene.SceneParams
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,6 +13,11 @@ class SceneParamsCodecTest {
     fun `the frame has one slot per named field`() {
         assertEquals(SceneParamsCodec.FIELDS, SceneParamsCodec.NAMES.size)
         assertEquals(SceneParamsCodec.NAMES.size, SceneParamsCodec.NAMES.toSet().size)
+    }
+
+    @Test
+    fun `the Customization snapshot carries exactly this frame`() {
+        assertEquals(SceneParamsCodec.FIELDS, CustomizationSnapshot.PARAMS_COUNT)
     }
 
     @Test
