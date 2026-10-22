@@ -6,13 +6,8 @@ import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleLibrary
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -24,14 +19,10 @@ class DataStoreVisualsStorageTest {
     @get:Rule
     val temporary = TemporaryFolder()
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
     private val file: File by lazy { File(temporary.root, "visuals.preferences_pb") }
 
-    private val dataStore by lazy { PreferenceDataStoreFactory.create(scope = scope, produceFile = { file }) }
-
-    @After
-    fun stop() = scope.cancel()
+    // DataStore runs on its own default scope; each test has its own file.
+    private val dataStore by lazy { PreferenceDataStoreFactory.create(produceFile = { file }) }
 
     private val library =
         StyleLibrary(

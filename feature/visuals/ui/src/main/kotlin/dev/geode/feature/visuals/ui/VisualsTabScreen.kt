@@ -69,6 +69,7 @@ fun VisualsTabScreen(
     ) {
         item { Header(model, onAction) }
         item { SearchField(model.query, onAction) }
+
         val results = model.results
         when {
             results != null -> searchResults(results, model, onAction)

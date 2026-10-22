@@ -4,7 +4,7 @@ import android.app.Application
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -54,7 +54,7 @@ class VisualsRoutesTest {
 
     private val visuals = RecordingVisuals(PreviewStates.ready)
 
-    private fun scrollTo(text: String) = compose.onNode(hasScrollAction()).performScrollToNode(hasText(text))
+    private fun scrollTo(text: String) = compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
 
     @Test
     fun `going full screen, choosing a Style and favouriting it`() {
