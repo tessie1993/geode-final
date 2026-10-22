@@ -2,12 +2,10 @@ package dev.geode.feature.playback.core
 
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
-import dev.geode.feature.playback.api.BANNER_VISIBLE
 import dev.geode.feature.playback.api.Bookmark
 import dev.geode.feature.playback.api.BookmarkId
 import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.Lyrics
-import dev.geode.feature.playback.api.Notice
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
@@ -16,7 +14,6 @@ import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlaylistSummary
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
-import dev.geode.feature.playback.api.Waveform
 import dev.geode.kernel.Effect
 
 /** Everything Playback's reducer handles: Commands, the audio adapter's announcements, timers and results. */
@@ -120,20 +117,6 @@ sealed interface PlaybackEvent {
         val track: TrackId,
         val lyrics: Lyrics?,
     ) : PlaybackEvent
-
-    /** [track]'s seek waveform, or null when its loudness is not known. */
-    data class WaveformFound(
-        val track: TrackId,
-        val waveform: Waveform?,
-    ) : PlaybackEvent
-
-    /** A feature reported a failure to the app-wide error channel (ADR-0004). */
-    data class FailureReported(
-        val notice: Notice,
-    ) : PlaybackEvent
-
-    /** The banner was on screen for [BANNER_VISIBLE]. */
-    data object BannerTimedOut : PlaybackEvent
 }
 
 /** What went wrong with Playback's database, as the handlers report it. */
@@ -226,14 +209,6 @@ sealed interface PlaybackWork {
     data class FindLyrics(
         val track: TrackId,
     ) : PlaybackWork
-
-    /** Find [track]'s loudness, for its seek waveform. */
-    data class FindWaveform(
-        val track: TrackId,
-    ) : PlaybackWork
-
-    /** Hear every failure reported to the app-wide error channel, for the banner, for the life of the store. */
-    data object WatchFailures : PlaybackWork
 }
 
 /** One request to the audio adapter. */
@@ -277,9 +252,6 @@ data object SleepTick
 
 /** The timer armed, while playing, for the end of the A-B loop. */
 data object LoopEnd
-
-/** The timer armed while the banner is on screen. */
-data object BannerTimeout
 
 /** How long the engine may take to open a track before Playback stops with an error. */
 val LOAD_TIMEOUT = Millis(10_000)

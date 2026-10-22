@@ -71,12 +71,12 @@ class PlaybackApiTest {
 
     @Test
     fun `a lookup belongs to the track it was made for`() {
-        val waveform = Waveform(listOf(0.5f, 1f))
+        val lyrics = Lyrics.Plain(listOf("one"), LyricsSource.TRACK_TAGS)
 
         assertEquals(null, TrackLookup.Idle.track)
         assertEquals(a.id, TrackLookup.Looking(a.id).track)
-        assertEquals(b.id, TrackLookup.Found(b.id, waveform).track)
+        assertEquals(b.id, TrackLookup.Found(b.id, lyrics).track)
         assertEquals(a.id, TrackLookup.Missing(a.id).track)
-        assertEquals(waveform, TrackLookup.Found(b.id, waveform).value)
+        assertEquals(lyrics, TrackLookup.Found(b.id, lyrics).value)
     }
 }

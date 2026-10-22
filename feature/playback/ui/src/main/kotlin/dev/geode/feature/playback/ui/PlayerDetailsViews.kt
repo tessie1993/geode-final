@@ -48,12 +48,12 @@ import kotlinx.coroutines.flow.collectLatest
 private const val NOT_DRAGGING = -1f
 
 /**
- * The seek waveform (#147), as the old player drew it: one bar per slice of the track, played bars in
- * the accent colour, the A-B loop shaded and a playhead. Without a waveform it draws a plain line.
- * Tapping or dragging seeks; dragging shows where it would seek until it is let go.
+ * The seek bar (#147): a plain line, the part played in the accent colour, with the A-B loop shaded
+ * and a playhead. Tracks are never analysed (owner, 2026-10-22), so it draws no waveform. Tapping or
+ * dragging seeks; dragging shows where it would seek until it is let go.
  */
 @Composable
-internal fun WaveformSeekBar(
+internal fun LoopSeekBar(
     model: PlayerModel,
     enabled: Boolean,
     onSeek: (Millis) -> Unit,
@@ -63,7 +63,7 @@ internal fun WaveformSeekBar(
     var dragged by remember { mutableFloatStateOf(NOT_DRAGGING) }
     val played = if (dragged >= 0f) dragged else fraction(model.position, model.duration)
     val seek = { at: Float -> onSeek(Millis((at.coerceIn(0f, 1f) * duration).toLong())) }
-    val colors = WaveformColors.current()
+    val colors = SeekBarColors.current()
     val seekLabel = stringResource(R.string.playback_action_seek)
     Canvas(
         modifier
@@ -79,8 +79,7 @@ internal fun WaveformSeekBar(
             }.then(if (enabled) Modifier.seekGestures(duration, seek) { dragged = it } else Modifier),
     ) {
         model.loop?.takeIf { duration > 0 }?.let { drawLoop(it, model.duration, colors) }
-        val levels = model.waveform
-        if (levels.isNullOrEmpty()) drawPlainLine(played, colors) else drawBars(levels, played, colors)
+        drawSeekLine(played, colors)
         drawPlayhead(played, colors)
     }
 }
@@ -115,7 +114,7 @@ private fun Modifier.seekGestures(
         }
 }
 
-private class WaveformColors(
+private class SeekBarColors(
     val played: Color,
     val unplayed: Color,
     val loop: Color,
@@ -123,9 +122,9 @@ private class WaveformColors(
 ) {
     companion object {
         @Composable
-        fun current(): WaveformColors {
+        fun current(): SeekBarColors {
             val scheme = MaterialTheme.colorScheme
-            return WaveformColors(
+            return SeekBarColors(
                 played = scheme.primary,
                 unplayed = scheme.onSurfaceVariant.copy(alpha = UNPLAYED_ALPHA),
                 loop = scheme.secondary.copy(alpha = LOOP_ALPHA),
@@ -138,47 +137,26 @@ private class WaveformColors(
 private fun DrawScope.drawLoop(
     loop: LoopSpan,
     duration: Millis,
-    colors: WaveformColors,
+    colors: SeekBarColors,
 ) {
     val from = fraction(loop.start, duration) * size.width
     val to = fraction(loop.end ?: duration, duration) * size.width
     drawRect(colors.loop, topLeft = Offset(from, 0f), size = Size((to - from).coerceAtLeast(PlayerDimens.playhead.toPx()), size.height))
 }
 
-private fun DrawScope.drawPlainLine(
+private fun DrawScope.drawSeekLine(
     played: Float,
-    colors: WaveformColors,
+    colors: SeekBarColors,
 ) {
-    val height = PlayerDimens.waveformLine.toPx()
+    val height = PlayerDimens.seekLine.toPx()
     val top = (size.height - height) / 2f
     drawRoundRect(colors.unplayed, Offset(0f, top), Size(size.width, height), CornerRadius(height / 2f))
     drawRoundRect(colors.played, Offset(0f, top), Size(size.width * played, height), CornerRadius(height / 2f))
 }
 
-private fun DrawScope.drawBars(
-    levels: List<Float>,
-    played: Float,
-    colors: WaveformColors,
-) {
-    val slot = size.width / levels.size
-    val width = (slot * BAR_FILL).coerceAtLeast(1f)
-    val playedX = size.width * played
-    val shortest = PlayerDimens.playhead.toPx()
-    levels.forEachIndexed { index, level ->
-        val height = (size.height * (BAR_FLOOR + (1f - BAR_FLOOR) * level)).coerceAtLeast(shortest)
-        val x = index * slot + (slot - width) / 2f
-        drawRoundRect(
-            color = if (x + width / 2f <= playedX) colors.played else colors.unplayed,
-            topLeft = Offset(x, (size.height - height) / 2f),
-            size = Size(width, height),
-            cornerRadius = CornerRadius(width / 2f),
-        )
-    }
-}
-
 private fun DrawScope.drawPlayhead(
     played: Float,
-    colors: WaveformColors,
+    colors: SeekBarColors,
 ) {
     val width = PlayerDimens.playhead.toPx()
     val x = (size.width * played).coerceIn(width / 2f, maxOf(width / 2f, size.width - width / 2f))

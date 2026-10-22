@@ -12,9 +12,6 @@ import dev.geode.feature.playback.api.Track
 internal object PreviewModels {
     private val track = Track(TrackId("content://preview/1"), "Night Drive", "Ann Arbor", Millis(215_000))
 
-    // A made-up loudness, the same on every run.
-    private val waveform = List(120) { bar -> 0.2f + 0.8f * ((bar * 37) % 23) / 22f }
-
     private val synced =
         Lyrics.Synced(
             listOf(
@@ -36,7 +33,6 @@ internal object PreviewModels {
             meantToPlay = true,
             canGoPrevious = true,
             canGoNext = true,
-            waveform = waveform,
             lyrics = synced,
             lyricLine = synced.lineAt(Millis(64_000)),
         )
@@ -54,8 +50,8 @@ internal object PreviewModels {
         )
     val idle = PlayerModel.IDLE
 
-    /** Playing with the A-B loop set, and no waveform yet: the plain line. */
-    val looping = playing.copy(waveform = null, loop = LoopSpan(Millis(40_000), Millis(90_000)))
+    /** Playing with the A-B loop set, shaded on the seek bar. */
+    val looping = playing.copy(loop = LoopSpan(Millis(40_000), Millis(90_000)))
 
     val plainLyrics =
         playing.copy(
@@ -63,6 +59,4 @@ internal object PreviewModels {
             lyricLine = NO_LINE,
         )
     val noLyrics = playing.copy(lyrics = null, lyricLine = NO_LINE)
-
-    val banner = BannerModel("Could not save the playlist", counting = true)
 }

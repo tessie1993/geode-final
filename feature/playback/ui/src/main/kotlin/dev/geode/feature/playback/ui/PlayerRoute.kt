@@ -49,19 +49,6 @@ fun MiniPlayerRoute(
     )
 }
 
-/**
- * The app-wide error banner's place (#147, ADR-0004): `:app` lays it over every screen at the
- * switch-over (#17). It shows the failures every feature reports, as Playback keeps them.
- */
-@Composable
-fun ErrorBannerRoute(
-    playback: Playback,
-    modifier: Modifier = Modifier,
-) {
-    val state by playback.state.collectAsStateWithLifecycle()
-    ErrorBanner(state.banner.toBannerModel(), onAction = { playback.send(it.toCommand()) }, modifier)
-}
-
 /** The clock, read again every [POSITION_REFRESH] while the position [moving], and once when it stops. */
 @Composable
 private fun rememberNow(

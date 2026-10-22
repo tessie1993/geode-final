@@ -43,8 +43,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
- * The full player (#34): what is playing, where it is, and the transport, with the seek waveform and
- * the lyrics in place of the artwork when they are open (#147). Stateless (ADR-0003): it draws
+ * The full player (#34): what is playing, where it is, and the transport, with the A-B loop shaded on
+ * the seek bar and the lyrics in place of the artwork when they are open (#147). Stateless (ADR-0003): it draws
  * [model] and sends every tap to [onAction]; whether the lyrics are open is App UI state only,
  * starting from [lyricsOpen].
  */
@@ -126,12 +126,12 @@ private fun Timeline(
 ) {
     val seekable = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.PAUSED || model.status == PlayerStatus.BUFFERING
     Column(Modifier.fillMaxWidth()) {
-        // The seek waveform (#147), as the old player had it.
-        WaveformSeekBar(
+        // A plain seek bar with the A-B loop shaded on it (#147).
+        LoopSeekBar(
             model,
             enabled = seekable,
             onSeek = { onAction(PlayerAction.SeekTo(it)) },
-            modifier = Modifier.fillMaxWidth().height(PlayerDimens.waveformHeight),
+            modifier = Modifier.fillMaxWidth().height(PlayerDimens.seekBarHeight),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatTime(model.position), style = MaterialTheme.typography.labelMedium)

@@ -50,7 +50,7 @@
     <string name="playback_bookmarks_add">Bookmark this spot</string>
     <string name="playback_bookmarks_empty">No bookmarks yet</string>
     <string name="playback_action_remove_bookmark">Delete the bookmark</string>
-    <!-- Lyrics and the app-wide error banner (#147), worded as the old player had them. -->
+    <!-- Lyrics (#147), worded as the old player had them. -->
     <string name="playback_lyrics">Lyrics</string>
     <string name="playback_lyrics_none">No lyrics</string>
     <string name="playback_lyrics_none_explainer">Drop an .lrc file next to the track — same name, .lrc extension — and it shows up here, timed and following the music. Words written into the file\'s own tags are read too. Nothing is fetched: the app has no network access.</string>
@@ -58,6 +58,4 @@
     <string name="playback_lyrics_from_tags">the track\'s own tags</string>
     <string name="playback_lyrics_source_timed">Timed lyrics from %1$s. Tap a line to jump there.</string>
     <string name="playback_lyrics_source_untimed">Untimed lyrics from %1$s.</string>
-    <string name="playback_banner_dismiss">Dismiss</string>
-    <string name="playback_banner_dismiss_description">Dismiss the message</string>
 </resources>

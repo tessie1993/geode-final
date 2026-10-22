@@ -3,16 +3,12 @@ package dev.geode.feature.playback.handlers
 import dev.geode.audio.adapter.FakeAudioAdapter
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
-import dev.geode.feature.playback.api.BANNER_VISIBLE
-import dev.geode.feature.playback.api.Banner
 import dev.geode.feature.playback.api.Lyrics
 import dev.geode.feature.playback.api.LyricsSource
-import dev.geode.feature.playback.api.Notice
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.SyncedLine
 import dev.geode.feature.playback.api.Track
 import dev.geode.feature.playback.api.TrackLookup
-import dev.geode.feature.playback.core.WAVEFORM_BARS
 import dev.geode.kernel.FakeClock
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
@@ -20,8 +16,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * What the Player shows beside the music (#147), end to end through the store: lyrics and the seek
- * waveform found for the current track, and the app-wide banner fed by the error channel.
+ * What the Player shows beside the music (#147), end to end through the store: the lyrics found for
+ * the current track. Playback keeps no banner: failures are only reported to the error channel.
  */
 class PlayerDetailsStoreTest {
     private val a = Track(TrackId("content://a"), "Alpha", "Ann", Millis(200_000))
@@ -33,12 +29,9 @@ class PlayerDetailsStoreTest {
     private val clocks = PlaybackClocks(elapsed = { clock.now }, wall = { clock.now })
 
     private val lrc = mapOf(a.id to LyricsText("[00:01.00]First\n[00:03.00]Second", LyricsSource.LRC_FILE))
-    private val loud = mapOf(b.id to FloatArray(WAVEFORM_BARS) { if (it == 0) 0.5f else 0.25f })
 
-    private fun store(
-        lyrics: LyricsFiles = FakeLyricsFiles(lrc),
-        loudness: TrackLoudness = FakeLoudness(loud),
-    ) = playbackStore(audio, FakePlaybackStorage(), clocks, runtime, lyrics = lyrics, loudness = loudness)
+    private fun store(lyrics: LyricsFiles = FakeLyricsFiles(lrc)) =
+        playbackStore(audio, FakePlaybackStorage(), clocks, runtime, lyrics = lyrics)
 
     @Test
     fun `the current track's lyrics are read and kept`() {
@@ -49,7 +42,6 @@ class PlayerDetailsStoreTest {
         val expected =
             Lyrics.Synced(listOf(SyncedLine(Millis(1_000), "First"), SyncedLine(Millis(3_000), "Second")), LyricsSource.LRC_FILE)
         assertEquals(TrackLookup.Found(a.id, expected), playback.state.value.lyrics)
-        assertEquals(TrackLookup.Missing(a.id), playback.state.value.waveform)
     }
 
     @Test
@@ -63,81 +55,31 @@ class PlayerDetailsStoreTest {
     }
 
     @Test
-    fun `the current track's loudness becomes its seek waveform`() {
+    fun `moving on to a track with no lyrics finds none`() {
         val playback = store()
 
         playback.send(PlaybackCommand.Play(listOf(a, b), startAt = 1))
 
-        val waveform = (playback.state.value.waveform as TrackLookup.Found).value
-        assertEquals(b.id, playback.state.value.waveform.track)
-        assertEquals(WAVEFORM_BARS, waveform.levels.size)
-        assertEquals(listOf(1f, 0.5f), waveform.levels.take(2))
         assertEquals(TrackLookup.Missing(b.id), playback.state.value.lyrics)
     }
 
     @Test
-    fun `lyrics or loudness that cannot be read are none, with no banner`() {
-        val playback = store(lyrics = FailingLyrics, loudness = FailingLoudness)
+    fun `lyrics that cannot be read are none, and no failure is reported`() {
+        val playback = store(lyrics = FailingLyrics)
 
         playback.send(PlaybackCommand.Play(listOf(a)))
 
         assertEquals(TrackLookup.Missing(a.id), playback.state.value.lyrics)
-        assertEquals(TrackLookup.Missing(a.id), playback.state.value.waveform)
         assertEquals(emptyList<FeatureFailure>(), failures)
-        assertEquals(Banner.Hidden, playback.state.value.banner)
     }
 
     @Test
-    fun `with no sources wired, a track has no lyrics and no waveform`() {
+    fun `built as the switch-over builds it, with no lyrics source, a track has no lyrics`() {
         val playback = playbackStore(audio, FakePlaybackStorage(), clocks, runtime)
 
         playback.send(PlaybackCommand.Play(listOf(a)))
 
         assertEquals(TrackLookup.Missing(a.id), playback.state.value.lyrics)
-        assertEquals(TrackLookup.Missing(a.id), playback.state.value.waveform)
-    }
-
-    @Test
-    fun `a failure any feature reports waits for the banner, shows, then goes`() {
-        val playback = store()
-
-        runtime.errors.report(FeatureFailure("library", "Could not read the music"))
-        assertEquals(Banner.Waiting(Notice("library", "Could not read the music")), playback.state.value.banner)
-
-        playback.send(PlaybackCommand.BannerShown)
-        assertEquals(Banner.Showing(Notice("library", "Could not read the music")), playback.state.value.banner)
-
-        clock.advanceBy(BANNER_VISIBLE - Millis(1))
-        assertEquals(Banner.Showing(Notice("library", "Could not read the music")), playback.state.value.banner)
-        clock.advanceBy(Millis(1))
-        assertEquals(Banner.Hidden, playback.state.value.banner)
-    }
-
-    @Test
-    fun `a newer failure replaces the one shown, and dismissing hides it`() {
-        val playback = store()
-        runtime.errors.report(FeatureFailure("library", "Could not read the music"))
-        playback.send(PlaybackCommand.BannerShown)
-
-        clock.advanceBy(Millis(5_000))
-        runtime.errors.report(FeatureFailure("engine", "The audio engine is restarting"))
-        clock.advanceBy(Millis(5_000))
-        assertEquals(Banner.Showing(Notice("engine", "The audio engine is restarting")), playback.state.value.banner)
-
-        playback.send(PlaybackCommand.DismissBanner)
-        assertEquals(Banner.Hidden, playback.state.value.banner)
-        assertEquals(0, clock.pendingCount)
-    }
-
-    @Test
-    fun `playback's own failures reach the banner too`() {
-        val playback = store()
-
-        playback.send(PlaybackCommand.Play(listOf(a)))
-        // The engine never answers the load.
-        clock.advanceBy(Millis(10_000))
-
-        assertEquals(Banner.Waiting(Notice(PLAYBACK, "The player did not answer in time")), playback.state.value.banner)
     }
 
     private class FakeLyricsFiles(
@@ -147,17 +89,7 @@ class PlayerDetailsStoreTest {
         override suspend fun find(track: TrackId): List<LyricsText> = listOfNotNull(files[track]) + also
     }
 
-    private class FakeLoudness(
-        private val levels: Map<TrackId, FloatArray>,
-    ) : TrackLoudness {
-        override suspend fun levels(track: TrackId): FloatArray? = levels[track]
-    }
-
     private object FailingLyrics : LyricsFiles {
         override suspend fun find(track: TrackId): List<LyricsText> = throw IllegalStateException("unreadable")
-    }
-
-    private object FailingLoudness : TrackLoudness {
-        override suspend fun levels(track: TrackId): FloatArray? = throw IllegalStateException("unreadable")
     }
 }

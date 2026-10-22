@@ -2,7 +2,7 @@
 // and keep the playlists, the play history and the saved session in Playback's own Room database
 // (ADR-0004, ADR-0005). They also publish Playback as the media session the notification, the lock
 // screen and Bluetooth read, so music keeps playing with no screen in front of it (#36). For the
-// Player they read each track's lyrics and loudness, and hear the app-wide error channel (#147).
+// Player they read each track's lyrics (#147).
 plugins {
     id("geode.feature-handlers")
     id("com.google.devtools.ksp")

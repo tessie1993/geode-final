@@ -45,9 +45,9 @@ internal typealias Step = Next<PlayerState, PlaybackEffect>
  *
  * The listening tools (#35) — the queue, shuffle and repeat, crossfade and gapless, the sleep timer,
  * the A-B loop, bookmarks and the resume points of long tracks — are in [Listening]. What the Player
- * shows beside the music (#147) — the current track's lyrics and waveform, and the app-wide error
- * banner — is in [PlayerDetails]; the store runs this reducer through [PlaybackStoreReducer], which
- * also looks those details up whenever the current track changes.
+ * shows beside the music (#147), the current track's lyrics, is in [PlayerDetails]; the store runs
+ * this reducer through [PlaybackStoreReducer], which also looks the lyrics up whenever the current
+ * track changes.
  */
 object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     override fun reduce(
@@ -82,9 +82,6 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is PlaybackEvent.ResumePointsChanged -> Next(state.copy(resumePoints = event.points))
             is PlaybackEvent.SimilarPicked -> Listening.similarPicked(state, event.tracks)
             is PlaybackEvent.LyricsFound -> PlayerDetails.lyricsFound(state, event)
-            is PlaybackEvent.WaveformFound -> PlayerDetails.waveformFound(state, event)
-            is PlaybackEvent.FailureReported -> PlayerDetails.reported(state, event.notice)
-            PlaybackEvent.BannerTimedOut -> PlayerDetails.timedOut(state)
         }
 
     internal fun player(
@@ -127,8 +124,6 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             PlaybackCommand.AddBookmark -> Listening.addBookmark(state)
             is PlaybackCommand.RemoveBookmark -> Next(state, listOf(Perform(PlaybackWork.DeleteBookmark(command.id))))
             is PlaybackCommand.GoToBookmark -> Listening.goToBookmark(state, command.id)
-            PlaybackCommand.BannerShown -> PlayerDetails.shown(state)
-            PlaybackCommand.DismissBanner -> PlayerDetails.dismissed(state)
         }
 
     private fun createPlaylist(

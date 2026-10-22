@@ -3,11 +3,9 @@ package dev.geode.feature.playback.ui
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.AbLoop
-import dev.geode.feature.playback.api.Banner
 import dev.geode.feature.playback.api.LoadReason
 import dev.geode.feature.playback.api.Lyrics
 import dev.geode.feature.playback.api.LyricsSource
-import dev.geode.feature.playback.api.Notice
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFailure
@@ -17,7 +15,6 @@ import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.SyncedLine
 import dev.geode.feature.playback.api.Track
 import dev.geode.feature.playback.api.TrackLookup
-import dev.geode.feature.playback.api.Waveform
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -83,7 +80,7 @@ class PlayerModelTest {
     }
 
     @Test
-    fun `the current track's waveform and lyrics are drawn, with the line being sung`() {
+    fun `the current track's lyrics are drawn, with the line being sung`() {
         val lyrics =
             Lyrics.Synced(
                 listOf(SyncedLine(Millis(5_000), "one"), SyncedLine(Millis(12_000), "two"), SyncedLine(Millis(20_000), "three")),
@@ -93,29 +90,28 @@ class PlayerModelTest {
             PlaybackState(
                 PlayerState.Playing(queue, moving),
                 lyrics = TrackLookup.Found(a.id, lyrics),
-                waveform = TrackLookup.Found(a.id, Waveform(listOf(0.5f, 1f))),
             )
 
         val model = state.toPlayerModel(Millis(4_000))
 
-        assertEquals(listOf(0.5f, 1f), model.waveform)
         assertEquals(lyrics, model.lyrics)
         assertEquals(1, model.lyricLine)
         assertEquals(NO_LINE, state.toPlayerModel(Millis(-7_000)).lyricLine)
     }
 
     @Test
-    fun `untimed lyrics have no line being sung, and lookups not found draw nothing`() {
+    fun `untimed lyrics have no line being sung, and lyrics not found draw nothing`() {
         val plain = Lyrics.Plain(listOf("one"), LyricsSource.TRACK_TAGS)
         val playing = PlayerState.Playing(queue, moving)
 
         val withPlain = PlaybackState(playing, lyrics = TrackLookup.Found(a.id, plain)).toPlayerModel(Millis(4_000))
-        val looking = PlaybackState(playing, lyrics = TrackLookup.Looking(a.id), waveform = TrackLookup.Missing(a.id))
+        val looking = PlaybackState(playing, lyrics = TrackLookup.Looking(a.id))
+        val missing = PlaybackState(playing, lyrics = TrackLookup.Missing(a.id))
 
         assertEquals(plain, withPlain.lyrics)
         assertEquals(NO_LINE, withPlain.lyricLine)
         assertNull(looking.toPlayerModel(Millis.ZERO).lyrics)
-        assertNull(looking.toPlayerModel(Millis.ZERO).waveform)
+        assertNull(missing.toPlayerModel(Millis.ZERO).lyrics)
     }
 
     @Test
@@ -141,17 +137,6 @@ class PlayerModelTest {
             )
 
         assertEquals(PlayerModel.IDLE, state.toPlayerModel(Millis.ZERO))
-    }
-
-    @Test
-    fun `the banner shows the notice and says when it is on screen`() {
-        val notice = Notice("library", "Could not read the music")
-
-        assertNull(Banner.Hidden.toBannerModel())
-        assertEquals(BannerModel("Could not read the music", counting = false), Banner.Waiting(notice).toBannerModel())
-        assertEquals(BannerModel("Could not read the music", counting = true), Banner.Showing(notice).toBannerModel())
-        assertEquals(PlaybackCommand.BannerShown, BannerAction.Shown.toCommand())
-        assertEquals(PlaybackCommand.DismissBanner, BannerAction.Dismiss.toCommand())
     }
 
     @Test

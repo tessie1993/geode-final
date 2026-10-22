@@ -13,8 +13,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * App UI screenshots of the player, its lyrics and seek waveform, the mini-player and the app-wide
- * error banner, taken from their previews (ADR-0003).
+ * App UI screenshots of the player, its lyrics and the A-B loop on its seek bar, and the mini-player,
+ * taken from their previews (ADR-0003).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -62,14 +62,7 @@ class PlayerScreenshotTest {
     fun noLyrics() = capture("PlayerScreen_no_lyrics") { PlayerNoLyricsPreview() }
 
     @Test
-    fun looping() = capture("PlayerScreen_loop_no_waveform") { PlayerLoopingPreview() }
-
-    @Test
-    fun banner() = capture("ErrorBanner") { ErrorBannerShowingPreview() }
-
-    @Test
-    @Config(qualifiers = "+night")
-    fun bannerDark() = capture("ErrorBanner_dark") { ErrorBannerDarkPreview() }
+    fun looping() = capture("PlayerScreen_ab_loop") { PlayerLoopingPreview() }
 
     @Test
     fun miniPlaying() = capture("MiniPlayer_playing") { MiniPlayerPlayingPreview() }

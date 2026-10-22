@@ -32,25 +32,6 @@ interface LyricsFiles {
 }
 
 /**
- * Where Playback finds a track's loudness for its seek waveform (#147): one level per moment, from the
- * track's start to its end, as the whole-song analysis measured it (ADR-0001: the live Visual never
- * uses whole-song analysis; the waveform is App UI). `:app` gives it the analysis cache when it wires
- * Playback in (#17).
- */
-interface TrackLoudness {
-    /** [track]'s loudness levels, or null when the track has not been analysed. May throw. */
-    suspend fun levels(track: TrackId): FloatArray?
-
-    companion object {
-        /** Knows no loudness, for a store built without a source. */
-        val NONE: TrackLoudness =
-            object : TrackLoudness {
-                override suspend fun levels(track: TrackId): FloatArray? = null
-            }
-    }
-}
-
-/**
  * Lyrics where the old player found them: an `.lrc` file with the track's name next to the track,
  * then the words written into the track's own tags. A place that cannot be read is skipped. Called
  * on the handlers' background dispatcher.
