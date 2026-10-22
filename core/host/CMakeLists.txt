@@ -26,6 +26,36 @@ endif()
 
 get_filename_component(GEODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+# The pure libraries; each one can be mutation tested on its own.
+set(GEODE_PURE_LIBRARIES geode_util geode_bridge geode_analysis geode_audio geode_viz)
+
+# Mutation testing with Mull (docs/ci.md, "C++ mutation tests"). GEODE_MUTATE names the one pure
+# library whose code Mull's compiler plugin mutates; the rest of the build is left unmutated. There is
+# no source coverage: with it, Mull 0.34 marks mutants inside switch cases as NoCoverage although the
+# tests run them, and never runs them. Without it every mutant runs, and one no test reaches simply
+# survives. CI only; it changes how the host build is compiled, never what the code does.
+#
+#   MULL_CONFIG=config/mutation/mull.yml cmake -S core/host -B build-mutation \
+#       -DGEODE_MUTATE=geode_analysis -DGEODE_MULL_PLUGIN=/usr/lib/mull-ir-frontend-18
+set(GEODE_MUTATE "" CACHE STRING "Pure library target for Mull to mutate (empty: no mutation)")
+set(GEODE_MULL_PLUGIN "" CACHE FILEPATH "Mull's compiler plugin, mull-ir-frontend-<LLVM major>")
+if(GEODE_MUTATE)
+    if(NOT GEODE_MUTATE IN_LIST GEODE_PURE_LIBRARIES)
+        message(FATAL_ERROR "GEODE_MUTATE=${GEODE_MUTATE} is not one of: ${GEODE_PURE_LIBRARIES}")
+    endif()
+    if(GEODE_SANITIZE)
+        message(FATAL_ERROR "GEODE_MUTATE and GEODE_SANITIZE are separate builds")
+    endif()
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "GEODE_MUTATE needs clang: Mull is an LLVM pass plugin")
+    endif()
+    if(NOT EXISTS "${GEODE_MULL_PLUGIN}")
+        message(FATAL_ERROR "GEODE_MULL_PLUGIN='${GEODE_MULL_PLUGIN}' does not exist")
+    endif()
+    # Mull maps mutants to source lines through debug info, and records the compile command in it.
+    add_compile_options(-O0 -g -grecord-command-line)
+endif()
+
 # Same kissfft configuration as the device build.
 set(BUILD_SHARED_LIBS OFF)
 set(KISSFFT_DATATYPE "float" CACHE STRING "" FORCE)
@@ -49,11 +79,14 @@ geode_core_library(geode_audio audio ${GEODE_AUDIO_PURE_SOURCES})
 target_link_libraries(geode_audio PUBLIC geode_api_types PRIVATE geode_util)
 geode_core_library(geode_viz viz ${GEODE_VIZ_PURE_SOURCES})
 target_link_libraries(geode_viz PUBLIC geode_api_types PRIVATE geode_analysis geode_util)
-foreach(geode_lib geode_util geode_bridge geode_analysis geode_audio geode_viz)
+foreach(geode_lib ${GEODE_PURE_LIBRARIES})
     target_compile_options(${geode_lib} PRIVATE -Wall -Wextra)
 endforeach()
+if(GEODE_MUTATE)
+    target_compile_options(${GEODE_MUTATE} PRIVATE "-fpass-plugin=${GEODE_MULL_PLUGIN}")
+endif()
 add_library(geode_core_pure INTERFACE)
-target_link_libraries(geode_core_pure INTERFACE geode_util geode_bridge geode_analysis geode_audio geode_viz)
+target_link_libraries(geode_core_pure INTERFACE ${GEODE_PURE_LIBRARIES})
 
 include(FetchContent)
 FetchContent_Declare(

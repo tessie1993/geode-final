@@ -1,0 +1,219 @@
+public final class dev/geode/feature/visuals/api/Folder {
+	public synthetic fun <init> (JLjava/lang/String;Ldev/geode/feature/visuals/api/FolderId;Ljava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3--sQuYpw ()Ldev/geode/feature/visuals/api/FolderId;
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy-xE2JZT8 (JLjava/lang/String;Ldev/geode/feature/visuals/api/FolderId;Ljava/util/List;)Ldev/geode/feature/visuals/api/Folder;
+	public static synthetic fun copy-xE2JZT8$default (Ldev/geode/feature/visuals/api/Folder;JLjava/lang/String;Ldev/geode/feature/visuals/api/FolderId;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/Folder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-AI5eEjY ()J
+	public final fun getName ()Ljava/lang/String;
+	public final fun getParent--sQuYpw ()Ldev/geode/feature/visuals/api/FolderId;
+	public final fun getStyles ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/FolderId {
+	public static final synthetic fun box-impl (J)Ldev/geode/feature/visuals/api/FolderId;
+	public static fun constructor-impl (J)J
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (JLjava/lang/Object;)Z
+	public static final fun equals-impl0 (JJ)Z
+	public final fun getValue ()J
+	public fun hashCode ()I
+	public static fun hashCode-impl (J)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (J)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()J
+}
+
+public final class dev/geode/feature/visuals/api/StyleEntry {
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleGroup;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ldev/geode/feature/visuals/api/StyleGroup;
+	public final fun copy-EJ0R9fY (Ljava/lang/String;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleGroup;)Ldev/geode/feature/visuals/api/StyleEntry;
+	public static synthetic fun copy-EJ0R9fY$default (Ldev/geode/feature/visuals/api/StyleEntry;Ljava/lang/String;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleGroup;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/StyleEntry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGroup ()Ldev/geode/feature/visuals/api/StyleGroup;
+	public final fun getId-7EMWfhs ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/StyleGroup : java/lang/Enum {
+	public static final field ACID Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field CURL_FLOW Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field CYMATICS Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field FLUIDS Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field LIFE Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field MILKDROP Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field MYCELIUM Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field SHADERS Ldev/geode/feature/visuals/api/StyleGroup;
+	public static final field WATER Ldev/geode/feature/visuals/api/StyleGroup;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/visuals/api/StyleGroup;
+	public static fun values ()[Ldev/geode/feature/visuals/api/StyleGroup;
+}
+
+public final class dev/geode/feature/visuals/api/StyleLibrary {
+	public static final field Companion Ldev/geode/feature/visuals/api/StyleLibrary$Companion;
+	public static final field RECENT_LIMIT I
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/visuals/api/StyleLibrary;
+	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/StyleLibrary;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/StyleLibrary;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun folder-pVAacu8 (J)Ldev/geode/feature/visuals/api/Folder;
+	public final fun foldersIn-vvmBIh4 (Ldev/geode/feature/visuals/api/FolderId;)Ljava/util/List;
+	public final fun getFavourites ()Ljava/util/List;
+	public final fun getFolders ()Ljava/util/List;
+	public final fun getRecent ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/StyleLibrary$Companion {
+}
+
+public abstract interface class dev/geode/feature/visuals/api/VisualsCommand {
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$AddToFolder : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (JLjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun component2-7EMWfhs ()Ljava/lang/String;
+	public final fun copy-Q-ai9E4 (JLjava/lang/String;)Ldev/geode/feature/visuals/api/VisualsCommand$AddToFolder;
+	public static synthetic fun copy-Q-ai9E4$default (Ldev/geode/feature/visuals/api/VisualsCommand$AddToFolder;JLjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$AddToFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-AI5eEjY ()J
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$Choose : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun copy-TBnmCe8 (Ljava/lang/String;)Ldev/geode/feature/visuals/api/VisualsCommand$Choose;
+	public static synthetic fun copy-TBnmCe8$default (Ldev/geode/feature/visuals/api/VisualsCommand$Choose;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$Choose;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$CreateFolder : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/visuals/api/FolderId;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/visuals/api/FolderId;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2--sQuYpw ()Ldev/geode/feature/visuals/api/FolderId;
+	public final fun copy-swxwZJw (Ljava/lang/String;Ldev/geode/feature/visuals/api/FolderId;)Ldev/geode/feature/visuals/api/VisualsCommand$CreateFolder;
+	public static synthetic fun copy-swxwZJw$default (Ldev/geode/feature/visuals/api/VisualsCommand$CreateFolder;Ljava/lang/String;Ldev/geode/feature/visuals/api/FolderId;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$CreateFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getParent--sQuYpw ()Ldev/geode/feature/visuals/api/FolderId;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$DeleteFolder : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun copy-pVAacu8 (J)Ldev/geode/feature/visuals/api/VisualsCommand$DeleteFolder;
+	public static synthetic fun copy-pVAacu8$default (Ldev/geode/feature/visuals/api/VisualsCommand$DeleteFolder;JILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$DeleteFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-AI5eEjY ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$MoveFolder : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (JLdev/geode/feature/visuals/api/FolderId;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun component2--sQuYpw ()Ldev/geode/feature/visuals/api/FolderId;
+	public final fun copy-a6Z8sEI (JLdev/geode/feature/visuals/api/FolderId;)Ldev/geode/feature/visuals/api/VisualsCommand$MoveFolder;
+	public static synthetic fun copy-a6Z8sEI$default (Ldev/geode/feature/visuals/api/VisualsCommand$MoveFolder;JLdev/geode/feature/visuals/api/FolderId;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$MoveFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-AI5eEjY ()J
+	public final fun getParent--sQuYpw ()Ldev/geode/feature/visuals/api/FolderId;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$RemoveFromFolder : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (JLjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun component2-7EMWfhs ()Ljava/lang/String;
+	public final fun copy-Q-ai9E4 (JLjava/lang/String;)Ldev/geode/feature/visuals/api/VisualsCommand$RemoveFromFolder;
+	public static synthetic fun copy-Q-ai9E4$default (Ldev/geode/feature/visuals/api/VisualsCommand$RemoveFromFolder;JLjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$RemoveFromFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-AI5eEjY ()J
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$RenameFolder : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (JLjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy-nKltnJQ (JLjava/lang/String;)Ldev/geode/feature/visuals/api/VisualsCommand$RenameFolder;
+	public static synthetic fun copy-nKltnJQ$default (Ldev/geode/feature/visuals/api/VisualsCommand$RenameFolder;JLjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$RenameFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-AI5eEjY ()J
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$SetFavourite : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (Ljava/lang/String;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun component2 ()Z
+	public final fun copy-lpQj4BY (Ljava/lang/String;Z)Ldev/geode/feature/visuals/api/VisualsCommand$SetFavourite;
+	public static synthetic fun copy-lpQj4BY$default (Ldev/geode/feature/visuals/api/VisualsCommand$SetFavourite;Ljava/lang/String;ZILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$SetFavourite;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFavourite ()Z
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/visuals/api/VisualsFact {
+}
+
+public final class dev/geode/feature/visuals/api/VisualsFact$FolderCreated : dev/geode/feature/visuals/api/VisualsFact {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-AI5eEjY ()J
+	public final fun copy-pVAacu8 (J)Ldev/geode/feature/visuals/api/VisualsFact$FolderCreated;
+	public static synthetic fun copy-pVAacu8$default (Ldev/geode/feature/visuals/api/VisualsFact$FolderCreated;JILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsFact$FolderCreated;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-AI5eEjY ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsState {
+	public synthetic fun <init> (Ljava/util/List;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleLibrary;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleLibrary;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2-Ymg_BvU ()Ljava/lang/String;
+	public final fun component3 ()Ldev/geode/feature/visuals/api/StyleLibrary;
+	public final fun copy-kgvH2XM (Ljava/util/List;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleLibrary;)Ldev/geode/feature/visuals/api/VisualsState;
+	public static synthetic fun copy-kgvH2XM$default (Ldev/geode/feature/visuals/api/VisualsState;Ljava/util/List;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleLibrary;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCurrent-Ymg_BvU ()Ljava/lang/String;
+	public final fun getLibrary ()Ldev/geode/feature/visuals/api/StyleLibrary;
+	public final fun getStyles ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
