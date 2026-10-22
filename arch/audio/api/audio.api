@@ -2,8 +2,10 @@ public abstract interface class dev/geode/audio/adapter/AudioAdapter {
 	public abstract fun captureSources (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun getAnnouncements ()Lkotlinx/coroutines/flow/Flow;
 	public abstract fun load-u8bPXO0 (Ljava/lang/String;JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun prepareNext-a6b4e_I (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun seekTo-zo5JZLk (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun setPlaying (ZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun setTransitions-y082yGU (JZLkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun startCapture (Ldev/geode/audio/adapter/CaptureSource;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public abstract fun stopCapture (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 }

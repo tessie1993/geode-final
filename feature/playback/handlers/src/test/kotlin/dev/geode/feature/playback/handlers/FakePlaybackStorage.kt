@@ -1,6 +1,10 @@
 package dev.geode.feature.playback.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.Bookmark
+import dev.geode.feature.playback.api.BookmarkId
+import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.PlayedTrack
 import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlaylistSummary
@@ -61,6 +65,58 @@ class FakePlaybackStorage : PlaybackStorage {
     }
 
     override suspend fun loadSession(): SavedSession? = session
+
+    var listening: ListeningOptions? = null
+
+    /** What [knownTracks] answers. */
+    var known: List<Track> = emptyList()
+
+    val marks = MutableStateFlow<List<Bookmark>>(emptyList())
+    val points = MutableStateFlow<Map<TrackId, Millis>>(emptyMap())
+    private var nextBookmark = 1L
+
+    override val bookmarks: Flow<List<Bookmark>> = marks
+
+    override suspend fun addBookmark(
+        track: Track,
+        position: Millis,
+        createdAt: Millis,
+    ): BookmarkId {
+        checkWrites()
+        val id = BookmarkId(nextBookmark++)
+        marks.value = listOf(Bookmark(id, track, position)) + marks.value
+        return id
+    }
+
+    override suspend fun deleteBookmark(id: BookmarkId) {
+        checkWrites()
+        marks.value = marks.value.filterNot { it.id == id }
+    }
+
+    override val resumePoints: Flow<Map<TrackId, Millis>> = points
+
+    override suspend fun saveResumePoint(
+        track: TrackId,
+        position: Millis,
+        savedAt: Millis,
+    ) {
+        checkWrites()
+        points.value = points.value + (track to position)
+    }
+
+    override suspend fun forgetResumePoint(track: TrackId) {
+        checkWrites()
+        points.value = points.value - track
+    }
+
+    override suspend fun saveListening(options: ListeningOptions) {
+        checkWrites()
+        listening = options
+    }
+
+    override suspend fun loadListening(): ListeningOptions? = listening
+
+    override suspend fun knownTracks(): List<Track> = known
 
     private fun checkWrites() = check(!failWrites) { "disk full" }
 }

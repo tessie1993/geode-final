@@ -21,6 +21,9 @@ class FakeAudioAdapter : AudioAdapter {
     /** Every call made, in order, as text such as `startCapture(MICROPHONE)`. */
     val calls = mutableListOf<String>()
 
+    /** How tracks were asked to join, in order: `setTransitions(…)` and `prepareNext(…)`, kept apart from [calls]. */
+    val joins = mutableListOf<String>()
+
     private val announced = MutableSharedFlow<AudioAnnouncement>(extraBufferCapacity = BUFFER)
 
     override val announcements: Flow<AudioAnnouncement> = announced.asSharedFlow()
@@ -57,6 +60,17 @@ class FakeAudioAdapter : AudioAdapter {
 
     override suspend fun seekTo(position: Millis) {
         calls += "seekTo($position)"
+    }
+
+    override suspend fun setTransitions(
+        crossfade: Millis,
+        gapless: Boolean,
+    ) {
+        joins += "setTransitions($crossfade, gapless=$gapless)"
+    }
+
+    override suspend fun prepareNext(track: TrackId?) {
+        joins += "prepareNext($track)"
     }
 
     private companion object {
