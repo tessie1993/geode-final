@@ -50,4 +50,33 @@ class PlaybackApiTest {
         assertFalse(ListeningOptions(gapless = false).joinsTracks)
         assertEquals("bookmark 4", BookmarkId(4).toString())
     }
+
+    @Test
+    fun `the line being sung is the last one whose time has come`() {
+        val lyrics =
+            Lyrics.Synced(
+                listOf(SyncedLine(Millis(1_000), "one"), SyncedLine(Millis(2_000), "two"), SyncedLine(Millis(4_000), "three")),
+                LyricsSource.LRC_FILE,
+            )
+
+        assertEquals(-1, lyrics.lineAt(Millis(999)))
+        assertEquals(0, lyrics.lineAt(Millis(1_000)))
+        assertEquals(0, lyrics.lineAt(Millis(1_999)))
+        assertEquals(1, lyrics.lineAt(Millis(2_000)))
+        assertEquals(1, lyrics.lineAt(Millis(3_999)))
+        assertEquals(2, lyrics.lineAt(Millis(4_000)))
+        assertEquals(2, lyrics.lineAt(Millis(900_000)))
+        assertEquals(-1, Lyrics.Synced(emptyList(), LyricsSource.TRACK_TAGS).lineAt(Millis(5_000)))
+    }
+
+    @Test
+    fun `a lookup belongs to the track it was made for`() {
+        val waveform = Waveform(listOf(0.5f, 1f))
+
+        assertEquals(null, TrackLookup.Idle.track)
+        assertEquals(a.id, TrackLookup.Looking(a.id).track)
+        assertEquals(b.id, TrackLookup.Found(b.id, waveform).track)
+        assertEquals(a.id, TrackLookup.Missing(a.id).track)
+        assertEquals(waveform, TrackLookup.Found(b.id, waveform).value)
+    }
 }
