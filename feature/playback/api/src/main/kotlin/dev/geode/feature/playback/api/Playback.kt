@@ -153,6 +153,108 @@ data class PlaybackState(
     val playlists: List<PlaylistSummary> = emptyList(),
     /** The most recent plays first. */
     val history: List<PlayedTrack> = emptyList(),
+    /** How the queue plays and how tracks join (#35). */
+    val options: ListeningOptions = ListeningOptions(),
+    val sleep: SleepTimer = SleepTimer.Off,
+    val loop: AbLoop = AbLoop.Off,
+    /** Every bookmark, newest first. */
+    val bookmarks: List<Bookmark> = emptyList(),
+    /** Where each long track was left off, so playing it again goes on from there. */
+    val resumePoints: Map<TrackId, Millis> = emptyMap(),
+    val shuffle: ShuffleOrder = ShuffleOrder(),
+)
+
+/** What happens when a track ends (#35). */
+enum class RepeatMode {
+    /** On to the next track; at the end of the queue, [QueueEnd] decides. */
+    OFF,
+
+    /** The whole queue again from its first track. */
+    ALL,
+
+    /** The same track again. */
+    ONE,
+}
+
+/** What happens when the queue runs out and repeat is off: a setting (owner decision on #35). */
+enum class QueueEnd {
+    STOP,
+
+    /** Keep going with similar songs, picked offline from the user's own music. */
+    SIMILAR,
+}
+
+/**
+ * The listening choices (#35). [crossfade] is how long one track fades into the next, zero for none;
+ * with [gapless] the next track is opened early so that it joins with no gap.
+ */
+data class ListeningOptions(
+    val shuffle: Boolean = false,
+    val repeat: RepeatMode = RepeatMode.OFF,
+    val crossfade: Millis = Millis.ZERO,
+    val gapless: Boolean = true,
+    val queueEnd: QueueEnd = QueueEnd.STOP,
+) {
+    /** Whether the next track is opened ahead of time, for a gapless join or a crossfade. */
+    val joinsTracks: Boolean get() = gapless || crossfade > Millis.ZERO
+}
+
+/** The longest crossfade, as the old player settings allowed; a longer one is cut to this. */
+val MAX_CROSSFADE = Millis(12_000)
+
+/** The sleep timer (#35): it pauses playback after a while, or at the end of the track. */
+sealed interface SleepTimer {
+    data object Off : SleepTimer
+
+    /** Counting down; with [finishTrack], the track playing when it runs out still plays to its end. */
+    data class Counting(
+        val remaining: Millis,
+        val finishTrack: Boolean,
+    ) : SleepTimer
+
+    /** Playback pauses when the current track ends. */
+    data object AfterTrack : SleepTimer
+}
+
+/** The A-B loop (#35): a stretch of one track played over and over. */
+sealed interface AbLoop {
+    data object Off : AbLoop
+
+    /** Its start, A, is set on [track]; its end, B, is not yet. */
+    data class Starting(
+        val track: TrackId,
+        val start: Millis,
+    ) : AbLoop
+
+    /** Playing [track] from [start] to [end], then from [start] again. */
+    data class On(
+        val track: TrackId,
+        val start: Millis,
+        val end: Millis,
+    ) : AbLoop
+}
+
+@JvmInline
+value class BookmarkId(
+    val value: Long,
+) {
+    override fun toString(): String = "bookmark $value"
+}
+
+/** A place in a track the user marked to come back to (#35). */
+data class Bookmark(
+    val id: BookmarkId,
+    val track: Track,
+    val position: Millis,
+)
+
+/**
+ * What shuffling needs to be undone and to stay repeatable: the [seed] of the next shuffle, and the
+ * queue's order before it was shuffled. Only Playback's reducer uses it.
+ */
+data class ShuffleOrder(
+    val seed: Long = 0,
+    val unshuffled: List<Track> = emptyList(),
 )
 
 sealed interface PlaybackCommand {
@@ -203,6 +305,78 @@ sealed interface PlaybackCommand {
     /** Adds [tracks] to the end of the queue; with nothing playing, plays them. */
     data class AddToQueue(
         val tracks: List<Track>,
+    ) : PlaybackCommand
+
+    /** Plays the queue's track at [index]. */
+    data class PlayQueueItem(
+        val index: Int,
+    ) : PlaybackCommand
+
+    /** Takes the track at [index] out of the queue. The current track stays. */
+    data class RemoveFromQueue(
+        val index: Int,
+    ) : PlaybackCommand
+
+    /** Moves the track at [from] to [to]. */
+    data class MoveInQueue(
+        val from: Int,
+        val to: Int,
+    ) : PlaybackCommand
+
+    data class SetShuffle(
+        val on: Boolean,
+    ) : PlaybackCommand
+
+    data class SetRepeat(
+        val mode: RepeatMode,
+    ) : PlaybackCommand
+
+    /** Sets the crossfade to [length]; zero turns it off. */
+    data class SetCrossfade(
+        val length: Millis,
+    ) : PlaybackCommand
+
+    data class SetGapless(
+        val on: Boolean,
+    ) : PlaybackCommand
+
+    data class SetQueueEnd(
+        val end: QueueEnd,
+    ) : PlaybackCommand
+
+    // Listening tools (#35).
+
+    /** Pauses playback [after] this long; with [finishTrack], at the end of the track then playing. */
+    data class StartSleepTimer(
+        val after: Millis,
+        val finishTrack: Boolean = false,
+    ) : PlaybackCommand
+
+    /** Pauses playback when the current track ends. */
+    data object SleepAfterTrack : PlaybackCommand
+
+    data object CancelSleepTimer : PlaybackCommand
+
+    /**
+     * Marks the A-B loop at [at] in the current track: its start, then its end, then off again. An end
+     * too close after the start moves the start instead.
+     */
+    data class MarkLoop(
+        val at: Millis,
+    ) : PlaybackCommand
+
+    data object ClearLoop : PlaybackCommand
+
+    /** Bookmarks the current track where it is now. */
+    data object AddBookmark : PlaybackCommand
+
+    data class RemoveBookmark(
+        val id: BookmarkId,
+    ) : PlaybackCommand
+
+    /** Plays the bookmarked track from the bookmark. */
+    data class GoToBookmark(
+        val id: BookmarkId,
     ) : PlaybackCommand
 }
 

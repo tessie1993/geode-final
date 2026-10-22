@@ -1,0 +1,85 @@
+MILKDROP_PRESET_VERSION=201
+[preset00]
+PSVERSION=2
+PSVERSION_WARP=2
+PSVERSION_COMP=2
+fRating=3.000
+fGammaAdj=1.850
+fDecay=0.990
+fVideoEchoZoom=1.000
+fVideoEchoAlpha=0.000
+nVideoEchoOrientation=0
+nWaveMode=2
+bAdditiveWaves=0
+bWaveDots=0
+bWaveThick=1
+bModWaveAlphaByVolume=1
+bMaximizeWaveColor=1
+bTexWrap=1
+bDarkenCenter=1
+bRedBlueStereo=0
+bBrighten=0
+bDarken=0
+bSolarize=0
+bInvert=0
+fWaveAlpha=0.600
+fWaveScale=1.600
+fWaveSmoothing=0.750
+fWaveParam=0.000
+fModWaveAlphaStart=0.750
+fModWaveAlphaEnd=0.950
+fWarpAnimSpeed=1.000
+fWarpScale=1.000
+fZoomExponent=1.000
+fShader=0.000
+zoom=1.000
+rot=0.000
+cx=0.500
+cy=0.500
+dx=0.000
+dy=0.000
+warp=0.010
+sx=1.000
+sy=1.000
+wave_r=0.650
+wave_g=0.650
+wave_b=0.650
+wave_x=0.500
+wave_y=0.500
+ob_size=0.005
+ob_r=0.000
+ob_g=0.000
+ob_b=0.000
+ob_a=0.000
+ib_size=0.150
+ib_r=0.100
+ib_g=0.100
+ib_b=0.100
+ib_a=0.000
+nMotionVectorsX=48.000
+nMotionVectorsY=36.000
+mv_dx=0.000
+mv_dy=0.000
+mv_l=0.900
+mv_r=1.000
+mv_g=1.000
+mv_b=1.000
+mv_a=0.000
+per_frame_1=zoom = 0.99 + 0.02*bass_att + 0.004*rand(100)/100;
+per_frame_2=rot = -0.01 + 0.004*rand(100)/100;
+per_frame_3=wave_r = 0.9;
+per_frame_4=wave_g = 0.3 + 0.3*sin(time*2.0);
+per_frame_5=wave_b = 0.2 + 0.6*rand(1000)/1000;
+per_frame_6=wave_a = 0.8;
+per_frame_7=ib_a = 0.1*treb_att;
+per_pixel_1=dx = dx + 0.002*cos(y*4.0 - time)*mid_att;
+warp_1=`shader_body
+warp_2=`{
+warp_3=`    float3 grain = tex2D(sampler_noise_mq, uv + rand_frame.zw).xyz;
+warp_4=`    ret = tex2D(sampler_main, uv + (grain.xy - 0.5) * 0.004).xyz * 0.97;
+warp_5=`}
+comp_1=`shader_body
+comp_2=`{
+comp_3=`    float3 c = tex2D(sampler_main, uv).xyz;
+comp_4=`    ret = c * (;
+comp_5=`}

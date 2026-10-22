@@ -19,9 +19,6 @@
 //   - neither preset failed to load.
 //
 //   milkdrop_determinism <first.milk> <second.milk> <texture dir>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <GLES3/gl3.h>
 #include <projectM-4/projectM.h>
 
 #include <cmath>
@@ -30,6 +27,8 @@
 #include <cstring>
 #include <string>
 #include <vector>
+
+#include "host_gl.hpp"
 
 namespace {
 
@@ -56,7 +55,6 @@ constexpr unsigned char kLitThreshold = 8;
 // The first and last frames compared to prove the picture moves.
 constexpr int kEarlyFrame = 20;
 constexpr int kLateFrame = kSwitchFrame - 1;
-constexpr EGLenum kPlatformSurfacelessMesa = 0x31DD;
 
 std::string g_loadError;
 
@@ -84,21 +82,6 @@ void otherSong(int frame, std::vector<float>& out) {
     }
 }
 
-// projectM assumes the default GL state; every engine starts its frame from it, whoever drew last.
-void resetGlState() {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glUseProgram(0);
-    glBindVertexArray(0);
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_SCISSOR_TEST);
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_STENCIL_TEST);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glViewport(0, 0, kWidth, kHeight);
-}
-
 struct Engine {
     projectm_handle pm = nullptr;
     GLuint fbo = 0;
@@ -107,19 +90,7 @@ struct Engine {
     std::vector<std::vector<unsigned char>> frames;
 };
 
-bool makeTarget(Engine& e) {
-    glGenFramebuffers(1, &e.fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, e.fbo);
-    glGenTextures(1, &e.tex);
-    glBindTexture(GL_TEXTURE_2D, e.tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kWidth, kHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, e.tex, 0);
-    const bool ok = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    return ok;
-}
+bool makeTarget(Engine& e) { return geode_host::makeTarget(kWidth, kHeight, e.fbo, e.tex); }
 
 // The order MilkdropScene uses for a Render: seed and clock first, then the texture paths (which
 // rebuild the noise textures from the seed), then the first preset with a hard cut.
@@ -148,7 +119,7 @@ bool start(Engine& e, bool renderClock, uint32_t seed, const std::string& preset
 void renderFrame(Engine& e, int frame, const std::vector<float>& pcm, bool keep) {
     if (e.renderClock) projectm_set_frame_time(e.pm, static_cast<double>(frame) / kFps);
     projectm_pcm_add_float(e.pm, pcm.data(), static_cast<unsigned int>(pcm.size()), PROJECTM_MONO);
-    resetGlState();
+    geode_host::resetGlState(kWidth, kHeight);
     projectm_opengl_render_frame_fbo(e.pm, e.fbo);
     if (!keep) return;
     std::vector<unsigned char> px(kFrameBytes);
@@ -163,33 +134,6 @@ void stop(Engine& e) {
     if (e.tex) glDeleteTextures(1, &e.tex);
     if (e.fbo) glDeleteFramebuffers(1, &e.fbo);
     e = Engine{};
-}
-
-bool initEgl() {
-    EGLDisplay dpy = EGL_NO_DISPLAY;
-    auto getPlatformDisplay = reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(eglGetProcAddress("eglGetPlatformDisplayEXT"));
-    if (getPlatformDisplay) dpy = getPlatformDisplay(kPlatformSurfacelessMesa, EGL_DEFAULT_DISPLAY, nullptr);
-    if (dpy == EGL_NO_DISPLAY) dpy = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (dpy == EGL_NO_DISPLAY || !eglInitialize(dpy, nullptr, nullptr)) {
-        std::fprintf(stderr, "FAIL: no EGL display\n");
-        return false;
-    }
-    eglBindAPI(EGL_OPENGL_ES_API);
-    const EGLint configAttribs[] = {EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT, EGL_SURFACE_TYPE, 0, EGL_NONE};
-    EGLConfig config;
-    EGLint count = 0;
-    if (!eglChooseConfig(dpy, configAttribs, &config, 1, &count) || count < 1) {
-        std::fprintf(stderr, "FAIL: no GLES3 EGL config\n");
-        return false;
-    }
-    const EGLint contextAttribs[] = {EGL_CONTEXT_MAJOR_VERSION, 3, EGL_NONE};
-    EGLContext ctx = eglCreateContext(dpy, config, EGL_NO_CONTEXT, contextAttribs);
-    if (ctx == EGL_NO_CONTEXT || !eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, ctx)) {
-        std::fprintf(stderr, "FAIL: no surfaceless GLES3 context\n");
-        return false;
-    }
-    std::printf("GL_RENDERER: %s\nGL_VERSION: %s\n", glGetString(GL_RENDERER), glGetString(GL_VERSION));
-    return true;
 }
 
 size_t differingBytes(const std::vector<unsigned char>& a, const std::vector<unsigned char>& b) {
@@ -216,7 +160,7 @@ int main(int argc, char** argv) {
     const std::string first = argv[1];
     const std::string second = argv[2];
     const std::string textureDir = argv[3];
-    if (!initEgl()) return 1;
+    if (!geode_host::initEgl()) return 1;
 
     Engine a, live, b, other;
     if (!start(a, true, kRenderSeed, first, textureDir) || !start(live, false, 0, second, textureDir) ||

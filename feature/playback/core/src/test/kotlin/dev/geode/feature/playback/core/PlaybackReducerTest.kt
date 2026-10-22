@@ -121,6 +121,7 @@ class PlaybackReducerTest {
     private val armGrace = StartTimer(BufferingGrace, BUFFERING_GRACE, PlaybackEvent.BufferingGraceOver)
     private val cancelLoad = CancelTimer(LoadTimeout)
     private val cancelGrace = CancelTimer(BufferingGrace)
+    private val prepareC = drive(EngineStep.PrepareNext(c.id))
 
     private val table: List<Row> =
         // Play: replaces the queue from anywhere.
@@ -200,8 +201,18 @@ class PlaybackReducerTest {
                 row(error, seeked, error),
                 // TrackChanged to the track being opened ends the opening, and counts as a play.
                 row(idle, onB, idle),
-                row(loading, onB, Buffering(atB, heard), cancelLoad, armGrace, Perform(PlaybackWork.RecordPlay(b)), save(atB, heard)),
-                row(loadingPaused, onB, Paused(atB, heard), cancelLoad, Perform(PlaybackWork.RecordPlay(b)), save(atB, heard)),
+                // With gapless on (the default), the track after it is made ready (#35).
+                row(
+                    loading,
+                    onB,
+                    Buffering(atB, heard),
+                    cancelLoad,
+                    armGrace,
+                    Perform(PlaybackWork.RecordPlay(b)),
+                    save(atB, heard),
+                    prepareC,
+                ),
+                row(loadingPaused, onB, Paused(atB, heard), cancelLoad, Perform(PlaybackWork.RecordPlay(b)), save(atB, heard), prepareC),
                 row(buffering, onB, Buffering(atB, heard)),
                 row(playing, onB, Playing(atB, heard)),
                 row(paused, onB, Paused(atB, heard)),
@@ -311,10 +322,10 @@ class PlaybackReducerTest {
             row(loading, PlaybackEvent.TrackChanged(null, heard), loading),
             row(buffering, PlaybackEvent.TrackChanged(a.id, heard), buffering),
             row(playing, PlaybackEvent.TrackChanged(null, heard), playing),
-            row(paused, PlaybackEvent.TrackChanged(c.id, heard), paused),
+            row(paused, PlaybackEvent.TrackChanged(a.id, heard), paused),
             // Only a play counts in the history: not a recovery, not the app opening where it was left off.
-            row(Loading(atB, start, false, RESTORE), onB, Paused(atB, heard), cancelLoad, save(atB, heard)),
-            row(Loading(atB, mark, true, RECOVER), onB, Buffering(atB, heard), cancelLoad, armGrace, save(atB, heard)),
+            row(Loading(atB, start, false, RESTORE), onB, Paused(atB, heard), cancelLoad, save(atB, heard), prepareC),
+            row(Loading(atB, mark, true, RECOVER), onB, Buffering(atB, heard), cancelLoad, armGrace, save(atB, heard), prepareC),
             // The queue's last track ending, or failing to open, ends the queue.
             row(Playing(atC, mark), PlaybackEvent.Ended, Ended(atC), save(atC, start)),
             row(Buffering(atC, mark), PlaybackEvent.Ended, Ended(atC), cancelGrace, save(atC, start)),
@@ -376,6 +387,10 @@ class PlaybackReducerTest {
                 "Could not save where playback was left off",
                 "Could not save the playlist",
                 "Could not delete the playlist",
+                "Could not save the listening settings",
+                "Could not save the bookmark",
+                "Could not delete the bookmark",
+                "Could not save where the long track was left off",
             ).map { listOf(ReportFailure(it)) },
             reported,
         )

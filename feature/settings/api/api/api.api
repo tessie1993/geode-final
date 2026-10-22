@@ -478,6 +478,17 @@ public final class dev/geode/feature/settings/api/FolderCommand$RemoveMusicFolde
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/settings/api/FolderCommand$SetPresetFolder : dev/geode/feature/settings/api/FolderCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-oLgjRmI ()Ljava/lang/String;
+	public final fun copy-tBzkrdA (Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderCommand$SetPresetFolder;
+	public static synthetic fun copy-tBzkrdA$default (Ldev/geode/feature/settings/api/FolderCommand$SetPresetFolder;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderCommand$SetPresetFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-oLgjRmI ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/settings/api/FolderCommand$SetPresetMirror : dev/geode/feature/settings/api/FolderCommand {
 	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-oLgjRmI ()Ljava/lang/String;
@@ -490,14 +501,16 @@ public final class dev/geode/feature/settings/api/FolderCommand$SetPresetMirror 
 }
 
 public final class dev/geode/feature/settings/api/FolderSettings {
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-oLgjRmI ()Ljava/lang/String;
 	public final fun component2 ()Ljava/util/Set;
-	public final fun copy-28v1Dhc (Ljava/lang/String;Ljava/util/Set;)Ldev/geode/feature/settings/api/FolderSettings;
-	public static synthetic fun copy-28v1Dhc$default (Ldev/geode/feature/settings/api/FolderSettings;Ljava/lang/String;Ljava/util/Set;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderSettings;
+	public final fun component3-oLgjRmI ()Ljava/lang/String;
+	public final fun copy--HcJcCQ (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderSettings;
+	public static synthetic fun copy--HcJcCQ$default (Ldev/geode/feature/settings/api/FolderSettings;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderSettings;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getMusicFolders ()Ljava/util/Set;
+	public final fun getPresetFolder-oLgjRmI ()Ljava/lang/String;
 	public final fun getPresetMirror-oLgjRmI ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
