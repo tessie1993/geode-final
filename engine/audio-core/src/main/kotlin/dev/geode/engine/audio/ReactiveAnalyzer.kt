@@ -2,6 +2,8 @@ package dev.geode.engine.audio
 
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.bridge.NativeFailures
+import dev.geode.engine.bridge.NativeSnapshots
 
 class ReactiveAnalyzer(
     val bandCount: Int = FeatureFrameLayout.BAND_COUNT,
@@ -130,6 +132,15 @@ class ReactiveAnalyzer(
     }
 
     fun key(): String = GeodeNative.analysisKey(handle)
+
+    /**
+     * From the next hop on, the analysis picks up the Sound-signal tuning of each Customization
+     * [snapshots] receives at the start of the hop; null detaches.
+     */
+    fun attachSnapshots(snapshots: NativeSnapshots?) {
+        if (handle == 0L) return
+        NativeFailures.check(GeodeNative.analysisAttachSnapshots(handle, snapshots?.handle ?: 0L), "analysisAttachSnapshots")
+    }
 
     fun reset() {
         GeodeNative.analysisReset(handle)

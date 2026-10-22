@@ -11,6 +11,19 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The native bridge: one snapshot schema, a lock-free hand-off and typed
+  statuses (#53, ADR-0005).** `core/bridge/schema/native_bridge.json`
+  generates the Customization snapshot and the bridge's status codes for C,
+  C++ and Kotlin (`tools/bridge_schema/generate.py`; CI fails when they are
+  stale). A new `geode_bridge` library hands each published snapshot to the
+  drawing and analysis threads through per-reader triple buffers, picked up
+  at the start of their next frame without a lock, with concurrent stress
+  tests under ASan/UBSan and ThreadSanitizer. Every JNI call now runs through
+  a guard: no C++ exception reaches the JVM, calls with nothing to return give
+  a `NativeStatus`, and a caught throw becomes a named `EngineFailure` on the
+  app-wide banner; when it was the audio engine, the player reopens the
+  current track where it was.
+
 - **Removed user GLSL shaders (#87).** The Customize panel's GLSL tab, the
   Fluid tab's force and dye injection editors, the renderer's custom-shader
   and fluid-injection paths, their C ABI (`geode_viz_set_custom_shader`,

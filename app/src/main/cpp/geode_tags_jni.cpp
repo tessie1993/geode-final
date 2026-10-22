@@ -9,8 +9,18 @@
 #include <string_view>
 
 #include "geode/api/geode_api.h"
+#include "jni_guard.hpp"
 
 namespace {
+
+using geode::jni::valueCall;
+
+// tagsRead's int results: year, track, duration ms, art bytes.
+constexpr jsize kTagInts = 4;
+// tagsRead's ReplayGain results: track gain dB, track peak, album gain dB, album peak.
+constexpr jsize kTagGains = 4;
+// What tagsRead returns when the file cannot be read.
+constexpr jint kUnreadable = -1;
 
 using TagsHandle = std::unique_ptr<geode_tags, decltype(&geode_tags_destroy)>;
 
@@ -42,48 +52,52 @@ extern "C" {
 JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_tagsRead(JNIEnv* env, jobject, jint fd, jobjectArray texts, jintArray ints,
                                                   jfloatArray gains) {
-    TagsHandle tags(geode_tags_read(fd), &geode_tags_destroy);
-    if (!tags || !texts || !ints || !gains) return -1;
-    if (env->GetArrayLength(texts) < GEODE_TAG_TEXT_COUNT || env->GetArrayLength(ints) < 4 ||
-        env->GetArrayLength(gains) < 4) {
-        return -1;
-    }
-    for (int i = 0; i < GEODE_TAG_TEXT_COUNT; ++i) {
-        jbyteArray bytes = utf8Bytes(env, geode_tags_text(tags.get(), static_cast<GeodeTagText>(i)));
-        // OutOfMemoryError is pending: no further JNI calls but returning are allowed.
-        if (!bytes) return -1;
-        env->SetObjectArrayElement(texts, i, bytes);
-        env->DeleteLocalRef(bytes);
-    }
-    const size_t art = std::min<size_t>(geode_tags_art_bytes(tags.get()), static_cast<size_t>(INT32_MAX));
-    const std::array<jint, 4> numbers{geode_tags_year(tags.get()), geode_tags_track(tags.get()),
-                                      geode_tags_duration_ms(tags.get()), static_cast<jint>(art)};
-    env->SetIntArrayRegion(ints, 0, 4, numbers.data());
-    std::array<jfloat, 4> replayGain{};
-    const int mask = geode_tags_replaygain(tags.get(), &replayGain[0], &replayGain[1], &replayGain[2], &replayGain[3]);
-    env->SetFloatArrayRegion(gains, 0, 4, replayGain.data());
-    return mask;
+    return valueCall(env, "tagsRead", kUnreadable, [&]() -> jint {
+        TagsHandle tags(geode_tags_read(fd), &geode_tags_destroy);
+        if (!tags || !texts || !ints || !gains) return kUnreadable;
+        if (env->GetArrayLength(texts) < GEODE_TAG_TEXT_COUNT || env->GetArrayLength(ints) < kTagInts ||
+            env->GetArrayLength(gains) < kTagGains) {
+            return kUnreadable;
+        }
+        for (int i = 0; i < GEODE_TAG_TEXT_COUNT; ++i) {
+            jbyteArray bytes = utf8Bytes(env, geode_tags_text(tags.get(), static_cast<GeodeTagText>(i)));
+            // OutOfMemoryError is pending: no further JNI calls but returning are allowed.
+            if (!bytes) return kUnreadable;
+            env->SetObjectArrayElement(texts, i, bytes);
+            env->DeleteLocalRef(bytes);
+        }
+        const size_t art = std::min<size_t>(geode_tags_art_bytes(tags.get()), static_cast<size_t>(INT32_MAX));
+        const std::array<jint, kTagInts> numbers{geode_tags_year(tags.get()), geode_tags_track(tags.get()),
+                                                 geode_tags_duration_ms(tags.get()), static_cast<jint>(art)};
+        env->SetIntArrayRegion(ints, 0, kTagInts, numbers.data());
+        std::array<jfloat, kTagGains> replayGain{};
+        const int mask = geode_tags_replaygain(tags.get(), &replayGain[0], &replayGain[1], &replayGain[2], &replayGain[3]);
+        env->SetFloatArrayRegion(gains, 0, kTagGains, replayGain.data());
+        return mask;
+    });
 }
 
 JNIEXPORT jboolean JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_tagsWrite(JNIEnv* env, jobject, jint fd, jobjectArray texts, jint year,
                                                    jint track) {
-    // A slot beyond the caller's array, or a null element within it, means "leave this field unchanged":
-    // both must reach geode_tags_write as a null pointer, not "".
-    std::array<std::optional<std::string>, GEODE_TAG_TEXT_COUNT> owned;
-    std::array<const char*, GEODE_TAG_TEXT_COUNT> pointers{};
-    const jsize count = texts ? env->GetArrayLength(texts) : 0;
-    for (int i = 0; i < GEODE_TAG_TEXT_COUNT; ++i) {
-        if (i < count) owned[static_cast<size_t>(i)] = stringAt(env, texts, i);
-        const std::optional<std::string>& value = owned[static_cast<size_t>(i)];
-        pointers[static_cast<size_t>(i)] = value ? value->c_str() : nullptr;
-    }
-    return geode_tags_write(fd, pointers.data(), year, track) ? JNI_TRUE : JNI_FALSE;
+    return valueCall(env, "tagsWrite", jboolean{JNI_FALSE}, [&]() -> jboolean {
+        // A slot beyond the caller's array, or a null element within it, means "leave this field unchanged":
+        // both must reach geode_tags_write as a null pointer, not "".
+        std::array<std::optional<std::string>, GEODE_TAG_TEXT_COUNT> owned;
+        std::array<const char*, GEODE_TAG_TEXT_COUNT> pointers{};
+        const jsize count = texts ? env->GetArrayLength(texts) : 0;
+        for (int i = 0; i < GEODE_TAG_TEXT_COUNT; ++i) {
+            if (i < count) owned[static_cast<size_t>(i)] = stringAt(env, texts, i);
+            const std::optional<std::string>& value = owned[static_cast<size_t>(i)];
+            pointers[static_cast<size_t>(i)] = value ? value->c_str() : nullptr;
+        }
+        return geode_tags_write(fd, pointers.data(), year, track) ? JNI_TRUE : JNI_FALSE;
+    });
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_tagsLastError(JNIEnv*, jobject) {
-    return geode_tags_last_error();
+Java_dev_geode_engine_bridge_GeodeNative_tagsLastError(JNIEnv* env, jobject) {
+    return valueCall(env, "tagsLastError", jint{GEODE_TAGS_OK}, [] { return geode_tags_last_error(); });
 }
 
 }  // extern "C"

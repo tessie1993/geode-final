@@ -1,19 +1,36 @@
 #include "geode/api/geode_api.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <memory>
 
 #include "geode/analysis/AnalysisSession.hpp"
 #include "geode/analysis/DrumChannels.hpp"
 #include "geode/analysis/PulseReplay.hpp"
+#include "SnapshotHandle.hpp"
 
 static_assert(sizeof(GeodeFeatureFrame) == GEODE_FEATURE_FRAME_FLOATS * sizeof(float));
 static_assert(sizeof(geode::analysis::pulse::Frame) == 6 * sizeof(float));
 
 struct geode_analysis {
     geode::analysis::AnalysisSession session;
+    // The Customization snapshots this analysis reads at the start of each hop; null when none.
+    std::atomic<geode_snapshots*> snapshots{nullptr};
 };
+
+namespace {
+
+// The audio thread's side of the hand-off: the newest Customization's Sound-signal tuning, if a new one came.
+void applySnapshot(geode_analysis& a) {
+    geode_snapshots* attached = a.snapshots.load(std::memory_order_acquire);
+    if (!attached || !attached->exchange.refresh(geode::bridge::SnapshotReader::Audio)) return;
+    const geode::bridge::CustomizationSnapshot& snapshot = attached->exchange.current(geode::bridge::SnapshotReader::Audio);
+    a.session.setTuning(snapshot.soundSensitivity, snapshot.soundRefractoryMs, snapshot.soundAttackSeconds,
+                        snapshot.soundReleaseSeconds);
+}
+
+}  // namespace
 
 struct geode_drums {
     geode::analysis::DrumChannels channels;
@@ -28,7 +45,7 @@ const char* geode_version(void) {
 geode_analysis* geode_analysis_create(int sample_rate, int fft_size, float hop_rate_hz) {
     if (sample_rate <= 0 || fft_size < GEODE_WAVEFORM_POINTS || (fft_size & (fft_size - 1)) != 0 || hop_rate_hz <= 0.0f)
         return nullptr;
-    return std::make_unique<geode_analysis>(geode_analysis{geode::analysis::AnalysisSession(sample_rate, fft_size, hop_rate_hz)}).release();
+    return new geode_analysis{geode::analysis::AnalysisSession(sample_rate, fft_size, hop_rate_hz)};
 }
 
 void geode_analysis_destroy(geode_analysis* a) {
@@ -58,7 +75,15 @@ void geode_analysis_push(geode_analysis* a, const float* interleaved, size_t fra
 }
 
 int geode_analysis_pull(geode_analysis* a, GeodeFeatureFrame* out) {
-    return (a && out && a->session.pull(*out)) ? 1 : 0;
+    if (!a || !out) return 0;
+    applySnapshot(*a);
+    return a->session.pull(*out) ? 1 : 0;
+}
+
+GeodeStatus geode_analysis_attach_snapshots(geode_analysis* a, geode_snapshots* snapshots) {
+    if (!a) return GEODE_STATUS_NULL_HANDLE;
+    a->snapshots.store(snapshots, std::memory_order_release);
+    return GEODE_STATUS_OK;
 }
 
 size_t geode_analysis_key(geode_analysis* a, char* out, size_t capacity) {

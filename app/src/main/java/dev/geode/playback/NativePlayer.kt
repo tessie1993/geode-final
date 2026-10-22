@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -14,7 +15,9 @@ import androidx.media3.common.util.UnstableApi
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.RingLog
+import dev.geode.engine.bridge.AudioRestartPolicy
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.bridge.NativeFailures
 import dev.geode.engine.types.Micros
 import dev.geode.engine.types.Millis
 import dev.geode.util.bestEffort
@@ -76,6 +79,17 @@ class NativePlayer(
     @Volatile
     private var released = false
 
+    // Where the engine last said it was, for a restart after it failed (main thread).
+    private var lastPositionMs = 0L
+    private val restarts = AudioRestartPolicy(now = { Millis(SystemClock.elapsedRealtime()) })
+
+    // The audio restarts itself when the engine threw inside a playback call (ADR-0005). Reported on
+    // the failing call's thread, so the restart is handed to the main thread.
+    private val engineFailures =
+        NativeFailures.listen { failure ->
+            if (restarts.shouldRestart(failure)) main.post { restartAudio() }
+        }
+
     private val poll =
         object : Runnable {
             override fun run() {
@@ -114,6 +128,7 @@ class NativePlayer(
                 else -> Player.STATE_BUFFERING
             }
         val positionMs = if (released) 0L else Micros(GeodeNative.playerPositionUs(handle)).toMillis().value
+        if (!released) lastPositionMs = positionMs
         return State
             .Builder()
             .setAvailableCommands(COMMANDS)
@@ -162,6 +177,7 @@ class NativePlayer(
 
     override fun handleRelease(): ListenableFuture<*> {
         released = true
+        engineFailures.close()
         main.removeCallbacksAndMessages(null)
         // Cancel any in-flight open/queue task instead of letting it run to completion against a
         // handle we're about to destroy; the worker bodies also bail out early once released.
@@ -317,6 +333,16 @@ class NativePlayer(
         val durationUs = GeodeNative.playerDurationUs(handle)
         if (durationUs > 0) entries.getOrNull(currentIndex)?.durationUs = durationUs
         dsp.sync()
+    }
+
+    /** Reopens the current track where it was, after the engine threw inside a playback call. */
+    private fun restartAudio() {
+        if (released || !prepared || entries.isEmpty()) return
+        RingLog.note(TAG, "restarting the audio at ${lastPositionMs}ms after an engine failure")
+        error = null
+        queuedId = -1
+        openCurrent(lastPositionMs)
+        invalidateState()
     }
 
     private fun endedWithoutPreRoll(): Boolean {
