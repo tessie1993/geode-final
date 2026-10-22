@@ -11,6 +11,21 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Customization's handlers (#142).** A new `:feature:customization:handlers`
+  module carries out Customization's work, built alongside the old code and
+  wired into the app at the switch-over (#17). Each changed Customization goes
+  to the engine as one snapshot through the bridge's `SnapshotPublisher`, with
+  a fresh revision, retried a few times while the engine is busy; `:app` gives
+  the snapshot's other fields. Presets are saved and loaded as versioned JSON
+  files (version 2) in the preset folder chosen in Settings > Default paths, or
+  the app's own folder, and copied to the mirror folder when one is set. When
+  the store is built, every preset an older Geode saved is converted once:
+  its original goes to `presets-v1-backup` first, and the app-wide LFO slots
+  and envelopes it was played with become its Modulators and Reactions. An old
+  preset found later is converted as it is opened. Every failure is a named
+  Customization failure on the app-wide error channel. The store's work runs
+  one piece at a time, so the engine always ends with the newest Customization.
+
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
   from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the

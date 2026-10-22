@@ -116,4 +116,13 @@ class CustomizationReducer(
         val publish = Perform(CustomizationWork.Publish(to))
         return if (from.style == to.style) listOf(publish) else listOf(publish, Emit(CustomizationFact.StyleChanged(to.style)))
     }
+
+    companion object {
+        /**
+         * What the store does once, when it is built from [initial]: convert the presets an older Geode
+         * saved, and hand the starting Customization to the engine, which has none until then.
+         */
+        fun start(initial: CustomizationState): List<CustomizationEffect> =
+            listOf(Perform(CustomizationWork.UpgradePresets), Perform(CustomizationWork.Publish(initial.current)))
+    }
 }
