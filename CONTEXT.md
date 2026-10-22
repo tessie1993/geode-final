@@ -11,8 +11,20 @@ The audio-reactive picture the engine draws every frame from the music: in full-
 _Avoid_: visuals (for the App UI), graphics, animation, visualizer
 
 **App UI**:
-The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the theme. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
+The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the Element. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
 _Avoid_: visuals, visual design, interface (an architecture term)
+
+**Element**:
+One selectable skin for the App UI, named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
+_Avoid_: theme, style (a Style is a look for the Visual), skin pack, Theme pack
+
+**Hero scene**:
+The Element's full-screen nature scene behind Home. It moves only as a slow ambient loop and never reacts to sound.
+_Avoid_: background visual, wallpaper, live visual
+
+**Ambient**:
+The setting for how much an Element's scene moves on its own: Drifting, Still or Off. It is never driven by the music.
+_Avoid_: animation level, reactivity
 
 **Style**:
 One selectable look for the Visual, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
