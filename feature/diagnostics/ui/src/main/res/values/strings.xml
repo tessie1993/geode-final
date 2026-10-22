@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_explanation">Writes a file with the app\'s log, its settings and your phone model, for you to send to whoever is helping you. It holds no music, file names or accounts, and it goes only where you choose.</string>
+    <string name="diagnostics_share">Share diagnostics</string>
+    <string name="diagnostics_preparing">Preparing the file…</string>
+    <string name="diagnostics_failed_write">The file could not be written. Free some space and try again.</string>
+    <string name="diagnostics_failed_no_target">No app on this phone can receive the file.</string>
+    <string name="diagnostics_failed_timed_out">Preparing the file took too long. Try again.</string>
+    <string name="diagnostics_dismiss">Dismiss</string>
+    <string name="diagnostics_version">Version %1$s</string>
+    <string name="diagnostics_developer_overlay">Developer overlay</string>
+    <string name="diagnostics_developer_overlay_detail">Frame time, buffer sizes, audio underruns and the engine state, over the app. Never in the Visual, Renders or Recordings.</string>
+    <string name="overlay_waiting">Waiting for the engine…</string>
+    <string name="overlay_frame_time">Frame %1$s ms</string>
+    <string name="overlay_audio_buffer">Audio buffer %1$d frames</string>
+    <string name="overlay_visual_buffer">Visual buffer %1$d × %2$d</string>
+    <string name="overlay_underruns">Underruns %1$d</string>
+    <string name="overlay_engine">Engine %1$s</string>
+    <string name="engine_stopped">stopped</string>
+    <string name="engine_starting">starting</string>
+    <string name="engine_running">running</string>
+    <string name="engine_paused">paused</string>
+    <string name="engine_failed">failed</string>
+</resources>
