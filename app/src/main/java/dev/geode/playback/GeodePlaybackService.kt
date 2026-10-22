@@ -191,7 +191,8 @@ class GeodePlaybackService : PlaybackSessionService() {
             controller: MediaSession.ControllerInfo,
             isForPlayback: Boolean,
         ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> =
-            background { leftOff() ?: throw UnsupportedOperationException("nothing was ever played") }
+            // Nothing was ever played (a cold start on a fresh install): an empty queue, not a failure.
+            background { leftOff() ?: NOTHING_LEFT_OFF }
 
         private fun resolve(item: MediaItem): MediaItem = if (item.localConfiguration != null) item else tree.playable(item.mediaId) ?: item
 
@@ -217,6 +218,8 @@ class GeodePlaybackService : PlaybackSessionService() {
         private fun <T> background(work: () -> T): ListenableFuture<T> = Futures.submit(Callable { work() }, browsingThread)
 
         private companion object {
+            val NOTHING_LEFT_OFF = MediaSession.MediaItemsWithStartPosition(emptyList(), 0, 0L)
+
             val browsingThread = Executors.newSingleThreadExecutor { r -> Thread(r, "geode-browsing").apply { isDaemon = true } }
         }
     }
