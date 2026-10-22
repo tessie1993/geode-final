@@ -83,11 +83,6 @@ internal class ExportController(
 
         /** The open editor project's tracks; programme-level scene tracks animate the export. */
         fun keyframes(): KeyframeSheet
-
-        fun publishTempo(
-            uri: Uri,
-            timeline: FeatureTimeline,
-        )
     }
 
     private val exporter = VideoExporter(application)
@@ -154,7 +149,6 @@ internal class ExportController(
                             gui.beatSensitivity,
                             gui.effectiveBeatMinIntervalMs,
                         )
-                    host.publishTempo(uri, t)
                     val name = "geode_${System.currentTimeMillis()}.mp4"
                     val sheet = host.keyframes()
                     val animated =

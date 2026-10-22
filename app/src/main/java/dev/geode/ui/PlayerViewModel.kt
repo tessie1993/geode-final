@@ -106,8 +106,6 @@ class PlayerViewModel
 
         fun setIntelligenceMode(mode: IntelligenceMode) = session.setIntelligenceMode(mode)
 
-        fun analyzeCurrentTrack() = session.analyzeCurrentTrack()
-
         /** Remembers [minutes] as the timer's last length, as the old player did, and starts it. */
         fun startSleepTimer(minutes: Int) {
             val prefs = session.playerPrefs.value

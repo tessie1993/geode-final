@@ -277,15 +277,6 @@ internal class MusicLibraryController(
             NativeTags.write(resolver, target, edit)
         }
 
-    fun noteAnalysis(
-        uri: Uri,
-        timeline: dev.geode.analysis.FeatureTimeline,
-    ) {
-        trackLibrary
-            .updateAnalysis(uri.toTrackId(), metadataFor(uri).title, Millis(timeline.durationMs), timeline.bpm, timeline.key)
-            ?.let { merged -> _library.update { it.copy(tracks = merged) } }
-    }
-
     fun refreshNumericTitles() {
         scope.launch(Dispatchers.IO) {
             val bad =

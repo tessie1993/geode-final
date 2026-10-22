@@ -160,13 +160,7 @@ class PlayerSession internal constructor(
     private val vizStateStore = VizStateStore(prefsFiles.viz, scope)
 
     private val settings: PlayerSettingsController =
-        PlayerSettingsController(
-            oldSettings,
-            container.appScope,
-            object : PlayerSettingsController.Host {
-                override fun redecideCachedBeats(prefs: GuiPrefs) = analysis.redecideCachedBeats(prefs)
-            },
-        )
+        PlayerSettingsController(oldSettings, container.appScope)
 
     private val visual: VisualSettingsController =
         VisualSettingsController(
@@ -347,24 +341,15 @@ class PlayerSession internal constructor(
     private val analysis: TrackAnalysisController =
         TrackAnalysisController(
             application,
-            scope,
             object : TrackAnalysisController.Host {
-                override val currentUri: Uri? get() = this@PlayerSession.currentUri
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
                 override val vizState: MutableStateFlow<VizUiState> get() = _vizState
-
-                override fun noteAnalysis(
-                    uri: Uri,
-                    timeline: FeatureTimeline,
-                ) = musicLibrary.noteAnalysis(uri, timeline)
             },
         )
 
     val waveform: StateFlow<FloatArray?> get() = analysis.waveform
 
     fun setIntelligenceMode(mode: IntelligenceMode) = analysis.setIntelligenceMode(mode)
-
-    fun analyzeCurrentTrack() = analysis.analyzeCurrentTrack()
 
     private val _lyrics = MutableStateFlow<Lyrics?>(null)
 
@@ -510,16 +495,16 @@ class PlayerSession internal constructor(
 
     fun milkCatalog(): dev.geode.data.MilkCatalog = presetLibrary.milkCatalog()
 
+    /**
+     * A new song: the Visual starts listening afresh and its lyrics are looked up. The song is never
+     * analysed here: the Visual reacts to the live sound only (owner rule, #17). An export analyses
+     * the song it renders, when it renders it, so the last song's analysis is dropped.
+     */
     private fun onTrackChanged() {
         engine.reset()
         analysis.timeline = null
         loadLyricsFor(currentUri)
         _vizState.update { it.copy(suggestedSceneId = null, bpm = 0f) }
-        if (_vizState.value.intelligenceMode != IntelligenceMode.MANUAL) {
-            analyzeCurrentTrack()
-        } else {
-            analysis.loadCachedForManualMode()
-        }
     }
 
     private val _playbackNotice = MutableStateFlow<String?>(null)
@@ -610,15 +595,6 @@ class PlayerSession internal constructor(
                 override fun adsrConfigs() = modulation.adsrs.value
 
                 override fun keyframes() = editor.state.value.project.keyframes
-
-                override fun publishTempo(
-                    uri: Uri,
-                    timeline: FeatureTimeline,
-                ) {
-                    if (currentUri == uri && _vizState.value.bpm == 0f) {
-                        _vizState.update { it.copy(bpm = timeline.bpm) }
-                    }
-                }
             },
         )
 
@@ -774,8 +750,8 @@ class PlayerSession internal constructor(
     }
 
     /**
-     * Follows Playback for what the Visual and the old screens need: a new song gets its analysis and
-     * lyrics, and starting the music ends a live capture (the mic and the music never mix).
+     * Follows Playback for what the Visual and the old screens need: a new song gets its lyrics, and
+     * starting the music ends a live capture (the mic and the music never mix).
      */
     private fun followPlayback() {
         scope.launch {
