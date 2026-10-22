@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug :feature:customization:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -133,7 +133,7 @@ jobs:
       # The JVM modules (audio-core, :arch:*, and every feature's :api and :core) run their tests
       # under `test`, not `testDebugUnitTest`.
       - name: Unit tests (every module)
-        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:library:api:test :feature:library:core:test testDebugUnitTest --continue --stacktrace --no-daemon
+        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:library:api:test :feature:library:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test testDebugUnitTest --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -207,6 +207,10 @@ jobs:
             task: ":feature:library:core:pitest"
             dir: feature/library/core
             name: library-core
+          - module: ":feature:diagnostics:core"
+            task: ":feature:diagnostics:core:pitest"
+            dir: feature/diagnostics/core
+            name: feature-diagnostics-core
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -307,9 +311,9 @@ jobs:
       contents: write
     # Every module that takes App UI screenshots: :app and each feature's :ui (geode.screenshots).
     env:
-      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots
-      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug"
-      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug"
+      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/customization/ui/src/test/screenshots
+      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug"
+      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -366,6 +370,9 @@ jobs:
         run: |
           python3 tools/ci/check_native_includes.py --self-test
           python3 tools/ci/check_native_includes.py
+      # The snapshot schema generates the C, C++ and Kotlin bridge types; they must match what is committed.
+      - name: Bridge schema is current
+        run: python3 tools/bridge_schema/generate.py --check
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
       - name: Configure
@@ -385,8 +392,33 @@ jobs:
           sudo apt-get install -y -q libgles-dev libegl-dev
           tools/hostlink/hostlink.sh
 
+  native-concurrency:
+    name: C++ concurrency tests (host, TSan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out kissfft
+        run: git submodule update --init --depth 1 third_party/kissfft
+      # ThreadSanitizer's shadow memory needs a narrower address-space randomisation than the runner's default.
+      - name: Make room for ThreadSanitizer
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake -S core/host -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DGEODE_SANITIZE_THREAD=ON
+      - name: Build
+        run: cmake --build build-tsan --parallel
+      # The lock-free Customization hand-off (core/bridge): its unit tests and its concurrent stress tests.
+      - name: Test the lock-free hand-off
+        env:
+          TSAN_OPTIONS: halt_on_error=1 second_deadlock_stack=1
+        run: ctest --test-dir build-tsan --output-on-failure --no-tests=error -R 'TripleBuffer|SnapshotExchange'
+
   # Geode's copy of projectM, built on the host and run under Mesa's software GLES: two Renders of
-  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact").
+  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact"),
+  # and every bundled preset must run as written, with no shader silently replaced by the default.
   milkdrop-frame-exact:
     name: MilkDrop Renders are frame-exact
     runs-on: ubuntu-24.04
@@ -404,7 +436,9 @@ jobs:
       - name: Build
         run: cmake --build build-milkdrop --parallel
       - name: Two Renders, byte for byte
-        run: ctest --test-dir build-milkdrop --output-on-failure
+        run: ctest --test-dir build-milkdrop --output-on-failure -R frame_exact
+      - name: Every bundled preset runs as written
+        run: ctest --test-dir build-milkdrop --output-on-failure -R preset
 
   visual-frames:
     name: Visual golden frames (shaders)

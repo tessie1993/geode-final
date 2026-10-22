@@ -10,15 +10,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(GEODE_SANITIZE "Build everything with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+# ThreadSanitizer cannot share a build with AddressSanitizer, so the concurrency tests get a build of their own.
+option(GEODE_SANITIZE_THREAD "Build everything with ThreadSanitizer" OFF)
+if(GEODE_SANITIZE AND GEODE_SANITIZE_THREAD)
+    message(FATAL_ERROR "GEODE_SANITIZE and GEODE_SANITIZE_THREAD need separate builds")
+endif()
 if(GEODE_SANITIZE)
     add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address,undefined)
+endif()
+if(GEODE_SANITIZE_THREAD)
+    add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=thread)
 endif()
 
 get_filename_component(GEODE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
 # The pure libraries; each one can be mutation tested on its own.
-set(GEODE_PURE_LIBRARIES geode_util geode_analysis geode_audio geode_viz)
+set(GEODE_PURE_LIBRARIES geode_util geode_bridge geode_analysis geode_audio geode_viz)
 
 # Mutation testing with Mull (docs/ci.md, "C++ mutation tests"). GEODE_MUTATE names the one pure
 # library whose code Mull's compiler plugin mutates; the rest of the build is left unmutated. There is
@@ -62,6 +71,8 @@ include("${GEODE_ROOT}/core/pure_sources.cmake")
 include("${GEODE_ROOT}/core/native_libraries.cmake")
 geode_api_types_library()
 geode_core_library(geode_util util ${GEODE_UTIL_PURE_SOURCES})
+geode_core_library(geode_bridge bridge ${GEODE_BRIDGE_PURE_SOURCES})
+target_link_libraries(geode_bridge PUBLIC geode_api_types)
 geode_core_library(geode_analysis analysis ${GEODE_ANALYSIS_PURE_SOURCES})
 target_link_libraries(geode_analysis PUBLIC geode_api_types kissfft::kissfft)
 geode_core_library(geode_audio audio ${GEODE_AUDIO_PURE_SOURCES})

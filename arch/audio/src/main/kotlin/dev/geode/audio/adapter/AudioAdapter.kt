@@ -48,6 +48,22 @@ interface AudioAdapter {
 
     /** Moves within the loaded track. [PlaybackAnnouncement.Seeked] follows. */
     suspend fun seekTo(position: Millis)
+
+    /**
+     * Sets how one track gives way to the next (#35): fading over [crossfade] (zero for none), and with
+     * no gap when [gapless]. A pipeline that cannot do either joins tracks as [load] leaves them.
+     */
+    suspend fun setTransitions(
+        crossfade: Millis,
+        gapless: Boolean,
+    )
+
+    /**
+     * Opens [track] ahead, to follow the loaded one by itself (#35), in place of any prepared before;
+     * null prepares nothing. When the player moves on to it, [PlaybackAnnouncement.TrackChanged] says
+     * so. A pipeline that cannot prepare ahead does nothing, and the loaded track simply ends.
+     */
+    suspend fun prepareNext(track: TrackId?)
 }
 
 /** Where live audio is captured from. */

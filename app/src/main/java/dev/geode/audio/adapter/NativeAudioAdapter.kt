@@ -14,6 +14,7 @@ import androidx.media3.common.Player
 import dev.geode.audio.MicCapture
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.playback.NativePlayer
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackSession
 import kotlinx.coroutines.CoroutineDispatcher
@@ -81,14 +82,7 @@ class NativeAudioAdapter(
     ) {
         withContext(main) {
             val player = opened().player
-            player.setMediaItem(
-                MediaItem
-                    .Builder()
-                    .setMediaId(track.value)
-                    .setUri(track.value)
-                    .build(),
-                from.value,
-            )
+            player.setMediaItem(mediaItem(track), from.value)
             player.prepare()
         }
     }
@@ -103,6 +97,30 @@ class NativeAudioAdapter(
     override suspend fun seekTo(position: Millis) {
         withContext(main) { opened().player.seekTo(position.value) }
     }
+
+    override suspend fun setTransitions(
+        crossfade: Millis,
+        gapless: Boolean,
+    ) {
+        // Only Geode's own player crossfades; ExoPlayer joins the tracks of its playlist without a gap.
+        withContext(main) { (opened().player as? NativePlayer)?.applyPrefs(crossfade.value.toInt(), EQUAL_POWER_CURVE, gapless) }
+    }
+
+    override suspend fun prepareNext(track: TrackId?) {
+        withContext(main) {
+            val player = opened().player
+            val after = player.currentMediaItemIndex + 1
+            if (player.mediaItemCount > after) player.removeMediaItems(after, player.mediaItemCount)
+            track?.let { player.addMediaItem(mediaItem(it)) }
+        }
+    }
+
+    private fun mediaItem(track: TrackId): MediaItem =
+        MediaItem
+            .Builder()
+            .setMediaId(track.value)
+            .setUri(track.value)
+            .build()
 
     private fun opened(): Pipeline = pipeline ?: Pipeline(PlaybackEngine.acquireForUi(application)).also { pipeline = it }
 
@@ -244,6 +262,9 @@ class NativeAudioAdapter(
     private companion object {
         const val BUFFER = 64
         const val FALLBACK_RATE_HZ = 44_100
+
+        /** The crossfade curve the old player settings start from: equal power. */
+        const val EQUAL_POWER_CURVE = 1
 
         val LINE_IN_TYPES =
             setOf(

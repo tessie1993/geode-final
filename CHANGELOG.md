@@ -11,6 +11,30 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
+  joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
+  from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the
+  owner accepted that risk. File names and authors are kept; each preset has a
+  short display name in `assets/milk/catalog.json`, shown with its author in
+  the MilkDrop tab. The licences screen carries the MIT notice and credits
+  every Cream of the Crop author. Existing installs receive the new presets
+  once (`MilkStarterPack` version 2). CI now renders every bundled preset on
+  projectM and fails one whose warp or composite shader silently falls back to
+  the default.
+
+- **The native bridge: one snapshot schema, a lock-free hand-off and typed
+  statuses (#53, ADR-0005).** `core/bridge/schema/native_bridge.json`
+  generates the Customization snapshot and the bridge's status codes for C,
+  C++ and Kotlin (`tools/bridge_schema/generate.py`; CI fails when they are
+  stale). A new `geode_bridge` library hands each published snapshot to the
+  drawing and analysis threads through per-reader triple buffers, picked up
+  at the start of their next frame without a lock, with concurrent stress
+  tests under ASan/UBSan and ThreadSanitizer. Every JNI call now runs through
+  a guard: no C++ exception reaches the JVM, calls with nothing to return give
+  a `NativeStatus`, and a caught throw becomes a named `EngineFailure` on the
+  app-wide banner; when it was the audio engine, the player reopens the
+  current track where it was.
+
 - **Removed user GLSL shaders (#87).** The Customize panel's GLSL tab, the
   Fluid tab's force and dye injection editors, the renderer's custom-shader
   and fluid-injection paths, their C ABI (`geode_viz_set_custom_shader`,

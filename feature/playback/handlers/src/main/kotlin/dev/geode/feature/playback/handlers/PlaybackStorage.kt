@@ -1,6 +1,10 @@
 package dev.geode.feature.playback.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.Bookmark
+import dev.geode.feature.playback.api.BookmarkId
+import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.PlayedTrack
 import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlaylistSummary
@@ -44,6 +48,39 @@ interface PlaybackStorage {
 
     /** Where playback was left off, or null when nothing usable was saved. */
     suspend fun loadSession(): SavedSession?
+
+    // The listening tools (#35).
+
+    /** Every bookmark, newest first, for as long as it is collected. */
+    val bookmarks: Flow<List<Bookmark>>
+
+    suspend fun addBookmark(
+        track: Track,
+        position: Millis,
+        createdAt: Millis,
+    ): BookmarkId
+
+    suspend fun deleteBookmark(id: BookmarkId)
+
+    /** Where each long track was left off, the latest [RESUME_POINT_LIMIT], for as long as it is collected. */
+    val resumePoints: Flow<Map<TrackId, Millis>>
+
+    /** Keeps [position] in [track], saved at [savedAt] (wall-clock time), replacing what was kept for it. */
+    suspend fun saveResumePoint(
+        track: TrackId,
+        position: Millis,
+        savedAt: Millis,
+    )
+
+    suspend fun forgetResumePoint(track: TrackId)
+
+    suspend fun saveListening(options: ListeningOptions)
+
+    /** The listening options saved last, or null when none were. */
+    suspend fun loadListening(): ListeningOptions?
+
+    /** Every song Playback knows from the history and the playlists, each once, the most played first. */
+    suspend fun knownTracks(): List<Track>
 }
 
 data class SavedSession(
@@ -53,3 +90,6 @@ data class SavedSession(
 
 /** How many plays the history keeps and shows. */
 const val HISTORY_LIMIT = 200
+
+/** How many long tracks' resume points are kept, the latest saved. */
+const val RESUME_POINT_LIMIT = 100

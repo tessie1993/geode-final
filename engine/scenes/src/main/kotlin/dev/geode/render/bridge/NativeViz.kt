@@ -5,6 +5,8 @@ import android.content.res.AssetManager
 import dev.geode.analysis.AudioFeatures
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
+import dev.geode.engine.bridge.NativeFailures
+import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
@@ -149,6 +151,15 @@ class NativeViz(
     fun setAdsrConfigs(configs: List<AdsrConfig>) {
         if (handle == 0L) return
         configs.take(AdsrEngine.COUNT).forEachIndexed { slot, c -> GeodeNative.vizSetAdsr(handle, slot, ModConfigCodec.packAdsr(c)) }
+    }
+
+    /**
+     * From the next frame on, the renderer picks up each Customization [snapshots] receives at the
+     * start of the frame; null detaches.
+     */
+    fun attachSnapshots(snapshots: NativeSnapshots?) {
+        if (handle == 0L) return
+        NativeFailures.check(GeodeNative.vizAttachSnapshots(handle, snapshots?.handle ?: 0L), "vizAttachSnapshots")
     }
 
     fun setThermal(

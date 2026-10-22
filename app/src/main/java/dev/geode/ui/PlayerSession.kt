@@ -44,6 +44,7 @@ import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
 import dev.geode.export.StudioClip
 import dev.geode.geodeContainer
+import dev.geode.playback.EngineFailureNotices
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackErrors
 import dev.geode.playback.PlaybackService
@@ -629,6 +630,8 @@ class PlayerSession internal constructor(
 
     fun userMilkPresets(): List<File> = presetLibrary.userMilkPresets()
 
+    fun milkCatalog(): dev.geode.data.MilkCatalog = presetLibrary.milkCatalog()
+
     private val queueController: QueueController =
         QueueController(
             application,
@@ -715,6 +718,10 @@ class PlayerSession internal constructor(
     private val _playbackNotice = MutableStateFlow<String?>(null)
 
     val playbackNotice: StateFlow<String?> = _playbackNotice
+
+    // Failures caught at the native bridge reach the same app-wide banner (ADR-0004).
+    private val engineFailureNotices =
+        EngineFailureNotices(show = { message -> scope.launch { _playbackNotice.value = application.getString(message) } })
 
     private var consecutivePlaybackFailures = 0
 
@@ -905,6 +912,7 @@ class PlayerSession internal constructor(
                 .toList()
 
         captureController.shutdown()
+        engineFailureNotices.close()
         AudioBus.removeConsumer()
         playerListener?.let { player.removeListener(it) }
         playerListener = null

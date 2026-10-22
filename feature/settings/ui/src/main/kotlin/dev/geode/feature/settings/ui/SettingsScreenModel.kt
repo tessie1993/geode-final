@@ -7,13 +7,16 @@ import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
 
-/** The Settings tabs, in the order they are shown. */
+/**
+ * The Settings sections, in the order they are shown (#101). CPU/GPU goes between [DEFAULT_PATHS]
+ * and [HELP] once #28 gives it its settings; until then it would be empty, so it is not shown.
+ */
 enum class SettingsSection {
-    LOOK,
+    THEME,
+    APPLICATION,
     AUDIO,
     EXPORT,
-    FOLDERS,
-    BEHAVIOR,
+    DEFAULT_PATHS,
     HELP,
     ABOUT,
 }
@@ -65,6 +68,9 @@ sealed interface SettingsAction {
 
     /** Pick a folder to mirror presets to; the route opens the system's folder picker. */
     data object PickPresetMirror : SettingsAction
+
+    /** Pick the folder presets live in; the route opens the system's folder picker. */
+    data object PickPresetFolder : SettingsAction
 
     /** Pick a music folder to add; the route opens the system's folder picker. */
     data object PickMusicFolder : SettingsAction
