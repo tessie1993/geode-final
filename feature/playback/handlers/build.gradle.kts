@@ -1,7 +1,8 @@
 // Playback's handlers (ADR-0005): they drive the audio adapter, turn its announcements into events,
 // and keep the playlists, the play history and the saved session in Playback's own Room database
 // (ADR-0004, ADR-0005). They also publish Playback as the media session the notification, the lock
-// screen and Bluetooth read, so music keeps playing with no screen in front of it (#36).
+// screen and Bluetooth read, so music keeps playing with no screen in front of it (#36). For the
+// Player they read each track's lyrics and loudness, and hear the app-wide error channel (#147).
 plugins {
     id("geode.feature-handlers")
     id("com.google.devtools.ksp")
@@ -36,6 +37,8 @@ dependencies {
     implementation(libs.media3.common)
     implementation(libs.media3.session)
     implementation(libs.kotlinx.coroutines.android)
+    // Lyrics in an .lrc file next to a track the user picked through the storage access framework (#147).
+    implementation(libs.documentfile)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }
