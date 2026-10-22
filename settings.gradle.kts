@@ -90,3 +90,12 @@ include(
     ":feature:diagnostics:handlers",
     ":feature:diagnostics:ui",
 )
+
+// Studio (#21): Projects and the library of Renders, Recordings, Edits and Shorts, in Studio's own
+// Room database. Built alongside the old Studio screen, which the switch-over (#17) removes.
+include(
+    ":feature:studio:api",
+    ":feature:studio:core",
+    ":feature:studio:handlers",
+    ":feature:studio:ui",
+)

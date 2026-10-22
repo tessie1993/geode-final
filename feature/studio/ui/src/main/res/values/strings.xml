@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="studio_title">Studio</string>
+    <string name="studio_loading">Reading your Projects…</string>
+    <string name="studio_no_projects">No Projects yet. Create one to choose where its videos are saved.</string>
+    <string name="studio_new_project">New Project</string>
+    <string name="studio_project_name">Name</string>
+    <string name="studio_choose_folder">Choose folder</string>
+    <string name="studio_cancel">Cancel</string>
+    <string name="studio_back">Back</string>
+    <string name="studio_more">More</string>
+    <string name="studio_rename">Rename</string>
+    <string name="studio_save">Save</string>
+    <string name="studio_delete">Delete</string>
+    <string name="studio_move">Move to Project</string>
+    <string name="studio_delete_title">Delete “%1$s”?</string>
+    <string name="studio_delete_question">Keep its videos’ files in the folder, or delete them too?</string>
+    <string name="studio_keep_files">Keep the files</string>
+    <string name="studio_delete_files">Delete them too</string>
+    <plurals name="studio_video_count">
+        <item quantity="one">%d video</item>
+        <item quantity="other">%d videos</item>
+    </plurals>
+    <string name="studio_no_videos">No videos here yet.</string>
+    <string name="studio_all">All</string>
+    <string name="studio_kind_render">Renders</string>
+    <string name="studio_kind_recording">Recordings</string>
+    <string name="studio_kind_edit">Edits</string>
+    <string name="studio_kind_short">Shorts</string>
+    <string name="studio_shape_landscape">Landscape</string>
+    <string name="studio_shape_portrait">Portrait</string>
+    <string name="studio_shape_square">Square</string>
+    <string name="studio_no_song">No song</string>
+    <string name="studio_in_project">In %1$s</string>
+    <string name="studio_thumbnail">Thumbnail</string>
+</resources>

@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug :feature:customization:ui:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug :feature:studio:handlers:lintDebug :feature:studio:ui:lintDebug :feature:customization:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -133,7 +133,7 @@ jobs:
       # The JVM modules (audio-core, :arch:*, and every feature's :api and :core) run their tests
       # under `test`, not `testDebugUnitTest`.
       - name: Unit tests (every module)
-        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:library:api:test :feature:library:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test testDebugUnitTest --continue --stacktrace --no-daemon
+        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:library:api:test :feature:library:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test :feature:studio:api:test :feature:studio:core:test testDebugUnitTest --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -211,6 +211,10 @@ jobs:
             task: ":feature:diagnostics:core:pitest"
             dir: feature/diagnostics/core
             name: feature-diagnostics-core
+          - module: ":feature:studio:core"
+            task: ":feature:studio:core:pitest"
+            dir: feature/studio/core
+            name: studio-core
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -241,9 +245,9 @@ jobs:
       contents: write
     # Every module that takes App UI screenshots: :app and each feature's :ui (geode.screenshots).
     env:
-      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/customization/ui/src/test/screenshots
-      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug"
-      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug"
+      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/customization/ui/src/test/screenshots feature/studio/ui/src/test/screenshots
+      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug :feature:studio:ui:verifyRoborazziDebug"
+      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug :feature:studio:ui:recordRoborazziDebug"
     steps:
       - uses: actions/checkout@v7
         with:
