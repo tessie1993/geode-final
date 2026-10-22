@@ -90,7 +90,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         command: PlaybackCommand,
     ): Next<PlaybackState, PlaybackEffect> =
         when (command) {
-            is PlaybackCommand.Play -> Listening.play(state, command.tracks, command.startAt)
+            is PlaybackCommand.Play -> Listening.play(state, command.tracks, command.startAt, command.from)
             PlaybackCommand.Resume -> player(state, resume(state.player))
             PlaybackCommand.Pause -> player(state, pause(state.player))
             PlaybackCommand.Next -> Listening.next(state)
@@ -139,11 +139,13 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         from: PlayerState,
         tracks: List<Track>,
         startAt: Int,
+        at: Millis = Millis.ZERO,
     ): Step =
         if (tracks.isEmpty()) {
             Next(from)
         } else {
-            load(from, Queue(tracks, startAt.coerceIn(tracks.indices)), START, playWhenReady = true, LoadReason.PLAY)
+            val queue = Queue(tracks, startAt.coerceIn(tracks.indices))
+            load(from, queue, PlayMark.still(within(queue.current, at)), playWhenReady = true, LoadReason.PLAY)
         }
 
     private fun resume(from: PlayerState): Step =
@@ -224,7 +226,13 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         from: PlayerState,
         queue: Queue,
         position: Millis,
-    ): Step = Next(from, listOf(drive(Seek(position.coerceIn(Millis.ZERO, queue.current.duration)))))
+    ): Step = Next(from, listOf(drive(Seek(within(queue.current, position)))))
+
+    /** [position] kept inside [track]; a track whose length is not known yet only keeps it from going below zero. */
+    internal fun within(
+        track: Track,
+        position: Millis,
+    ): Millis = if (track.duration > Millis.ZERO) position.coerceIn(Millis.ZERO, track.duration) else position.coerceAtLeast(Millis.ZERO)
 
     // Announcements.
 

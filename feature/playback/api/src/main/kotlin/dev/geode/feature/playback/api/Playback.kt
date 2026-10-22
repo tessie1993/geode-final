@@ -258,10 +258,14 @@ data class ShuffleOrder(
 )
 
 sealed interface PlaybackCommand {
-    /** Replaces the queue with [tracks] and plays from [startAt]. */
+    /**
+     * Replaces the queue with [tracks] and plays the one at [startAt], from [from] in it: the place a
+     * car or the system's "resume" hands over with the songs (#17).
+     */
     data class Play(
         val tracks: List<Track>,
         val startAt: Int = 0,
+        val from: Millis = Millis.ZERO,
     ) : PlaybackCommand
 
     data object Resume : PlaybackCommand

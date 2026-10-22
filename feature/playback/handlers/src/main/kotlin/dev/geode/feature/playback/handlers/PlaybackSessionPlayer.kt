@@ -73,8 +73,9 @@ class PlaybackSessionPlayer(
     ): ListenableFuture<*> {
         if (mediaItems.isNotEmpty()) {
             val start = if (startIndex == C.INDEX_UNSET) 0 else startIndex.coerceIn(0, mediaItems.lastIndex)
-            playback.send(PlaybackCommand.Play(mediaItems.map(::trackOf), start))
-            if (startPositionMs != C.TIME_UNSET && startPositionMs > 0) playback.send(PlaybackCommand.SeekTo(Millis(startPositionMs)))
+            // The place goes with the songs: a seek sent after them would land while the song still opens.
+            val from = if (startPositionMs == C.TIME_UNSET) Millis.ZERO else Millis(startPositionMs.coerceAtLeast(0))
+            playback.send(PlaybackCommand.Play(mediaItems.map(::trackOf), start, from))
         }
         return Futures.immediateVoidFuture()
     }

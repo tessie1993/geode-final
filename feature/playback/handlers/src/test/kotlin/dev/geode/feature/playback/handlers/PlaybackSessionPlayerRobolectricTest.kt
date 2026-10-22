@@ -211,8 +211,7 @@ class PlaybackSessionPlayerRobolectricTest {
 
         assertEquals(
             listOf(
-                PlaybackCommand.Play(listOf(a, c), 1),
-                PlaybackCommand.SeekTo(Millis(7_000)),
+                PlaybackCommand.Play(listOf(a, c), 1, Millis(7_000)),
                 PlaybackCommand.AddToQueue(listOf(c)),
                 PlaybackCommand.PlayNext(listOf(a)),
                 PlaybackCommand.RemoveFromQueue(1),
@@ -232,5 +231,20 @@ class PlaybackSessionPlayerRobolectricTest {
         idle()
 
         assertEquals(listOf(PlaybackCommand.Play(listOf(Track(TrackId("content://z"), "", "", Millis.ZERO)), 0)), playback.sent)
+    }
+
+    @Test
+    fun `a car's resume opens the song where it was left, with Playback's own reducer`() {
+        val audio = FakeAudioAdapter()
+        val playback = playbackStore(audio, FakePlaybackStorage(), clocks, inPlaceRuntime(clock))
+        val player = PlaybackSessionPlayer(playback, clocks, scope).also { idle() }
+
+        player.setMediaItems(listOf(item(a), item(c)), 1, 7_000)
+        idle()
+        audio.announce(PlaybackAnnouncement.TrackChanged(c.id, PlaybackMark(Millis(7_000), Millis.ZERO, moving = false)))
+
+        val atC = Queue(listOf(a, c), 1)
+        assertEquals(listOf("load(${c.id}, ${Millis(7_000)})", "setPlaying(true)"), audio.calls.take(2))
+        assertEquals(PlayerState.Buffering(atC, PlayMark.still(Millis(7_000))), playback.state.value.player)
     }
 }

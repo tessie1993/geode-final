@@ -52,10 +52,11 @@ internal object Listening {
         state: PlaybackState,
         tracks: List<Track>,
         startAt: Int,
+        from: Millis = Millis.ZERO,
     ): Change {
-        if (!state.options.shuffle || tracks.isEmpty()) return core.player(state, core.play(state.player, tracks, startAt))
+        if (!state.options.shuffle || tracks.isEmpty()) return core.player(state, core.play(state.player, tracks, startAt, from))
         val (order, seed) = shuffled(tracks, startAt.coerceIn(tracks.indices), state.shuffle.seed)
-        return core.player(state.copy(shuffle = ShuffleOrder(seed, tracks)), core.play(state.player, order, startAt = 0))
+        return core.player(state.copy(shuffle = ShuffleOrder(seed, tracks)), core.play(state.player, order, startAt = 0, from))
     }
 
     /** Puts [tracks] after the current track ([next]) or at the end of the queue. */

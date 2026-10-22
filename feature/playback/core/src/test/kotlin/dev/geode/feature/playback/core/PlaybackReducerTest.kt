@@ -43,6 +43,9 @@ class PlaybackReducerTest {
     private val a = Track(TrackId("content://a"), "Alpha", "Ann", Millis(200_000))
     private val b = Track(TrackId("content://b"), "Beta", "Bob", Millis(180_000))
     private val c = Track(TrackId("content://c"), "Gamma", "Cy", Millis(240_000))
+
+    /** A song whose length nothing has told Playback yet. */
+    private val unknown = Track(TrackId("content://u"), "", "", Millis.ZERO)
     private val atA = Queue(listOf(a, b, c), 0)
     private val atB = Queue(listOf(a, b, c), 1)
     private val atC = Queue(listOf(a, b, c), 2)
@@ -316,6 +319,30 @@ class PlaybackReducerTest {
                 load(a),
             ),
             row(playing, command(PlaybackCommand.Play(emptyList())), playing),
+            // Play opens the track at the place it is handed (a car's or the system's resume), inside the track.
+            row(
+                idle,
+                command(PlaybackCommand.Play(listOf(a, b), startAt = 1, from = Millis(90_000))),
+                Loading(Queue(listOf(a, b), 1), PlayMark.still(Millis(90_000)), true, LoadReason.PLAY),
+                armLoad,
+                load(b, PlayMark.still(Millis(90_000))),
+            ),
+            row(
+                playing,
+                command(PlaybackCommand.Play(listOf(a, b), startAt = 1, from = Millis(999_999))),
+                Loading(Queue(listOf(a, b), 1), PlayMark.still(b.duration), true, LoadReason.PLAY),
+                armLoad,
+                load(b, PlayMark.still(b.duration)),
+            ),
+            row(
+                idle,
+                command(PlaybackCommand.Play(listOf(unknown), from = Millis(90_000))),
+                Loading(Queue(listOf(unknown), 0), PlayMark.still(Millis(90_000)), true, LoadReason.PLAY),
+                armLoad,
+                load(unknown, PlayMark.still(Millis(90_000))),
+            ),
+            // A track whose length is not known yet is not held at its start.
+            row(Playing(Queue(listOf(unknown), 0), mark), seekTo, Playing(Queue(listOf(unknown), 0), mark), drive(Seek(Millis(60_000)))),
             row(playing, PlaybackEvent.PlaylistOpened(emptyList()), playing),
             // A late word about another track changes nothing.
             row(loading, PlaybackEvent.TrackChanged(a.id, heard), loading),
