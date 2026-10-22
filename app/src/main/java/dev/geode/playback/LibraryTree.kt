@@ -6,9 +6,10 @@ import androidx.media3.common.MediaMetadata
 import dev.geode.R
 import dev.geode.data.FavouritesStore
 import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.HistoryStore
 import dev.geode.data.MusicPlaylistStore
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.Track
 import dev.geode.ui.DeviceTrack
 import dev.geode.ui.DeviceTrackQuery
 import dev.geode.ui.TrackLibrary
@@ -16,15 +17,18 @@ import dev.geode.ui.TrackLibrary
 /**
  * The browse tree Android Auto and other browsers walk. Folder ids are fixed words or `<kind>/<name>`;
  * a playable id is `<parentId>|<uri>` so the parent list can be rebuilt when one of its rows is tapped.
+ * [recent] is Playback's play history, the most recent first (#17).
  */
 class LibraryTree(
     private val context: Context,
+    private val recent: () -> List<Track>,
 ) {
     private data class Row(
         val uri: TrackId,
         val title: String,
         val artist: String,
         val album: String,
+        val duration: Millis = Millis.ZERO,
     )
 
     // tracks() used to re-run TrackLibrary + DeviceTrackQuery on every call, and children()/rowsFor()/
@@ -60,7 +64,11 @@ class LibraryTree(
                 MusicPlaylistStore(context).list().map { folder("$PLAYLISTS/${it.name}", it.name, MediaMetadata.MEDIA_TYPE_PLAYLIST) }
             FAVOURITES -> rowsFor(FavouritesStore(GeodePrefsFiles(context).favourites).all()).map { playable(parentId, it) }
             RECENT ->
-                HistoryStore(context).recentlyPlayed(RECENT_LIMIT).map { playable(parentId, Row(it.uri, it.title, it.artist, "")) }
+                recent()
+                    .distinctBy { it.id }
+                    .take(
+                        RECENT_LIMIT,
+                    ).map { playable(parentId, Row(it.id, it.title, it.artist, "", it.duration)) }
             else -> groupChildren(parentId)
         }
 
@@ -127,7 +135,7 @@ class LibraryTree(
         val overrides = TrackLibrary(context).list().associateBy { it.uri }
         val device = DeviceTrackQuery.query(context).map { it.row(overrides) }
         val seen = device.mapTo(HashSet()) { it.uri }
-        val imported = overrides.values.filter { it.uri !in seen }.map { Row(it.uri, it.title, it.artist, it.album) }
+        val imported = overrides.values.filter { it.uri !in seen }.map { Row(it.uri, it.title, it.artist, it.album, it.duration) }
         return device + imported
     }
 
@@ -143,6 +151,7 @@ class LibraryTree(
             stored?.title?.ifBlank { null } ?: title,
             stored?.artist?.ifBlank { null } ?: artist,
             stored?.album?.ifBlank { null } ?: album,
+            duration,
         )
     }
 
@@ -160,6 +169,7 @@ class LibraryTree(
                     .setTitle(row.title)
                     .setArtist(row.artist.ifBlank { null })
                     .setAlbumTitle(row.album.ifBlank { null })
+                    .apply { if (row.duration > Millis.ZERO) setDurationMs(row.duration.value) }
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)

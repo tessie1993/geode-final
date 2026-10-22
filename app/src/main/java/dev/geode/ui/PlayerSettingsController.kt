@@ -11,7 +11,6 @@ import dev.geode.audio.AudioFxController
 import dev.geode.audio.AudioFxState
 import dev.geode.data.PlayerPrefs
 import dev.geode.data.PlayerPrefsRepository
-import dev.geode.playback.NativePlayer
 import dev.geode.playback.ReplayGain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +31,8 @@ internal class PlayerSettingsController(
     interface Host {
         fun redecideCachedBeats(prefs: GuiPrefs)
 
-        fun refreshUi()
+        /** The crossfade or gapless choice changed: Playback joins the tracks (#17). */
+        fun listeningChanged(prefs: PlayerPrefs)
     }
 
     val guiPrefs: StateFlow<GuiPrefs> = userData.guiPrefs
@@ -56,9 +56,11 @@ internal class PlayerSettingsController(
     }
 
     fun setPlayerPrefs(prefs: PlayerPrefs) {
+        val previous = playerPrefs.value
         val p = prefs.coerced()
         scope.launch { playerPrefsRepository.update { p } }
         applyPlaybackPrefs(p)
+        if (p.crossfadeMs != previous.crossfadeMs || p.gapless != previous.gapless) host.listeningChanged(p)
     }
 
     fun applyPlaybackPrefs(p: PlayerPrefs) {
@@ -67,35 +69,7 @@ internal class PlayerSettingsController(
             it.skipSilenceEnabled = p.skipSilence
             it.setHandleAudioBecomingNoisy(p.pauseOnNoisy)
         }
-        (player as? NativePlayer)?.let {
-            it.applyPrefs(p.crossfadeMs, p.crossfadeCurve, p.gapless)
-        }
         replayGain.configure(p.replayGainMode, p.replayGainPreampDb, p.replayGainClipGuard)
-    }
-
-    private fun persistPlayerOptions() {
-        val shuffle = player.shuffleModeEnabled
-        val repeatMode = player.repeatMode
-        scope.launch {
-            playerPrefsRepository.update { it.copy(shuffle = shuffle, repeatMode = repeatMode) }
-        }
-    }
-
-    fun toggleShuffle() {
-        player.shuffleModeEnabled = !player.shuffleModeEnabled
-        persistPlayerOptions()
-        host.refreshUi()
-    }
-
-    fun cycleRepeatMode() {
-        player.repeatMode =
-            when (player.repeatMode) {
-                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                else -> Player.REPEAT_MODE_OFF
-            }
-        persistPlayerOptions()
-        host.refreshUi()
     }
 
     fun refreshAudioFx() {

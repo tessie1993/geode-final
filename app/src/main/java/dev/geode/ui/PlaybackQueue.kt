@@ -3,8 +3,6 @@ package dev.geode.ui
 import dev.geode.engine.types.TrackId
 
 object PlaybackQueue {
-    const val PREV_RESTART_MS: Long = 3_000L
-
     const val MAX_QUEUE = 1001
 
     data class Window(
@@ -36,7 +34,7 @@ object PlaybackQueue {
         return listOf(QueueTrack(uri))
     }
 
-    fun queueTrack(track: DeviceTrack): QueueTrack = QueueTrack(track.uri, track.title, track.artist)
+    fun queueTrack(track: DeviceTrack): QueueTrack = QueueTrack(track.uri, track.title, track.artist, track.duration)
 
-    fun queueTrack(track: LibraryTrack): QueueTrack = QueueTrack(track.uri, track.title, track.artist)
+    fun queueTrack(track: LibraryTrack): QueueTrack = QueueTrack(track.uri, track.title, track.artist, track.duration)
 }

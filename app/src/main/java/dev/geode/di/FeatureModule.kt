@@ -8,6 +8,9 @@ import dagger.hilt.components.SingletonComponent
 import dev.geode.RingLog
 import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.NativeAudioAdapter
+import dev.geode.data.PlayerPrefsStore
+import dev.geode.engine.types.Millis
+import dev.geode.geodeContainer
 import dev.geode.kernel.ErrorChannel
 import dev.geode.kernel.ExecutorTimerScheduler
 import dev.geode.kernel.FeatureRuntime
@@ -15,10 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.Executors
 import javax.inject.Singleton
 
-/**
- * What every feature store is built from (ADR-0004, ADR-0005). Nothing in the app injects these yet:
- * the features are built alongside the old code and switched over in one PR (#17).
- */
+/** What every feature store is built from (ADR-0004, ADR-0005). */
 @Module
 @InstallIn(SingletonComponent::class)
 object FeatureModule {
@@ -45,7 +45,12 @@ object FeatureModule {
 
     @Provides
     @Singleton
-    fun provideAudioAdapter(application: Application): AudioAdapter = NativeAudioAdapter(application)
+    fun provideAudioAdapter(application: Application): AudioAdapter =
+        NativeAudioAdapter(
+            application,
+            // The old player settings' play/pause fade, until Settings owns it (#17, Settings slice).
+            fadeLength = { Millis(PlayerPrefsStore(application.geodeContainer.prefsFiles.player).load().fadeMs.toLong()) },
+        )
 }
 
 private const val TAG = "FeatureStore"

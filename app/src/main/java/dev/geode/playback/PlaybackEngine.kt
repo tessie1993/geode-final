@@ -107,8 +107,6 @@ class PlaybackSession internal constructor(
 
     val replayGain = ReplayGain(context.contentResolver, scope) { audioFx.setGainDb(it) }
 
-    val sleepTimer = SleepTimer(player, scope)
-
     val analysis = dev.geode.analysis.AnalysisEngine(sampleRing)
 
     private val interestHook: () -> Unit = { syncAnalysis() }
@@ -128,12 +126,6 @@ class PlaybackSession internal constructor(
     private fun syncAnalysis() {
         if (dev.geode.audio.AudioBus.hasConsumers) analysis.start(scope) else analysis.stop()
     }
-
-    val playbackWanted: Boolean
-        get() =
-            player.playWhenReady &&
-                player.playbackState != Player.STATE_IDLE &&
-                player.playbackState != Player.STATE_ENDED
 
     internal fun release() {
         analysis.close()

@@ -14,7 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
-/** Mirrors the session's player into [WidgetState] and redraws the widget; artwork is decoded off the main thread. */
+/** Mirrors the session's player (Playback, as its media session shows it) into [WidgetState] and redraws the widget; artwork is decoded off the main thread. */
 class WidgetPublisher(
     context: Context,
     private val player: Player,
@@ -40,11 +40,9 @@ class WidgetPublisher(
     }
 
     fun publish() {
+        // Playback's session player names each song by its media id, the song's own uri.
         val uri =
-            player.currentMediaItem
-                ?.localConfiguration
-                ?.uri
-                ?.toString()
+            player.currentMediaItem?.let { item -> item.localConfiguration?.uri?.toString() ?: item.mediaId.ifBlank { null } }
         val metadata = player.mediaMetadata
         val previous = WidgetState.load(appContext)
         val state =

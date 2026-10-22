@@ -19,6 +19,7 @@ import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackSession
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onSubscription
@@ -43,6 +44,7 @@ import kotlinx.coroutines.withContext
 class NativeAudioAdapter(
     private val application: Application,
     private val main: CoroutineDispatcher = Dispatchers.Main.immediate,
+    private val fadeLength: () -> Millis = { Millis.ZERO },
 ) : AudioAdapter {
     private val announced = MutableSharedFlow<AudioAnnouncement>(extraBufferCapacity = BUFFER)
 
@@ -87,10 +89,43 @@ class NativeAudioAdapter(
         }
     }
 
+    /**
+     * Plays or pauses, fading over the player settings' fade length when there is one: in from silence
+     * on play, out to silence before a pause (the old player's fades, #17).
+     */
     override suspend fun setPlaying(playing: Boolean) {
         withContext(main) {
             val player = opened().player
-            if (playing) player.play() else player.pause()
+            val fade = fadeLength()
+            if (fade <= Millis.ZERO) {
+                player.volume = 1f
+                if (playing) player.play() else player.pause()
+                return@withContext
+            }
+            if (playing) {
+                player.volume = 0f
+                player.play()
+                ramp(player, from = 0f, to = 1f, fade)
+            } else if (player.isPlaying) {
+                ramp(player, from = player.volume, to = 0f, fade)
+                player.pause()
+                player.volume = 1f
+            } else {
+                player.pause()
+            }
+        }
+    }
+
+    private suspend fun ramp(
+        player: Player,
+        from: Float,
+        to: Float,
+        length: Millis,
+    ) {
+        val steps = (length.value / FADE_STEP_MS).coerceAtLeast(1)
+        for (step in 1..steps) {
+            delay(FADE_STEP_MS)
+            player.volume = (from + (to - from) * step / steps).coerceIn(0f, 1f)
         }
     }
 
@@ -165,6 +200,8 @@ class NativeAudioAdapter(
                     reason: Int,
                 ) {
                     if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
+                        // The analysis starts over at the new place, so the Visual does not react to a jump.
+                        session.analysis.reset()
                         announce(PlaybackAnnouncement.Seeked(mark()))
                     }
                 }
@@ -182,6 +219,10 @@ class NativeAudioAdapter(
 
                 override fun onPlayerError(error: PlaybackException) {
                     announce(PlaybackAnnouncement.Failed(error.errorCodeName))
+                }
+
+                override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                    session.audioFx.attach(audioSessionId)
                 }
             }
 
@@ -201,6 +242,7 @@ class NativeAudioAdapter(
                     if (!mic.active) session.analysis.sampleRateHz = rate
                 }
             player.addListener(playerListener)
+            session.exoPlayer?.let { session.audioFx.attach(it.audioSessionId) }
             application.getSystemService(AudioManager::class.java)?.registerAudioDeviceCallback(devices, mainHandler)
         }
 
@@ -262,6 +304,7 @@ class NativeAudioAdapter(
     private companion object {
         const val BUFFER = 64
         const val FALLBACK_RATE_HZ = 44_100
+        const val FADE_STEP_MS = 25L
 
         /** The crossfade curve the old player settings start from: equal power. */
         const val EQUAL_POWER_CURVE = 1

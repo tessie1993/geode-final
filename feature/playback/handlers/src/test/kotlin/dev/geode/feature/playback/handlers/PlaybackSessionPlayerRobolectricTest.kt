@@ -2,6 +2,8 @@ package dev.geode.feature.playback.handlers
 
 import android.app.Application
 import android.os.Looper
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import dev.geode.audio.adapter.FakeAudioAdapter
 import dev.geode.audio.adapter.PlaybackAnnouncement
@@ -179,5 +181,56 @@ class PlaybackSessionPlayerRobolectricTest {
         val atA = Queue(listOf(a, b), 0)
         assertEquals(PlayerState.Paused(atA, PlayMark(Millis.ZERO, Millis.ZERO, moving = true)), playback.state.value.player)
         assertFalse(player.playWhenReady)
+    }
+
+    private fun item(track: Track): MediaItem =
+        MediaItem
+            .Builder()
+            .setMediaId(track.id.value)
+            .setMediaMetadata(
+                MediaMetadata
+                    .Builder()
+                    .setTitle(track.title)
+                    .setArtist(track.artist)
+                    .setDurationMs(track.duration.value)
+                    .build(),
+            ).build()
+
+    @Test
+    fun `songs a car hands over are played or queued by Playback`() {
+        val playback = FakePlayback(playing)
+        val player = player(playback)
+
+        player.setMediaItems(listOf(item(a), item(c)), 1, 7_000)
+        player.prepare()
+        player.addMediaItems(listOf(item(c)))
+        player.addMediaItems(2, listOf(item(a)))
+        player.removeMediaItems(0, 2)
+        player.moveMediaItem(2, 0)
+        idle()
+
+        assertEquals(
+            listOf(
+                PlaybackCommand.Play(listOf(a, c), 1),
+                PlaybackCommand.SeekTo(Millis(7_000)),
+                PlaybackCommand.AddToQueue(listOf(c)),
+                PlaybackCommand.PlayNext(listOf(a)),
+                PlaybackCommand.RemoveFromQueue(1),
+                PlaybackCommand.RemoveFromQueue(0),
+                PlaybackCommand.MoveInQueue(2, 0),
+            ),
+            playback.sent,
+        )
+    }
+
+    @Test
+    fun `an item with nothing known but its id plays from the start of the first song`() {
+        val playback = FakePlayback(PlayerState.Idle)
+        val player = player(playback)
+
+        player.setMediaItem(MediaItem.Builder().setMediaId("content://z").build())
+        idle()
+
+        assertEquals(listOf(PlaybackCommand.Play(listOf(Track(TrackId("content://z"), "", "", Millis.ZERO)), 0)), playback.sent)
     }
 }

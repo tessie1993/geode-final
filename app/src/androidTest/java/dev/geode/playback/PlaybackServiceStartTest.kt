@@ -24,24 +24,21 @@ class PlaybackServiceStartTest {
 
     @Test
     fun askingForTheServiceWhileNothingPlaysDoesNotCrashTheApp() {
-        instrumentation.runOnMainSync { PlaybackService.ensureRunning(context) }
-
-        // Android 12 allows ten seconds for startForeground(); outlast it.
-        Thread.sleep(FOREGROUND_WINDOW_MS)
-
-        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        // Playback's session service (#17), connected to the way the app keeps it running: bound, never started.
+        val token = SessionToken(context, ComponentName(context, GeodePlaybackService::class.java))
         var controller: MediaController? = null
         instrumentation.runOnMainSync {
             val future = MediaController.Builder(context, token).buildAsync()
             future.addListener({ controller = future.get() }, context.mainExecutor)
         }
+
+        // Android 12 allows ten seconds for startForeground(); outlast it.
+        Thread.sleep(FOREGROUND_WINDOW_MS)
+
         val deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(CONNECT_TIMEOUT_S)
         while (controller == null && System.currentTimeMillis() < deadline) Thread.sleep(POLL_MS)
         assertNotNull("the playback session never answered", controller)
-        instrumentation.runOnMainSync {
-            controller?.release()
-            PlaybackService.stop(context)
-        }
+        instrumentation.runOnMainSync { controller?.release() }
     }
 
     private companion object {

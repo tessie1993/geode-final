@@ -210,6 +210,12 @@ dependencies {
     // The feature architecture (ADR-0005). :app only wires: Hilt bindings and the real adapters.
     implementation(project(":arch:kernel"))
     implementation(project(":arch:audio"))
+    // The switch-over (#17): the features :app wires in, one source of truth each.
+    implementation(project(":feature:playback:api"))
+    implementation(project(":feature:playback:handlers"))
+    // Playback's routes: the journey test hosts them, and the routes are wired into the navigation
+    // graph (#136) once it lands. An implementation dependency, so Robolectric sees their resources.
+    implementation(project(":feature:playback:ui"))
     // The App UI's design tokens, theme and common components.
     implementation(project(":design"))
 
@@ -234,6 +240,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    testImplementation(testFixtures(project(":arch:kernel")))
+    testImplementation(testFixtures(project(":arch:audio")))
     testImplementation(libs.kotlinx.coroutines.test)
     // The real org.json: with isReturnDefaultValues the android.jar stub returns defaults, so a
     // store test that parses JSON would pass without parsing anything.

@@ -3,8 +3,6 @@ package dev.geode.ui
 import android.app.Application
 import android.net.Uri
 import androidx.annotation.OptIn
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.FeatureTimeline
@@ -16,7 +14,6 @@ import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
 import dev.geode.data.FavouritesRepository
 import dev.geode.data.FilePresetRepository
-import dev.geode.data.FileSessionRepository
 import dev.geode.data.LfoStore
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.MilkTexture
@@ -27,8 +24,6 @@ import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
 import dev.geode.data.PresetRepository
 import dev.geode.data.PresetStore
-import dev.geode.data.SessionRepository
-import dev.geode.data.SessionStore
 import dev.geode.data.SharedPrefsFavouritesRepository
 import dev.geode.data.SharedPrefsPlayerPrefsRepository
 import dev.geode.data.SmartPlaylist
@@ -43,12 +38,12 @@ import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
 import dev.geode.export.StudioClip
+import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.geodeContainer
 import dev.geode.playback.EngineFailureNotices
 import dev.geode.playback.PlaybackEngine
-import dev.geode.playback.PlaybackErrors
-import dev.geode.playback.PlaybackService
-import dev.geode.playback.toTrackId
+import dev.geode.playback.toUri
 import dev.geode.render.AdsrConfig
 import dev.geode.render.LfoConfig
 import dev.geode.render.SceneFactory
@@ -62,10 +57,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.job
 import kotlinx.coroutines.joinAll
@@ -74,17 +71,27 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
+/**
+ * What is left of the old app's hub until the switch-over (#17) finishes: the Visual, the old
+ * Customize and preset tools, the old Library index, Settings and Studio.
+ *
+ * Playback is no longer here. The music, the queue and the history belong to the app-scoped
+ * [Playback] store; this follows it for what the Visual and the old screens need (the current song
+ * for its analysis, lyrics and exports) and sends it Commands (a capture pausing the music).
+ */
 @OptIn(UnstableApi::class)
 class PlayerSession internal constructor(
     private val application: Application,
+    private val playback: Playback,
+    private val oldScreens: OldScreenPlayback,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val playback = PlaybackEngine.acquireForUi(application)
+    private val engineSession = PlaybackEngine.acquireForUi(application)
 
-    private val ring = playback.ring
+    private val ring = engineSession.ring
 
-    private val engine = playback.analysis
+    private val engine = engineSession.analysis
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
@@ -99,19 +106,17 @@ class PlayerSession internal constructor(
     private val favouritesRepository: FavouritesRepository =
         SharedPrefsFavouritesRepository(prefsFiles.favourites, storeScope)
 
-    private val sessionRepository: SessionRepository = FileSessionRepository(SessionStore(application))
-
     private val presetRepository: PresetRepository = FilePresetRepository(PresetStore(application))
 
     private val captureController: CaptureController =
         CaptureController(
             application,
-            playback.captureSink,
+            engineSession.captureSink,
             object : CaptureController.Host {
-                override fun pausePlayback() = player.pause()
+                override fun pausePlayback() = playback.send(PlaybackCommand.Pause)
 
                 override fun resetAnalysis() {
-                    playback.sampleRing.beginEpoch()
+                    engineSession.sampleRing.beginEpoch()
                     engine.reset()
                 }
 
@@ -134,7 +139,7 @@ class PlayerSession internal constructor(
     fun hasMicPermission(): Boolean = captureController.hasMicPermission()
 
     init {
-        playback.onAudioFormat = captureController.audioFormatHook
+        engineSession.onAudioFormat = captureController.audioFormatHook
     }
 
     private val presetLibrary: PresetLibraryController =
@@ -156,21 +161,23 @@ class PlayerSession internal constructor(
         )
 
     private val vizStateStore = VizStateStore(prefsFiles.viz, scope)
-    private val audioFxController = playback.audioFx
 
     private val settings: PlayerSettingsController =
         PlayerSettingsController(
             container.userData,
             playerPrefsRepository,
             container.appScope,
-            playback.player,
+            engineSession.player,
             engine,
-            playback.audioFx,
-            playback.replayGain,
+            engineSession.audioFx,
+            engineSession.replayGain,
             object : PlayerSettingsController.Host {
                 override fun redecideCachedBeats(prefs: GuiPrefs) = analysis.redecideCachedBeats(prefs)
 
-                override fun refreshUi() = refresh()
+                override fun listeningChanged(prefs: PlayerPrefs) {
+                    playback.send(PlaybackCommand.SetCrossfade(Millis(prefs.crossfadeMs.toLong())))
+                    playback.send(PlaybackCommand.SetGapless(prefs.gapless))
+                }
             },
         )
 
@@ -186,11 +193,6 @@ class PlayerSession internal constructor(
                 override fun milkPathFor(preset: Preset): String? = presetLibrary.milkPresetPathFor(preset)
             },
         )
-
-    val player: Player = playback.player
-
-    private val _uiState = MutableStateFlow(PlayerUiState())
-    val uiState: StateFlow<PlayerUiState> = _uiState
 
     private val _vizState get() = vizStateStore.state
     val vizState: StateFlow<VizUiState> get() = vizStateStore.state
@@ -234,10 +236,6 @@ class PlayerSession internal constructor(
     fun setAudioFxBassBoost(strength: Int) = settings.setAudioFxBassBoost(strength)
 
     fun setAudioFxLoudness(gainMb: Int) = settings.setAudioFxLoudness(gainMb)
-
-    fun toggleShuffle() = settings.toggleShuffle()
-
-    fun cycleRepeatMode() = settings.cycleRepeatMode()
 
     fun applyLiveInputProfile(profile: LiveInputProfile) = visual.applyLiveInputProfile(profile)
 
@@ -355,32 +353,10 @@ class PlayerSession internal constructor(
         onDone: (MilkPackImporter.Report) -> Unit,
     ) = milkImport.importMilkFolderAsync(treeUri, onDone)
 
-    private var currentUri: Uri? = null
+    /** The song Playback has loaded, read from its state: Playback owns the queue (ADR-0004). */
+    private val currentUri: Uri? get() = oldScreens.currentTrack()?.toUri()
 
-    private val bookmarks =
-        dev.geode.playback.TrackBookmarks(dev.geode.data.BookmarkStore(prefsFiles.player)) {
-            settings.playerPrefs.value.resumeLongTracks
-        }
-
-    private val listening: ListeningTracker =
-        ListeningTracker(
-            application,
-            favouritesRepository,
-            sessionRepository,
-            storeScope,
-            object : ListeningTracker.Host {
-                override val player: Player get() = this@PlayerSession.player
-                override val currentUri: Uri? get() = this@PlayerSession.currentUri
-
-                override fun mediaItemFor(uri: Uri) = queueController.mediaItemFor(uri)
-
-                override fun mediaItemFor(track: QueueTrack) = queueController.mediaItemFor(track)
-            },
-        )
-
-    val historyTick: StateFlow<Int> get() = listening.historyTick
-
-    val favourites: StateFlow<Set<TrackId>> get() = listening.favourites
+    val favourites: StateFlow<Set<TrackId>> get() = favouritesRepository.favourites
 
     private val analysis: TrackAnalysisController =
         TrackAnalysisController(
@@ -415,61 +391,6 @@ class PlayerSession internal constructor(
             val found = LyricsLoader.load(application, uri)
             withContext(Dispatchers.Main) { if (currentUri == uri) _lyrics.value = found }
         }
-    }
-
-    private var playerListener: Player.Listener? = null
-
-    private fun refresh() {
-        _uiState.value =
-            PlayerUiState(
-                isPlaying = player.isPlaying,
-                position = Millis(player.currentPosition.coerceAtLeast(0)),
-                duration = Millis(player.duration.coerceAtLeast(0)),
-                artist = player.mediaMetadata.artist?.toString(),
-                title =
-                    player.mediaMetadata.title?.toString()
-                        ?: player.currentMediaItem
-                            ?.localConfiguration
-                            ?.uri
-                            ?.lastPathSegment
-                            ?.substringAfterLast('/')
-                            ?.substringBeforeLast('.'),
-                hasMedia = player.currentMediaItem != null,
-                queueSize = player.mediaItemCount,
-                queueIndex = player.currentMediaItemIndex,
-                shuffle = player.shuffleModeEnabled,
-                repeatMode = player.repeatMode,
-            )
-    }
-
-    private val sleepTimer = playback.sleepTimer
-
-    private val fades: PlaybackFades =
-        PlaybackFades(
-            scope,
-            object : PlaybackFades.Host {
-                override val player: Player get() = this@PlayerSession.player
-                override val fadeMs: Int get() = settings.playerPrefs.value.fadeMs
-
-                override fun stopLiveInput() {
-                    if (captureController.micActive) setMicEnabled(false)
-                }
-            },
-        )
-
-    val sleepTimerRemaining: StateFlow<Millis?> = sleepTimer.remaining
-
-    fun startSleepTimer(minutes: Int) {
-        if (minutes <= 0) {
-            cancelSleepTimer()
-            return
-        }
-        setPlayerPrefs(settings.playerPrefs.value.copy(sleepTimerMinutes = minutes))
-        sleepTimer.start(minutes, settings.playerPrefs.value.sleepFinishTrack)
-    }
-
-    fun cancelSleepTimer() {
-        sleepTimer.cancel()
     }
 
     val vizApply: SharedFlow<VizApply> get() = visual.vizApply
@@ -557,61 +478,32 @@ class PlayerSession internal constructor(
         if (uris.isEmpty()) return
         val byUri = library.value.tracks.associateBy { it.uri }
         val tracks = uris.map { u -> byUri[u]?.let(PlaybackQueue::queueTrack) ?: QueueTrack(u) }
-        playFrom(tracks, uris[startIndex.coerceIn(0, uris.size - 1)])
+        oldScreens.playFrom(tracks, uris[startIndex.coerceIn(0, uris.size - 1)])
     }
-
-    fun recentlyPlayed() = listening.recentlyPlayed()
 
     fun saveSmartPlaylist(playlist: SmartPlaylist) = musicLibrary.saveSmartPlaylist(playlist)
 
     fun deleteSmartPlaylist(name: String) = musicLibrary.deleteSmartPlaylist(name)
 
-    fun resolveSmartPlaylist(playlist: SmartPlaylist): List<DeviceTrack> =
-        SmartPlaylistMatcher.resolve(playlist, deviceTracks.value, listening::playCountOf, favourites.value)
+    /** A smart playlist's songs; "play count" counts the plays in Playback's history (#146 replaces this). */
+    fun resolveSmartPlaylist(playlist: SmartPlaylist): List<DeviceTrack> {
+        val plays =
+            playback.state.value.history
+                .groupingBy { it.track.id }
+                .eachCount()
+        return SmartPlaylistMatcher.resolve(playlist, deviceTracks.value, { plays[it] ?: 0 }, favourites.value)
+    }
 
     fun playSmartPlaylist(playlist: SmartPlaylist) {
         val tracks = resolveSmartPlaylist(playlist).map(PlaybackQueue::queueTrack)
-        if (tracks.isNotEmpty()) playFrom(tracks, tracks.first().uri)
+        if (tracks.isNotEmpty()) oldScreens.playFrom(tracks, tracks.first().uri)
     }
 
-    fun currentTrackUri(): TrackId? = currentUri?.toTrackId()
+    fun currentTrackUri(): TrackId? = oldScreens.currentTrack()
 
     fun toggleFavourite(uri: TrackId? = null) {
-        listening.toggleFavourite(uri ?: currentUri?.toTrackId() ?: return)
-    }
-
-    val abLoop: StateFlow<AbLoop?> get() = queueController.abLoop
-
-    fun cycleAbLoop() = queueController.cycleAbLoop()
-
-    fun clearAbLoop() = queueController.clearAbLoop()
-
-    val queue: StateFlow<QueueUiState> get() = queueController.queue
-
-    fun removeQueueItem(index: Int) = queueController.removeQueueItem(index)
-
-    fun moveQueueItem(
-        from: Int,
-        to: Int,
-    ) = queueController.moveQueueItem(from, to)
-
-    fun togglePlayPauseFaded() = fades.togglePlayPauseFaded()
-
-    fun resumeLastPlayed() {
-        if (player.currentMediaItem != null) {
-            player.play()
-            return
-        }
-        val last = listening.recentlyPlayed(1).firstOrNull() ?: return
-        playTrack(last.uri)
-    }
-
-    fun playNext(uri: TrackId) = queueController.playNext(uri)
-
-    fun enqueue(uri: TrackId) = queueController.enqueue(uri)
-
-    fun shuffleAllHistory() {
-        playAll(listening.recentlyPlayed(100).map { QueueTrack(it.uri, it.title) }, shuffled = true)
+        val track = uri ?: currentTrackUri() ?: return
+        storeScope.launch { favouritesRepository.toggle(track) }
     }
 
     val presetFolders: StateFlow<PresetFolders> get() = presetLibrary.folders
@@ -632,80 +524,9 @@ class PlayerSession internal constructor(
 
     fun milkCatalog(): dev.geode.data.MilkCatalog = presetLibrary.milkCatalog()
 
-    private val queueController: QueueController =
-        QueueController(
-            application,
-            object : QueueController.Host {
-                override val player: Player get() = this@PlayerSession.player
-                override val libraryTracks: List<LibraryTrack> get() = library.value.tracks
-                override val deviceTracks: List<DeviceTrack> get() = musicLibrary.deviceTracks.value
-
-                override fun stopLiveInput() {
-                    if (captureController.micActive) setMicEnabled(false)
-                }
-
-                override fun onQueueStarted(startUri: Uri) {
-                    currentUri = startUri
-                    onTrackChanged()
-                }
-
-                override fun skipFaded(action: () -> Unit) = fades.skipFaded(action)
-
-                override fun refreshUi() = refresh()
-            },
-        )
-
-    fun playTrack(uri: TrackId) = queueController.playTrack(uri)
-
-    /** Voice search: the library matches for [query] as a queue, or everything when the query is blank. */
-    fun playFromSearch(query: String) {
-        scope.launch {
-            val all = withContext(Dispatchers.IO) { DeviceTrackQuery.query(application) }
-            val matches = LibraryBrowse.search(all, query)
-            val queue = matches.map(PlaybackQueue::queueTrack)
-            if (queue.isNotEmpty()) playFrom(queue, queue.first().uri)
-        }
-    }
-
-    fun playFrom(
-        tracks: List<QueueTrack>,
-        startUri: TrackId,
-    ) = queueController.playFrom(tracks, startUri)
-
-    fun playAll(
-        tracks: List<QueueTrack>,
-        shuffled: Boolean = false,
-    ) = queueController.playAll(tracks, shuffled)
-
-    fun open(uris: List<Uri>) = queueController.open(uris)
-
-    fun queueTitles(): List<String> = queueController.queueTitles()
-
-    fun playQueueIndex(index: Int) = queueController.playQueueIndex(index)
-
-    fun next() = queueController.next()
-
-    fun previous() = queueController.previous()
-
-    fun togglePlayPause() {
-        if (!player.isPlaying && captureController.micActive) setMicEnabled(false)
-        if (settings.playerPrefs.value.fadeMs > 0) {
-            togglePlayPauseFaded()
-        } else if (player.isPlaying) {
-            player.pause()
-        } else {
-            player.play()
-        }
-    }
-
-    fun seekToMs(position: Millis) = queueController.seekToMs(position)
-
-    fun seekTo(fraction: Float) = queueController.seekTo(fraction)
-
     private fun onTrackChanged() {
         engine.reset()
         analysis.timeline = null
-        clearAbLoop()
         loadLyricsFor(currentUri)
         _vizState.update { it.copy(suggestedSceneId = null, bpm = 0f) }
         if (_vizState.value.intelligenceMode != IntelligenceMode.MANUAL) {
@@ -722,8 +543,6 @@ class PlayerSession internal constructor(
     // Failures caught at the native bridge reach the same app-wide banner (ADR-0004).
     private val engineFailureNotices =
         EngineFailureNotices(show = { message -> scope.launch { _playbackNotice.value = application.getString(message) } })
-
-    private var consecutivePlaybackFailures = 0
 
     fun clearPlaybackNotice() {
         _playbackNotice.value = null
@@ -826,11 +645,13 @@ class PlayerSession internal constructor(
 
     fun currentSceneParams(): SceneParams = _vizState.value.params
 
-    fun playbackPositionMs(): Long? = if (player.isPlaying) player.currentPosition else null
+    fun playbackPositionMs(): Long? =
+        oldScreens.uiState.value
+            .takeIf { it.isPlaying }
+            ?.position
+            ?.value
 
-    fun trackDurationMs(): Long = player.duration.coerceAtLeast(0L)
-
-    val playbackRepository: PlaybackRepository = SessionPlaybackRepository(this)
+    fun trackDurationMs(): Long = oldScreens.uiState.value.duration.value
 
     val visualizerRepository: VisualizerRepository = SessionVisualizerRepository(this)
 
@@ -905,7 +726,6 @@ class PlayerSession internal constructor(
     internal fun shutdown() {
         // Queue every outstanding write BEFORE the pending set is snapshotted below, or the store
         // scope's cancellation races the very writes this teardown exists to preserve.
-        listening.flushListenTime()
         vizStateStore.flushIfDirty()
         val pendingStoreWrites =
             storeScope.coroutineContext.job.children
@@ -914,11 +734,7 @@ class PlayerSession internal constructor(
         captureController.shutdown()
         engineFailureNotices.close()
         AudioBus.removeConsumer()
-        playerListener?.let { player.removeListener(it) }
-        playerListener = null
-        if (playback.onAudioFormat === captureController.audioFormatHook) playback.onAudioFormat = null
-        if (sleepTimer.onFadeVolume === fades.sleepFadeHook) sleepTimer.onFadeVolume = null
-        if (!playback.playbackWanted) PlaybackService.stop(application)
+        if (engineSession.onAudioFormat === captureController.audioFormatHook) engineSession.onAudioFormat = null
         PlaybackEngine.releaseUi()
         scope.cancel()
 
@@ -940,10 +756,7 @@ class PlayerSession internal constructor(
      */
     private fun drainStoreWrites(pending: List<Job>) {
         container.appScope.launch(Dispatchers.IO) {
-            withTimeoutOrNull(STORE_FLUSH_BUDGET_MS) {
-                listening.awaitHistoryWrites(STORE_FLUSH_BUDGET_MS)
-                pending.joinAll()
-            }
+            withTimeoutOrNull(STORE_FLUSH_BUDGET_MS) { pending.joinAll() }
             storeScope.cancel()
         }
     }
@@ -957,126 +770,31 @@ class PlayerSession internal constructor(
         presetLibrary.refreshInitial()
         musicLibrary.refresh()
         textureController.refresh()
+        scope.launch { settings.applyPlaybackPrefs(settings.loadedPlayerPrefs()) }
+        followPlayback()
+    }
+
+    /**
+     * Follows Playback for what the Visual and the old screens need: a new song gets its analysis and
+     * lyrics, and starting the music ends a live capture (the mic and the music never mix).
+     */
+    private fun followPlayback() {
         scope.launch {
-            attachPlayback()
-            pollPlaybackState()
+            playback.state
+                .map { OldScreenModels.queueOf(it.player)?.current?.id }
+                .distinctUntilChanged()
+                .collect { onTrackChanged() }
         }
-    }
-
-    private suspend fun attachPlayback() {
-        val pp = settings.loadedPlayerPrefs()
-        player.shuffleModeEnabled = pp.shuffle
-        player.repeatMode = pp.repeatMode
-        settings.applyPlaybackPrefs(pp)
-        val alreadyLoaded = player.currentMediaItem != null
-        if (alreadyLoaded) {
-            currentUri = player.currentMediaItem?.localConfiguration?.uri
-        } else if (pp.autoResume) {
-            listening.prepareLastPlayed()?.let { currentUri = it }
-        }
-        val listener =
-            object : Player.Listener {
-                override fun onEvents(
-                    player: Player,
-                    events: Player.Events,
-                ) {
-                    refresh()
-                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
-                        currentUri = player.currentMediaItem?.localConfiguration?.uri
-                        currentUri?.let { u ->
-                            val title =
-                                player.mediaMetadata.title?.toString()
-                                    ?: player.currentMediaItem
-                                        ?.localConfiguration
-                                        ?.uri
-                                        ?.lastPathSegment
-                                        .orEmpty()
-                            listening.recordPlay(
-                                u.toTrackId(),
-                                title,
-                                player.mediaMetadata.artist
-                                    ?.toString()
-                                    .orEmpty(),
-                            )
-                        }
-                        onTrackChanged()
-                        bookmarks.onTrackStarted(player)
-                    }
-                }
-
-                override fun onPositionDiscontinuity(
-                    oldPosition: Player.PositionInfo,
-                    newPosition: Player.PositionInfo,
-                    reason: Int,
-                ) {
-                    if (reason == Player.DISCONTINUITY_REASON_SEEK ||
-                        reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
-                    ) {
-                        engine.reset()
-                    }
-                }
-
-                override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                    audioFxController.attach(audioSessionId)
-                    settings.refreshAudioFx()
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    consecutivePlaybackFailures++
-                    val failed =
-                        player.currentMediaItem
-                            ?.mediaMetadata
-                            ?.title
-                            ?.toString()
-                    val action =
-                        PlaybackErrors.decide(
-                            consecutivePlaybackFailures,
-                            hasNext = player.hasNextMediaItem(),
-                        )
-                    _playbackNotice.value = PlaybackErrors.describe(error.errorCode, failed, action)
-                    when (action) {
-                        PlaybackErrors.Action.SkipToNext -> {
-                            player.seekToNextMediaItem()
-                            player.prepare()
-                        }
-
-                        PlaybackErrors.Action.StopEndOfQueue,
-                        PlaybackErrors.Action.StopSourceUnavailable,
-                        -> player.pause()
-                    }
-                }
-
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (!isPlaying) return
-                    consecutivePlaybackFailures = 0
-                    if (captureController.micActive) setMicEnabled(false)
-                    fades.ensureAudibleAfterExternalPlay()
-                    PlaybackService.ensureRunning(application)
-                }
-            }
-        playerListener = listener
-        player.addListener(listener)
-        sleepTimer.onFadeVolume = fades.sleepFadeHook
-        playback.exoPlayer?.let { audioFxController.attach(it.audioSessionId) }
-        settings.refreshAudioFx()
-        if (alreadyLoaded) onTrackChanged()
-    }
-
-    private suspend fun pollPlaybackState(): Nothing {
-        while (true) {
-            refresh()
-            listening.accrueListenTime()
-            queueController.enforceAbLoop()
-            queueController.refreshQueue()
-            captureController.refreshMicState()
-            listening.persistSession()
-            bookmarks.onPoll(player)
-            delay(POLL_INTERVAL_MS)
+        scope.launch {
+            playback.state
+                .map { OldScreenModels.meantToPlay(it.player) }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { playing -> if (playing && captureController.micActive) setMicEnabled(false) }
         }
     }
 
     private companion object {
         const val STORE_FLUSH_BUDGET_MS = 2_000L
-        const val POLL_INTERVAL_MS = 500L
     }
 }

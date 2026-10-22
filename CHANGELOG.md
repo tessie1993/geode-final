@@ -11,6 +11,23 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Playback switches over to its feature store (#17, Playback slice).** The
+  music, the queue, the play history, the sleep timer, the A-B loop and the
+  listening choices now live in Playback's one app-scoped store (ADR-0003,
+  ADR-0004). Every old caller sends it Commands: the player, the Library, the
+  search overlay, the Visuals hub, Studio, the widget, the play-from-search
+  intent and Android Auto. `GeodePlaybackService` publishes Playback as the media
+  session (notification, lock screen, Bluetooth, the car) and replaces the old
+  `PlaybackService`. `PlayerSession` loses its player, its queue and the 500 ms
+  poll; the old screens read Playback's state through `OldScreenPlayback`, with
+  the position worked out from the clock. A lost microphone capture is noticed
+  when it happens instead of by polling. The play/pause fade moves into the
+  audio adapter. The old saved queue, history, long-track positions and
+  listening choices are imported into Playback's database once. The three
+  verified playback bugs (Buffering forever, a pause overridden by an open in
+  flight, a next-track decode error stopping the current track) are fixed by
+  Playback's state machine and pinned by `PlaybackJourneyRobolectricTest`.
+
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
   from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the

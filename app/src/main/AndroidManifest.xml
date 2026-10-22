@@ -29,7 +29,7 @@
     <!-- Music keeps playing when Geode is not on screen. Everything the
          platform then shows for it — the notification transport, the lock
          screen, a Bluetooth headset's buttons — is driven by the MediaSession
-         in .playback.PlaybackService, and none of it involves the network:
+         in .playback.GeodePlaybackService (Playback's session), and none of it involves the network:
          titles come from the file's own tags and the local library. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!--
@@ -124,9 +124,9 @@
         </service>
 
         <!--
-          Music that outlives the screen. Holds the app's one ExoPlayer and the
-          MediaSession that publishes it, so playback survives the Activity and
-          the transport controls reach the audio that is actually playing.
+          Music that outlives the screen. Publishes Playback, the app's one
+          playback store, as the MediaSession, so playback survives the
+          Activity and every transport control becomes a Command to Playback.
 
           Exported, unlike every other component here, because the things that
           drive it are other processes: the notification and the lock screen,
@@ -136,7 +136,7 @@
           nothing off the device, since the app holds no network permission.
         -->
         <service
-            android:name=".playback.PlaybackService"
+            android:name=".playback.GeodePlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
@@ -154,10 +154,10 @@
           finds the target by looking for a receiver with this filter in the
           app's own manifest — the library declares none of its own. Without
           it the merged manifest carried exactly one receiver (the profile
-          installer) and zero MEDIA_BUTTON filters, so PlaybackService's
+          installer) and zero MEDIA_BUTTON filters, so the playback service's
           onPlaybackResumption was never invoked: Geode never appeared in
           the System UI media carousel after its process died, and
-          lastPlayedResumption was code that could not run in production.
+          its playback resumption was code that could not run in production.
 
           Exported, like the service it drives, because the callers are other
           processes: System UI, Bluetooth, a wired headset's buttons.
