@@ -1,7 +1,25 @@
 #pragma once
+#include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace geode::viz::mod {
+
+// The Sound signals a Reaction can listen to, in SoundSignal's order in :feature:customization:api.
+enum class SoundSignal : uint8_t {
+    Level, Bass, Mid, Treble, Brightness, Hit, Kick, MidHit, Hat, Beat, Energy, BuildUp, Surge, Change, StereoWidth, StereoPan,
+};
+constexpr size_t kSoundSignalCount = 16;
+
+// What one frame heard: every Sound signal already normalised to 0..1, the beat's length once the
+// tempo is known (0 before), and whether the music plays.
+struct SignalFrame {
+    std::array<float, kSoundSignalCount> level{};
+    float beatSeconds = 0.0f;
+    bool playing = true;
+
+    float operator[](SoundSignal s) const { return level[static_cast<size_t>(s)]; }
+};
 
 // The per-frame shaping of a Reaction (CONTEXT.md): the normaliser that brings a Sound signal to
 // 0..1, the curve, the rise and fall, and the push onto the target within the Reaction's range.
