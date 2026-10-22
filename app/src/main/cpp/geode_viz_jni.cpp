@@ -259,6 +259,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetThermal(JNIEnv* env, jobject, jlo
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetQualityCeiling(JNIEnv* env, jobject, jlong handle, jfloat ceiling) {
+    return vizCall(env, "vizSetQualityCeiling", handle, [&](geode_viz* v) {
+        geode_viz_set_quality_ceiling(v, ceiling);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetPacedFps(JNIEnv* env, jobject, jlong handle, jfloat fps) {
     return vizCall(env, "vizSetPacedFps", handle, [&](geode_viz* v) {
         geode_viz_set_paced_fps(v, fps);
