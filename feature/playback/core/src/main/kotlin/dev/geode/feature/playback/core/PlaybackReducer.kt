@@ -229,7 +229,7 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     ): Step = Next(from, listOf(drive(Seek(within(queue.current, position)))))
 
     /** [position] kept inside [track]; a track whose length is not known yet only keeps it from going below zero. */
-    internal fun within(
+    fun within(
         track: Track,
         position: Millis,
     ): Millis = if (track.duration > Millis.ZERO) position.coerceIn(Millis.ZERO, track.duration) else position.coerceAtLeast(Millis.ZERO)

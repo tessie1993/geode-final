@@ -153,7 +153,7 @@ class ImportingPlaybackStorage(
                 markImported = { marks.edit().putBoolean(IMPORTED, true).apply() },
                 legacy = {
                     val lengths = DeviceTrackQuery.query(context).associate { it.uri to it.duration }
-                    LegacyPlaybackImport.read(context) { lengths[it] ?: Millis.ZERO }
+                    LegacyPlaybackImport.read(context) { TrackLength.orRead(context, it, lengths[it] ?: Millis.ZERO) }
                 },
                 now = { Millis(System.currentTimeMillis()) },
             )

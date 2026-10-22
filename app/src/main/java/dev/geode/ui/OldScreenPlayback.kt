@@ -13,6 +13,7 @@ import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Track
 import dev.geode.geodeContainer
+import dev.geode.playback.TrackLength
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -188,12 +189,16 @@ class OldScreenPlayback internal constructor(
             return
         }
         scope.launch {
-            val known = withContext(Dispatchers.IO) { tracks.map { if (lacksDetails(it)) lookUp(it) else it } }
+            val known = withContext(Dispatchers.IO) { tracks.map { if (lacksDetails(it)) withLength(lookUp(it)) else it } }
             then(known.map(OldScreenModels::trackOf))
         }
     }
 
     private fun lacksDetails(track: QueueTrack): Boolean = track.title.isBlank() || track.duration <= Millis.ZERO
+
+    /** A song the media index has no length for (one opened from a document provider) gets the one its file records. */
+    private fun withLength(track: QueueTrack): QueueTrack =
+        track.copy(duration = TrackLength.orRead(application, track.uri, track.duration))
 
     @Suppress("TooGenericExceptionCaught", "SwallowedException") // A song the index does not know plays with what is known.
     private fun lookUp(track: QueueTrack): QueueTrack =

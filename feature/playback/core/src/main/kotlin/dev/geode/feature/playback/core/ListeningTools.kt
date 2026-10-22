@@ -232,7 +232,7 @@ internal object Listening {
         at: Millis,
     ): Change {
         val track = settled(state.player)?.first?.current ?: return Next(state)
-        val position = at.coerceIn(Millis.ZERO, track.duration)
+        val position = core.within(track, at)
         val loop = state.loop
         val marked =
             when {

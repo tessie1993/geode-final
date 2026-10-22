@@ -70,6 +70,7 @@ class GeodePlaybackService : PlaybackSessionService() {
                     .map { it.track }
             },
             ::leftOff,
+            lengthOf = { TrackLength.of(this, it) },
         )
 
     /**
@@ -122,6 +123,7 @@ class GeodePlaybackService : PlaybackSessionService() {
     private class Browsing(
         private val tree: LibraryTree,
         private val leftOff: () -> MediaSession.MediaItemsWithStartPosition?,
+        private val lengthOf: (TrackId) -> Millis,
     ) : MediaLibrarySession.Callback {
         override fun onGetLibraryRoot(
             session: MediaLibrarySession,
@@ -190,9 +192,13 @@ class GeodePlaybackService : PlaybackSessionService() {
 
         private fun resolve(item: MediaItem): MediaItem = if (item.localConfiguration != null) item else tree.playable(item.mediaId) ?: item
 
-        /** The item as Playback's session player reads it: the song's own id, not its place in the tree. */
+        /**
+         * The item as Playback's session player reads it: the song's own id, not its place in the tree,
+         * and its length, from the file when the media index did not give one, so it can be sought.
+         */
         private fun song(item: MediaItem): MediaItem {
             val id = item.localConfiguration?.uri?.toString() ?: return item
+            val length = item.mediaMetadata.durationMs?.takeIf { it > 0 } ?: lengthOf(TrackId(id)).value
             return item
                 .buildUpon()
                 .setMediaId(id)
@@ -200,6 +206,7 @@ class GeodePlaybackService : PlaybackSessionService() {
                     item.mediaMetadata
                         .buildUpon()
                         .setTitle(item.mediaMetadata.title ?: OldScreenModels.fileNameOf(TrackId(id)))
+                        .setDurationMs(length.takeIf { it > 0 })
                         .build(),
                 ).build()
         }

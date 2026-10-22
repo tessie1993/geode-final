@@ -195,14 +195,17 @@ class PlaybackSessionPlayer(
                                     .Builder()
                                     .setTitle(track.title)
                                     .setArtist(track.artist)
-                                    .setDurationMs(track.duration.value)
+                                    .setDurationMs(track.duration.value.takeIf { known(track) })
                                     .setExtras(extrasOf(track))
                                     .build(),
                             ).build(),
-                    ).setDurationUs(Util.msToUs(track.duration.value))
+                    ).setDurationUs(if (known(track)) Util.msToUs(track.duration.value) else C.TIME_UNSET)
                     .setIsSeekable(true)
                     .build()
             }
+
+        /** Whether [track]'s length is known: zero means nothing has said yet. */
+        fun known(track: Track): Boolean = track.duration > Millis.ZERO
 
         /** The song [item] names: its media id is the [TrackId], its metadata the rest, as far as it is known. */
         fun trackOf(item: MediaItem): Track =

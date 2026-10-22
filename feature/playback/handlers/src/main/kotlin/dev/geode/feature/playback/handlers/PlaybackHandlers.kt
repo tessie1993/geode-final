@@ -97,7 +97,7 @@ class PlaybackHandlers(
             is PlaybackWork.SaveListening -> guarded(results, StorageFailure.SAVE_LISTENING) { storage.saveListening(work.options) }
             is PlaybackWork.AddBookmark ->
                 guarded(results, StorageFailure.SAVE_BOOKMARK) {
-                    val position = work.mark.positionAt(clocks.elapsed()).coerceIn(Millis.ZERO, work.track.duration)
+                    val position = PlaybackReducer.within(work.track, work.mark.positionAt(clocks.elapsed()))
                     storage.addBookmark(work.track, position, clocks.wall())
                 }
             is PlaybackWork.DeleteBookmark -> guarded(results, StorageFailure.DELETE_BOOKMARK) { storage.deleteBookmark(work.id) }
