@@ -153,8 +153,10 @@ class CustomizeModelTest {
 
     @Test
     fun `a new link can come from every Sound signal and every Modulator`() {
-        val expected = SoundSignal.entries.map { ReactionSource.Sound(it) } + ReactionSource.Generated(ModulatorId(1)) +
-            ReactionSource.Generated(ModulatorId(2))
+        val expected =
+            SoundSignal.entries.map { ReactionSource.Sound(it) } +
+                ReactionSource.Generated(ModulatorId(1)) +
+                ReactionSource.Generated(ModulatorId(2))
         assertEquals(expected, model.sources)
     }
 

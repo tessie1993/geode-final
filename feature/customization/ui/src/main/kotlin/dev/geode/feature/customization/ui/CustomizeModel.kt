@@ -153,7 +153,9 @@ fun CustomizationState.toCustomizeModel(
     val customization = current
     val reactions = customization.reactions
     val linkedTargets = reactions.map { it.target }.toSet()
+
     fun sharedValue(property: SharedProperty) = customization.shared[property] ?: property.default
+
     fun sharedRow(property: SharedProperty) =
         Target.Shared(property).let { target ->
             SliderRow(target, sharedValue(property), property.min, property.max, property.kind, target in linkedTargets)

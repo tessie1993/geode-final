@@ -50,7 +50,13 @@ internal fun targetName(
         is Target.Shared -> propertyName(target.property)
         is Target.Extra -> extraName(target.kind)
         is Target.MacroSlot ->
-            stringResource(R.string.customize_macro_slot, model.macros.getOrNull(target.index)?.name.orEmpty())
+            stringResource(
+                R.string.customize_macro_slot,
+                model.macros
+                    .getOrNull(target.index)
+                    ?.name
+                    .orEmpty(),
+            )
         is Target.ModulatorField ->
             stringResource(
                 R.string.customize_modulator_target,

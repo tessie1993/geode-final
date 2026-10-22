@@ -145,11 +145,11 @@ fun linkMacro(
 fun savePreset(
     name: String,
     parts: Set<PresetPart>,
-): CustomizationCommand.SavePreset? =
-    if (name.isBlank() || parts.isEmpty()) null else CustomizationCommand.SavePreset(name.trim(), parts)
+): CustomizationCommand.SavePreset? = if (name.isBlank() || parts.isEmpty()) null else CustomizationCommand.SavePreset(name.trim(), parts)
 
 /** Play a stopped hand-started Modulator, or stop a playing one. */
-fun togglePlay(modulator: Modulator): CustomizationCommand.PlayModulator = CustomizationCommand.PlayModulator(modulator.id, !modulator.playing)
+fun togglePlay(modulator: Modulator): CustomizationCommand.PlayModulator =
+    CustomizationCommand.PlayModulator(modulator.id, !modulator.playing)
 
 /** The four kinds of Modulator (#11), as the add menu offers them. */
 enum class ModulatorKind {
