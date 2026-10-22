@@ -29,6 +29,7 @@ import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.ExportSettings
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderSettings
+import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.LookCommand
 import dev.geode.feature.settings.api.LookSettings
 import dev.geode.feature.settings.api.Millibels
@@ -283,33 +284,42 @@ internal fun LazyListScope.defaultPathsSection(
         }
     }
     item {
-        SettingsGroup(stringResource(R.string.folders_group_preset_folder)) {
-            Note(folders.presetFolder?.value ?: stringResource(R.string.folders_preset_folder_app))
-            Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
-                OutlinedButton(onClick = { onAction(SettingsAction.PickPresetFolder) }) {
-                    Text(stringResource(R.string.folders_presets_choose))
-                }
-                if (folders.presetFolder != null) {
-                    TextButton(onClick = { onAction(SettingsAction.Change(FolderCommand.SetPresetFolder(null))) }) {
-                        Text(stringResource(R.string.folders_preset_folder_reset))
-                    }
-                }
-            }
-        }
+        FolderChoiceGroup(
+            title = stringResource(R.string.folders_group_preset_folder),
+            folder = folders.presetFolder,
+            none = stringResource(R.string.folders_preset_folder_app),
+            clear = stringResource(R.string.folders_preset_folder_reset),
+            onPick = { onAction(SettingsAction.PickPresetFolder) },
+            onClear = { onAction(SettingsAction.Change(FolderCommand.SetPresetFolder(null))) },
+        )
     }
     item {
-        SettingsGroup(stringResource(R.string.folders_group_presets)) {
-            Note(folders.presetMirror?.value ?: stringResource(R.string.folders_presets_none))
-            Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
-                OutlinedButton(onClick = { onAction(SettingsAction.PickPresetMirror) }) {
-                    Text(stringResource(R.string.folders_presets_choose))
-                }
-                if (folders.presetMirror != null) {
-                    TextButton(onClick = { onAction(SettingsAction.Change(FolderCommand.SetPresetMirror(null))) }) {
-                        Text(stringResource(R.string.folders_presets_stop))
-                    }
-                }
-            }
+        FolderChoiceGroup(
+            title = stringResource(R.string.folders_group_presets),
+            folder = folders.presetMirror,
+            none = stringResource(R.string.folders_presets_none),
+            clear = stringResource(R.string.folders_presets_stop),
+            onPick = { onAction(SettingsAction.PickPresetMirror) },
+            onClear = { onAction(SettingsAction.Change(FolderCommand.SetPresetMirror(null))) },
+        )
+    }
+}
+
+/** One chosen folder: shows it, or [none] when there is none, with a button to pick and one to [clear]. */
+@Composable
+private fun FolderChoiceGroup(
+    title: String,
+    folder: FolderUri?,
+    none: String,
+    clear: String,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+) {
+    SettingsGroup(title) {
+        Note(folder?.value ?: none)
+        Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
+            OutlinedButton(onClick = onPick) { Text(stringResource(R.string.folders_presets_choose)) }
+            if (folder != null) TextButton(onClick = onClear) { Text(clear) }
         }
     }
 }
