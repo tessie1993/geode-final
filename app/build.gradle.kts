@@ -213,6 +213,8 @@ dependencies {
     // The switch-over (#17): the features :app wires in, one source of truth each.
     implementation(project(":feature:playback:api"))
     implementation(project(":feature:playback:handlers"))
+    // Playback's Room database is opened here, so its supertype is on :app's compile path too.
+    implementation(libs.room.runtime)
     // Playback's routes: the journey test hosts them, and the routes are wired into the navigation
     // graph (#136) once it lands. An implementation dependency, so Robolectric sees their resources.
     implementation(project(":feature:playback:ui"))
