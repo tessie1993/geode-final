@@ -6,6 +6,7 @@ import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.handlers.HISTORY_LIMIT
 import dev.geode.feature.playback.handlers.SavedSession
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -18,7 +19,7 @@ class LegacyPlaybackImportTest {
     private val legacy =
         LegacyPlayback(
             session = SavedSession(Queue(listOf(a, b), 1), Millis(42_000)),
-            plays = listOf(a to Millis(1_000), b to Millis(2_000)),
+            plays = listOf(LegacyPlay(a, Millis(1_000)), LegacyPlay(b, Millis(2_000))),
             resumePoints = mapOf(a.id to Millis(600_000)),
             options = ListeningOptions(shuffle = true, repeat = RepeatMode.ALL),
         )
@@ -129,4 +130,39 @@ class LegacyPlaybackImportTest {
             storage.saveListening(ListeningOptions(repeat = RepeatMode.ONE, crossfade = Millis(2_000), gapless = false))
             assertEquals(ListeningOptions(repeat = RepeatMode.ONE), stored.listening)
         }
+
+    @Test
+    fun `a song played several times comes across as that many plays, the last when it was last played`() {
+        val plays = LegacyPlaybackImport.playsOf(listOf(LegacyPlay(a, Millis(5_000), count = 3), LegacyPlay(b, Millis(4_000))))
+
+        assertEquals(listOf(b to Millis(4_000), a to Millis(4_998), a to Millis(4_999), a to Millis(5_000)), plays)
+    }
+
+    @Test
+    fun `only the latest plays Playback keeps come across`() {
+        val plays = LegacyPlaybackImport.playsOf(listOf(LegacyPlay(a, Millis(1_000_000), count = HISTORY_LIMIT + 5)))
+
+        assertEquals(HISTORY_LIMIT, plays.size)
+        assertEquals(a to Millis(1_000_000), plays.last())
+    }
+
+    @Test
+    fun `an import run again after stopping part way writes no play twice`() =
+        runTest {
+            val storage = MemoryPlaybackStorage()
+            storage.recordPlay(a, Millis(1_000))
+
+            LegacyPlaybackImport.into(storage, legacy, now = Millis(9_000))
+            LegacyPlaybackImport.into(storage, legacy, now = Millis(9_000))
+
+            assertEquals(listOf(b.id to Millis(2_000), a.id to Millis(1_000)), storage.plays.value.map { it.track.id to it.playedAt })
+        }
+
+    @Test
+    fun `the old resume points come across in the same order every time`() {
+        val c = TrackId("content://media/c")
+        val points = mapOf(c to Millis(3), a.id to Millis(1), b.id to Millis(2))
+
+        assertEquals(listOf(a.id to Millis(1), b.id to Millis(2), c to Millis(3)), LegacyPlaybackImport.resumeOrder(points))
+    }
 }

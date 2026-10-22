@@ -16,6 +16,7 @@ import dev.geode.feature.playback.handlers.HISTORY_LIMIT
 import dev.geode.feature.playback.handlers.PlaybackStorage
 import dev.geode.feature.playback.handlers.SavedSession
 import dev.geode.ui.DeviceTrackQuery
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -25,10 +26,17 @@ import kotlinx.coroutines.sync.withLock
  */
 data class LegacyPlayback(
     val session: SavedSession?,
-    /** Oldest first, each with when it was last played (wall-clock time). */
-    val plays: List<Pair<Track, Millis>>,
+    /** Each song the old player played, oldest first. */
+    val plays: List<LegacyPlay>,
     val resumePoints: Map<TrackId, Millis>,
     val options: ListeningOptions?,
+)
+
+/** A song in the old play history: played [count] times, the last at [lastPlayedAt] (wall-clock time). */
+data class LegacyPlay(
+    val track: Track,
+    val lastPlayedAt: Millis,
+    val count: Int = 1,
 )
 
 /**
@@ -36,17 +44,49 @@ data class LegacyPlayback(
  * migrated and nothing is lost). The old files are read and left as they are.
  */
 object LegacyPlaybackImport {
-    /** Writes [legacy] into [storage], leaving anything Playback already keeps in place. */
+    /**
+     * Writes [legacy] into [storage], leaving anything Playback already keeps in place. Safe to run
+     * again after a run that stopped part way: a play already written is not written twice, and the
+     * rest is written over with the same values.
+     */
     suspend fun into(
         storage: PlaybackStorage,
         legacy: LegacyPlayback,
         now: Millis,
     ) {
         if (storage.loadSession() == null) legacy.session?.let { storage.saveSession(it.queue, it.position) }
-        legacy.plays.takeLast(HISTORY_LIMIT).forEach { (track, at) -> storage.recordPlay(track, at) }
-        legacy.resumePoints.forEach { (track, position) -> storage.saveResumePoint(track, position, now) }
+        val kept =
+            storage.history
+                .first()
+                .map { it.track.id to it.playedAt }
+                .toSet()
+        playsOf(legacy.plays)
+            .filterNot { (track, at) -> track.id to at in kept }
+            .forEach { (track, at) -> storage.recordPlay(track, at) }
+        resumeOrder(legacy.resumePoints).forEachIndexed { index, (track, position) ->
+            // One saved after the other, so which are kept when there are too many is always the same.
+            storage.saveResumePoint(track, position, now - Millis(index.toLong()))
+        }
         if (storage.loadListening() == null) legacy.options?.let { storage.saveListening(it) }
     }
+
+    /**
+     * Each old play as one of Playback's, oldest first, the latest [HISTORY_LIMIT] of them. Playback
+     * keeps every play rather than a count, so a song played n times becomes n plays: the last at the
+     * time the old player kept, the earlier ones just before it (when they really were is not known).
+     */
+    fun playsOf(plays: List<LegacyPlay>): List<Pair<Track, Millis>> =
+        plays
+            .flatMap { play ->
+                (0 until play.count.coerceAtLeast(1)).map { earlier ->
+                    play.track to
+                        play.lastPlayedAt - Millis(earlier.toLong())
+                }
+            }.sortedWith(compareBy<Pair<Track, Millis>> { it.second }.thenBy { it.first.id.value })
+            .takeLast(HISTORY_LIMIT)
+
+    /** The old resume points in a fixed order, by song. */
+    fun resumeOrder(points: Map<TrackId, Millis>): List<Pair<TrackId, Millis>> = points.toList().sortedBy { it.first.value }
 
     /** The old player's repeat setting, by its Media3 number. */
     fun repeatOf(old: Int): RepeatMode =
@@ -71,7 +111,7 @@ object LegacyPlaybackImport {
             HistoryStore(context)
                 .recentlyPlayed(HISTORY_LIMIT)
                 .reversed()
-                .map { Track(it.uri, it.title, it.artist, lengthOf(it.uri)) to Millis(it.lastPlayedMs) }
+                .map { LegacyPlay(Track(it.uri, it.title, it.artist, lengthOf(it.uri)), Millis(it.lastPlayedMs), it.playCount) }
         val prefs = PlayerPrefsStore(files.player).load()
         // Only shuffle and repeat: the crossfade and gapless are Settings', which import them themselves.
         val options = ListeningOptions(shuffle = prefs.shuffle, repeat = repeatOf(prefs.repeatMode))
