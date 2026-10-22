@@ -210,17 +210,17 @@ class AutomationTest {
     @Test
     fun `every Camera move eases over at least one beat`() {
         // From still to its full strength takes at least half a beat each way: sampled finely, no jump.
-        CameraMoveKind.entries.forEach { kind ->
-            BeatSpan.entries.forEach { span ->
-                val move = CameraMove(kind, span, 1f)
-                val samples = (0..800).map { Automation.camera(move, it / 100.0) }
-                samples.zipWithNext().forEach { (before, after) ->
-                    before.keys.forEach { assertTrue("$kind $span", abs(after.getValue(it) - before.getValue(it)) < 0.04f) }
-                }
-                assertTrue(kind.moves.keys.all { it.group == SharedGroup.CAMERA })
-            }
-        }
+        val moves = CameraMoveKind.entries.flatMap { kind -> BeatSpan.entries.map { span -> CameraMove(kind, span, 1f) } }
+        moves.forEach { move -> assertTrue(move.toString(), steepestStep(move) < 0.04f) }
+        assertTrue(CameraMoveKind.entries.all { kind -> kind.moves.keys.all { it.group == SharedGroup.CAMERA } })
     }
+
+    /** The largest change of any of [move]'s properties between samples a hundredth of a beat apart. */
+    private fun steepestStep(move: CameraMove): Float =
+        (0..800)
+            .map { Automation.camera(move, it / 100.0) }
+            .zipWithNext()
+            .maxOf { (before, after) -> before.keys.maxOf { abs(after.getValue(it) - before.getValue(it)) } }
 
     @Test
     fun `a Camera move is added on top of the Camera setting and kept in range`() {
