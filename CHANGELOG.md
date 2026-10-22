@@ -27,6 +27,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   verified playback bugs (Buffering forever, a pause overridden by an open in
   flight, a next-track decode error stopping the current track) are fixed by
   Playback's state machine and pinned by `PlaybackJourneyRobolectricTest`.
+- **The Visuals tab and full-screen visual mode as a feature (#43,
+  ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
+  Styles by family with Favourites, Recent, search and folders the person
+  makes, which nest; choosing a Style asks Customization for it, and the
+  tab follows whatever Customization shows. The library is kept in the
+  feature's own DataStore in a versioned text format. `VisualsRoute` and
+  `FullScreenVisualRoute` draw over the one live Visual with no background of
+  their own; full-screen mode hides the system bars and keeps the screen
+  awake when Keep screen on asks. A journey test over the real Playback,
+  Customization and Visuals stores shows the music and the Visual carry on
+  through full-screen mode and tab switches. Built alongside the old Visuals
+  hub; wired in at the switch-over (#17).
 
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42

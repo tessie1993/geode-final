@@ -240,8 +240,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
-    testImplementation(testFixtures(project(":arch:kernel")))
-    testImplementation(testFixtures(project(":arch:audio")))
     testImplementation(libs.kotlinx.coroutines.test)
     // The real org.json: with isReturnDefaultValues the android.jar stub returns defaults, so a
     // store test that parses JSON would pass without parsing anything.
@@ -249,6 +247,18 @@ dependencies {
     // The architecture test of ADR-0003: feature cores stay plain Kotlin, features use each other
     // only through their interface, and the feature graph has no cycles.
     testImplementation(libs.konsist)
+    // The Visuals journey test (#43) builds the real app-scoped feature stores the way :app will at
+    // the switch-over (#17), and moves between the real routes. Nothing here is wired yet. The routes
+    // are an implementation dependency only because a unit test sees the R classes of :app's main
+    // dependencies alone; as testImplementation, VisualsRoute failed with NoClassDefFoundError on
+    // dev.geode.feature.visuals.ui.R$string.
+    implementation(project(":feature:visuals:ui"))
+    testImplementation(project(":feature:customization:api"))
+    testImplementation(project(":feature:customization:core"))
+    testImplementation(project(":feature:visuals:api"))
+    testImplementation(project(":feature:visuals:handlers"))
+    testImplementation(testFixtures(project(":arch:kernel")))
+    testImplementation(testFixtures(project(":arch:audio")))
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
