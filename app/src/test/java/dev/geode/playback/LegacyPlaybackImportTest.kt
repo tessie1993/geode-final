@@ -20,7 +20,7 @@ class LegacyPlaybackImportTest {
             session = SavedSession(Queue(listOf(a, b), 1), Millis(42_000)),
             plays = listOf(a to Millis(1_000), b to Millis(2_000)),
             resumePoints = mapOf(a.id to Millis(600_000)),
-            options = ListeningOptions(shuffle = true, repeat = RepeatMode.ALL, crossfade = Millis(3_000), gapless = false),
+            options = ListeningOptions(shuffle = true, repeat = RepeatMode.ALL),
         )
 
     @Test
@@ -116,5 +116,17 @@ class LegacyPlaybackImportTest {
 
             assertEquals(null, storage.loadSession())
             assertEquals(0, reads)
+        }
+
+    @Test
+    fun `Playback's storage keeps no crossfade or gapless, which are Settings'`() =
+        runTest {
+            val stored = MemoryPlaybackStorage()
+            val storage = ImportingPlaybackStorage(stored, { true }, {}, { legacy }, { Millis(9_000) })
+            stored.listening = ListeningOptions(shuffle = true, crossfade = Millis(5_000), gapless = false)
+
+            assertEquals(ListeningOptions(shuffle = true), storage.loadListening())
+            storage.saveListening(ListeningOptions(repeat = RepeatMode.ONE, crossfade = Millis(2_000), gapless = false))
+            assertEquals(ListeningOptions(repeat = RepeatMode.ONE), stored.listening)
         }
 }

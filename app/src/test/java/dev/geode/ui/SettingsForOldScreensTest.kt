@@ -79,15 +79,15 @@ class SettingsForOldScreensTest {
         }
 
     @Test
-    fun `saving the player settings keeps them in Settings, and Playback joins and orders the tracks`() {
+    fun `saving the player settings keeps them in Settings only, and Playback orders the tracks`() {
         settings.state.value = SettingsState.Ready(SettingsValues())
 
-        old.setPlayerPrefs(old.prefs.value.copy(crossfadeMs = 3_000, shuffle = true, repeatMode = 1))
+        old.setPlayerPrefs(old.prefs.value.copy(crossfadeMs = 3_000, gapless = false, shuffle = true, repeatMode = 1))
 
-        assertEquals(listOf(SettingsPlayback.SetCrossfade(Millis(3_000))), settings.sent)
+        assertEquals(listOf(SettingsPlayback.SetCrossfade(Millis(3_000)), SettingsPlayback.SetGapless(false)), settings.sent)
+        // The crossfade and gapless are Settings' alone: Playback follows them, it is not written to twice.
         assertEquals(
             listOf(
-                PlaybackCommand.SetCrossfade(Millis(3_000)),
                 PlaybackCommand.SetShuffle(true),
                 PlaybackCommand.SetRepeat(RepeatMode.ONE),
             ),

@@ -80,22 +80,14 @@ class SettingsForOldScreens internal constructor(
 
     override suspend fun update(transform: (PlayerPrefs) -> PlayerPrefs) = setPlayerPrefs(transform(prefs.value))
 
-    /** Saves the old player settings: Settings keeps them, and Playback joins the tracks and plays the queue as they say. */
+    /**
+     * Saves the old player settings. Settings keeps them, the crossfade and gapless among them, which
+     * Playback follows (TransitionsFromSettings); shuffle and repeat are Playback's own.
+     */
     fun setPlayerPrefs(next: PlayerPrefs) {
         val before = prefs.value
         val after = next.coerced()
         sendAll(OldScreenSettings.commandsFor(before, after))
-        if (after.crossfadeMs !=
-            before.crossfadeMs
-        ) {
-            playback.send(
-                PlaybackCommand.SetCrossfade(
-                    dev.geode.engine.types
-                        .Millis(after.crossfadeMs.toLong()),
-                ),
-            )
-        }
-        if (after.gapless != before.gapless) playback.send(PlaybackCommand.SetGapless(after.gapless))
         if (after.shuffle != before.shuffle) playback.send(PlaybackCommand.SetShuffle(after.shuffle))
         if (after.repeatMode != before.repeatMode) playback.send(PlaybackCommand.SetRepeat(repeatOf(after.repeatMode)))
     }

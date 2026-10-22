@@ -9,7 +9,6 @@ import dev.geode.data.SessionStore
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.ListeningOptions
-import dev.geode.feature.playback.api.MAX_CROSSFADE
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.Track
@@ -74,13 +73,8 @@ object LegacyPlaybackImport {
                 .reversed()
                 .map { Track(it.uri, it.title, it.artist, lengthOf(it.uri)) to Millis(it.lastPlayedMs) }
         val prefs = PlayerPrefsStore(files.player).load()
-        val options =
-            ListeningOptions(
-                shuffle = prefs.shuffle,
-                repeat = repeatOf(prefs.repeatMode),
-                crossfade = Millis(prefs.crossfadeMs.toLong()).coerceAtMost(MAX_CROSSFADE),
-                gapless = prefs.gapless,
-            )
+        // Only shuffle and repeat: the crossfade and gapless are Settings', which import them themselves.
+        val options = ListeningOptions(shuffle = prefs.shuffle, repeat = repeatOf(prefs.repeatMode))
         return LegacyPlayback(session, plays, resumePointsIn(files.player), options)
     }
 
@@ -135,8 +129,12 @@ class ImportingPlaybackStorage(
 
     override suspend fun loadListening(): ListeningOptions? {
         imported()
-        return stored.loadListening()
+        return stored.loadListening()?.let(TransitionsFromSettings::withoutTransitions)
     }
+
+    /** The crossfade and gapless are Settings' (#17): Playback keeps no copy of them. */
+    override suspend fun saveListening(options: ListeningOptions) =
+        stored.saveListening(TransitionsFromSettings.withoutTransitions(options))
 
     companion object {
         private const val IMPORTED = "playback_imported_v1"

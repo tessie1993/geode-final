@@ -13,9 +13,12 @@ import dev.geode.feature.playback.handlers.PlaybackDatabase
 import dev.geode.feature.playback.handlers.PlaybackStorage
 import dev.geode.feature.playback.handlers.RoomPlaybackStorage
 import dev.geode.feature.playback.handlers.playbackStore
+import dev.geode.feature.settings.api.Settings
+import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.playback.ImportingPlaybackStorage
 import dev.geode.playback.PlaybackServiceLink
+import dev.geode.playback.TransitionsFromSettings
 import javax.inject.Singleton
 
 /**
@@ -41,12 +44,15 @@ object PlaybackModule {
         application: Application,
         audio: AudioAdapter,
         storage: PlaybackStorage,
+        settings: Settings,
         runtime: FeatureRuntime,
     ): Playback =
         playbackStore(audio, storage, PlaybackClocks.system(), runtime).also { playback ->
             // While Playback means to play, its media session's service stays connected, so the
             // notification shows and the music outlives the screen (#36).
             PlaybackServiceLink(application, playback).start()
+            // It joins tracks as Settings say (#17).
+            TransitionsFromSettings.follow(settings, playback, application.geodeContainer.appScope)
         }
 
     private const val IMPORT_MARKS = "geode_playback_import"
