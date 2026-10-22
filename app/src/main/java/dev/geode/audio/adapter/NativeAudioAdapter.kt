@@ -40,10 +40,12 @@ import kotlinx.coroutines.withContext
  * nothing here polls. Capture is announced from the pump's callbacks and from the system's
  * device-removed callback, which is how an unplugged line input is noticed.
  *
- * The player and the analysis are main-thread objects, so everything runs on [main].
+ * The player and the analysis are main-thread objects, so everything runs on [main]. [nativeEngine]
+ * says which player to open, Geode's own or ExoPlayer, and is waited for before the engine opens.
  */
 class NativeAudioAdapter(
     private val application: Application,
+    private val nativeEngine: suspend () -> Boolean,
     private val main: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val fadeLength: () -> Millis = { Millis.ZERO },
     private val onOpened: (PlaybackSession) -> Unit = {},
@@ -135,11 +137,19 @@ class NativeAudioAdapter(
             .setUri(track.value)
             .build()
 
-    private fun opened(): Pipeline =
-        pipeline
-            ?: PlaybackEngine.acquireForUi(application).let { session ->
-                Pipeline(session).also { pipeline = it }.also { onOpened(session) }
-            }
+    /**
+     * The pipeline, opened on first use: only once [nativeEngine] has answered, so the player is the
+     * one Settings choose and never one picked before the stored settings were read (#17).
+     */
+    private suspend fun opened(): Pipeline {
+        pipeline?.let { return it }
+        val native = nativeEngine()
+        // Another call may have opened it while this one waited for Settings.
+        pipeline?.let { return it }
+        val session = PlaybackEngine.acquireForUi(application)
+        session.openPlayer(native)
+        return Pipeline(session).also { pipeline = it }.also { onOpened(session) }
+    }
 
     private fun announce(announcement: AudioAnnouncement) {
         announced.tryEmit(announcement)

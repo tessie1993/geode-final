@@ -17,6 +17,8 @@ import dev.geode.kernel.ErrorChannel
 import dev.geode.kernel.ExecutorTimerScheduler
 import dev.geode.kernel.FeatureRuntime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.Executors
 import javax.inject.Singleton
 
@@ -53,6 +55,14 @@ object FeatureModule {
     ): AudioAdapter =
         NativeAudioAdapter(
             application,
+            // Which player the engine opens with is a Settings choice (#17): the engine waits for the
+            // stored settings rather than opening with a default and keeping it for the whole run.
+            nativeEngine = {
+                settings.state
+                    .filterIsInstance<SettingsState.Ready>()
+                    .first()
+                    .values.playback.nativeEngine
+            },
             // The play/pause fade is a Settings choice (#17).
             fadeLength = { (settings.state.value as? SettingsState.Ready)?.values?.playback?.fade ?: Millis.ZERO },
             // Settings tune the engine from the moment it opens, for as long as it runs.

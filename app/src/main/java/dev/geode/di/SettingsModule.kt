@@ -5,14 +5,10 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.PlayerPrefsStore
 import dev.geode.feature.settings.api.Settings
-import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.handlers.settingsDataStore
 import dev.geode.feature.settings.handlers.settingsStore
 import dev.geode.kernel.FeatureRuntime
-import dev.geode.playback.PlaybackEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,13 +28,5 @@ object SettingsModule {
     fun provideSettings(
         application: Application,
         runtime: FeatureRuntime,
-    ): Settings =
-        settingsStore(settingsDataStore(application, CoroutineScope(SupervisorJob() + Dispatchers.IO)), runtime).also { settings ->
-            // Which player the engine opens with. Read once, when the engine starts: a session that
-            // starts before the stored settings are read uses the choice the old settings held.
-            PlaybackEngine.nativeEngineChoice = { context ->
-                (settings.state.value as? SettingsState.Ready)?.values?.playback?.nativeEngine
-                    ?: PlayerPrefsStore(GeodePrefsFiles(context).player).load().nativeEngine
-            }
-        }
+    ): Settings = settingsStore(settingsDataStore(application, CoroutineScope(SupervisorJob() + Dispatchers.IO)), runtime)
 }
