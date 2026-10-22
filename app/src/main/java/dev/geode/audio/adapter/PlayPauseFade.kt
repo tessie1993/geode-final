@@ -40,10 +40,12 @@ internal class PlayPauseFade(
     ) {
         cancel()
         when {
-            length <= Millis.ZERO -> {
+            length <= Millis.ZERO && playing -> {
                 player.volume = 1f
-                if (playing) player.play() else player.pause()
+                player.play()
             }
+            // Paused before the volume comes back, so music faded out (the sleep timer's) stays silent.
+            length <= Millis.ZERO -> pauseAtFullVolume(player)
             playing -> {
                 // Going on from a pause still fading out starts where its volume got to.
                 val from = if (player.playWhenReady) player.volume else 0f
@@ -54,6 +56,26 @@ internal class PlayPauseFade(
             player.isPlaying -> fade(player, player.volume, 0f, length) { pauseAtFullVolume(player) }
             else -> pauseAtFullVolume(player)
         }
+    }
+
+    /**
+     * Fades what plays out to silence over [length] without pausing it: the sleep timer's last seconds
+     * (the old player's sleep fade, #17), before the pause it asks Playback for. A play or pause asked
+     * for meanwhile takes over from the volume it reached.
+     */
+    fun fadeOut(
+        player: FadedPlayer,
+        length: Millis,
+    ) {
+        if (!player.isPlaying) return
+        cancel()
+        fade(player, player.volume, 0f, length.coerceAtLeast(Millis(stepMs))) {}
+    }
+
+    /** Stops any fade and puts the volume back: the sleep timer was cancelled while it faded out. */
+    fun restore(player: FadedPlayer) {
+        cancel()
+        player.volume = 1f
     }
 
     /** Ends the running fade where it was heading, at once: a pause pauses now, a play is at full volume. */

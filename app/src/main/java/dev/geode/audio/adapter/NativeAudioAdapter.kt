@@ -127,6 +127,16 @@ class NativeAudioAdapter(
         }
     }
 
+    /** The sleep timer runs out in [length]: what plays fades out to silence by then, still playing. */
+    suspend fun fadeOutForSleep(length: Millis) {
+        withContext(main) { pipeline?.let { fade.fadeOut(it.faded, length) } }
+    }
+
+    /** The sleep timer was cancelled while it faded the music out: back to full volume. */
+    suspend fun endSleepFade() {
+        withContext(main) { pipeline?.let { fade.restore(it.faded) } }
+    }
+
     /** The crossfade curve changed in Settings: the open player crossfades with the new one from now on. */
     suspend fun crossfadeCurveChanged() {
         withContext(main) { pipeline?.let(::applyTransitions) }

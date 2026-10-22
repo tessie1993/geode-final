@@ -123,4 +123,40 @@ class PlayPauseFadeTest {
             assertEquals(listOf("pause"), player.calls)
             assertEquals(1f, player.volume)
         }
+
+    @Test
+    fun `the sleep fade takes what plays to silence without pausing, and the pause after it stays silent`() =
+        runTest {
+            val fade = fade()
+            val player = Player().apply { playWhenReady = true }
+            val heard = mutableListOf<Float>()
+
+            fade.fadeOut(player, length)
+            advanceUntilIdle()
+            heard += player.volume
+            fade.setPlaying(player, playing = false, Millis.ZERO)
+
+            assertEquals(listOf(0f), heard)
+            assertEquals(listOf("pause"), player.calls)
+            assertEquals(1f, player.volume)
+        }
+
+    @Test
+    fun `a sleep fade on music that is not playing does nothing, and restoring brings the volume back`() =
+        runTest {
+            val fade = fade()
+            val paused = Player().apply { volume = 0.4f }
+            fade.fadeOut(paused, length)
+            advanceUntilIdle()
+            assertEquals(0.4f, paused.volume)
+
+            val playing = Player().apply { playWhenReady = true }
+            fade.fadeOut(playing, length)
+            advanceTimeBy(100)
+            runCurrent()
+            fade.restore(playing)
+            advanceUntilIdle()
+            assertEquals(1f, playing.volume)
+            assertTrue(playing.calls.isEmpty())
+        }
 }

@@ -7,6 +7,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.audio.adapter.AudioAdapter
+import dev.geode.audio.adapter.NativeAudioAdapter
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.handlers.PlaybackClocks
 import dev.geode.feature.playback.handlers.PlaybackDatabase
@@ -18,6 +19,7 @@ import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.playback.ImportingPlaybackStorage
 import dev.geode.playback.PlaybackServiceLink
+import dev.geode.playback.SleepFadeOut
 import dev.geode.playback.TransitionsFromSettings
 import javax.inject.Singleton
 
@@ -53,6 +55,8 @@ object PlaybackModule {
             PlaybackServiceLink(application, playback).start()
             // It joins tracks as Settings say (#17).
             TransitionsFromSettings.follow(settings, playback, application.geodeContainer.appScope)
+            // The sleep timer fades the music out over its last seconds, in the adapter's volume (#17).
+            (audio as? NativeAudioAdapter)?.let { SleepFadeOut.follow(playback, it, application.geodeContainer.appScope) }
         }
 
     private const val IMPORT_MARKS = "geode_playback_import"
