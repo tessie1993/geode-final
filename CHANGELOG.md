@@ -11,6 +11,28 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Preferences: run in background, Visual quality, battery and heat, export
+  alerts (#28).** Built in the new Settings feature, alongside the old code until
+  the switch-over (#17).
+  - Application preferences gains three run-in-background switches: Music keeps
+    playing (on), Renders keep going (on) and Recording keeps going (off). It
+    also gains the CPU/GPU save mode switch (off). Save mode draws the Visual at
+    Saver quality and 30 fps, holds the floating assets still and slows Renders
+    down.
+  - A new CPU/GPU section sits between Default paths and Help. It has Visual
+    quality on screen (High, Balanced or Saver, a render scale ceiling of 1.0,
+    0.85 or 0.7; default High) and Visual frame rate (30, 60 or Screen max;
+    default Screen max). A note says that cooling down when hot is automatic.
+  - Export preferences gains the 480p and 1440p sizes (the default stays 1080p)
+    and an export-finished alerts switch (on).
+  - Each new setting has its own key, so existing installs keep their values.
+  - With Music keeps playing off, Playback pauses when you leave the app
+    (`MusicInBackground`).
+  - The engine takes the Visual quality as a ceiling under the thermal one
+    (`geode_viz_set_quality_ceiling`).
+  - The audio engine stays warm and never shuts down when idle, so there is no
+    setting for it.
+
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
   from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the
