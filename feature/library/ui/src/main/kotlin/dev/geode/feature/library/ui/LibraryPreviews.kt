@@ -18,6 +18,10 @@ import dev.geode.feature.library.api.IndexStatus
 import dev.geode.feature.library.api.LibraryView
 import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Place
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongRow
 import dev.geode.feature.library.api.Sort
@@ -70,6 +74,14 @@ internal fun LibraryFoldersPreview() = LibraryPreview(PreviewModels.folders)
 @Composable
 internal fun LibraryPlaylistsPreview() = LibraryPreview(PreviewModels.playlists)
 
+@Preview(name = "A smart playlist")
+@Composable
+internal fun LibrarySmartPlaylistPreview() = LibraryPreview(PreviewModels.smartPlaylist)
+
+@Preview(name = "A smart playlist that picks nothing")
+@Composable
+internal fun LibraryEmptySmartPlaylistPreview() = LibraryPreview(PreviewModels.emptySmartPlaylist)
+
 @Preview(name = "Search")
 @Composable
 internal fun LibrarySearchPreview() = LibraryPreview(PreviewModels.search)
@@ -102,6 +114,26 @@ internal fun SongEditorDarkPreview() =
                 SongEditorFields.of(PreviewModels.night).copy(artwork = "content://preview/art"),
                 onChange = {},
                 onPickArtwork = {},
+            )
+        }
+    }
+
+@Preview(name = "Smart playlist editor")
+@Composable
+internal fun SmartPlaylistEditorPreview() =
+    PreviewTheme(dark = false) {
+        Surface { SmartPlaylistEditor(SmartPlaylistFields.of(PreviewModels.longFavourites), taken = emptySet(), onChange = {}) }
+    }
+
+@Preview(name = "Smart playlist editor, new, name taken, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun SmartPlaylistEditorDarkPreview() =
+    PreviewTheme(dark = true) {
+        Surface {
+            SmartPlaylistEditor(
+                SmartPlaylistFields.of(null).copy(name = "Long favourites"),
+                taken = setOf("Long favourites"),
+                onChange = {},
             )
         }
     }
@@ -207,16 +239,46 @@ internal object PreviewModels {
                 ),
         )
 
+    /** A smart playlist of the favourites at least three minutes long, at most 25 of them. */
+    val longFavourites =
+        SmartPlaylist(
+            name = "Long favourites",
+            rules =
+                listOf(
+                    SmartRule(RuleField.FAVOURITE, RuleOp.IS, ""),
+                    SmartRule(RuleField.DURATION_MINUTES, RuleOp.AT_LEAST, "3"),
+                ),
+            matchAll = true,
+            limit = 25,
+        )
+
+    private val neverPlayed = SmartPlaylist("Never played", listOf(SmartRule(RuleField.PLAY_COUNT, RuleOp.IS, "0")))
+
     val playlists =
         base.copy(
             place = Place.Shelf(LibraryView.PLAYLISTS),
+            smartPlaylists = listOf(longFavourites, neverPlayed),
             page =
                 Page.Groups(
                     listOf(
                         group(GroupKind.PLAYLIST, "7", "", 12).copy(title = "Evening walk"),
                         group(GroupKind.PLAYLIST, "3", "", 1).copy(title = "Focus"),
+                        group(GroupKind.SMART_PLAYLIST, longFavourites.name, "", 2),
+                        group(GroupKind.SMART_PLAYLIST, neverPlayed.name, "", 2),
                     ),
                 ),
+        )
+
+    val smartPlaylist =
+        playlists.copy(
+            place = Place.Group(LibraryView.PLAYLISTS, GroupKey(GroupKind.SMART_PLAYLIST, longFavourites.name)),
+            page = Page.Songs(rows.filter { it.favourite }),
+        )
+
+    val emptySmartPlaylist =
+        playlists.copy(
+            place = Place.Group(LibraryView.PLAYLISTS, GroupKey(GroupKind.SMART_PLAYLIST, neverPlayed.name)),
+            page = Page.Songs(emptyList()),
         )
 
     val search =

@@ -43,6 +43,12 @@ class LibraryScreenshotTest {
     fun playlists() = capture("Library_playlists") { LibraryPlaylistsPreview() }
 
     @Test
+    fun smartPlaylist() = capture("Library_smart_playlist") { LibrarySmartPlaylistPreview() }
+
+    @Test
+    fun emptySmartPlaylist() = capture("Library_smart_playlist_empty") { LibraryEmptySmartPlaylistPreview() }
+
+    @Test
     fun search() = capture("Library_search") { LibrarySearchPreview() }
 
     @Test
@@ -60,6 +66,13 @@ class LibraryScreenshotTest {
     @Test
     @Config(qualifiers = "+night")
     fun songEditorDark() = capture("SongEditor_chosen_art_dark") { SongEditorDarkPreview() }
+
+    @Test
+    fun smartPlaylistEditor() = capture("SmartPlaylistEditor") { SmartPlaylistEditorPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun smartPlaylistEditorDark() = capture("SmartPlaylistEditor_new_name_taken_dark") { SmartPlaylistEditorDarkPreview() }
 
     private fun capture(
         name: String,

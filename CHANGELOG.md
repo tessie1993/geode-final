@@ -11,6 +11,20 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Smart playlists in the Library feature (#146, ADR-0003, ADR-0005).**
+  `:feature:library` now keeps smart playlists: a name, rules on title,
+  artist, album, folder, minutes long, days since added, play count or
+  favourite, match all or any, and an optional limit, with the same rules
+  and evaluation as the old smart playlist editor. The rules are evaluated
+  purely in Library's `:core` over the songs the Library shows, so a smart
+  playlist's songs follow every scan, edit, favourite and play; the clock is
+  read hourly for the days-since-added rule. They are listed after Playback's
+  playlists, open to their songs, and play, queue, export or save as a
+  playlist like any group. Their rules are kept in the Library's Room
+  database, which moves to version 2 with a tested migration. The new
+  smart playlist editor is stateless with previews and screenshots. Built
+  alongside the old editor; wired in at the switch-over (#17).
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person
