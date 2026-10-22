@@ -80,7 +80,7 @@ enum class CornerStyle {
     PILL,
 }
 
-/** The Look tab: accent, text and layout of the App UI. */
+/** The Theme section (was Look): accent, text and layout of the App UI. */
 data class LookSettings(
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
     val backgroundDim: Float = BACKGROUND_DIM_DEFAULT,
@@ -209,7 +209,7 @@ data class AnalysisSettings(
     }
 }
 
-/** The Behavior tab: touch and motion. */
+/** Application preferences (was Behavior): touch and motion. */
 data class BehaviorSettings(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = TOUCH_SMEAR_STRENGTH_DEFAULT,
@@ -256,7 +256,7 @@ enum class ExportLoudness {
     LEAVE_AS_IS,
 }
 
-/** The Export tab: what new renders start with. */
+/** Export preferences (was Export): what new renders start with. */
 data class ExportSettings(
     val quality: ExportQuality = ExportQuality.FHD1080,
     val frameRate: ExportFrameRate = ExportFrameRate.FPS60,

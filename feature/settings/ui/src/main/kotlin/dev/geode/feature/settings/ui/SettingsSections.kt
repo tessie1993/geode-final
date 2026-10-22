@@ -51,7 +51,8 @@ private const val MILLIBELS_PER_DECIBEL = 100f
 private const val BASS_BOOST_FULL = 1_000f
 private val NO_SLEEP_TIMER = Minutes(0)
 
-internal fun LazyListScope.lookSection(
+/** Theme (was Look): accent, text and layout of the App UI. */
+internal fun LazyListScope.themeSection(
     look: LookSettings,
     fontColors: List<FontColorChoice>,
     change: (SettingsCommand) -> Unit,
@@ -137,7 +138,6 @@ private fun PlaybackGroup(
     SwitchRow(stringResource(R.string.playback_pause_unplugged), playback.pauseWhenUnplugged) {
         change(PlaybackCommand.SetPauseWhenUnplugged(it))
     }
-    SwitchRow(stringResource(R.string.playback_keep_screen_on), playback.keepScreenOn) { change(PlaybackCommand.SetKeepScreenOn(it)) }
     SwitchRow(stringResource(R.string.playback_auto_resume), playback.autoResume) { change(PlaybackCommand.SetAutoResume(it)) }
     SwitchRow(stringResource(R.string.playback_resume_long_tracks), playback.resumeLongTracks) {
         change(PlaybackCommand.SetResumeLongTracks(it))
@@ -230,6 +230,7 @@ private fun AnalysisGroup(
     SwitchRow(stringResource(R.string.audio_react_mic), analysis.reactToMicrophone) { change(AnalysisCommand.SetReactToMicrophone(it)) }
 }
 
+/** Export preferences (was Export): what new renders start with. */
 internal fun LazyListScope.exportSection(
     export: ExportSettings,
     change: (SettingsCommand) -> Unit,
@@ -259,10 +260,43 @@ internal fun LazyListScope.exportSection(
     }
 }
 
-internal fun LazyListScope.folderSection(
+/**
+ * Default paths (was Folders, #101): the music folders, where presets live, and the folder they are
+ * mirrored to. The video save folder joins them, first, once #21 adds it.
+ */
+internal fun LazyListScope.defaultPathsSection(
     folders: FolderSettings,
     onAction: (SettingsAction) -> Unit,
 ) {
+    item {
+        SettingsGroup(stringResource(R.string.folders_group_music)) {
+            if (folders.musicFolders.isEmpty()) Note(stringResource(R.string.folders_music_none))
+            folders.musicFolders.sortedBy { it.value }.forEach { folder ->
+                Row {
+                    Note(folder.value)
+                    TextButton(onClick = { onAction(SettingsAction.RemoveMusicFolder(folder)) }) {
+                        Text(stringResource(R.string.folders_music_remove))
+                    }
+                }
+            }
+            OutlinedButton(onClick = { onAction(SettingsAction.PickMusicFolder) }) { Text(stringResource(R.string.folders_music_add)) }
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.folders_group_preset_folder)) {
+            Note(folders.presetFolder?.value ?: stringResource(R.string.folders_preset_folder_app))
+            Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
+                OutlinedButton(onClick = { onAction(SettingsAction.PickPresetFolder) }) {
+                    Text(stringResource(R.string.folders_presets_choose))
+                }
+                if (folders.presetFolder != null) {
+                    TextButton(onClick = { onAction(SettingsAction.Change(FolderCommand.SetPresetFolder(null))) }) {
+                        Text(stringResource(R.string.folders_preset_folder_reset))
+                    }
+                }
+            }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.folders_group_presets)) {
             Note(folders.presetMirror?.value ?: stringResource(R.string.folders_presets_none))
@@ -278,27 +312,25 @@ internal fun LazyListScope.folderSection(
             }
         }
     }
-    item {
-        SettingsGroup(stringResource(R.string.folders_group_music)) {
-            if (folders.musicFolders.isEmpty()) Note(stringResource(R.string.folders_music_none))
-            folders.musicFolders.sortedBy { it.value }.forEach { folder ->
-                Row {
-                    Note(folder.value)
-                    TextButton(onClick = { onAction(SettingsAction.RemoveMusicFolder(folder)) }) {
-                        Text(stringResource(R.string.folders_music_remove))
-                    }
-                }
-            }
-            OutlinedButton(onClick = { onAction(SettingsAction.PickMusicFolder) }) { Text(stringResource(R.string.folders_music_add)) }
-        }
-    }
 }
 
-internal fun LazyListScope.behaviorSection(
-    behavior: BehaviorSettings,
+/**
+ * Application preferences (was Behavior): keeping the screen on, touch, motion and the live
+ * wallpaper. #28's run-in-background switches join them.
+ */
+internal fun LazyListScope.applicationSection(
+    values: SettingsValues,
     onAction: (SettingsAction) -> Unit,
 ) {
+    val behavior = values.behavior
     val change: (SettingsCommand) -> Unit = { onAction(SettingsAction.Change(it)) }
+    item {
+        SettingsGroup(stringResource(R.string.application_group_screen)) {
+            SwitchRow(stringResource(R.string.playback_keep_screen_on), values.playback.keepScreenOn) {
+                change(PlaybackCommand.SetKeepScreenOn(it))
+            }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.behavior_group_touch)) {
             SwitchRow(stringResource(R.string.behavior_touch_smear), behavior.touchSmear) { change(BehaviorCommand.SetTouchSmear(it)) }
