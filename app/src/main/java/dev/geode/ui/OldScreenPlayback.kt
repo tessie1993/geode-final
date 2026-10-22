@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,6 +50,9 @@ class OldScreenPlayback internal constructor(
 ) {
     @Inject
     constructor(playback: Playback, application: Application) : this(playback, application, application.geodeContainer.appScope)
+
+    // Every send goes through this, in order (see [send]).
+    private val sends = Mutex()
 
     /** What the old player, the mini-player and full-screen visual mode draw. */
     val uiState: StateFlow<PlayerUiState> =
@@ -140,7 +145,7 @@ class OldScreenPlayback internal constructor(
         startUri: TrackId,
     ) {
         val list = if (tracks.any { it.uri == startUri }) tracks else listOf(QueueTrack(startUri))
-        withDetails(list) { known -> OldScreenModels.playFrom(known, startUri)?.let(::send) }
+        withDetails(list) { known -> listOfNotNull(OldScreenModels.playFrom(known, startUri)) }
     }
 
     fun playAll(
@@ -150,20 +155,22 @@ class OldScreenPlayback internal constructor(
         if (tracks.isEmpty()) return
         withDetails(tracks) { known ->
             // "Shuffle all" turns shuffle on; "Play all" leaves the shuffle setting as it is.
-            if (shuffled) send(PlaybackCommand.SetShuffle(true))
-            send(PlaybackCommand.Play(known.take(PlaybackQueue.MAX_QUEUE), 0))
+            listOfNotNull(
+                PlaybackCommand.SetShuffle(true).takeIf { shuffled },
+                PlaybackCommand.Play(known.take(PlaybackQueue.MAX_QUEUE), 0),
+            )
         }
     }
 
     /** Songs opened from outside the app, played in the order given. */
     fun open(uris: List<Uri>) {
         if (uris.isEmpty()) return
-        withDetails(uris.map { QueueTrack(TrackId(it.toString())) }) { known -> send(PlaybackCommand.Play(known, 0)) }
+        withDetails(uris.map { QueueTrack(TrackId(it.toString())) }) { known -> listOf(PlaybackCommand.Play(known, 0)) }
     }
 
-    fun playNext(uri: TrackId) = withDetails(listOf(QueueTrack(uri))) { send(PlaybackCommand.PlayNext(it)) }
+    fun playNext(uri: TrackId) = withDetails(listOf(QueueTrack(uri))) { listOf(PlaybackCommand.PlayNext(it)) }
 
-    fun enqueue(uri: TrackId) = withDetails(listOf(QueueTrack(uri))) { send(PlaybackCommand.AddToQueue(it)) }
+    fun enqueue(uri: TrackId) = withDetails(listOf(QueueTrack(uri))) { listOf(PlaybackCommand.AddToQueue(it)) }
 
     /** Voice search: the phone's songs matching [query] as a queue, or all of them when it is blank. */
     fun playFromSearch(query: String) {
@@ -174,23 +181,36 @@ class OldScreenPlayback internal constructor(
         }
     }
 
-    private fun send(command: PlaybackCommand) = playback.send(command)
+    /**
+     * Sends [command] after every send asked for before it, including those still waiting for songs'
+     * details: one Mutex, which hands itself over in the order it was asked for, keeps them in order.
+     */
+    private fun send(command: PlaybackCommand) {
+        scope.launch { sends.withLock { playback.send(command) } }
+    }
 
     private fun <T> follow(read: (PlaybackState) -> T): StateFlow<T> =
         playback.state.map(read).stateIn(scope, SharingStarted.Eagerly, read(playback.state.value))
 
-    /** Fills in what [tracks] lack from the phone's media index, then hands Playback the songs. */
+    /**
+     * Fills in what [tracks] lack from the phone's media index, then sends Playback the Commands [then]
+     * makes of the songs. A look-up holds back the sends asked for after it, so Playback gets them in
+     * the order they were asked for.
+     */
     private fun withDetails(
         tracks: List<QueueTrack>,
-        then: (List<Track>) -> Unit,
+        then: (List<Track>) -> List<PlaybackCommand>,
     ) {
-        if (tracks.none(::lacksDetails)) {
-            then(tracks.map(OldScreenModels::trackOf))
-            return
-        }
         scope.launch {
-            val known = withContext(Dispatchers.IO) { tracks.map { if (lacksDetails(it)) withLength(lookUp(it)) else it } }
-            then(known.map(OldScreenModels::trackOf))
+            sends.withLock {
+                val known =
+                    if (tracks.none(::lacksDetails)) {
+                        tracks
+                    } else {
+                        withContext(Dispatchers.IO) { tracks.map { if (lacksDetails(it)) withLength(lookUp(it)) else it } }
+                    }
+                then(known.map(OldScreenModels::trackOf)).forEach(playback::send)
+            }
         }
     }
 
