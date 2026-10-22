@@ -44,8 +44,11 @@ import javax.inject.Inject
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class GeodePlaybackService : PlaybackSessionService() {
+    // Dagger cannot inject a protected member, so the store comes in here and is handed over below.
     @Inject
-    override lateinit var playback: Playback
+    lateinit var store: Playback
+
+    override val playback: Playback get() = store
 
     private var widget: WidgetPublisher? = null
     private var artwork: SessionBitmapLoader? = null
