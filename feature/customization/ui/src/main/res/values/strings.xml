@@ -18,6 +18,7 @@
     <string name="customize_effects">Effects</string>
     <string name="customize_palettes">Palette</string>
     <string name="customize_presets">Presets for this Style</string>
+    <string name="customize_all_presets">All presets</string>
     <string name="customize_no_presets">No presets for this Style yet. Save one from the top bar.</string>
     <string name="customize_looks">Looks</string>
     <string name="customize_percent">%1$d%%</string>

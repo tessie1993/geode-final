@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** App UI screenshots of the Visuals tab and full-screen visual mode, taken from their previews (ADR-0003). */
+/** App UI screenshots of the Visuals tab, full-screen visual mode and the Presets browser, taken from their previews (ADR-0003). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], application = Application::class)
@@ -50,6 +50,37 @@ class VisualsScreenshotTest {
     @Test
     @Config(qualifiers = "+night")
     fun fullScreenHidden() = capture("FullScreenVisual_hidden") { FullScreenHiddenPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presets() = capture("Presets") { PresetsTopPreview() }
+
+    @Test
+    fun presetsLight() = capture("Presets_light") { PresetsLightPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presetsLoading() = capture("Presets_loading") { PresetsLoadingPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presetsFolder() = capture("Presets_folder") { PresetsFolderPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presetsBuiltIn() = capture("Presets_built_in") { PresetsBuiltInPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presetsBuiltInStyle() = capture("Presets_built_in_style") { PresetsBuiltInStylePreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presetsImported() = capture("Presets_imported") { PresetsImportedPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun presetsNoneSaved() = capture("Presets_none_saved") { PresetsNoneSavedPreview() }
 
     private fun capture(
         name: String,
