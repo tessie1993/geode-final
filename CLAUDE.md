@@ -1,5 +1,9 @@
 # Geode
 
+## Asking the user questions
+
+Every question to the user goes through the `AskUserQuestion` tool as clickable options, never as plain text in a reply. Each question has exactly 4 options (the tool's maximum), and the tool adds the free-text "Other" choice automatically, which makes 5 choices in all. Put the recommended option first and mark it "(Recommended)".
+
 ## Agent skills
 
 ### Issue tracker
