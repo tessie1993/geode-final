@@ -30,11 +30,20 @@ internal class TrackAnalysisController(
 
     private var timelineBacking: FeatureTimeline? = null
 
+    private val _tempo = MutableStateFlow(0f)
+
+    /**
+     * The current song's tempo from its whole-song export analysis (ADR-0001), 0 until that is known.
+     * What the export's loop-safe choice and bar trim go by; never the live Visual's.
+     */
+    val tempo: StateFlow<Float> = _tempo
+
     var timeline: FeatureTimeline?
         get() = timelineBacking
         set(value) {
             timelineBacking = value
             _waveform.value = value?.let(::waveformOf)
+            _tempo.value = value?.bpm ?: 0f
         }
 
     suspend fun analyzeCached(

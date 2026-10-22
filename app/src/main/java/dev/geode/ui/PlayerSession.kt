@@ -604,6 +604,12 @@ class PlayerSession internal constructor(
 
     fun analysisTimeline(): FeatureTimeline? = analysis.timeline
 
+    /** The current song's tempo from its export analysis, 0 until known (see [prepareExportTempo]). */
+    val exportTempo: StateFlow<Float> get() = analysis.tempo
+
+    /** Has the export analysis worked out, for the export dialog, if it is not there yet. */
+    fun prepareExportTempo() = exportController.prepareTempo()
+
     fun currentSceneId(): String = _vizState.value.sceneId.value
 
     fun currentSceneParams(): SceneParams = _vizState.value.params

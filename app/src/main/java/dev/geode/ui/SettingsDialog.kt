@@ -64,13 +64,11 @@ fun SettingsDialog(
     // choice is carried as its id and resolved back through LoudnessTarget.byId.
     var loudnessTargetId by rememberSaveable { mutableStateOf(defaults.loudnessTargetId) }
     val loudnessTarget = LoudnessTarget.byId(loudnessTargetId)
-    var loopSafe by remember {
-        mutableStateOf(
-            defaults.loopSafe &&
-                dev.geode.analysis.BarTrim
-                    .barDurationUs(bpm) != null,
-        )
-    }
+    // The tempo arrives from the export analysis after the dialog opens, so the choice follows it.
+    val tempoKnown =
+        dev.geode.analysis.BarTrim
+            .barDurationUs(bpm) != null
+    var loopSafe by remember(tempoKnown) { mutableStateOf(defaults.loopSafe && tempoKnown) }
     var segment by rememberSaveable { mutableStateOf(false) }
     var rangeStart by remember { mutableFloatStateOf(0f) }
     var rangeEnd by remember { mutableFloatStateOf(1f) }

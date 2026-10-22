@@ -23,6 +23,7 @@ import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
 import dev.geode.render.SceneFactory
 import dev.geode.render.scene.SceneParams
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -59,6 +60,8 @@ internal class ExportController(
     private val application: Application,
     private val scope: CoroutineScope,
     private val host: Host,
+    // Where the dialog's tempo analysis runs; a test runs it in place.
+    private val analysisDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     interface Host {
         val exportUri: Uri?
@@ -114,6 +117,30 @@ internal class ExportController(
     }
 
     private var studioJob: Job? = null
+
+    private var tempoJob: Job? = null
+
+    /**
+     * Makes sure the current song's export analysis (ADR-0001) is there, for the export dialog: its
+     * loop-safe choice needs the song's tempo, which only that analysis gives (the Visual reacts live and
+     * knows none). Uses the cached analysis when there is one; the tempo shows once it is known.
+     */
+    @Suppress("TooGenericExceptionCaught") // An analysis that fails leaves the tempo unknown, as before.
+    fun prepareTempo() {
+        val uri = host.exportUri ?: return
+        if (host.cachedTimeline != null || tempoJob?.isActive == true) return
+        tempoJob =
+            scope.launch(analysisDispatcher) {
+                try {
+                    val analysed = host.analyze(uri) {}
+                    if (host.exportUri == uri && host.cachedTimeline == null) host.cachedTimeline = analysed
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failed: Exception) {
+                    dev.geode.RingLog.note(TAG, "the export analysis for the tempo failed", failed)
+                }
+            }
+    }
 
     fun startExport(
         aspect: ExportAspect,
@@ -489,6 +516,8 @@ internal class ExportController(
     }
 
     private companion object {
+        const val TAG = "Export"
+
         // Analysing the track is quick against the render itself; extending mostly copies
         // already-encoded samples, so it gets less of the bar than the GPU render does.
         const val ANALYSIS_SPAN = 0.1f
