@@ -266,10 +266,16 @@ data class ExportSettings(
     val loudness: ExportLoudness = ExportLoudness.LEAVE_AS_IS,
 )
 
-/** The Folders tab: where presets are mirrored, and the music folders the library scans. */
+/**
+ * The Default paths section (#101): the music folders the library scans, the preset folder, and
+ * the folder saved presets are mirrored to.
+ */
 data class FolderSettings(
+    /** A folder every saved preset is also copied to, or null for none. */
     val presetMirror: FolderUri? = null,
     val musicFolders: Set<FolderUri> = emptySet(),
+    /** Where saved presets and MilkDrop presets live, or null for the app's own storage. */
+    val presetFolder: FolderUri? = null,
 )
 
 /** What the person has already been through, so the app does not ask again. */
