@@ -24,6 +24,9 @@ class SettingsScreenshotTest {
     fun theme() = capture("theme") { SettingsThemePreview() }
 
     @Test
+    fun themeHome() = capture("theme_home") { SettingsThemeHomePreview() }
+
+    @Test
     fun application() = capture("application") { SettingsApplicationPreview() }
 
     @Test

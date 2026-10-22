@@ -107,11 +107,18 @@ internal fun LazyListScope.themeSection(
             }
         }
     }
-    item {
-        SettingsGroup(stringResource(R.string.look_group_home)) {
-            ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, look.ambientMode, { ambientName(it) }) {
-                change(LookCommand.SetAmbientMode(it))
-            }
+    item { HomeGroup(look.ambientMode, change) }
+}
+
+/** How Home's floating assets move. Its own group, so its screenshot shows it whole. */
+@Composable
+internal fun HomeGroup(
+    ambientMode: AmbientMode,
+    change: (SettingsCommand) -> Unit,
+) {
+    SettingsGroup(stringResource(R.string.look_group_home)) {
+        ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, ambientMode, { ambientName(it) }) {
+            change(LookCommand.SetAmbientMode(it))
         }
     }
 }
