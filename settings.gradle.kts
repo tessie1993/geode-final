@@ -100,3 +100,13 @@ include(
     ":feature:visuals:handlers",
     ":feature:visuals:ui",
 )
+
+// Search (#143): one global search across the Library's songs, Playback's playlists and the presets,
+// opened from Home's Search shortcut; a pick goes to the feature that owns it, through its :api. Built
+// alongside the old Search overlay and not yet wired into :app (ADR-0003).
+include(
+    ":feature:search:api",
+    ":feature:search:core",
+    ":feature:search:handlers",
+    ":feature:search:ui",
+)

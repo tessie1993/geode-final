@@ -11,6 +11,21 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Global Search as a feature (#143, ADR-0003, ADR-0005).**
+  `:feature:search:{api,core,handlers,ui}` searches the Library's songs,
+  Playback's playlists and the presets at once, with today's matching:
+  every word of the query must appear, ignoring case, in a song's title,
+  artist, album, genre or folder, or in a playlist's or preset's name; at
+  most 30 songs show, and the search runs once typing pauses for 250 ms (a
+  timer effect). Results are grouped with their counts and follow the
+  Library, Playback and the presets as they change; songs in excluded
+  folders stay hidden. Picking a song plays every song found from it through
+  the Library, the queue button adds it to the queue, a playlist is played
+  by Playback and a preset is applied by Customization, each through that
+  feature's `:api`. `SearchRoute` empties the field when it closes. Built
+  alongside the old Search overlay; wired in from Home's Search shortcut at
+  the switch-over (#17), which also passes the list of presets.
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person
