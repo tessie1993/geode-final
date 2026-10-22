@@ -261,17 +261,6 @@
 
     <!-- PresetPart -->
     <string name="customize_part_style">Style</string>
-    <string name="customize_part_camera">Camera</string>
-    <string name="customize_part_colour">Colour and palette</string>
-    <string name="customize_part_speed_and_energy">Speed and energy</string>
-    <string name="customize_part_detail_and_glow">Detail and glow</string>
-    <string name="customize_part_kaleidoscope_and_mirror">Kaleidoscope and mirror</string>
-    <string name="customize_part_trails_and_echo">Trails and echo</string>
-    <string name="customize_part_lens">Lens</string>
-    <string name="customize_part_warp_and_ripple">Warp and ripple</string>
-    <string name="customize_part_glitch_and_pixelate">Glitch and pixelate</string>
-    <string name="customize_part_particles">Particles</string>
-    <string name="customize_part_colour_grading">Colour grading</string>
     <string name="customize_part_sound">Sound trims</string>
     <string name="customize_part_extras">Extras</string>
     <string name="customize_part_macros">Macros</string>

@@ -53,6 +53,15 @@ private const val NEW_ID = 0
 /** The name of the throwaway preset that carries Surprise me's Macros as one undoable step. */
 private const val SURPRISE_NAME = "Surprise"
 
+/** The shapes a new Modulator starts from: calm, so it shows without taking over. */
+private val NEW_LFO_PERIOD = Millis(4_000)
+private val NEW_ENVELOPE_ATTACK = Millis(30)
+private val NEW_ENVELOPE_RELEASE = Millis(400)
+private const val NEW_ENVELOPE_THRESHOLD = 0.5f
+private val NEW_SEQUENCER_STEPS = listOf(1f, 0f, 0.5f, 0f, 1f, 0f, 0.75f, 0.25f)
+private val NEW_SEQUENCER_STEP = Millis(250)
+private val NEW_DRIFT_PERIOD = Millis(8_000)
+
 /** The value each level effect is turned on at from the basic view's toggles. */
 private val EFFECT_ON_VALUES =
     mapOf(
@@ -165,10 +174,10 @@ fun newModulator(kind: ModulatorKind): Modulator =
         id = ModulatorId(NEW_ID),
         shape =
             when (kind) {
-                ModulatorKind.LFO -> ModulatorShape.Lfo(Wave.SINE, Millis(4_000))
-                ModulatorKind.ENVELOPE -> ModulatorShape.HitEnvelope(SoundSignal.KICK, Millis(30), Millis(400), 0.5f)
-                ModulatorKind.SEQUENCER ->
-                    ModulatorShape.StepSequencer(listOf(1f, 0f, 0.5f, 0f, 1f, 0f, 0.75f, 0.25f), Millis(250), beatSync = true)
-                ModulatorKind.DRIFT -> ModulatorShape.RandomDrift(Millis(8_000))
+                ModulatorKind.LFO -> ModulatorShape.Lfo(Wave.SINE, NEW_LFO_PERIOD)
+                ModulatorKind.ENVELOPE ->
+                    ModulatorShape.HitEnvelope(SoundSignal.KICK, NEW_ENVELOPE_ATTACK, NEW_ENVELOPE_RELEASE, NEW_ENVELOPE_THRESHOLD)
+                ModulatorKind.SEQUENCER -> ModulatorShape.StepSequencer(NEW_SEQUENCER_STEPS, NEW_SEQUENCER_STEP, beatSync = true)
+                ModulatorKind.DRIFT -> ModulatorShape.RandomDrift(NEW_DRIFT_PERIOD)
             },
     )

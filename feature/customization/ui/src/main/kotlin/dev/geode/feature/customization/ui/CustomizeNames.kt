@@ -244,17 +244,17 @@ internal fun partName(part: PresetPart): String =
     stringResource(
         when (part) {
             PresetPart.STYLE -> R.string.customize_part_style
-            PresetPart.CAMERA -> R.string.customize_part_camera
-            PresetPart.COLOUR -> R.string.customize_part_colour
-            PresetPart.SPEED_AND_ENERGY -> R.string.customize_part_speed_and_energy
-            PresetPart.DETAIL_AND_GLOW -> R.string.customize_part_detail_and_glow
-            PresetPart.KALEIDOSCOPE_AND_MIRROR -> R.string.customize_part_kaleidoscope_and_mirror
-            PresetPart.TRAILS_AND_ECHO -> R.string.customize_part_trails_and_echo
-            PresetPart.LENS -> R.string.customize_part_lens
-            PresetPart.WARP_AND_RIPPLE -> R.string.customize_part_warp_and_ripple
-            PresetPart.GLITCH_AND_PIXELATE -> R.string.customize_part_glitch_and_pixelate
-            PresetPart.PARTICLES -> R.string.customize_part_particles
-            PresetPart.COLOUR_GRADING -> R.string.customize_part_colour_grading
+            PresetPart.CAMERA -> R.string.customize_group_camera
+            PresetPart.COLOUR -> R.string.customize_group_colour
+            PresetPart.SPEED_AND_ENERGY -> R.string.customize_group_speed_and_energy
+            PresetPart.DETAIL_AND_GLOW -> R.string.customize_group_detail_and_glow
+            PresetPart.KALEIDOSCOPE_AND_MIRROR -> R.string.customize_group_kaleidoscope_and_mirror
+            PresetPart.TRAILS_AND_ECHO -> R.string.customize_group_trails_and_echo
+            PresetPart.LENS -> R.string.customize_group_lens
+            PresetPart.WARP_AND_RIPPLE -> R.string.customize_group_warp_and_ripple
+            PresetPart.GLITCH_AND_PIXELATE -> R.string.customize_group_glitch_and_pixelate
+            PresetPart.PARTICLES -> R.string.customize_group_particles
+            PresetPart.COLOUR_GRADING -> R.string.customize_group_colour_grading
             PresetPart.SOUND -> R.string.customize_part_sound
             PresetPart.EXTRAS -> R.string.customize_part_extras
             PresetPart.MACROS -> R.string.customize_part_macros

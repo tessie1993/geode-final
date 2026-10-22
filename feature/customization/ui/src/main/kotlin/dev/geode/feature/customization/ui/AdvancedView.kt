@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -222,64 +223,76 @@ private fun ModulatorCard(
 ) {
     val modulator = row.modulator
     val update = { changed: Modulator -> panel.send(CustomizationCommand.UpdateModulator(changed)) }
-    Surface(
-        shape = ForestShapes.Card,
-        color = LocalForestColors.current.base.copy(alpha = QUIET_ALPHA),
-        modifier = Modifier.fillMaxWidth().padding(vertical = ForestSpacing.Small),
-    ) {
-        Column(Modifier.padding(ForestSpacing.Medium)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(modulatorName(modulator.id, panel.model), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                if (modulator.start == StartMode.ByHand) {
-                    IconButton(onClick = { panel.send(togglePlay(modulator)) }) {
-                        if (modulator.playing) {
-                            Icon(Icons.Filled.Stop, contentDescription = stringResource(R.string.customize_stop))
-                        } else {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.customize_play))
-                        }
+    InsetCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(modulatorName(modulator.id, panel.model), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            if (modulator.start == StartMode.ByHand) {
+                IconButton(onClick = { panel.send(togglePlay(modulator)) }) {
+                    if (modulator.playing) {
+                        Icon(Icons.Filled.Stop, contentDescription = stringResource(R.string.customize_stop))
+                    } else {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.customize_play))
                     }
                 }
-                IconButton(onClick = { panel.send(CustomizationCommand.RemoveModulator(modulator.id)) }) {
-                    Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
-                }
             }
-            if (!row.linked) QuietText(stringResource(R.string.customize_modulator_idle))
-            ModulatorPicture(modulator.shape, Modifier.padding(vertical = ForestSpacing.Small))
-            val shape = modulator.shape
-            if (shape is ModulatorShape.Lfo) {
+            IconButton(onClick = { panel.send(CustomizationCommand.RemoveModulator(modulator.id)) }) {
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
+            }
+        }
+        if (!row.linked) QuietText(stringResource(R.string.customize_modulator_idle))
+        ModulatorPicture(modulator.shape, Modifier.padding(vertical = ForestSpacing.Small))
+        val shape = modulator.shape
+        when (shape) {
+            is ModulatorShape.Lfo -> {
                 ChipFlow {
                     Wave.entries.forEach { wave ->
                         ChoiceChip(waveName(wave), shape.wave == wave) { update(modulator.copy(shape = shape.copy(wave = wave))) }
                     }
                 }
+                BeatSync(shape.beatSync) { update(modulator.copy(shape = shape.copy(beatSync = it))) }
             }
-            SectionTitle(stringResource(R.string.customize_start))
-            ChipFlow {
-                ChoiceChip(stringResource(R.string.customize_start_playing), modulator.start == StartMode.WhilePlaying) {
-                    update(modulator.copy(start = StartMode.WhilePlaying))
-                }
-                ChoiceChip(stringResource(R.string.customize_start_sound), modulator.start is StartMode.OnSound) {
-                    update(modulator.copy(start = StartMode.OnSound(SoundSignal.KICK)))
-                }
-                ChoiceChip(stringResource(R.string.customize_start_hand), modulator.start == StartMode.ByHand) {
-                    update(modulator.copy(start = StartMode.ByHand))
-                }
-            }
-            HeldSlider(
-                label = stringResource(R.string.customize_rate),
-                value = modulator.rate,
-                range = Modulator.MIN_RATE..Modulator.MAX_RATE,
-                text = { stringResource(R.string.customize_rate_value, it) },
-                onSet = { update(modulator.copy(rate = it)) },
-            )
-            HeldSlider(
-                label = stringResource(R.string.customize_depth),
-                value = modulator.depth,
-                range = 0f..1f,
-                text = { stringResource(R.string.customize_percent, percentOf(it)) },
-                onSet = { update(modulator.copy(depth = it)) },
-            )
+            is ModulatorShape.StepSequencer ->
+                BeatSync(shape.beatSync) { update(modulator.copy(shape = shape.copy(beatSync = it))) }
+            is ModulatorShape.HitEnvelope, is ModulatorShape.RandomDrift -> Unit
         }
+        SectionTitle(stringResource(R.string.customize_start))
+        ChipFlow {
+            ChoiceChip(stringResource(R.string.customize_start_playing), modulator.start == StartMode.WhilePlaying) {
+                update(modulator.copy(start = StartMode.WhilePlaying))
+            }
+            ChoiceChip(stringResource(R.string.customize_start_sound), modulator.start is StartMode.OnSound) {
+                update(modulator.copy(start = StartMode.OnSound(SoundSignal.KICK)))
+            }
+            ChoiceChip(stringResource(R.string.customize_start_hand), modulator.start == StartMode.ByHand) {
+                update(modulator.copy(start = StartMode.ByHand))
+            }
+        }
+        HeldSlider(
+            label = stringResource(R.string.customize_rate),
+            value = modulator.rate,
+            range = Modulator.MIN_RATE..Modulator.MAX_RATE,
+            text = { stringResource(R.string.customize_rate_value, it) },
+            onSet = { update(modulator.copy(rate = it)) },
+        )
+        HeldSlider(
+            label = stringResource(R.string.customize_depth),
+            value = modulator.depth,
+            range = 0f..1f,
+            text = { stringResource(R.string.customize_percent, percentOf(it)) },
+            onSet = { update(modulator.copy(depth = it)) },
+        )
+    }
+}
+
+/** Whether a wave or a sequencer follows the beat instead of its own period. */
+@Composable
+private fun BeatSync(
+    on: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.customize_beat_sync), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Switch(checked = on, onCheckedChange = onChange)
     }
 }
 
@@ -325,47 +338,41 @@ private fun MacroCard(
 ) {
     val model = panel.model
     var name by remember(knob.name) { mutableStateOf(knob.name) }
-    Surface(
-        shape = ForestShapes.Card,
-        color = LocalForestColors.current.base.copy(alpha = QUIET_ALPHA),
-        modifier = Modifier.fillMaxWidth().padding(vertical = ForestSpacing.Small),
-    ) {
-        Column(Modifier.padding(ForestSpacing.Medium)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.customize_macro_name)) },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = { panel.send(CustomizationCommand.RenameMacro(knob.index, name.trim())) },
-                    enabled = name.isNotBlank() && name.trim() != knob.name,
-                ) {
-                    Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.customize_rename))
-                }
-            }
-            HeldSlider(
-                label = stringResource(R.string.customize_macro_value),
-                value = knob.value,
-                range = 0f..1f,
-                text = { stringResource(R.string.customize_percent, percentOf(it)) },
-                onSet = { panel.send(CustomizationCommand.SetMacro(knob.index, it)) },
+    InsetCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(stringResource(R.string.customize_macro_name)) },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
             )
-            knob.drivers.forEach { driver ->
-                QuietText(stringResource(R.string.customize_macro_driven_by, sourceName(driver, model)))
+            IconButton(
+                onClick = { panel.send(CustomizationCommand.RenameMacro(knob.index, name.trim())) },
+                enabled = name.isNotBlank() && name.trim() != knob.name,
+            ) {
+                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.customize_rename))
             }
-            SectionTitle(stringResource(R.string.customize_macro_links))
-            if (knob.links.isEmpty()) QuietText(stringResource(R.string.customize_macro_no_links))
-            knob.links.forEach { link -> MacroLinkItem(panel, knob.index, link) }
-            Row {
-                TextButton(onClick = { panel.open(CustomizePage.ChooseTarget(macro = knob.index)) }) {
-                    Text(stringResource(R.string.customize_macro_add_link))
-                }
-                TextButton(onClick = { panel.send(CustomizationCommand.ClearMacro(knob.index)) }, enabled = knob.links.isNotEmpty()) {
-                    Text(stringResource(R.string.customize_macro_clear))
-                }
+        }
+        HeldSlider(
+            label = stringResource(R.string.customize_macro_value),
+            value = knob.value,
+            range = 0f..1f,
+            text = { stringResource(R.string.customize_percent, percentOf(it)) },
+            onSet = { panel.send(CustomizationCommand.SetMacro(knob.index, it)) },
+        )
+        knob.drivers.forEach { driver ->
+            QuietText(stringResource(R.string.customize_macro_driven_by, sourceName(driver, model)))
+        }
+        SectionTitle(stringResource(R.string.customize_macro_links))
+        if (knob.links.isEmpty()) QuietText(stringResource(R.string.customize_macro_no_links))
+        knob.links.forEach { link -> MacroLinkItem(panel, knob.index, link) }
+        Row {
+            TextButton(onClick = { panel.open(CustomizePage.ChooseTarget(macro = knob.index)) }) {
+                Text(stringResource(R.string.customize_macro_add_link))
+            }
+            TextButton(onClick = { panel.send(CustomizationCommand.ClearMacro(knob.index)) }, enabled = knob.links.isNotEmpty()) {
+                Text(stringResource(R.string.customize_macro_clear))
             }
         }
     }
@@ -402,6 +409,18 @@ private fun MacroLinkItem(
             panel.send(CustomizationCommand.LinkMacro(index, link.copy(low = low, high = high)))
         },
     )
+}
+
+/** A quiet card inside the panel, for one Modulator or one Macro. Never glass on glass: it only darkens. */
+@Composable
+private fun InsetCard(content: @Composable () -> Unit) {
+    Surface(
+        shape = ForestShapes.Card,
+        color = LocalForestColors.current.base.copy(alpha = QUIET_ALPHA),
+        modifier = Modifier.fillMaxWidth().padding(vertical = ForestSpacing.Small),
+    ) {
+        Column(Modifier.padding(ForestSpacing.Medium)) { content() }
+    }
 }
 
 /** [fraction] 0..1 as a whole percentage. */
