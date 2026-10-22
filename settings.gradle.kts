@@ -79,3 +79,12 @@ include(
     ":feature:library:handlers",
     ":feature:library:ui",
 )
+
+// Diagnostics (#62): the "Share diagnostics" file and the hidden developer overlay. Built alongside
+// the old code and not yet wired into :app (ADR-0003).
+include(
+    ":feature:diagnostics:api",
+    ":feature:diagnostics:core",
+    ":feature:diagnostics:handlers",
+    ":feature:diagnostics:ui",
+)

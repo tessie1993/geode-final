@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -9,6 +10,7 @@
 
 #include "geode/api/geode_api.h"
 #include "geode/viz/Renderer.hpp"
+#include "SnapshotHandle.hpp"
 
 struct geode_viz {
     geode_viz(AAssetManager* assets, std::string cacheDir) : renderer(assets, std::move(cacheDir)) {}
@@ -17,6 +19,8 @@ struct geode_viz {
     std::mutex configLock;
     std::array<geode::viz::LfoConfig, geode::viz::LfoEngine::kSlots> lfo{};
     std::array<geode::viz::AdsrConfig, geode::viz::AdsrEngine::kCount> adsr{};
+    // The Customization snapshots this renderer reads at the start of each frame; null when none.
+    std::atomic<geode_snapshots*> snapshots{nullptr};
 };
 
 namespace {
@@ -25,6 +29,10 @@ using namespace geode::viz;
 
 static_assert(LfoEngine::kSlots == GEODE_LFO_SLOTS);
 static_assert(AdsrEngine::kCount == GEODE_ADSR_SLOTS);
+// The snapshot schema (core/bridge/schema/native_bridge.json) must describe exactly what the Visual reads.
+static_assert(geode::bridge::kSnapshotParamsCount == static_cast<size_t>(SceneParams::kFieldCount));
+static_assert(geode::bridge::kSnapshotLfoCount == static_cast<size_t>(GEODE_LFO_SLOTS * GEODE_LFO_CONFIG_FLOATS));
+static_assert(geode::bridge::kSnapshotAdsrCount == static_cast<size_t>(GEODE_ADSR_SLOTS * GEODE_ADSR_CONFIG_FLOATS));
 
 constexpr int kModSourceCount = static_cast<int>(ModSource::StereoPan) + 1;
 constexpr int kLfoTargetCount = static_cast<int>(LfoTarget::Lfo3Depth) + 1;
@@ -253,8 +261,31 @@ void geode_viz_cut(geode_viz* v) {
     if (v) v->renderer.cut();
 }
 
+// The drawing thread's side of the hand-off: the newest Customization, if a new one came, before the frame.
+static void applySnapshot(geode_viz* v) {
+    geode_snapshots* attached = v->snapshots.load(std::memory_order_acquire);
+    if (!attached || !attached->exchange.refresh(geode::bridge::SnapshotReader::Draw)) return;
+    const geode::bridge::CustomizationSnapshot& snapshot = attached->exchange.current(geode::bridge::SnapshotReader::Draw);
+    geode_viz_set_params(v, snapshot.params.data(), static_cast<int>(snapshot.params.size()));
+    geode_viz_set_reduced_motion(v, snapshot.reducedMotion ? 1 : 0);
+    for (int slot = 0; slot < GEODE_LFO_SLOTS; ++slot) {
+        geode_viz_set_lfo(v, slot, snapshot.lfo.data() + slot * GEODE_LFO_CONFIG_FLOATS, GEODE_LFO_CONFIG_FLOATS);
+    }
+    for (int slot = 0; slot < GEODE_ADSR_SLOTS; ++slot) {
+        geode_viz_set_adsr(v, slot, snapshot.adsr.data() + slot * GEODE_ADSR_CONFIG_FLOATS, GEODE_ADSR_CONFIG_FLOATS);
+    }
+}
+
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {
-    if (v) v->renderer.render(time_seconds, target_fbo);
+    if (!v) return;
+    applySnapshot(v);
+    v->renderer.render(time_seconds, target_fbo);
+}
+
+GeodeStatus geode_viz_attach_snapshots(geode_viz* v, geode_snapshots* snapshots) {
+    if (!v) return GEODE_STATUS_NULL_HANDLE;
+    v->snapshots.store(snapshots, std::memory_order_release);
+    return GEODE_STATUS_OK;
 }
 
 void geode_viz_release_scenes(geode_viz* v) {
