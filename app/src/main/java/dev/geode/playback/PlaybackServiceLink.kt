@@ -2,6 +2,7 @@ package dev.geode.playback
 
 import android.content.ComponentName
 import android.content.Context
+import androidx.annotation.MainThread
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
@@ -9,10 +10,12 @@ import dev.geode.RingLog
 import dev.geode.feature.playback.api.Playback
 import dev.geode.geodeContainer
 import dev.geode.ui.OldScreenModels
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Keeps Playback's media session service ([GeodePlaybackService]) running once Playback first means
@@ -36,10 +39,12 @@ class PlaybackServiceLink(
                 .map { OldScreenModels.meantToPlay(it.player) }
                 .distinctUntilChanged()
                 .filter { it }
-                .collect { connect(app) }
+                // A MediaController is only touched on the main thread, isConnected included.
+                .collect { withContext(Dispatchers.Main.immediate) { connect(app) } }
         }
     }
 
+    @MainThread
     private fun connect(app: Context) {
         val current = connection
         if (current != null && (!current.isDone || runCatching { current.get().isConnected }.getOrDefault(false))) return
