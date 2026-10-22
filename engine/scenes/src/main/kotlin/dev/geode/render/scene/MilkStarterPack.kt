@@ -3,12 +3,18 @@ package dev.geode.render.scene
 import android.content.Context
 import java.io.File
 
+/**
+ * Copies the bundled MilkDrop presets (`assets/milk`, listed with their credits in
+ * `assets/milk/catalog.json`) into the user's preset folder. A file already there is left alone, so
+ * a preset the user has edited keeps their version.
+ */
 object MilkStarterPack {
     private const val ASSET_DIR = "milk"
 
     private const val MARKER = ".starter-pack"
 
-    const val VERSION: Int = 1
+    // 2: the curated set of 50 (issue #93) joined Geode's own 6; installs at 1 copy the new files.
+    const val VERSION: Int = 2
 
     @Suppress("ReturnCount")
     fun install(

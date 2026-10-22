@@ -19,7 +19,7 @@ import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
 
 /**
- * Settings, the whole screen: the tabs and the open tab's settings (ADR-0003). Stateless: it shows
+ * Settings, the whole screen: the sections and the open section's settings (ADR-0003). Stateless: it shows
  * [model] and reports everything the person does to [onAction]; no store, ViewModel or IO.
  */
 @Composable
@@ -58,11 +58,11 @@ private fun LazyListScope.section(
 ) {
     val change: (SettingsCommand) -> Unit = { onAction(SettingsAction.Change(it)) }
     when (model.section) {
-        SettingsSection.LOOK -> lookSection(values.look, model.fontColors, change)
+        SettingsSection.THEME -> themeSection(values.look, model.fontColors, change)
+        SettingsSection.APPLICATION -> applicationSection(values, onAction)
         SettingsSection.AUDIO -> audioSection(values, change)
         SettingsSection.EXPORT -> exportSection(values.export, change)
-        SettingsSection.FOLDERS -> folderSection(values.folders, onAction)
-        SettingsSection.BEHAVIOR -> behaviorSection(values.behavior, onAction)
+        SettingsSection.DEFAULT_PATHS -> defaultPathsSection(values.folders, onAction)
         SettingsSection.HELP -> helpSection(values.onboarding, onAction)
         SettingsSection.ABOUT -> aboutSection(model.appVersion)
     }
@@ -82,11 +82,11 @@ private fun SectionColumn(content: LazyListScope.() -> Unit) {
 private fun sectionName(section: SettingsSection): String =
     stringResource(
         when (section) {
-            SettingsSection.LOOK -> R.string.settings_section_look
+            SettingsSection.THEME -> R.string.settings_section_theme
+            SettingsSection.APPLICATION -> R.string.settings_section_application
             SettingsSection.AUDIO -> R.string.settings_section_audio
             SettingsSection.EXPORT -> R.string.settings_section_export
-            SettingsSection.FOLDERS -> R.string.settings_section_folders
-            SettingsSection.BEHAVIOR -> R.string.settings_section_behavior
+            SettingsSection.DEFAULT_PATHS -> R.string.settings_section_default_paths
             SettingsSection.HELP -> R.string.settings_section_help
             SettingsSection.ABOUT -> R.string.settings_section_about
         },
