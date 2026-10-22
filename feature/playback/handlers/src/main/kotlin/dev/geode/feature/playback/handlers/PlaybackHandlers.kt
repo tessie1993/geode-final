@@ -5,16 +5,22 @@ import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.PlaybackAnnouncement
 import dev.geode.audio.adapter.PlaybackMark
 import dev.geode.engine.types.Millis
+import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
 import dev.geode.feature.playback.api.PlaybackState
+import dev.geode.feature.playback.api.ShuffleOrder
 import dev.geode.feature.playback.core.EngineStep
 import dev.geode.feature.playback.core.PlaybackEvent
 import dev.geode.feature.playback.core.PlaybackReducer
 import dev.geode.feature.playback.core.PlaybackWork
+import dev.geode.feature.playback.core.ResumeChoice
+import dev.geode.feature.playback.core.SIMILAR_BATCH
 import dev.geode.feature.playback.core.StorageFailure
+import dev.geode.feature.playback.core.pickSimilar
+import dev.geode.feature.playback.core.resumeChoice
 import dev.geode.kernel.EffectRunner
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.kernel.FeatureStore
@@ -26,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 /** The feature name failures are reported under. */
 const val PLAYBACK = "playback"
@@ -82,6 +89,34 @@ class PlaybackHandlers(
                     results.report(PlaybackEvent.PlaylistSaved(work.name))
                 }
             is PlaybackWork.DeletePlaylist -> guarded(results, StorageFailure.DELETE_PLAYLIST) { storage.deletePlaylist(work.id) }
+            // The listening tools (#35).
+            PlaybackWork.RestoreListening ->
+                guarded(results, StorageFailure.READ) {
+                    results.report(PlaybackEvent.ListeningRestored(storage.loadListening() ?: ListeningOptions()))
+                }
+            is PlaybackWork.SaveListening -> guarded(results, StorageFailure.SAVE_LISTENING) { storage.saveListening(work.options) }
+            is PlaybackWork.AddBookmark ->
+                guarded(results, StorageFailure.SAVE_BOOKMARK) {
+                    val position = work.mark.positionAt(clocks.elapsed()).coerceIn(Millis.ZERO, work.track.duration)
+                    storage.addBookmark(work.track, position, clocks.wall())
+                }
+            is PlaybackWork.DeleteBookmark -> guarded(results, StorageFailure.DELETE_BOOKMARK) { storage.deleteBookmark(work.id) }
+            is PlaybackWork.SaveResumePoint -> guarded(results, StorageFailure.SAVE_RESUME_POINT) { keep(work) }
+            is PlaybackWork.ForgetResumePoint ->
+                guarded(results, StorageFailure.SAVE_RESUME_POINT) { storage.forgetResumePoint(work.track) }
+            is PlaybackWork.PickSimilar ->
+                guarded(results, StorageFailure.READ) {
+                    results.report(PlaybackEvent.SimilarPicked(pickSimilar(work.queue, storage.knownTracks(), SIMILAR_BATCH)))
+                }
+        }
+    }
+
+    private suspend fun keep(work: PlaybackWork.SaveResumePoint) {
+        val position = work.mark.positionAt(clocks.elapsed())
+        when (resumeChoice(position, work.track.duration)) {
+            ResumeChoice.KEEP -> storage.saveResumePoint(work.track.id, position, clocks.wall())
+            ResumeChoice.FORGET -> storage.forgetResumePoint(work.track.id)
+            ResumeChoice.SKIP -> Unit
         }
     }
 
@@ -89,6 +124,8 @@ class PlaybackHandlers(
         coroutineScope {
             launch { storage.playlists.follow(results) { PlaybackEvent.PlaylistsChanged(it) } }
             launch { storage.history.follow(results) { PlaybackEvent.HistoryChanged(it) } }
+            launch { storage.bookmarks.follow(results) { PlaybackEvent.BookmarksChanged(it) } }
+            launch { storage.resumePoints.follow(results) { PlaybackEvent.ResumePointsChanged(it) } }
         }
 
     private suspend fun <T> Flow<T>.follow(
@@ -117,6 +154,8 @@ class PlaybackHandlers(
             EngineStep.Play -> audio.setPlaying(true)
             EngineStep.Pause -> audio.setPlaying(false)
             is EngineStep.Seek -> audio.seekTo(step.position)
+            is EngineStep.Transitions -> audio.setTransitions(step.crossfade, step.gapless)
+            is EngineStep.PrepareNext -> audio.prepareNext(step.track)
         }
 
     @Suppress("TooGenericExceptionCaught", "SwallowedException") // Handlers catch everything at their edge (ADR-0005).
@@ -149,21 +188,30 @@ class PlaybackHandlers(
 }
 
 /**
- * How `:app` builds Playback's one app-scoped store: it listens to the adapter, follows the playlists
- * and the history, and opens where playback was left off, all from the start.
+ * How `:app` builds Playback's one app-scoped store: it listens to the adapter, follows the playlists,
+ * the history, the bookmarks and the resume points, and opens where playback was left off with the
+ * listening options saved last, all from the start. [shuffleSeed] starts the shuffles, so that each
+ * run of the app shuffles differently.
  */
 fun playbackStore(
     audio: AudioAdapter,
     storage: PlaybackStorage,
     clocks: PlaybackClocks,
     runtime: FeatureRuntime,
+    shuffleSeed: Long = Random.nextLong(),
 ): Playback =
     FeatureStore<PlaybackState, PlaybackCommand, PlaybackEvent, PlaybackWork, PlaybackFact>(
         name = PLAYBACK,
-        initial = PlaybackState(),
+        initial = PlaybackState(shuffle = ShuffleOrder(seed = shuffleSeed)),
         reducer = PlaybackReducer,
         toEvent = PlaybackEvent::Command,
         runner = PlaybackHandlers(audio, storage, clocks),
         runtime = runtime,
-        start = listOf(Perform(PlaybackWork.Listen), Perform(PlaybackWork.Watch), Perform(PlaybackWork.Restore)),
+        start =
+            listOf(
+                Perform(PlaybackWork.Listen),
+                Perform(PlaybackWork.Watch),
+                Perform(PlaybackWork.RestoreListening),
+                Perform(PlaybackWork.Restore),
+            ),
     )

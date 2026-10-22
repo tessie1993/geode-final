@@ -24,6 +24,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   through full-screen mode and tab switches. Built alongside the old Visuals
   hub; wired in at the switch-over (#17).
 
+- **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
+  joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
+  from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the
+  owner accepted that risk. File names and authors are kept; each preset has a
+  short display name in `assets/milk/catalog.json`, shown with its author in
+  the MilkDrop tab. The licences screen carries the MIT notice and credits
+  every Cream of the Crop author. Existing installs receive the new presets
+  once (`MilkStarterPack` version 2). CI now renders every bundled preset on
+  projectM and fails one whose warp or composite shader silently falls back to
+  the default.
+
 - **The native bridge: one snapshot schema, a lock-free hand-off and typed
   statuses (#53, ADR-0005).** `core/bridge/schema/native_bridge.json`
   generates the Customization snapshot and the bridge's status codes for C,

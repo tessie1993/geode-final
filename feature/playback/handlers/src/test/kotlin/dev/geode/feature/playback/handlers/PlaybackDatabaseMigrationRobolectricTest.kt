@@ -5,6 +5,8 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.Bookmark
+import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.PlayedTrack
 import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlaylistSummary
@@ -13,6 +15,7 @@ import dev.geode.feature.playback.api.Track
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -46,6 +49,16 @@ class PlaybackDatabaseMigrationRobolectricTest {
                     storage.history.first(),
                 )
                 assertEquals(SavedSession(Queue(listOf(night, tide), 1), Millis(64_000)), storage.loadSession())
+                // Version 2's listening tools start empty, and work (#35).
+                assertEquals(emptyList<Bookmark>(), storage.bookmarks.first())
+                assertEquals(emptyMap<TrackId, Millis>(), storage.resumePoints.first())
+                assertNull(storage.loadListening())
+                val bookmark = storage.addBookmark(night, Millis(30_000), Millis(1))
+                storage.saveResumePoint(night.id, Millis(40_000), Millis(2))
+                storage.saveListening(ListeningOptions(shuffle = true))
+                assertEquals(listOf(Bookmark(bookmark, night, Millis(30_000))), storage.bookmarks.first())
+                assertEquals(mapOf(night.id to Millis(40_000)), storage.resumePoints.first())
+                assertEquals(ListeningOptions(shuffle = true), storage.loadListening())
             } finally {
                 database.close()
             }

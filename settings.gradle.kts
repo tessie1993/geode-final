@@ -65,10 +65,12 @@ include(
     ":feature:settings:ui",
 )
 
-// Customization (#39): the model and its reducer. Its :handlers and :ui come with later tickets.
+// Customization (#39): the model and its reducer; its screens (#42), the basic and Advanced views.
+// Its :handlers come with a later ticket.
 include(
     ":feature:customization:api",
     ":feature:customization:core",
+    ":feature:customization:ui",
 )
 
 // Library (#37): browse, search, sort and filter the phone's music, with favourites, song info edits,
