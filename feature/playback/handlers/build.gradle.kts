@@ -36,6 +36,8 @@ dependencies {
     implementation(libs.media3.common)
     implementation(libs.media3.session)
     implementation(libs.kotlinx.coroutines.android)
+    // Settings' "Music keeps playing" (#28): whether leaving the app pauses the music.
+    implementation(project(":feature:settings:api"))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }
