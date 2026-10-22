@@ -2,6 +2,7 @@ package dev.geode.ui
 
 import android.app.Application
 import android.net.Uri
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import dev.geode.analysis.AudioFeatures
@@ -28,6 +29,7 @@ import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistMatcher
 import dev.geode.data.TagWriteOutcome
 import dev.geode.engine.types.Hz
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
@@ -630,13 +632,22 @@ class PlayerSession internal constructor(
 
     fun currentSceneParams(): SceneParams = _vizState.value.params
 
-    fun playbackPositionMs(): Long? =
-        oldScreens.uiState.value
-            .takeIf { it.isPlaying }
-            ?.position
-            ?.value
+    /**
+     * Where the song is now while it plays, null otherwise: read from Playback's state and the clock,
+     * never from a screen's flow, which stops following Playback when nothing watches it.
+     */
+    fun playbackPositionMs(): Long? {
+        val player = playback.state.value.player
+        if (!OldScreenModels.meantToPlay(player)) return null
+        return OldScreenModels.positionAt(player, Millis(SystemClock.elapsedRealtime())).value
+    }
 
-    fun trackDurationMs(): Long = oldScreens.uiState.value.duration.value
+    fun trackDurationMs(): Long =
+        OldScreenModels
+            .queueOf(playback.state.value.player)
+            ?.current
+            ?.duration
+            ?.value ?: 0L
 
     val visualizerRepository: VisualizerRepository = SessionVisualizerRepository(this)
 
