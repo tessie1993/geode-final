@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Global Search (#143): one search across the songs, playlists and presets. -->
+    <string name="search_placeholder">Search songs, playlists and presets</string>
+    <string name="search_clear">Clear the search</string>
+    <string name="search_close">Close search</string>
+    <string name="search_hint">Type to search your music, playlists and presets</string>
+    <string name="search_songs">Songs (%1$d)</string>
+    <string name="search_playlists">Playlists (%1$d)</string>
+    <string name="search_presets">Presets (%1$d)</string>
+    <string name="search_nothing_found">No results for “%1$s”</string>
+    <string name="search_add_to_queue">Add %1$s to the queue</string>
+    <plurals name="search_song_count">
+        <item quantity="one">%d song</item>
+        <item quantity="other">%d songs</item>
+    </plurals>
+</resources>
