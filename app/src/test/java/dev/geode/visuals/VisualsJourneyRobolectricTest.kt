@@ -51,6 +51,7 @@ import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.core.PickedFile
 import dev.geode.feature.visuals.handlers.MilkdropFolder
+import dev.geode.feature.visuals.handlers.PickedFiles
 import dev.geode.feature.visuals.handlers.VisualsStorage
 import dev.geode.feature.visuals.handlers.visualsStore
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
@@ -129,7 +130,7 @@ class VisualsJourneyRobolectricTest {
             MemoryVisualsStorage(),
             BuiltInStyles.all,
             EmptyMilkdropFolder,
-            { uri, _ -> PickedFile.Unreadable(uri) },
+            NoPicks,
             emptyList(),
             runtime,
         )
@@ -242,6 +243,13 @@ class VisualsJourneyRobolectricTest {
             name: String,
             bytes: ByteArray,
         ) = Unit
+    }
+
+    private object NoPicks : PickedFiles {
+        override suspend fun read(
+            uri: String,
+            limit: Int,
+        ): PickedFile = PickedFile.Unreadable(uri)
     }
 
     private class MemoryPlaybackStorage : PlaybackStorage {
