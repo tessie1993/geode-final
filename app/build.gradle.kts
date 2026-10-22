@@ -242,14 +242,17 @@ dependencies {
     // only through their interface, and the feature graph has no cycles.
     testImplementation(libs.konsist)
     // The Visuals journey test (#43) builds the real app-scoped feature stores the way :app will at
-    // the switch-over (#17), and moves between the real routes. Test-only: nothing here is wired yet.
+    // the switch-over (#17), and moves between the real routes. Nothing here is wired yet. The routes
+    // are an implementation dependency only because a unit test sees the R classes of :app's main
+    // dependencies alone; as testImplementation, VisualsRoute failed with NoClassDefFoundError on
+    // dev.geode.feature.visuals.ui.R$string.
+    implementation(project(":feature:visuals:ui"))
     testImplementation(project(":feature:playback:api"))
     testImplementation(project(":feature:playback:handlers"))
     testImplementation(project(":feature:customization:api"))
     testImplementation(project(":feature:customization:core"))
     testImplementation(project(":feature:visuals:api"))
     testImplementation(project(":feature:visuals:handlers"))
-    testImplementation(project(":feature:visuals:ui"))
     testImplementation(testFixtures(project(":arch:kernel")))
     testImplementation(testFixtures(project(":arch:audio")))
 
