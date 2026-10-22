@@ -24,6 +24,9 @@ import javax.inject.Singleton
  * tear down a session another screen is still reading.
  */
 @Singleton
+// Feature's Command and Fact are in/out, so Kotlin gives constructor parameters of Playback and
+// Settings Java wildcards the provided stores lack; without this Dagger finds no binding for them.
+@JvmSuppressWildcards
 class PlayerSessionProvider
     @Inject
     constructor(

@@ -37,6 +37,9 @@ import dev.geode.feature.playback.api.RepeatMode as PlaybackRepeat
  * repeat, which the old player settings also carried, belong to [Playback].
  */
 @Singleton
+// Feature's Command and Fact are in/out, so Kotlin gives constructor parameters of Playback and
+// Settings Java wildcards the provided stores lack; without this Dagger finds no binding for them.
+@JvmSuppressWildcards
 class SettingsForOldScreens internal constructor(
     private val settings: Settings,
     private val playback: Playback,
