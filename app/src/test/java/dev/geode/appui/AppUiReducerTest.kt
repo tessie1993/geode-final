@@ -1,8 +1,10 @@
 package dev.geode.appui
 
 import dev.geode.appui.AppUiCommand.Back
+import dev.geode.appui.AppUiCommand.BannerShown
 import dev.geode.appui.AppUiCommand.CloseSearch
 import dev.geode.appui.AppUiCommand.CloseSheet
+import dev.geode.appui.AppUiCommand.DismissBanner
 import dev.geode.appui.AppUiCommand.EnterFullScreen
 import dev.geode.appui.AppUiCommand.LeaveFullScreen
 import dev.geode.appui.AppUiCommand.Navigate
@@ -10,6 +12,8 @@ import dev.geode.appui.AppUiCommand.OpenSearch
 import dev.geode.appui.AppUiCommand.OpenSettings
 import dev.geode.appui.AppUiCommand.OpenSheet
 import dev.geode.appui.AppUiCommand.ShowVisualsTab
+import dev.geode.appui.AppUiEvent.BannerTimedOut
+import dev.geode.appui.AppUiEvent.FailureReported
 import dev.geode.appui.AppUiState.Browsing
 import dev.geode.appui.AppUiState.FullScreen
 import dev.geode.appui.CustomizeEntry.FULL_SCREEN
@@ -22,7 +26,10 @@ import dev.geode.appui.Place.VISUALS
 import dev.geode.appui.VisualsTab.CUSTOMIZE
 import dev.geode.appui.VisualsTab.MODULATORS_AND_AUTOMATION
 import dev.geode.appui.VisualsTab.STYLE
+import dev.geode.engine.types.Millis
+import dev.geode.kernel.CancelTimer
 import dev.geode.kernel.Next
+import dev.geode.kernel.StartTimer
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import dev.geode.appui.Place.PLAYER as PLAYER_TAB
@@ -143,8 +150,59 @@ class AppUiReducerTest {
             row(FullScreen(at(PLAYER_TAB, searching = true)), CloseSearch, fullScreen),
         )
 
+    private val unreadable = "Could not read the music"
+    private val engine = "The audio engine is restarting"
+    private val countdown = listOf(StartTimer(BannerTimer, Millis(8_000), BannerTimedOut))
+    private val stopCountdown = listOf(CancelTimer(BannerTimer))
+
+    private fun failure(
+        state: AppUiState,
+        message: String,
+        next: AppUiState,
+        effects: List<AppUiEffect> = emptyList(),
+    ) = Row(state, FailureReported(message), Next(next, effects))
+
+    private val banner: List<Row> =
+        listOf(
+            // A failure waits until the banner has drawn it; a newer one replaces it and still waits.
+            failure(player, unreadable, player.copy(banner = Banner.Waiting(unreadable))),
+            failure(player.copy(banner = Banner.Waiting(unreadable)), engine, player.copy(banner = Banner.Waiting(engine))),
+            // A newer one replaces the one on screen, which is on screen at once: its time starts now.
+            failure(player.copy(banner = Banner.OnScreen(unreadable)), engine, player.copy(banner = Banner.OnScreen(engine)), countdown),
+            failure(fullScreenWithSheet, engine, fullScreenWithSheet.copy(banner = Banner.Waiting(engine))),
+            // Drawn: on screen for eight seconds from now.
+            row(player.copy(banner = Banner.Waiting(unreadable)), BannerShown, player.copy(banner = Banner.OnScreen(unreadable)), countdown),
+            row(
+                fullScreen.copy(banner = Banner.Waiting(unreadable)),
+                BannerShown,
+                fullScreen.copy(banner = Banner.OnScreen(unreadable)),
+                countdown,
+            ),
+            // Saying it again does not start the count again.
+            row(player.copy(banner = Banner.OnScreen(unreadable)), BannerShown, player.copy(banner = Banner.OnScreen(unreadable))),
+            row(player, BannerShown, player),
+            // Dismissed: gone, and its count with it.
+            row(player.copy(banner = Banner.OnScreen(unreadable)), DismissBanner, player, stopCountdown),
+            row(fullScreen.copy(banner = Banner.OnScreen(unreadable)), DismissBanner, fullScreen, stopCountdown),
+            row(player.copy(banner = Banner.Waiting(unreadable)), DismissBanner, player),
+            row(player, DismissBanner, player),
+            // Timed out: gone. A timer that is no longer the banner's changes nothing.
+            Row(player.copy(banner = Banner.OnScreen(unreadable)), BannerTimedOut, Next(player)),
+            Row(fullScreen.copy(banner = Banner.OnScreen(unreadable)), BannerTimedOut, Next(fullScreen)),
+            Row(player.copy(banner = Banner.Waiting(unreadable)), BannerTimedOut, Next(player.copy(banner = Banner.Waiting(unreadable)))),
+            Row(player, BannerTimedOut, Next(player)),
+        )
+
     @Test
     fun `navigation follows the table`() = check(navigation)
+
+    @Test
+    fun `the banner follows the table`() = check(banner)
+
+    @Test
+    fun `the banner stays on screen as long as the old notice banner did`() {
+        assertEquals(Millis(8_000), BANNER_VISIBLE)
+    }
 
     @Test
     fun `back follows the table`() = check(back)
