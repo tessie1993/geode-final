@@ -6,7 +6,7 @@ import dev.geode.design.R
 /** The App UI's theme packs, one per Element (CONTEXT.md). Lapis Lazuli stays the default until #17. */
 object ThemePackCatalog {
     /**
-     * Water (#105): opaque inner-lit sea-glass pebbles on wet slate, over deep teal-black water. Its
+     * Water (#105): translucent inner-lit sea-glass pebbles on opaque wet slate, over deep teal-black water. Its
      * parts are drawn in code ([WaterSurface]) until the art lands.
      */
     val water =

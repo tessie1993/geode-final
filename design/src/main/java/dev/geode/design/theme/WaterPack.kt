@@ -11,11 +11,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import dev.geode.design.forest.WcagContrast
@@ -146,8 +151,16 @@ internal fun waterCore(
     return if (dark) core * DARK_CORE_SHARE else core
 }
 
-/** The darkest a lit pebble gets, at its rim, where text never sits closer than the padding. */
-internal fun waterPebbleEdge(fill: Color): Color = lerp(fill, WaterTokens.Background, PEBBLE_EDGE_SHADE)
+/**
+ * The darkest the glass gets where a label sits: the body's colour over the river floor, under the
+ * dense centre's shade. The see-through edges are outside the label's padding.
+ */
+internal fun waterPebbleBody(fill: Color): Color =
+    WcagContrast.over(
+        WaterTokens.BackgroundDeep,
+        DENSE_ALPHA,
+        WcagContrast.over(fill, BODY_ALPHA, WaterTokens.BackgroundDeep),
+    )
 
 /** The colour of a pebble's lit core at [core] strength. */
 internal fun waterPebbleCore(
@@ -157,7 +170,8 @@ internal fun waterPebbleCore(
 ): Color = lerp(fill, if (component == StoneComponent.PRIMARY_BUTTON) AMBER_CORE else WaterTokens.Glow, core)
 
 /**
- * Draws a Water part in code. Every part is opaque: no blur and nothing seen through it.
+ * Draws a Water part in code. Pebbles read as translucent sea glass, faked with gradients; slabs and
+ * channels are opaque wet stone. Nothing is blurred.
  *
  * ponytail: the art in #105 (gflow N1–N5 pebbles, S1 wet slate, T1 touch ring) and the Blender
  * pebble renders are not in the repo yet, so each body is drawn here. When they land as
@@ -194,7 +208,7 @@ internal fun WaterSurface(
     val wet = state != StoneState.DISABLED
     Canvas(modifier) {
         when (waterBody(component)) {
-            WaterBody.PEBBLE -> pebble(waterPebbleCore(component, fill, core), fill, sink.toPx(), wet, selected)
+            WaterBody.PEBBLE -> pebble(waterPebbleCore(component, fill, 1f), core, fill, sink.toPx(), wet, selected)
             WaterBody.SLAB -> slab(fill, selected)
             WaterBody.RECESS ->
                 if (component == StoneComponent.PROGRESS_RING) {
@@ -212,8 +226,16 @@ internal fun WaterSurface(
 private fun DrawScope.corner(component: StoneComponent): Float =
     if (waterBody(component) == WaterBody.PEBBLE) size.minDimension / 2f else SLAB_CORNER.toPx()
 
+/**
+ * A translucent 3D sea-glass pebble, faked with layered gradients: no blur, nothing rendered
+ * behind it is sampled. From the bottom up: a caustic glow and contact shadow on the stone beneath,
+ * a refracted (flipped) copy of the water's tint, a body that is dense at its thick centre and
+ * thin and see-through at its edges, the emissive core when active, top light and bottom shade,
+ * then a specular rim highlight and a curved wet streak.
+ */
 private fun DrawScope.pebble(
     lit: Color,
+    core: Float,
     fill: Color,
     sink: Float,
     wet: Boolean,
@@ -222,35 +244,103 @@ private fun DrawScope.pebble(
     val shadow = CONTACT_SHADOW.toPx()
     val body = Size(size.width, size.height - shadow)
     val radius = CornerRadius(body.minDimension / 2f)
-    // A soft contact shadow on the wet stone beneath.
-    drawRoundRect(
-        WaterTokens.BackgroundDeep,
-        topLeft = Offset(shadow, shadow),
-        size = Size(size.width - 2 * shadow, body.height),
-        cornerRadius = radius,
-    )
     val top = Offset(0f, sink)
-    drawRoundRect(
-        Brush.radialGradient(
-            listOf(lit, fill, waterPebbleEdge(fill)),
-            center = Offset(size.width * CORE_X, sink + body.height * CORE_Y),
-            radius = body.maxDimension * CORE_REACH,
-        ),
-        topLeft = top,
-        size = body,
-        cornerRadius = radius,
-    )
+    // Beneath: light focused through the glass onto the wet stone, and the contact shadow.
     if (wet) {
-        // The wet highlight, top-left, and the meniscus where water meets the pebble.
         drawOval(
-            Color.White.copy(alpha = HIGHLIGHT_ALPHA),
-            topLeft = Offset(body.width * HIGHLIGHT_X, sink + body.height * HIGHLIGHT_Y),
-            size = Size(body.width * HIGHLIGHT_W, body.height * HIGHLIGHT_H),
+            Brush.radialGradient(
+                listOf(fill.copy(alpha = CAUSTIC_ALPHA), Color.Transparent),
+                center = Offset(size.width / 2f, size.height - shadow),
+                radius = size.width * CAUSTIC_REACH,
+            ),
+            topLeft = Offset(0f, size.height - shadow * CAUSTIC_HEIGHT),
+            size = Size(size.width, shadow * CAUSTIC_HEIGHT),
         )
-        val rim = if (selected) WaterTokens.Aqua else WaterTokens.Glow.copy(alpha = MENISCUS_ALPHA)
-        val rimWidth = (if (selected) SELECTED_RIM else MENISCUS).toPx()
+    }
+    drawOval(
+        WaterTokens.BackgroundDeep.copy(alpha = SHADOW_ALPHA),
+        topLeft = Offset(size.width * SHADOW_INSET, size.height - 2 * shadow),
+        size = Size(size.width * (1f - 2 * SHADOW_INSET), 2 * shadow),
+    )
+    val shape = Path().apply { addRoundRect(RoundRect(top.x, top.y, body.width, top.y + body.height, radius)) }
+    clipPath(shape) {
+        // The water behind, seen upside down through the lens.
+        drawRect(Brush.verticalGradient(listOf(lerp(WaterTokens.Background, fill, REFRACTED_TINT), WaterTokens.BackgroundDeep)))
+        // The glass: thin and see-through at the top and bottom edges, dense through the middle.
+        drawRect(
+            Brush.verticalGradient(
+                0f to fill.copy(alpha = EDGE_ALPHA),
+                THICK_START to fill.copy(alpha = BODY_ALPHA),
+                1f - THICK_START to fill.copy(alpha = BODY_ALPHA),
+                1f to fill.copy(alpha = EDGE_ALPHA),
+                startY = top.y,
+                endY = top.y + body.height,
+            ),
+        )
+        val middle = Offset(body.width / 2f, top.y + body.height / 2f)
+        // Denser, so darker, toward the thick centre.
+        drawRect(
+            Brush.radialGradient(
+                listOf(WaterTokens.BackgroundDeep.copy(alpha = DENSE_ALPHA), Color.Transparent),
+                center = middle,
+                radius = body.height * DENSE_REACH,
+            ),
+        )
+        // The emissive core, lit only when the pebble is active.
+        if (core > 0f) {
+            drawRect(
+                Brush.radialGradient(
+                    listOf(lit.copy(alpha = core), Color.Transparent),
+                    center = Offset(body.width * CORE_X, top.y + body.height * CORE_Y),
+                    radius = body.height * CORE_REACH,
+                ),
+            )
+        }
+        // Light from above, shade below, for the dome.
+        drawRect(
+            Brush.verticalGradient(
+                0f to Color.White.copy(alpha = TOP_LIGHT_ALPHA),
+                TOP_LIGHT_END to Color.Transparent,
+                BOTTOM_SHADE_START to Color.Transparent,
+                1f to WaterTokens.BackgroundDeep.copy(alpha = BOTTOM_SHADE_ALPHA),
+                startY = top.y,
+                endY = top.y + body.height,
+            ),
+        )
+        // The thin edge catches the light.
+        drawPath(shape, WaterTokens.Glow.copy(alpha = THIN_EDGE_ALPHA), style = Stroke(THIN_EDGE.toPx()))
+    }
+    if (!wet) return
+    val inset = SPECULAR_INSET.toPx()
+    val r = radius.x - inset
+    // The specular rim highlight round the top-left of the dome.
+    val rim =
+        Path().apply {
+            arcTo(
+                Rect(inset, top.y + inset, inset + 2 * r, top.y + inset + 2 * r),
+                startAngleDegrees = SPECULAR_START,
+                sweepAngleDegrees = SPECULAR_SWEEP,
+                forceMoveTo = true,
+            )
+            lineTo(maxOf(inset + r, body.width * SPECULAR_LENGTH), top.y + inset)
+        }
+    drawPath(rim, Color.White.copy(alpha = SPECULAR_ALPHA), style = Stroke(SPECULAR_WIDTH.toPx(), cap = StrokeCap.Round))
+    // A curved wet streak across the upper body.
+    val streak =
+        Path().apply {
+            moveTo(body.width * STREAK_X0, top.y + body.height * STREAK_Y0)
+            quadraticTo(
+                body.width * STREAK_CX,
+                top.y + body.height * STREAK_CY,
+                body.width * STREAK_X1,
+                top.y + body.height * STREAK_Y1,
+            )
+        }
+    drawPath(streak, Color.White.copy(alpha = STREAK_ALPHA), style = Stroke(STREAK_WIDTH.toPx(), cap = StrokeCap.Round))
+    if (selected) {
+        val rimWidth = SELECTED_RIM.toPx()
         drawRoundRect(
-            rim,
+            WaterTokens.Aqua,
             topLeft = top + Offset(rimWidth / 2f, rimWidth / 2f),
             size = Size(body.width - rimWidth, body.height - rimWidth),
             cornerRadius = radius,
@@ -258,7 +348,6 @@ private fun DrawScope.pebble(
         )
     }
 }
-
 private fun DrawScope.slab(
     fill: Color,
     selected: Boolean,
@@ -368,11 +457,10 @@ internal val WaterHaptics =
 
 /** Disabled parts are dry: their colour at 40 % over the water. */
 private const val DRY_OPACITY = 0.4f
-private const val CORE_IDLE = 0.3f
+private const val CORE_IDLE = 0f
 private const val CORE_PRESSED = 0.5f
 private const val CORE_SELECTED = 0.7f
 private const val DARK_CORE_SHARE = 0.5f
-private const val PEBBLE_EDGE_SHADE = 0.25f
 
 /** The amber pebble's core warms toward sunrise rather than aqua. */
 private val AMBER_CORE = Color(0xFFFFD9A0)
@@ -381,16 +469,46 @@ private val AMBER_CORE = Color(0xFFFFD9A0)
 private const val CORE_X = 0.42f
 private const val CORE_Y = 0.38f
 private const val CORE_REACH = 0.65f
-private const val HIGHLIGHT_ALPHA = 0.28f
-private const val HIGHLIGHT_X = 0.14f
-private const val HIGHLIGHT_Y = 0.1f
-private const val HIGHLIGHT_W = 0.36f
-private const val HIGHLIGHT_H = 0.22f
+private const val CAUSTIC_ALPHA = 0.3f
+private const val CAUSTIC_REACH = 0.45f
+private const val CAUSTIC_HEIGHT = 3f
+private const val SHADOW_ALPHA = 0.75f
+private const val SHADOW_INSET = 0.1f
+
+/** How much of the pebble's own colour tints the refracted water seen through it. */
+private const val REFRACTED_TINT = 0.18f
+private const val EDGE_ALPHA = 0.5f
+private const val BODY_ALPHA = 0.9f
+
+/** Where the glass reaches full thickness, as a share of its height from each edge. */
+private const val THICK_START = 0.3f
+private const val DENSE_ALPHA = 0.15f
+private const val DENSE_REACH = 0.9f
+private const val TOP_LIGHT_ALPHA = 0.14f
+private const val TOP_LIGHT_END = 0.4f
+private const val BOTTOM_SHADE_START = 0.7f
+private const val BOTTOM_SHADE_ALPHA = 0.25f
+private const val THIN_EDGE_ALPHA = 0.3f
+private val THIN_EDGE = 3.dp
+private const val SPECULAR_START = 180f
+private const val SPECULAR_SWEEP = 90f
+private const val SPECULAR_LENGTH = 0.45f
+private const val SPECULAR_ALPHA = 0.6f
+private val SPECULAR_INSET = 2.dp
+private val SPECULAR_WIDTH = 1.5.dp
+private const val STREAK_X0 = 0.2f
+private const val STREAK_Y0 = 0.42f
+private const val STREAK_CX = 0.32f
+private const val STREAK_CY = 0.16f
+private const val STREAK_X1 = 0.58f
+private const val STREAK_Y1 = 0.24f
+private const val STREAK_ALPHA = 0.35f
+private val STREAK_WIDTH = 2.dp
 private const val MENISCUS_ALPHA = 0.45f
 private val MENISCUS = 1.dp
 private val SELECTED_RIM = 2.dp
 private val FOCUS_STROKE = 2.dp
-private val CONTACT_SHADOW = 2.dp
+private val CONTACT_SHADOW = 3.dp
 private val SINK = 1.dp
 private val DEEP_SINK = 2.dp
 private val SLAB_CORNER = 14.dp

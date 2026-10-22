@@ -23,7 +23,7 @@ class WaterPackTest {
     }
 
     @Test
-    fun `pebble text keeps AA body contrast from the core to the rim of every lit pebble`() {
+    fun `pebble text keeps AA body contrast through the glass of every lit pebble, dense centre included`() {
         val labelled =
             listOf(StoneComponent.PRIMARY_BUTTON, StoneComponent.SECONDARY_BUTTON, StoneComponent.COMPACT_BUTTON, StoneComponent.CHIP)
         val lit = listOf(StoneState.DEFAULT, StoneState.FOCUSED, StoneState.PRESSED, StoneState.SELECTED)
@@ -31,7 +31,7 @@ class WaterPackTest {
             for (state in lit) {
                 val fill = waterFill(component, state)
                 assertAa(WaterTokens.OnPebble, fill, WcagContrast.AA_TEXT)
-                assertAa(WaterTokens.OnPebble, waterPebbleEdge(fill), WcagContrast.AA_TEXT)
+                assertAa(WaterTokens.OnPebble, waterPebbleBody(fill), WcagContrast.AA_TEXT)
                 assertAa(WaterTokens.OnPebble, waterPebbleCore(component, fill, waterCore(component, state)), WcagContrast.AA_TEXT)
             }
         }
@@ -45,6 +45,13 @@ class WaterPackTest {
             val core = waterPebbleCore(StoneComponent.ICON_BUTTON, fill, waterCore(StoneComponent.ICON_BUTTON, state))
             assertAa(WaterTokens.Text, core, WcagContrast.AA_LARGE_TEXT)
         }
+    }
+
+    @Test
+    fun `the emissive core lights only an active pebble`() {
+        assertEquals(0f, waterCore(StoneComponent.CHIP, StoneState.DEFAULT))
+        assertTrue(waterCore(StoneComponent.CHIP, StoneState.PRESSED) > 0f)
+        assertTrue(waterCore(StoneComponent.CHIP, StoneState.SELECTED) > waterCore(StoneComponent.CHIP, StoneState.PRESSED))
     }
 
     @Test
