@@ -10,7 +10,7 @@ import dev.geode.feature.settings.api.FolderSettings
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsValues
 
-// Previews of every tab, which the screenshot tests render (ADR-0003). The sample values are made
+// Previews of every section, which the screenshot tests render (ADR-0003). The sample values are made
 // up for the previews; the real ones come from Settings.
 
 private const val PREVIEW_VERSION = "1.8.0"
@@ -29,7 +29,8 @@ internal val previewValues =
         equalizer = EqualizerSettings(enabled = true, bands = EqualizerPreset.ROCK.levels, preset = EqualizerPreset.ROCK),
         folders =
             FolderSettings(
-                presetMirror = FolderUri("content://tree/primary:Presets"),
+                presetMirror = FolderUri("content://tree/primary:Backup"),
+                presetFolder = FolderUri("content://tree/primary:Presets"),
                 musicFolders = setOf(FolderUri("content://tree/primary:Music")),
             ),
     )
@@ -49,7 +50,7 @@ internal fun SettingsPreview(
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsLookPreview() = SettingsPreview(SettingsSection.LOOK)
+internal fun SettingsThemePreview() = SettingsPreview(SettingsSection.THEME)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
@@ -61,11 +62,11 @@ internal fun SettingsExportPreview() = SettingsPreview(SettingsSection.EXPORT)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsFoldersPreview() = SettingsPreview(SettingsSection.FOLDERS)
+internal fun SettingsDefaultPathsPreview() = SettingsPreview(SettingsSection.DEFAULT_PATHS)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsBehaviorPreview() = SettingsPreview(SettingsSection.BEHAVIOR)
+internal fun SettingsApplicationPreview() = SettingsPreview(SettingsSection.APPLICATION)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
@@ -77,4 +78,4 @@ internal fun SettingsAboutPreview() = SettingsPreview(SettingsSection.ABOUT)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsLoadingPreview() = SettingsPreview(SettingsSection.LOOK, values = null)
+internal fun SettingsLoadingPreview() = SettingsPreview(SettingsSection.THEME, values = null)

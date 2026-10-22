@@ -563,12 +563,17 @@ private fun MilkDropTab(
     var refresh by remember { mutableStateOf(0) }
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     // Off the main thread: userMilkPresets() runs MilkStarterPack.install() - a marker read, an
-    // assets.list, an exists() per asset and up to six asset->file copies on first run - then
-    // listFiles() plus a lastModified() stat per preset for the sort. Inside composition that
-    // measured 45-53 ms of main-thread disk I/O on every launch. Same key as before, so the
-    // refresh++ below still relists; the list simply arrives a frame later instead of stalling one.
-    val milkFiles by produceState(emptyList<java.io.File>(), refresh) {
-        value = withContext(Dispatchers.IO) { visualsViewModel.userMilkPresets() }
+    // assets.list, an exists() per asset and one asset->file copy per bundled preset on first run -
+    // then listFiles() plus a lastModified() stat per preset for the sort, and the first call reads
+    // the preset catalog asset. Inside composition that measured 45-53 ms of main-thread disk I/O on
+    // every launch. Same key as before, so the refresh++ below still relists; the list simply
+    // arrives a frame later instead of stalling one.
+    val milkFiles by produceState(emptyList<Pair<java.io.File, dev.geode.data.MilkCatalogEntry?>>(), refresh) {
+        value =
+            withContext(Dispatchers.IO) {
+                val catalog = visualsViewModel.milkCatalog()
+                visualsViewModel.userMilkPresets().map { it to catalog.entryFor(it.name) }
+            }
     }
     val loaded by viewModel.activeMilkPath.collectAsStateWithLifecycle()
     var packReport by remember { mutableStateOf<dev.geode.data.MilkPackImporter.Report?>(null) }
@@ -674,7 +679,7 @@ private fun MilkDropTab(
         if (milkFiles.isEmpty()) {
             Text("None yet — load a .milk file or save one from the milkdrop scene.", style = MaterialTheme.typography.bodySmall)
         }
-        milkFiles.forEach { f ->
+        milkFiles.forEach { (f, entry) ->
             val active = f.absolutePath == loaded
             Row(
                 Modifier
@@ -688,11 +693,19 @@ private fun MilkDropTab(
                 Box(Modifier.size(6.dp), contentAlignment = Alignment.Center) {
                     if (active) CrystalGem(MaterialTheme.colorScheme.primary, size = 6.dp)
                 }
-                Text(
-                    f.nameWithoutExtension,
-                    Modifier.padding(start = 10.dp),
-                    color = if (active) accentTextColor() else LocalContentColor.current,
-                )
+                Column(Modifier.padding(start = 10.dp)) {
+                    Text(
+                        entry?.name ?: f.nameWithoutExtension,
+                        color = if (active) accentTextColor() else LocalContentColor.current,
+                    )
+                    entry?.let {
+                        Text(
+                            "by ${it.author}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }

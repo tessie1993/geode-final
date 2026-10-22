@@ -157,6 +157,7 @@ internal object SettingsCodec {
         FolderSettings(
             presetMirror = string(K.PRESET_MIRROR)?.let(::FolderUri),
             musicFolders = strings(K.MUSIC_FOLDERS).map(::FolderUri).toSet(),
+            presetFolder = string(K.PRESET_FOLDER)?.let(::FolderUri),
         )
 
     private fun Reader.onboarding(): OnboardingSettings =
@@ -229,6 +230,7 @@ internal object SettingsCodec {
             K.EXPORT_LOUDNESS to LOUDNESS_IDS.getValue(export.loudness),
             K.PRESET_MIRROR to values.folders.presetMirror?.value,
             K.MUSIC_FOLDERS to values.folders.musicFolders.mapTo(mutableSetOf()) { it.value },
+            K.PRESET_FOLDER to values.folders.presetFolder?.value,
             K.SAFETY_ACKNOWLEDGED to onboarding.safetyAcknowledged,
             K.SETUP_DONE to onboarding.setupDone,
             K.TUTORIAL_SEEN to onboarding.tutorialSeen,

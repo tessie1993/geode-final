@@ -61,14 +61,14 @@ class PlaybackEnqueueTest {
     @Test
     fun `play next puts the tracks right after the current one, wherever the player is`() {
         states(atB).zip(states(nextQueue)).forEach { (before, after) ->
-            assertEquals("$before", Next<PlaybackState, PlaybackEffect>(PlaybackState(after)), reduce(before, playNext))
+            assertEquals("$before", PlaybackState(after), reduce(before, playNext).state)
         }
     }
 
     @Test
     fun `add to queue puts the tracks at the end, wherever the player is`() {
         states(atB).zip(states(endQueue)).forEach { (before, after) ->
-            assertEquals("$before", Next<PlaybackState, PlaybackEffect>(PlaybackState(after)), reduce(before, addToQueue))
+            assertEquals("$before", PlaybackState(after), reduce(before, addToQueue).state)
         }
     }
 

@@ -215,6 +215,11 @@ sealed interface FolderCommand : SettingsCommand {
         val folder: FolderUri?,
     ) : FolderCommand
 
+    /** Null keeps presets in the app's own storage. */
+    data class SetPresetFolder(
+        val folder: FolderUri?,
+    ) : FolderCommand
+
     data class AddMusicFolder(
         val folder: FolderUri,
     ) : FolderCommand

@@ -1,17 +1,21 @@
 package dev.geode.playback
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.MainThread
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaController
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionError
+import androidx.media3.session.SessionToken
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -219,19 +223,41 @@ class PlaybackService : MediaLibraryService() {
             return MediaSession.MediaItemsWithStartPosition(listOf(item), 0, 0L)
         }
 
+        /** The app's own connection to the session; while it is bound the service stays created. */
+        private var connection: ListenableFuture<MediaController>? = null
+
+        /**
+         * Keeps the service alive by connecting to its session, never by starting it in the foreground.
+         *
+         * startForegroundService() promises Android a startForeground() within seconds, and Media3 only
+         * keeps that promise while the player is playing. Playback that flips on and straight off again
+         * (a Bluetooth headset connecting, a transient focus loss) broke the promise and Android killed
+         * the app with ForegroundServiceDidNotStartInTimeException. A bound connection promises nothing:
+         * Media3 promotes the service itself when playback starts, pairing its own start with
+         * startForeground(). Binding is also allowed from the background, unlike startService().
+         */
+        @MainThread
         fun ensureRunning(context: Context) {
-            // startService() throws IllegalStateException when called while the app is
-            // backgrounded (this is invoked from onIsPlayingChanged, which can fire off-screen), and
-            // runCatching used to swallow that silently, leaving the service never started.
-            // startForegroundService() is allowed from the background, and MediaSessionService (which
-            // PlaybackService extends) promotes itself to the foreground and posts the playback
-            // notification as soon as its session's player reports isPlaying, satisfying the 5s window.
-            runCatching {
-                context.startForegroundService(Intent(context, PlaybackService::class.java))
-            }.onFailure { RingLog.note("PlaybackService.ensureRunning", "startForegroundService failed", it) }
+            val current = connection
+            if (current != null && (!current.isDone || runCatching { current.get().isConnected }.getOrDefault(false))) return
+            current?.let { MediaController.releaseFuture(it) }
+            val app = context.applicationContext
+            val token = SessionToken(app, ComponentName(app, PlaybackService::class.java))
+            val future = MediaController.Builder(app, token).buildAsync()
+            connection = future
+            future.addListener(
+                {
+                    runCatching { future.get() }
+                        .onFailure { RingLog.note("PlaybackService.ensureRunning", "connecting to the session failed", it) }
+                },
+                app.mainExecutor,
+            )
         }
 
+        @MainThread
         fun stop(context: Context) {
+            connection?.let { MediaController.releaseFuture(it) }
+            connection = null
             runCatching {
                 context.stopService(Intent(context, PlaybackService::class.java))
             }

@@ -52,6 +52,7 @@ class SettingsRulesTest {
     private val night = Argb(0xFFBFE2F2.toInt())
     private val music = FolderUri("content://tree/music")
     private val more = FolderUri("content://tree/more")
+    private val presets = FolderUri("content://tree/presets")
 
     private val lookRows: List<Row> =
         listOf(
@@ -191,6 +192,8 @@ class SettingsRulesTest {
         listOf(
             Row(FolderCommand.SetPresetMirror(music), defaults.copy(folders = folders.copy(presetMirror = music))),
             Row(FolderCommand.SetPresetMirror(null), defaults),
+            Row(FolderCommand.SetPresetFolder(presets), defaults.copy(folders = folders.copy(presetFolder = presets))),
+            Row(FolderCommand.SetPresetFolder(null), defaults),
             Row(FolderCommand.AddMusicFolder(music), defaults.copy(folders = folders.copy(musicFolders = setOf(music)))),
             Row(FolderCommand.RemoveMusicFolder(music), defaults),
         )
@@ -231,6 +234,17 @@ class SettingsRulesTest {
 
         assertEquals(setOf(music, more), both.folders.musicFolders)
         assertEquals(setOf(more), SettingsRules.apply(both, FolderCommand.RemoveMusicFolder(music)).folders.musicFolders)
+    }
+
+    @Test
+    fun `the preset folder and the preset mirror are set apart`() {
+        val both =
+            listOf<SettingsCommand>(FolderCommand.SetPresetMirror(music), FolderCommand.SetPresetFolder(presets))
+                .fold(defaults, SettingsRules::apply)
+
+        assertEquals(folders.copy(presetMirror = music, presetFolder = presets), both.folders)
+        assertEquals(folders.copy(presetMirror = music), SettingsRules.apply(both, FolderCommand.SetPresetFolder(null)).folders)
+        assertEquals(folders.copy(presetFolder = presets), SettingsRules.apply(both, FolderCommand.SetPresetMirror(null)).folders)
     }
 
     @Test

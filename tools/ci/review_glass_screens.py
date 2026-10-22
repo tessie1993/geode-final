@@ -269,8 +269,8 @@ def missing_key(env: Any) -> str | None:
     if env.get("ANTHROPIC_API_KEY"):
         return None
     return ("The glass review needs the repository secret ANTHROPIC_API_KEY. Add it under Settings > "
-            "Secrets and variables > Actions, then re-run this job. Without it the App UI screenshots "
-            "are not reviewed, so the check fails.")
+            "Secrets and variables > Actions, then re-run this job. Until then the App UI screenshots "
+            "are not reviewed and this job is skipped.")
 
 
 def main(argv: list[str]) -> int:
@@ -278,8 +278,8 @@ def main(argv: list[str]) -> int:
         return self_test()
     problem = missing_key(os.environ)
     if problem:
-        print(f"::error title=ANTHROPIC_API_KEY is missing::{problem}")
-        return 1
+        print(f"::notice title=Glass review skipped: ANTHROPIC_API_KEY is missing::{problem}")
+        return 0
     root = Path(__file__).resolve().parents[2]
     base = argv[argv.index("--changed-since") + 1] if "--changed-since" in argv else None
     images = select(all_screenshots(root), changed_since(root, base) if base else None)

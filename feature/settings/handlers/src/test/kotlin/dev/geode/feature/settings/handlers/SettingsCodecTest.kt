@@ -184,7 +184,33 @@ class SettingsCodecTest {
 
     @Test
     fun `settings are written in today's keys and formats`() {
-        assertEquals(today, SettingsCodec.encode(todayValues))
+        assertEquals(today + ("preset_folder_uri" to null), SettingsCodec.encode(todayValues))
+    }
+
+    @Test
+    fun `settings stored before the preset folder load unchanged and write back as they were`() {
+        val loaded = SettingsCodec.decode(today)
+
+        assertEquals(null, loaded.folders.presetFolder)
+        assertEquals(today, SettingsCodec.encode(loaded).filterKeys { it in today })
+        assertEquals(setOf("preset_folder_uri"), SettingsCodec.encode(loaded).keys - today.keys)
+    }
+
+    @Test
+    fun `the preset folder is kept in its own key, apart from the preset mirror`() {
+        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets")
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(FolderUri("content://tree/geode-presets"), values.folders.presetFolder)
+        assertEquals(FolderUri("content://tree/presets"), values.folders.presetMirror)
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `the preset folder is new, so it is read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "preset_folder_uri" in it })
+        assertEquals(null, SettingsCodec.decode(mapOf("preset_folder_uri" to 7)).folders.presetFolder)
     }
 
     @Test
@@ -200,6 +226,7 @@ class SettingsCodecTest {
         assertEquals(emptySet<String>(), stored["roots"])
         assertTrue("gui_font_color" in stored && stored["gui_font_color"] == null)
         assertTrue("preset_mirror_uri" in stored && stored["preset_mirror_uri"] == null)
+        assertTrue("preset_folder_uri" in stored && stored["preset_folder_uri"] == null)
         assertEquals(SettingsValues(), SettingsCodec.decode(stored))
     }
 
