@@ -1,0 +1,196 @@
+public final class dev/geode/feature/search/api/PlaylistRef {
+	public static final synthetic fun box-impl (J)Ldev/geode/feature/search/api/PlaylistRef;
+	public static fun constructor-impl (J)J
+	public fun equals (Ljava/lang/Object;)Z
+	public static fun equals-impl (JLjava/lang/Object;)Z
+	public static final fun equals-impl0 (JJ)Z
+	public final fun getValue ()J
+	public fun hashCode ()I
+	public static fun hashCode-impl (J)I
+	public fun toString ()Ljava/lang/String;
+	public static fun toString-impl (J)Ljava/lang/String;
+	public final synthetic fun unbox-impl ()J
+}
+
+public final class dev/geode/feature/search/api/PlaylistResult {
+	public synthetic fun <init> (JLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-t950Frs ()J
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()I
+	public final fun copy-2QJJR18 (JLjava/lang/String;I)Ldev/geode/feature/search/api/PlaylistResult;
+	public static synthetic fun copy-2QJJR18$default (Ldev/geode/feature/search/api/PlaylistResult;JLjava/lang/String;IILjava/lang/Object;)Ldev/geode/feature/search/api/PlaylistResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-t950Frs ()J
+	public final fun getName ()Ljava/lang/String;
+	public final fun getTrackCount ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/PresetResult {
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-6unTwu0 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy-gBuK0OI (Ljava/lang/String;Ljava/lang/String;)Ldev/geode/feature/search/api/PresetResult;
+	public static synthetic fun copy-gBuK0OI$default (Ldev/geode/feature/search/api/PresetResult;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/search/api/PresetResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-6unTwu0 ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchCatalogue {
+	public fun <init> ()V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/search/api/SearchCatalogue;
+	public static synthetic fun copy$default (Ldev/geode/feature/search/api/SearchCatalogue;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchCatalogue;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPlaylists ()Ljava/util/List;
+	public final fun getPresets ()Ljava/util/List;
+	public final fun getSongs ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/search/api/SearchCommand {
+}
+
+public final class dev/geode/feature/search/api/SearchCommand$ApplyPreset : dev/geode/feature/search/api/SearchCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-6unTwu0 ()Ljava/lang/String;
+	public final fun copy-nGqtyvE (Ljava/lang/String;)Ldev/geode/feature/search/api/SearchCommand$ApplyPreset;
+	public static synthetic fun copy-nGqtyvE$default (Ldev/geode/feature/search/api/SearchCommand$ApplyPreset;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchCommand$ApplyPreset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPreset-6unTwu0 ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchCommand$Clear : dev/geode/feature/search/api/SearchCommand {
+	public static final field INSTANCE Ldev/geode/feature/search/api/SearchCommand$Clear;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchCommand$PlayPlaylist : dev/geode/feature/search/api/SearchCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-t950Frs ()J
+	public final fun copy-fSjZSnc (J)Ldev/geode/feature/search/api/SearchCommand$PlayPlaylist;
+	public static synthetic fun copy-fSjZSnc$default (Ldev/geode/feature/search/api/SearchCommand$PlayPlaylist;JILjava/lang/Object;)Ldev/geode/feature/search/api/SearchCommand$PlayPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPlaylist-t950Frs ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchCommand$PlaySong : dev/geode/feature/search/api/SearchCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-dcKIlnY ()Ljava/lang/String;
+	public final fun copy-ySwEBK4 (Ljava/lang/String;)Ldev/geode/feature/search/api/SearchCommand$PlaySong;
+	public static synthetic fun copy-ySwEBK4$default (Ldev/geode/feature/search/api/SearchCommand$PlaySong;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchCommand$PlaySong;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSong-dcKIlnY ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchCommand$QueueSong : dev/geode/feature/search/api/SearchCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-dcKIlnY ()Ljava/lang/String;
+	public final fun copy-ySwEBK4 (Ljava/lang/String;)Ldev/geode/feature/search/api/SearchCommand$QueueSong;
+	public static synthetic fun copy-ySwEBK4$default (Ldev/geode/feature/search/api/SearchCommand$QueueSong;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchCommand$QueueSong;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSong-dcKIlnY ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchCommand$Type : dev/geode/feature/search/api/SearchCommand {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/geode/feature/search/api/SearchCommand$Type;
+	public static synthetic fun copy$default (Ldev/geode/feature/search/api/SearchCommand$Type;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchCommand$Type;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getQuery ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/search/api/SearchResults {
+	public static final field Companion Ldev/geode/feature/search/api/SearchResults$Companion;
+	public static final field SONG_LIMIT I
+}
+
+public final class dev/geode/feature/search/api/SearchResults$Companion {
+	public static final field SONG_LIMIT I
+}
+
+public final class dev/geode/feature/search/api/SearchResults$Found : dev/geode/feature/search/api/SearchResults {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/search/api/SearchResults$Found;
+	public static synthetic fun copy$default (Ldev/geode/feature/search/api/SearchResults$Found;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchResults$Found;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPlaylists ()Ljava/util/List;
+	public final fun getPresets ()Ljava/util/List;
+	public final fun getQuery ()Ljava/lang/String;
+	public final fun getSongs ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun isEmpty ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchResults$NotSearching : dev/geode/feature/search/api/SearchResults {
+	public static final field INSTANCE Ldev/geode/feature/search/api/SearchResults$NotSearching;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SearchState {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ldev/geode/feature/search/api/SearchResults;Ldev/geode/feature/search/api/SearchCatalogue;)V
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/search/api/SearchResults;Ldev/geode/feature/search/api/SearchCatalogue;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ldev/geode/feature/search/api/SearchResults;
+	public final fun component3 ()Ldev/geode/feature/search/api/SearchCatalogue;
+	public final fun copy (Ljava/lang/String;Ldev/geode/feature/search/api/SearchResults;Ldev/geode/feature/search/api/SearchCatalogue;)Ldev/geode/feature/search/api/SearchState;
+	public static synthetic fun copy$default (Ldev/geode/feature/search/api/SearchState;Ljava/lang/String;Ldev/geode/feature/search/api/SearchResults;Ldev/geode/feature/search/api/SearchCatalogue;ILjava/lang/Object;)Ldev/geode/feature/search/api/SearchState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCatalogue ()Ldev/geode/feature/search/api/SearchCatalogue;
+	public final fun getQuery ()Ljava/lang/String;
+	public final fun getResults ()Ldev/geode/feature/search/api/SearchResults;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/search/api/SongResult {
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-dcKIlnY ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun copy-sE0C9AI (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ldev/geode/feature/search/api/SongResult;
+	public static synthetic fun copy-sE0C9AI$default (Ldev/geode/feature/search/api/SongResult;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/search/api/SongResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAlbum ()Ljava/lang/String;
+	public final fun getArtist ()Ljava/lang/String;
+	public final fun getFolder ()Ljava/lang/String;
+	public final fun getGenre ()Ljava/lang/String;
+	public final fun getId-dcKIlnY ()Ljava/lang/String;
+	public final fun getTitle ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
