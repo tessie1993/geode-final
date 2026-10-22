@@ -100,7 +100,10 @@ class VisualsRoutesTest {
 
         assertEquals(listOf(VisualsCommand.Choose(SceneId("fluid_aurora")), VisualsCommand.Choose(SceneId("bars"))), visuals.sent)
         assertEquals(2, exits)
-        assertTrue(compose.activity.window.decorView.keepsScreenOn())
+        assertTrue(
+            compose.activity.window.decorView
+                .keepsScreenOn(),
+        )
     }
 
     private fun View.keepsScreenOn(): Boolean =

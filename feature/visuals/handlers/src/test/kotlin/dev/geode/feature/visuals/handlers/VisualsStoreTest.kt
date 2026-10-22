@@ -120,7 +120,11 @@ class VisualsStoreTest {
 
         visuals.send(VisualsCommand.SetFavourite(ink, true))
 
-        assertEquals(listOf(ink, milk), visuals.state.value.library?.favourites)
+        assertEquals(
+            listOf(ink, milk),
+            visuals.state.value.library
+                ?.favourites,
+        )
         assertEquals(listOf(FeatureFailure(VISUALS_FEATURE, WorkFailure.LIBRARY_NOT_SAVED.message)), failures)
     }
 

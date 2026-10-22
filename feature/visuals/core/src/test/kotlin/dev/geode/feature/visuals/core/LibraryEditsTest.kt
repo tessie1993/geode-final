@@ -196,6 +196,12 @@ class LibraryEditsTest {
 
         val next = reduce(ready, command(VisualsCommand.CreateFolder(long)))
 
-        assertEquals("a".repeat(LibraryEdits.FOLDER_NAME_LIMIT), next.state.library?.folders?.single()?.name)
+        assertEquals(
+            "a".repeat(LibraryEdits.FOLDER_NAME_LIMIT),
+            next.state.library
+                ?.folders
+                ?.single()
+                ?.name,
+        )
     }
 }
