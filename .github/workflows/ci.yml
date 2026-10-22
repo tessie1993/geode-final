@@ -347,7 +347,8 @@ jobs:
         run: ctest --test-dir build-tsan --output-on-failure --no-tests=error -R 'TripleBuffer|SnapshotExchange'
 
   # Geode's copy of projectM, built on the host and run under Mesa's software GLES: two Renders of
-  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact").
+  # the same song and settings must give byte-identical frames (ADR-0005, "Renders are frame-exact"),
+  # and every bundled preset must run as written, with no shader silently replaced by the default.
   milkdrop-frame-exact:
     name: MilkDrop Renders are frame-exact
     runs-on: ubuntu-24.04
@@ -365,7 +366,9 @@ jobs:
       - name: Build
         run: cmake --build build-milkdrop --parallel
       - name: Two Renders, byte for byte
-        run: ctest --test-dir build-milkdrop --output-on-failure
+        run: ctest --test-dir build-milkdrop --output-on-failure -R frame_exact
+      - name: Every bundled preset runs as written
+        run: ctest --test-dir build-milkdrop --output-on-failure -R preset
 
   visual-frames:
     name: Visual golden frames (shaders)
