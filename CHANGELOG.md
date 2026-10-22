@@ -11,6 +11,23 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **One App UI reducer in `:app` (#182, ADR-0006).** `AppUiReducer`, a
+  pure state machine like the features' cores, owns what the App UI shows:
+  the back stack over Home, Player, Library, Visuals and Studio (always all
+  five) with Settings opened from Home, the Visuals sub-tab (Style,
+  Customize, Modulators & Automation), one open sheet (Customize as a bottom
+  sheet over full-screen visual mode, during a Recording and from the
+  player), full-screen visual mode, Search, and the app-wide error banner,
+  which hears the shared error channel and shows one failure at a time for
+  8 s from when it is drawn, or until dismissed. Front-end events go out as
+  plain app signals for the Elements. `appUiStore(runtime)` runs it in a
+  `FeatureStore`; Back closes what is on top before it pops to Home, and
+  what was open is saved and restored by name. Built alongside the old
+  shell and not wired live; the switch-over (#17) wires it. ADR-0006 amends
+  ADR-0003: App-UI-only state is the reducer's, and only screen-local state
+  stays in Compose `remember`. Its package has its own 80% mutation floor
+  inside `:app`'s run. Mull's warmup gets a 30 s timeout.
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person

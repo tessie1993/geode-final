@@ -34,6 +34,7 @@ The mutation score counts every mutant. A mutant no test reaches counts as survi
 
 - **Module floors.** Each module has a floor in `config/mutation/thresholds.properties`. The floors only ratchet upwards: raise one when a module's score improves, and never lower one to get a PR through.
 - **Feature cores.** Each feature's `:feature:<name>:core` module, and the `:arch:kernel` and `:arch:audio` modules, have a floor of 80 (ADR-0003, ADR-0005). A new feature adds its `:core` to `config/mutation/thresholds.properties` and to the mutation matrix in `ci.yml`, and its JVM modules to the unit-test step. Today these are Capture (`:feature:capture:core`), Playback (`:feature:playback:core`) and Customization (`:feature:customization:core`). The `feature-core` package floor (`dev.geode.feature.<name>.core`) still applies inside any module.
+- **The App UI reducer.** Its package (`dev.geode.appui`, ADR-0006) sits in `:app`, whose module floor is far lower; the gate holds it to its own `app-ui` floor of 80 inside `:app`'s run.
 
 The job log lists the surviving mutants, and the HTML report is attached to the run.
 

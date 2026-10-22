@@ -1,6 +1,8 @@
 # Features are app-scoped reducer stores behind stateless screens; PlayerSession is replaced in one switch-over
 
 > **Amended by ADR-0005:** features are Gradle modules (`:feature:<name>:api`, `:core`, `:handlers` and `:ui`), not packages in `:app`.
+>
+> **Amended by ADR-0006:** App-UI-only state (the back stack, sheets, full-screen visual mode, the app-wide banner and front-end events) is owned by one App UI reducer in `:app`, not Compose `remember`. Only screen-local, short-lived state stays in `remember`.
 
 Every feature (Playback, Library, Customization, Capture, Studio, Settings) is one package in `:app`, `feature/<name>/core` and `feature/<name>/ui`. Its core is a pure reducer, `reduce(state, event) → Next(state, effects)`. States are sealed types matched with exhaustive `when` (no `else`). Effects are plain data carried out by the feature's effect runner, and their results come back as events. Timers are effects too: started on entering a state, cancelled on leaving it, and tested with a fake clock. No MVI library.
 

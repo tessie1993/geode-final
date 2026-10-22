@@ -122,6 +122,14 @@ _Avoid_: UI kit, common UI, theme module
 The one app-wide channel every feature reports its failures to, shown in one App UI banner and written to the local log (ADR-0004). Reporting never stops the audio or the Visual.
 _Avoid_: event bus, crash reporter
 
+**App UI reducer**:
+The App UI's own state machine, in `:app` (ADR-0006): the back stack over the places, the open sheet, full-screen visual mode, the app-wide banner and the front-end events sent out as app signals. It runs in one store like a feature's, but it is not a feature. Screen-local, short-lived state stays in the screen.
+_Avoid_: navigator, app state holder, UI controller
+
+**App signal**:
+A plain fact the App UI reducer sends out for the Elements, such as render done, track changed, tapped at x,y or favourited (#180). Each Element turns the ones it cares about into its own effects; the app never knows which Element is applied. Never anything from the audio.
+_Avoid_: Element event, UI event bus
+
 **Audio adapter**:
 The one interface features use to reach the shared native audio pipeline (`:arch:audio`): the player, live capture from the microphone or a USB or line input, and the analysis that feeds the Visual. It announces what happens rather than being polled. It sits beneath Playback and Capture and is not a feature.
 _Avoid_: audio service, player session
