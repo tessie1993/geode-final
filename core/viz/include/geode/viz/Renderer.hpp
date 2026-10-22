@@ -24,6 +24,8 @@
 #include "geode/render/ProgramBinaryCache.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/viz/SceneRegistry.hpp"
+#include "geode/viz/SharedEffects.hpp"
+#include "geode/viz/SharedFxPass.hpp"
 #include "geode/render/ShaderSource.hpp"
 #include "geode/viz/ThermalGovernor.hpp"
 #include "geode/viz/TouchField.hpp"
@@ -59,6 +61,9 @@ public:
     std::string takeMilkPresetLoaded();
     void setLfoConfigs(const std::array<LfoConfig, LfoEngine::kSlots>& configs);
     void setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& configs);
+    // The Shared core effects drawn over every Style before the composite (SharedFxPass). All 0
+    // until the evaluated Customization reaches the renderer (#54); taken at the next frame.
+    void setSharedEffects(const SharedEffects& effects);
     // W00: full-frame overlay/underlay layers, latched here and uploaded to GL textures at the
     // start of the next frame; see CompositePass.hpp for the pass itself. `pixels` is Android's
     // Bitmap.getPixels ARGB layout; null (or a non-positive size) clears the layer.
@@ -107,7 +112,10 @@ private:
     float drawSecondaryTargets(const SceneParams& p, float dt);
     void bindSecondaryTarget();
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
-    void composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo, float dt);
+    // The active Style's picture with the Shared core effects drawn over it, or the scene target as
+    // it is while every effect is 0.
+    GLuint applySharedEffects(float dt);
+    void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
     void wireFlow(Scene& target, const SceneParams& p);
@@ -130,6 +138,7 @@ private:
 
     TouchField touchField_;
     TrailPass trailPass_;
+    SharedFxPass sharedFx_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
@@ -151,6 +160,7 @@ private:
 
     mutable std::mutex stateLock_;
     SceneParams requestedParams_;
+    SharedEffects requestedEffects_;
     GeodeFeatureFrame features_{};
     std::string requestedSceneId_ = kStartSceneId;
     std::string layerSceneId_;
@@ -211,6 +221,7 @@ private:
     double frameNowS_ = 0.0;
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
+    SharedEffects frameEffects_;
     // Latched once per frame in beginFrame alongside frameFeatures_, so the
     // rest of the frame (composite(), drawSecondaryTargets(), ...) reads a
     // stable snapshot instead of racing setLayer()/setTransition() on
