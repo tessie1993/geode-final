@@ -1,11 +1,13 @@
 package dev.geode.playback
 
 import android.content.ComponentName
+import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.TimeUnit
@@ -41,7 +43,37 @@ class PlaybackServiceStartTest {
         instrumentation.runOnMainSync { controller?.release() }
     }
 
+    @Test
+    fun playingThenStoppingAtOnceDoesNotCrashTheApp() {
+        // The race itself: playback flips on and straight off again before Media3 would promote the
+        // service. The app keeps the service bound, never started, so nothing is owed to Android.
+        val token = SessionToken(context, ComponentName(context, GeodePlaybackService::class.java))
+        var controller: MediaController? = null
+        instrumentation.runOnMainSync {
+            val future = MediaController.Builder(context, token).buildAsync()
+            future.addListener({ controller = future.get() }, context.mainExecutor)
+        }
+        val deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(CONNECT_TIMEOUT_S)
+        while (controller == null && System.currentTimeMillis() < deadline) Thread.sleep(POLL_MS)
+        assertNotNull("the playback session never answered", controller)
+
+        instrumentation.runOnMainSync {
+            controller?.run {
+                setMediaItem(MediaItem.Builder().setMediaId(MISSING_SONG).build())
+                play()
+                stop()
+            }
+        }
+        Thread.sleep(FOREGROUND_WINDOW_MS)
+
+        var connected = false
+        instrumentation.runOnMainSync { connected = controller?.isConnected == true }
+        assertTrue("the app did not survive playing and stopping at once", connected)
+        instrumentation.runOnMainSync { controller?.release() }
+    }
+
     private companion object {
+        const val MISSING_SONG = "content://dev.geode.test/missing.mp3"
         const val FOREGROUND_WINDOW_MS = 15_000L
         const val CONNECT_TIMEOUT_S = 10L
         const val POLL_MS = 100L
