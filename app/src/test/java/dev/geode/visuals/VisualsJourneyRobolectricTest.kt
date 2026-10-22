@@ -29,6 +29,9 @@ import dev.geode.feature.customization.core.CustomizationEvent
 import dev.geode.feature.customization.core.CustomizationReducer
 import dev.geode.feature.customization.core.CustomizationWork
 import dev.geode.feature.customization.core.Defaults
+import dev.geode.feature.playback.api.Bookmark
+import dev.geode.feature.playback.api.BookmarkId
+import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
@@ -243,5 +246,31 @@ class VisualsJourneyRobolectricTest {
         ) = Unit
 
         override suspend fun loadSession(): SavedSession? = null
+
+        override val bookmarks: Flow<List<Bookmark>> = MutableStateFlow(emptyList())
+
+        override suspend fun addBookmark(
+            track: Track,
+            position: Millis,
+            createdAt: Millis,
+        ): BookmarkId = BookmarkId(1)
+
+        override suspend fun deleteBookmark(id: BookmarkId) = Unit
+
+        override val resumePoints: Flow<Map<TrackId, Millis>> = MutableStateFlow(emptyMap())
+
+        override suspend fun saveResumePoint(
+            track: TrackId,
+            position: Millis,
+            savedAt: Millis,
+        ) = Unit
+
+        override suspend fun forgetResumePoint(track: TrackId) = Unit
+
+        override suspend fun saveListening(options: ListeningOptions) = Unit
+
+        override suspend fun loadListening(): ListeningOptions? = null
+
+        override suspend fun knownTracks(): List<Track> = emptyList()
     }
 }
