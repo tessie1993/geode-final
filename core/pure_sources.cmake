@@ -51,6 +51,11 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Adsr.cpp
     viz/VisualSafety.cpp
     viz/FlashLimiter.cpp
+    viz/Reactions.cpp
+    viz/Modulators.cpp
+    viz/SharedCore.cpp
+    viz/ReactionGraph.cpp
+    viz/SharedEffects.cpp
     viz/BeatEnvelope.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
