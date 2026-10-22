@@ -213,6 +213,21 @@ public final class dev/geode/feature/settings/api/Decibels : java/lang/Comparabl
 	public final synthetic fun unbox-impl ()F
 }
 
+public final class dev/geode/feature/settings/api/Element : java/lang/Enum {
+	public static final field BIOLUMINESCENCE Ldev/geode/feature/settings/api/Element;
+	public static final field Companion Ldev/geode/feature/settings/api/Element$Companion;
+	public static final field STONE Ldev/geode/feature/settings/api/Element;
+	public static final field WATER Ldev/geode/feature/settings/api/Element;
+	public static final field WOOD Ldev/geode/feature/settings/api/Element;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/settings/api/Element;
+	public static fun values ()[Ldev/geode/feature/settings/api/Element;
+}
+
+public final class dev/geode/feature/settings/api/Element$Companion {
+	public final fun getDefault ()Ldev/geode/feature/settings/api/Element;
+}
+
 public abstract interface class dev/geode/feature/settings/api/EqualizerCommand : dev/geode/feature/settings/api/SettingsCommand {
 }
 
@@ -599,6 +614,17 @@ public final class dev/geode/feature/settings/api/LookCommand$SetCornerStyle : d
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/settings/api/LookCommand$SetElement : dev/geode/feature/settings/api/LookCommand {
+	public fun <init> (Ldev/geode/feature/settings/api/Element;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/Element;
+	public final fun copy (Ldev/geode/feature/settings/api/Element;)Ldev/geode/feature/settings/api/LookCommand$SetElement;
+	public static synthetic fun copy$default (Ldev/geode/feature/settings/api/LookCommand$SetElement;Ldev/geode/feature/settings/api/Element;ILjava/lang/Object;)Ldev/geode/feature/settings/api/LookCommand$SetElement;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getElement ()Ldev/geode/feature/settings/api/Element;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/settings/api/LookCommand$SetFontColor : dev/geode/feature/settings/api/LookCommand {
 	public synthetic fun <init> (Ldev/geode/feature/settings/api/Argb;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-d84J29s ()Ldev/geode/feature/settings/api/Argb;
@@ -638,19 +664,20 @@ public final class dev/geode/feature/settings/api/LookSettings {
 	public static final field BAR_OPACITY_DEFAULT F
 	public static final field Companion Ldev/geode/feature/settings/api/LookSettings$Companion;
 	public static final field TEXT_SCALE_DEFAULT F
-	public synthetic fun <init> (FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZLkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public final fun component1 ()F
+	public synthetic fun <init> (Ldev/geode/feature/settings/api/Element;FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ldev/geode/feature/settings/api/Element;FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/settings/api/Element;
+	public final fun component10 ()Z
 	public final fun component2 ()F
-	public final fun component3-d84J29s ()Ldev/geode/feature/settings/api/Argb;
-	public final fun component4 ()F
+	public final fun component3 ()F
+	public final fun component4-d84J29s ()Ldev/geode/feature/settings/api/Argb;
 	public final fun component5 ()F
-	public final fun component6 ()Ldev/geode/feature/settings/api/PlayerPosition;
-	public final fun component7 ()Ldev/geode/feature/settings/api/CornerStyle;
-	public final fun component8 ()Z
+	public final fun component6 ()F
+	public final fun component7 ()Ldev/geode/feature/settings/api/PlayerPosition;
+	public final fun component8 ()Ldev/geode/feature/settings/api/CornerStyle;
 	public final fun component9 ()Z
-	public final fun copy-se-rIJQ (FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZ)Ldev/geode/feature/settings/api/LookSettings;
-	public static synthetic fun copy-se-rIJQ$default (Ldev/geode/feature/settings/api/LookSettings;FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZILjava/lang/Object;)Ldev/geode/feature/settings/api/LookSettings;
+	public final fun copy-KnzTkcg (Ldev/geode/feature/settings/api/Element;FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZ)Ldev/geode/feature/settings/api/LookSettings;
+	public static synthetic fun copy-KnzTkcg$default (Ldev/geode/feature/settings/api/LookSettings;Ldev/geode/feature/settings/api/Element;FFLdev/geode/feature/settings/api/Argb;FFLdev/geode/feature/settings/api/PlayerPosition;Ldev/geode/feature/settings/api/CornerStyle;ZZILjava/lang/Object;)Ldev/geode/feature/settings/api/LookSettings;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAccentIntensity ()F
 	public final fun getBackgroundDim ()F
@@ -658,6 +685,7 @@ public final class dev/geode/feature/settings/api/LookSettings {
 	public final fun getClearVisualsMenu ()Z
 	public final fun getCompactPlayer ()Z
 	public final fun getCornerStyle ()Ldev/geode/feature/settings/api/CornerStyle;
+	public final fun getElement ()Ldev/geode/feature/settings/api/Element;
 	public final fun getFontColor-d84J29s ()Ldev/geode/feature/settings/api/Argb;
 	public final fun getPlayerPosition ()Ldev/geode/feature/settings/api/PlayerPosition;
 	public final fun getTextScale ()F
