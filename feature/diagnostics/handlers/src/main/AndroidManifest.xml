@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The diagnostics file reaches the share sheet through this provider, scoped to the cache's
+         diagnostics directory alone (diagnostics_paths.xml). It adds no permission: the app stays
+         offline, and the file leaves only to the app the user picks. A subclass, so it can sit beside
+         the app's own FileProvider for presets. Merged into the app only once :app depends on this
+         module (the switch-over, ADR-0003). -->
+    <application>
+        <provider
+            android:name="dev.geode.feature.diagnostics.handlers.DiagnosticsFileProvider"
+            android:authorities="${applicationId}.diagnostics"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/diagnostics_paths" />
+        </provider>
+    </application>
+</manifest>

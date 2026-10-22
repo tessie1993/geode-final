@@ -15,6 +15,11 @@
     native <methods>;
 }
 -keep class dev.geode.engine.bridge.GeodeNative { *; }
+# jni_guard.cpp reports every throw it catches at the bridge to NativeFailures.onCaught, found by name
+# in JNI_OnLoad.
+-keep class dev.geode.engine.bridge.NativeFailures {
+    public static void onCaught(int, java.lang.String);
+}
 
 # Belt and braces for anything else that grows a native method later.
 -keepclasseswithmembernames,includedescriptorclasses class * {

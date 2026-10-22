@@ -7,6 +7,14 @@ set(GEODE_UTIL_PURE_SOURCES
     util/Json.cpp
     util/Sha256.cpp
 )
+# The bridge between Kotlin and the engine: the generated snapshot codec, the lock-free hand-off and the
+# guard that keeps C++ exceptions from crossing JNI (core/bridge/schema/native_bridge.json).
+set(GEODE_BRIDGE_PURE_SOURCES
+    bridge/Wire.cpp
+    bridge/CustomizationSnapshot.cpp
+    bridge/SnapshotExchange.cpp
+    bridge/Guard.cpp
+)
 set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Equalizer.cpp
     audio/dsp/Crossfeed.cpp
@@ -59,6 +67,7 @@ set(GEODE_VIZ_PURE_SOURCES
 # Every pure source, for tools that want the whole set.
 set(GEODE_CORE_PURE_SOURCES
     ${GEODE_UTIL_PURE_SOURCES}
+    ${GEODE_BRIDGE_PURE_SOURCES}
     ${GEODE_AUDIO_PURE_SOURCES}
     ${GEODE_ANALYSIS_PURE_SOURCES}
     ${GEODE_VIZ_PURE_SOURCES}
