@@ -29,6 +29,7 @@
 //   node check.mjs --all --size 200
 //   node check.mjs --fluid-display               # every SHADING/BLOOM/SUNRAYS x LOOK variant
 //   node check.mjs --all --resize                # each style's picture across a scene-target resize
+//   node check.mjs --effects --out out/effects   # one frame per Shared core effect
 //
 // --resize draws one frame into a scene target, resizes the target to RESIZE_SCALE of its size the
 // way Framebuffer::resizePreserving does (a linear blit into the new target, never a clear), and
@@ -166,6 +167,84 @@ function plan(uniforms, values, textures, width, height) {
   return out;
 }
 
+// ---- the Shared core effects ------------------------------------------------
+//
+// One frame per shared effect (#40), each drawn over the same stand-in picture of a finished Style
+// ('scene'), with every other effect at its neutral value. composite_frag.glsl draws most of the
+// Shared core with every gate on (as it does for a field Style); shared_fx_frag.glsl draws the
+// effects that run before it (SharedFxPass), with 'history' standing in for the last frame.
+
+const COMPOSITE_NEUTRAL = {
+  uDither: 0, uRatio: 1, uProgress: 1, uStyle: 0, uLayerMix: 0.5, uBlendMode: 0, uTime: 12.5, uBeat: 0.4,
+  uChroma: 0, uVignette: 0, uScanline: 0, uGrain: 0, uGlitch: 0, uFisheye: 0,
+  uGateA: [1, 1, 1, 1], uGateB: [1, 1, 1, 1],
+  uPostWarp: 0, uPostRipple: 0, uPostSymmetry: 6, uPostKaleido: 0, uPostPixelate: 0, uPostTile: 1, uPostTwist: 0,
+  uPostMirror: 0, uPostBloom: 0, uPostPosterize: 0, uPostInvert: 0, uPostDriftX: 0, uPostDriftY: 0, uPostSway: 0,
+  uPostShake: 0, uPostTemp: 0, uPostSolarize: 0, uPostZoom: 1, uPostRotation: 0, uPostSat: 1, uPostBright: 1,
+  uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0,
+  uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
+  uUnderlayBlend: 0, uUnderlayAmount: 0,
+};
+const COMPOSITE_TEXTURES = { uTexA: 'scene', uTexB: 'scene', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white' };
+
+const COMPOSITE_EFFECTS = {
+  neutral: {},
+  kaleidoscope: { uPostKaleido: 1, uPostSymmetry: 6 },
+  mirror: { uPostMirror: 1 },
+  warp: { uPostWarp: 1 },
+  ripple: { uPostRipple: 1 },
+  twist: { uPostTwist: 0.8 },
+  tile: { uPostTile: 3 },
+  glitch: { uGlitch: 0.25, uBeat: 1 },
+  pixelate: { uPostPixelate: 0.7 },
+  posterize: { uPostPosterize: 0.8 },
+  grain: { uGrain: 1 },
+  vignette: { uVignette: 1 },
+  chromatic: { uChroma: 1 },
+  scanlines: { uScanline: 1 },
+  fisheye: { uFisheye: 0.8 },
+  glow: { uPostBloom: 0.25 },
+  grading: { uPostHue: 0.2, uPostSat: 1.4, uPostContrast: 1.2, uPostGamma: 1.3, uPostBright: 0.9 },
+  temperature: { uPostTemp: 0.8 },
+  solarize: { uPostSolarize: 1 },
+  invert: { uPostInvert: 1 },
+};
+
+const SHARED_FX_NEUTRAL = {
+  uTexel: [0, 0], uAspect: 1, uTime: 12.5, uSoftFocus: 0, uParticles: 0, uParticleKind: 0, uParticleSize: 1,
+  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0,
+};
+const SHARED_FX_TEXTURES = { uScene: 'scene', uHistory: 'history' };
+
+const SHARED_FX_EFFECTS = {
+  neutral: {},
+  soft_focus: { uSoftFocus: 1 },
+  motion_blur: { uMotionKeep: 0.6 },
+  trails: { uEchoKeep: 0.9 },
+  echo: { uEchoKeep: 0.9, uEchoZoom: 0.5, uEchoWarp: 1 },
+  particles_motes: { uParticles: 0.8, uParticleKind: 0 },
+  particles_sparks: { uParticles: 0.8, uParticleKind: 1 },
+  particles_dust: { uParticles: 0.8, uParticleKind: 2 },
+  particles_bubbles: { uParticles: 0.8, uParticleKind: 3, uParticleSize: 1.5 },
+};
+
+function effectJobs(registry, size) {
+  const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
+  const jobs = [];
+  const add = (pass, file, neutral, textures, effects) => {
+    const frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, file), 'utf8'), registry);
+    const uniforms = parseUniforms(frag);
+    for (const [name, values] of Object.entries(effects)) {
+      const all = { ...neutral, ...values };
+      if (pass === 'shared') all.uTexel = [1 / size, 1 / size];
+      jobs.push({ name: `${pass}_${name}`, vert, frag, uniforms: plan(uniforms, all, textures, size, size) });
+    }
+  };
+  add('composite', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_TEXTURES, COMPOSITE_EFFECTS);
+  add('shared', 'shared_fx_frag.glsl', SHARED_FX_NEUTRAL, SHARED_FX_TEXTURES, SHARED_FX_EFFECTS);
+  return jobs;
+}
+
 // ---- driving the page ------------------------------------------------------
 
 function withKeywords(src, defines) {
@@ -175,13 +254,14 @@ function withKeywords(src, defines) {
 }
 
 function parseArgs(argv) {
-  const a = { size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, out: null, time: null };
+  const a = { size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, effects: false, out: null, time: null };
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i];
     if (v === '--list') a.list = true;
     else if (v === '--all') a.all = true;
     else if (v === '--fluid-display') a.fluidDisplay = true;
     else if (v === '--resize') a.resize = true;
+    else if (v === '--effects') a.effects = true;
     else if (v === '--shader') a.shaders.push(argv[++i]);
     else if (v === '--size') a.size = Number(argv[++i]);
     else if (v === '--out') a.out = argv[++i];
@@ -248,7 +328,8 @@ async function main() {
       }
     }
   }
-  if (!jobs.length) throw new Error('nothing to do: --shader <id>, --all or --fluid-display');
+  if (args.effects) jobs.push(...effectJobs(registry, args.size));
+  if (!jobs.length) throw new Error('nothing to do: --shader <id>, --all, --fluid-display or --effects');
 
   const browser = await launch();
   let allOk = true;

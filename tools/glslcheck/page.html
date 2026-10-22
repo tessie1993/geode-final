@@ -90,6 +90,30 @@ makeTexture('dye', 128, 128, (x, y, px) => {
   px[3] = 255;
 });
 
+// The finished picture of a Style, for the Shared core effects: a soft radial gradient with
+// coloured rings and an off-centre bright disc, so geometry, colour and lens effects all show.
+makeTexture('scene', 128, 128, (x, y, px) => {
+  const u = x / 128 - 0.5, v = y / 128 - 0.5;
+  const r = Math.hypot(u, v);
+  const ring = 0.5 + 0.5 * Math.cos(r * 40);
+  const disc = Math.exp(-((u - 0.18) ** 2 + (v - 0.12) ** 2) * 60);
+  const stripe = (Math.floor((u + 0.5) * 8) % 2) * 0.15;
+  px[0] = Math.min(255, Math.round(255 * (0.15 + 0.55 * ring * (0.5 + u) + 0.6 * disc)));
+  px[1] = Math.min(255, Math.round(255 * (0.1 + 0.4 * ring * (0.5 - v) + 0.5 * disc + stripe)));
+  px[2] = Math.min(255, Math.round(255 * (0.25 + 0.5 * (1 - ring) * (0.5 - u) + 0.3 * disc)));
+  px[3] = 255;
+});
+// The last frame, for Trails and Motion blur: the same picture moved and brighter in places.
+makeTexture('history', 128, 128, (x, y, px) => {
+  const u = x / 128 - 0.5, v = y / 128 - 0.5;
+  const disc = Math.exp(-((u + 0.2) ** 2 + (v + 0.15) ** 2) * 50);
+  const ring = 0.5 + 0.5 * Math.cos(Math.hypot(u - 0.08, v) * 40);
+  px[0] = Math.min(255, Math.round(255 * (0.1 + 0.3 * ring + 0.9 * disc)));
+  px[1] = Math.min(255, Math.round(255 * (0.1 + 0.25 * ring + 0.8 * disc)));
+  px[2] = Math.min(255, Math.round(255 * (0.15 + 0.2 * ring + 0.5 * disc)));
+  px[3] = 255;
+});
+
 // The app's FullscreenTriangle (core/render/Quad.cpp): three vertices at
 // location 0. quad_vert.glsl builds its triangle from gl_VertexID and needs
 // no buffer; fluid_base_vert.glsl reads aPosition and does.
