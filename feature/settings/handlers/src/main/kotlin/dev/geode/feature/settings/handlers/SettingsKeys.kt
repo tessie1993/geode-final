@@ -80,6 +80,9 @@ internal object SettingsKeys {
     /** New with the Default paths section (#101), so in no old file. */
     const val PRESET_FOLDER = "preset_folder_uri"
 
+    /** New with Home's floating assets (#100), so in no old file. Stored by name. */
+    const val AMBIENT_MODE = "gui_ambient_mode"
+
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"
     const val SETUP_DONE = "gui_setup_done"

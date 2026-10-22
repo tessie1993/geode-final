@@ -11,6 +11,10 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Floating assets have a setting (#100).** Settings > Theme gains a Home
+  group with a three-way choice for Home's floating assets: Drifting (the
+  default), Still or Off. It is stored under `gui_ambient_mode` by name; a
+  missing or unknown value reads as Drifting.
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
   from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the

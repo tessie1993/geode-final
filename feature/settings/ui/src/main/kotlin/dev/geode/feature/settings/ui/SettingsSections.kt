@@ -9,6 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BeatTuning
@@ -103,6 +104,13 @@ internal fun LazyListScope.themeSection(
             SwitchRow(stringResource(R.string.look_compact_player), look.compactPlayer) { change(LookCommand.SetCompactPlayer(it)) }
             SwitchRow(stringResource(R.string.look_clear_visuals_menu), look.clearVisualsMenu) {
                 change(LookCommand.SetClearVisualsMenu(it))
+            }
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.look_group_home)) {
+            ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, look.ambientMode, { ambientName(it) }) {
+                change(LookCommand.SetAmbientMode(it))
             }
         }
     }

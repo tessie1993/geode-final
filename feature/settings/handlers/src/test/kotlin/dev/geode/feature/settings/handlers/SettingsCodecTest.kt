@@ -1,6 +1,7 @@
 package dev.geode.feature.settings.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.BehaviorSettings
@@ -184,7 +185,7 @@ class SettingsCodecTest {
 
     @Test
     fun `settings are written in today's keys and formats`() {
-        assertEquals(today + ("preset_folder_uri" to null), SettingsCodec.encode(todayValues))
+        assertEquals(today + ("preset_folder_uri" to null) + ("gui_ambient_mode" to "DRIFTING"), SettingsCodec.encode(todayValues))
     }
 
     @Test
@@ -193,12 +194,12 @@ class SettingsCodecTest {
 
         assertEquals(null, loaded.folders.presetFolder)
         assertEquals(today, SettingsCodec.encode(loaded).filterKeys { it in today })
-        assertEquals(setOf("preset_folder_uri"), SettingsCodec.encode(loaded).keys - today.keys)
+        assertEquals(setOf("preset_folder_uri", "gui_ambient_mode"), SettingsCodec.encode(loaded).keys - today.keys)
     }
 
     @Test
     fun `the preset folder is kept in its own key, apart from the preset mirror`() {
-        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets")
+        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets") + ("gui_ambient_mode" to "DRIFTING")
 
         val values = SettingsCodec.decode(stored)
 
@@ -211,6 +212,28 @@ class SettingsCodecTest {
     fun `the preset folder is new, so it is read from no old file`() {
         assertTrue(SettingsKeys.LEGACY_FILES.values.none { "preset_folder_uri" in it })
         assertEquals(null, SettingsCodec.decode(mapOf("preset_folder_uri" to 7)).folders.presetFolder)
+    }
+
+    @Test
+    fun `the ambient mode is kept by name and read back`() {
+        for (mode in AmbientMode.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(ambientMode = mode)))
+
+            assertEquals(mode.name, stored["gui_ambient_mode"])
+            assertEquals(mode, SettingsCodec.decode(stored).look.ambientMode)
+        }
+    }
+
+    @Test
+    fun `a missing or unknown ambient mode loads as Drifting`() {
+        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(today).look.ambientMode)
+        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to "Wobbling")).look.ambientMode)
+        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to 2)).look.ambientMode)
+    }
+
+    @Test
+    fun `the ambient mode is new, so it is read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_ambient_mode" in it })
     }
 
     @Test
@@ -227,6 +250,7 @@ class SettingsCodecTest {
         assertTrue("gui_font_color" in stored && stored["gui_font_color"] == null)
         assertTrue("preset_mirror_uri" in stored && stored["preset_mirror_uri"] == null)
         assertTrue("preset_folder_uri" in stored && stored["preset_folder_uri"] == null)
+        assertEquals("DRIFTING", stored["gui_ambient_mode"])
         assertEquals(SettingsValues(), SettingsCodec.decode(stored))
     }
 
