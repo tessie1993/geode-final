@@ -3,8 +3,60 @@ package dev.geode.design.theme
 import androidx.compose.ui.graphics.Color
 import dev.geode.design.R
 
-/** The App UI's one theme until the App UI redesign. */
+/** The App UI's theme packs, one per Element (CONTEXT.md). Lapis Lazuli stays the default until #17. */
 object ThemePackCatalog {
+    /**
+     * Water (#105): opaque inner-lit sea-glass pebbles on wet slate, over deep teal-black water. Its
+     * parts are drawn in code ([WaterSurface]) until the art lands.
+     */
+    val water =
+        ThemePack(
+            slug = "water",
+            palette =
+                StonePalette(
+                    background = WaterTokens.Background,
+                    backgroundDeep = WaterTokens.BackgroundDeep,
+                    surface = WaterTokens.Surface,
+                    surfaceHigh = WaterTokens.SurfaceHigh,
+                    primary = WaterTokens.Aqua,
+                    secondary = WaterTokens.SeaGreen,
+                    accent = WaterTokens.Amber,
+                    glow = WaterTokens.Glow,
+                    onBackground = WaterTokens.Text,
+                    onSurface = WaterTokens.Text,
+                    muted = WaterTokens.Muted,
+                    outline = WaterTokens.Divider,
+                    danger = WaterTokens.Danger,
+                ),
+            motion = WaterMotion,
+            // ponytail: S1 (wet slate tile), B1/L2 (water tiles) and the H0 Hero scene are not in the repo;
+            // panels stay untextured and CrystalBackground draws the plain water gradient until they land.
+            material =
+                StoneMaterial(
+                    tile = null,
+                    glowOverlay = null,
+                    refractionOverlay = null,
+                    ambientPortrait = null,
+                    ambientLandscape = null,
+                    ambientSquare = null,
+                    backgroundOpacity = 1f,
+                    surfaceOpacity = 1f,
+                    disabledOpacity = 0.4f,
+                ),
+            // ponytail: W-A1 (tap), W-A2 (select spin) and W-A4 (page) sounds are not cut yet; nothing plays them today.
+            sounds = StoneSounds(click = null, confirm = null, swoop = null),
+            surfaces = emptyMap(),
+            drawn = { component, state, modifier, reducedMotion -> WaterSurface(component, state, modifier, reducedMotion) },
+            pebbleText = WaterTokens.OnPebble,
+            haptics = WaterHaptics,
+        )
+
+    /** Every pack the Element picker can offer. */
+    val all: List<ThemePack> by lazy { listOf(lapisLazuli, water) }
+
+    /** The pack with [slug], or Lapis Lazuli for an unknown one. */
+    fun bySlug(slug: String?): ThemePack = all.firstOrNull { it.slug == slug } ?: lapisLazuli
+
     val lapisLazuli =
         ThemePack(
             slug = "lapis-lazuli",

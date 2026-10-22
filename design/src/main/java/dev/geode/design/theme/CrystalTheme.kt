@@ -56,7 +56,7 @@ fun crystalTypography(textScale: Float = TextScale.DEFAULT): Typography = stoneT
 
 /**
  * The App UI's theme: the colours of [pack] (with the accent and dimming the person chose), its stone
- * art, the chosen font colour, the corner set and the type scale.
+ * art, the chosen font colour, the corner set, the type scale and whether motion is reduced.
  */
 @Composable
 fun CrystalTheme(
@@ -66,6 +66,7 @@ fun CrystalTheme(
     backgroundDim: Float = 0f,
     fontColorArgb: Int? = null,
     textScale: Float = TextScale.DEFAULT,
+    reducedMotion: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val fontColor = fontColorArgb?.let { Color(it) }
@@ -78,6 +79,7 @@ fun CrystalTheme(
     CompositionLocalProvider(
         LocalThemePack provides pack,
         LocalFontColor provides fontColor,
+        LocalReducedMotion provides reducedMotion,
         LocalContentColor provides scheme.onBackground,
     ) {
         MaterialTheme(

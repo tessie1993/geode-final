@@ -69,7 +69,7 @@ import dev.geode.design.CrystalTabs
 import dev.geode.design.GlowTitle
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
-import dev.geode.design.theme.accentTextColor
+import dev.geode.design.theme.accentTextColor dev.geode.design.theme.stoneScrollWake
 import dev.geode.engine.types.TrackId
 import dev.geode.playback.toUri
 import kotlinx.coroutines.launch
@@ -184,7 +184,7 @@ private fun TrackList(
     searching: Boolean = false,
 ) {
     val queue = remember(tracks) { tracks.map(PlaybackQueue::queueTrack) }
-    LazyColumn(Modifier.fillMaxSize()) {
+    LazyColumn(Modifier.fillMaxSize().stoneScrollWake()) {
         items(tracks, key = { it.uri.value }) { t -> TrackRow(t, viewModel, queue = queue) }
         if (tracks.isEmpty()) {
             // An empty library and an empty result set are different problems, and telling
@@ -356,7 +356,7 @@ private fun GroupList(
                     viewModel.playAll(queue, shuffled = true)
                 }) { Text(stringResource(R.string.action_shuffle)) }
             }
-            LazyColumn(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.fillMaxSize().stoneScrollWake()) {
                 items(groups.getValue(sel), key = { it.uri.value }) { t ->
                     TrackRow(t, viewModel, subtitleOverride = t.album, queue = queue)
                 }

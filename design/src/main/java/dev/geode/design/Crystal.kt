@@ -125,16 +125,16 @@ fun Modifier.crystalPanel(
 ): Modifier =
     composed {
         val pack = LocalThemePack.current
-        val tile = ImageBitmap.imageResource(pack.material.tile)
+        val tile = pack.material.tile?.let { ImageBitmap.imageResource(it) }
         val alpha = opacity.coerceIn(0f, 1f)
-        val texAlpha = (pack.material.surfaceOpacity * facets.coerceIn(0f, FACETS_MAX)).coerceIn(0f, 1f)
+        val texAlpha = if (tile == null) 0f else (pack.material.surfaceOpacity * facets.coerceIn(0f, FACETS_MAX)).coerceIn(0f, 1f)
         val shape = RoundedCornerShape(corner)
         val borderBrush = if (prismatic) prismaticBorder(glow, sheen) else glowBorder(glow, glowStrength)
         this
             .clip(shape)
             .background(tint.copy(alpha = alpha))
             .drawBehind {
-                if (texAlpha > 0f) {
+                if (tile != null && texAlpha > 0f) {
                     val tw = tile.width
                     val th = tile.height
                     if (tw > 0 && th > 0) {
@@ -207,12 +207,21 @@ fun CrystalBackground(
                 maxWidth > maxHeight -> pack.material.ambientLandscape
                 else -> pack.material.ambientPortrait
             }
-        Image(
-            painter = painterResource(art),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (art != null) {
+            Image(
+                painter = painterResource(art),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            // A pack without its Hero art yet: plain water, deepening downwards.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(pack.palette.background, pack.palette.backgroundDeep))),
+            )
+        }
         Box(
             Modifier
                 .fillMaxSize()
