@@ -2,21 +2,37 @@
 <resources>
     <string name="studio_title">Studio</string>
     <string name="studio_loading">Reading your Projects…</string>
-    <string name="studio_no_projects">No Projects yet. Create one to choose where its videos are saved.</string>
+    <string name="studio_no_projects">No Projects yet. Create one to group your videos.</string>
+    <string name="studio_no_default">No default Project. Videos made without a Project will ask where to go; choose one with ⋮ › Make default.</string>
+    <string name="studio_folder_missing">Studio has no folder to save videos to yet.</string>
     <string name="studio_new_project">New Project</string>
     <string name="studio_project_name">Name</string>
+    <string name="studio_use_as_default">Use as the default Project</string>
+    <string name="studio_create">Create</string>
     <string name="studio_choose_folder">Choose folder</string>
+    <string name="studio_change_folder">Change folder</string>
     <string name="studio_cancel">Cancel</string>
     <string name="studio_back">Back</string>
     <string name="studio_more">More</string>
     <string name="studio_rename">Rename</string>
+    <string name="studio_make_default">Make default</string>
+    <string name="studio_default">Default Project</string>
     <string name="studio_save">Save</string>
     <string name="studio_delete">Delete</string>
     <string name="studio_move">Move to Project</string>
     <string name="studio_delete_title">Delete “%1$s”?</string>
-    <string name="studio_delete_question">Keep its videos’ files in the folder, or delete them too?</string>
-    <string name="studio_keep_files">Keep the files</string>
-    <string name="studio_delete_files">Delete them too</string>
+    <string name="studio_delete_empty">It has no videos.</string>
+    <plurals name="studio_delete_videos_too">
+        <item quantity="one">Delete %d video too?</item>
+        <item quantity="other">Delete %d videos too?</item>
+    </plurals>
+    <plurals name="studio_delete_videos_yes">
+        <item quantity="one">Delete %d video too</item>
+        <item quantity="other">Delete %d videos too</item>
+    </plurals>
+    <string name="studio_delete_keep_in">Or keep them, in:</string>
+    <string name="studio_delete_videos_keep">Keep them in %1$s</string>
+    <string name="studio_delete_nowhere">To keep them, create another Project to move them to first.</string>
     <plurals name="studio_video_count">
         <item quantity="one">%d video</item>
         <item quantity="other">%d videos</item>
@@ -32,5 +48,10 @@
     <string name="studio_shape_square">Square</string>
     <string name="studio_no_song">No song</string>
     <string name="studio_in_project">In %1$s</string>
-    <string name="studio_thumbnail">Thumbnail</string>
+    <string name="studio_setup_title">Where should Studio save videos?</string>
+    <string name="studio_setup_body">Renders, Recordings, Edits and Shorts are all saved to one folder you choose. Projects group them inside Studio.</string>
+    <string name="studio_setup_folder">Save folder</string>
+    <string name="studio_setup_no_folder">No folder chosen yet.</string>
+    <string name="studio_setup_later">You can change it later in Settings › Default paths. A folder on shared storage keeps the videos visible in Gallery and after a reinstall.</string>
+    <string name="studio_setup_continue">Continue</string>
 </resources>

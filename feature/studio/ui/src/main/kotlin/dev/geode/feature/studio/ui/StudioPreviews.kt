@@ -10,14 +10,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioState
-import dev.geode.feature.studio.api.UNSORTED_NAME
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 
-// The previews the screenshot tests render (ADR-0003). The theme is Material's own, as in the other
-// features' screens.
+// The Studio screens' previews (ADR-0003). The theme is Material's own, as in the other features' screens.
 
 @Composable
 private fun PreviewTheme(
@@ -28,9 +27,11 @@ private fun PreviewTheme(
 }
 
 internal object PreviewStudio {
-    val trip = Project(ProjectId(1), "Summer trip", "content://tree/trip", Millis(3))
-    val gigs = Project(ProjectId(2), "Gigs", "content://tree/gigs", Millis(2))
-    val unsorted = Project(ProjectId(3), UNSORTED_NAME, null, Millis(1))
+    const val FOLDER = "content://com.android.externalstorage.documents/tree/primary%3AMovies%2FGeode"
+
+    val trip = Project(ProjectId(1), "Summer trip", Millis(3))
+    val gigs = Project(ProjectId(2), "Gigs", Millis(2))
+    val drafts = Project(ProjectId(3), "Drafts", Millis(1))
 
     private fun video(
         id: Long,
@@ -40,7 +41,7 @@ internal object PreviewStudio {
         width: Int,
         height: Int,
         song: String,
-    ) = Video(VideoId(id), trip.id, kind, name, "content://trip/$name", null, Millis(length), width, height, song)
+    ) = Video(VideoId(id), trip.id, kind, name, "content://videos/$name", null, Millis(length), width, height, song)
 
     val videos =
         listOf(
@@ -50,7 +51,14 @@ internal object PreviewStudio {
             video(4, VideoKind.EDIT, "Trip cut.mp4", 182_000, 1080, 1080, "Midnight City"),
         )
 
-    val state = StudioState(loading = false, projects = listOf(trip, gigs, unsorted), videos = videos)
+    val state =
+        StudioState(
+            loading = false,
+            projects = listOf(trip, gigs, drafts),
+            videos = videos,
+            defaultProject = gigs.id,
+            saveFolder = SaveFolder.Chosen(FOLDER),
+        )
 }
 
 @Preview(name = "Project list")
@@ -60,6 +68,14 @@ internal fun ProjectListPreview() = PreviewTheme { ProjectListScreen(PreviewStud
 @Preview(name = "Project list, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 internal fun ProjectListDarkPreview() = PreviewTheme(dark = true) { ProjectListScreen(PreviewStudio.state.toProjectList(), onAction = {}) }
+
+@Preview(name = "Project list, no folder or default yet")
+@Composable
+internal fun ProjectListUnsetPreview() =
+    PreviewTheme {
+        val unset = PreviewStudio.state.copy(defaultProject = null, saveFolder = SaveFolder.NotChosen)
+        ProjectListScreen(unset.toProjectList(), onAction = {})
+    }
 
 @Preview(name = "Project list, empty")
 @Composable
@@ -79,9 +95,26 @@ internal fun ProjectFilteredPreview() =
 
 @Preview(name = "Video")
 @Composable
-internal fun VideoPreview() =
-    PreviewTheme { VideoScreen(checkNotNull(PreviewStudio.state.toVideoModel(VideoId(1))), onAction = {}) }
+internal fun VideoPreview() = PreviewTheme { VideoScreen(checkNotNull(PreviewStudio.state.toVideoModel(VideoId(1))), onAction = {}) }
 
-@Preview(name = "Delete a Project")
+@Preview(name = "Delete a Project with videos")
 @Composable
-internal fun DeleteProjectPreview() = PreviewTheme { DeleteDialog(PreviewStudio.trip.name, onChoice = {}) }
+internal fun DeleteProjectPreview() =
+    PreviewTheme {
+        DeleteProjectPrompt(checkNotNull(PreviewStudio.state.toProjectModel(PreviewStudio.trip.id, null)).deletePrompt, onChoice = {})
+    }
+
+@Preview(name = "Delete an empty Project")
+@Composable
+internal fun DeleteEmptyProjectPreview() =
+    PreviewTheme {
+        DeleteProjectPrompt(checkNotNull(PreviewStudio.state.toProjectModel(PreviewStudio.gigs.id, null)).deletePrompt, onChoice = {})
+    }
+
+@Preview(name = "Studio first-run step")
+@Composable
+internal fun SetupPreview() = PreviewTheme { StudioSetupScreen(setupModel(null), onAction = {}) }
+
+@Preview(name = "Studio first-run step, folder picked")
+@Composable
+internal fun SetupPickedPreview() = PreviewTheme { StudioSetupScreen(setupModel(PreviewStudio.FOLDER), onAction = {}) }

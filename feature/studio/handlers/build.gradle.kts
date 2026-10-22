@@ -1,6 +1,6 @@
 // Studio's handlers (ADR-0005): the Projects and their videos in Studio's own Room database
-// (ADR-0004, shared with the #22 render queue), the old Studio's videos for the "Unsorted" Project,
-// and the files and folder permissions of deleted Projects.
+// (ADR-0004, shared with the #22 render queue), the save folder followed through Settings' :api,
+// the files of deleted videos, and the old Studio's videos for the switch-over (#17) to import once.
 plugins {
     id("geode.feature-handlers")
     id("com.google.devtools.ksp")
@@ -25,6 +25,7 @@ tasks.withType<Test>().configureEach {
 }
 
 dependencies {
+    implementation(project(":feature:settings:api"))
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)

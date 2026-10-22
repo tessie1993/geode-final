@@ -1,12 +1,13 @@
 package dev.geode.feature.studio.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
-import dev.geode.feature.studio.api.UNSORTED_NAME
-import dev.geode.feature.studio.core.OldVideo
 import dev.geode.feature.studio.core.StudioEvent
 import dev.geode.feature.studio.core.StudioFailure
 import dev.geode.feature.studio.core.StudioReducer
@@ -17,36 +18,49 @@ import dev.geode.kernel.FeatureStore
 import dev.geode.kernel.Perform
 import dev.geode.kernel.Results
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /** The feature name failures are reported under. */
 const val STUDIO = "studio"
 
-/** The videos the old Studio saved on the phone (built alongside until the switch-over, #17). */
-fun interface OldStudioVideos {
-    suspend fun list(): List<OldVideo>
-}
-
-/** The files and folder permissions the user's Projects use. */
-interface ProjectFiles {
+/** The video files the user's Projects hold. */
+fun interface VideoFiles {
     /** Deletes [file]; false when it could not. */
     suspend fun delete(file: String): Boolean
-
-    /** Gives up the persisted permission to [folder]. */
-    suspend fun release(folder: String)
 }
 
-/** Where Studio's handlers read and write, and the wall clock that stamps a new Project. */
+/**
+ * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
+ * > Default paths, the [files] of deleted videos, and the wall clock that stamps a new Project.
+ */
 class StudioSources(
     val storage: StudioStorage,
-    val oldVideos: OldStudioVideos,
-    val files: ProjectFiles,
+    val saveFolder: Flow<SaveFolder>,
+    val files: VideoFiles,
     val now: () -> Millis,
 )
 
 /**
- * Carries out Studio's work (ADR-0005): the Projects and videos in Studio's database, the old
- * Studio's videos, and the files and folders of deleted Projects. Every failure is caught here and
- * reported as a named event.
+ * The save folder as Settings has it (Settings > Default paths, #101). Studio reads it through
+ * Settings' interface only and never stores it itself.
+ */
+fun saveFolderOf(settings: Settings): Flow<SaveFolder> =
+    settings.state
+        .map { state ->
+            when (state) {
+                is SettingsState.Loading -> SaveFolder.Unknown
+                is SettingsState.Ready ->
+                    state.values.folders.videoFolder
+                        ?.let { SaveFolder.Chosen(it.value) } ?: SaveFolder.NotChosen
+            }
+        }.distinctUntilChanged()
+
+/**
+ * Carries out Studio's work (ADR-0005): the Projects, videos and default Project in Studio's
+ * database, the save folder from Settings, and the files of deleted videos. Every failure is caught
+ * here and reported as a named event.
  */
 class StudioHandlers(
     private val sources: StudioSources,
@@ -60,23 +74,21 @@ class StudioHandlers(
         when (work) {
             StudioWork.Load ->
                 guarded(results, StudioFailure.LOAD) {
-                    val projects = storage.projects()
-                    val videos = storage.videos()
-                    // The library still shows when the old videos cannot be listed.
-                    val old = attempt { sources.oldVideos.list() }.orEmpty()
-                    results.report(StudioEvent.Loaded(projects, videos, old))
+                    results.report(StudioEvent.Loaded(storage.projects(), storage.videos(), storage.defaultProject()))
                 }
+            StudioWork.FollowSaveFolder -> sources.saveFolder.collect { results.report(StudioEvent.SaveFolderChanged(it)) }
             is StudioWork.CreateProject ->
                 guarded(results, StudioFailure.SAVE) {
-                    results.report(StudioEvent.ProjectCreated(storage.createProject(work.name, work.folder, sources.now())))
+                    val project = storage.createProject(work.name, sources.now(), work.makeDefault)
+                    results.report(StudioEvent.ProjectCreated(project, work.makeDefault))
                 }
             is StudioWork.RenameProject -> guarded(results, StudioFailure.SAVE) { storage.renameProject(work.project, work.name) }
+            is StudioWork.SetDefaultProject -> guarded(results, StudioFailure.SAVE) { storage.setDefaultProject(work.project) }
             is StudioWork.MoveVideo -> guarded(results, StudioFailure.SAVE) { storage.moveVideo(work.video, work.to) }
             is StudioWork.DeleteProject -> delete(work, results)
-            is StudioWork.Import ->
-                guarded(results, StudioFailure.IMPORT) {
-                    val project = work.into ?: storage.createProject(UNSORTED_NAME, null, sources.now())
-                    results.report(StudioEvent.Imported(project, storage.addOldVideos(project.id, work.videos)))
+            is StudioWork.AddVideos ->
+                guarded(results, StudioFailure.ADD_VIDEOS) {
+                    results.report(StudioEvent.VideosAdded(work.project, storage.addVideos(work.project, work.videos)))
                 }
         }
     }
@@ -85,11 +97,10 @@ class StudioHandlers(
         work: StudioWork.DeleteProject,
         results: Results<StudioEvent>,
     ) {
-        if (attempt { storage.deleteProject(work.project) } == null) {
-            // The Project is still saved: keep its files and folder too.
+        if (attempt { storage.deleteProject(work.project, work.moveTo) } == null) {
+            // The Project is still saved: keep its files too.
             return results.report(StudioEvent.Failed(StudioFailure.SAVE))
         }
-        work.folder?.let { folder -> attempt { sources.files.release(folder) } }
         val failed = work.files.count { attempt { sources.files.delete(it) } != true }
         if (failed > 0) results.report(StudioEvent.Failed(StudioFailure.DELETE_FILES))
     }
@@ -114,7 +125,10 @@ class StudioHandlers(
     }
 }
 
-/** How `:app` builds Studio's one app-scoped store (#17): it reads the library when built. */
+/**
+ * How `:app` builds Studio's one app-scoped store (#17): it reads the library and starts following
+ * the save folder when built.
+ */
 fun studioStore(
     sources: StudioSources,
     runtime: FeatureRuntime,
@@ -126,5 +140,5 @@ fun studioStore(
         toEvent = StudioEvent::Command,
         runner = StudioHandlers(sources),
         runtime = runtime,
-        start = listOf(Perform(StudioWork.Load)),
+        start = listOf(Perform(StudioWork.Load), Perform(StudioWork.FollowSaveFolder)),
     )

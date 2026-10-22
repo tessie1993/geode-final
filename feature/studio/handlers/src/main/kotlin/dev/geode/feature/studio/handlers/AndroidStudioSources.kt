@@ -3,21 +3,28 @@ package dev.geode.feature.studio.handlers
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import dev.geode.engine.types.Millis
-import dev.geode.feature.studio.core.OldVideo
+import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.studio.api.NewVideo
+import dev.geode.feature.studio.api.VideoKind
 
 /** Where the old Studio saved its exports, as a MediaStore relative path. */
 private const val OLD_STUDIO_PATH = "Movies/Geode"
 
-/** The old Studio's videos, read from the phone's media index (#21: they go into "Unsorted"). */
-class MediaStoreOldVideos(
+/**
+ * The old Studio's exports in `Movies/Geode`, read from the phone's media index. Studio never reads
+ * them itself: the switch-over (#17) imports them once (owner decision on #21) by sending
+ * [dev.geode.feature.studio.api.StudioCommand.AddVideos] with what [list] finds, and marks the import
+ * done so it is not repeated.
+ */
+class OldStudioVideos(
     private val resolver: ContentResolver,
-) : OldStudioVideos {
-    override suspend fun list(): List<OldVideo> {
+) {
+    /** Reads the media index: call it off the main thread. */
+    fun list(): List<NewVideo> {
         val projection =
             arrayOf(
                 MediaStore.Video.Media._ID,
@@ -26,7 +33,7 @@ class MediaStoreOldVideos(
                 MediaStore.Video.Media.WIDTH,
                 MediaStore.Video.Media.HEIGHT,
             )
-        val found = mutableListOf<OldVideo>()
+        val found = mutableListOf<NewVideo>()
         resolver
             .query(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
@@ -37,12 +44,16 @@ class MediaStoreOldVideos(
             )?.use { c ->
                 while (c.moveToNext()) {
                     found +=
-                        OldVideo(
-                            file = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, c.getLong(0)).toString(),
+                        NewVideo(
+                            // The old Studio saved finished exports: Renders.
+                            kind = VideoKind.RENDER,
                             name = c.getString(1).orEmpty(),
+                            file = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, c.getLong(0)).toString(),
+                            thumbnail = null,
                             length = Millis(c.getLong(2)),
                             width = c.getInt(3),
                             height = c.getInt(4),
+                            song = "",
                         )
                 }
             }
@@ -50,10 +61,13 @@ class MediaStoreOldVideos(
     }
 }
 
-/** Project files through the Storage Access Framework, and MediaStore for the old Studio's videos. */
-class SafProjectFiles(
+/**
+ * Video files through the Storage Access Framework (the save folder), and MediaStore for old-Studio
+ * exports imported at the switch-over.
+ */
+class AndroidVideoFiles(
     private val context: Context,
-) : ProjectFiles {
+) : VideoFiles {
     override suspend fun delete(file: String): Boolean {
         val uri = Uri.parse(file)
         return if (uri.authority == MediaStore.AUTHORITY) {
@@ -62,19 +76,16 @@ class SafProjectFiles(
             DocumentFile.fromSingleUri(context, uri)?.delete() == true
         }
     }
-
-    override suspend fun release(folder: String) =
-        context.contentResolver.releasePersistableUriPermission(
-            Uri.parse(folder),
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-        )
 }
 
-/** Studio's sources on the phone, for `:app` to wire (#17). */
-fun androidStudioSources(context: Context): StudioSources =
+/** Studio's sources on the phone, for `:app` to wire (#17): the save folder comes from [settings]. */
+fun androidStudioSources(
+    context: Context,
+    settings: Settings,
+): StudioSources =
     StudioSources(
         storage = RoomStudioStorage(StudioDatabase.open(context).dao()),
-        oldVideos = MediaStoreOldVideos(context.contentResolver),
-        files = SafProjectFiles(context),
+        saveFolder = saveFolderOf(settings),
+        files = AndroidVideoFiles(context),
         now = { Millis(System.currentTimeMillis()) },
     )

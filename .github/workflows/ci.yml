@@ -319,9 +319,9 @@ jobs:
       contents: write
     # Every module that takes App UI screenshots: :app and each feature's :ui (geode.screenshots).
     env:
-      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/visuals/ui/src/test/screenshots feature/customization/ui/src/test/screenshots feature/studio/ui/src/test/screenshots
-      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:visuals:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug :feature:studio:ui:verifyRoborazziDebug"
-      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:visuals:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug :feature:studio:ui:recordRoborazziDebug"
+      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/visuals/ui/src/test/screenshots feature/customization/ui/src/test/screenshots
+      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:visuals:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug"
+      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:visuals:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug"
     steps:
       - uses: actions/checkout@v7
         with:
