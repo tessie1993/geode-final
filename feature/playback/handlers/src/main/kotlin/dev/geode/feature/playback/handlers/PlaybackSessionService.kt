@@ -8,6 +8,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.BitmapLoader
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.Track
