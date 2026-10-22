@@ -61,7 +61,9 @@ fun PresetsRoute(
         }
     }
     val model = state.toPresetsModel(presetPlaceOf(placeKey), notice)
-    BackHandler { model.place.up()?.let { placeKey = it.key() } ?: onBack() }
+    // Reads the place when Back fires, not the one this composition saw: two quick presses can land
+    // before a recomposition, and the second must climb from where the first left off.
+    BackHandler { presetPlaceOf(placeKey).up()?.let { placeKey = it.key() } ?: onBack() }
     PresetsScreen(
         model,
         onAction = { action ->
