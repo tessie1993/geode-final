@@ -27,9 +27,15 @@ data class SourceFile(
  * anything. `:design` holds the App UI's tokens, theme and common components: a feature's `:ui` and
  * `:app` may use it, nothing else may, and it depends on nothing in this build (no feature, no `:arch`,
  * nothing of the Visual).
+ *
+ * Each Element's own component library is a module at `:design:elements:<element>` (#180, decision
+ * 3). It draws only: it depends on `:design` and nothing else, and its sources use nothing of the
+ * rest of this build (no feature, no `:arch`, no engine) and nothing of audio. Only `:app` may depend
+ * on it.
  */
 object FeatureRules {
     private const val DESIGN = ":design"
+    private const val ELEMENTS = ":design:elements:"
     private val platformPrefixes = listOf("android.", "androidx.", "org.jetbrains.compose.")
     private val pureParts = setOf("api", "core")
 
@@ -51,6 +57,19 @@ object FeatureRules {
                 .map { "${module.path} may not depend on $it" }
         }
 
+    /**
+     * An Element module's sources use nothing of this build but `:design`, and never audio: the App
+     * UI never reacts to music (#180).
+     */
+    fun elementModulesStayDrawOnly(files: List<SourceFile>): List<String> =
+        files
+            .filter { it.module.startsWith(ELEMENTS) }
+            .flatMap { file ->
+                file.references
+                    .filter { ref -> (ref.startsWith("dev.geode.") && !ref.startsWith("dev.geode.design.")) || ref.startsWith("android.media.") }
+                    .map { "${file.path}: ${file.module} uses $it" }
+            }
+
     /** Features depend on each other in one direction only. */
     fun noFeatureCycles(modules: List<Module>): List<String> {
         val graph = mutableMapOf<String, MutableSet<String>>()
@@ -68,7 +87,9 @@ object FeatureRules {
     fun all(
         modules: List<Module>,
         files: List<SourceFile>,
-    ): List<String> = pureModulesUseNoAndroid(files) + dependenciesFollowTheTable(modules) + noFeatureCycles(modules)
+    ): List<String> =
+        pureModulesUseNoAndroid(files) + elementModulesStayDrawOnly(files) + dependenciesFollowTheTable(modules) +
+            noFeatureCycles(modules)
 
     private fun allowed(
         from: String,
@@ -78,9 +99,10 @@ object FeatureRules {
         val target = featureOf(to)
         return when {
             from == DESIGN -> false
+            from.startsWith(ELEMENTS) -> to == DESIGN
             feature != null -> allowedFromFeature(feature, from.substringAfterLast(':'), to)
             from == ":app" -> true
-            to == DESIGN -> false
+            to == DESIGN || to.startsWith(ELEMENTS) -> false
             else -> target == null
         }
     }
