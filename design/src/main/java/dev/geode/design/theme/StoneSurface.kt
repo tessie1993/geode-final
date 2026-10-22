@@ -1,5 +1,7 @@
 package dev.geode.design.theme
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -13,22 +15,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+
+/** Whether the person asked for reduced motion; [CrystalTheme] provides it. */
+val LocalReducedMotion = staticCompositionLocalOf { false }
 
 @Composable
 fun StoneSurfaceArt(
     component: StoneComponent,
     state: StoneState,
     modifier: Modifier = Modifier,
-    reducedMotion: Boolean = false,
+    reducedMotion: Boolean = LocalReducedMotion.current,
 ) {
     val pack = LocalThemePack.current
-    val art = pack.surface(component)
     val motion = pack.motion
+    val spun = modifier.stoneSpin(state == StoneState.SELECTED, spinMs(motion, component), reducedMotion)
+    pack.drawn?.let { draw ->
+        draw(component, state, spun, reducedMotion)
+        return
+    }
+    val art = pack.surface(component)
 
     @Composable
     fun fade(target: StoneState): Float {
@@ -48,7 +60,7 @@ fun StoneSurfaceArt(
         return alpha
     }
 
-    Box(modifier = modifier) {
+    Box(modifier = spun) {
         Image(
             painter = painterResource(art.default),
             contentDescription = null,
@@ -70,16 +82,60 @@ fun StoneSurfaceArt(
     }
 }
 
+/**
+ * How long [component]'s selection spin takes, or 0 when it does not spin. Pebbles spin; slabs,
+ * rows and channels stay calm. Chips take the short spin.
+ */
+internal fun spinMs(
+    motion: StoneMotion,
+    component: StoneComponent,
+): Int =
+    when (component) {
+        StoneComponent.ALBUM_TILE, StoneComponent.ICON_BUTTON -> motion.selectSpinMs
+        StoneComponent.CHIP -> motion.selectSpinMs * SHORT_SPIN_PERCENT / PERCENT
+        else -> 0
+    }
+
+/**
+ * Turns the part once about its vertical axis, eased out over [durationMs], each time [selected]
+ * becomes true. Nothing happens for a duration of 0 or under reduced motion, where the selected
+ * state's glow swell is the whole cue.
+ */
+@Composable
+fun Modifier.stoneSpin(
+    selected: Boolean,
+    durationMs: Int,
+    reducedMotion: Boolean = LocalReducedMotion.current,
+): Modifier {
+    if (durationMs <= 0 || reducedMotion) return this
+    val turn = remember { Animatable(0f) }
+    val was = remember { booleanArrayOf(selected) }
+    LaunchedEffect(selected) {
+        val rising = selected && !was[0]
+        was[0] = selected
+        if (rising) {
+            turn.snapTo(0f)
+            turn.animateTo(FULL_TURN_DEGREES, tween(durationMs, easing = LinearOutSlowInEasing))
+            turn.snapTo(0f)
+        }
+    }
+    return graphicsLayer {
+        rotationY = turn.value
+        cameraDistance = SPIN_CAMERA_DISTANCE * density
+    }
+}
+
 @Composable
 fun Modifier.stonePress(
     interaction: InteractionSource,
-    reducedMotion: Boolean = false,
+    reducedMotion: Boolean = LocalReducedMotion.current,
 ): Modifier {
-    val motion = LocalThemePack.current.motion
+    val pack = LocalThemePack.current
+    val motion = pack.motion
     val pressed by interaction.collectIsPressedAsState()
     val view = LocalView.current
     LaunchedEffect(pressed) {
-        if (pressed) view.performStoneHaptic(StoneHapticCue.TAP)
+        if (pressed) view.performStoneHaptic(StoneHapticCue.TAP, pack)
     }
     val scale by animateFloatAsState(
         targetValue = if (pressed && !reducedMotion) motion.pressScale else 1f,
@@ -107,3 +163,11 @@ fun rememberStoneState(
 
 @Composable
 fun rememberStoneInteraction(): MutableInteractionSource = remember { MutableInteractionSource() }
+
+private const val FULL_TURN_DEGREES = 360f
+
+/** How far the camera sits from a spinning part, in multiples of the density, so the turn reads as 3D. */
+private const val SPIN_CAMERA_DISTANCE = 12f
+
+private const val SHORT_SPIN_PERCENT = 70
+private const val PERCENT = 100

@@ -21,6 +21,7 @@ internal fun CrystalMaterialTheme(
         backgroundDim = gui.backgroundDim,
         fontColorArgb = gui.fontColorOverride,
         textScale = gui.textScale,
+        reducedMotion = gui.reducedMotion,
         content = content,
     )
 }
