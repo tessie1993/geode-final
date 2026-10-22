@@ -56,6 +56,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/SharedCore.cpp
     viz/ReactionGraph.cpp
     viz/PlanCodec.cpp
+    viz/Normaliser.cpp
     viz/SharedEffects.cpp
     viz/BeatEnvelope.cpp
     viz/MilkdropAdaptation.cpp

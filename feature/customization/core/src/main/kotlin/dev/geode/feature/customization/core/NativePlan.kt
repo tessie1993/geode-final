@@ -18,19 +18,24 @@ import dev.geode.feature.customization.api.Target
  * A Customization as the engine's ReactionGraph reads it (ADR-0002): the snapshot's `plan` field, in
  * the layout core/viz/include/geode/viz/PlanCodec.hpp writes down. The engine evaluates it every
  * frame; NativeCustomizationKonsistTest holds these sizes to the C++ ones. Past the engine's limits
- * the rest is left out. There is no Automation in the model yet (#41), so none is carried.
+ * the rest is left out.
+ *
+ * Every value is normalised (#54, owner decision 2026-10-22): a Shared core property goes as a
+ * fraction 0..1 of its range ([fraction]), like the Extras and Macros, and the engine's Normaliser maps
+ * it into the Style family's own range. The Automations (#41, PR #141) are not carried yet: their
+ * slots stay empty until that model lands here.
  */
 object NativePlan {
     const val MAX_REACTIONS: Int = 128
     const val MAX_MODULATORS: Int = 16
     const val MAX_MACRO_LINKS: Int = 64
-    const val MAX_AUTOMATIONS: Int = 16
+    const val MAX_AUTOMATIONS: Int = 48
     const val MAX_STEPS: Int = 16
     const val HEADER_FLOATS: Int = 5
     const val REACTION_FLOATS: Int = 12
     const val MODULATOR_FLOATS: Int = 16 + MAX_STEPS
     const val MACRO_LINK_FLOATS: Int = 6
-    const val AUTOMATION_FLOATS: Int = 8 + MAX_STEPS
+    const val AUTOMATION_FLOATS: Int = 12 + MAX_STEPS
 
     /** An index no array has: the engine ignores a link through it. */
     const val NO_INDEX: Float = 255f
@@ -56,6 +61,15 @@ object NativePlan {
             MAX_AUTOMATIONS * AUTOMATION_FLOATS
 
     private const val MILLIS_PER_SECOND = 1000f
+
+    /** [value] of [property] as a fraction 0..1 of its range; its default's fraction when not a number. */
+    fun fraction(
+        property: SharedProperty,
+        value: Float,
+    ): Float {
+        val own = if (value.isNaN()) property.default else value
+        return ((own - property.min) / (property.max - property.min)).coerceIn(0f, 1f)
+    }
 
     private class Writer(
         size: Int,
@@ -105,7 +119,7 @@ object NativePlan {
         w.put(modulators.size.toFloat())
         w.put(links.size.toFloat())
         w.put(0f)
-        SharedProperty.entries.forEach { w.put(customization.shared[it] ?: it.default) }
+        SharedProperty.entries.forEach { w.put(fraction(it, customization.shared[it] ?: it.default)) }
         ExtraKind.entries.forEach { w.put(customization.extras[it] ?: 0f) }
         repeat(MACRO_COUNT) { w.put(customization.macros.getOrNull(it)?.value ?: MACRO_REST) }
         SoundSignal.entries.forEach {

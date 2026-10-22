@@ -8,11 +8,12 @@ namespace geode::viz::mod {
 
 // A CustomizationPlan as the snapshot's `plan` field carries it (core/bridge/schema/native_bridge.json):
 // kPlanFloats floats, written by NativePlan in :feature:customization:core. Enums and indices are
-// whole floats, flags 0 or 1, times in seconds, values as the plan holds them. In order:
+// whole floats, flags 0 or 1, times in seconds, and every value normalised: a fraction 0..1 of its
+// range (the Normaliser maps it into the Style family's range per frame). In order:
 //
 //   header       carried (1 when the snapshot carries a plan), then the Reaction, Modulator, Macro
 //                link and Automation counts
-//   shared       kSharedCount, native units
+//   shared       kSharedCount, fractions 0..1 of each property's range
 //   extras       kExtraCount
 //   macros       kMacroCount
 //   trims        kSoundSignalCount pairs of gain, floor
@@ -24,16 +25,17 @@ namespace geode::viz::mod {
 //   macro links  kMaxMacroLinks of kMacroLinkFloats: macro, target kind, target index, target field,
 //                low, high
 //   automations  kMaxAutomations of kAutomationFloats: kind, target kind, target index, target field,
-//                amount, every (beats), on big moments, step count, kMaxSteps steps
+//                amount, every (beats), trigger, threshold, spacing, fade, alternate, step count,
+//                kMaxSteps steps
 //
 // Target kinds and source kinds are Target::Kind and Source::Kind in order.
 constexpr size_t kPlanHeaderFloats = 5;
 constexpr size_t kReactionFloats = 12;
 constexpr size_t kModulatorFloats = 16 + kMaxSteps;
 constexpr size_t kMacroLinkFloats = 6;
-constexpr size_t kAutomationFloats = 8 + kMaxSteps;
+constexpr size_t kAutomationFloats = 12 + kMaxSteps;
 // The snapshot schema reads this literal.
-constexpr size_t kPlanFloats = 2940;
+constexpr size_t kPlanFloats = 3900;
 static_assert(kPlanFloats == kPlanHeaderFloats + kSharedCount + kExtraCount + kMacroCount + 2 * kSoundSignalCount +
                                  kMaxReactions * kReactionFloats + kMaxModulators * kModulatorFloats +
                                  kMaxMacroLinks * kMacroLinkFloats + kMaxAutomations * kAutomationFloats);

@@ -16,13 +16,19 @@ namespace geode::viz::mod {
 //   1. every Sound signal is normalised by its trim;
 //   2. each Modulator some Reaction listens to runs, with the rate, depth and pattern the Reactions
 //      on it gave last frame; one nobody listens to does not run;
-//   3. the targets move, in this order: the Automations set or wander their targets' own values;
-//      the Reactions on a Macro move its value; every Macro link moves its property from the Macro's
+//   3. the targets move, in this order: the Automations set or add to their targets' own values;
+//      the Reactions on a Macro move its value (a Modulator linked to a Macro makes it drift around
+//      the person's value, Evaluation.drift); every Macro link moves its property from the Macro's
 //      value (Evaluation.macro); then the other Reactions, in their order, each risen and fallen,
 //      push their targets: a Shared core property, an Extra, or a Modulator's rate, depth or pattern;
-//   4. the safety clamp runs last and unconditionally: every value finite and inside its range,
-//      and a luminous property never rises faster than the No-flash minimum (a full swing over
-//      kNoFlashMinRiseSeconds), whatever moved it. The No-flash limiter then bounds the frame.
+//   4. the safety clamp runs unconditionally: every value finite and inside 0..1, and a luminous
+//      property never rises faster than the No-flash minimum (a full swing over
+//      kNoFlashMinRiseSeconds), whatever moved it.
+//
+// Everything here is normalised (#54, owner decision 2026-10-22): the plan's values and the result
+// are fractions 0..1 of each target's range. The Normaliser then maps them into the Style family's
+// own ranges, before the uniforms are set, and its range clamp runs last. The No-flash limiter then
+// bounds the frame.
 //
 // Loops are allowed (#11): a Modulator may move another, or itself, through its rate, depth or
 // pattern. A Modulator's own fields take hold one frame later, so a loop is a feedback with one
@@ -33,7 +39,9 @@ namespace geode::viz::mod {
 constexpr int kMaxReactions = 128;
 constexpr int kMaxModulators = 16;
 constexpr int kMaxMacroLinks = 64;
-constexpr int kMaxAutomations = 16;
+// Room for every Automation (#41): Style switching, palette changes, one per Camera-move property
+// and one per lane target (Automations.MAX_LANES lanes of MAX_LANE_TARGETS).
+constexpr int kMaxAutomations = 48;
 // The longest frame the graph steps over: a stall does not jump every Modulator ahead at once.
 constexpr float kMaxFrameSeconds = 0.1f;
 
@@ -81,34 +89,50 @@ struct MacroLinkSpec {
 // Where a Macro at `value` puts a link's target whose own value is `base` (Evaluation.macro).
 float macroLink(float base, float low, float high, float value);
 
-// Behaviour the Customization performs by itself over the music (CONTEXT.md, Automation): the kinds
-// of Automations in :feature:customization:api, in its order, with the meaning `Automation` in
-// :feature:customization:core gives them. Beats are counted whole from 0 at the start of the music.
-// A cadence (StyleSwitch, Palette) is due on each Surge or Change when `onBigMoments`, else on each
-// beat past 0 that is a multiple of `everyBeats` (EveryBars: bars * 4).
-//   StyleSwitch  no target: counts each due moment into Evaluated::stylesDue, from which the reducer
-//                moves to the next Style (CustomizationEvent.StyleDue) and the engine crossfades;
-//   Palette      moves the Palette to the next one, wrapping round, each due moment;
-//   Camera       pushes its Camera property `amount` of its range on every `everyBeats`th beat,
-//                easing back over the beat;
-//   Sequence     holds its target at step (beat / everyBeats) of its steps;
-//   Autopilot    moves its Macro `amount` (the width) either side of the person's value, one swing
-//                every `everyBeats` (bars * 4).
-enum class AutomationKind : uint8_t { StyleSwitch, Palette, Camera, Sequence, Autopilot };
+// Behaviour the Customization performs by itself over the music (CONTEXT.md, Automation; #41), with
+// the meaning `Automation` in :feature:customization:core gives it. Everything is live: beats are the
+// whole beats the live analysis has reported, counted from 0 at the start of the music; until it
+// reports a tempo the beat clock holds and nothing beat-timed moves. No tempo is ever assumed.
+//
+// A cadence (StyleSwitch, Palette) fires on its trigger, and never sooner than `spacingSeconds`
+// (played time) after its last move:
+//   EveryBeats   on each beat past 0 that is a multiple of `everyBeats` (EveryBars: bars * 4);
+//   BigMoments   when the louder of Surge and Change rises past `threshold`, once each time.
+//
+//   StyleSwitch  no target: counts each move into Evaluated::stylesDue, from which the reducer moves
+//                to the next Style (CustomizationEvent.StyleDue) and the engine crossfades;
+//   Palette      each move steps the Palette on by one from the person's, wrapping round, and
+//                crossfades into it over `fadeSeconds` through Palette 2 and the Palette mix (never a
+//                cut; Automation.paletteFrame);
+//   Camera       adds `amount` (signed, a fraction of its property's range) times an eased swell,
+//                sin^2 over each span of `everyBeats` beats, on top of the Camera setting; with
+//                `alternate`, the other way every other span (Automation.camera);
+//   Lane         holds its target at step (beat / everyBeats) of its steps: one target of a lane,
+//                stepped by beat (1) or bar (4) (Automation.step).
+enum class AutomationKind : uint8_t { StyleSwitch, Palette, Camera, Lane };
+enum class TriggerKind : uint8_t { EveryBeats, BigMoments };
 
 struct AutomationSpec {
-    AutomationKind kind = AutomationKind::Sequence;
+    AutomationKind kind = AutomationKind::Lane;
     Target target;
     float amount = 0.25f;
     int everyBeats = 4;
-    bool onBigMoments = false;
+    TriggerKind trigger = TriggerKind::EveryBeats;
+    float threshold = 0.6f;
+    float spacingSeconds = 0.0f;
+    float fadeSeconds = 2.0f;
+    bool alternate = false;
     std::array<float, kMaxSteps> steps{};
     int stepCount = 0;
 };
 
+// How far a crossfade of `lengthSeconds` is, 0..1, `elapsedSeconds` into it: a smooth S-curve
+// (Automation.crossfade). A length of 0 or less is already done.
+float crossfade(float elapsedSeconds, float lengthSeconds);
+
 // What the engine is handed: the Customization's own values and its links.
 struct CustomizationPlan {
-    // Native units, as the sliders hold them.
+    // Fractions 0..1 of each property's range (normalised; the Normaliser maps them per family).
     std::array<float, kSharedCount> shared{};
     // Fractions 0..1.
     std::array<float, kExtraCount> extras{};
@@ -134,7 +158,10 @@ struct CustomizationPlan {
 
 // One frame's result.
 struct Evaluated {
-    // Native units, clamped.
+    // Fractions 0..1, clamped: what the Normaliser maps into the Style family's ranges.
+    std::array<float, kSharedCount> unitShared{};
+    // The same in the Shared core's own ranges (fromUnit): the family ranges of a Style that declares
+    // none of its own.
     std::array<float, kSharedCount> shared{};
     // Fractions 0..1.
     std::array<float, kExtraCount> extras{};
@@ -163,11 +190,14 @@ private:
     std::array<FieldValues, kMaxModulators> drive_{};
     // Each Shared property's fraction last frame, from which a luminous one may only rise so fast.
     std::array<float, kSharedCount> lastShared_{};
-    // The Automations' clock, in beats; the beat block each cadence last saw; how often each was due.
+    // The Automations' clocks: beats reported, and seconds played. Per Automation: the beat block it
+    // last saw, how often it moved, whether a big moment may fire, and when it last moved.
     double beats_ = 0.0;
+    double seconds_ = 0.0;
     std::array<int64_t, kMaxAutomations> lastBlock_{};
     std::array<uint32_t, kMaxAutomations> due_{};
-    bool bigMomentArmed_ = true;
+    std::array<bool, kMaxAutomations> armed_{};
+    std::array<double, kMaxAutomations> lastMove_{};
     bool primed_ = false;
     Evaluated out_;
 };

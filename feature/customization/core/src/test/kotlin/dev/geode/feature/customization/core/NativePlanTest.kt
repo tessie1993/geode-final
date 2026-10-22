@@ -111,7 +111,7 @@ class NativePlanTest {
     @Test
     fun `is exactly the engine's size`() {
         assertEquals(NativePlan.floatCount, plan.size)
-        assertEquals(2940, NativePlan.floatCount)
+        assertEquals(3900, NativePlan.floatCount)
     }
 
     @Test
@@ -122,14 +122,26 @@ class NativePlanTest {
 
     @Test
     fun `carries every value, its default where the Customization has none`() {
-        assertEquals(2.5f, plan[sharedAt + SharedProperty.ZOOM.ordinal])
+        assertEquals((2.5f - 0.3f) / (3f - 0.3f), plan[sharedAt + SharedProperty.ZOOM.ordinal], 1e-6f)
         assertEquals(SharedProperty.VIGNETTE.default, plan[sharedAt + SharedProperty.VIGNETTE.ordinal])
-        assertEquals(SharedProperty.INVERT.default, plan[extrasAt - 1])
+        assertEquals(0f, plan[extrasAt - 1])
         assertEquals(0.75f, plan[extrasAt + extra.ordinal])
         assertEquals(0f, plan[extrasAt])
         assertEquals(listOf(MACRO_REST, 0.25f, MACRO_REST, MACRO_REST, MACRO_REST, MACRO_REST), at(macrosAt, MACRO_COUNT))
         assertEquals(listOf(1f, 0f, 2f, 0.3f, 1f, 0f), at(trimsAt, 6))
         assertEquals(listOf(1f, 0f), at(reactionsAt - 2, 2))
+    }
+
+    @Test
+    fun `carries every Shared core value as a fraction of its range`() {
+        assertEquals(0.5f, NativePlan.fraction(SharedProperty.ROTATION, 0f))
+        assertEquals(1f, NativePlan.fraction(SharedProperty.ROTATION, 9f))
+        assertEquals(0f, NativePlan.fraction(SharedProperty.ROTATION, -9f))
+        assertEquals((1f - 0.3f) / 2.7f, NativePlan.fraction(SharedProperty.ZOOM, Float.NaN), 1e-6f)
+        assertEquals(1f, NativePlan.fraction(SharedProperty.PALETTE, 20f))
+        (SharedProperty.entries - SharedProperty.ZOOM).forEach {
+            assertEquals(it.name, NativePlan.fraction(it, it.default), plan[sharedAt + it.ordinal], 1e-6f)
+        }
     }
 
     @Test

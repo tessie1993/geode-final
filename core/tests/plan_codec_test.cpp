@@ -124,10 +124,10 @@ TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     std::vector<float> data = carried();
     const float link[kMacroLinkFloats] = {5, 1, 12, 0, 0.8f, 0.2f};
     std::copy(std::begin(link), std::end(link), data.begin() + static_cast<std::ptrdiff_t>(kLinksAt + kMacroLinkFloats));
-    const float automation[8] = {4, 3, 2, 0, 0.3f, 32, 1, 3};
+    const float automation[12] = {2, 1, 3, 0, -0.3f, 4, 1, 0.7f, 8, 2.5f, 1, 3};
     const size_t automationAt = kAutomationsAt + kAutomationFloats;
     std::copy(std::begin(automation), std::end(automation), data.begin() + static_cast<std::ptrdiff_t>(automationAt));
-    data[automationAt + 8 + 2] = 0.6f;
+    data[automationAt + 12 + 2] = 0.6f;
     const CustomizationPlan plan = decoded(data);
     const MacroLinkSpec& l = plan.macroLinks[1];
     EXPECT_EQ(l.macro, 5);
@@ -136,12 +136,16 @@ TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     EXPECT_EQ(l.low, 0.8f);
     EXPECT_EQ(l.high, 0.2f);
     const AutomationSpec& a = plan.automations[1];
-    EXPECT_EQ(a.kind, AutomationKind::Autopilot);
-    EXPECT_EQ(a.target.kind, Target::Kind::Macro);
-    EXPECT_EQ(a.target.index, 2);
-    EXPECT_EQ(a.amount, 0.3f);
-    EXPECT_EQ(a.everyBeats, 32);
-    EXPECT_TRUE(a.onBigMoments);
+    EXPECT_EQ(a.kind, AutomationKind::Camera);
+    EXPECT_EQ(a.target.kind, Target::Kind::Shared);
+    EXPECT_EQ(a.target.index, 3);
+    EXPECT_EQ(a.amount, -0.3f);
+    EXPECT_EQ(a.everyBeats, 4);
+    EXPECT_EQ(a.trigger, TriggerKind::BigMoments);
+    EXPECT_EQ(a.threshold, 0.7f);
+    EXPECT_EQ(a.spacingSeconds, 8.0f);
+    EXPECT_EQ(a.fadeSeconds, 2.5f);
+    EXPECT_TRUE(a.alternate);
     EXPECT_EQ(a.stepCount, 3);
     EXPECT_EQ(a.steps[2], 0.6f);
 }
@@ -167,12 +171,14 @@ TEST(PlanCodec, KeepsCountsKindsAndIndicesInRange) {
     EXPECT_EQ(plan.reactions[0].target.index, 255) << "out of every array, so the graph leaves it out";
     EXPECT_EQ(plan.modulators[0].seed, 1u);
     EXPECT_EQ(plan.macroLinks[0].macro, kMacroCount) << "no Macro";
-    EXPECT_EQ(plan.automations[0].kind, AutomationKind::Autopilot);
+    EXPECT_EQ(plan.automations[0].kind, AutomationKind::Lane);
     EXPECT_EQ(plan.automations[0].everyBeats, 1);
 }
 
 TEST(PlanCodec, AnEncodedPlanDrivesTheGraph) {
     std::vector<float> data = carried();
+    // Neutral trims, as NativePlan writes them: a gain of 0 would silence every Sound signal.
+    for (size_t s = 0; s < kSoundSignalCount; ++s) data[kTrimsAt + 2 * s] = 1.0f;
     data[1] = 1.0f;
     data[kReactionsAt + 1] = static_cast<float>(SoundSignal::Bass);
     data[kReactionsAt + 2] = 1.0f;

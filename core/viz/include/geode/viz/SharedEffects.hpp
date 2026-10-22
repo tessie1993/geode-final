@@ -1,5 +1,6 @@
 #pragma once
 
+#include "geode/viz/Normaliser.hpp"
 #include "geode/viz/ReactionGraph.hpp"
 
 namespace geode::viz {
@@ -20,7 +21,10 @@ struct SharedEffects {
     float particleSize = 1.0f;
 
     bool active() const { return trails > 0.0f || softFocus > 0.0f || motionBlur > 0.0f || particles > 0.0f; }
+    // Read in the Shared core's own ranges.
     static SharedEffects from(const mod::Evaluated& evaluated);
+    // Read from a frame the Normaliser mapped into the Style family's ranges (what the renderer gets).
+    static SharedEffects from(const mod::NativeFrame& frame);
 };
 
 namespace sharedfx {

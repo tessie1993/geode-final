@@ -102,11 +102,15 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         l.high = in.next();
     }
     for (auto& a : plan.automations) {
-        a.kind = in.as<AutomationKind>(static_cast<size_t>(AutomationKind::Autopilot) + 1);
+        a.kind = in.as<AutomationKind>(static_cast<size_t>(AutomationKind::Lane) + 1);
         a.target = in.target();
         a.amount = in.next();
         a.everyBeats = static_cast<int>(std::max<size_t>(in.index(1025), 1));
-        a.onBigMoments = in.flag();
+        a.trigger = in.as<TriggerKind>(static_cast<size_t>(TriggerKind::BigMoments) + 1);
+        a.threshold = in.next();
+        a.spacingSeconds = in.next();
+        a.fadeSeconds = in.next();
+        a.alternate = in.flag();
         a.stepCount = in.count(kMaxSteps);
         in.steps(a.steps);
     }

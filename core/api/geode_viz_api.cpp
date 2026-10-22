@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/Normaliser.hpp"
 #include "geode/viz/PlanCodec.hpp"
 #include "geode/viz/Renderer.hpp"
 #include "SnapshotHandle.hpp"
@@ -29,6 +30,9 @@ struct geode_viz {
     geode::viz::mod::CustomizationPlan plan;
     bool hasPlan = false;
     geode::viz::mod::ReactionGraph graph;
+    // The ranges the evaluated fractions map into (the Normaliser): the Shared core's own until the
+    // Style packs (#59) declare each family's.
+    geode::viz::mod::FamilyRanges ranges = geode::viz::mod::FamilyRanges::sharedCore();
     double lastFrameSeconds = -1.0;
 };
 
@@ -306,7 +310,8 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
         features = v->features;
     }
     const geode::viz::mod::Evaluated& evaluated = v->graph.evaluate(v->plan, geode::viz::mod::signalFrame(features), dt);
-    v->renderer.setSharedEffects(SharedEffects::from(evaluated));
+    // Normalised to the Style family's own ranges before the uniforms are set; the clamp runs last.
+    v->renderer.setSharedEffects(SharedEffects::from(geode::viz::mod::toNative(v->ranges, evaluated)));
 }
 
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {
