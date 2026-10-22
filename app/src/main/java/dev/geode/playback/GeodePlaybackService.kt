@@ -45,8 +45,10 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class GeodePlaybackService : PlaybackSessionService() {
     // Dagger cannot inject a protected member, so the store comes in here and is handed over below.
+    // Without @JvmSuppressWildcards the field's Java type gets ? super / ? extends for Feature's
+    // in/out parameters, which the provided Playback lacks.
     @Inject
-    lateinit var store: Playback
+    lateinit var store: @JvmSuppressWildcards Playback
 
     override val playback: Playback get() = store
 
