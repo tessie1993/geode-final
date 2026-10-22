@@ -106,7 +106,7 @@ class PlaybackSessionPlayer(
         toIndex: Int,
         newIndex: Int,
     ): ListenableFuture<*> {
-        if (toIndex == fromIndex + 1) playback.send(PlaybackCommand.MoveInQueue(fromIndex, newIndex))
+        moves(fromIndex, toIndex, newIndex).forEach(playback::send)
         return Futures.immediateVoidFuture()
     }
 
@@ -203,6 +203,23 @@ class PlaybackSessionPlayer(
                     .setIsSeekable(true)
                     .build()
             }
+
+        /**
+         * Moving the items from [fromIndex] until [toIndex] so the first lands at [newIndex], as one
+         * Playback move per item: each item in turn, keeping their order.
+         */
+        fun moves(
+            fromIndex: Int,
+            toIndex: Int,
+            newIndex: Int,
+        ): List<PlaybackCommand> {
+            val count = toIndex - fromIndex
+            return when {
+                count <= 0 || newIndex == fromIndex -> emptyList()
+                newIndex < fromIndex -> List(count) { PlaybackCommand.MoveInQueue(fromIndex + it, newIndex + it) }
+                else -> List(count) { PlaybackCommand.MoveInQueue(fromIndex, newIndex + count - 1) }
+            }
+        }
 
         /** Whether [track]'s length is known: zero means nothing has said yet. */
         fun known(track: Track): Boolean = track.duration > Millis.ZERO

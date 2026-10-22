@@ -17,6 +17,7 @@ import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.core.MediaControls
 import dev.geode.kernel.FakeClock
 import dev.geode.kernel.inPlaceRuntime
 import kotlinx.coroutines.CoroutineScope
@@ -247,4 +248,25 @@ class PlaybackSessionPlayerRobolectricTest {
         assertEquals(listOf("load(${c.id}, ${Millis(7_000)})", "setPlaying(true)"), audio.calls.take(2))
         assertEquals(PlayerState.Buffering(atC, PlayMark.still(Millis(7_000))), playback.state.value.player)
     }
+
+    @Test
+    fun `a car moving several songs at once moves each of them, in order`() {
+        val audio = FakeAudioAdapter()
+        val playback = playbackStore(audio, FakePlaybackStorage(), clocks, inPlaceRuntime(clock))
+        val d = Track(TrackId("content://d"), "Delta", "Di", Millis(100_000))
+        val e = Track(TrackId("content://e"), "Echo", "Ed", Millis(100_000))
+        val f = Track(TrackId("content://f"), "Foxtrot", "Fi", Millis(100_000))
+        playback.send(PlaybackCommand.Play(listOf(a, b, c, d, e, f)))
+        val player = PlaybackSessionPlayer(playback, clocks, scope).also { idle() }
+
+        player.moveMediaItems(1, 3, 3)
+        idle()
+        assertEquals(listOf(a, d, e, b, c, f), playback.state.value.queue())
+
+        player.moveMediaItems(3, 5, 1)
+        idle()
+        assertEquals(listOf(a, b, c, d, e, f), playback.state.value.queue())
+    }
+
+    private fun dev.geode.feature.playback.api.PlaybackState.queue(): List<Track>? = MediaControls.sessionOf(player).queue?.tracks
 }
