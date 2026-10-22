@@ -231,6 +231,11 @@ void Renderer::setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& 
     adsr_.configs = configs;
 }
 
+void Renderer::setSharedEffects(const SharedEffects& effects) {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    requestedEffects_ = effects;
+}
+
 void Renderer::fail(const std::string& message) {
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -291,6 +296,7 @@ void Renderer::onSurfaceCreated() {
     }
     quadVert_ = *quadVert;
     if (!trailPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
+    if (!sharedFx_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!compositePass_.create(*fadeVert, &error)) fail(error);
     if (!noFlash_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
 

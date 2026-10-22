@@ -67,6 +67,7 @@ geode_core_library(geode_viz viz
     viz/CompositeGrade.cpp
     viz/CompositePass.cpp
     viz/TrailPass.cpp
+    viz/SharedFxPass.cpp
     viz/NoFlashPass.cpp
     viz/SceneRegistry.cpp
     viz/Renderer.cpp
