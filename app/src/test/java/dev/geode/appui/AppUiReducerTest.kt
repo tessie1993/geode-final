@@ -174,7 +174,12 @@ class AppUiReducerTest {
             failure(player.copy(banner = Banner.OnScreen(unreadable)), engine, player.copy(banner = Banner.OnScreen(engine)), countdown),
             failure(fullScreenWithSheet, engine, fullScreenWithSheet.copy(banner = Banner.Waiting(engine))),
             // Drawn: on screen for eight seconds from now.
-            row(player.copy(banner = Banner.Waiting(unreadable)), BannerShown, player.copy(banner = Banner.OnScreen(unreadable)), countdown),
+            row(
+                player.copy(banner = Banner.Waiting(unreadable)),
+                BannerShown,
+                player.copy(banner = Banner.OnScreen(unreadable)),
+                countdown,
+            ),
             row(
                 fullScreen.copy(banner = Banner.Waiting(unreadable)),
                 BannerShown,
@@ -309,6 +314,13 @@ class AppUiReducerTest {
     fun `the bar shows the place on top, and Home under Settings`() {
         assertEquals(listOf(HOME, PLAYER_TAB, HOME, VISUALS), listOf(home, player, settings, visuals).map { it.navigation.tab })
         assertEquals(AppRoute.Settings, settings.navigation.current)
+    }
+
+    @Test
+    fun `the banner and a tap carry what the App UI draws and where`() {
+        assertEquals(listOf("shown", "waiting"), listOf(Banner.OnScreen("shown").message, Banner.Waiting("waiting").message))
+        assertEquals(listOf(12f, 34f), AppSignal.Tapped(12f, 34f).let { listOf(it.x, it.y) })
+        assertEquals(RECORDING, duringRecording.from)
     }
 
     @Test

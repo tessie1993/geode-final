@@ -5,7 +5,9 @@ Reads the PIT mutations.xml the module's pitest task wrote, prints the score and
 mutants, and fails when:
   - the module's score is below its floor in config/mutation/thresholds.properties, or
   - any feature core package (dev.geode.feature.<name>.core) scores below the `feature-core`
-    floor (ADR-0003).
+    floor (ADR-0003), or
+  - the App UI reducer's package (dev.geode.appui, in :app) scores below the `app-ui` floor
+    (ADR-0006).
 
 The score is detected / all mutants, where NO_COVERAGE counts as not detected: untested code
 cannot score well by being skipped.
@@ -20,6 +22,7 @@ import xml.etree.ElementTree as ET
 
 DETECTED = {"KILLED", "TIMED_OUT", "MEMORY_ERROR", "RUN_ERROR"}
 FEATURE_CORE = re.compile(r"^dev\.geode\.feature\.([a-z0-9_]+)\.core\.")
+APP_UI = re.compile(r"^dev\.geode\.appui\.")
 
 
 def load_thresholds(path):
@@ -52,11 +55,13 @@ def main(module, report, thresholds_path):
         sys.exit(f"::error::{module} has no floor in {thresholds_path}")
     floor = thresholds[module]
     feature_floor = thresholds.get("feature-core", 80.0)
+    app_ui_floor = thresholds.get("app-ui", 80.0)
 
     mutations = ET.parse(report).getroot().findall("mutation")
     total = len(mutations)
     detected = sum(1 for m in mutations if m.get("status") in DETECTED)
     features = collections.defaultdict(lambda: [0, 0])
+    app_ui = [0, 0]
     survivors = []
     for m in mutations:
         cls = m.findtext("mutatedClass", "")
@@ -65,6 +70,9 @@ def main(module, report, thresholds_path):
         if match:
             features[match.group(1)][0] += hit
             features[match.group(1)][1] += 1
+        if APP_UI.match(cls):
+            app_ui[0] += hit
+            app_ui[1] += 1
         if not hit:
             survivors.append(
                 f"{m.get('status')}: {m.findtext('sourceFile')}:{m.findtext('lineNumber')} "
@@ -81,6 +89,11 @@ def main(module, report, thresholds_path):
         summary(f"- feature `{name}` core: {s:.1f}% ({hit}/{count}), floor {feature_floor:g}%")
         if s < feature_floor:
             failures.append(f"feature {name} core scored {s:.1f}%, below {feature_floor:g}% (ADR-0003)")
+    if app_ui[1]:
+        s = score(*app_ui)
+        summary(f"- App UI reducer `dev.geode.appui`: {s:.1f}% ({app_ui[0]}/{app_ui[1]}), floor {app_ui_floor:g}%")
+        if s < app_ui_floor:
+            failures.append(f"the App UI reducer scored {s:.1f}%, below {app_ui_floor:g}% (ADR-0006)")
 
     if survivors:
         print(f"::group::{len(survivors)} surviving or uncovered mutants")

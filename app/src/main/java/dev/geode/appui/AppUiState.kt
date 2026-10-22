@@ -80,13 +80,8 @@ data class Navigation(
     /** The place the bar and the rail show as selected: Settings sits under Home. */
     val tab: Place get() = current as? Place ?: Place.HOME
 
-    /** The stack with [route] shown: Home, then [route] unless it is Home. */
-    fun to(route: AppRoute): Navigation =
-        if (route == current) {
-            this
-        } else {
-            copy(backStack = if (route == Place.HOME) listOf(Place.HOME) else listOf(Place.HOME, route))
-        }
+    /** The stack with [route] shown: Home, then [route] unless it is Home. Showing it again stacks nothing. */
+    fun to(route: AppRoute): Navigation = copy(backStack = if (route == Place.HOME) listOf(Place.HOME) else listOf(Place.HOME, route))
 }
 
 /**
