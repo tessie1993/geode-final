@@ -8,7 +8,12 @@ namespace geode::viz::mod {
 namespace {
 constexpr float kRateSpan = kMaxRate - kMinRate;
 
-float seconds(float s) { return std::isfinite(s) && s > 0.0f ? s : 0.0f; }
+// A rise or fall time the follower can use: anything broken or negative is no delay.
+float durationOrNone(float s) { return std::isfinite(s) && s > 0.0f ? s : 0.0f; }
+
+constexpr size_t kRate = static_cast<size_t>(ModulatorField::Rate);
+constexpr size_t kDepth = static_cast<size_t>(ModulatorField::Depth);
+constexpr size_t kPattern = static_cast<size_t>(ModulatorField::Pattern);
 
 float rateFraction(float rate) {
     const float r = std::isnan(rate) ? kDefaultRate : std::clamp(rate, kMinRate, kMaxRate);
@@ -81,12 +86,14 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         }
         const FieldValues& pushed = drive_[i];
         ModulatorDrive drive;
-        if (pushed[0] >= 0.0f) drive.rate = kMinRate + pushed[0] * kRateSpan;
-        drive.depth = pushed[1];
-        drive.pattern = pushed[2];
+        if (pushed[kRate] >= 0.0f) drive.rate = kMinRate + pushed[kRate] * kRateSpan;
+        drive.depth = pushed[kDepth];
+        drive.pattern = pushed[kPattern];
         out_.modulators[i] = modulators_[i].tick(spec, drive, frame, step);
         out_.running[i] = runs(spec);
-        fields[i] = {rateFraction(spec.rate), unit(spec.depth), 0.0f};
+        fields[i][kRate] = rateFraction(spec.rate);
+        fields[i][kDepth] = unit(spec.depth);
+        fields[i][kPattern] = 0.0f;
     }
 
     // 3. The Reactions, in order.
@@ -131,7 +138,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
             follower.reset();
             continue;
         }
-        const float followed = follower.step(input, seconds(reaction.riseSeconds), seconds(reaction.fallSeconds), step);
+        const float followed = follower.step(input, durationOrNone(reaction.riseSeconds), durationOrNone(reaction.fallSeconds), step);
         *slot = react(*slot, followed, reaction.shape);
     }
 

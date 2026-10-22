@@ -16,13 +16,21 @@ import java.io.File
  * files rather than runs code, so it stays out of mutation runs.
  */
 class NativeCustomizationKonsistTest {
+    private companion object {
+        const val MILLIS_PER_SECOND = 1000f
+    }
+
     // The repository root above the working directory, or above the compiled test class when a runner
     // (Pitest) starts somewhere else.
-    private val root: File =
-        sequenceOf(
+    private val starts: List<File> =
+        listOf(
             File(System.getProperty("user.dir")),
             File(javaClass.protectionDomain.codeSource.location.toURI()),
-        ).flatMap { start -> generateSequence(start.absoluteFile) { it.parentFile } }
+        )
+
+    private val root: File =
+        starts
+            .flatMap { start -> generateSequence(start.absoluteFile) { it.parentFile }.toList() }
             .first { File(it, "settings.gradle.kts").isFile && File(it, "core/viz").isDirectory }
 
     private fun read(path: String): String = File(root, path).readText()
@@ -42,9 +50,12 @@ class NativeCustomizationKonsistTest {
     private fun constant(
         source: String,
         name: String,
-    ): String =
-        Regex("""constexpr \w+ $name = ([^;]+);""").find(source)?.groupValues?.get(1)?.trim()
-            ?: error("no constant $name")
+    ): String {
+        val match = Regex("""constexpr \w+ $name = ([^;]+);""").find(source) ?: error("no constant $name")
+        return match.groupValues[1].trim()
+    }
+
+    private fun row(g: List<String>): Row = Row(g[1], g[2].toFloat(), g[3].toFloat(), g[4].toFloat(), g[5], g[6] == "true")
 
     private fun nativeKind(kind: ValueKind): String =
         when (kind) {
@@ -54,15 +65,18 @@ class NativeCustomizationKonsistTest {
         }
 
     private fun camel(name: String): String =
-        name.lowercase().split('_').joinToString("") { part -> part.replaceFirstChar { it.uppercase() } }
+        name
+            .lowercase()
+            .split('_')
+            .joinToString("") { part -> part.replaceFirstChar { it.uppercase() } }
 
     @Test
     fun `the engine's Shared core table matches SharedProperty row for row`() {
         val rows =
-            rowPattern.findAll(read("core/viz/SharedCore.cpp")).map {
-                val g = it.groupValues
-                Row(g[1], g[2].toFloat(), g[3].toFloat(), g[4].toFloat(), g[5], g[6] == "true")
-            }.toList()
+            rowPattern
+                .findAll(read("core/viz/SharedCore.cpp"))
+                .map { row(it.groupValues) }
+                .toList()
         val expected =
             SharedProperty.entries.map {
                 Row(it.name, it.min, it.max, it.default, nativeKind(it.kind), it.luminous)
@@ -77,10 +91,12 @@ class NativeCustomizationKonsistTest {
     @Test
     fun `the engine's Sound signals are the model's, in the same order`() {
         val header = read("core/viz/include/geode/viz/Reactions.hpp")
-        val body =
-            Regex("""enum class SoundSignal : uint8_t \{([^}]*)\}""").find(header)?.groupValues?.get(1)
-                ?: error("no SoundSignal enum")
-        val native = body.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        val match = Regex("""enum class SoundSignal : uint8_t \{([^}]*)\}""").find(header) ?: error("no SoundSignal enum")
+        val native =
+            match.groupValues[1]
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
         assertEquals(SoundSignal.entries.map { camel(it.name) }, native)
         assertEquals(SoundSignal.entries.size.toString(), constant(header, "kSoundSignalCount"))
     }
@@ -88,10 +104,10 @@ class NativeCustomizationKonsistTest {
     @Test
     fun `the engine keeps the model's rate range and No-flash rise`() {
         val modulators = read("core/viz/include/geode/viz/Modulators.hpp")
-        assertEquals(Modulator.MIN_RATE, constant(modulators, "kMinRate").removeSuffix("f").toFloat())
-        assertEquals(Modulator.MAX_RATE, constant(modulators, "kMaxRate").removeSuffix("f").toFloat())
+        assertEquals(Modulator.MIN_RATE, constant(modulators, "kMinRate").removeSuffix("f").toFloat(), 0f)
+        assertEquals(Modulator.MAX_RATE, constant(modulators, "kMaxRate").removeSuffix("f").toFloat(), 0f)
         val reactions = read("core/viz/include/geode/viz/Reactions.hpp")
         val riseSeconds = constant(reactions, "kNoFlashMinRiseSeconds").removeSuffix("f").toFloat()
-        assertEquals(NO_FLASH_MIN_RISE.value.toFloat() / 1000f, riseSeconds)
+        assertEquals(NO_FLASH_MIN_RISE.value.toFloat() / MILLIS_PER_SECOND, riseSeconds, 0f)
     }
 }
