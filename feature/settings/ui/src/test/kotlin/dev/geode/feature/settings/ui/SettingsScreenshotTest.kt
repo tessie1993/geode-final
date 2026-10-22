@@ -36,6 +36,12 @@ class SettingsScreenshotTest {
     fun defaultPaths() = capture("default_paths") { SettingsDefaultPathsPreview() }
 
     @Test
+    fun cpuGpu() = capture("cpu_gpu") { SettingsCpuGpuPreview() }
+
+    @Test
+    fun cpuGpuSaveMode() = capture("cpu_gpu_save_mode") { SettingsCpuGpuSaveModePreview() }
+
+    @Test
     fun help() = capture("help") { SettingsHelpPreview() }
 
     @Test

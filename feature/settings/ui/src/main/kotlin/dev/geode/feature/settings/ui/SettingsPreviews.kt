@@ -8,6 +8,7 @@ import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.FolderSettings
 import dev.geode.feature.settings.api.FolderUri
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.SettingsValues
 
 // Previews of every section, which the screenshot tests render (ADR-0003). The sample values are made
@@ -67,6 +68,16 @@ internal fun SettingsDefaultPathsPreview() = SettingsPreview(SettingsSection.DEF
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
 internal fun SettingsApplicationPreview() = SettingsPreview(SettingsSection.APPLICATION)
+
+@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
+@Composable
+internal fun SettingsCpuGpuPreview() = SettingsPreview(SettingsSection.CPU_GPU)
+
+/** CPU/GPU while save mode is on: the chosen values stay, with a note that save mode overrides them. */
+@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
+@Composable
+internal fun SettingsCpuGpuSaveModePreview() =
+    SettingsPreview(SettingsSection.CPU_GPU, previewValues.copy(performance = PerformanceSettings(saveMode = true)))
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable

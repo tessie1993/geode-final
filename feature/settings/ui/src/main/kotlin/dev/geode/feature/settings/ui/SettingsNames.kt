@@ -11,6 +11,8 @@ import dev.geode.feature.settings.api.ExportQuality
 import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
+import dev.geode.feature.settings.api.VisualFrameRate
+import dev.geode.feature.settings.api.VisualQuality
 
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
 
@@ -72,8 +74,10 @@ internal fun presetName(preset: EqualizerPreset?): String =
 internal fun qualityName(quality: ExportQuality): String =
     stringResource(
         when (quality) {
+            ExportQuality.SD480 -> R.string.export_quality_480
             ExportQuality.HD720 -> R.string.export_quality_720
             ExportQuality.FHD1080 -> R.string.export_quality_1080
+            ExportQuality.QHD1440 -> R.string.export_quality_1440
             ExportQuality.UHD4K -> R.string.export_quality_4k
         },
     )
@@ -109,3 +113,18 @@ internal fun loudnessName(loudness: ExportLoudness): String =
             ExportLoudness.LEAVE_AS_IS -> R.string.export_loudness_as_is
         },
     )
+
+@Composable
+internal fun visualQualityName(quality: VisualQuality): String =
+    stringResource(
+        when (quality) {
+            VisualQuality.HIGH -> R.string.cpu_gpu_quality_high
+            VisualQuality.BALANCED -> R.string.cpu_gpu_quality_balanced
+            VisualQuality.SAVER -> R.string.cpu_gpu_quality_saver
+        },
+    )
+
+/** A frame rate with no cap is the screen's maximum. */
+@Composable
+internal fun visualFrameRateName(frameRate: VisualFrameRate): String =
+    frameRate.fps?.let { stringResource(R.string.cpu_gpu_fps, it) } ?: stringResource(R.string.cpu_gpu_screen_max)
