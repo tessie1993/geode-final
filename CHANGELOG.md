@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **CI: no glass in the App UI (#102).** `tools/ci/check_no_glass.py` runs
+  first in the Lint job and fails on live blur (`Modifier.blur`,
+  `RenderEffect.createBlurEffect`, `BlurEffect`, `BlurMaskFilter`),
+  glassmorphism libraries (Haze and the like) and anything named glass,
+  frosted or refraction in `:design`, the features' `:ui` and `app/src/main`;
+  the Visual is not scanned, and pre-blurred art is allowed. A self-test runs
+  before it. Legacy glass (the Lapis Lazuli refraction overlay, #17, and the
+  forest glass tokens, #103) sits in `config/no-glass/allowlist.txt`, which
+  may only shrink. `glassScrim` is now `bottomScrim` (it was always a plain
+  gradient).
+
 - **The native bridge: one snapshot schema, a lock-free hand-off and typed
   statuses (#53, ADR-0005).** `core/bridge/schema/native_bridge.json`
   generates the Customization snapshot and the bridge's status codes for C,

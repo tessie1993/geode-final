@@ -51,8 +51,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import dev.geode.R
 import dev.geode.design.CrystalPlayButton
+import dev.geode.design.bottomScrim
 import dev.geode.design.crystalPanel
-import dev.geode.design.glassScrim
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
 import dev.geode.design.theme.accentTextColor
@@ -200,7 +200,7 @@ fun VisualizerScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .height(200.dp)
-                    .glassScrim(),
+                    .bottomScrim(),
             )
 
             Box(

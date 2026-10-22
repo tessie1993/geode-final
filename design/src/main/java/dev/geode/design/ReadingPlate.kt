@@ -51,7 +51,7 @@ fun Modifier.readingPlate(
 }
 
 /** A gradient from clear at the top to [color] at the bottom, so text there reads over the Visual. */
-fun Modifier.glassScrim(
+fun Modifier.bottomScrim(
     color: Color = Color.Black,
     maxAlpha: Float = SCRIM_ALPHA,
 ): Modifier =
@@ -78,5 +78,5 @@ private const val PLATE_BOTTOM_EDGE_BOOST = 0.1f
 /** The fraction of a reading plate's height each darker edge takes. */
 private const val PLATE_EDGE_BAND = 0.14f
 
-/** How dark a [glassScrim] gets at its bottom by default. */
+/** How dark a [bottomScrim] gets at its bottom by default. */
 private const val SCRIM_ALPHA = 0.35f

@@ -10,6 +10,7 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 |---|---|---|
 | Build debug APK | The app assembles, native code included. The APK is attached to the run for device testing (not a gate). | `ci.yml` |
 | Lint | detekt (every module, with per-module baselines), ktlint, Android lint (every Android module), and the public API of the interface modules against their dumps. | `config/detekt/detekt.yml`, `build-logic/…/geode.kotlin-common.gradle.kts`, `geode.api-dump` |
+| No glass in the App UI | The App UI has no glass (#102): no live blur, no glassmorphism library, nothing named glass. Runs first in the Lint job, after a self-test that proves it still catches glass. See [No glass in the App UI](#no-glass-in-the-app-ui). | `tools/ci/check_no_glass.py`, `config/no-glass/allowlist.txt` |
 | Kotlin unit tests and coverage | Every module's unit tests, including the JVM modules (`:engine:audio-core`, `:arch:*`, and each feature's `:api` and `:core`), and the architecture test. Line coverage per module is written to the job summary. | Kover, applied in `geode.kotlin-common` |
 | Mutation tests | One job per module runs **every** mutant (Pitest), then `tools/ci/mutation_gate.py` checks the score. | `config/mutation/thresholds.properties`, `geode.mutation-jvm` / `geode.mutation-android` |
 | App UI screenshots | Roborazzi screenshots of App UI composables match the goldens in `app/src/test/screenshots` and in each feature's `:ui` (`feature/<name>/ui/src/test/screenshots`). | `geode.screenshots`, the job's `SCREENSHOT_*` lists in `ci.yml` |
@@ -26,6 +27,15 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 | Instrumented tests | Tests that need a real Android runtime, on an emulator. | `ci.yml` |
 
 **Visual vs App UI.** The screenshot check covers the App UI (screens and controls). The golden-frame check covers the Visual (the audio-reactive picture). See `CONTEXT.md`.
+
+## No glass in the App UI
+
+The owner's rule (#102): the App UI has no frosted-glass panels, no glassmorphism, no live blur or refraction behind its surfaces and no translucent glass orbs. "3D" is a depth illusion made of parallax, tilt and lighting. `tools/ci/check_no_glass.py` enforces it:
+
+- **What it scans:** the production source of `:design` (`design/src/main`), every feature's `:ui` (`feature/*/ui/src/main`) and `app/src/main` (Kotlin and `res/`). It skips `app/src/main/assets` and `app/src/main/cpp`, and everything in `engine/` and `core/`, because the Visual may blur and refract. Tests are not scanned.
+- **What fails:** live blur APIs (`Modifier.blur`, `RenderEffect.createBlurEffect`, Compose's `BlurEffect`, `BlurMaskFilter`); the Haze, Cloudy, BlurView and Blurry libraries, whether imported or declared as a dependency in any Gradle build file or version catalog; and any identifier, source file, resource file or resource `name` containing `glass`, `frosted` or `refraction`. Comments and string literals are skipped.
+- **What passes:** artwork blurred in advance and shipped as a bitmap (the Library's pre-blurred art), text shadows (`Shadow(blurRadius = …)`), and gradient scrims.
+- **The allowlist** (`config/no-glass/allowlist.txt`) holds legacy glass that a ticket already deletes: the Lapis Lazuli ThemePack's refraction overlay (#17) and the forest themes' glass tokens (#103). Each entry is a path and the token the check reports. It only shrinks: an entry that no longer matches fails, and in a pull request any entry the base branch does not have fails. New code is never allowlisted; fix it instead.
 
 ## Mutation score floors
 
