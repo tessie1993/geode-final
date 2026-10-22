@@ -1,0 +1,127 @@
+package dev.geode.feature.visuals.ui
+
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.geode.feature.visuals.api.FolderId
+import dev.geode.feature.visuals.api.Visuals
+import dev.geode.feature.visuals.api.VisualsCommand
+import dev.geode.feature.visuals.api.VisualsFact
+
+/**
+ * The Visuals tab's place (ADR-0003): the only part that touches the Visuals store. It reads the
+ * store's state and turns the screen's actions into Commands. The search text and the folder open now
+ * are App-UI-only state, kept across configuration changes; nothing else lives here. `:app` wires it
+ * at the switch-over (#17), over the one live Visual it keeps running behind every place.
+ *
+ * Entering full-screen mode is [onEnterFullScreen]: a move to another place, which the app's
+ * navigation makes. The music and the Visual belong to their app-scoped stores and carry on.
+ */
+@Composable
+fun VisualsRoute(
+    visuals: Visuals,
+    onEnterFullScreen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val state by visuals.state.collectAsStateWithLifecycle()
+    var query by rememberSaveable { mutableStateOf("") }
+    // A plain Long so the folder open now survives configuration changes and process death.
+    var open by rememberSaveable { mutableStateOf<Long?>(null) }
+    LaunchedEffect(visuals) {
+        visuals.events.collect { fact ->
+            when (fact) {
+                is VisualsFact.FolderCreated -> open = fact.id.value
+            }
+        }
+    }
+    val model = state.toTabModel(query, open?.let(::FolderId))
+    VisualsTabScreen(
+        model,
+        onAction = { action ->
+            when (action) {
+                is VisualsAction.Search -> query = action.query
+                is VisualsAction.OpenFolder -> open = action.folder?.value
+                VisualsAction.EnterFullScreen -> onEnterFullScreen()
+                else -> action.toCommand(model.openFolder)?.let(visuals::send)
+            }
+        },
+        modifier,
+    )
+}
+
+/**
+ * Full-screen visual mode's place (ADR-0003). It reads the Visuals store for the Style shown and asks
+ * it for the next or previous one; whether the controls are shown is App-UI-only state. While it is on
+ * screen the system bars are hidden (a swipe brings them back for a moment), and the screen stays awake
+ * when the person's Keep screen on setting ([keepScreenOn], read from Settings by `:app`) asks for it.
+ * Back, or the leave button, is [onExit].
+ */
+@Composable
+fun FullScreenVisualRoute(
+    visuals: Visuals,
+    keepScreenOn: Boolean,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val state by visuals.state.collectAsStateWithLifecycle()
+    var controlsShown by rememberSaveable { mutableStateOf(true) }
+    BackHandler(onBack = onExit)
+    SystemBarsHidden()
+    ScreenAwake(keepScreenOn)
+    FullScreenVisualScreen(
+        state.toFullScreenModel(controlsShown),
+        onAction = { action ->
+            when (action) {
+                FullScreenAction.ToggleControls -> controlsShown = !controlsShown
+                is FullScreenAction.Choose -> visuals.send(VisualsCommand.Choose(action.style))
+                FullScreenAction.Exit -> onExit()
+            }
+        },
+        modifier,
+    )
+}
+
+/** Hides the status and navigation bars while this is composed; a swipe shows them for a moment. */
+@Composable
+private fun SystemBarsHidden() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val window = view.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
+        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        controller?.hide(WindowInsetsCompat.Type.systemBars())
+        onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
+}
+
+/** Keeps the screen awake while this is composed, when [awake]; puts back what was there after. */
+@Composable
+private fun ScreenAwake(awake: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, awake) {
+        val before = view.keepScreenOn
+        if (awake) view.keepScreenOn = true
+        onDispose { view.keepScreenOn = before }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
