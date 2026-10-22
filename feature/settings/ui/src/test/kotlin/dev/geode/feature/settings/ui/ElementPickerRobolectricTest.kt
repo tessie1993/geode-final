@@ -110,7 +110,7 @@ class ElementPickerRobolectricTest {
     }
 
     @Test
-    fun `each Element meets the look :design gives it`() {
+    fun `each Element meets the look the design module gives it`() {
         assertSame(ElementSkins.Water, Element.WATER.tokens())
         assertSame(ElementSkins.Wood, Element.WOOD.tokens())
         assertSame(ElementSkins.Stone, Element.STONE.tokens())

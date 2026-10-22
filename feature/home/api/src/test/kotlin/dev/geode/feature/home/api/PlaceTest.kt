@@ -12,7 +12,7 @@ class PlaceTest {
     }
 
     @Test
-    fun `Settings is not on the bar; it opens from Home`() {
+    fun `Settings is not on the bar, it opens from Home`() {
         assertFalse(Place.SETTINGS.onBar)
         assertTrue(Place.entries.filter { it != Place.SETTINGS }.all { it.onBar })
     }
