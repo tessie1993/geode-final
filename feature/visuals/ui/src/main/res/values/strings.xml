@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Visuals tab (#43): where a Style is chosen for the Visual. -->
+    <string name="visuals_title">Visuals</string>
+    <string name="visuals_now_showing">Now showing %1$s</string>
+    <string name="visuals_loading">Finding your Favourites and folders…</string>
+    <string name="visuals_search">Search Styles</string>
+    <string name="visuals_search_none">No Style is called that</string>
+    <string name="visuals_full_screen">Full screen</string>
+    <string name="visuals_favourites">Favourites</string>
+    <string name="visuals_recent">Recent</string>
+    <string name="visuals_folders">Your folders</string>
+    <string name="visuals_top">All Styles</string>
+    <string name="visuals_folder_empty">Nothing in this folder yet</string>
+    <string name="visuals_folder_count">%1$d inside</string>
+    <string name="visuals_new_folder">New folder</string>
+    <string name="visuals_folder_name">Folder name</string>
+    <string name="visuals_rename_folder">Rename</string>
+    <string name="visuals_delete_folder">Delete folder</string>
+    <string name="visuals_save">Save</string>
+    <string name="visuals_cancel">Cancel</string>
+    <string name="visuals_more">More for %1$s</string>
+    <string name="visuals_favourite">Add %1$s to Favourites</string>
+    <string name="visuals_unfavourite">Take %1$s out of Favourites</string>
+    <string name="visuals_add_to">Add to %1$s</string>
+    <string name="visuals_remove_from_folder">Take out of this folder</string>
+    <string name="visuals_showing">Showing</string>
+
+    <!-- The Style families, as the tab lists them. -->
+    <string name="visuals_group_shaders">Shaders</string>
+    <string name="visuals_group_life">Life</string>
+    <string name="visuals_group_mycelium">Mycelium</string>
+    <string name="visuals_group_acid">Acid</string>
+    <string name="visuals_group_fluids">Fluids</string>
+    <string name="visuals_group_curl_flow">Curl flow</string>
+    <string name="visuals_group_water">Water</string>
+    <string name="visuals_group_cymatics">Cymatics</string>
+    <string name="visuals_group_milkdrop">MilkDrop</string>
+
+    <!-- Full-screen visual mode. -->
+    <string name="visuals_exit_full_screen">Leave full screen</string>
+    <string name="visuals_previous_style">Previous Style</string>
+    <string name="visuals_next_style">Next Style</string>
+    <string name="visuals_show_controls">Show or hide the controls</string>
+</resources>

@@ -53,6 +53,22 @@ TEST(Limiter, GainRecoversAfterAPeakPasses) {
     EXPECT_LT(buffer[1000 + kLookaheadFrames - 1], 0.5f);
 }
 
+TEST(Limiter, GainRecoversWithTheReleaseTimeConstant) {
+    Limiter limiter(kSampleRate, 1);
+    constexpr size_t kPeak = 1000;
+    std::vector<float> buffer(5000, 0.5f);
+    buffer[kPeak] = 4.0f;
+    limiter.process(buffer.data(), buffer.size());
+    // While the peak is in the window the gain sits at ceiling / peak. From the frame it leaves, the gain
+    // closes c of its gap to 1 each frame, c = 1 - exp(-1 / (50 ms * rate)): one time constant
+    // (2400 frames) on, the output is 0.5 * (1 - gap * e^-(2401 / 2400)).
+    constexpr double kReleaseFrames = 0.05 * 48000.0;
+    constexpr size_t kAfter = 2400;
+    const double gap = 1.0 - static_cast<double>(kCeiling) / 4.0;
+    const double expected = 0.5 * (1.0 - gap * std::exp(-static_cast<double>(kAfter + 1) / kReleaseFrames));
+    EXPECT_NEAR(buffer[kPeak + kLookaheadFrames + kAfter], expected, 1e-3);
+}
+
 TEST(Limiter, DisabledLeavesTheBufferUntouched) {
     Limiter limiter(kSampleRate, 2);
     limiter.setEnabled(false);

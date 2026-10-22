@@ -1,4 +1,4 @@
-#include "fluid/FluidMath.hpp"
+#include "geode/viz/fluid/FluidMath.hpp"
 
 #include <algorithm>
 #include <cmath>
