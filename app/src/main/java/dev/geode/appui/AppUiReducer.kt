@@ -2,6 +2,7 @@ package dev.geode.appui
 
 import dev.geode.engine.types.Millis
 import dev.geode.kernel.CancelTimer
+import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.Reducer
@@ -29,6 +30,8 @@ object BannerTimer
  *   the older. A failure waits until the banner has drawn it ([AppUiCommand.BannerShown]), then stays for
  *   [BANNER_VISIBLE], or until it is dismissed. One that replaces a failure on screen is on screen at
  *   once, so its time starts when it arrives.
+ * - **Front-end events** a feature or a screen raises go out on the store's events as plain app
+ *   signals (#180 decision 5), whatever is on screen.
  */
 object AppUiReducer : Reducer<AppUiState, AppUiEvent, AppUiEffect> {
     /** What the store carries out once, when it is built: hear the shared error channel. */
@@ -63,7 +66,8 @@ object AppUiReducer : Reducer<AppUiState, AppUiEvent, AppUiEffect> {
             AppUiCommand.CloseSearch -> Next(state.with(navigation = state.navigation.copy(searching = false)))
             AppUiCommand.BannerShown -> shown(state)
             AppUiCommand.DismissBanner -> dismissed(state)
-            is AppUiCommand.Signal, is AppUiCommand.Restore -> Next(state)
+            is AppUiCommand.Signal -> Next(state, listOf(Emit(command.signal)))
+            is AppUiCommand.Restore -> restore(state, command.saved)
         }
 
     /** Browsing [navigation], with nothing over it. */
@@ -80,6 +84,21 @@ object AppUiReducer : Reducer<AppUiState, AppUiEvent, AppUiEffect> {
             navigation.searching -> Next(state.with(navigation = navigation.copy(searching = false)))
             else -> Next(state.with(navigation = navigation.copy(backStack = navigation.backStack.take(1))))
         }
+    }
+
+    /** What was open before Android killed the app, under the banner as it is now. */
+    private fun restore(
+        state: AppUiState,
+        saved: SavedAppUi,
+    ): Next<AppUiState, AppUiEffect> {
+        val navigation = Navigation().to(saved.route).copy(visualsTab = saved.visualsTab, searching = saved.searching)
+        return Next(
+            if (saved.fullScreen) {
+                AppUiState.FullScreen(navigation, saved.sheet, state.banner)
+            } else {
+                AppUiState.Browsing(navigation, saved.sheet, state.banner)
+            },
+        )
     }
 
     private fun enterFullScreen(state: AppUiState): Next<AppUiState, AppUiEffect> =
