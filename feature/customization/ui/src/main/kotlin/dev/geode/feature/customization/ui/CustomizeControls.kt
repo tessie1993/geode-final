@@ -320,7 +320,7 @@ internal fun ModulatorPicture(
                         is ModulatorShape.StepSequencer -> { _ -> 0f }
                     }
                 val path = Path()
-                (0..PICTURE_POINTS).forEach { point ->
+                for (point in 0..PICTURE_POINTS) {
                     val time = point / PICTURE_POINTS.toFloat()
                     val x = time * size.width
                     val y = stroke + (1f - value(time)) * (size.height - 2 * stroke)

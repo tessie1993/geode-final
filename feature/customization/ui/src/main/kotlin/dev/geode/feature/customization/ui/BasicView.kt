@@ -54,7 +54,7 @@ internal fun BasicView(panel: PanelState) {
     SectionTitle(stringResource(R.string.customize_palettes))
     ChipStrip {
         val palette = SharedProperty.PALETTE
-        (palette.min.toInt()..palette.max.toInt()).forEach { index ->
+        for (index in palette.min.toInt()..palette.max.toInt()) {
             ChoiceChip(stringResource(R.string.customize_whole_value, index + 1), index == model.palette) {
                 panel.send(CustomizationCommand.SetShared(palette, index.toFloat()))
             }
