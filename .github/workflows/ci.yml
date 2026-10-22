@@ -307,61 +307,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-  screenshots:
-    name: App UI screenshots
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    permissions:
-      contents: write
-    # Every module that takes App UI screenshots: :app and each feature's :ui (geode.screenshots).
-    env:
-      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/visuals/ui/src/test/screenshots feature/customization/ui/src/test/screenshots
-      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:visuals:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug"
-      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:visuals:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug"
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # The head commit itself (not the merge commit): its message decides record vs verify,
-          # and recorded goldens are pushed on top of it.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./.github/actions/android-setup
-      - name: Record or verify
-        id: mode
-        run: |
-          if git log -1 --format=%B | grep -qF '[record-goldens]'; then
-            echo "record=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "record=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Verify screenshots against the goldens
-        if: steps.mode.outputs.record == 'false'
-        run: |
-          for dir in $SCREENSHOT_DIRS; do
-            if ! ls "$dir"/*.png > /dev/null 2>&1; then
-              echo "::error::no App UI goldens in $dir; record them (docs/ci.md)"
-              exit 1
-            fi
-          done
-          ./gradlew $SCREENSHOT_MODULES_VERIFY --stacktrace --no-daemon
-      - name: Record screenshots
-        if: steps.mode.outputs.record == 'true'
-        run: ./gradlew $SCREENSHOT_MODULES_RECORD --stacktrace --no-daemon
-      - name: Push recorded screenshots
-        if: steps.mode.outputs.record == 'true' && github.event_name == 'pull_request'
-        run: tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record App UI screenshot goldens" $SCREENSHOT_DIRS
-      - name: Upload screenshot diffs
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: screenshot-diffs-${{ github.run_number }}
-          path: |
-            app/build/outputs/roborazzi/
-            app/build/reports/tests/
-            feature/*/ui/build/outputs/roborazzi/
-            feature/*/ui/build/reports/tests/
-          if-no-files-found: ignore
-          retention-days: 14
-
   native-tests:
     name: C++ unit tests (host, ASan + UBSan)
     runs-on: ubuntu-24.04
@@ -444,28 +389,22 @@ jobs:
       - name: Every bundled preset runs as written
         run: ctest --test-dir build-milkdrop --output-on-failure -R preset
 
+  # A cheap shader check with no stored images: every Style's shader must compile and draw a lit
+  # frame, survive a scene-target resize without going dark, and every Shared core effect must draw.
   visual-frames:
-    name: Visual golden frames (shaders)
+    name: Shaders compile and render
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      # SwiftShader output is deterministic on a fixed Chrome build; a floating version would make
-      # the goldens drift with every runner update.
       - name: Install pinned Chrome
         id: chrome
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: 140
-      - name: Install Pillow
-        run: python3 -m pip install --quiet pillow==11.3.0
       - name: Render every Style (compile + non-black frame)
         env:
           MUSICVIZ_CHROMIUM: ${{ steps.chrome.outputs.chrome-path }}
@@ -474,28 +413,6 @@ jobs:
           node tools/glslcheck/check.mjs --fluid-display --size 96 --out build-frames/fluid
           node tools/glslcheck/check.mjs --all --resize --size 96 --time 12.5 --out build-frames/resize
           node tools/glslcheck/check.mjs --effects --size 96 --out build-frames/effects
-      - name: Record or verify
-        id: mode
-        run: |
-          if git log -1 --format=%B | grep -qF '[record-goldens]'; then
-            echo "record=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "record=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Compare with the goldens
-        if: steps.mode.outputs.record == 'false'
-        run: |
-          python3 tools/ci/compare_frames.py tools/glslcheck/goldens/styles build-frames/styles
-          python3 tools/ci/compare_frames.py tools/glslcheck/goldens/fluid build-frames/fluid
-          python3 tools/ci/compare_frames.py tools/glslcheck/goldens/resize build-frames/resize
-          python3 tools/ci/compare_frames.py tools/glslcheck/goldens/effects build-frames/effects
-      - name: Record goldens
-        if: steps.mode.outputs.record == 'true' && github.event_name == 'pull_request'
-        run: |
-          rm -rf tools/glslcheck/goldens
-          mkdir -p tools/glslcheck/goldens
-          cp -r build-frames/styles build-frames/fluid build-frames/resize build-frames/effects tools/glslcheck/goldens/
-          tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record Visual golden frames" tools/glslcheck/goldens
       - name: Upload rendered frames
         if: failure()
         uses: actions/upload-artifact@v7

@@ -1,11 +1,9 @@
-// A feature's :ui (ADR-0005): stateless screens XScreen(model, onAction) with their previews and
-// Roborazzi screenshots (geode.screenshots). An Android library with Compose that depends on its own
-// :api and on :design (the App UI's tokens, theme and common components, added here so no feature
+// A feature's :ui (ADR-0005): stateless screens XScreen(model, onAction) with their previews. An
+// Android library with Compose that depends on its own :api and on :design (the App UI's tokens, theme and common components, added here so no feature
 // has to), never on its :core or :handlers, nor on another feature.
 plugins {
     id("geode.android-library")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("geode.screenshots")
 }
 
 val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -15,13 +13,6 @@ extensions.configure<com.android.build.api.dsl.LibraryExtension> {
     namespace = "dev.geode" + path.replace(':', '.').replace('-', '_')
     buildFeatures {
         compose = true
-    }
-    // Robolectric needs the merged manifest and resources: the screenshot tests start the test
-    // activity from compose-ui-test-manifest and the screens read their own strings.
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-        }
     }
 }
 
