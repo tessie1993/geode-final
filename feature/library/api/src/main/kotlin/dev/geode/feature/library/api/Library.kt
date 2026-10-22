@@ -70,11 +70,12 @@ enum class GroupKind {
     COMPOSER,
     FOLDER,
     PLAYLIST,
+    SMART_PLAYLIST,
 }
 
 /**
  * One group: the album, artist, genre, composer or folder named [name] (blank when the tags name
- * none), or the playlist whose [PlaylistRef] value [name] holds.
+ * none), the playlist whose [PlaylistRef] value [name] holds, or the smart playlist named [name].
  */
 data class GroupKey(
     val kind: GroupKind,
@@ -93,6 +94,84 @@ data class LibraryPlaylist(
     val id: PlaylistRef,
     val name: String,
     val trackCount: Int,
+)
+
+/** What a smart playlist rule looks at in a song (the fields of the old smart playlist editor, kept as they were). */
+enum class RuleField {
+    TITLE,
+    ARTIST,
+    ALBUM,
+    FOLDER,
+
+    /** The song's length, in minutes. */
+    DURATION_MINUTES,
+
+    /** The days since the song was added to the phone. */
+    ADDED_DAYS_AGO,
+
+    /** How often the song was played. */
+    PLAY_COUNT,
+
+    /** Whether the song is a favourite. */
+    FAVOURITE,
+    ;
+
+    /** Whether the field is words, compared with [RuleOp.CONTAINS], [RuleOp.IS] or [RuleOp.IS_NOT]. */
+    val isText: Boolean get() = this == TITLE || this == ARTIST || this == ALBUM || this == FOLDER
+
+    /** Whether the field is yes or no, compared with [RuleOp.IS] or [RuleOp.IS_NOT] and no value. */
+    val isFlag: Boolean get() = this == FAVOURITE
+
+    /** The comparisons a rule on this field may use. */
+    val ops: List<RuleOp>
+        get() =
+            when {
+                isFlag -> listOf(RuleOp.IS, RuleOp.IS_NOT)
+                isText -> RuleOp.entries.filter { it.forText }
+                else -> RuleOp.entries.filter { it.forNumber }
+            }
+
+    /** The comparison a rule starts with when it is set to this field. */
+    val defaultOp: RuleOp
+        get() =
+            when {
+                isText -> RuleOp.CONTAINS
+                isFlag -> RuleOp.IS
+                else -> RuleOp.AT_LEAST
+            }
+}
+
+/** How a smart playlist rule compares its field with its value. Text is compared ignoring case. */
+enum class RuleOp {
+    CONTAINS,
+    IS,
+    IS_NOT,
+    AT_LEAST,
+    AT_MOST,
+    ;
+
+    val forText: Boolean get() = this == CONTAINS || this == IS || this == IS_NOT
+
+    val forNumber: Boolean get() = this == IS || this == AT_LEAST || this == AT_MOST
+}
+
+/** One rule of a smart playlist: [field] compared by [op] with [value]. A rule with a blank value is left out, except a yes-or-no one. */
+data class SmartRule(
+    val field: RuleField,
+    val op: RuleOp,
+    val value: String,
+)
+
+/**
+ * A playlist the Library fills by itself from [rules] (#146): the songs that match all of them
+ * ([matchAll]) or any one, at most [limit] of them (all when 0). No rules picks every song. Its
+ * songs change as the Library does. The name is unique among smart playlists.
+ */
+data class SmartPlaylist(
+    val name: String,
+    val rules: List<SmartRule> = emptyList(),
+    val matchAll: Boolean = true,
+    val limit: Int = 0,
 )
 
 /** One play from Playback's history: [song] started at [playedAt], wall-clock time. */
@@ -209,8 +288,12 @@ data class LibraryState(
     /** Folders hidden from the Library, such as ringtones; everything under them is hidden too. */
     val excludedFolders: Set<String> = emptySet(),
     val playlists: List<LibraryPlaylist> = emptyList(),
+    /** The smart playlists, by name. */
+    val smartPlaylists: List<SmartPlaylist> = emptyList(),
     /** Playback's history, the most recent first. */
     val plays: List<Play> = emptyList(),
+    /** Wall-clock time as the Library last read it, for the rules that count days; null before the first reading. */
+    val now: Millis? = null,
     val page: Page = Page.Songs(emptyList()),
 ) {
     /** The formats the songs come in, for the format filter. */
@@ -241,7 +324,7 @@ sealed interface LibraryCommand {
         val view: LibraryView,
     ) : LibraryCommand
 
-    /** Opens a group of the view being shown. A playlist is played, not opened. */
+    /** Opens a group of the view being shown. A playlist is played, not opened; a smart playlist opens to its songs. */
     data class Open(
         val key: GroupKey,
     ) : LibraryCommand
@@ -303,6 +386,19 @@ sealed interface LibraryCommand {
 
     data class DeletePlaylist(
         val id: PlaylistRef,
+    ) : LibraryCommand
+
+    /**
+     * Saves [playlist] as a smart playlist, in place of the one named [replacing] when it is being
+     * edited. Its name is trimmed, and must be neither blank nor another smart playlist's.
+     */
+    data class SaveSmartPlaylist(
+        val playlist: SmartPlaylist,
+        val replacing: String? = null,
+    ) : LibraryCommand
+
+    data class DeleteSmartPlaylist(
+        val name: String,
     ) : LibraryCommand
 
     /** Reads the M3U playlist in [file] (a content uri) and saves the songs it names as a playlist called [name]. */

@@ -1,5 +1,6 @@
 package dev.geode.feature.library.core
 
+import dev.geode.feature.library.api.GroupKey
 import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.IndexStatus
 import dev.geode.feature.library.api.LibraryCommand
@@ -7,6 +8,7 @@ import dev.geode.feature.library.api.LibraryFact
 import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
+import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 import dev.geode.feature.playback.api.PlaybackCommand
@@ -17,6 +19,7 @@ import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.Reducer
 import dev.geode.kernel.ReportFailure
+import dev.geode.kernel.StartTimer
 
 /**
  * The Library's state machine (#37). The index moves Loading → Scanning → Ready (or NeedsPermission),
@@ -26,6 +29,10 @@ import dev.geode.kernel.ReportFailure
  * Playing anything is a Command to Playback, through its `:api` (ADR-0004: Playback owns the queue).
  * The playlists and the history are Playback's too (ADR-0005), so the Library reads them from
  * Playback and asks Playback to change them.
+ *
+ * The smart playlists (#146) are the Library's own: their rules are kept in its database, and their
+ * songs are worked out from the index whenever the page is, so they follow every change to the
+ * Library. The clock is read every [CLOCK_TICK] for the rules that count days.
  */
 object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
     override fun reduce(
@@ -44,6 +51,8 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             is LibraryEvent.PlaylistFileRead -> imported(state, event.name, event.text)
             is LibraryEvent.PlaylistFileWritten -> Next(state, listOf(Emit(LibraryFact.PlaylistExported(event.file, event.songs))))
             is LibraryEvent.StorageFailed -> storageFailed(state, event.failure)
+            is LibraryEvent.ClockRead -> shown(state.copy(now = event.now), StartTimer(ClockTick, CLOCK_TICK, LibraryEvent.ClockDue))
+            LibraryEvent.ClockDue -> Next(state, listOf(Perform(LibraryWork.ReadClock)))
         }
 
     // The index.
@@ -52,7 +61,12 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
         state: LibraryState,
         event: LibraryEvent.IndexRead,
     ): Next<LibraryState, LibraryEffect> {
-        val known = state.copy(favourites = event.favourites, excludedFolders = event.excludedFolders)
+        val known =
+            state.copy(
+                favourites = event.favourites,
+                excludedFolders = event.excludedFolders,
+                smartPlaylists = event.smartPlaylists.sortedWith(byName),
+            )
         return when (state.index) {
             IndexStatus.Loading -> scan(known.copy(songs = event.songs))
             // A scan got there first: its songs are newer than the saved ones.
@@ -126,6 +140,8 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             is LibraryCommand.AddToQueue -> enqueue(state, command.pick, next = false)
             is LibraryCommand.CreatePlaylist -> createPlaylist(state, command)
             is LibraryCommand.DeletePlaylist -> Next(state, listOf(tell(PlaybackCommand.DeletePlaylist(PlaylistId(command.id.value)))))
+            is LibraryCommand.SaveSmartPlaylist -> saveSmart(state, command)
+            is LibraryCommand.DeleteSmartPlaylist -> deleteSmart(state, command.name)
             is LibraryCommand.ImportPlaylist -> import(state, command)
             is LibraryCommand.ExportPlaylist -> export(state, command)
         }
@@ -232,6 +248,37 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
         return Next(state, listOf(tell(PlaybackCommand.CreatePlaylist(command.name.trim(), songs.map { it.toTrack() }))))
     }
 
+    private fun saveSmart(
+        state: LibraryState,
+        command: LibraryCommand.SaveSmartPlaylist,
+    ): Next<LibraryState, LibraryEffect> {
+        val playlist = SmartPlaylists.tidied(command.playlist)
+        val others = state.smartPlaylists.filterNot { it.name == command.replacing }
+        if (playlist.name.isEmpty() || others.any { it.name == playlist.name }) return Next(state)
+        val place = state.place
+        // The smart playlist being shown keeps showing under its new name.
+        val renamed =
+            if (place is Place.Group && place.key == smartKey(command.replacing)) place.copy(key = GroupKey(GroupKind.SMART_PLAYLIST, playlist.name)) else place
+        return shown(
+            state.copy(smartPlaylists = (others + playlist).sortedWith(byName), place = renamed),
+            Perform(LibraryWork.SaveSmartPlaylist(playlist, command.replacing)),
+        )
+    }
+
+    private fun deleteSmart(
+        state: LibraryState,
+        name: String,
+    ): Next<LibraryState, LibraryEffect> {
+        if (state.smartPlaylists.none { it.name == name }) return Next(state)
+        val place = state.place
+        // Out of the smart playlist being shown, to its view.
+        val left = if (place is Place.Group && place.key == smartKey(name)) Place.Shelf(place.view) else place
+        return shown(
+            state.copy(smartPlaylists = state.smartPlaylists.filterNot { it.name == name }, place = left),
+            Perform(LibraryWork.DeleteSmartPlaylist(name)),
+        )
+    }
+
     private fun import(
         state: LibraryState,
         command: LibraryCommand.ImportPlaylist,
@@ -274,6 +321,11 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
 
     private fun Song.edited(edit: SongEdit): Song =
         copy(title = edit.title, artist = edit.artist, album = edit.album, artwork = edit.artwork)
+
+    private fun smartKey(name: String?): GroupKey? = name?.let { GroupKey(GroupKind.SMART_PLAYLIST, it) }
+
+    /** Smart playlists by name, ignoring case, as the old editor listed them. */
+    private val byName: Comparator<SmartPlaylist> = compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
 }
 
 /** A song as Playback plays it. */
@@ -296,4 +348,6 @@ fun describe(failure: StorageFailure): String =
         StorageFailure.SAVE_EXCLUDED_FOLDERS -> "Could not save the excluded folders"
         StorageFailure.READ_PLAYLIST_FILE -> "Could not read the playlist file"
         StorageFailure.WRITE_PLAYLIST_FILE -> "Could not write the playlist file"
+        StorageFailure.SAVE_SMART_PLAYLIST -> "Could not save the smart playlist"
+        StorageFailure.DELETE_SMART_PLAYLIST -> "Could not delete the smart playlist"
     }
