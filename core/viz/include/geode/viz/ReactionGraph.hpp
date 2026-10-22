@@ -34,8 +34,6 @@ constexpr int kMaxReactions = 128;
 constexpr int kMaxModulators = 16;
 constexpr int kMaxMacroLinks = 64;
 constexpr int kMaxAutomations = 16;
-// The beat the Automations count in before the tempo is known (120 bpm).
-constexpr float kUnknownBeatSeconds = 0.5f;
 // The longest frame the graph steps over: a stall does not jump every Modulator ahead at once.
 constexpr float kMaxFrameSeconds = 0.1f;
 

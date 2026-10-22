@@ -154,12 +154,10 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         return nullptr;
     };
 
-    // The Automations, on the beat clock, which runs while the music plays.
-    if (frame.playing) {
-        const float beatSeconds = std::isfinite(frame.beatSeconds) && frame.beatSeconds > 0.0f
-                               ? std::max(frame.beatSeconds, kMinPeriodSeconds)
-                               : kUnknownBeatSeconds;
-        beats_ += step / beatSeconds;
+    // The Automations, on the beat clock. It runs only on the tempo the live analysis reports, while
+    // the music plays: until a tempo is reported the clock holds, and nothing beat-timed moves.
+    if (frame.playing && frame.beatSeconds > 0.0f) {
+        beats_ += step / std::max(frame.beatSeconds, kMinPeriodSeconds);
     }
     const bool loud = frame[SoundSignal::Surge] >= kStartThreshold || frame[SoundSignal::Change] >= kStartThreshold;
     const bool bigMoment = loud && bigMomentArmed_;

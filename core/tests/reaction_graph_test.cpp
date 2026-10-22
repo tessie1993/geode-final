@@ -350,7 +350,7 @@ TEST(CustomizationPlan, RefusesLinksAndAutomationsPastItsSize) {
     EXPECT_EQ(plan.add(AutomationSpec{}), -1);
 }
 
-// A tenth of a second a frame at 120 bpm: five frames a beat.
+// A tenth of a second a frame: five frames a beat at a reported 0.5 s beat.
 constexpr float kAutomationDt = 0.1f;
 
 SignalFrame atTempo(float beatSeconds) {
@@ -388,9 +388,30 @@ TEST(Automations, ASequenceStepsItsTargetOnTheBeat) {
     EXPECT_EQ(paletteAfter(4, atTempo(0.25f)), 10.0f);
 }
 
-TEST(Automations, CountAt120BpmUntilTheTempoIsKnown) {
-    EXPECT_EQ(paletteAfter(7, atTempo(0.0f)), 10.0f);
-    EXPECT_EQ(paletteAfter(7, atTempo(std::numeric_limits<float>::quiet_NaN())), 10.0f);
+TEST(Automations, HoldUntilTheLiveAnalysisReportsATempo) {
+    // No tempo assumed: with none reported, nothing beat-timed moves, however long it plays.
+    EXPECT_EQ(paletteAfter(7, atTempo(0.0f)), 0.0f);
+    EXPECT_EQ(paletteAfter(40, atTempo(0.0f)), 0.0f);
+    EXPECT_EQ(paletteAfter(40, atTempo(-0.5f)), 0.0f);
+    EXPECT_EQ(paletteAfter(40, atTempo(std::numeric_limits<float>::quiet_NaN())), 0.0f);
+    EXPECT_EQ(paletteAfter(40, atTempo(std::numeric_limits<float>::infinity())), 0.0f);
+}
+
+TEST(Automations, FollowTheReportedTempoOnceItArrives) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(palettePerBeat());
+    ReactionGraph graph;
+    float palette = -1.0f;
+    for (int i = 0; i < 20; ++i) palette = graph.evaluate(plan, atTempo(0.0f), kAutomationDt)[Shared::Palette];
+    EXPECT_EQ(palette, 0.0f) << "held before any tempo";
+    // The reported tempo starts the count from where it held: a beat later, the next step.
+    for (int i = 0; i < 4; ++i) palette = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette];
+    EXPECT_EQ(palette, 0.0f) << "not yet a beat in";
+    for (int i = 0; i < 2; ++i) palette = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette];
+    EXPECT_EQ(palette, 10.0f);
+    // A lost tempo holds again, on the step it reached.
+    for (int i = 0; i < 20; ++i) palette = graph.evaluate(plan, atTempo(0.0f), kAutomationDt)[Shared::Palette];
+    EXPECT_EQ(palette, 10.0f);
 }
 
 TEST(Automations, WaitWhileTheMusicIsStopped) {
