@@ -18,8 +18,9 @@ import dev.geode.playback.NativePlayer
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackSession
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onSubscription
@@ -51,6 +52,8 @@ class NativeAudioAdapter(
 
     // Touched on main only.
     private var pipeline: Pipeline? = null
+
+    private val fade = PlayPauseFade(CoroutineScope(SupervisorJob() + main))
 
     override val announcements: Flow<AudioAnnouncement> =
         announced.onSubscription {
@@ -85,53 +88,27 @@ class NativeAudioAdapter(
     ) {
         withContext(main) {
             val player = opened().player
+            fade.settle()
             player.setMediaItem(mediaItem(track), from.value)
             player.prepare()
         }
     }
 
     /**
-     * Plays or pauses, fading over the player settings' fade length when there is one: in from silence
-     * on play, out to silence before a pause (the old player's fades, #17).
+     * Plays or pauses, fading over the player settings' fade length when there is one: in on play, out
+     * to silence before a pause (the old player's fades, #17). One fade at a time: a newer play or pause
+     * takes over from the one running, and does not wait for it.
      */
     override suspend fun setPlaying(playing: Boolean) {
-        withContext(main) {
-            val player = opened().player
-            val fade = fadeLength()
-            if (fade <= Millis.ZERO) {
-                player.volume = 1f
-                if (playing) player.play() else player.pause()
-                return@withContext
-            }
-            if (playing) {
-                player.volume = 0f
-                player.play()
-                ramp(player, from = 0f, to = 1f, fade)
-            } else if (player.isPlaying) {
-                ramp(player, from = player.volume, to = 0f, fade)
-                player.pause()
-                player.volume = 1f
-            } else {
-                player.pause()
-            }
-        }
-    }
-
-    private suspend fun ramp(
-        player: Player,
-        from: Float,
-        to: Float,
-        length: Millis,
-    ) {
-        val steps = (length.value / FADE_STEP_MS).coerceAtLeast(1)
-        for (step in 1..steps) {
-            delay(FADE_STEP_MS)
-            player.volume = (from + (to - from) * step / steps).coerceIn(0f, 1f)
-        }
+        withContext(main) { fade.setPlaying(opened().faded, playing, fadeLength()) }
     }
 
     override suspend fun seekTo(position: Millis) {
-        withContext(main) { opened().player.seekTo(position.value) }
+        withContext(main) {
+            val player = opened().player
+            fade.settle()
+            player.seekTo(position.value)
+        }
     }
 
     override suspend fun setTransitions(
@@ -178,6 +155,22 @@ class NativeAudioAdapter(
         private val session: PlaybackSession,
     ) {
         val player: Player get() = session.player
+
+        /** The player as the play/pause fade drives it. */
+        val faded: FadedPlayer =
+            object : FadedPlayer {
+                override var volume: Float
+                    get() = player.volume
+                    set(value) {
+                        player.volume = value
+                    }
+                override val playWhenReady: Boolean get() = player.playWhenReady
+                override val isPlaying: Boolean get() = player.isPlaying
+
+                override fun play() = player.play()
+
+                override fun pause() = player.pause()
+            }
 
         private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -309,7 +302,6 @@ class NativeAudioAdapter(
     private companion object {
         const val BUFFER = 64
         const val FALLBACK_RATE_HZ = 44_100
-        const val FADE_STEP_MS = 25L
 
         /** The crossfade curve the old player settings start from: equal power. */
         const val EQUAL_POWER_CURVE = 1
