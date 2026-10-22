@@ -258,7 +258,13 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
         val place = state.place
         // The smart playlist being shown keeps showing under its new name.
         val renamed =
-            if (place is Place.Group && place.key == smartKey(command.replacing)) place.copy(key = GroupKey(GroupKind.SMART_PLAYLIST, playlist.name)) else place
+            if (place is Place.Group &&
+                place.key == smartKey(command.replacing)
+            ) {
+                place.copy(key = GroupKey(GroupKind.SMART_PLAYLIST, playlist.name))
+            } else {
+                place
+            }
         return shown(
             state.copy(smartPlaylists = (others + playlist).sortedWith(byName), place = renamed),
             Perform(LibraryWork.SaveSmartPlaylist(playlist, command.replacing)),
