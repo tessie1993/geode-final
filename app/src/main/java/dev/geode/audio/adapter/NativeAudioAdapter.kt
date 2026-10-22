@@ -48,12 +48,16 @@ class NativeAudioAdapter(
     private val nativeEngine: suspend () -> Boolean,
     private val main: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val fadeLength: () -> Millis = { Millis.ZERO },
+    private val crossfadeCurve: () -> Int = { EQUAL_POWER_CURVE },
     private val onOpened: (PlaybackSession) -> Unit = {},
 ) : AudioAdapter {
     private val announced = MutableSharedFlow<AudioAnnouncement>(extraBufferCapacity = BUFFER)
 
     // Touched on main only.
     private var pipeline: Pipeline? = null
+
+    // The crossfade and gapless choice Playback set last, kept so a new curve can be applied with them.
+    private var transitions: Pair<Millis, Boolean>? = null
 
     private val fade = PlayPauseFade(CoroutineScope(SupervisorJob() + main))
 
@@ -117,8 +121,21 @@ class NativeAudioAdapter(
         crossfade: Millis,
         gapless: Boolean,
     ) {
-        // Only Geode's own player crossfades; ExoPlayer joins the tracks of its playlist without a gap.
-        withContext(main) { (opened().player as? NativePlayer)?.applyPrefs(crossfade.value.toInt(), EQUAL_POWER_CURVE, gapless) }
+        withContext(main) {
+            transitions = crossfade to gapless
+            applyTransitions(opened())
+        }
+    }
+
+    /** The crossfade curve changed in Settings: the open player crossfades with the new one from now on. */
+    suspend fun crossfadeCurveChanged() {
+        withContext(main) { pipeline?.let(::applyTransitions) }
+    }
+
+    // Only Geode's own player crossfades; ExoPlayer joins the tracks of its playlist without a gap.
+    private fun applyTransitions(pipeline: Pipeline) {
+        val (crossfade, gapless) = transitions ?: return
+        (pipeline.player as? NativePlayer)?.applyPrefs(crossfade.value.toInt(), crossfadeCurve(), gapless)
     }
 
     override suspend fun prepareNext(track: TrackId?) {
@@ -313,7 +330,7 @@ class NativeAudioAdapter(
         const val BUFFER = 64
         const val FALLBACK_RATE_HZ = 44_100
 
-        /** The crossfade curve the old player settings start from: equal power. */
+        /** The crossfade curve Geode's player uses when nothing says otherwise: equal power. */
         const val EQUAL_POWER_CURVE = 1
 
         val LINE_IN_TYPES =

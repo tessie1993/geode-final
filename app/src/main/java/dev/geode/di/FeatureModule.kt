@@ -10,6 +10,8 @@ import dev.geode.audio.EngineTuning
 import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.NativeAudioAdapter
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.CrossfadeCurve
+import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.geodeContainer
@@ -17,8 +19,11 @@ import dev.geode.kernel.ErrorChannel
 import dev.geode.kernel.ExecutorTimerScheduler
 import dev.geode.kernel.FeatureRuntime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import javax.inject.Singleton
 
@@ -64,10 +69,23 @@ object FeatureModule {
                     .values.playback.nativeEngine
             },
             // The play/pause fade is a Settings choice (#17).
-            fadeLength = { (settings.state.value as? SettingsState.Ready)?.values?.playback?.fade ?: Millis.ZERO },
+            fadeLength = { settings.playbackValues()?.fade ?: Millis.ZERO },
+            // So is the crossfade's curve. Its length and gapless reach the adapter from Playback.
+            crossfadeCurve = { (settings.playbackValues()?.crossfadeCurve ?: CrossfadeCurve.EQUAL_POWER).ordinal },
             // Settings tune the engine from the moment it opens, for as long as it runs.
             onOpened = { session -> EngineTuning(settings, session, application.geodeContainer.appScope).start() },
-        )
+        ).also { adapter ->
+            // A new curve applies from the next crossfade on.
+            application.geodeContainer.appScope.launch {
+                settings.state
+                    .filterIsInstance<SettingsState.Ready>()
+                    .map { it.values.playback.crossfadeCurve }
+                    .distinctUntilChanged()
+                    .collect { adapter.crossfadeCurveChanged() }
+            }
+        }
+
+    private fun Settings.playbackValues(): PlaybackSettings? = (state.value as? SettingsState.Ready)?.values?.playback
 }
 
 private const val TAG = "FeatureStore"
