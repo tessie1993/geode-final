@@ -22,49 +22,60 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.engine.types.Millis
 import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
- * The full player (#34): what is playing, where it is, and the transport. Stateless (ADR-0003): it
- * draws [model] and sends every tap to [onAction].
+ * The full player (#34): what is playing, where it is, and the transport, with the seek waveform and
+ * the lyrics in place of the artwork when they are open (#147). Stateless (ADR-0003): it draws
+ * [model] and sends every tap to [onAction]; whether the lyrics are open is App UI state only,
+ * starting from [lyricsOpen].
  */
 @Composable
 fun PlayerScreen(
     model: PlayerModel,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
+    lyricsOpen: Boolean = false,
 ) {
+    var showLyrics by rememberSaveable { mutableStateOf(lyricsOpen) }
     Surface(modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().padding(PlayerDimens.gutter),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(PlayerDimens.gap, Alignment.CenterVertically),
         ) {
-            Artwork(Modifier.widthIn(max = PlayerDimens.artworkMaxWidth).fillMaxWidth())
+            val square = Modifier.widthIn(max = PlayerDimens.artworkMaxWidth).fillMaxWidth().aspectRatio(1f)
+            if (showLyrics) {
+                LyricsPanel(model, onSeek = { onAction(PlayerAction.SeekTo(it)) }, square)
+            } else {
+                Artwork(square)
+            }
             Titles(model)
             Timeline(model, onAction)
             Transport(model, onAction)
+            FilterChip(
+                selected = showLyrics,
+                onClick = { showLyrics = !showLyrics },
+                label = { Text(stringResource(R.string.playback_lyrics)) },
+            )
             Status(model)
         }
     }
@@ -74,7 +85,6 @@ fun PlayerScreen(
 private fun Artwork(modifier: Modifier) {
     Box(
         modifier
-            .aspectRatio(1f)
             .clip(RoundedCornerShape(PlayerDimens.artworkCorner))
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
@@ -114,24 +124,17 @@ private fun Timeline(
     model: PlayerModel,
     onAction: (PlayerAction) -> Unit,
 ) {
-    // Where the thumb is while it is dragged: App UI state only (ADR-0003).
-    var dragged by remember { mutableStateOf<Float?>(null) }
     val seekable = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.PAUSED || model.status == PlayerStatus.BUFFERING
-    val seekLabel = stringResource(R.string.playback_action_seek)
     Column(Modifier.fillMaxWidth()) {
-        Slider(
-            value = dragged ?: fraction(model.position, model.duration),
-            onValueChange = { dragged = it },
-            onValueChangeFinished = {
-                dragged?.let { onAction(PlayerAction.SeekTo(Millis((it * model.duration.value).toLong()))) }
-                dragged = null
-            },
+        // The seek waveform (#147), as the old player had it.
+        WaveformSeekBar(
+            model,
             enabled = seekable,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = seekLabel },
+            onSeek = { onAction(PlayerAction.SeekTo(it)) },
+            modifier = Modifier.fillMaxWidth().height(PlayerDimens.waveformHeight),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val shown = dragged?.let { Millis((it * model.duration.value).toLong()) } ?: model.position
-            Text(formatTime(shown), style = MaterialTheme.typography.labelMedium)
+            Text(formatTime(model.position), style = MaterialTheme.typography.labelMedium)
             Text(formatTime(model.duration), style = MaterialTheme.typography.labelMedium)
         }
     }

@@ -2,12 +2,15 @@ package dev.geode.feature.playback.ui
 
 import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.Millis
+import dev.geode.feature.playback.api.AbLoop
+import dev.geode.feature.playback.api.Lyrics
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.api.TrackLookup
 import java.util.Locale
 
 /** What the player shows, one per state of Playback's state machine. */
@@ -24,6 +27,9 @@ enum class PlayerStatus {
 /**
  * Everything the player and the mini-player draw (ADR-0003: an immutable screen model). [position]
  * is already worked out for the moment drawn; [meantToPlay] decides whether the main button pauses.
+ *
+ * Beside the music (#147): the track's seek [waveform] (null draws a plain line), the A-B [loop]
+ * shaded on it, and its [lyrics] (null when it has none) with the [lyricLine] being sung, -1 for none.
  */
 @Immutable
 data class PlayerModel(
@@ -34,6 +40,10 @@ data class PlayerModel(
     val canGoPrevious: Boolean,
     val canGoNext: Boolean,
     val failure: PlaybackFailure? = null,
+    val waveform: List<Float>? = null,
+    val loop: LoopSpan? = null,
+    val lyrics: Lyrics? = null,
+    val lyricLine: Int = NO_LINE,
 ) {
     val duration: Millis get() = track?.duration ?: Millis.ZERO
 
@@ -58,8 +68,39 @@ sealed interface PlayerAction {
     data object Expand : PlayerAction
 }
 
+/** The A-B loop on the seek waveform: from [start] to [end], or to the end of the track while B is not set. */
+data class LoopSpan(
+    val start: Millis,
+    val end: Millis?,
+)
+
+/** No lyric line is being sung: before the first one, or the lyrics are not timed. */
+const val NO_LINE = -1
+
 /** The player's model at [now], on the monotonic clock the marks use. */
-fun PlaybackState.toPlayerModel(now: Millis): PlayerModel =
+fun PlaybackState.toPlayerModel(now: Millis): PlayerModel {
+    val model = playerModel(now)
+    val track = model.track ?: return model
+    val words = (lyrics as? TrackLookup.Found)?.value
+    return model.copy(
+        waveform = (waveform as? TrackLookup.Found)?.value?.levels,
+        loop = loopSpan(loop, track),
+        lyrics = words,
+        lyricLine = (words as? Lyrics.Synced)?.lineAt(model.position) ?: NO_LINE,
+    )
+}
+
+private fun loopSpan(
+    loop: AbLoop,
+    track: Track,
+): LoopSpan? =
+    when (loop) {
+        AbLoop.Off -> null
+        is AbLoop.Starting -> LoopSpan(loop.start, null).takeIf { loop.track == track.id }
+        is AbLoop.On -> LoopSpan(loop.start, loop.end).takeIf { loop.track == track.id }
+    }
+
+private fun PlaybackState.playerModel(now: Millis): PlayerModel =
     when (val player = player) {
         PlayerState.Idle -> PlayerModel.IDLE
         is PlayerState.Loading -> model(PlayerStatus.LOADING, player.queue, player.from.position, player.playWhenReady)

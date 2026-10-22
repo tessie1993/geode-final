@@ -11,6 +11,21 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Player: lyrics, the seek waveform and the app-wide error banner (#147,
+  ADR-0004, ADR-0005).** Playback now looks up the current track's lyrics
+  (an `.lrc` file with its name beside it, else its own tags, read as the old
+  player read them) and its loudness for the seek waveform each time the
+  current track changes, keeping only answers for the track still current.
+  The new `PlayerScreen` draws the old player's waveform seek bar, with the
+  A-B loop shaded, and opens the lyrics in place of the artwork: timed lyrics
+  follow the music and a tapped line plays from there. Playback also hears
+  the app-wide error channel: `ErrorBannerRoute` shows one failure at a time,
+  a newer one replacing it, until it is dismissed or eight seconds after it
+  is first on screen. The loudness comes from a `TrackLoudness` source that
+  `:app` gives the analysis cache at the switch-over. Built alongside the old
+  `PlaybackNoticeBanner`, lyrics panel and waveform; wired in at the
+  switch-over (#17).
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person

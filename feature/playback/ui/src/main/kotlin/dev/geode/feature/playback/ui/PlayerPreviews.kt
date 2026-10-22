@@ -22,8 +22,17 @@ internal fun PreviewTheme(
 internal fun PlayerPreview(
     model: PlayerModel,
     dark: Boolean = false,
+    lyricsOpen: Boolean = false,
 ) {
-    PreviewTheme(dark) { PlayerScreen(model, onAction = {}) }
+    PreviewTheme(dark) { PlayerScreen(model, onAction = {}, lyricsOpen = lyricsOpen) }
+}
+
+@Composable
+internal fun ErrorBannerPreview(
+    model: BannerModel,
+    dark: Boolean = false,
+) {
+    PreviewTheme(dark) { ErrorBanner(model, onAction = {}) }
 }
 
 @Composable
@@ -65,6 +74,36 @@ internal fun PlayerErrorPreview() = PlayerPreview(PreviewModels.error)
 @Preview(name = "Idle")
 @Composable
 internal fun PlayerIdlePreview() = PlayerPreview(PreviewModels.idle)
+
+// Lyrics, the seek waveform and the app-wide error banner (#147).
+
+@Preview(name = "Lyrics")
+@Composable
+internal fun PlayerLyricsPreview() = PlayerPreview(PreviewModels.playing, lyricsOpen = true)
+
+@Preview(name = "Lyrics, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PlayerLyricsDarkPreview() = PlayerPreview(PreviewModels.playing, dark = true, lyricsOpen = true)
+
+@Preview(name = "Lyrics, untimed")
+@Composable
+internal fun PlayerPlainLyricsPreview() = PlayerPreview(PreviewModels.plainLyrics, lyricsOpen = true)
+
+@Preview(name = "No lyrics")
+@Composable
+internal fun PlayerNoLyricsPreview() = PlayerPreview(PreviewModels.noLyrics, lyricsOpen = true)
+
+@Preview(name = "A-B loop, no waveform")
+@Composable
+internal fun PlayerLoopingPreview() = PlayerPreview(PreviewModels.looping)
+
+@Preview(name = "Error banner")
+@Composable
+internal fun ErrorBannerShowingPreview() = ErrorBannerPreview(PreviewModels.banner)
+
+@Preview(name = "Error banner, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun ErrorBannerDarkPreview() = ErrorBannerPreview(PreviewModels.banner, dark = true)
 
 @Preview(name = "Mini-player, playing")
 @Composable
