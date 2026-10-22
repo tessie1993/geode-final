@@ -6,10 +6,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.RingLog
+import dev.geode.audio.EngineTuning
 import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.NativeAudioAdapter
-import dev.geode.data.PlayerPrefsStore
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.settings.api.SettingsState
 import dev.geode.geodeContainer
 import dev.geode.kernel.ErrorChannel
 import dev.geode.kernel.ExecutorTimerScheduler
@@ -45,11 +47,16 @@ object FeatureModule {
 
     @Provides
     @Singleton
-    fun provideAudioAdapter(application: Application): AudioAdapter =
+    fun provideAudioAdapter(
+        application: Application,
+        settings: Settings,
+    ): AudioAdapter =
         NativeAudioAdapter(
             application,
-            // The old player settings' play/pause fade, until Settings owns it (#17, Settings slice).
-            fadeLength = { Millis(PlayerPrefsStore(application.geodeContainer.prefsFiles.player).load().fadeMs.toLong()) },
+            // The play/pause fade is a Settings choice (#17).
+            fadeLength = { (settings.state.value as? SettingsState.Ready)?.values?.playback?.fade ?: Millis.ZERO },
+            // Settings tune the engine from the moment it opens, for as long as it runs.
+            onOpened = { session -> EngineTuning(settings, session, application.geodeContainer.appScope).start() },
         )
 }
 

@@ -31,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.ExportDefaults
-import dev.geode.data.ExportPrefsStore
-import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.exportCodecLabel
 import dev.geode.data.exportQualityLabel
 import dev.geode.engine.types.Millis
@@ -56,8 +54,8 @@ fun SettingsDialog(
 ) {
     val trackDurationMs = trackDuration.value
     val context = LocalContext.current
-    val exportPrefs = remember { ExportPrefsStore(GeodePrefsFiles(context).general) }
-    val defaults = remember { exportPrefs.load() }
+    val settingsViewModel: SettingsViewModel = geodeViewModel()
+    val defaults = remember { settingsViewModel.exportDefaults() }
     var quality by rememberSaveable { mutableStateOf(defaults.quality) }
     var ratio by rememberSaveable { mutableStateOf(defaults.ratio) }
     var fps by rememberSaveable { mutableStateOf(defaults.fps) }
@@ -87,7 +85,7 @@ fun SettingsDialog(
             )
         }
 
-    fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
+    fun persistDefaults() = settingsViewModel.saveExportDefaults(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
     val chooserTitle = stringResource(R.string.export_upload_share_to)
     AlertDialog(
         onDismissRequest = onDismiss,

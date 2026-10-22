@@ -8,7 +8,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.audio.AudioFxController
-import dev.geode.audio.AudioFxPresets
 import dev.geode.audio.PcmRingBuffer
 import dev.geode.audio.TapRenderersFactory
 import dev.geode.audio.dsp.NativeDspProcessor
@@ -65,10 +64,8 @@ class PlaybackSession internal constructor(
 
     internal val dsp = NativeDspProcessor()
 
-    private val prefsFiles = GeodePrefsFiles(context)
-
     /** Read once here: the engine choice is fixed for the life of the session. */
-    val nativeEngine: Boolean = PlayerPrefsStore(prefsFiles.player).load().nativeEngine
+    val nativeEngine: Boolean = PlaybackEngine.nativeEngineChoice(context)
 
     // WAKE_MODE_LOCAL takes a partial wake lock while playback is active, so the CPU
     // cannot doze mid-track with the screen off. Not the WIFI variant: nothing streams.
@@ -101,7 +98,7 @@ class PlaybackSession internal constructor(
 
     val player: Player = exoPlayer ?: NativePlayer(context, NativeTapPump(tap, clockDriver), NativePlayerDsp(dsp))
 
-    val audioFx = AudioFxController(prefsFiles.audioFx, AudioFxPresets.all(context), dsp)
+    val audioFx = AudioFxController(dsp)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -142,6 +139,13 @@ class PlaybackSession internal constructor(
 }
 
 object PlaybackEngine {
+    /**
+     * Whether a new session uses Geode's own player rather than ExoPlayer: a Settings choice (#17),
+     * which `:app`'s wiring points at the Settings store. Until then, what the old player settings say.
+     */
+    @Volatile
+    var nativeEngineChoice: (Context) -> Boolean = { PlayerPrefsStore(GeodePrefsFiles(it).player).load().nativeEngine }
+
     private var app: Context? = null
     private var session: PlaybackSession? = null
     private var uiHolds = 0

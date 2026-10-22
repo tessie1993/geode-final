@@ -218,6 +218,10 @@ dependencies {
     // Playback's routes: the journey test hosts them, and the routes are wired into the navigation
     // graph (#136) once it lands. An implementation dependency, so Robolectric sees their resources.
     implementation(project(":feature:playback:ui"))
+    implementation(project(":feature:settings:api"))
+    implementation(project(":feature:settings:handlers"))
+    // Settings' DataStore is built here, so its type is on :app's compile path too.
+    implementation(libs.datastore.preferences)
     // The App UI's design tokens, theme and common components.
     implementation(project(":design"))
 

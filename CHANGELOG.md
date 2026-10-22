@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Settings switch over to their feature store (#17, Settings slice).**
+  Every reader of the old `GuiPrefs` and `PlayerPrefs`, and of the
+  equalizer and export defaults, now reads Settings' one app-scoped store
+  (DataStore, migrated once from the old files), and every old save becomes
+  Settings Commands for exactly what changed (`SettingsForOldScreens`).
+  `EngineTuning` applies Settings to the audio engine as they change: speed,
+  pitch, silence skipping, headphone handling, ReplayGain, the equalizer and
+  beat detection. The play/pause fade, the engine choice and the live
+  wallpaper's reduced motion read Settings too. Shuffle and repeat belong to
+  Playback. The SharedPreferences-backed settings repositories and
+  `ExportPrefsStore` are gone.
+
 - **Playback switches over to its feature store (#17, Playback slice).** The
   music, the queue, the play history, the sleep timer, the A-B loop and the
   listening choices now live in Playback's one app-scoped store (ADR-0003,

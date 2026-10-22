@@ -3,8 +3,7 @@ package dev.geode.ui
 import android.app.Application
 import android.net.Uri
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.data.ExportPrefsStore
-import dev.geode.data.GeodePrefsFiles
+import dev.geode.data.ExportDefaults
 import dev.geode.editor.AnimatableParams
 import dev.geode.editor.KeyframeSheet
 import dev.geode.export.ExportAspect
@@ -72,6 +71,9 @@ internal class ExportController(
         ): FeatureTimeline
 
         val guiPrefs: GuiPrefs
+
+        /** What new renders start with, from Settings. */
+        val exportDefaults: ExportDefaults
 
         val sceneParams: SceneParams
 
@@ -318,7 +320,7 @@ internal class ExportController(
         destination: Uri? = null,
     ) {
         if (_studio.value.phase.isBusy) return
-        val built = ProjectComposition.build(application, project)
+        val built = ProjectComposition.build(application, project, host.exportDefaults)
         if (built !is ProjectComposition.Outcome.Ready) {
             _studio.update { it.copy(phase = ExportPhase.Failed(application.getString(dev.geode.R.string.editor_export_no_video))) }
             return
@@ -337,16 +339,13 @@ internal class ExportController(
             }
     }
 
-    private fun defaultCodec(): ExportCodec = ExportPrefsStore(GeodePrefsFiles(application).general).load().codec
+    private fun defaultCodec(): ExportCodec = host.exportDefaults.codec
 
     // The main export's UI (SettingsDialog) has no path to this controller's public API for
     // per-render options that aren't already threaded through startExport's callers, so the
     // loudness target rides along as a persisted default instead, the same way defaultCodec()
     // above does for studio exports.
-    private fun defaultLoudnessTarget(): LoudnessTarget =
-        LoudnessTarget.byId(
-            ExportPrefsStore(GeodePrefsFiles(application).general).load().loudnessTargetId,
-        )
+    private fun defaultLoudnessTarget(): LoudnessTarget = LoudnessTarget.byId(host.exportDefaults.loudnessTargetId)
 
     fun cancelStudioExport() {
         studioExporter.cancel()

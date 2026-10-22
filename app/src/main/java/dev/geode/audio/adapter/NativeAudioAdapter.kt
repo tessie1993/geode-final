@@ -45,6 +45,7 @@ class NativeAudioAdapter(
     private val application: Application,
     private val main: CoroutineDispatcher = Dispatchers.Main.immediate,
     private val fadeLength: () -> Millis = { Millis.ZERO },
+    private val onOpened: (PlaybackSession) -> Unit = {},
 ) : AudioAdapter {
     private val announced = MutableSharedFlow<AudioAnnouncement>(extraBufferCapacity = BUFFER)
 
@@ -157,7 +158,11 @@ class NativeAudioAdapter(
             .setUri(track.value)
             .build()
 
-    private fun opened(): Pipeline = pipeline ?: Pipeline(PlaybackEngine.acquireForUi(application)).also { pipeline = it }
+    private fun opened(): Pipeline =
+        pipeline
+            ?: PlaybackEngine.acquireForUi(application).let { session ->
+                Pipeline(session).also { pipeline = it }.also { onOpened(session) }
+            }
 
     private fun announce(announcement: AudioAnnouncement) {
         announced.tryEmit(announcement)

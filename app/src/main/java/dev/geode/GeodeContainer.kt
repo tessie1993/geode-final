@@ -6,8 +6,6 @@ import android.net.Uri
 import android.provider.MediaStore
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.RetiredFeatureData
-import dev.geode.ui.SharedPrefsUserDataRepository
-import dev.geode.ui.UserDataRepository
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,8 +19,6 @@ class GeodeContainer(
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val prefsFiles = GeodePrefsFiles(context)
-
-    val userData: UserDataRepository = SharedPrefsUserDataRepository(prefsFiles.general, appScope)
 
     init {
         sweepStaleRenderScratch(context.applicationContext.cacheDir)

@@ -12,25 +12,22 @@ import dev.geode.audio.AudioBus
 import dev.geode.audio.AudioFxState
 import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
+import dev.geode.data.ExportDefaults
 import dev.geode.data.FavouritesRepository
 import dev.geode.data.FilePresetRepository
 import dev.geode.data.LfoStore
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.MilkTexture
 import dev.geode.data.PlayerPrefs
-import dev.geode.data.PlayerPrefsRepository
-import dev.geode.data.PlayerPrefsStore
 import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
 import dev.geode.data.PresetRepository
 import dev.geode.data.PresetStore
 import dev.geode.data.SharedPrefsFavouritesRepository
-import dev.geode.data.SharedPrefsPlayerPrefsRepository
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.SmartPlaylistMatcher
 import dev.geode.data.TagWriteOutcome
 import dev.geode.engine.types.Hz
-import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
@@ -84,6 +81,7 @@ class PlayerSession internal constructor(
     private val application: Application,
     private val playback: Playback,
     private val oldScreens: OldScreenPlayback,
+    private val oldSettings: SettingsForOldScreens,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -99,9 +97,6 @@ class PlayerSession internal constructor(
     private val container = application.geodeContainer
 
     private val prefsFiles = container.prefsFiles
-
-    private val playerPrefsRepository: PlayerPrefsRepository =
-        SharedPrefsPlayerPrefsRepository(PlayerPrefsStore(prefsFiles.player), storeScope)
 
     private val favouritesRepository: FavouritesRepository =
         SharedPrefsFavouritesRepository(prefsFiles.favourites, storeScope)
@@ -164,20 +159,10 @@ class PlayerSession internal constructor(
 
     private val settings: PlayerSettingsController =
         PlayerSettingsController(
-            container.userData,
-            playerPrefsRepository,
+            oldSettings,
             container.appScope,
-            engineSession.player,
-            engine,
-            engineSession.audioFx,
-            engineSession.replayGain,
             object : PlayerSettingsController.Host {
                 override fun redecideCachedBeats(prefs: GuiPrefs) = analysis.redecideCachedBeats(prefs)
-
-                override fun listeningChanged(prefs: PlayerPrefs) {
-                    playback.send(PlaybackCommand.SetCrossfade(Millis(prefs.crossfadeMs.toLong())))
-                    playback.send(PlaybackCommand.SetGapless(prefs.gapless))
-                }
             },
         )
 
@@ -198,8 +183,7 @@ class PlayerSession internal constructor(
     val vizState: StateFlow<VizUiState> get() = vizStateStore.state
 
     init {
-        engine.beatSensitivity = settings.guiPrefs.value.beatSensitivity
-        engine.beatMinIntervalMs = settings.guiPrefs.value.effectiveBeatMinIntervalMs
+        // The beat detection follows Settings (EngineTuning); the reaction speed is the Visual's own.
         engine.attack = _vizState.value.attack
         engine.decay = _vizState.value.decay
     }
@@ -212,7 +196,7 @@ class PlayerSession internal constructor(
 
     val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> get() = musicLibrary.trackOverrides
 
-    val userDataLoaded: StateFlow<Boolean> get() = container.userData.loaded
+    val userDataLoaded: StateFlow<Boolean> get() = oldSettings.loaded
 
     val guiPrefs: StateFlow<GuiPrefs> get() = settings.guiPrefs
 
@@ -616,6 +600,7 @@ class PlayerSession internal constructor(
                 ): FeatureTimeline = analysis.analyzeCached(uri, onProgress)
 
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
+                override val exportDefaults: ExportDefaults get() = oldSettings.exportDefaults()
                 override val sceneParams get() = _vizState.value.params
 
                 override fun lfoConfigs() = modulation.lfos.value
@@ -655,7 +640,7 @@ class PlayerSession internal constructor(
 
     val visualizerRepository: VisualizerRepository = SessionVisualizerRepository(this)
 
-    val userDataRepository: UserDataRepository get() = container.userData
+    val userDataRepository: UserDataRepository get() = oldSettings
 
     fun startExport(
         aspect: ExportAspect,
@@ -765,12 +750,15 @@ class PlayerSession internal constructor(
         AudioBus.addConsumer()
         // Last init block in the class, so every field above is assigned by now — which is what
         // the capture controller needs before it may call back into this session.
-        captureController.start()
+        // The mic is turned back on once Settings says whether it was on.
+        scope.launch {
+            oldSettings.loaded()
+            captureController.start()
+        }
         musicLibrary.refreshNumericTitles()
         presetLibrary.refreshInitial()
         musicLibrary.refresh()
         textureController.refresh()
-        scope.launch { settings.applyPlaybackPrefs(settings.loadedPlayerPrefs()) }
         followPlayback()
     }
 

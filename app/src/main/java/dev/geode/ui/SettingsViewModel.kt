@@ -3,6 +3,7 @@ package dev.geode.ui
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.audio.AudioFxState
+import dev.geode.data.ExportDefaults
 import dev.geode.data.PlayerPrefs
 import dev.geode.di.PlayerSessionProvider
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +14,7 @@ class SettingsViewModel
     @Inject
     constructor(
         private val sessions: PlayerSessionProvider,
+        private val settings: SettingsForOldScreens,
     ) : ViewModel() {
         private val session: PlayerSession = sessions.get()
         private val userData: UserDataRepository = session.userDataRepository
@@ -41,4 +43,9 @@ class SettingsViewModel
         fun setAudioFxBassBoost(strength: Int) = session.setAudioFxBassBoost(strength)
 
         fun setAudioFxLoudness(gainMb: Int) = session.setAudioFxLoudness(gainMb)
+
+        /** What new renders start with, from Settings (#17). */
+        fun exportDefaults(): ExportDefaults = settings.exportDefaults()
+
+        fun saveExportDefaults(defaults: ExportDefaults) = settings.saveExportDefaults(defaults)
     }

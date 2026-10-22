@@ -4,6 +4,7 @@ import android.app.Application
 import dev.geode.feature.playback.api.Playback
 import dev.geode.ui.OldScreenPlayback
 import dev.geode.ui.PlayerSession
+import dev.geode.ui.SettingsForOldScreens
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,12 +30,13 @@ class PlayerSessionProvider
         private val application: Application,
         private val playback: Playback,
         private val oldScreens: OldScreenPlayback,
+        private val oldSettings: SettingsForOldScreens,
     ) {
         private var instance: PlayerSession? = null
 
         /** The shared session, built on first use. Safe for any ViewModel to call. */
         @Synchronized
-        fun get(): PlayerSession = instance ?: PlayerSession(application, playback, oldScreens).also { instance = it }
+        fun get(): PlayerSession = instance ?: PlayerSession(application, playback, oldScreens, oldSettings).also { instance = it }
 
         /**
          * Tears the session down and forgets it. Only the owning ViewModel may call this; a later
