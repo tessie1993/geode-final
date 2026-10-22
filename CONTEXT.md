@@ -14,6 +14,10 @@ _Avoid_: visuals (for the App UI), graphics, animation, visualizer
 The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the theme. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
 _Avoid_: visuals, visual design, interface (an architecture term)
 
+**Home**:
+The App UI's start place and the first entry in the navigation bar (Home, Player, Library, Visuals, Studio). It holds the Hero scene and is where Settings is opened from. Back from any other place returns to Home, and Back from Home leaves the app.
+_Avoid_: start screen, dashboard, main tab
+
 **Style**:
 One selectable look for the Visual, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
 _Avoid_: Scene (an engine term), effect, visualizer

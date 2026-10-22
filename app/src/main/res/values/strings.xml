@@ -120,6 +120,7 @@
     <string name="about_licenses_loading">Loading…</string>
 
     <!-- Bottom navigation. Short: these sit under an icon in a five-item bar. -->
+    <string name="nav_home">Home</string>
     <string name="nav_player">Player</string>
     <string name="nav_library">Library</string>
     <string name="nav_visuals">Visuals</string>

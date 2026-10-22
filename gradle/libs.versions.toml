@@ -30,6 +30,8 @@ datastore = "1.1.7"
 # Playback's playlists, play history and saved session (#34, ADR-0004 storage).
 room = "2.8.4"
 androidxTestCore = "1.7.0"
+# The App UI's navigation graph (#136).
+navigation3 = "1.2.0"
 
 [libraries]
 documentfile = { module = "androidx.documentfile:documentfile", version = "1.1.0" }
@@ -81,6 +83,8 @@ kover-gradle = { module = "org.jetbrains.kotlinx.kover:org.jetbrains.kotlinx.kov
 roborazzi-gradle = { module = "io.github.takahirom.roborazzi:io.github.takahirom.roborazzi.gradle.plugin", version.ref = "roborazzi" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
+navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version = "1.4.0" }
 
 [plugins]
