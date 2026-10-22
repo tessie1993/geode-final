@@ -55,8 +55,8 @@ A generated value that moves targets the way a Sound signal does: an LFO wave, a
 _Avoid_: LFO (only one kind), oscillator
 
 **Automation**:
-Behaviour the Customization performs by itself over the music: switching Style, changing the palette, Camera moves on the beat, sequenced effects, and autopilot Macros.
-_Avoid_: Auto visuals, scripts
+Behaviour the Customization performs by itself over the music, each off until the person turns it on: switching Style, changing the palette, Camera moves on the beat, and sequence lanes. It acts only on what the live analysis reports and never assumes a tempo. There is no autopilot: a Macro drifts by itself only when a Modulator is linked to it. Automations are kept across Style changes and are not saved in presets.
+_Avoid_: Auto visuals, scripts, autopilot
 
 **No-flash rule**:
 The Visual never flashes. An engine-wide limit on how fast overall brightness may change bounds every Style, Reaction, Modulator and Automation, live and in every Render and Recording. It has no switch.

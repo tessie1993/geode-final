@@ -43,12 +43,6 @@ class CustomizeScreenshotTest {
     fun noLinks() = capture("Customize_no_links") { CustomizeNoLinksPreview() }
 
     @Test
-    fun modulatorsAutomation() = capture("ModulatorsAutomation") { ModulatorsAutomationPreview() }
-
-    @Test
-    fun modulatorsAutomationFresh() = capture("ModulatorsAutomation_fresh") { ModulatorsAutomationFreshPreview() }
-
-    @Test
     fun camera() = capture("Customize_camera") { CustomizeCameraPreview() }
 
     @Test

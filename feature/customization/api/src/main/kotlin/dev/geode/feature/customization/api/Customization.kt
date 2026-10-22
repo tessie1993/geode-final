@@ -22,7 +22,8 @@ typealias CustomizationFeature = Feature<CustomizationState, CustomizationComman
  * - [macros]: always [MACRO_COUNT].
  * - [reactions] and [modulators]: as many as the person made.
  * - [signals]: the normaliser's trim for every Sound signal.
- * - [automations]: what it performs by itself over the music; they carry over to the next Style.
+ * - [automations]: what it performs by itself over the music; they carry over to the next Style and
+ *   are not saved in presets.
  */
 data class Customization(
     val style: SceneId,
@@ -38,11 +39,17 @@ data class Customization(
 /**
  * Customization's state: the [current] Customization and the session's unlimited undo and redo
  * history, the newest step last. The history survives Android killing the app (ADR-0004).
+ *
+ * Style switching's own bookkeeping sits beside it, outside the history: [visualizerStyles], the
+ * Visualizer styles `:app` hands in ([CustomizationCommand.UseVisualizerStyles]), and [styleSwitches],
+ * how many times it has switched, which says where the app's picks' shuffle has got to.
  */
 data class CustomizationState(
     val current: Customization,
     val undo: List<Customization> = emptyList(),
     val redo: List<Customization> = emptyList(),
+    val visualizerStyles: List<SceneId> = emptyList(),
+    val styleSwitches: Int = 0,
 )
 
 /** The intents: what the outside may ask of Customization. Every edit can be undone. */
@@ -133,6 +140,14 @@ sealed interface CustomizationCommand {
     /** Replaces the Automations; what makes no sense in them is dropped or brought into range. */
     data class SetAutomations(
         val automations: Automations,
+    ) : CustomizationCommand
+
+    /**
+     * The Visualizer styles, the Styles of the Visuals feature in their order, which `:app` hands in
+     * because Customization cannot depend on Visuals (ADR-0005). Not an edit: kept out of the history.
+     */
+    data class UseVisualizerStyles(
+        val styles: List<SceneId>,
     ) : CustomizationCommand
 
     /** Back to the current Style's own defaults. Undoable. */

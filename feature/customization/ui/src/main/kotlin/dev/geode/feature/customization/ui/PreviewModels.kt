@@ -4,12 +4,14 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
-import dev.geode.feature.customization.api.Autopilot
+import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.CameraMove
+import dev.geode.feature.customization.api.CameraMoveKind
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.Macro
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.MacroRole
@@ -21,13 +23,13 @@ import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.ResponseCurve
-import dev.geode.feature.customization.api.Sequenced
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
+import dev.geode.feature.customization.api.Trigger
 import dev.geode.feature.customization.api.Wave
 
 /**
@@ -110,10 +112,15 @@ internal object PreviewModels {
             signals = emptyMap(),
             automations =
                 Automations(
-                    style = StyleSwitching(Cadence.EveryBars(16), StylePool.BOTH, listOf(SceneId("warp"), SceneId("grid"))),
-                    camera = listOf(CameraMove(SharedProperty.ZOOM), CameraMove(SharedProperty.SHAKE)),
-                    sequences = listOf(Sequenced(Target.Shared(SharedProperty.TRAILS), NEW_SEQUENCE_STEPS)),
-                    autopilots = listOf(Autopilot(3)),
+                    style = StyleSwitching(Cadence(Trigger.BigMoments(0.7f), Millis(20_000)), StylePool.BOTH),
+                    camera = listOf(CameraMove(CameraMoveKind.PUSH_IN), CameraMove(CameraMoveKind.ORBIT, BeatSpan.FOUR, 0.4f)),
+                    lanes =
+                        listOf(
+                            Lane(
+                                listOf(Target.Shared(SharedProperty.TRAILS), Target.Shared(SharedProperty.MIRROR)),
+                                NEW_SEQUENCE_STEPS.map { listOf(it, 1f - it) },
+                            ),
+                        ),
                 ),
         )
 

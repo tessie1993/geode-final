@@ -141,16 +141,26 @@ object Edits {
         trim: SignalTrim,
     ): Customization = customization.copy(signals = customization.signals + (signal to Rules.trim(trim)))
 
+    /** The Automations replaced by [automations], as [Rules.automations] lets them run. */
     fun setAutomations(
         customization: Customization,
         automations: Automations,
     ): Customization = customization.copy(automations = Rules.automations(customization, automations))
 
+    /** Back to the Style's own defaults ([manifest]); the Automations stay, as they do across a change of Style. */
+    fun resetToStyle(
+        customization: Customization,
+        manifest: StyleManifest,
+    ): Customization {
+        val fresh = Defaults.customization(manifest)
+        return fresh.copy(automations = Rules.automations(fresh, customization.automations))
+    }
+
     /**
      * Moves to the Style [to]. Its own parts (Extras, Macros, Reactions, Modulators) start from its
      * defaults. The Shared core starts from its defaults too, except where the person changed a value
      * away from the old Style's ([from]) default: that change carries over, as do the Sound trims and
-     * the Automations (less any sequence on an Extra or a Modulator the new Style lacks).
+     * the Automations (less any lane target, an Extra or a Modulator, the new Style lacks).
      */
     fun switchStyle(
         customization: Customization,
@@ -160,11 +170,10 @@ object Edits {
         val oldDefaults = Defaults.customization(from).shared
         val changed = customization.shared.filter { (property, value) -> oldDefaults[property] != value }
         val fresh = Defaults.customization(to)
-        val automations = customization.automations
         return fresh.copy(
             shared = fresh.shared + changed,
             signals = customization.signals,
-            automations = automations.copy(sequences = automations.sequences.filter { Rules.exists(fresh, it.target) }),
+            automations = Rules.automations(fresh, customization.automations),
         )
     }
 

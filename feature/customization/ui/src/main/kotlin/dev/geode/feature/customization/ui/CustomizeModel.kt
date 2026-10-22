@@ -121,7 +121,7 @@ data class ModulatorRow(
 /**
  * Everything the Customize panel and [ModulatorsAutomationScreen] draw (ADR-0003: an immutable screen
  * model), for the basic view and the Advanced view alike. Which view is open is App UI state the screen
- * keeps itself. [looks] are also the Styles the person can put on Style switching's own list.
+ * keeps itself.
  */
 @Immutable
 data class CustomizeModel(
