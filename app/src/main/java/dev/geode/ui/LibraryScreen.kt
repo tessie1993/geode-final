@@ -69,7 +69,8 @@ import dev.geode.design.CrystalTabs
 import dev.geode.design.GlowTitle
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
-import dev.geode.design.theme.accentTextColor dev.geode.design.theme.stoneScrollWake
+import dev.geode.design.theme.accentTextColor
+import dev.geode.design.theme.stoneScrollWake
 import dev.geode.engine.types.TrackId
 import dev.geode.playback.toUri
 import kotlinx.coroutines.launch

@@ -1,5 +1,7 @@
 package dev.geode.design.theme
 
+import android.content.Context
+import android.provider.Settings
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -7,7 +9,9 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 
 /** The corner sets the App UI can be drawn with, smallest to largest Material shape. */
@@ -70,6 +74,9 @@ fun CrystalTheme(
     content: @Composable () -> Unit,
 ) {
     val fontColor = fontColorArgb?.let { Color(it) }
+    val context = LocalContext.current
+    // The system's 'Remove animations' counts as reduced motion too, whether or not the app passes its own.
+    val systemStill = remember(context) { systemAnimationsOff(context) }
     val scheme =
         pack.colorScheme(
             accentIntensity = accentIntensity,
@@ -79,7 +86,7 @@ fun CrystalTheme(
     CompositionLocalProvider(
         LocalThemePack provides pack,
         LocalFontColor provides fontColor,
-        LocalReducedMotion provides reducedMotion,
+        LocalReducedMotion provides (reducedMotion || systemStill),
         LocalContentColor provides scheme.onBackground,
     ) {
         MaterialTheme(
@@ -90,3 +97,7 @@ fun CrystalTheme(
         )
     }
 }
+
+/** Whether the person turned animations off system-wide (animator duration scale 0). */
+internal fun systemAnimationsOff(context: Context): Boolean =
+    Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
