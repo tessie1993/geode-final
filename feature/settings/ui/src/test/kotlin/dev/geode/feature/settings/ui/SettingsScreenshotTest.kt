@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** App UI screenshots of every Settings tab, taken from their previews (ADR-0003). */
+/** App UI screenshots of every Settings section, taken from their previews (ADR-0003). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], application = Application::class, qualifiers = "w411dp-h891dp")
@@ -21,7 +21,10 @@ class SettingsScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun look() = capture("look") { SettingsLookPreview() }
+    fun theme() = capture("theme") { SettingsThemePreview() }
+
+    @Test
+    fun application() = capture("application") { SettingsApplicationPreview() }
 
     @Test
     fun audio() = capture("audio") { SettingsAudioPreview() }
@@ -30,10 +33,7 @@ class SettingsScreenshotTest {
     fun export() = capture("export") { SettingsExportPreview() }
 
     @Test
-    fun folders() = capture("folders") { SettingsFoldersPreview() }
-
-    @Test
-    fun behavior() = capture("behavior") { SettingsBehaviorPreview() }
+    fun defaultPaths() = capture("default_paths") { SettingsDefaultPathsPreview() }
 
     @Test
     fun help() = capture("help") { SettingsHelpPreview() }

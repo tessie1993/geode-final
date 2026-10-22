@@ -16,8 +16,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 
 /** Multiplies a fraction for showing it as a percentage. */
 internal const val PERCENT = 100
@@ -77,20 +86,55 @@ internal fun <T> ChoiceRow(
     name: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableIntStateOf(0) }
+    var chosen by remember { mutableStateOf(ChipSpan.NONE) }
+    // The chosen chip is never left scrolled off the row: the row moves just enough to show it whole.
+    LaunchedEffect(chosen, viewport) {
+        if (viewport > 0) scroll.scrollTo(chosen.scrollToShow(scroll.value, viewport))
+    }
     Column {
         label?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
         Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().onSizeChanged { viewport = it.width }.horizontalScroll(scroll),
             horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap),
         ) {
             options.forEach { option ->
+                val isChosen = option == selected
                 FilterChip(
-                    selected = option == selected,
+                    selected = isChosen,
                     onClick = { onSelect(option) },
                     label = { Text(name(option), style = MaterialTheme.typography.labelSmall) },
+                    modifier =
+                        if (isChosen) {
+                            Modifier.onPlaced { chosen = ChipSpan(it.positionInParent().x.toInt(), it.size.width) }
+                        } else {
+                            Modifier
+                        },
                 )
             }
         }
+    }
+}
+
+/** Where a chip sits along its row, in pixels from the row's start. */
+internal data class ChipSpan(
+    val start: Int,
+    val width: Int,
+) {
+    /** The scroll offset that shows this chip whole, moving from [current] as little as possible. */
+    fun scrollToShow(
+        current: Int,
+        viewport: Int,
+    ): Int =
+        when {
+            start < current -> start
+            start + width > current + viewport -> start + width - viewport
+            else -> current
+        }
+
+    companion object {
+        val NONE = ChipSpan(0, 0)
     }
 }
 
