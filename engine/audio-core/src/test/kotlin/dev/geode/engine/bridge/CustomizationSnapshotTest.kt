@@ -21,6 +21,7 @@ class CustomizationSnapshotTest {
             params = List(CustomizationSnapshot.PARAMS_COUNT) { it * 0.5f },
             lfo = List(CustomizationSnapshot.LFO_COUNT) { it * 0.25f },
             adsr = List(CustomizationSnapshot.ADSR_COUNT) { -it * 0.125f },
+            plan = List(CustomizationSnapshot.PLAN_COUNT) { it * 0.0625f },
             soundSensitivity = 1.5f,
             soundRefractoryMs = 80f,
             soundAttackSeconds = 0.25f,
@@ -64,6 +65,7 @@ class CustomizationSnapshotTest {
         assertEquals(0.5f, body.getFloat(PARAMS_AT + Float.SIZE_BYTES))
         assertEquals(0.25f, body.getFloat(LFO_AT + Float.SIZE_BYTES))
         assertEquals(-0.125f, body.getFloat(ADSR_AT + Float.SIZE_BYTES))
+        assertEquals(0.0625f, body.getFloat(PLAN_AT + Float.SIZE_BYTES))
         assertEquals(1.5f, body.getFloat(SOUND_AT))
         assertEquals(0.5f, body.getFloat(SOUND_AT + 3 * Float.SIZE_BYTES))
     }
@@ -93,10 +95,12 @@ class CustomizationSnapshotTest {
 
     private companion object {
         // The digest core/tests/bridge_snapshot_codec_test.cpp expects too; it changes with the schema's layout.
-        const val FIXTURE_DIGEST = "283b73e6f1ee6bdb852e39f44b13ed9bdba8c07ad82075b2fe515a9a3eacbb1b"
+        const val FIXTURE_DIGEST = "8fb4ac7925086e017133ecd0852986c2fb0179e5ed2a754624017bee1d638938"
         const val HEADER = 12
         const val SOUND_FIELDS = 4
-        const val ARRAY_FLOATS = CustomizationSnapshot.PARAMS_COUNT + CustomizationSnapshot.LFO_COUNT + CustomizationSnapshot.ADSR_COUNT
+        const val ARRAY_FLOATS =
+            CustomizationSnapshot.PARAMS_COUNT + CustomizationSnapshot.LFO_COUNT + CustomizationSnapshot.ADSR_COUNT +
+                CustomizationSnapshot.PLAN_COUNT
         const val PAYLOAD = Int.SIZE_BYTES + 1 + (ARRAY_FLOATS + SOUND_FIELDS) * Float.SIZE_BYTES
         const val MAGIC_BYTES = 4
         const val SCHEMA_VERSION: Short = 1
@@ -108,6 +112,7 @@ class CustomizationSnapshotTest {
         const val PARAMS_AT = REDUCED_MOTION_AT + 1
         const val LFO_AT = PARAMS_AT + CustomizationSnapshot.PARAMS_COUNT * Float.SIZE_BYTES
         const val ADSR_AT = LFO_AT + CustomizationSnapshot.LFO_COUNT * Float.SIZE_BYTES
-        const val SOUND_AT = ADSR_AT + CustomizationSnapshot.ADSR_COUNT * Float.SIZE_BYTES
+        const val PLAN_AT = ADSR_AT + CustomizationSnapshot.ADSR_COUNT * Float.SIZE_BYTES
+        const val SOUND_AT = PLAN_AT + CustomizationSnapshot.PLAN_COUNT * Float.SIZE_BYTES
     }
 }

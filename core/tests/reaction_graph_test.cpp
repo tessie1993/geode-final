@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -264,6 +265,263 @@ TEST(ReactionGraph, TheSamePlanAndSoundGiveTheSameFramesAfterAReset) {
     for (float& v : first) v = graph.evaluate(plan, SignalFrame{}, kFrameDt)[Shared::Warp];
     graph.reset();
     for (const float v : first) EXPECT_EQ(graph.evaluate(plan, SignalFrame{}, kFrameDt)[Shared::Warp], v);
+}
+
+MacroLinkSpec link(int macro, Target target, float low, float high) {
+    MacroLinkSpec l;
+    l.macro = static_cast<uint8_t>(macro);
+    l.target = target;
+    l.low = low;
+    l.high = high;
+    return l;
+}
+
+float vignetteWithMacroAt(float macro, float low, float high) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.shared[static_cast<size_t>(Shared::Vignette)] = 0.4f;
+    plan.macros[0] = macro;
+    plan.add(link(0, Target::shared(Shared::Vignette), low, high));
+    ReactionGraph graph;
+    return graph.evaluate(plan, SignalFrame{}, kFrameDt)[Shared::Vignette];
+}
+
+TEST(MacroLinks, AMacroAtRestLeavesItsPropertiesAtTheirOwnValues) {
+    EXPECT_NEAR(vignetteWithMacroAt(kMacroRest, 0.1f, 0.9f), 0.4f, kTolerance);
+}
+
+TEST(MacroLinks, AMacroMovesItsPropertiesTowardTheLinksLowAndHigh) {
+    EXPECT_NEAR(vignetteWithMacroAt(0.0f, 0.1f, 0.9f), 0.1f, kTolerance);
+    EXPECT_NEAR(vignetteWithMacroAt(0.25f, 0.1f, 0.9f), 0.25f, kTolerance);
+    EXPECT_NEAR(vignetteWithMacroAt(0.75f, 0.1f, 0.9f), 0.65f, kTolerance);
+    EXPECT_NEAR(vignetteWithMacroAt(1.0f, 0.1f, 0.9f), 0.9f, kTolerance);
+    // A link whose low is above its high turns its property down as the Macro goes up.
+    EXPECT_NEAR(vignetteWithMacroAt(1.0f, 0.9f, 0.1f), 0.1f, kTolerance);
+}
+
+TEST(MacroLinks, MatchTheKotlinReference) {
+    // Evaluation.macro in :feature:customization:core, as EvaluationTest pins it.
+    EXPECT_NEAR(macroLink(0.4f, 0.1f, 0.9f, 0.5f), 0.4f, kTolerance);
+    EXPECT_NEAR(macroLink(0.4f, 0.1f, 0.9f, 0.0f), 0.1f, kTolerance);
+    EXPECT_NEAR(macroLink(0.4f, 0.1f, 0.9f, 0.25f), 0.25f, kTolerance);
+    EXPECT_NEAR(macroLink(0.4f, 0.1f, 0.9f, 2.0f), 0.9f, kTolerance);
+}
+
+TEST(MacroLinks, AReactionOnAMacroMovesItsPropertiesInTheSameFrame) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.shared[static_cast<size_t>(Shared::Vignette)] = 0.2f;
+    plan.add(link(0, Target::shared(Shared::Vignette), 0.0f, 1.0f));
+    plan.add(fromSound(SoundSignal::Bass, Target::macro(0), 0.5f));
+    // A Reaction listed after the link pushes from where the Macro put the property.
+    plan.add(fromSound(SoundSignal::Bass, Target::shared(Shared::Warp), 0.3f));
+    plan.add(link(0, Target::shared(Shared::Warp), 0.0f, 0.5f));
+    ReactionGraph graph;
+    const Evaluated& out = graph.evaluate(plan, heard(SoundSignal::Bass, 1.0f), kFrameDt);
+    EXPECT_NEAR(out.macros[0], 1.0f, kTolerance);
+    EXPECT_NEAR(out[Shared::Vignette], 1.0f, kTolerance);
+    EXPECT_NEAR(out[Shared::Warp], 0.8f, kTolerance);
+}
+
+TEST(MacroLinks, ALinkOntoAMacroOrFromNoMacroMovesNothing) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.shared[static_cast<size_t>(Shared::Vignette)] = 0.3f;
+    plan.macros[0] = 1.0f;
+    plan.add(link(0, Target::macro(1), 0.0f, 1.0f));
+    plan.add(link(static_cast<int>(kMacroCount), Target::shared(Shared::Vignette), 0.0f, 1.0f));
+    ReactionGraph graph;
+    const Evaluated& out = graph.evaluate(plan, SignalFrame{}, kFrameDt);
+    EXPECT_NEAR(out.macros[1], kMacroRest, kTolerance);
+    EXPECT_NEAR(out[Shared::Vignette], 0.3f, kTolerance);
+}
+
+TEST(MacroLinks, LinksPastThePlansCountAreLeftOut) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.macros[0] = 1.0f;
+    plan.add(link(0, Target::shared(Shared::Vignette), 0.0f, 1.0f));
+    plan.macroLinkCount = 0;
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, SignalFrame{}, kFrameDt)[Shared::Vignette], 0.0f);
+}
+
+TEST(CustomizationPlan, RefusesLinksAndAutomationsPastItsSize) {
+    CustomizationPlan plan;
+    for (int i = 0; i < kMaxMacroLinks; ++i) EXPECT_EQ(plan.add(MacroLinkSpec{}), i);
+    EXPECT_EQ(plan.add(MacroLinkSpec{}), -1);
+    for (int i = 0; i < kMaxAutomations; ++i) EXPECT_EQ(plan.add(AutomationSpec{}), i);
+    EXPECT_EQ(plan.add(AutomationSpec{}), -1);
+}
+
+// A tenth of a second a frame at 120 bpm: five frames a beat.
+constexpr float kAutomationDt = 0.1f;
+
+SignalFrame atTempo(float beatSeconds) {
+    SignalFrame f;
+    f.beatSeconds = beatSeconds;
+    return f;
+}
+
+AutomationSpec palettePerBeat() {
+    AutomationSpec a;
+    a.kind = AutomationKind::Sequence;
+    a.target = Target::shared(Shared::Palette);
+    a.everyBeats = 1;
+    a.steps[0] = 0.0f;
+    a.steps[1] = 0.5f;
+    a.stepCount = 2;
+    return a;
+}
+
+// The Palette after `frames` frames of `heard`.
+float paletteAfter(int frames, const SignalFrame& heard) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(palettePerBeat());
+    ReactionGraph graph;
+    float palette = -1.0f;
+    for (int i = 0; i < frames; ++i) palette = graph.evaluate(plan, heard, kAutomationDt)[Shared::Palette];
+    return palette;
+}
+
+TEST(Automations, ASequenceStepsItsTargetOnTheBeat) {
+    EXPECT_EQ(paletteAfter(1, atTempo(0.5f)), 0.0f);
+    EXPECT_EQ(paletteAfter(7, atTempo(0.5f)), 10.0f);
+    EXPECT_EQ(paletteAfter(12, atTempo(0.5f)), 0.0f);
+    // Twice the tempo, twice as fast.
+    EXPECT_EQ(paletteAfter(4, atTempo(0.25f)), 10.0f);
+}
+
+TEST(Automations, CountAt120BpmUntilTheTempoIsKnown) {
+    EXPECT_EQ(paletteAfter(7, atTempo(0.0f)), 10.0f);
+    EXPECT_EQ(paletteAfter(7, atTempo(std::numeric_limits<float>::quiet_NaN())), 10.0f);
+}
+
+TEST(Automations, WaitWhileTheMusicIsStopped) {
+    SignalFrame stopped = atTempo(0.5f);
+    stopped.playing = false;
+    EXPECT_EQ(paletteAfter(7, stopped), 0.0f);
+}
+
+TEST(Automations, ASequenceWithNoStepsOrPastThePlanMovesNothing) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    AutomationSpec empty = palettePerBeat();
+    empty.stepCount = 0;
+    plan.add(empty);
+    AutomationSpec dropped = palettePerBeat();
+    dropped.target = Target::shared(Shared::Vignette);
+    dropped.steps[0] = 0.7f;
+    plan.add(dropped);
+    plan.automationCount = 1;
+    ReactionGraph graph;
+    const Evaluated& out = graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(out[Shared::Palette], 0.0f);
+    EXPECT_EQ(out[Shared::Vignette], 0.0f);
+}
+
+TEST(Automations, AnAutopilotMacroWandersAroundThePersonsValue) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.macros[0] = 0.6f;
+    plan.shared[static_cast<size_t>(Shared::Vignette)] = 0.5f;
+    plan.add(link(0, Target::shared(Shared::Vignette), 0.0f, 1.0f));
+    AutomationSpec autopilot;
+    autopilot.kind = AutomationKind::Autopilot;
+    autopilot.target = Target::macro(0);
+    autopilot.amount = 0.25f;
+    // One swing a bar.
+    autopilot.everyBeats = 4;
+    plan.add(autopilot);
+    ReactionGraph graph;
+    float low = 1.0f;
+    float high = 0.0f;
+    for (int i = 1; i <= 40; ++i) {
+        const Evaluated& out = graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+        // One beat in, a quarter of the way round: the top of the swing (Automation.autopilot).
+        if (i == 5) EXPECT_NEAR(out.macros[0], 0.85f, 1e-3f);
+        if (i == 15) EXPECT_NEAR(out.macros[0], 0.35f, 1e-3f);
+        low = std::min(low, out.macros[0]);
+        high = std::max(high, out.macros[0]);
+        // The Macro's links follow it.
+        EXPECT_NEAR(out[Shared::Vignette], macroLink(0.5f, 0.0f, 1.0f, out.macros[0]), kTolerance);
+    }
+    EXPECT_GE(low, 0.35f - 1e-3f);
+    EXPECT_LE(high, 0.85f + 1e-3f);
+}
+
+AutomationSpec cadence(AutomationKind kind, int everyBeats, bool onBigMoments) {
+    AutomationSpec a;
+    a.kind = kind;
+    a.everyBeats = everyBeats;
+    a.onBigMoments = onBigMoments;
+    return a;
+}
+
+SignalFrame big(SoundSignal signal) {
+    SignalFrame f = atTempo(0.5f);
+    f.level[static_cast<size_t>(signal)] = 1.0f;
+    return f;
+}
+
+TEST(Automations, StyleSwitchingIsDueEveryNBeatsPastTheFirst) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(cadence(AutomationKind::StyleSwitch, 2, false));
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, atTempo(0.5f), kAutomationDt).stylesDue, 0u);
+    // Beats 2 and 4 are due; a big moment is not, on this cadence.
+    for (int i = 1; i < 25; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), 0.0f).stylesDue, 2u);
+    graph.reset();
+    EXPECT_EQ(graph.evaluate(plan, atTempo(0.5f), 0.0f).stylesDue, 0u);
+}
+
+TEST(Automations, StyleSwitchingOnBigMomentsIsDueOncePerSurgeOrChange) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(cadence(AutomationKind::StyleSwitch, 2, true));
+    ReactionGraph graph;
+    for (int i = 0; i < 25; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, atTempo(0.5f), 0.0f).stylesDue, 0u) << "not on the beat";
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), 0.0f).stylesDue, 1u);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), 0.0f).stylesDue, 1u) << "once per moment";
+    graph.evaluate(plan, atTempo(0.5f), 0.0f);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Change), 0.0f).stylesDue, 2u);
+}
+
+TEST(Automations, PaletteChangesMoveToTheNextPaletteAndWrapRound) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.shared[static_cast<size_t>(Shared::Palette)] = 19.0f;
+    plan.add(cadence(AutomationKind::Palette, 1, false));
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette], 19.0f);
+    float palette = 0.0f;
+    for (int i = 1; i < 7; ++i) palette = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette];
+    EXPECT_EQ(palette, 20.0f);
+    for (int i = 0; i < 5; ++i) palette = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette];
+    EXPECT_EQ(palette, 0.0f);
+}
+
+TEST(Automations, ACameraMovePushesOnItsBeatAndEasesBack) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    AutomationSpec move = cadence(AutomationKind::Camera, 2, false);
+    move.target = Target::shared(Shared::PushIn);
+    move.amount = 0.4f;
+    plan.add(move);
+    ReactionGraph graph;
+    // Beat 0 (a multiple of 2), a fifth of the way through: 0.4 * 0.8^2.
+    EXPECT_NEAR(graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::PushIn], 0.256f, 1e-3f);
+    float pushIn = -1.0f;
+    for (int i = 1; i < 7; ++i) pushIn = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::PushIn];
+    EXPECT_EQ(pushIn, 0.0f) << "beat 1 rests";
+}
+
+TEST(Automations, ALuminousSequenceStillRisesNoFasterThanTheNoFlashMinimum) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.shared[static_cast<size_t>(Shared::Glow)] = spec(Shared::Glow).min;
+    AutomationSpec strobe;
+    strobe.kind = AutomationKind::Sequence;
+    strobe.target = Target::shared(Shared::Glow);
+    strobe.everyBeats = 1;
+    strobe.steps[0] = 1.0f;
+    strobe.stepCount = 1;
+    plan.add(strobe);
+    ReactionGraph graph;
+    const float first = graph.evaluate(plan, atTempo(0.5f), kFrameDt)[Shared::Glow];
+    EXPECT_LE(toUnit(Shared::Glow, first), kFrameDt / kNoFlashMinRiseSeconds + kTolerance);
 }
 
 }  // namespace

@@ -25,12 +25,13 @@ constexpr size_t kReducedMotionAt = kRevisionAt + sizeof(uint32_t);
 constexpr size_t kParamsAt = kReducedMotionAt + 1;
 constexpr size_t kLfoAt = kParamsAt + geode::bridge::kSnapshotParamsCount * sizeof(float);
 constexpr size_t kAdsrAt = kLfoAt + geode::bridge::kSnapshotLfoCount * sizeof(float);
-constexpr size_t kSoundAt = kAdsrAt + geode::bridge::kSnapshotAdsrCount * sizeof(float);
+constexpr size_t kPlanAt = kAdsrAt + geode::bridge::kSnapshotAdsrCount * sizeof(float);
+constexpr size_t kSoundAt = kPlanAt + geode::bridge::kSnapshotPlanCount * sizeof(float);
 constexpr size_t kSoundFields = 4;
 
 // The same snapshot CustomizationSnapshotTest.kt encodes; both sides must produce this digest. It changes
 // whenever the schema's layout does (an array count included): recompute it then, on both sides.
-constexpr const char* kFixtureDigest = "283b73e6f1ee6bdb852e39f44b13ed9bdba8c07ad82075b2fe515a9a3eacbb1b";
+constexpr const char* kFixtureDigest = "8fb4ac7925086e017133ecd0852986c2fb0179e5ed2a754624017bee1d638938";
 
 CustomizationSnapshot fixture() {
     CustomizationSnapshot s;
@@ -40,6 +41,7 @@ CustomizationSnapshot fixture() {
     for (size_t i = 0; i < s.lfo.size(); ++i) s.lfo[i] = static_cast<float>(i) * 0.25f;
     // Negated as an integer, so element 0 is +0.0f, as Kotlin's `-it * 0.125f` makes it.
     for (size_t i = 0; i < s.adsr.size(); ++i) s.adsr[i] = static_cast<float>(-static_cast<int>(i)) * 0.125f;
+    for (size_t i = 0; i < s.plan.size(); ++i) s.plan[i] = static_cast<float>(i) * 0.0625f;
     s.soundSensitivity = 1.5f;
     s.soundRefractoryMs = 80.0f;
     s.soundAttackSeconds = 0.25f;
@@ -178,7 +180,7 @@ TEST(SnapshotCodec, RejectsAFlagThatIsNeitherZeroNorOne) {
 
 TEST(SnapshotCodec, RejectsANonFiniteValueInEveryArray) {
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    for (const size_t at : {kParamsAt, kLfoAt + sizeof(float), kAdsrAt + 2 * sizeof(float)}) {
+    for (const size_t at : {kParamsAt, kLfoAt + sizeof(float), kAdsrAt + 2 * sizeof(float), kPlanAt + 3 * sizeof(float)}) {
         std::vector<uint8_t> wire = encoded(fixture());
         putFloat(wire, at, nan);
         EXPECT_EQ(decodeRejected(wire), GEODE_STATUS_INVALID_ARGUMENT) << "at byte " << at;

@@ -105,6 +105,23 @@ class NativeCustomizationKonsistTest {
     }
 
     @Test
+    fun `the plan NativePlan writes is the one PlanCodec reads`() {
+        val graph = read("core/viz/include/geode/viz/ReactionGraph.hpp")
+        assertEquals(NativePlan.MAX_REACTIONS.toString(), constant(graph, "kMaxReactions"))
+        assertEquals(NativePlan.MAX_MODULATORS.toString(), constant(graph, "kMaxModulators"))
+        assertEquals(NativePlan.MAX_MACRO_LINKS.toString(), constant(graph, "kMaxMacroLinks"))
+        assertEquals(NativePlan.MAX_AUTOMATIONS.toString(), constant(graph, "kMaxAutomations"))
+        assertEquals(NativePlan.MAX_STEPS.toString(), constant(read("core/viz/include/geode/viz/Modulators.hpp"), "kMaxSteps"))
+        val codec = read("core/viz/include/geode/viz/PlanCodec.hpp")
+        assertEquals(NativePlan.HEADER_FLOATS.toString(), constant(codec, "kPlanHeaderFloats"))
+        assertEquals(NativePlan.REACTION_FLOATS.toString(), constant(codec, "kReactionFloats"))
+        assertEquals("${NativePlan.MODULATOR_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kModulatorFloats"))
+        assertEquals(NativePlan.MACRO_LINK_FLOATS.toString(), constant(codec, "kMacroLinkFloats"))
+        assertEquals("${NativePlan.AUTOMATION_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kAutomationFloats"))
+        assertEquals(NativePlan.floatCount.toString(), constant(codec, "kPlanFloats"))
+    }
+
+    @Test
     fun `the engine keeps the model's rate range and No-flash rise`() {
         val modulators = read("core/viz/include/geode/viz/Modulators.hpp")
         assertEquals(Modulator.MIN_RATE, constant(modulators, "kMinRate").removeSuffix("f").toFloat(), 0f)

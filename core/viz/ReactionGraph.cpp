@@ -21,7 +21,18 @@ float rateFraction(float rate) {
 }
 
 bool runs(const ModulatorSpec& spec) { return spec.start != StartMode::ByHand || spec.playing; }
+
+constexpr double kTau = 6.283185307179586;
+// A StyleSwitch Automation that has not yet seen a beat block, so it does not fire on its first frame.
+constexpr int64_t kUnseen = INT64_MIN;
 }  // namespace
+
+float macroLink(float base, float low, float high, float value) {
+    const float v = unit(value);
+    const float b = unit(base);
+    if (v < kMacroRest) return unit(low) + (b - unit(low)) * (v / kMacroRest);
+    return b + (unit(high) - b) * ((v - kMacroRest) / (1.0f - kMacroRest));
+}
 
 CustomizationPlan CustomizationPlan::defaults() {
     CustomizationPlan plan;
@@ -42,9 +53,25 @@ int CustomizationPlan::add(const ModulatorSpec& modulator) {
     return modulatorCount++;
 }
 
+int CustomizationPlan::add(const MacroLinkSpec& link) {
+    if (macroLinkCount < 0 || macroLinkCount >= kMaxMacroLinks) return -1;
+    macroLinks[static_cast<size_t>(macroLinkCount)] = link;
+    return macroLinkCount++;
+}
+
+int CustomizationPlan::add(const AutomationSpec& automation) {
+    if (automationCount < 0 || automationCount >= kMaxAutomations) return -1;
+    automations[static_cast<size_t>(automationCount)] = automation;
+    return automationCount++;
+}
+
 void ReactionGraph::reset() {
     for (auto& f : followers_) f.reset();
     for (auto& m : modulators_) m.reset();
+    beats_ = 0.0;
+    lastBlock_.fill(kUnseen);
+    due_.fill(0);
+    bigMomentArmed_ = true;
     primed_ = false;
     out_ = Evaluated{};
 }
@@ -53,6 +80,8 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
     const float step = std::isfinite(dt) && dt > 0.0f ? std::min(dt, kMaxFrameSeconds) : 0.0f;
     const int reactionCount = std::clamp(plan.reactionCount, 0, kMaxReactions);
     const int modulatorCount = std::clamp(plan.modulatorCount, 0, kMaxModulators);
+    const int linkCount = std::clamp(plan.macroLinkCount, 0, kMaxMacroLinks);
+    const int automationCount = std::clamp(plan.automationCount, 0, kMaxAutomations);
 
     // 1. The normaliser.
     SignalFrame frame = raw;
@@ -65,6 +94,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         primed_ = true;
         for (auto& d : drive_) d.fill(ModulatorDrive::kOwn);
         lastShared_ = shared;
+        lastBlock_.fill(kUnseen);
     }
 
     // 2. The Modulators: only those some Reaction listens to run.
@@ -96,13 +126,92 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         fields[i][kPattern] = 0.0f;
     }
 
-    // 3. The Reactions, in order.
+    // 3. The targets move.
     std::array<float, kExtraCount> extras{};
     for (size_t e = 0; e < kExtraCount; ++e) extras[e] = unit(plan.extras[e]);
     std::array<float, kMacroCount> macros{};
     for (size_t k = 0; k < kMacroCount; ++k) macros[k] = unit(plan.macros[k]);
     std::array<std::array<bool, kModulatorFieldCount>, kMaxModulators> touched{};
-    for (int r = 0; r < reactionCount; ++r) {
+    const auto slotFor = [&](const Target& target) -> float* {
+        switch (target.kind) {
+            case Target::Kind::None: break;
+            case Target::Kind::Shared:
+                if (target.index < kSharedCount) return &shared[target.index];
+                break;
+            case Target::Kind::Extra:
+                if (target.index < kExtraCount) return &extras[target.index];
+                break;
+            case Target::Kind::Macro:
+                if (target.index < kMacroCount) return &macros[target.index];
+                break;
+            case Target::Kind::Modulator:
+                if (target.index < modulatorCount && static_cast<size_t>(target.field) < kModulatorFieldCount) {
+                    touched[target.index][static_cast<size_t>(target.field)] = true;
+                    return &fields[target.index][static_cast<size_t>(target.field)];
+                }
+                break;
+        }
+        return nullptr;
+    };
+
+    // The Automations, on the beat clock, which runs while the music plays.
+    if (frame.playing) {
+        const float beatSeconds = std::isfinite(frame.beatSeconds) && frame.beatSeconds > 0.0f
+                               ? std::max(frame.beatSeconds, kMinPeriodSeconds)
+                               : kUnknownBeatSeconds;
+        beats_ += step / beatSeconds;
+    }
+    const bool loud = frame[SoundSignal::Surge] >= kStartThreshold || frame[SoundSignal::Change] >= kStartThreshold;
+    const bool bigMoment = loud && bigMomentArmed_;
+    bigMomentArmed_ = !loud;
+    const auto beat = static_cast<int64_t>(std::floor(beats_));
+    const auto phase = static_cast<float>(beats_ - std::floor(beats_));
+    for (int a = 0; a < kMaxAutomations; ++a) {
+        const auto i = static_cast<size_t>(a);
+        if (a >= automationCount) {
+            lastBlock_[i] = kUnseen;
+            due_[i] = 0;
+            continue;
+        }
+        const AutomationSpec& automation = plan.automations[i];
+        const int every = std::max(automation.everyBeats, 1);
+        const int64_t block = beat / every;
+        const bool cadence = automation.onBigMoments ? bigMoment : lastBlock_[i] != kUnseen && block != lastBlock_[i] && block > 0;
+        lastBlock_[i] = block;
+        switch (automation.kind) {
+            case AutomationKind::StyleSwitch:
+                if (cadence) ++out_.stylesDue;
+                break;
+            case AutomationKind::Palette: {
+                if (cadence) ++due_[i];
+                const auto palettes = static_cast<uint32_t>(spec(Shared::Palette).max) + 1u;
+                float& palette = shared[static_cast<size_t>(Shared::Palette)];
+                const auto own = static_cast<uint32_t>(fromUnit(Shared::Palette, palette));
+                palette = toUnit(Shared::Palette, static_cast<float>((own + due_[i] % palettes) % palettes));
+                break;
+            }
+            case AutomationKind::Camera:
+                if (float* slot = beat % every == 0 ? slotFor(automation.target) : nullptr) {
+                    const float left = 1.0f - phase;
+                    *slot = unit(*slot + unit(automation.amount) * left * left);
+                }
+                break;
+            case AutomationKind::Sequence: {
+                const int steps = std::clamp(automation.stepCount, 0, kMaxSteps);
+                float* slot = steps > 0 ? slotFor(automation.target) : nullptr;
+                if (slot) *slot = unit(automation.steps[static_cast<size_t>(block % steps)]);
+                break;
+            }
+            case AutomationKind::Autopilot:
+                if (float* slot = slotFor(automation.target)) {
+                    const auto swing = static_cast<float>(std::sin(kTau * beats_ / every));
+                    *slot = unit(*slot + automation.amount * swing);
+                }
+                break;
+        }
+    }
+
+    const auto applyReaction = [&](int r) {
         const ReactionSpec& reaction = plan.reactions[static_cast<size_t>(r)];
         Follower& follower = followers_[static_cast<size_t>(r)];
         float input = 0.0f;
@@ -112,34 +221,31 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
             input = out_.modulators[reaction.source.index];
         } else {
             follower.reset();
-            continue;
+            return;
         }
-        const Target& target = reaction.target;
-        float* slot = nullptr;
-        switch (target.kind) {
-            case Target::Kind::None: break;
-            case Target::Kind::Shared:
-                if (target.index < kSharedCount) slot = &shared[target.index];
-                break;
-            case Target::Kind::Extra:
-                if (target.index < kExtraCount) slot = &extras[target.index];
-                break;
-            case Target::Kind::Macro:
-                if (target.index < kMacroCount) slot = &macros[target.index];
-                break;
-            case Target::Kind::Modulator:
-                if (target.index < modulatorCount && static_cast<size_t>(target.field) < kModulatorFieldCount) {
-                    slot = &fields[target.index][static_cast<size_t>(target.field)];
-                    touched[target.index][static_cast<size_t>(target.field)] = true;
-                }
-                break;
-        }
+        float* slot = slotFor(reaction.target);
         if (!slot) {
             follower.reset();
-            continue;
+            return;
         }
         const float followed = follower.step(input, durationOrNone(reaction.riseSeconds), durationOrNone(reaction.fallSeconds), step);
         *slot = react(*slot, followed, reaction.shape);
+    };
+    const auto onMacro = [&](int r) { return plan.reactions[static_cast<size_t>(r)].target.kind == Target::Kind::Macro; };
+
+    // The Reactions on a Macro first, so its links follow the moved value.
+    for (int r = 0; r < reactionCount; ++r) {
+        if (onMacro(r)) applyReaction(r);
+    }
+    // The Macro links. A link onto a Macro moves nothing: only Reactions and Automations move a Macro.
+    for (int l = 0; l < linkCount; ++l) {
+        const MacroLinkSpec& link = plan.macroLinks[static_cast<size_t>(l)];
+        if (link.macro >= kMacroCount || link.target.kind == Target::Kind::Macro) continue;
+        if (float* slot = slotFor(link.target)) *slot = macroLink(*slot, link.low, link.high, macros[link.macro]);
+    }
+    // The other Reactions, in their order.
+    for (int r = 0; r < reactionCount; ++r) {
+        if (!onMacro(r)) applyReaction(r);
     }
 
     // 4. The safety clamp, last and unconditional.
