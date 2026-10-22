@@ -57,8 +57,8 @@ internal object OldScreenSettings {
 
     fun guiPrefsOf(values: SettingsValues): GuiPrefs =
         GuiPrefs(
-            playerPosition = byName(values.look.playerPosition) ?: GuiPrefs().playerPosition,
-            cornerStyle = byName(values.look.cornerStyle) ?: GuiPrefs().cornerStyle,
+            playerPosition = byName<PlayerPosition>(values.look.playerPosition) ?: GuiPrefs().playerPosition,
+            cornerStyle = byName<CornerStyle>(values.look.cornerStyle) ?: GuiPrefs().cornerStyle,
             barOpacity = values.look.barOpacity,
             beatSensitivity = values.analysis.beatSensitivity,
             beatMinIntervalMs = values.analysis.beatMinIntervalMs,
@@ -237,11 +237,11 @@ internal object OldScreenSettings {
 
     fun exportDefaultsOf(export: ExportSettings): ExportDefaults =
         ExportDefaults(
-            quality = byName(export.quality) ?: ExportDefaults().quality,
+            quality = byName<OldQuality>(export.quality) ?: ExportDefaults().quality,
             fps = export.frameRate.fps,
-            ratio = byName(export.ratio) ?: ExportDefaults().ratio,
+            ratio = byName<OldRatio>(export.ratio) ?: ExportDefaults().ratio,
             loopSafe = export.loopSafe,
-            codec = byName(export.codec) ?: ExportDefaults().codec,
+            codec = byName<OldCodec>(export.codec) ?: ExportDefaults().codec,
             loudnessTargetId = LOUDNESS_IDS[export.loudness] ?: ExportDefaults().loudnessTargetId,
         )
 

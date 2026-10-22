@@ -84,11 +84,11 @@ object FeatureModule {
                     .collect { adapter.crossfadeCurveChanged() }
             }
         }
-
-    private fun Settings.playbackValues(): PlaybackSettings? = (state.value as? SettingsState.Ready)?.values?.playback
 }
 
 private const val TAG = "FeatureStore"
 private const val TIMER_THREAD = "geode-feature-timers"
 
 private fun timerThread(task: Runnable): Thread = Thread(task, TIMER_THREAD).apply { isDaemon = true }
+
+private fun Settings.playbackValues(): PlaybackSettings? = (state.value as? SettingsState.Ready)?.values?.playback
