@@ -19,11 +19,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -50,18 +47,21 @@ private const val NOT_DRAGGING = -1f
 /**
  * The seek bar (#147): a plain line, the part played in the accent colour, with the A-B loop shaded
  * and a playhead. Tracks are never analysed (owner, 2026-10-22), so it draws no waveform. Tapping or
- * dragging seeks; dragging shows where it would seek until it is let go.
+ * dragging seeks. Stateless: while a drag goes on it reports how far along it is to [onDrag], null
+ * once it is let go, and draws [dragged] in place of the position, so its caller can show the time
+ * it would seek to, as the old Slider did.
  */
 @Composable
 internal fun LoopSeekBar(
     model: PlayerModel,
     enabled: Boolean,
+    dragged: Float?,
+    onDrag: (Float?) -> Unit,
     onSeek: (Millis) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val duration = model.duration.value
-    var dragged by remember { mutableFloatStateOf(NOT_DRAGGING) }
-    val played = if (dragged >= 0f) dragged else fraction(model.position, model.duration)
+    val played = dragged ?: fraction(model.position, model.duration)
     val seek = { at: Float -> onSeek(Millis((at.coerceIn(0f, 1f) * duration).toLong())) }
     val colors = SeekBarColors.current()
     val seekLabel = stringResource(R.string.playback_action_seek)
@@ -76,7 +76,7 @@ internal fun LoopSeekBar(
                         true
                     }
                 }
-            }.then(if (enabled) Modifier.seekGestures(duration, seek) { dragged = it } else Modifier),
+            }.then(if (enabled) Modifier.seekGestures(duration, seek) { onDrag(it.takeIf { drag -> drag >= 0f }) } else Modifier),
     ) {
         model.loop?.takeIf { duration > 0 }?.let { drawLoop(it, model.duration, colors) }
         drawSeekLine(played, colors)

@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -125,16 +126,20 @@ private fun Timeline(
     onAction: (PlayerAction) -> Unit,
 ) {
     val seekable = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.PAUSED || model.status == PlayerStatus.BUFFERING
+    // How far along a drag of the seek bar is, while one goes on: App UI state only (ADR-0003).
+    var dragged by remember { mutableStateOf<Float?>(null) }
     Column(Modifier.fillMaxWidth()) {
         // A plain seek bar with the A-B loop shaded on it (#147).
         LoopSeekBar(
             model,
             enabled = seekable,
+            dragged = dragged,
+            onDrag = { dragged = it },
             onSeek = { onAction(PlayerAction.SeekTo(it)) },
             modifier = Modifier.fillMaxWidth().height(PlayerDimens.seekBarHeight),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatTime(model.position), style = MaterialTheme.typography.labelMedium)
+            Text(formatTime(model.timeShown(dragged)), style = MaterialTheme.typography.labelMedium)
             Text(formatTime(model.duration), style = MaterialTheme.typography.labelMedium)
         }
     }

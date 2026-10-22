@@ -140,6 +140,19 @@ class PlayerModelTest {
     }
 
     @Test
+    fun `while the seek bar is dragged the time shown is where it would seek to`() {
+        val model = PlayerModel(PlayerStatus.PLAYING, a, Millis(13_000), meantToPlay = true, canGoPrevious = true, canGoNext = true)
+
+        assertEquals(Millis(13_000), model.timeShown(null))
+        assertEquals(Millis.ZERO, model.timeShown(0f))
+        assertEquals(Millis(50_000), model.timeShown(0.25f))
+        assertEquals(Millis(200_000), model.timeShown(1f))
+        assertEquals(Millis.ZERO, model.timeShown(-0.5f))
+        assertEquals(Millis(200_000), model.timeShown(1.5f))
+        assertEquals(Millis.ZERO, PlayerModel.IDLE.timeShown(0.5f))
+    }
+
+    @Test
     fun `times print as the player shows them`() {
         assertEquals("0:00", formatTime(Millis.ZERO))
         assertEquals("3:07", formatTime(Millis(187_400)))

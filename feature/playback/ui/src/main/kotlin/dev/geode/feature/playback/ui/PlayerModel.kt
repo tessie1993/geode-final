@@ -73,6 +73,13 @@ data class LoopSpan(
     val end: Millis?,
 )
 
+/**
+ * The time the player shows under the seek bar: where a drag of it would seek to while one goes on
+ * ([dragged], how far along the track from 0 to 1), else the [PlayerModel.position], as the old Slider
+ * showed it.
+ */
+fun PlayerModel.timeShown(dragged: Float?): Millis = dragged?.let { Millis((it.coerceIn(0f, 1f) * duration.value).toLong()) } ?: position
+
 /** No lyric line is being sung: before the first one, or the lyrics are not timed. */
 const val NO_LINE = -1
 
