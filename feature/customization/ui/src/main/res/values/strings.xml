@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="customize_title">Customize</string>
+    <string name="customize_advanced_title">Advanced</string>
+
+    <!-- Top bar -->
+    <string name="customize_undo">Undo</string>
+    <string name="customize_redo">Redo</string>
+    <string name="customize_save">Save preset</string>
+    <string name="customize_surprise">Surprise me</string>
+    <string name="customize_share">Share</string>
+    <string name="customize_open_advanced">Advanced</string>
+    <string name="customize_back">Back</string>
+    <string name="customize_handle">Drag up for more controls, down to hide</string>
+
+    <!-- Basic view -->
+    <string name="customize_macros">Macros</string>
+    <string name="customize_effects">Effects</string>
+    <string name="customize_palettes">Palette</string>
+    <string name="customize_presets">Presets for this Style</string>
+    <string name="customize_no_presets">No presets for this Style yet. Save one from the top bar.</string>
+    <string name="customize_looks">Looks</string>
+    <string name="customize_percent">%1$d%%</string>
+    <string name="customize_driver_more">%1$s +%2$d</string>
+    <string name="customize_macro_knob">%1$s, %2$d%%</string>
+
+    <!-- Advanced view sections -->
+    <string name="customize_section_reactions">Reactions</string>
+    <string name="customize_section_modulators">Modulators</string>
+    <string name="customize_section_camera">Camera</string>
+    <string name="customize_section_effects">Shared effects</string>
+    <string name="customize_section_extras">Style Extras</string>
+    <string name="customize_section_macros">Macros</string>
+
+    <!-- Reactions -->
+    <string name="customize_links_list">List</string>
+    <string name="customize_links_board">Patch board</string>
+    <string name="customize_learn">Learn</string>
+    <string name="customize_new_link">New link</string>
+    <string name="customize_no_links">No links yet. Add one with New link, or let Learn pick the slider you move.</string>
+    <string name="customize_remove_link">Remove link</string>
+    <string name="customize_link_inverted">inverted</string>
+    <string name="customize_learning">Learning from %1$s: move any slider to link it.</string>
+    <string name="customize_learning_cancel">Stop learning</string>
+    <string name="customize_board_sources">Sources</string>
+    <string name="customize_board_targets">Targets</string>
+    <string name="customize_react_to">React to…</string>
+    <string name="customize_linked">Moved by a Reaction</string>
+
+    <!-- New link, step by step -->
+    <string name="customize_step_source">Step 1 of 3: what should it react to?</string>
+    <string name="customize_step_target">Step 2 of 3: what should it move?</string>
+    <string name="customize_step_learn">Learn: choose what to react to, then move a slider.</string>
+    <string name="customize_step_macro_target">What should this Macro move?</string>
+    <string name="customize_sources_sound">Sound</string>
+    <string name="customize_sources_modulators">Modulators</string>
+    <string name="customize_targets_macros">Macros</string>
+    <string name="customize_targets_extras">Style Extras</string>
+    <string name="customize_targets_modulators">Modulators</string>
+    <string name="customize_cancel">Cancel</string>
+
+    <!-- Reaction editor -->
+    <string name="customize_step_shape">Step 3 of 3: shape the Reaction</string>
+    <string name="customize_edit_link">Edit link</string>
+    <string name="customize_link_path">%1$s → %2$s</string>
+    <string name="customize_amount">Amount</string>
+    <string name="customize_invert">Invert</string>
+    <string name="customize_rise">Rise</string>
+    <string name="customize_fall">Fall</string>
+    <string name="customize_millis">%1$d ms</string>
+    <string name="customize_range">Range</string>
+    <string name="customize_range_value">%1$d%% to %2$d%%</string>
+    <string name="customize_curve">Curve</string>
+    <string name="customize_no_flash">Brightness only ever rises gently: the Visual never flashes.</string>
+    <string name="customize_done">Done</string>
+    <string name="customize_remove">Remove</string>
+
+    <!-- Modulators -->
+    <string name="customize_add_modulator">Add</string>
+    <string name="customize_no_modulators">No Modulators yet. Add a wave, an envelope, a sequencer or a drift.</string>
+    <string name="customize_modulator_label">%1$s %2$d</string>
+    <string name="customize_modulator_unknown">Modulator %1$d</string>
+    <string name="customize_modulator_idle">Idle until something listens to it</string>
+    <string name="customize_modulator_target">%1$s %2$s</string>
+    <string name="customize_rate">Rate</string>
+    <string name="customize_depth">Depth</string>
+    <string name="customize_rate_value">×%1$.2f</string>
+    <string name="customize_start">Starts</string>
+    <string name="customize_start_playing">While playing</string>
+    <string name="customize_start_sound">On a sound</string>
+    <string name="customize_start_hand">By hand</string>
+    <string name="customize_play">Play</string>
+    <string name="customize_stop">Stop</string>
+    <string name="customize_beat_sync">Beat sync</string>
+    <string name="customize_remove_modulator">Remove Modulator</string>
+
+    <!-- Sliders -->
+    <string name="customize_value">%1$.2f</string>
+    <string name="customize_whole_value">%1$d</string>
+    <string name="customize_no_extras">This Style has no Extras of its own.</string>
+
+    <!-- Macros -->
+    <string name="customize_macro_name">Name</string>
+    <string name="customize_rename">Rename</string>
+    <string name="customize_macro_value">Value</string>
+    <string name="customize_macro_links">Moves</string>
+    <string name="customize_macro_no_links">Moves nothing yet.</string>
+    <string name="customize_macro_add_link">Add a property</string>
+    <string name="customize_macro_clear">Clear</string>
+    <string name="customize_macro_unlink">Stop moving %1$s</string>
+    <string name="customize_all_macros">All Macros</string>
+    <string name="customize_macro_slot">Macro: %1$s</string>
+    <string name="customize_macro_driven_by">Driven by %1$s</string>
+
+    <!-- Save preset -->
+    <string name="customize_save_title">Save a preset</string>
+    <string name="customize_save_name">Preset name</string>
+    <string name="customize_save_parts">Keep these parts</string>
+    <string name="customize_save_confirm">Save</string>
+    <string name="customize_reset">Reset to Style</string>
+
+    <!-- SharedProperty -->
+    <string name="customize_property_zoom">Zoom</string>
+    <string name="customize_property_push_in">Push-in</string>
+    <string name="customize_property_rotation">Rotation</string>
+    <string name="customize_property_orbit_yaw">Orbit, left and right</string>
+    <string name="customize_property_orbit_pitch">Orbit, up and down</string>
+    <string name="customize_property_travel">Travel</string>
+    <string name="customize_property_sway">Sway</string>
+    <string name="customize_property_shake">Shake</string>
+    <string name="customize_property_drift_x">Drift across</string>
+    <string name="customize_property_drift_y">Drift up and down</string>
+    <string name="customize_property_endless_zoom">Endless zoom</string>
+    <string name="customize_property_dive_speed">Dive speed</string>
+    <string name="customize_property_palette">Palette</string>
+    <string name="customize_property_palette_2">Second palette</string>
+    <string name="customize_property_palette_mix">Palette mix</string>
+    <string name="customize_property_duotone">Duotone</string>
+    <string name="customize_property_lut">Colour map</string>
+    <string name="customize_property_morph">Morph</string>
+    <string name="customize_property_hue_shift">Hue shift</string>
+    <string name="customize_property_hue_range">Hue range</string>
+    <string name="customize_property_colour_cycle">Colour cycle</string>
+    <string name="customize_property_cycle_speed">Cycle speed</string>
+    <string name="customize_property_speed">Speed</string>
+    <string name="customize_property_audio_drive">Audio drive</string>
+    <string name="customize_property_turbulence">Turbulence</string>
+    <string name="customize_property_detail">Detail</string>
+    <string name="customize_property_glow">Glow</string>
+    <string name="customize_property_kaleidoscope">Kaleidoscope</string>
+    <string name="customize_property_symmetry">Symmetry</string>
+    <string name="customize_property_mirror">Mirror</string>
+    <string name="customize_property_trails">Trails</string>
+    <string name="customize_property_trail_zoom">Trail zoom</string>
+    <string name="customize_property_trail_warp">Trail warp</string>
+    <string name="customize_property_grain">Grain</string>
+    <string name="customize_property_vignette">Vignette</string>
+    <string name="customize_property_chromatic">Chromatic split</string>
+    <string name="customize_property_scanlines">Scanlines</string>
+    <string name="customize_property_fisheye">Fisheye</string>
+    <string name="customize_property_soft_focus">Soft focus</string>
+    <string name="customize_property_motion_blur">Motion blur</string>
+    <string name="customize_property_warp">Warp</string>
+    <string name="customize_property_ripple">Ripple</string>
+    <string name="customize_property_twist">Twist</string>
+    <string name="customize_property_tile">Tile</string>
+    <string name="customize_property_glitch">Glitch</string>
+    <string name="customize_property_pixelate">Pixelate</string>
+    <string name="customize_property_posterize">Posterize</string>
+    <string name="customize_property_solarize">Solarize</string>
+    <string name="customize_property_particles">Particles</string>
+    <string name="customize_property_particle_kind">Particle kind</string>
+    <string name="customize_property_particle_size">Particle size</string>
+    <string name="customize_property_saturation">Saturation</string>
+    <string name="customize_property_brightness">Brightness</string>
+    <string name="customize_property_intensity">Intensity</string>
+    <string name="customize_property_contrast">Contrast</string>
+    <string name="customize_property_gamma">Gamma</string>
+    <string name="customize_property_temperature">Temperature</string>
+    <string name="customize_property_invert">Invert</string>
+
+    <!-- SharedGroup -->
+    <string name="customize_group_camera">Camera</string>
+    <string name="customize_group_colour">Colour and palette</string>
+    <string name="customize_group_speed_and_energy">Speed and energy</string>
+    <string name="customize_group_detail_and_glow">Detail and glow</string>
+    <string name="customize_group_kaleidoscope_and_mirror">Kaleidoscope and mirror</string>
+    <string name="customize_group_trails_and_echo">Trails and echo</string>
+    <string name="customize_group_lens">Lens</string>
+    <string name="customize_group_warp_and_ripple">Warp and ripple</string>
+    <string name="customize_group_glitch_and_pixelate">Glitch and pixelate</string>
+    <string name="customize_group_particles">Particles</string>
+    <string name="customize_group_colour_grading">Colour grading</string>
+
+    <!-- ExtraKind -->
+    <string name="customize_extra_scale">Scale</string>
+    <string name="customize_extra_count">Count</string>
+    <string name="customize_extra_size">Size</string>
+    <string name="customize_extra_thickness">Thickness</string>
+    <string name="customize_extra_flight">Flight speed</string>
+    <string name="customize_extra_spin">Spin</string>
+    <string name="customize_extra_orbit">Orbit</string>
+    <string name="customize_extra_swirl">Swirl</string>
+    <string name="customize_extra_drift">Drift</string>
+    <string name="customize_extra_complexity">Complexity</string>
+    <string name="customize_extra_edge">Edge</string>
+    <string name="customize_extra_fog">Fog</string>
+    <string name="customize_extra_decay">Decay</string>
+    <string name="customize_extra_viscosity">Viscosity</string>
+    <string name="customize_extra_growth">Growth</string>
+    <string name="customize_extra_spread">Spread</string>
+    <string name="customize_extra_force">Force</string>
+    <string name="customize_extra_reach">Reach</string>
+    <string name="customize_extra_turn">Turn</string>
+    <string name="customize_extra_hold">Hold</string>
+    <string name="customize_extra_variant">Variant</string>
+    <string name="customize_extra_center_x">Centre, across</string>
+    <string name="customize_extra_center_y">Centre, up and down</string>
+
+    <!-- SoundSignal -->
+    <string name="customize_signal_level">Level</string>
+    <string name="customize_signal_bass">Bass</string>
+    <string name="customize_signal_mid">Mid</string>
+    <string name="customize_signal_treble">Treble</string>
+    <string name="customize_signal_brightness">Brightness</string>
+    <string name="customize_signal_hit">Hit</string>
+    <string name="customize_signal_kick">Kick</string>
+    <string name="customize_signal_mid_hit">Mid hit</string>
+    <string name="customize_signal_hat">Hat</string>
+    <string name="customize_signal_beat">Beat</string>
+    <string name="customize_signal_energy">Energy</string>
+    <string name="customize_signal_build_up">Build-up</string>
+    <string name="customize_signal_surge">Surge</string>
+    <string name="customize_signal_change">Change</string>
+    <string name="customize_signal_stereo_width">Stereo width</string>
+    <string name="customize_signal_stereo_pan">Stereo pan</string>
+
+    <!-- Wave -->
+    <string name="customize_wave_sine">Sine</string>
+    <string name="customize_wave_triangle">Triangle</string>
+    <string name="customize_wave_saw">Saw</string>
+    <string name="customize_wave_square">Square</string>
+    <string name="customize_wave_random">Random</string>
+
+    <!-- ResponseCurve -->
+    <string name="customize_curve_linear">Linear</string>
+    <string name="customize_curve_exponential">Exponential</string>
+    <string name="customize_curve_logarithmic">Logarithmic</string>
+    <string name="customize_curve_s_curve">S-curve</string>
+
+    <!-- ModulatorParameter -->
+    <string name="customize_modulator_parameter_rate">rate</string>
+    <string name="customize_modulator_parameter_depth">depth</string>
+    <string name="customize_modulator_parameter_pattern">pattern</string>
+
+    <!-- ModulatorKind -->
+    <string name="customize_modulator_kind_lfo">LFO</string>
+    <string name="customize_modulator_kind_envelope">Hit envelope</string>
+    <string name="customize_modulator_kind_sequencer">Step sequencer</string>
+    <string name="customize_modulator_kind_drift">Random drift</string>
+
+    <!-- PresetPart -->
+    <string name="customize_part_style">Style</string>
+    <string name="customize_part_camera">Camera</string>
+    <string name="customize_part_colour">Colour and palette</string>
+    <string name="customize_part_speed_and_energy">Speed and energy</string>
+    <string name="customize_part_detail_and_glow">Detail and glow</string>
+    <string name="customize_part_kaleidoscope_and_mirror">Kaleidoscope and mirror</string>
+    <string name="customize_part_trails_and_echo">Trails and echo</string>
+    <string name="customize_part_lens">Lens</string>
+    <string name="customize_part_warp_and_ripple">Warp and ripple</string>
+    <string name="customize_part_glitch_and_pixelate">Glitch and pixelate</string>
+    <string name="customize_part_particles">Particles</string>
+    <string name="customize_part_colour_grading">Colour grading</string>
+    <string name="customize_part_sound">Sound trims</string>
+    <string name="customize_part_extras">Extras</string>
+    <string name="customize_part_macros">Macros</string>
+    <string name="customize_part_reactions">Reactions</string>
+    <string name="customize_part_modulators">Modulators</string>
+
+</resources>
