@@ -295,4 +295,24 @@ class OldScreenSettingsTest {
             ),
         )
     }
+
+    /** A quality one side has and the other does not yet, like SD480 and QHD1440 (#135). */
+    private enum class NewerQuality { SD480, FHD1080, QHD1440 }
+
+    @Test
+    fun `a name the other side does not know maps to nothing instead of throwing`() {
+        assertEquals(null, OldScreenSettings.byName<OldQuality>(NewerQuality.SD480))
+        assertEquals(null, OldScreenSettings.byName<SettingsQuality>(NewerQuality.QHD1440))
+        assertEquals(OldQuality.FHD1080, OldScreenSettings.byName<OldQuality>(NewerQuality.FHD1080))
+    }
+
+    @Test
+    fun `every name both sides know maps across in both directions`() {
+        SettingsQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldQuality>(it)?.name) }
+        OldQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<SettingsQuality>(it)?.name) }
+        SettingsRatio.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldRatio>(it)?.name) }
+        SettingsCodec.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldCodec>(it)?.name) }
+        SettingsPosition.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<PlayerPosition>(it)?.name) }
+        SettingsCorner.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<CornerStyle>(it)?.name) }
+    }
 }

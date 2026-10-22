@@ -57,8 +57,8 @@ internal object OldScreenSettings {
 
     fun guiPrefsOf(values: SettingsValues): GuiPrefs =
         GuiPrefs(
-            playerPosition = PlayerPosition.valueOf(values.look.playerPosition.name),
-            cornerStyle = CornerStyle.valueOf(values.look.cornerStyle.name),
+            playerPosition = byName(values.look.playerPosition) ?: GuiPrefs().playerPosition,
+            cornerStyle = byName(values.look.cornerStyle) ?: GuiPrefs().cornerStyle,
             barOpacity = values.look.barOpacity,
             beatSensitivity = values.analysis.beatSensitivity,
             beatMinIntervalMs = values.analysis.beatMinIntervalMs,
@@ -94,8 +94,13 @@ internal object OldScreenSettings {
                 val value = read(after)
                 if (read(before) != value) add(command(value))
             }
-            changed({ it.playerPosition }) { LookCommand.SetPlayerPosition(SettingsPosition.valueOf(it.name)) }
-            changed({ it.cornerStyle }) { LookCommand.SetCornerStyle(SettingsCorner.valueOf(it.name)) }
+            // A value Settings does not know is not sent, so what it keeps is not overwritten.
+            if (before.playerPosition != after.playerPosition) {
+                byName<SettingsPosition>(after.playerPosition)?.let { add(LookCommand.SetPlayerPosition(it)) }
+            }
+            if (before.cornerStyle != after.cornerStyle) {
+                byName<SettingsCorner>(after.cornerStyle)?.let { add(LookCommand.SetCornerStyle(it)) }
+            }
             changed({ it.barOpacity }) { LookCommand.SetBarOpacity(it) }
             changed({ it.accentIntensity }) { LookCommand.SetAccentIntensity(it) }
             changed({ it.backgroundDim }) { LookCommand.SetBackgroundDim(it) }
@@ -232,12 +237,12 @@ internal object OldScreenSettings {
 
     fun exportDefaultsOf(export: ExportSettings): ExportDefaults =
         ExportDefaults(
-            quality = OldQuality.valueOf(export.quality.name),
+            quality = byName(export.quality) ?: ExportDefaults().quality,
             fps = export.frameRate.fps,
-            ratio = OldRatio.valueOf(export.ratio.name),
+            ratio = byName(export.ratio) ?: ExportDefaults().ratio,
             loopSafe = export.loopSafe,
-            codec = OldCodec.valueOf(export.codec.name),
-            loudnessTargetId = LOUDNESS_IDS.getValue(export.loudness),
+            codec = byName(export.codec) ?: ExportDefaults().codec,
+            loudnessTargetId = LOUDNESS_IDS[export.loudness] ?: ExportDefaults().loudnessTargetId,
         )
 
     fun commandsFor(
@@ -245,7 +250,7 @@ internal object OldScreenSettings {
         after: ExportDefaults,
     ): List<SettingsCommand> =
         buildList {
-            if (before.quality != after.quality) add(ExportCommand.SetQuality(SettingsQuality.valueOf(after.quality.name)))
+            if (before.quality != after.quality) byName<SettingsQuality>(after.quality)?.let { add(ExportCommand.SetQuality(it)) }
             if (before.fps !=
                 after.fps
             ) {
@@ -253,14 +258,20 @@ internal object OldScreenSettings {
                     ExportCommand.SetFrameRate(ExportFrameRate.entries.firstOrNull { it.fps == after.fps } ?: ExportFrameRate.FPS60),
                 )
             }
-            if (before.ratio != after.ratio) add(ExportCommand.SetRatio(SettingsRatio.valueOf(after.ratio.name)))
+            if (before.ratio != after.ratio) byName<SettingsRatio>(after.ratio)?.let { add(ExportCommand.SetRatio(it)) }
             if (before.loopSafe != after.loopSafe) add(ExportCommand.SetLoopSafe(after.loopSafe))
-            if (before.codec != after.codec) add(ExportCommand.SetCodec(SettingsCodec.valueOf(after.codec.name)))
+            if (before.codec != after.codec) byName<SettingsCodec>(after.codec)?.let { add(ExportCommand.SetCodec(it)) }
             if (before.loudnessTargetId != after.loudnessTargetId) {
                 val loudness = LOUDNESS_IDS.entries.firstOrNull { it.value == after.loudnessTargetId }?.key ?: ExportLoudness.LEAVE_AS_IS
                 add(ExportCommand.SetLoudness(loudness))
             }
         }
+
+    /**
+     * [value]'s namesake in [E], or null when [E] has none. The old screens' enums and Settings' grow
+     * apart (a quality one side adds before the other), so no mapping by name may throw.
+     */
+    inline fun <reified E : Enum<E>> byName(value: Enum<*>): E? = enumValues<E>().firstOrNull { it.name == value.name }
 
     private val LOUDNESS_IDS: Map<ExportLoudness, String> =
         mapOf(
