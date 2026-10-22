@@ -11,16 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
-- **CI: no glass in the App UI (#102).** `tools/ci/check_no_glass.py` runs
-  first in the Lint job and fails on live blur (`Modifier.blur`,
-  `RenderEffect.createBlurEffect`, `BlurEffect`, `BlurMaskFilter`),
-  glassmorphism libraries (Haze and the like) and anything named glass,
-  frosted or refraction in `:design`, the features' `:ui` and `app/src/main`;
-  the Visual is not scanned, and pre-blurred art is allowed. A self-test runs
-  before it. The Lapis Lazuli refraction overlay (#17) sits in
-  `config/no-glass/allowlist.txt`, which may only shrink. The forest glass
-  tokens are not allowlisted: the check fails until they are removed. `glassScrim` is now `bottomScrim` (it was always a plain
-  gradient).
+- **CI: no glass in the App UI (#102).** Two checks, neither of which looks
+  at names. `tools/ci/check_no_glass.py` runs first in the Lint job and fails
+  on live blur (`Modifier.blur`, `RenderEffect.createBlurEffect`,
+  `BlurEffect`, `BlurMaskFilter`) and glassmorphism libraries (Haze and the
+  like) in the App UI's source; the Visual is not scanned. The new Glass
+  review workflow (`tools/ci/review_glass_screens.py`) sends the App UI
+  screenshot goldens to Claude with a strict rubric and fails on any frosted,
+  blurred or smoked translucent surface; opaque and textured surfaces,
+  gradient scrims, natural-material art and the Visual pass. Pull requests
+  review the screenshots they change, and `main` reviews all of them. Both
+  run a self-test first. The review needs the `ANTHROPIC_API_KEY` repository
+  secret and fails without it.
 
 - **The native bridge: one snapshot schema, a lock-free hand-off and typed
   statuses (#53, ADR-0005).** `core/bridge/schema/native_bridge.json`

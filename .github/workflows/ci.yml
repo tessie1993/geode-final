@@ -68,17 +68,13 @@ jobs:
         with:
           # Two commits deep, so the PR's head commit is here too: its message can ask for [api-dump].
           fetch-depth: 2
-      # The App UI has no glass (#102): no live blur, no glass libraries, nothing named glass. The
-      # self-test proves the check still catches it. On a pull request the checkout is the merge
-      # commit, so HEAD^1 is the base branch, whose allowlist this one may only shrink from.
-      - name: No glass in the App UI
+      # The App UI has no glass (#102): no live blur and no glassmorphism library in its source.
+      # The self-test proves the check still catches it. The screens themselves are reviewed by
+      # glass-review.yml.
+      - name: No glass in the App UI (source)
         run: |
           python3 tools/ci/check_no_glass.py --self-test
-          if git show HEAD^1:config/no-glass/allowlist.txt > "$RUNNER_TEMP/base-allowlist.txt" 2>/dev/null; then
-            python3 tools/ci/check_no_glass.py --base-allowlist "$RUNNER_TEMP/base-allowlist.txt"
-          else
-            python3 tools/ci/check_no_glass.py
-          fi
+          python3 tools/ci/check_no_glass.py
       - uses: ./.github/actions/android-setup
       - name: detekt (every module)
         run: ./gradlew detekt --continue --stacktrace --no-daemon

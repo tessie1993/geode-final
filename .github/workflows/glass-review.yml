@@ -1,0 +1,48 @@
+name: Glass review
+
+# The App UI has no glass (#102). Claude looks at the App UI screenshot goldens and fails the run on
+# any glassmorphism (docs/ci.md, "No glass in the App UI"). A pull request reviews the screenshots
+# it adds or changes; a push to main or a manual run reviews all of them. Needs the repository
+# secret ANTHROPIC_API_KEY, and fails without it.
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glass-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: No glass in the App UI (screens)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The head commit, with history, so the pull request's changed screenshots can be found.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12.14'
+      - name: Install the Anthropic SDK
+        run: python -m pip install anthropic==2.1.0
+      - name: Self-test (canned responses, no API)
+        run: python tools/ci/review_glass_screens.py --self-test
+      - name: Review the App UI screenshots
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            python tools/ci/review_glass_screens.py --changed-since "$BASE_SHA"
+          else
+            python tools/ci/review_glass_screens.py
+          fi

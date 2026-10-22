@@ -10,7 +10,8 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 |---|---|---|
 | Build debug APK | The app assembles, native code included. The APK is attached to the run for device testing (not a gate). | `ci.yml` |
 | Lint | detekt (every module, with per-module baselines), ktlint, Android lint (every Android module), and the public API of the interface modules against their dumps. | `config/detekt/detekt.yml`, `build-logic/…/geode.kotlin-common.gradle.kts`, `geode.api-dump` |
-| No glass in the App UI | The App UI has no glass (#102): no live blur, no glassmorphism library, nothing named glass. Runs first in the Lint job, after a self-test that proves it still catches glass. See [No glass in the App UI](#no-glass-in-the-app-ui). | `tools/ci/check_no_glass.py`, `config/no-glass/allowlist.txt` |
+| No glass in the App UI (source) | The App UI's source has no live blur and no glassmorphism library (#102). Runs first in the Lint job, after a self-test that proves it still catches them. See [No glass in the App UI](#no-glass-in-the-app-ui). | `tools/ci/check_no_glass.py` |
+| No glass in the App UI (screens) | Claude looks at the App UI screenshot goldens and fails on any glassmorphism (#102). Runs after a self-test of its verdict logic with canned responses. Needs the `ANTHROPIC_API_KEY` secret. | `.github/workflows/glass-review.yml`, `tools/ci/review_glass_screens.py` |
 | Kotlin unit tests and coverage | Every module's unit tests, including the JVM modules (`:engine:audio-core`, `:arch:*`, and each feature's `:api` and `:core`), and the architecture test. Line coverage per module is written to the job summary. | Kover, applied in `geode.kotlin-common` |
 | Mutation tests | One job per module runs **every** mutant (Pitest), then `tools/ci/mutation_gate.py` checks the score. | `config/mutation/thresholds.properties`, `geode.mutation-jvm` / `geode.mutation-android` |
 | App UI screenshots | Roborazzi screenshots of App UI composables match the goldens in `app/src/test/screenshots` and in each feature's `:ui` (`feature/<name>/ui/src/test/screenshots`). | `geode.screenshots`, the job's `SCREENSHOT_*` lists in `ci.yml` |
@@ -30,12 +31,20 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 
 ## No glass in the App UI
 
-The owner's rule (#102): the App UI has no frosted-glass panels, no glassmorphism, no live blur or refraction behind its surfaces and no translucent glass orbs. "3D" is a depth illusion made of parallax, tilt and lighting. `tools/ci/check_no_glass.py` enforces it:
+The owner's rule (#102): the App UI has no frosted-glass panels, no glassmorphism, no live blur or refraction behind its surfaces and no translucent glass orbs. "3D" is a depth illusion made of parallax, tilt and lighting. Two checks enforce it, and neither looks at names: what counts is what is drawn.
 
-- **What it scans:** the production source of `:design` (`design/src/main`), every feature's `:ui` (`feature/*/ui/src/main`) and `app/src/main` (Kotlin and `res/`). It skips `app/src/main/assets` and `app/src/main/cpp`, and everything in `engine/` and `core/`, because the Visual may blur and refract. Tests are not scanned.
-- **What fails:** live blur APIs (`Modifier.blur`, `RenderEffect.createBlurEffect`, Compose's `BlurEffect`, `BlurMaskFilter`); the Haze, Cloudy, BlurView and Blurry libraries, whether imported or declared as a dependency in any Gradle build file or version catalog; and any identifier, source file, resource file or resource `name` containing `glass`, `frosted` or `refraction`. Comments and string literals are skipped.
-- **What passes:** artwork blurred in advance and shipped as a bitmap (the Library's pre-blurred art), text shadows (`Shadow(blurRadius = …)`), and gradient scrims.
-- **The allowlist** (`config/no-glass/allowlist.txt`) holds legacy glass that a ticket already deletes: the Lapis Lazuli ThemePack's refraction overlay (#17). Each entry is a path and the token the check reports. It only shrinks: an entry that no longer matches fails, and in a pull request any entry the base branch does not have fails. New code is never allowlisted; fix it instead.
+**Source** (`tools/ci/check_no_glass.py`, in the Lint job). It scans the production Kotlin of `:design` (`design/src/main`), every feature's `:ui` (`feature/*/ui/src/main`) and `app/src/main`, skipping `app/src/main/assets`, `app/src/main/cpp`, `engine/` and `core/`, because the Visual may blur. It fails on live blur APIs (`Modifier.blur`, `RenderEffect.createBlurEffect`, Compose's `BlurEffect`, `BlurMaskFilter`) and on the Haze, Cloudy, BlurView and Blurry libraries, whether imported or declared as a dependency in any Gradle build file or version catalog. It skips comments and string literals. Artwork blurred in advance and shipped as a bitmap, text shadows (`Shadow(blurRadius = …)`) and gradient scrims all pass. There is no allowlist.
+
+**Screens** (`tools/ci/review_glass_screens.py`, the `glass-review.yml` workflow). It sends the App UI screenshot goldens (`app/src/test/screenshots` and `feature/*/ui/src/test/screenshots`, which the screenshots job proves match the code) to Claude (`claude-opus-5-5`), 20 to a request, with a strict rubric, and asks for a structured verdict per image:
+
+- **Fail:** frosted or blurred translucent panels, cards, sheets or bars; a background visibly blurred through a surface; smoked translucent bars; glass-card styling; translucent glass orbs.
+- **Pass:** opaque or textured surfaces; gradient scrims; natural-material art drawn as an image, such as sea glass or translucent stone pebbles; the audio-reactive Visual itself.
+
+A pull request reviews only the screenshots it adds or changes against its base. A push to `main` or a manual run reviews all of them. Every verdict and its reason go to the job summary. A failing screenshot gets an annotation on its file, and so does any screenshot left without a verdict (an API error, a refusal, a malformed answer); either one fails the job. A self-test runs the parsing, batching and verdict logic against canned responses first, without the API. Claude Opus 5.5 accepts no temperature, so the review runs at effort `high` with a fixed rubric and a JSON schema. On a safety decline the API retries on a fallback model (`fallbacks: "default"`).
+
+**The API key.** The review reads the repository secret `ANTHROPIC_API_KEY` (Settings > Secrets and variables > Actions). Without it the job fails with a message saying so; it never passes unreviewed. The key is never printed. Pull requests from forks get no secrets, so they fail this check.
+
+**When a screen changes**, its golden changes too (re-recorded with `[record-goldens]`, see below). The review then sees the new picture on the next push.
 
 ## Mutation score floors
 
