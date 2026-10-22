@@ -267,4 +267,23 @@
     <string name="customize_part_reactions">Reactions</string>
     <string name="customize_part_modulators">Modulators</string>
 
+    <!-- Modulators & Automation -->
+    <string name="modulators_automation_title">Modulators &amp; Automation</string>
+    <string name="automation_section">Automations</string>
+    <string name="automation_style">Switch Style</string>
+    <string name="automation_palette">Change palette</string>
+    <string name="automation_camera">Camera moves on the beat</string>
+    <string name="automation_sequences">Sequences</string>
+    <string name="automation_sequences_hint">Steps through on, off and half on the beat.</string>
+    <string name="automation_autopilot">Autopilot Macros</string>
+    <string name="automation_autopilot_hint">Each moves around the value you set.</string>
+    <string name="automation_big_moments">Big moments</string>
+    <string name="automation_every_bars">Every %1$d bars</string>
+    <string name="automation_pool_mine">My list</string>
+    <string name="automation_pool_picks">App\'s picks</string>
+    <string name="automation_pool_both">Both</string>
+    <string name="automation_transition">Transition</string>
+    <string name="automation_seconds">%1$.1f s</string>
+    <string name="automation_no_flash">Fades smoothly from one Style to the next. The Visual never flashes.</string>
+
 </resources>

@@ -3,6 +3,10 @@ package dev.geode.feature.customization.ui
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.Autopilot
+import dev.geode.feature.customization.api.Cadence
+import dev.geode.feature.customization.api.CameraMove
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
@@ -17,9 +21,12 @@ import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.ResponseCurve
+import dev.geode.feature.customization.api.Sequenced
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StylePool
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 
@@ -101,6 +108,13 @@ internal object PreviewModels {
             reactions = reactions,
             modulators = listOf(lfo, sweep, steps, hits),
             signals = emptyMap(),
+            automations =
+                Automations(
+                    style = StyleSwitching(Cadence.EveryBars(16), StylePool.BOTH, listOf(SceneId("warp"), SceneId("grid"))),
+                    camera = listOf(CameraMove(SharedProperty.ZOOM), CameraMove(SharedProperty.SHAKE)),
+                    sequences = listOf(Sequenced(Target.Shared(SharedProperty.TRAILS), NEW_SEQUENCE_STEPS)),
+                    autopilots = listOf(Autopilot(3)),
+                ),
         )
 
     private val looks =
@@ -128,6 +142,7 @@ internal object PreviewModels {
                 macros = MacroRole.entries.map { Macro(it.title) },
                 reactions = emptyList(),
                 modulators = emptyList(),
+                automations = Automations.NONE,
             ),
         ).toCustomizeModel(looks)
 

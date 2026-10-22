@@ -22,6 +22,7 @@ typealias CustomizationFeature = Feature<CustomizationState, CustomizationComman
  * - [macros]: always [MACRO_COUNT].
  * - [reactions] and [modulators]: as many as the person made.
  * - [signals]: the normaliser's trim for every Sound signal.
+ * - [automations]: what it performs by itself over the music; they carry over to the next Style.
  */
 data class Customization(
     val style: SceneId,
@@ -31,6 +32,7 @@ data class Customization(
     val reactions: List<Reaction>,
     val modulators: List<Modulator>,
     val signals: Map<SoundSignal, SignalTrim>,
+    val automations: Automations = Automations.NONE,
 )
 
 /**
@@ -126,6 +128,11 @@ sealed interface CustomizationCommand {
     data class TrimSignal(
         val signal: SoundSignal,
         val trim: SignalTrim,
+    ) : CustomizationCommand
+
+    /** Replaces the Automations; what makes no sense in them is dropped or brought into range. */
+    data class SetAutomations(
+        val automations: Automations,
     ) : CustomizationCommand
 
     /** Back to the current Style's own defaults. Undoable. */

@@ -59,9 +59,22 @@ internal fun CustomizeBoardPreview() = CustomizePreview(start = CustomizePage.Ad
 @Composable
 internal fun CustomizeNoLinksPreview() = CustomizePreview(PreviewModels.fresh, CustomizePage.Advanced(AdvancedSection.REACTIONS))
 
-@Preview(name = "Advanced, Modulators", widthDp = 411, heightDp = 891)
+@Preview(name = "Modulators & Automation", widthDp = 411, heightDp = 891)
 @Composable
-internal fun CustomizeModulatorsPreview() = CustomizePreview(start = CustomizePage.Advanced(AdvancedSection.MODULATORS))
+internal fun ModulatorsAutomationPreview() = ModulatorsAutomationPreviewOf(PreviewModels.editing)
+
+@Preview(name = "Modulators & Automation, nothing yet", widthDp = 411, heightDp = 891)
+@Composable
+internal fun ModulatorsAutomationFreshPreview() = ModulatorsAutomationPreviewOf(PreviewModels.fresh)
+
+@Composable
+private fun ModulatorsAutomationPreviewOf(model: CustomizeModel) {
+    ForestTheme(mode = ForestMode.Dark) {
+        Box(Modifier.fillMaxSize().background(LocalForestColors.current.base)) {
+            ModulatorsAutomationScreen(model, onAction = {})
+        }
+    }
+}
 
 @Preview(name = "Advanced, Camera", widthDp = 411, heightDp = 891)
 @Composable

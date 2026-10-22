@@ -19,6 +19,7 @@ import dev.geode.kernel.ReportFailure
  * - Undo and redo are unlimited for the session; reset to Style is an edit like any other.
  * - Playing or stopping a hand-started Modulator is live: it reaches the engine but not the history.
  * - Presets keep the ticked parts; a preset applied on another Style brings only the shared parts.
+ * - Automations are an edit; Style switching's own moves ([CustomizationEvent.StyleDue]) are live.
  * - A change of Style is announced as [CustomizationFact.StyleChanged].
  *
  * [styles] are the manifests of the Styles this version knows.
@@ -34,7 +35,16 @@ class CustomizationReducer(
             is CustomizationEvent.Command -> command(state, event.command)
             is CustomizationEvent.PresetLoaded -> edit(state, PresetRules.apply(state.current, event.preset, styles))
             is CustomizationEvent.WorkFailed -> Next(state, listOf(ReportFailure(event.failure.message)))
+            CustomizationEvent.StyleDue -> autoSwitch(state)
         }
+
+    /** Style switching's move to its next Style: live, like a hand-started Modulator, so not in the history. */
+    private fun autoSwitch(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
+        val current = state.current
+        val switching = current.automations.style ?: return Next(state)
+        val next = Automation.nextStyle(switching, current.style, styles.styles.map { it.id }) ?: return Next(state)
+        return live(state, Edits.switchStyle(current, styles.manifestOf(current.style), styles.manifestOf(next)))
+    }
 
     private fun command(
         state: CustomizationState,
@@ -58,6 +68,7 @@ class CustomizationReducer(
             is CustomizationCommand.RemoveModulator -> edit(state, Edits.removeModulator(current, command.id))
             is CustomizationCommand.PlayModulator -> live(state, Edits.playModulator(current, command.id, command.playing))
             is CustomizationCommand.TrimSignal -> edit(state, Edits.trimSignal(current, command.signal, command.trim))
+            is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
             CustomizationCommand.ResetToStyle -> edit(state, Defaults.customization(styles.manifestOf(current.style)))
             CustomizationCommand.Undo -> undo(state)
             CustomizationCommand.Redo -> redo(state)

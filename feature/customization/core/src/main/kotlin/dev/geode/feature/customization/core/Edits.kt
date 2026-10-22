@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.Macro
@@ -140,10 +141,16 @@ object Edits {
         trim: SignalTrim,
     ): Customization = customization.copy(signals = customization.signals + (signal to Rules.trim(trim)))
 
+    fun setAutomations(
+        customization: Customization,
+        automations: Automations,
+    ): Customization = customization.copy(automations = Rules.automations(customization, automations))
+
     /**
      * Moves to the Style [to]. Its own parts (Extras, Macros, Reactions, Modulators) start from its
      * defaults. The Shared core starts from its defaults too, except where the person changed a value
-     * away from the old Style's ([from]) default: that change carries over, as do the Sound trims.
+     * away from the old Style's ([from]) default: that change carries over, as do the Sound trims and
+     * the Automations (less any sequence on an Extra or a Modulator the new Style lacks).
      */
     fun switchStyle(
         customization: Customization,
@@ -153,7 +160,12 @@ object Edits {
         val oldDefaults = Defaults.customization(from).shared
         val changed = customization.shared.filter { (property, value) -> oldDefaults[property] != value }
         val fresh = Defaults.customization(to)
-        return fresh.copy(shared = fresh.shared + changed, signals = customization.signals)
+        val automations = customization.automations
+        return fresh.copy(
+            shared = fresh.shared + changed,
+            signals = customization.signals,
+            automations = automations.copy(sequences = automations.sequences.filter { Rules.exists(fresh, it.target) }),
+        )
     }
 
     private fun linkable(

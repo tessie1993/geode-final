@@ -3,6 +3,7 @@ package dev.geode.feature.customization.core
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFact
@@ -12,6 +13,7 @@ import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.ModulatorShape
+import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
@@ -20,6 +22,8 @@ import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StylePool
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 import dev.geode.feature.customization.core.Fixtures.JULIA
@@ -87,6 +91,11 @@ class CustomizationReducerTest {
     private val handState = CustomizationState(withHand, undo = listOf(julia))
     private val handId = withHand.modulators.single().id
     private val playing = Edits.playModulator(withHand, handId, true)
+    private val palettes = Automations(palette = PaletteChanges())
+    private val switching = StyleSwitching(pool = StylePool.MINE, mine = listOf(JULIA, TUNNEL))
+    private val autoState = CustomizationState(Edits.setAutomations(julia, Automations(style = switching)), undo = listOf(julia))
+    private val autoSwitched = Edits.switchStyle(autoState.current, styles.manifestOf(JULIA), styles.manifestOf(TUNNEL))
+    private val stuckState = CustomizationState(Edits.setAutomations(julia, Automations(style = switching.copy(mine = listOf(JULIA)))))
 
     private val rows: List<Row> =
         edits("set shared", CustomizationCommand.SetShared(SharedProperty.SPEED, 2f)) { Edits.setShared(it, SharedProperty.SPEED, 2f) } +
@@ -106,7 +115,8 @@ class CustomizationReducerTest {
             } +
             edits("remove reaction", CustomizationCommand.RemoveReaction(ReactionId(1))) { Edits.removeReaction(it, ReactionId(1)) } +
             edits("add modulator", CustomizationCommand.AddModulator(lfo)) { Edits.addModulator(it, lfo) } +
-            edits("trim signal", CustomizationCommand.TrimSignal(SoundSignal.BASS, SignalTrim(gain = 2f))) {
+            edits("set automations", CustomizationCommand.SetAutomations(palettes)) { Edits.setAutomations(it, palettes) } +
+            edits("trim signal",CustomizationCommand.TrimSignal(SoundSignal.BASS, SignalTrim(gain = 2f))) {
                 Edits.trimSignal(it, SoundSignal.BASS, SignalTrim(gain = 2f))
             } +
             listOf(
@@ -211,6 +221,17 @@ class CustomizationReducerTest {
                     CustomizationEvent.PresetLoaded(PresetRules.capture("Tunnel", tunnel, PresetRules.ALL_PARTS - PresetPart.STYLE)),
                     Next(fresh),
                 ),
+                Row(
+                    "a Style switch that is due is live, not history, and keeps the Automations",
+                    autoState,
+                    CustomizationEvent.StyleDue,
+                    Next(
+                        autoState.copy(current = autoSwitched),
+                        listOf(publish(autoSwitched), Emit(CustomizationFact.StyleChanged(TUNNEL))),
+                    ),
+                ),
+                Row("a Style switch due with switching off", fresh, CustomizationEvent.StyleDue, Next(fresh)),
+                Row("a Style switch due with nowhere to go", stuckState, CustomizationEvent.StyleDue, Next(stuckState)),
                 Row(
                     "a failed piece of work is reported",
                     withUndo,

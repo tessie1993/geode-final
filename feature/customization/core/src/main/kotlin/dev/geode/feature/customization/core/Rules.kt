@@ -1,14 +1,19 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.Autopilot
+import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorShape
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
+import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.roundToInt
@@ -24,6 +29,12 @@ const val SWITCH_ON: Float = 0.5f
 
 /** The longest name a Macro may have. */
 const val MAX_MACRO_NAME: Int = 24
+
+/** The most bars an Automation may wait between moves. */
+const val MAX_AUTOMATION_BARS: Int = 64
+
+/** The most beats an Automation may wait between moves. */
+const val MAX_AUTOMATION_BEATS: Int = 16
 
 /** The rules every value in a Customization keeps: ranges, steps, switches and valid links. */
 object Rules {
@@ -103,10 +114,62 @@ object Rules {
             is ReactionSource.Generated -> customization.modulators.any { it.id == source.modulator }
         }
 
-    /** [customization] without the Reactions and Macro links whose source or target no longer exists. */
+    /**
+     * [automations] as [customization] can run them: waits of at least one bar or beat and at most
+     * [MAX_AUTOMATION_BARS] or [MAX_AUTOMATION_BEATS], a transition within its range, amounts in 0..1,
+     * Camera moves on Camera properties only, sequences with steps on targets that exist, autopilots on
+     * real Macros, and at most one of each per property, target or Macro.
+     */
+    fun automations(
+        customization: Customization,
+        automations: Automations,
+    ): Automations =
+        Automations(
+            style =
+                automations.style?.let {
+                    it.copy(
+                        cadence = cadence(it.cadence),
+                        mine = it.mine.distinct(),
+                        transition = it.transition.coerceIn(StyleSwitching.MIN_TRANSITION, StyleSwitching.MAX_TRANSITION),
+                    )
+                },
+            palette = automations.palette?.let { it.copy(cadence = cadence(it.cadence)) },
+            camera =
+                automations.camera
+                    .filter { it.property.group == SharedGroup.CAMERA }
+                    .distinctBy { it.property }
+                    .map { it.copy(amount = unit(it.amount), beats = it.beats.coerceIn(1, MAX_AUTOMATION_BEATS)) },
+            sequences =
+                automations.sequences
+                    .filter { it.steps.isNotEmpty() && exists(customization, it.target) }
+                    .distinctBy { it.target }
+                    .map { it.copy(steps = it.steps.map(::unit), beats = it.beats.coerceIn(1, MAX_AUTOMATION_BEATS)) },
+            autopilots =
+                automations.autopilots
+                    .filter { it.macro in 0 until MACRO_COUNT }
+                    .distinctBy { it.macro }
+                    .map {
+                        it.copy(
+                            width = if (it.width.isNaN()) 0f else it.width.coerceIn(0f, Autopilot.MAX_WIDTH),
+                            bars = it.bars.coerceIn(1, MAX_AUTOMATION_BARS),
+                        )
+                    },
+        )
+
+    private fun cadence(cadence: Cadence): Cadence =
+        when (cadence) {
+            Cadence.BigMoments -> cadence
+            is Cadence.EveryBars -> Cadence.EveryBars(cadence.bars.coerceIn(1, MAX_AUTOMATION_BARS))
+        }
+
+    /** [customization] without the Reactions, Macro links and sequences whose source or target no longer exists. */
     fun prune(customization: Customization): Customization =
         customization.copy(
             reactions = customization.reactions.filter { exists(customization, it.source) && exists(customization, it.target) },
             macros = customization.macros.map { macro -> macro.copy(links = macro.links.filter { exists(customization, it.target) }) },
+            automations =
+                customization.automations.copy(
+                    sequences = customization.automations.sequences.filter { exists(customization, it.target) },
+                ),
         )
 }
