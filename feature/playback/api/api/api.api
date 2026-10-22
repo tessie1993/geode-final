@@ -225,13 +225,15 @@ public final class dev/geode/feature/playback/api/PlaybackCommand$Pause : dev/ge
 }
 
 public final class dev/geode/feature/playback/api/PlaybackCommand$Play : dev/geode/feature/playback/api/PlaybackCommand {
-	public fun <init> (Ljava/util/List;I)V
-	public synthetic fun <init> (Ljava/util/List;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;IJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;IJLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component2 ()I
-	public final fun copy (Ljava/util/List;I)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
-	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$Play;Ljava/util/List;IILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
+	public final fun component3-CmsKos8 ()J
+	public final fun copy-2G6t5MY (Ljava/util/List;IJ)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
+	public static synthetic fun copy-2G6t5MY$default (Ldev/geode/feature/playback/api/PlaybackCommand$Play;Ljava/util/List;IJILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$Play;
 	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFrom-CmsKos8 ()J
 	public final fun getStartAt ()I
 	public final fun getTracks ()Ljava/util/List;
 	public fun hashCode ()I
