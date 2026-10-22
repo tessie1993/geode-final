@@ -11,7 +11,9 @@ import dev.geode.appui.AppUiCommand.Navigate
 import dev.geode.appui.AppUiCommand.OpenSearch
 import dev.geode.appui.AppUiCommand.OpenSettings
 import dev.geode.appui.AppUiCommand.OpenSheet
+import dev.geode.appui.AppUiCommand.Restore
 import dev.geode.appui.AppUiCommand.ShowVisualsTab
+import dev.geode.appui.AppUiCommand.Signal
 import dev.geode.appui.AppUiEvent.BannerTimedOut
 import dev.geode.appui.AppUiEvent.FailureReported
 import dev.geode.appui.AppUiState.Browsing
@@ -28,6 +30,7 @@ import dev.geode.appui.VisualsTab.MODULATORS_AND_AUTOMATION
 import dev.geode.appui.VisualsTab.STYLE
 import dev.geode.engine.types.Millis
 import dev.geode.kernel.CancelTimer
+import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
 import dev.geode.kernel.StartTimer
 import org.junit.Assert.assertEquals
@@ -192,6 +195,82 @@ class AppUiReducerTest {
             Row(player.copy(banner = Banner.Waiting(unreadable)), BannerTimedOut, Next(player.copy(banner = Banner.Waiting(unreadable)))),
             Row(player, BannerTimedOut, Next(player)),
         )
+
+    private val signals: List<Row> =
+        listOf(
+            // Front-end events go out as plain app signals, whatever is on screen, and change nothing.
+            row(home, Signal(AppSignal.Tapped(12f, 34f)), home, listOf(Emit(AppSignal.Tapped(12f, 34f)))),
+            row(player, Signal(AppSignal.TrackChanged), player, listOf(Emit(AppSignal.TrackChanged))),
+            row(fullScreenWithSheet, Signal(AppSignal.RenderDone), fullScreenWithSheet, listOf(Emit(AppSignal.RenderDone))),
+            row(searching, Signal(AppSignal.Favourited), searching, listOf(Emit(AppSignal.Favourited))),
+        )
+
+    private val restore: List<Row> =
+        listOf(
+            // What was open comes back; the banner is the live one, never a saved one.
+            row(
+                home.copy(banner = shownBanner),
+                Restore(SavedAppUi(VISUALS, CUSTOMIZE, fromPlayer, fullScreen = false, searching = true)),
+                Browsing(at(VISUALS, CUSTOMIZE, searching = true), fromPlayer, shownBanner),
+            ),
+            row(
+                player,
+                Restore(SavedAppUi(AppRoute.Settings, sheet = overFullScreen, fullScreen = true)),
+                FullScreen(at(AppRoute.Settings), overFullScreen),
+            ),
+            row(fullScreenWithSheet, Restore(SavedAppUi()), home),
+            row(settings, Restore(SavedAppUi(LIBRARY)), library),
+        )
+
+    @Test
+    fun `front-end events follow the table`() = check(signals)
+
+    @Test
+    fun `restoring follows the table`() = check(restore)
+
+    @Test
+    fun `what is saved is what is open, never the banner`() {
+        val open =
+            FullScreen(at(VISUALS, MODULATORS_AND_AUTOMATION, searching = true), overFullScreen, shownBanner)
+
+        assertEquals(SavedAppUi(VISUALS, MODULATORS_AND_AUTOMATION, overFullScreen, fullScreen = true, searching = true), open.saved())
+        assertEquals(SavedAppUi(), home.copy(banner = shownBanner).saved())
+        assertEquals(SavedAppUi(AppRoute.Settings), settings.saved())
+    }
+
+    @Test
+    fun `it is saved by name`() {
+        assertEquals(listOf("HOME", "STYLE", "", "false", "false"), SavedAppUi().names())
+        assertEquals(
+            listOf("SETTINGS", "CUSTOMIZE", "CUSTOMIZE:RECORDING", "true", "false"),
+            SavedAppUi(AppRoute.Settings, CUSTOMIZE, duringRecording, fullScreen = true).names(),
+        )
+        assertEquals(
+            listOf("STUDIO", "MODULATORS_AND_AUTOMATION", "CUSTOMIZE:PLAYER", "false", "true"),
+            SavedAppUi(STUDIO, MODULATORS_AND_AUTOMATION, fromPlayer, searching = true).names(),
+        )
+    }
+
+    @Test
+    fun `what was saved comes back by name`() {
+        val saved =
+            listOf(
+                SavedAppUi(),
+                SavedAppUi(AppRoute.Settings, CUSTOMIZE, duringRecording, fullScreen = true),
+                SavedAppUi(STUDIO, MODULATORS_AND_AUTOMATION, fromPlayer, searching = true),
+                SavedAppUi(PLAYER_TAB, sheet = overFullScreen, fullScreen = true, searching = true),
+            )
+
+        assertEquals(saved, saved.map { SavedAppUi.fromNames(it.names()) })
+    }
+
+    @Test
+    fun `an unknown or missing saved name falls back to Home with nothing open`() {
+        assertEquals(SavedAppUi(), SavedAppUi.fromNames(listOf("GONE", "NOPE", "CUSTOMIZE:NOPE", "yes", "TRUE")))
+        assertEquals(SavedAppUi(), SavedAppUi.fromNames(emptyList()))
+        assertEquals(SavedAppUi(LIBRARY), SavedAppUi.fromNames(listOf("LIBRARY", "STYLE", "PLAYER")))
+        assertEquals(SavedAppUi(VISUALS, CUSTOMIZE), SavedAppUi.fromNames(listOf("VISUALS", "CUSTOMIZE", "")))
+    }
 
     @Test
     fun `navigation follows the table`() = check(navigation)
