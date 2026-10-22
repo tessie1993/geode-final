@@ -171,9 +171,6 @@ fun AppRoot() {
                 onNext = viewModel::next,
             )
         }
-        // Someone who came here to listen does not get a render queue in their navigation bar.
-        // First run no longer asks, so everyone starts with everything and narrows it in Settings.
-        val showsStudio = gui.intent.showsStudio
         // Set by Settings > Help to replay the tour after it has already been seen; the automatic
         // first-run showing is a function of the stored prefs instead, so this stays false there.
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
@@ -186,8 +183,8 @@ fun AppRoot() {
         // not this minute.
         LaunchedEffect(offerTutorial) { if (offerTutorial) tutorialRunning = true }
         val navEntries =
+            // The bar always shows every place (owner decision, #17): there is no listen-only app.
             GeodeDestination.entries
-                .filter { it != GeodeDestination.STUDIO || showsStudio }
                 .map { NavEntry(it, CrystalNavItem(stringResource(it.labelRes), it.icon)) }
         val destinationContent: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             PlaybackNoticeBanner(viewModel)
@@ -303,14 +300,14 @@ fun AppRoot() {
                 FirstRunGate(
                     onDone = {
                         settingsViewModel.setGuiPrefs(gui.copy(setupDone = true))
-                        appState.navigateTo(gui.intent.landingDestination)
+                        appState.navigateTo(GeodeDestination.PLAYER)
                     },
                 )
             } else if (tutorialRunning) {
                 // Offered once setup is out of the way, so the tour walks a real app with a real
                 // library rather than a set of empty tabs.
                 TutorialOverlay(
-                    steps = TutorialStep.forNav(showsStudio),
+                    steps = TutorialStep.forNav(showsStudio = true),
                     dontShowAgain = !gui.tutorialOnFirstRun,
                     onDontShowAgainChange = { settingsViewModel.setGuiPrefs(gui.copy(tutorialOnFirstRun = !it)) },
                     onNavigate = appState::navigateTo,

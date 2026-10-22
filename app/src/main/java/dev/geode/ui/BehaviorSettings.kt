@@ -2,7 +2,6 @@ package dev.geode.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -12,48 +11,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.design.CrystalButton
-import dev.geode.design.CrystalSegmented
 import dev.geode.design.CrystalSlider
 
 @Composable
 internal fun BehaviorSettingsTab(viewModel: SettingsViewModel) {
     val gui by viewModel.guiPrefs.collectAsStateWithLifecycle()
     SettingsTabColumn {
-        item { SettingsGroup(stringResource(R.string.behavior_group_intent)) { IntentGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_touch)) { TouchGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_safety)) { VisualSafetyGroup(viewModel, gui) } }
         item { SettingsGroup(stringResource(R.string.behavior_group_wallpaper)) { LiveWallpaperGroup() } }
-    }
-}
-
-/** The first-run question, asked again. Changing it moves Studio in or out of the navigation. */
-@Composable
-private fun IntentGroup(
-    viewModel: SettingsViewModel,
-    gui: GuiPrefs,
-) {
-    Column {
-        Text(stringResource(R.string.settings_intent_title), style = MaterialTheme.typography.bodyMedium)
-        Text(
-            stringResource(R.string.settings_intent_body),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        CrystalSegmented(
-            options = UserIntent.entries.map { stringResource(it.labelRes) },
-            selected = UserIntent.entries.indexOf(gui.intent ?: UserIntent.BOTH),
-            onSelect = { viewModel.setGuiPrefs(gui.copy(intent = UserIntent.entries[it])) },
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Text(
-            stringResource((gui.intent ?: UserIntent.BOTH).detailRes),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

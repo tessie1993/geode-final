@@ -101,8 +101,6 @@ class OldScreenSettingsTest {
         assertEquals(true, gui.setupDone)
         assertEquals(false, gui.tutorialSeen)
         assertEquals(false, gui.tutorialOnFirstRun)
-        // The old "what do you use Geode for?" answer is gone: everyone sees everything.
-        assertEquals(UserIntent.BOTH, gui.intent)
     }
 
     @Test
