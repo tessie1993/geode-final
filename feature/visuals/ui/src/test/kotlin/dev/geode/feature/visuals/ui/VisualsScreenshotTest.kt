@@ -12,7 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** App UI screenshots of the Visuals tab and full-screen visual mode, taken from their previews (ADR-0003). */
+/** App UI screenshots of the Visuals tab, full-screen visual mode and the MilkDrop screen, taken from their previews (ADR-0003). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], application = Application::class)
@@ -50,6 +50,21 @@ class VisualsScreenshotTest {
     @Test
     @Config(qualifiers = "+night")
     fun fullScreenHidden() = capture("FullScreenVisual_hidden") { FullScreenHiddenPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun milkdrop() = capture("Milkdrop") { MilkdropPreview() }
+
+    @Test
+    fun milkdropLight() = capture("Milkdrop_light") { MilkdropLightPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun milkdropLoading() = capture("Milkdrop_loading") { MilkdropLoadingPreview() }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun milkdropImporting() = capture("Milkdrop_importing") { MilkdropImportingPreview() }
 
     private fun capture(
         name: String,

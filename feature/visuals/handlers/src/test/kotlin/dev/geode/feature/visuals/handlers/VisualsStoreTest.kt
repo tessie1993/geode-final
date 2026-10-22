@@ -39,7 +39,16 @@ class VisualsStoreTest {
     private val storage = FakeVisualsStorage(StyleLibrary(favourites = listOf(milk), recent = listOf(tunnel)))
     private val failures = mutableListOf<FeatureFailure>()
 
-    private fun store() = visualsStore(customization, storage, manifests, inPlaceRuntime(failures = failures))
+    private fun store() =
+        visualsStore(
+            customization,
+            storage,
+            manifests,
+            FakeMilkdropFolder(),
+            FakePickedFiles(emptyMap()),
+            emptyList(),
+            inPlaceRuntime(failures = failures),
+        )
 
     @Test
     fun `the store lists the Styles, follows Customization and reads the library`() {

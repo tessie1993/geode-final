@@ -11,6 +11,19 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **MilkDrop and texture import in the Visuals feature (#145, ADR-0003,
+  ADR-0005).** `MilkdropScreen` lists the curated MilkDrop presets (#93) and
+  the person's own together, by name, with the textures presets can sample,
+  and imports more of either through the system picker. Every picked file is
+  checked before it is written (a `.milk` file needs its `[preset00]` section,
+  an image must start the way its type does, and both have a size limit), is
+  never written over a built-in or an existing file, and lands whole or not at
+  all. A broken file is named in the import's report with the reason and
+  never stops the rest. The names files are kept under are the old
+  importers', so the engine finds them in the same `files/milk` folder. Built
+  alongside the old MilkDrop and Textures tabs; wired in at the switch-over
+  (#17).
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person

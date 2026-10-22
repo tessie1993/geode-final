@@ -409,7 +409,7 @@ private fun NameDialog(
 
 /** Frosted glass over the live Visual, opaque enough to carry text (ForestGlass.TEXT_OPACITY_MIN). */
 @Composable
-private fun Modifier.glass(): Modifier =
+internal fun Modifier.glass(): Modifier =
     clip(ForestShapes.Card).background(MaterialTheme.colorScheme.surface.copy(alpha = ForestGlass.TEXT_OPACITY_MIN))
 
 /** The name a family is listed under. */

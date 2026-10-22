@@ -80,6 +80,28 @@ internal fun FullScreenControlsPreview() =
 internal fun FullScreenHiddenPreview() =
     VisualsPreview(dark = true) { FullScreenVisualScreen(PreviewStates.ready.toFullScreenModel(controlsShown = false), onAction = {}) }
 
+@Composable
+internal fun MilkdropPreviewOf(
+    state: VisualsState,
+    dark: Boolean = true,
+) = VisualsPreview(dark) { MilkdropScreen(state.toMilkdropModel(), onAction = {}) }
+
+@Preview(name = "MilkDrop, after an import", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun MilkdropPreview() = MilkdropPreviewOf(PreviewStates.milkdrop)
+
+@Preview(name = "MilkDrop, light")
+@Composable
+internal fun MilkdropLightPreview() = MilkdropPreviewOf(PreviewStates.milkdrop, dark = false)
+
+@Preview(name = "MilkDrop, loading", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun MilkdropLoadingPreview() = MilkdropPreviewOf(PreviewStates.milkdropLoading)
+
+@Preview(name = "MilkDrop, importing", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun MilkdropImportingPreview() = MilkdropPreviewOf(PreviewStates.milkdropImporting)
+
 private const val STAND_IN_DEEP = 0xFF0B2A3C
 private const val STAND_IN_GLOW = 0xFF2E7D6B
 private const val STAND_IN_WARM = 0xFFB0703A

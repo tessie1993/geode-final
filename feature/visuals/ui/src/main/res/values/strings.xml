@@ -42,4 +42,39 @@
     <string name="visuals_previous_style">Previous Style</string>
     <string name="visuals_next_style">Next Style</string>
     <string name="visuals_show_controls">Show or hide the controls</string>
+
+    <!-- MilkDrop presets and textures, and importing them (#145). -->
+    <string name="milkdrop_title">MilkDrop</string>
+    <string name="milkdrop_subtitle">Presets for the MilkDrop Style, and the images they use</string>
+    <string name="milkdrop_import_presets">Import presets</string>
+    <string name="milkdrop_import_textures">Import textures</string>
+    <string name="milkdrop_loading">Finding your MilkDrop presets…</string>
+    <string name="milkdrop_importing">Importing…</string>
+    <string name="milkdrop_presets">Presets</string>
+    <string name="milkdrop_textures">Textures</string>
+    <string name="milkdrop_by">by %1$s</string>
+    <string name="milkdrop_yours">Yours</string>
+    <string name="milkdrop_no_textures">No textures yet. Import the images a preset asks for.</string>
+    <plurals name="milkdrop_imported_presets">
+        <item quantity="one">Imported %1$d preset</item>
+        <item quantity="other">Imported %1$d presets</item>
+    </plurals>
+    <plurals name="milkdrop_imported_textures">
+        <item quantity="one">Imported %1$d texture</item>
+        <item quantity="other">Imported %1$d textures</item>
+    </plurals>
+    <string name="milkdrop_nothing_imported">Nothing was imported</string>
+    <plurals name="milkdrop_broken">
+        <item quantity="one">%1$d file was left out. Everything else is as it was.</item>
+        <item quantity="other">%1$d files were left out. Everything else is as it was.</item>
+    </plurals>
+    <string name="milkdrop_dismiss">OK</string>
+    <string name="milkdrop_problem_not_a_preset">Not a MilkDrop preset</string>
+    <string name="milkdrop_problem_not_an_image">Not the image its name says</string>
+    <string name="milkdrop_problem_wrong_type">Use PNG, JPEG, BMP, TGA or DDS</string>
+    <string name="milkdrop_problem_too_large">Too large</string>
+    <string name="milkdrop_problem_empty">Empty</string>
+    <string name="milkdrop_problem_unreadable">Could not be read</string>
+    <string name="milkdrop_problem_already_there">One by this name is already here</string>
+    <string name="milkdrop_problem_not_saved">Could not be saved</string>
 </resources>

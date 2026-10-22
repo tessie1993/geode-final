@@ -1,8 +1,14 @@
 package dev.geode.feature.visuals.ui
 
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.visuals.api.BrokenFile
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
+import dev.geode.feature.visuals.api.ImportProblem
+import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPreset
+import dev.geode.feature.visuals.api.MilkdropShelf
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
@@ -36,4 +42,35 @@ internal object PreviewStates {
     val loading = ready.copy(current = null, library = null)
 
     val calmFolder: FolderId = calm.id
+
+    private val shelf =
+        MilkdropShelf(
+            presets =
+                listOf(
+                    MilkdropPreset("Geiss - Artifact Plasma.milk", "Artifact Plasma", "Geiss", builtIn = true),
+                    MilkdropPreset("aurora_veil.milk", "Aurora Veil", "Geode", builtIn = true),
+                    MilkdropPreset("Beach at dusk.milk", "Beach at dusk", null, builtIn = false),
+                    MilkdropPreset("martin - deep blue.milk", "Deep Blue", "martin", builtIn = true),
+                ),
+            textures = listOf("clouds.png", "worms.jpg"),
+            lastImport =
+                ImportReport(
+                    MilkdropKind.PRESETS,
+                    imported = listOf("Beach at dusk"),
+                    broken =
+                        listOf(
+                            BrokenFile("shopping list.milk", ImportProblem.NOT_A_PRESET),
+                            BrokenFile("aurora_veil.milk", ImportProblem.ALREADY_THERE),
+                        ),
+                ),
+        )
+
+    /** MilkDrop listed, just after an import that left two files out. */
+    val milkdrop = ready.copy(milkdrop = shelf)
+
+    /** MilkDrop before its folder has been listed. */
+    val milkdropLoading = ready
+
+    /** An import running, with no textures yet. */
+    val milkdropImporting = ready.copy(milkdrop = shelf.copy(textures = emptyList(), importing = true, lastImport = null))
 }
