@@ -241,6 +241,17 @@ dependencies {
     // The architecture test of ADR-0003: feature cores stay plain Kotlin, features use each other
     // only through their interface, and the feature graph has no cycles.
     testImplementation(libs.konsist)
+    // The Visuals journey test (#43) builds the real app-scoped feature stores the way :app will at
+    // the switch-over (#17), and moves between the real routes. Test-only: nothing here is wired yet.
+    testImplementation(project(":feature:playback:api"))
+    testImplementation(project(":feature:playback:handlers"))
+    testImplementation(project(":feature:customization:api"))
+    testImplementation(project(":feature:customization:core"))
+    testImplementation(project(":feature:visuals:api"))
+    testImplementation(project(":feature:visuals:handlers"))
+    testImplementation(project(":feature:visuals:ui"))
+    testImplementation(testFixtures(project(":arch:kernel")))
+    testImplementation(testFixtures(project(":arch:audio")))
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

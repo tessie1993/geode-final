@@ -11,6 +11,19 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The Visuals tab and full-screen visual mode as a feature (#43,
+  ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
+  Styles by family with Favourites, Recent, search and folders the person
+  makes, which nest; choosing a Style asks Customization for it, and the
+  tab follows whatever Customization shows. The library is kept in the
+  feature's own DataStore in a versioned text format. `VisualsRoute` and
+  `FullScreenVisualRoute` draw over the one live Visual with no background of
+  their own; full-screen mode hides the system bars and keeps the screen
+  awake when Keep screen on asks. A journey test over the real Playback,
+  Customization and Visuals stores shows the music and the Visual carry on
+  through full-screen mode and tab switches. Built alongside the old Visuals
+  hub; wired in at the switch-over (#17).
+
 - **The native bridge: one snapshot schema, a lock-free hand-off and typed
   statuses (#53, ADR-0005).** `core/bridge/schema/native_bridge.json`
   generates the Customization snapshot and the bridge's status codes for C,
