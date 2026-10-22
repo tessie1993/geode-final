@@ -23,7 +23,7 @@ Each library exports only `core/<lib>/include` (`target_include_directories(... 
 | `geode_analysis` | `core/analysis` | FFT, bands, onsets, tempo, beats, key, structure, the feature frame | `api_types` / — |
 | `geode_audio` | `core/audio` | `dsp/` (equalizer, crossfeed, limiter, and `geode_dsp_*`, the DSP part of the C ABI, which the mixer itself calls) and `player/` (decode, resample, mixer, Oboe output with its self-tuning buffer) | `api_types` / `util` |
 | `geode_library` | `core/library` | TagLib tag reading and writing | — |
-| `geode_viz` | `core/viz` | The Visual: renderer, frame graph, parameter model, modulators, scenes | `api_types`, `render` / `analysis`, `util` |
+| `geode_viz` | `core/viz` | The Visual: renderer, frame graph, parameter model, Reactions and Modulators (`ReactionGraph`), the Shared core effects, the No-flash limiter, scenes | `api_types`, `render` / `analysis`, `util` |
 | `geode_api` | `core/api` | The rest of the C ABI implementation (analysis, Visual, tags, player, Customization snapshots) | `api_types` / `analysis`, `audio`, `bridge`, `library`, `viz`, `util` |
 | `geode_core` (interface) | — | What `libgeode.so` links: all of the above | everything |
 
