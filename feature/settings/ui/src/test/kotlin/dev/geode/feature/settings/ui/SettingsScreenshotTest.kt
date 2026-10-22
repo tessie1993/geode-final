@@ -12,7 +12,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** App UI screenshots of every Settings section, taken from their previews (ADR-0003). */
+/**
+ * App UI screenshots of every Settings section, taken from their previews (ADR-0003), in Water, and of
+ * the Theme section in each other first-wave Element.
+ */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], application = Application::class, qualifiers = "w411dp-h891dp")
@@ -22,6 +25,15 @@ class SettingsScreenshotTest {
 
     @Test
     fun theme() = capture("theme") { SettingsThemePreview() }
+
+    @Test
+    fun themeWood() = capture("theme_Wood") { SettingsThemeWoodPreview() }
+
+    @Test
+    fun themeStone() = capture("theme_Stone") { SettingsThemeStonePreview() }
+
+    @Test
+    fun themeBioluminescence() = capture("theme_Bioluminescence") { SettingsThemeBioluminescencePreview() }
 
     @Test
     fun application() = capture("application") { SettingsApplicationPreview() }

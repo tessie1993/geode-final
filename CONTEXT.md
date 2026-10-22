@@ -14,6 +14,14 @@ _Avoid_: visuals (for the App UI), graphics, animation, visualizer
 The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the theme. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
 _Avoid_: visuals, visual design, interface (an architecture term)
 
+**Element**:
+One selectable skin for the App UI, named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
+_Avoid_: theme, style (a Style is a look for the Visual), skin pack, Theme pack
+
+**Home**:
+The App UI's first place: the Element's scene, with navigation objects into Player, Library, Visuals, Studio and Settings. It is first on the bar (Home, Player, Library, Visuals, Studio), and Settings opens only from it.
+_Avoid_: start screen, dashboard, launcher
+
 **Style**:
 One selectable look for the Visual, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
 _Avoid_: Scene (an engine term), effect, visualizer

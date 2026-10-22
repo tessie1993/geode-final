@@ -10,6 +10,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -57,6 +58,8 @@ class SettingsRulesTest {
     private val lookRows: List<Row> =
         listOf(
             Row(LookCommand.SetAccentIntensity(1.2f), defaults.copy(look = look.copy(accentIntensity = 1.2f))),
+            Row(LookCommand.SetElement(Element.STONE), defaults.copy(look = look.copy(element = Element.STONE))),
+            Row(LookCommand.SetElement(Element.WATER), defaults),
             Row(LookCommand.SetAccentIntensity(0.1f), defaults.copy(look = look.copy(accentIntensity = 0.5f))),
             Row(LookCommand.SetAccentIntensity(9f), defaults.copy(look = look.copy(accentIntensity = 1.5f))),
             Row(LookCommand.SetBackgroundDim(0.3f), defaults.copy(look = look.copy(backgroundDim = 0.3f))),

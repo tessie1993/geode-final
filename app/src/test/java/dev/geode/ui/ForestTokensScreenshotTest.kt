@@ -22,7 +22,6 @@ import dev.geode.design.forest.ForestMode
 import dev.geode.design.forest.ForestShapes
 import dev.geode.design.forest.ForestSpacing
 import dev.geode.design.forest.ForestTheme
-import dev.geode.design.forest.ForestThemeId
 import dev.geode.design.forest.LocalForestColors
 import org.junit.Rule
 import org.junit.Test
@@ -32,9 +31,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * A specimen of the water, forest and stone tokens (issue #70) in each theme and mode: the base,
- * a pebble of text glass, Fraunces over Figtree, and every text colour. No screen uses the tokens
- * yet; this is where their look is reviewed.
+ * A specimen of the forest tokens (issue #70) in each mode: the base, a pebble of text glass,
+ * Fraunces over Figtree, and every text colour. The forest themes became Elements (#103), whose
+ * screenshots are Home's and Settings' (feature/home/ui, feature/settings/ui).
  *
  * The plain Application keeps Robolectric away from GeodeApp, which loads the native engine.
  */
@@ -46,29 +45,14 @@ class ForestTokensScreenshotTest {
     val compose = createComposeRule()
 
     @Test
-    fun deepForestDark() = capture(ForestThemeId.DeepForest, ForestMode.Dark)
+    fun deepForestDark() = capture(ForestMode.Dark)
 
     @Test
-    fun deepForestLight() = capture(ForestThemeId.DeepForest, ForestMode.Light)
+    fun deepForestLight() = capture(ForestMode.Light)
 
-    @Test
-    fun nightForestDark() = capture(ForestThemeId.NightForest, ForestMode.Dark)
-
-    @Test
-    fun nightForestLight() = capture(ForestThemeId.NightForest, ForestMode.Light)
-
-    @Test
-    fun earthLichenDark() = capture(ForestThemeId.EarthLichen, ForestMode.Dark)
-
-    @Test
-    fun earthLichenLight() = capture(ForestThemeId.EarthLichen, ForestMode.Light)
-
-    private fun capture(
-        theme: ForestThemeId,
-        mode: ForestMode,
-    ) {
+    private fun capture(mode: ForestMode) {
         compose.setContent {
-            ForestTheme(theme, mode) {
+            ForestTheme(mode) {
                 val colors = LocalForestColors.current
                 val type = MaterialTheme.typography
                 Box(Modifier.width(SPECIMEN_WIDTH).background(colors.base).padding(ForestSpacing.ExtraLarge)) {
@@ -101,7 +85,7 @@ class ForestTokensScreenshotTest {
                 }
             }
         }
-        compose.onRoot().captureRoboImage("src/test/screenshots/ForestTokens_${theme.name}_${mode.name}.png")
+        compose.onRoot().captureRoboImage("src/test/screenshots/ForestTokens_DeepForest_${mode.name}.png")
     }
 
     private companion object {

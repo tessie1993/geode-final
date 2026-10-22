@@ -17,6 +17,12 @@ internal object SettingsKeys {
     const val CURRENT_VERSION = 1
 
     // Look (geode-prefs).
+
+    /**
+     * New with the Elements (#103), so in no old file. Stored by name; the forest theme ids an earlier
+     * design used read as the matching Element ([SettingsCodec]).
+     */
+    const val ELEMENT = "gui_element"
     const val ACCENT_INTENSITY = "gui_accent_intensity"
     const val BACKGROUND_DIM = "gui_background_dim"
     const val FONT_COLOR = "gui_font_color"

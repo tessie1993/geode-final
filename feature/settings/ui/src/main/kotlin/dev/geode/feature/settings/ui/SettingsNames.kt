@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
@@ -13,6 +14,17 @@ import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
 
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
+
+@Composable
+internal fun elementName(element: Element): String =
+    stringResource(
+        when (element) {
+            Element.WATER -> R.string.look_element_water
+            Element.WOOD -> R.string.look_element_wood
+            Element.STONE -> R.string.look_element_stone
+            Element.BIOLUMINESCENCE -> R.string.look_element_bioluminescence
+        },
+    )
 
 @Composable
 internal fun positionName(position: PlayerPosition): String =

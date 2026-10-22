@@ -11,6 +11,22 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Elements, the Home tab and the Element-styled bar (#103).** The App UI's
+  forest themes are replaced by four Elements: Water (the default), Wood,
+  Stone and Bioluminescence, dark only. Settings > Theme gains an Element
+  picker; the choice is stored under `gui_element` by name, a forest theme id
+  reads as the Element that replaced it (Deep forest as Wood, Night forest as
+  Bioluminescence, Earth + lichen as Stone) and anything else as Water. Each
+  Element is one typed token set in `:design` (`ElementTokens`: colours, Space
+  Grotesk and Inter, organic shapes, motion timings and art slots), and
+  `ElementTheme` applies it to everything beneath it at once. Every Element's
+  text keeps WCAG AA on every ground. A new Home feature (`:feature:home`)
+  holds the App UI's places, a placeholder Home tab with the Settings shortcut,
+  and the bar: Home, Player, Library, Visuals, Studio, in the same places with
+  the same labels in every Element, each at least 48 dp. Until the asset sets
+  land, everything is drawn in flat token colours. Built alongside the old
+  shell and wired in at the switch-over (#17). Space Grotesk and Inter are
+  bundled under the SIL OFL.
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
   from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the

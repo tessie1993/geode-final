@@ -90,3 +90,10 @@ include(
     ":feature:diagnostics:handlers",
     ":feature:diagnostics:ui",
 )
+
+// Home (#103): the Home tab, the App UI's places and the Element-styled bar. Screens only for now
+// (a placeholder until its Hero scene, #110), so just :api and :ui. Not yet wired into :app (ADR-0003).
+include(
+    ":feature:home:api",
+    ":feature:home:ui",
+)
