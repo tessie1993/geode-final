@@ -243,7 +243,9 @@ jobs:
   native-mutation:
     name: C++ mutation tests ${{ matrix.library }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # Every mutant runs the whole native suite (about 15 s on this runner, four at a time); the
+    # Visual's library has the most mutants and outgrew an hour.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
