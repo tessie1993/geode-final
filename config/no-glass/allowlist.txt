@@ -12,15 +12,3 @@ design/src/main/java/dev/geode/design/theme/ThemePack.kt refractionOverlay
 design/src/main/java/dev/geode/design/theme/ThemePackCatalog.kt refractionOverlay
 design/src/main/java/dev/geode/design/theme/ThemePackCatalog.kt tp_lapis_lazuli_refraction_overlay
 design/src/main/res/drawable-nodpi/tp_lapis_lazuli_refraction_overlay.webp tp_lapis_lazuli_refraction_overlay
-
-# The forest themes' frosted stone glass tokens (no screen draws them yet). Elements replace the
-# forest themes (#102), so these go when the Element tokens land, #103.
-design/src/main/java/dev/geode/design/forest/ForestColors.kt glass
-design/src/main/java/dev/geode/design/forest/ForestContrastRules.kt glass
-design/src/main/java/dev/geode/design/forest/ForestContrastRules.kt glassOpacity
-design/src/main/java/dev/geode/design/forest/ForestContrastRules.kt ForestGlass
-design/src/main/java/dev/geode/design/forest/ForestGlass.kt ForestGlass
-design/src/main/java/dev/geode/design/forest/ForestGlass.kt textGlass
-design/src/main/java/dev/geode/design/forest/ForestGlass.kt glass
-design/src/main/java/dev/geode/design/forest/ForestPalettes.kt glass
-design/src/main/java/dev/geode/design/forest/ForestTheme.kt glass

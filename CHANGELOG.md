@@ -17,9 +17,9 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   glassmorphism libraries (Haze and the like) and anything named glass,
   frosted or refraction in `:design`, the features' `:ui` and `app/src/main`;
   the Visual is not scanned, and pre-blurred art is allowed. A self-test runs
-  before it. Legacy glass (the Lapis Lazuli refraction overlay, #17, and the
-  forest glass tokens, #103) sits in `config/no-glass/allowlist.txt`, which
-  may only shrink. `glassScrim` is now `bottomScrim` (it was always a plain
+  before it. The Lapis Lazuli refraction overlay (#17) sits in
+  `config/no-glass/allowlist.txt`, which may only shrink. The forest glass
+  tokens are not allowlisted: the check fails until they are removed. `glassScrim` is now `bottomScrim` (it was always a plain
   gradient).
 
 - **The native bridge: one snapshot schema, a lock-free hand-off and typed
