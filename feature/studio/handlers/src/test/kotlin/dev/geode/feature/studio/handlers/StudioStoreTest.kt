@@ -165,17 +165,18 @@ class StudioStoreTest {
     }
 
     @Test
-    fun `Delete N videos too, yes, deletes the files with the Project`() {
-        val (studio, trip) = projectWithTake()
+    fun `Delete N videos too, yes, deletes the files with the Project`() =
+        runTest {
+            val (studio, trip) = projectWithTake()
 
-        studio.send(StudioCommand.DeleteProject(trip, VideosOnDelete.Delete))
+            studio.send(StudioCommand.DeleteProject(trip, VideosOnDelete.Delete))
 
-        assertEquals(listOf(take.file), files.deleted)
-        assertTrue(storage.projectsById.isEmpty())
-        assertTrue(storage.videosById.isEmpty())
-        assertEquals(null, storage.defaultProject())
-        assertTrue(failures.isEmpty())
-    }
+            assertEquals(listOf(take.file), files.deleted)
+            assertTrue(storage.projectsById.isEmpty())
+            assertTrue(storage.videosById.isEmpty())
+            assertEquals(null, storage.defaultProject())
+            assertTrue(failures.isEmpty())
+        }
 
     @Test
     fun `Delete N videos too, no, moves them and touches no file`() {

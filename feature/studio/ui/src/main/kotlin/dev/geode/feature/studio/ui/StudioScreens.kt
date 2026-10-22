@@ -46,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
@@ -55,19 +54,6 @@ import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.api.VideosOnDelete
-
-/** Spacing and sizes of the Studio screens. */
-internal object StudioDimens {
-    val padding = 16.dp
-    val gap = 8.dp
-    val thumbnailWidth = 96.dp
-
-    /** Thumbnails are drawn 16:9 in lists. */
-    const val THUMBNAIL_RATIO = 16f / 9f
-
-    /** Text beside a control takes the room the control leaves. */
-    const val FILL = 1f
-}
 
 /** What draws a video's thumbnail; the route loads real ones, previews draw [ThumbnailPlaceholder]. */
 typealias Thumbnail = @Composable (video: Video, modifier: Modifier) -> Unit

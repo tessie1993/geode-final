@@ -198,7 +198,7 @@ class SettingsCodecTest {
 
     @Test
     fun `the preset folder is kept in its own key, apart from the preset mirror`() {
-        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets")
+        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets") + ("video_folder_uri" to null)
 
         val values = SettingsCodec.decode(stored)
 
