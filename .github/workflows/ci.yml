@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug :feature:customization:ui:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug :feature:visuals:handlers:lintDebug :feature:visuals:ui:lintDebug :feature:customization:ui:lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -133,7 +133,7 @@ jobs:
       # The JVM modules (audio-core, :arch:*, and every feature's :api and :core) run their tests
       # under `test`, not `testDebugUnitTest`.
       - name: Unit tests (every module)
-        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:library:api:test :feature:library:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test testDebugUnitTest --continue --stacktrace --no-daemon
+        run: ./gradlew :engine:audio-core:test :arch:kernel:test :arch:audio:test :feature:capture:api:test :feature:capture:core:test :feature:playback:api:test :feature:playback:core:test :feature:settings:api:test :feature:settings:core:test :feature:customization:api:test :feature:customization:core:test :feature:library:api:test :feature:library:core:test :feature:diagnostics:api:test :feature:diagnostics:core:test :feature:visuals:api:test :feature:visuals:core:test testDebugUnitTest --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -211,6 +211,10 @@ jobs:
             task: ":feature:diagnostics:core:pitest"
             dir: feature/diagnostics/core
             name: feature-diagnostics-core
+          - module: ":feature:visuals:core"
+            task: ":feature:visuals:core:pitest"
+            dir: feature/visuals/core
+            name: visuals-core
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -233,6 +237,76 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # Mull over the host GoogleTest suite, one pure native library per job (docs/ci.md, "C++ mutation
+  # tests"). Mull's compiler plugin builds every mutant into the test binary; mull-runner switches them
+  # on one at a time and runs the whole suite against each.
+  native-mutation:
+    name: C++ mutation tests ${{ matrix.library }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - library: geode_util
+            dir: core/util
+          - library: geode_audio
+            dir: core/audio
+          - library: geode_analysis
+            dir: core/analysis
+          - library: geode_viz
+            dir: core/viz
+    env:
+      # Mull is built per LLVM major; 18 is the runner's clang. Pinned to an exact package and its hash.
+      LLVM_MAJOR: "18"
+      MULL_VERSION: "0.34.1"
+      MULL_DEB: Mull-18-0.34.1-LLVM-18.1.3-ubuntu-amd64-24.04.deb
+      MULL_DEB_SHA256: 983ea9c84ecab621414d5442a66c1a1ce4127491b79d42fd5e2fd6fe01d02699
+      # Read by the compiler plugin while building and by mull-runner.
+      MULL_CONFIG: ${{ github.workspace }}/config/mutation/mull.yml
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out kissfft
+        run: git submodule update --init --depth 1 third_party/kissfft
+      - name: Install Mull
+        run: |
+          set -euo pipefail
+          deb="$RUNNER_TEMP/$MULL_DEB"
+          curl -sSfL -o "$deb" \
+            "https://dl.cloudsmith.io/public/mull-project/mull-stable/deb/ubuntu/pool/noble/main/M/Mu/mull-${LLVM_MAJOR}_${MULL_VERSION}/$MULL_DEB"
+          echo "$MULL_DEB_SHA256  $deb" | sha256sum --check --strict
+          sudo apt-get update -q
+          sudo apt-get install -y -q "$deb"
+          "mull-runner-$LLVM_MAJOR" --version
+      - name: Configure (${{ matrix.library }} mutated)
+        env:
+          CC: clang-${{ env.LLVM_MAJOR }}
+          CXX: clang++-${{ env.LLVM_MAJOR }}
+        run: |
+          cmake -S core/host -B build-mutation -DCMAKE_BUILD_TYPE=Debug \
+            -DGEODE_MUTATE=${{ matrix.library }} -DGEODE_MULL_PLUGIN=/usr/lib/mull-ir-frontend-$LLVM_MAJOR
+      - name: Build
+        run: cmake --build build-mutation --parallel --target geode_core_tests
+      # Every mutant runs (the build has no coverage filter); one no test reaches survives.
+      # mull-runner's own threshold is off: the gate below decides.
+      - name: Run every mutant
+        run: |
+          "mull-runner-$LLVM_MAJOR" --include-not-covered --allow-surviving \
+            --reporters Elements --report-dir mutation-report --report-name ${{ matrix.library }} \
+            build-mutation/geode_core_tests
+      - name: Mutation score gate
+        run: |
+          python3 tools/ci/native_mutation_gate.py ${{ matrix.library }} \
+            mutation-report/${{ matrix.library }}.json ${{ matrix.dir }} config/mutation/native-thresholds.properties
+      - name: Upload mutation report
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-mutation-${{ matrix.library }}-${{ github.run_number }}
+          path: mutation-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
   screenshots:
     name: App UI screenshots
     runs-on: ubuntu-latest
@@ -241,9 +315,9 @@ jobs:
       contents: write
     # Every module that takes App UI screenshots: :app and each feature's :ui (geode.screenshots).
     env:
-      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/customization/ui/src/test/screenshots
-      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug"
-      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug"
+      SCREENSHOT_DIRS: app/src/test/screenshots feature/capture/ui/src/test/screenshots feature/playback/ui/src/test/screenshots feature/settings/ui/src/test/screenshots feature/library/ui/src/test/screenshots feature/diagnostics/ui/src/test/screenshots feature/visuals/ui/src/test/screenshots feature/customization/ui/src/test/screenshots
+      SCREENSHOT_MODULES_VERIFY: ":app:verifyRoborazziDebug :feature:capture:ui:verifyRoborazziDebug :feature:playback:ui:verifyRoborazziDebug :feature:settings:ui:verifyRoborazziDebug :feature:library:ui:verifyRoborazziDebug :feature:diagnostics:ui:verifyRoborazziDebug :feature:visuals:ui:verifyRoborazziDebug :feature:customization:ui:verifyRoborazziDebug"
+      SCREENSHOT_MODULES_RECORD: ":app:recordRoborazziDebug :feature:capture:ui:recordRoborazziDebug :feature:playback:ui:recordRoborazziDebug :feature:settings:ui:recordRoborazziDebug :feature:library:ui:recordRoborazziDebug :feature:diagnostics:ui:recordRoborazziDebug :feature:visuals:ui:recordRoborazziDebug :feature:customization:ui:recordRoborazziDebug"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -399,6 +473,7 @@ jobs:
           node tools/glslcheck/check.mjs --all --size 96 --time 12.5 --out build-frames/styles
           node tools/glslcheck/check.mjs --fluid-display --size 96 --out build-frames/fluid
           node tools/glslcheck/check.mjs --all --resize --size 96 --time 12.5 --out build-frames/resize
+          node tools/glslcheck/check.mjs --effects --size 96 --out build-frames/effects
       - name: Record or verify
         id: mode
         run: |
@@ -413,12 +488,13 @@ jobs:
           python3 tools/ci/compare_frames.py tools/glslcheck/goldens/styles build-frames/styles
           python3 tools/ci/compare_frames.py tools/glslcheck/goldens/fluid build-frames/fluid
           python3 tools/ci/compare_frames.py tools/glslcheck/goldens/resize build-frames/resize
+          python3 tools/ci/compare_frames.py tools/glslcheck/goldens/effects build-frames/effects
       - name: Record goldens
         if: steps.mode.outputs.record == 'true' && github.event_name == 'pull_request'
         run: |
           rm -rf tools/glslcheck/goldens
           mkdir -p tools/glslcheck/goldens
-          cp -r build-frames/styles build-frames/fluid build-frames/resize tools/glslcheck/goldens/
+          cp -r build-frames/styles build-frames/fluid build-frames/resize build-frames/effects tools/glslcheck/goldens/
           tools/ci/commit_goldens.sh "${{ github.head_ref }}" "Record Visual golden frames" tools/glslcheck/goldens
       - name: Upload rendered frames
         if: failure()
