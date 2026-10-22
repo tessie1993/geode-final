@@ -9,6 +9,7 @@ import dev.geode.feature.customization.api.ValueKind
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
+import java.net.URL
 
 /**
  * The engine evaluates Reactions and Modulators in C++ (ADR-0002) from its own copy of the model's
@@ -25,8 +26,10 @@ class NativeCustomizationKonsistTest {
     private val starts: List<File> =
         listOf(
             File(System.getProperty("user.dir")),
-            File(javaClass.protectionDomain.codeSource.location.toURI()),
+            File(compiledClassLocation().toURI()),
         )
+
+    private fun compiledClassLocation(): URL = javaClass.protectionDomain.codeSource.location
 
     private val root: File =
         starts

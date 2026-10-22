@@ -157,7 +157,7 @@ private:
     std::vector<double> times_;
 };
 
-struct Run {
+struct LoopRun {
     // The most transitions any area made in any one second.
     int mostPerSecond = 0;
     // The most the limiter itself counted at any frame.
@@ -166,13 +166,13 @@ struct Run {
 
 // Plays the plan for kSeconds at `fps` with a hit strobing at 10 Hz, and counts what is shown:
 // the candidate frame as it is, or what the limiter lets through of it.
-Run play(const CustomizationPlan& plan, int fps, bool limited) {
+LoopRun play(const CustomizationPlan& plan, int fps, bool limited) {
     ReactionGraph graph;
     FlashLimiter limiter;
     std::array<IndependentCounter, noflash::kAreaCount> counters{};
     LumaGrid shown;
     bool first = true;
-    Run run;
+    LoopRun run;
     const float dt = 1.0f / static_cast<float>(fps);
     const int frames = static_cast<int>(kSeconds * fps);
     for (int frame = 0; frame < frames; ++frame) {
@@ -205,7 +205,7 @@ TEST(NoFlashLoop, TheStrobeReallyFlashesWithoutTheLimiter) {
 }
 
 TEST(NoFlashLoop, TheWorstCaseLoopNeverBreaksTheBrightnessLimitLive) {
-    const Run run = play(worstCase(), 60, true);
+    const LoopRun run = play(worstCase(), 60, true);
     EXPECT_LE(run.mostPerSecond, kMaxTransitionsPerSecond);
     EXPECT_LE(run.limiterMost, kMaxTransitionsPerSecond);
 }
@@ -213,7 +213,7 @@ TEST(NoFlashLoop, TheWorstCaseLoopNeverBreaksTheBrightnessLimitLive) {
 TEST(NoFlashLoop, TheWorstCaseLoopNeverBreaksTheBrightnessLimitInARender) {
     // A Render runs at its own frame rate; the limit holds at each of them.
     for (const int fps : {24, 30, 120}) {
-        const Run run = play(worstCase(), fps, true);
+        const LoopRun run = play(worstCase(), fps, true);
         EXPECT_LE(run.mostPerSecond, kMaxTransitionsPerSecond) << fps;
         EXPECT_LE(run.limiterMost, kMaxTransitionsPerSecond) << fps;
     }
