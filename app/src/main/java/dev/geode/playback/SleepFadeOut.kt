@@ -48,6 +48,5 @@ object SleepFadeOut {
     /** How long from now, with [remaining] left on the timer, the fade starts. */
     fun fadeStartsIn(remaining: Millis): Millis = (remaining - FADE).coerceAtLeast(Millis.ZERO)
 
-    private fun wantsToPlay(playback: Playback): Boolean =
-        playback.state.value.player.meantToPlay
+    private fun wantsToPlay(playback: Playback): Boolean = playback.state.value.player.meantToPlay
 }

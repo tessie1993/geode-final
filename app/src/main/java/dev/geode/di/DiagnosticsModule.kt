@@ -45,7 +45,15 @@ object DiagnosticsModule {
             DiagnosticsHandlers(
                 system = AndroidSystemFacts(application),
                 log = LogSource { RingLog.dump().lines() },
-                settings = SettingsSource { settingsOf(settings.state.filterIsInstance<SettingsState.Ready>().first().values) },
+                settings =
+                    SettingsSource {
+                        settingsOf(
+                            settings.state
+                                .filterIsInstance<SettingsState.Ready>()
+                                .first()
+                                .values,
+                        )
+                    },
                 engine = EngineStatsSource { emptyFlow() },
                 files = androidReportFiles(application),
                 shareSheet = ChooserShareSheet(application),

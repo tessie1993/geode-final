@@ -73,8 +73,7 @@ class NativeAudioAdapter(
             }
         }
 
-    override suspend fun startCapture(source: CaptureSource): CaptureFailure? =
-        withContext(main) { opened().beginCapture(source) }
+    override suspend fun startCapture(source: CaptureSource): CaptureFailure? = withContext(main) { opened().beginCapture(source) }
 
     override suspend fun stopCapture() {
         withContext(main) { pipeline?.endCapture() }

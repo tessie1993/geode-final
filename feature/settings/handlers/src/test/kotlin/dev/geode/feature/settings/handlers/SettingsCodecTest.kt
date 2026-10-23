@@ -246,7 +246,10 @@ class SettingsCodecTest {
         val values = SettingsCodec.decode(stored)
 
         assertEquals(BackgroundSettings(music = false, renders = false, recording = true), values.background)
-        assertEquals(PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS30, saveMode = true, visualsOff = true), values.performance)
+        assertEquals(
+            PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS30, saveMode = true, visualsOff = true),
+            values.performance,
+        )
         assertFalse(values.export.finishedAlerts)
         assertEquals(ExportQuality.QHD1440, values.export.quality)
         assertEquals(stored, SettingsCodec.encode(values))

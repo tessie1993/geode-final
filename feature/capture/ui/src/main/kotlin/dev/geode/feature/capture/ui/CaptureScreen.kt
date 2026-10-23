@@ -201,7 +201,11 @@ internal fun CaptureCapturingPreview() = CapturePreviewFrame(CaptureState.Captur
 
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-internal fun CaptureCapturingDarkPreview() = CapturePreviewFrame(CaptureState.Capturing(CaptureSource.MICROPHONE, quiet = false), dark = true)
+internal fun CaptureCapturingDarkPreview() =
+    CapturePreviewFrame(
+        CaptureState.Capturing(CaptureSource.MICROPHONE, quiet = false),
+        dark = true,
+    )
 
 @Preview(showBackground = true)
 @Composable

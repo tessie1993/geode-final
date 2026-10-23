@@ -277,20 +277,25 @@ class OldScreenSettingsTest {
         )
     }
 
-    /** A quality one side has and the other does not yet, like SD480 and QHD1440 (#135). */
-    private enum class NewerQuality { SD480, FHD1080, QHD1440 }
+    /** A quality neither side has yet, like one a later Settings adds. */
+    private enum class NewerQuality { FHD1080, UHD8K }
 
     @Test
     fun `a name the other side does not know maps to nothing instead of throwing`() {
-        assertEquals(null, OldScreenSettings.byName<OldQuality>(NewerQuality.SD480))
-        assertEquals(null, OldScreenSettings.byName<SettingsQuality>(NewerQuality.QHD1440))
+        // Settings has SD480 and QHD1440 and the old screens do not (#135).
+        assertEquals(null, OldScreenSettings.byName<OldQuality>(SettingsQuality.SD480))
+        assertEquals(null, OldScreenSettings.byName<OldQuality>(SettingsQuality.QHD1440))
+        assertEquals(null, OldScreenSettings.byName<SettingsQuality>(NewerQuality.UHD8K))
         assertEquals(OldQuality.FHD1080, OldScreenSettings.byName<OldQuality>(NewerQuality.FHD1080))
     }
 
     @Test
     fun `every name both sides know maps across in both directions`() {
-        SettingsQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldQuality>(it)?.name) }
-        OldQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<SettingsQuality>(it)?.name) }
+        OldQuality.entries.forEach { old ->
+            val settings = OldScreenSettings.byName<SettingsQuality>(old)
+            assertEquals(old.name, settings?.name)
+            assertEquals(old, settings?.let { OldScreenSettings.byName<OldQuality>(it) })
+        }
         SettingsRatio.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldRatio>(it)?.name) }
         SettingsCodec.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldCodec>(it)?.name) }
         SettingsPosition.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<PlayerPosition>(it)?.name) }
