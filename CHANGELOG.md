@@ -11,6 +11,15 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Element asset pipeline (#104).** `tools/element_assets/element_assets.py`
+  turns an Element's prompt manifest (`tools/element_assets/elements/`) into
+  finished assets: gflow runs, matting with a backdrop check, WebP at every
+  density, sound FX cut to OGG with a seamless ambient loop, a contact sheet,
+  and an approval gate. Only approved entries reach `design/src/main/res` and
+  `design/element-assets.json`, which starts empty. The Water manifest is
+  written from #105. A new CI job, "Element asset pipeline", checks the
+  manifests and runs the pipeline's unit tests.
+
 - **No screenshot or golden-image tests (#184).** The owner dropped them to
   save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
   every `*ScreenshotTest`, their goldens and the `geode.screenshots`
