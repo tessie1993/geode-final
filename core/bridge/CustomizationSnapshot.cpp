@@ -19,6 +19,7 @@ GeodeStatus decodeSnapshot(std::span<const uint8_t> wire, CustomizationSnapshot&
     if (!wire::readFinite(in, std::span<float>(decoded.params))) return GEODE_STATUS_INVALID_ARGUMENT;
     if (!wire::readFinite(in, std::span<float>(decoded.lfo))) return GEODE_STATUS_INVALID_ARGUMENT;
     if (!wire::readFinite(in, std::span<float>(decoded.adsr))) return GEODE_STATUS_INVALID_ARGUMENT;
+    if (!wire::readFinite(in, std::span<float>(decoded.plan))) return GEODE_STATUS_INVALID_ARGUMENT;
     if (!wire::readFinite(in, decoded.soundSensitivity)) return GEODE_STATUS_INVALID_ARGUMENT;
     if (!wire::readFinite(in, decoded.soundRefractoryMs)) return GEODE_STATUS_INVALID_ARGUMENT;
     if (!wire::readFinite(in, decoded.soundAttackSeconds)) return GEODE_STATUS_INVALID_ARGUMENT;
@@ -39,6 +40,7 @@ size_t encodeSnapshot(const CustomizationSnapshot& snapshot, std::span<uint8_t> 
     for (const float value : snapshot.params) out.f32(value);
     for (const float value : snapshot.lfo) out.f32(value);
     for (const float value : snapshot.adsr) out.f32(value);
+    for (const float value : snapshot.plan) out.f32(value);
     out.f32(snapshot.soundSensitivity);
     out.f32(snapshot.soundRefractoryMs);
     out.f32(snapshot.soundAttackSeconds);

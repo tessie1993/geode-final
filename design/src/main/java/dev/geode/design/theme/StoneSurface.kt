@@ -24,7 +24,7 @@ fun StoneSurfaceArt(
     component: StoneComponent,
     state: StoneState,
     modifier: Modifier = Modifier,
-    reducedMotion: Boolean = false,
+    reducedMotion: Boolean = LocalReducedMotion.current,
 ) {
     val pack = LocalThemePack.current
     val art = pack.surface(component)
@@ -73,7 +73,7 @@ fun StoneSurfaceArt(
 @Composable
 fun Modifier.stonePress(
     interaction: InteractionSource,
-    reducedMotion: Boolean = false,
+    reducedMotion: Boolean = LocalReducedMotion.current,
 ): Modifier {
     val motion = LocalThemePack.current.motion
     val pressed by interaction.collectIsPressedAsState()

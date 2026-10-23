@@ -25,6 +25,7 @@ CustomizationSnapshot snapshotAt(uint32_t revision) {
     s.params.fill(value);
     s.lfo.fill(value);
     s.adsr.fill(value);
+    s.plan.fill(value);
     s.soundSensitivity = value;
     s.soundRefractoryMs = value;
     s.soundAttackSeconds = value;

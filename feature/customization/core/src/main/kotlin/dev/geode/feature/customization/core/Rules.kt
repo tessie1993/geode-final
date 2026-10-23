@@ -1,15 +1,21 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.Customization
+import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorShape
+import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
+import dev.geode.feature.customization.api.Trigger
 import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.roundToInt
 
@@ -24,6 +30,9 @@ const val SWITCH_ON: Float = 0.5f
 
 /** The longest name a Macro may have. */
 const val MAX_MACRO_NAME: Int = 24
+
+/** The most bars an Automation may wait between moves. */
+const val MAX_AUTOMATION_BARS: Int = 64
 
 /** The rules every value in a Customization keeps: ranges, steps, switches and valid links. */
 object Rules {
@@ -103,10 +112,79 @@ object Rules {
             is ReactionSource.Generated -> customization.modulators.any { it.id == source.modulator }
         }
 
-    /** [customization] without the Reactions and Macro links whose source or target no longer exists. */
+    /**
+     * [automations] as [customization] can run them:
+     * - a cadence's threshold within [Trigger.BigMoments.MIN_THRESHOLD]..1, its bars within
+     *   1..[MAX_AUTOMATION_BARS], its spacing within 0..[Cadence.MAX_SPACING];
+     * - Style switching's transition and the palette fade within their ranges;
+     * - Camera moves at a strength in 0..1, one of each kind;
+     * - lanes on targets that exist, each target in one lane only, at most [Automations.MAX_LANES]
+     *   lanes of [Automations.MAX_LANE_TARGETS] targets and [Automations.MAX_LANE_STEPS] steps, every
+     *   step with one value 0..1 per target (a missing one is 0); a lane left with no target or no
+     *   step is dropped.
+     */
+    fun automations(
+        customization: Customization,
+        automations: Automations,
+    ): Automations =
+        Automations(
+            style =
+                automations.style?.let {
+                    it.copy(
+                        cadence = cadence(it.cadence),
+                        transition = it.transition.coerceIn(StyleSwitching.MIN_TRANSITION, StyleSwitching.MAX_TRANSITION),
+                    )
+                },
+            palette =
+                automations.palette?.let {
+                    it.copy(cadence = cadence(it.cadence), fade = it.fade.coerceIn(PaletteChanges.MIN_FADE, PaletteChanges.MAX_FADE))
+                },
+            camera = automations.camera.distinctBy { it.kind }.map { it.copy(strength = unit(it.strength)) },
+            lanes = lanes(customization, automations.lanes),
+        )
+
+    private fun cadence(cadence: Cadence): Cadence =
+        Cadence(
+            trigger =
+                when (val trigger = cadence.trigger) {
+                    is Trigger.BigMoments -> Trigger.BigMoments(threshold(trigger.threshold))
+                    is Trigger.EveryBars -> Trigger.EveryBars(trigger.bars.coerceIn(1, MAX_AUTOMATION_BARS))
+                },
+            spacing = cadence.spacing.coerceIn(Millis.ZERO, Cadence.MAX_SPACING),
+        )
+
+    private fun threshold(threshold: Float): Float =
+        if (threshold.isNaN()) Trigger.BigMoments.MIN_THRESHOLD else threshold.coerceIn(Trigger.BigMoments.MIN_THRESHOLD, 1f)
+
+    private fun lanes(
+        customization: Customization,
+        lanes: List<Lane>,
+    ): List<Lane> {
+        val taken = mutableSetOf<Target>()
+        return lanes
+            .filter { it.steps.isNotEmpty() }
+            .map { lane ->
+                val kept = mutableListOf<Int>()
+                for (at in lane.targets.indices) {
+                    val target = lane.targets[at]
+                    if (kept.size < Automations.MAX_LANE_TARGETS && target !in taken && exists(customization, target)) {
+                        kept += at
+                        taken += target
+                    }
+                }
+                lane.copy(
+                    targets = kept.map { lane.targets[it] },
+                    steps = lane.steps.take(Automations.MAX_LANE_STEPS).map { values -> kept.map { unit(values.getOrElse(it) { 0f }) } },
+                )
+            }.filter { it.targets.isNotEmpty() }
+            .take(Automations.MAX_LANES)
+    }
+
+    /** [customization] without the Reactions, Macro links and lane targets whose source or target no longer exists. */
     fun prune(customization: Customization): Customization =
         customization.copy(
             reactions = customization.reactions.filter { exists(customization, it.source) && exists(customization, it.target) },
             macros = customization.macros.map { macro -> macro.copy(links = macro.links.filter { exists(customization, it.target) }) },
+            automations = automations(customization, customization.automations),
         )
 }

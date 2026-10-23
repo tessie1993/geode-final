@@ -50,7 +50,7 @@ fun TutorialOverlay(
     steps: List<TutorialStep>,
     dontShowAgain: Boolean,
     onDontShowAgainChange: (Boolean) -> Unit,
-    onNavigate: (GeodeDestination) -> Unit,
+    onNavigate: (GeodeRoute) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

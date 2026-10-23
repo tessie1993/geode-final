@@ -21,6 +21,12 @@ sealed interface CustomizationEvent {
         val preset: Preset,
     ) : CustomizationEvent
 
+    /**
+     * The engine heard the moment Style switching waits for ([Automation.due] on its cadence, evaluated
+     * per frame). The reducer moves to the next Style; the engine crossfades into it.
+     */
+    data object StyleDue : CustomizationEvent
+
     /** A piece of work failed at the handlers' edge; the reducer reports it. */
     data class WorkFailed(
         val failure: WorkFailure,
