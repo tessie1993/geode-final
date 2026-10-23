@@ -157,19 +157,6 @@ class OldScreenLibrary internal constructor(
 
     fun removeMusicFolder(folder: String) = settings.send(FolderCommand.RemoveMusicFolder(FolderUri(folder)))
 
-    /** What the old song info editor starts from. */
-    fun trackInfo(song: TrackId): LibraryTrack =
-        OldLibraryModels.trackInfoOf(library.state.value, song) ?: LibraryTrack(song, OldScreenModels.fileNameOf(song))
-
-    fun saveTrackInfo(
-        song: TrackId,
-        title: String,
-        artist: String,
-        album: String,
-    ) {
-        OldLibraryModels.edit(library.state.value, song, title, artist, album)?.let(library::send)
-    }
-
     /** A smart playlist's songs; "play count" counts the plays in Playback's history (#146 replaces this). */
     fun resolveSmartPlaylist(playlist: SmartPlaylist): List<DeviceTrack> {
         val plays = OldLibraryModels.playsOf(playback.state.value)

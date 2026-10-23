@@ -10,6 +10,7 @@ import dev.geode.feature.library.api.RuleField
 import dev.geode.feature.library.api.RuleOp
 import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.SmartRule
+import dev.geode.feature.library.api.SongEdit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -46,7 +47,19 @@ class LibraryModelTest {
 
         assertTrue(fields.canSave)
         assertFalse(fields.copy(title = " ").canSave)
-        assertEquals("Night Drive", fields.toEdit().title)
+        assertEquals("Night Drive", fields.toEdit(PreviewModels.night).title)
+    }
+
+    @Test
+    fun `the editor leaves the tags the user did not change as they were`() {
+        val night = PreviewModels.night
+        val fields = SongEditorFields.of(night)
+
+        assertEquals(SongEdit(night.title, night.artist, night.album, night.artwork), fields.toEdit(night))
+        assertEquals(
+            SongEdit(night.title, night.artist, night.album, night.artwork, genre = "Soul", year = 1999, trackNumber = 0, comment = "live"),
+            fields.copy(genre = "Soul", year = "1999", trackNumber = "", comment = "live").toEdit(night.copy(trackNumber = 4)),
+        )
     }
 
     @Test

@@ -110,8 +110,8 @@ fun LibraryScreen(
     editing?.let { row ->
         SongEditorDialog(
             song = row.song,
-            onSave = { edit ->
-                send(LibraryCommand.EditSong(row.song.id, edit))
+            onSave = { edit, writeToFile ->
+                send(LibraryCommand.EditSong(row.song.id, edit, writeToFile))
                 editing = null
             },
             onDismiss = { editing = null },

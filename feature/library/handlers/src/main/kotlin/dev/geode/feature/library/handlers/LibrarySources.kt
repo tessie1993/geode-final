@@ -1,6 +1,8 @@
 package dev.geode.feature.library.handlers
 
+import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.Song
+import dev.geode.feature.library.api.SongEdit
 import kotlinx.coroutines.flow.Flow
 
 /** What a look through the phone's music found. */
@@ -40,6 +42,31 @@ fun interface TagReader {
     companion object {
         /** Reads nothing. */
         val NONE = TagReader { null }
+    }
+}
+
+/** How writing tags into a file went. */
+enum class TagWrite {
+    WRITTEN,
+
+    /** The phone must ask the person before the file may be changed. */
+    NEEDS_CONSENT,
+
+    /** The file could not be written, and asking will not help. */
+    FAILED,
+}
+
+/** Geode's tag writer (ADR-0004: TagLib), which `:app` provides. */
+fun interface TagWriter {
+    /** Writes [edit] into [song]'s file, where the fields it leaves null keep what the file has. May block on IO. */
+    fun write(
+        song: TrackId,
+        edit: SongEdit,
+    ): TagWrite
+
+    companion object {
+        /** Writes nothing. */
+        val NONE = TagWriter { _, _ -> TagWrite.FAILED }
     }
 }
 

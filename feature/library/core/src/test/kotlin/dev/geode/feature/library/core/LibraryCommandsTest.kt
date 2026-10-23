@@ -37,6 +37,7 @@ import dev.geode.feature.playback.api.Track
 import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
+import dev.geode.kernel.ReportFailure
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -55,6 +56,9 @@ class LibraryCommandsTest {
     private val ringtonesHidden = shown(ready.copy(excludedFolders = setOf("/ringtones")))
     private val edit = SongEdit(" Beta 2 ", " Bo ", " Second ", " ")
     private val trimmed = SongEdit("Beta 2", "Bo", "Second", artwork = null)
+    private val tagEdit = edit.copy(genre = " Soul ", year = 1999, trackNumber = 3, comment = " live ")
+    private val tagsTrimmed = trimmed.copy(genre = "Soul", year = 1999, trackNumber = 3, comment = "live")
+    private val betaTagged = edited(beta, artwork = null).copy(genre = "Soul", year = 1999, trackNumber = 3, comment = "live")
     private val m3u = "#EXTM3U\n/music/rock/alpha.mp3\n/elsewhere/missing.mp3\n"
     private val everything = tracks(alpha, beta, gamma, voice)
     private val playedKey = GroupKey(GroupKind.SMART_PLAYLIST, "played")
@@ -87,15 +91,36 @@ class LibraryCommandsTest {
                 ready,
                 LibraryCommand.EditSong(beta.id, edit),
                 ready.copy(songs = listOf(alpha, edited(beta, artwork = null), gamma, voice)),
-                Perform(LibraryWork.SaveEdit(beta.id, trimmed)),
+                // What the edit leaves as it was is saved as the song has it.
+                Perform(LibraryWork.SaveEdit(beta.id, unchangedTags(trimmed, beta))),
             ),
             row(
                 ready,
                 LibraryCommand.EditSong(alpha.id, edit.copy(artwork = "content://art/new")),
                 ready.copy(songs = listOf(edited(alpha, artwork = "content://art/new"), beta, gamma, voice)),
-                Perform(LibraryWork.SaveEdit(alpha.id, trimmed.copy(artwork = "content://art/new"))),
+                Perform(LibraryWork.SaveEdit(alpha.id, unchangedTags(trimmed.copy(artwork = "content://art/new"), alpha))),
+            ),
+            row(
+                ready,
+                LibraryCommand.EditSong(beta.id, tagEdit),
+                ready.copy(songs = listOf(alpha, betaTagged, gamma, voice)),
+                Perform(LibraryWork.SaveEdit(beta.id, tagsTrimmed)),
+            ),
+            row(
+                ready,
+                LibraryCommand.EditSong(beta.id, tagEdit.copy(year = -5)),
+                ready.copy(songs = listOf(alpha, betaTagged.copy(year = 0), gamma, voice)),
+                Perform(LibraryWork.SaveEdit(beta.id, tagsTrimmed.copy(year = 0))),
+            ),
+            // Written into the file first: the Library changes once the file has.
+            row(
+                ready,
+                LibraryCommand.EditSong(beta.id, tagEdit, writeToFile = true),
+                ready,
+                Perform(LibraryWork.WriteTags(beta.id, tagsTrimmed)),
             ),
             row(ready, LibraryCommand.EditSong(beta.id, edit.copy(title = "  ")), ready),
+            row(ready, LibraryCommand.EditSong(beta.id, edit.copy(title = "  "), writeToFile = true), ready),
             row(ready, LibraryCommand.EditSong(unknown, edit), ready),
             row(
                 ready,
@@ -301,6 +326,34 @@ class LibraryCommandsTest {
                     LibraryEvent.PlaylistFileWritten("content://docs/out.m3u", 2),
                     Next(ready, listOf(Emit(LibraryFact.PlaylistExported("content://docs/out.m3u", 2)))),
                 ),
+                Row(
+                    ready,
+                    LibraryEvent.TagsWritten(beta.id, tagsTrimmed),
+                    Next(
+                        shown(ready.copy(songs = listOf(alpha, betaTagged, gamma, voice))),
+                        listOf(Perform(LibraryWork.SaveEdit(beta.id, tagsTrimmed))),
+                    ),
+                ),
+                // Fields left as they were keep what the song has, in the Library as in the file.
+                Row(
+                    ready,
+                    LibraryEvent.TagsWritten(beta.id, trimmed),
+                    Next(
+                        shown(ready.copy(songs = listOf(alpha, edited(beta, artwork = null), gamma, voice))),
+                        listOf(Perform(LibraryWork.SaveEdit(beta.id, unchangedTags(trimmed, beta)))),
+                    ),
+                ),
+                Row(ready, LibraryEvent.TagsWritten(unknown, trimmed), Next(ready)),
+                Row(
+                    ready,
+                    LibraryEvent.TagsNeedConsent(beta.id, tagsTrimmed),
+                    Next(ready, listOf(Emit(LibraryFact.TagsNeedConsent(beta.id, tagsTrimmed)))),
+                ),
+                Row(
+                    ready,
+                    LibraryEvent.StorageFailed(StorageFailure.WRITE_TAGS),
+                    Next(ready, listOf(ReportFailure("Could not write the song info into the file"))),
+                ),
             )
 
     @Test
@@ -334,6 +387,12 @@ class LibraryCommandsTest {
         song: Song,
         artwork: String?,
     ) = song.copy(title = "Beta 2", artist = "Bo", album = "Second", artwork = artwork)
+
+    /** [edit] with the fields it left as they were filled in from [song]. */
+    private fun unchangedTags(
+        edit: SongEdit,
+        song: Song,
+    ) = edit.copy(genre = song.genre, year = song.year, trackNumber = song.trackNumber, comment = song.comment)
 
     private fun tracks(vararg songs: Song) = songs.map { it.toTrack() }
 
