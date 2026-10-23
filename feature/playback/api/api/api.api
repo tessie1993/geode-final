@@ -483,6 +483,7 @@ public final class dev/geode/feature/playback/api/PlaybackFailure : java/lang/En
 }
 
 public final class dev/geode/feature/playback/api/PlaybackKt {
+	public static final fun getCurrentQueue (Ldev/geode/feature/playback/api/PlayerState;)Ldev/geode/feature/playback/api/Queue;
 	public static final fun getMAX_CROSSFADE ()J
 }
 

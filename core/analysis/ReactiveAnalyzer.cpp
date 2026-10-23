@@ -83,7 +83,10 @@ void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
     pulseConfidence_ = tempo_.confidence();
     stability_.step(tempo_.bpm());
     tempoStability_ = stability_.value();
-    beat_ = grid_.step(tempo_.periodFrames(), tempo_.confidence(), isOnset);
+    // The Beat is every hit heard, never one a prediction lets through: a song's tempo moves, and a
+    // hit off the estimated grid is still a hit. The grid only paces the bar count.
+    const bool onGrid = grid_.step(tempo_.periodFrames(), tempo_.confidence(), isOnset);
+    beat_ = isOnset;
     beatPhase_ = grid_.phase();
     beatStrength_ = beat_ ? picker_.strength() : 0.0f;
 
@@ -92,7 +95,8 @@ void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
     snare_ = drums_->snare();
     hat_ = drums_->hat();
 
-    bar_.step(grid_.phase(), beat_, grid_.locked(), beat_ ? picker_.strength() + kKickAccentWeight * drums_->kick() : 0.0f);
+    const float accent = onGrid ? picker_.strength() + kKickAccentWeight * drums_->kick() : 0.0f;
+    bar_.step(grid_.phase(), onGrid, grid_.locked(), accent);
     barPhase_ = bar_.barPhase();
     beatInBar_ = bar_.beatInBar();
     downbeat_ = bar_.downbeat();

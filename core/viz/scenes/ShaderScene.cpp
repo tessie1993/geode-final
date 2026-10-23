@@ -25,6 +25,13 @@ float flag(bool on) { return on ? 1.0f : 0.0f; }
 
 constexpr float kTwoPiF = 6.2831853f;
 
+// Each Extra's uniform, in ExtraKind's order (lib_style.glsl declares them).
+constexpr std::array<const char*, mod::kExtraCount> kExtraUniforms = {
+    "uXScale", "uXCount",      "uXSize", "uXThickness", "uXFlight",  "uXSpin",      "uXOrbit",   "uXSwirl",
+    "uXDrift", "uXComplexity", "uXEdge", "uXFog",       "uXDecay",   "uXViscosity", "uXGrowth",  "uXSpread",
+    "uXForce", "uXReach",      "uXTurn", "uXHold",      "uXVariant", "uXCenterX",   "uXCenterY",
+};
+
 // Shortest signed distance from `from` to `to` on a unit-period circle.
 float wrappedDelta(float from, float to, float period) {
     const float half = period * 0.5f;
@@ -203,6 +210,8 @@ void ShaderScene::draw(float timeSeconds) {
     set1f("uSteps", marchSteps(p.marchDetail));
     uploadMotion();
     uploadTouch();
+    uploadCamera();
+    uploadExtras();
     glBindVertexArray(vao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
@@ -291,6 +300,17 @@ void ShaderScene::uploadTouch() {
     set1f("uTouchSpin", touchField_ ? touchField_->spin() : 0.0f);
 }
 
+void ShaderScene::uploadCamera() {
+    glUniformMatrix3fv(uniforms_.loc("uCamRot"), 1, GL_FALSE, camera_.rotation.data());
+    set1f("uCamPush", camera_.push);
+    set1f("uCamTravel", camera_.travel);
+    glUniform2f(uniforms_.loc("uCamOrbit"), camera_.yaw, camera_.pitch);
+}
+
+void ShaderScene::uploadExtras() {
+    for (size_t e = 0; e < mod::kExtraCount; ++e) set1f(kExtraUniforms[e], extras_.value[e]);
+}
+
 void ShaderScene::set1f(const char* name, float value) {
     glUniform1f(uniforms_.loc(name), value);
 }
@@ -320,6 +340,7 @@ void ShaderScene::compilePendingIfAny() {
     if (program_ != 0) glDeleteProgram(program_);
     program_ = built;
     uniforms_ = UniformCache(built);
+    ownsCamera_ = glGetUniformLocation(built, "uCamRot") >= 0;
     currentFragment_ = *pending;
     host_.onShaderError("");
 }
@@ -331,6 +352,7 @@ void ShaderScene::release() {
     program_ = 0;
     vao_ = 0;
     uniforms_ = UniformCache(0);
+    ownsCamera_ = false;
 }
 
 }  // namespace geode::viz
