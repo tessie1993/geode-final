@@ -62,7 +62,7 @@ public:
     void setLfoConfigs(const std::array<LfoConfig, LfoEngine::kSlots>& configs);
     void setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& configs);
     // The Shared core effects drawn over every Style before the composite (SharedFxPass). All 0
-    // until the evaluated Customization reaches the renderer (#54); taken at the next frame.
+    // until a snapshot carries a Customization plan (geode_viz_render evaluates it); taken at the next frame.
     void setSharedEffects(const SharedEffects& effects);
     // W00: full-frame overlay/underlay layers, latched here and uploaded to GL textures at the
     // start of the next frame; see CompositePass.hpp for the pass itself. `pixels` is Android's

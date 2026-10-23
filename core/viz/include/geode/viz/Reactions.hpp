@@ -62,6 +62,14 @@ float curve(float input, Curve c);
 // `input`: the curved input times the amount, added (taken away when inverted), kept in low..high.
 float react(float base, float input, const ReactionShape& shape);
 
+// Where a Modulator linked to a Macro puts the Macro whose hand-set value is `base`
+// (Evaluation.drift): around that value, not only above it. The curved input's distance from the
+// middle, times the amount, is added (taken away when inverted), kept in low..high. This is how a
+// Macro drifts by itself; there is no separate autopilot (#41).
+float drift(float base, float input, const ReactionShape& shape);
+// The middle a drift swings around: MACRO_REST.
+constexpr float kMacroRestFraction = 0.5f;
+
 // Rise and fall: follows its input at a bounded speed. `riseSeconds` is the time a full 0 -> 1 swing
 // takes upwards and `fallSeconds` downwards; 0 follows at once. Linear on purpose: it puts a hard
 // bound on how far one frame can move a target, which the No-flash rule relies on.
