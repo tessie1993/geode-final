@@ -271,7 +271,12 @@ internal object LibraryPages {
 }
 
 /** [text] with case, punctuation and bracketed notes ("(Remastered)", "[Live]") set aside. */
-internal fun normalised(text: String): String = text.lowercase().replace(NOISE, " ").replace(SPACES, " ").trim()
+internal fun normalised(text: String): String =
+    text
+        .lowercase()
+        .replace(NOISE, " ")
+        .replace(SPACES, " ")
+        .trim()
 
 private val NOISE = Regex("""[\[(].*?[\])]|[^\p{L}\p{N}\s]""")
 private val SPACES = Regex("""\s+""")

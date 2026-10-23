@@ -302,13 +302,17 @@ class OldScreenSettingsTest {
     @Test
     fun `a name the other side does not know maps to nothing instead of throwing`() {
         assertEquals(null, OldScreenSettings.byName<OldQuality>(NewerQuality.SD480))
-        assertEquals(null, OldScreenSettings.byName<SettingsQuality>(NewerQuality.QHD1440))
+        assertEquals(null, OldScreenSettings.byName<OldQuality>(NewerQuality.QHD1440))
         assertEquals(OldQuality.FHD1080, OldScreenSettings.byName<OldQuality>(NewerQuality.FHD1080))
     }
 
     @Test
     fun `every name both sides know maps across in both directions`() {
-        SettingsQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldQuality>(it)?.name) }
+        val oldQualityNames = OldQuality.entries.map { it.name }.toSet()
+        SettingsQuality.entries.forEach {
+            val expected = it.name.takeIf { name -> name in oldQualityNames }
+            assertEquals(expected, OldScreenSettings.byName<OldQuality>(it)?.name)
+        }
         OldQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<SettingsQuality>(it)?.name) }
         SettingsRatio.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldRatio>(it)?.name) }
         SettingsCodec.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldCodec>(it)?.name) }
