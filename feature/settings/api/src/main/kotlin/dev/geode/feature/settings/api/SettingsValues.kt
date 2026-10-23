@@ -15,6 +15,8 @@ data class SettingsValues(
     val export: ExportSettings = ExportSettings(),
     val folders: FolderSettings = FolderSettings(),
     val onboarding: OnboardingSettings = OnboardingSettings(),
+    val background: BackgroundSettings = BackgroundSettings(),
+    val performance: PerformanceSettings = PerformanceSettings(),
 )
 
 /** A colour as 0xAARRGGBB. */
@@ -222,9 +224,12 @@ data class BehaviorSettings(
     }
 }
 
+/** The export sizes (#22), smallest first. Stored by name, so adding a size never moves another. */
 enum class ExportQuality {
+    SD480,
     HD720,
     FHD1080,
+    QHD1440,
     UHD4K,
 }
 
@@ -264,6 +269,8 @@ data class ExportSettings(
     val loopSafe: Boolean = false,
     val codec: ExportCodec = ExportCodec.H264,
     val loudness: ExportLoudness = ExportLoudness.LEAVE_AS_IS,
+    /** A notification when a render finishes, with Share and Open buttons (#28). */
+    val finishedAlerts: Boolean = true,
 )
 
 /**
@@ -291,3 +298,64 @@ data class OnboardingSettings(
     /** The walkthrough's "show this next time" switch, in the Help tab. */
     val tutorialOnFirstRun: Boolean = true,
 )
+
+/**
+ * Run in background (#28), in Application preferences: what keeps going when the person leaves the
+ * app or locks the phone. Each is its own switch. Playback, Studio and the Recording read them.
+ */
+data class BackgroundSettings(
+    /** Music keeps playing, with controls in the notification; off pauses it on leaving the app. */
+    val music: Boolean = true,
+    /** Renders keep going while other apps are used, with a progress notification. */
+    val renders: Boolean = true,
+    /** A live Recording of the Visual keeps capturing on switching away. */
+    val recording: Boolean = false,
+)
+
+/**
+ * How sharp the Visual is drawn on screen, as a ceiling on its render scale. The automatic cooling
+ * when the phone is hot can only lower it further. Renders always draw at their exact export size.
+ */
+enum class VisualQuality(
+    val renderScale: Float,
+) {
+    HIGH(1f),
+    BALANCED(0.85f),
+    SAVER(0.7f),
+}
+
+/** How often the Visual is drawn on screen: [fps] frames a second, or null for the screen's maximum. */
+enum class VisualFrameRate(
+    val fps: Int?,
+) {
+    FPS30(30),
+    FPS60(60),
+    SCREEN_MAX(null),
+}
+
+/**
+ * The CPU/GPU section (#101) and the CPU/GPU save mode switch, which sits in Application preferences.
+ * Cooling down when the phone is hot is automatic and has no setting.
+ *
+ * Readers take the effective values ([visual], [frameRate], [floatingAssetsHeldStill],
+ * [rendersSlowed]), which already apply [saveMode]; the chosen ones stay as they were, so turning save
+ * mode off brings them back.
+ */
+data class PerformanceSettings(
+    val visualQuality: VisualQuality = VisualQuality.HIGH,
+    val visualFrameRate: VisualFrameRate = VisualFrameRate.SCREEN_MAX,
+    /** Saves battery and heat: lower Visual quality, 30 fps, still floating assets, slower renders. */
+    val saveMode: Boolean = false,
+) {
+    /** The Visual quality to draw at: [VisualQuality.SAVER] in save mode, else the chosen one. */
+    val visual: VisualQuality get() = if (saveMode) VisualQuality.SAVER else visualQuality
+
+    /** The frame rate to draw at: 30 in save mode, else the chosen one. */
+    val frameRate: VisualFrameRate get() = if (saveMode) VisualFrameRate.FPS30 else visualFrameRate
+
+    /** The floating assets hold still (Drifting acts as Still), as with battery saver (#100). */
+    val floatingAssetsHeldStill: Boolean get() = saveMode
+
+    /** Renders run slower, on fewer threads, so the phone stays cool. */
+    val rendersSlowed: Boolean get() = saveMode
+}
