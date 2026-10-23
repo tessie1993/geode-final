@@ -32,6 +32,7 @@ include(
     ":engine:audio-core",
     ":engine:scenes",
     ":engine:audio-android",
+    ":engine:live",
 )
 
 // The feature architecture (ADR-0005). Each feature adds :feature:<name>:api, :core, :handlers and

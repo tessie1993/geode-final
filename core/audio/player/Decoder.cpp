@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstring>
+#include <string>
 
 namespace geode::audio::player {
 
@@ -144,8 +145,11 @@ bool Decoder::feedInput() {
         return true;
     }
     const int64_t pts = AMediaExtractor_getSampleTime(native_->extractor);
-    AMediaCodec_queueInputBuffer(native_->codec, static_cast<size_t>(index), 0, static_cast<size_t>(read),
-                                 static_cast<uint64_t>(std::max<int64_t>(pts, 0)), 0);
+    if (AMediaCodec_queueInputBuffer(native_->codec, static_cast<size_t>(index), 0, static_cast<size_t>(read),
+                                     static_cast<uint64_t>(std::max<int64_t>(pts, 0)), 0) != AMEDIA_OK) {
+        error_ = "decoder refused input";
+        return false;
+    }
     AMediaExtractor_advance(native_->extractor);
     return true;
 }
@@ -176,6 +180,11 @@ bool Decoder::fetchOutput() {
     if (index == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED) {
         applyOutputFormat();
         return true;
+    }
+    // Anything but "try again" or a buffer-set change is the codec failing for good: say so, so the
+    // track errors out instead of waiting for output that will never come.
+    if (index != AMEDIACODEC_INFO_TRY_AGAIN_LATER && index != AMEDIACODEC_INFO_OUTPUT_BUFFERS_CHANGED) {
+        error_ = "decoder failed (" + std::to_string(index) + ")";
     }
     return false;
 }

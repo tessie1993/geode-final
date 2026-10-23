@@ -87,10 +87,9 @@ data class GuiPrefs(
     val fontColorOverride: Int?
         get() = fontColorArgb ?: FontColorChoice.WHITE_ARGB.takeIf { whiteFont }
 
+    // The gap the person chose: the No-flash rule is the engine's, on every frame, not a beat throttle.
     val effectiveBeatMinIntervalMs: Float
-        get() =
-            dev.geode.render.VisualSafety
-                .beatMinIntervalMs(beatMinIntervalMs)
+        get() = beatMinIntervalMs
 
     companion object {
         const val TEXT_SCALE_MIN = TextScale.MIN

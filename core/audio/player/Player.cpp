@@ -274,6 +274,18 @@ void Player::pump() {
     if (next_) fill(*next_);
 }
 
+// A track that cannot be decoded: the current one stops playback, but a pre-rolled next one is only
+// dropped, so the song playing now carries on and ends as if nothing had been queued.
+void Player::failTrack(Track& track, const std::string& message) {
+    if (&track != next_.get()) {
+        fail(message);
+        return;
+    }
+    noteError(message);
+    postCommand({DeckCommand::Op::ClearNext, nullptr});
+    next_.reset();
+}
+
 void Player::fill(Track& track) {
     if (track.drained || !track.deck) return;
     Decoder& decoder = *track.decoder;
@@ -293,7 +305,7 @@ void Player::fill(Track& track) {
         }
         const size_t got = decoder.readStereo(track.decodeBuf.data(), kDecodeChunk);
         if (decoder.failed()) {
-            fail(decoder.error());
+            failTrack(track, decoder.error());
             return;
         }
         if (got > 0) {

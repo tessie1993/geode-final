@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geode/viz/Params.hpp"
+#include "geode/viz/SharedCamera.hpp"
 #include "geode/render/Texture.hpp"
 #include "geode/viz/Transition.hpp"
 
@@ -63,6 +64,11 @@ public:
         SceneParams fx;
         std::array<float, 4> gateA{};
         std::array<float, 4> gateB{};
+        // The Camera (SharedCamera.hpp), and which of it the composite draws for each picture: x and y
+        // its flat moves for A and B (their Style moves no camera of its own), z and w the flat endless
+        // zoom for A and B (their renderer has none).
+        CameraPose camera;
+        std::array<float, 4> cameraGate{};
         // W00: underlay, read each frame from CompositePass's own latched texture (see the class
         // comment above) via underlayTexOrZero()/underlayBlendMode()/underlayAmount().
         GLuint underlayTex = 0;
@@ -101,6 +107,7 @@ private:
     void bindTextures(UniformCache& p, const Inputs& inputs);
     void uploadFrameUniforms(UniformCache& p, const Inputs& inputs, const TransitionCatalog::Def* definition);
     void uploadGradeUniforms(UniformCache& p, const Inputs& inputs);
+    void uploadCameraUniforms(UniformCache& p, const Inputs& inputs);
 
     TransitionPrograms transitions_;
     const ShaderSource& assets_;

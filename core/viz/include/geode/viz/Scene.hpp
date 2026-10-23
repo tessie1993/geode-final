@@ -8,6 +8,7 @@
 
 #include "geode/api/geode_api.h"
 #include "geode/viz/Params.hpp"
+#include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/TouchField.hpp"
 
 namespace geode::viz {
@@ -31,6 +32,12 @@ public:
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
+    // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
+    virtual void setCamera(const CameraPose& pose) { (void) pose; }
+    virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // True when the Style moves a camera of its own from the Camera (a raymarched world reading
+    // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
+    virtual bool ownsCamera() const { return false; }
     // > 0 keeps the previous frame in the scene target (Curl Flow); 0 clears it.
     virtual float trailRetention(const SceneParams& params) const { (void) params; return 0.0f; }
     virtual GLuint velocityTexture() const { return 0; }
