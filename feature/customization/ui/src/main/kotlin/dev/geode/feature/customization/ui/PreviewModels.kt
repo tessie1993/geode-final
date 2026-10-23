@@ -3,9 +3,15 @@ package dev.geode.feature.customization.ui
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.BeatSpan
+import dev.geode.feature.customization.api.Cadence
+import dev.geode.feature.customization.api.CameraMove
+import dev.geode.feature.customization.api.CameraMoveKind
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.Macro
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.MacroRole
@@ -20,7 +26,10 @@ import dev.geode.feature.customization.api.ResponseCurve
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StylePool
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
+import dev.geode.feature.customization.api.Trigger
 import dev.geode.feature.customization.api.Wave
 
 /**
@@ -101,6 +110,18 @@ internal object PreviewModels {
             reactions = reactions,
             modulators = listOf(lfo, sweep, steps, hits),
             signals = emptyMap(),
+            automations =
+                Automations(
+                    style = StyleSwitching(Cadence(Trigger.BigMoments(0.7f), Millis(20_000)), StylePool.BOTH),
+                    camera = listOf(CameraMove(CameraMoveKind.PUSH_IN), CameraMove(CameraMoveKind.ORBIT, BeatSpan.FOUR, 0.4f)),
+                    lanes =
+                        listOf(
+                            Lane(
+                                listOf(Target.Shared(SharedProperty.TRAILS), Target.Shared(SharedProperty.MIRROR)),
+                                NEW_SEQUENCE_STEPS.map { listOf(it, 1f - it) },
+                            ),
+                        ),
+                ),
         )
 
     private val looks =
@@ -128,6 +149,7 @@ internal object PreviewModels {
                 macros = MacroRole.entries.map { Macro(it.title) },
                 reactions = emptyList(),
                 modulators = emptyList(),
+                automations = Automations.NONE,
             ),
         ).toCustomizeModel(looks)
 

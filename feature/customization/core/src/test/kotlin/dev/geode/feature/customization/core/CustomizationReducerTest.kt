@@ -3,6 +3,7 @@ package dev.geode.feature.customization.core
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFact
@@ -12,6 +13,7 @@ import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.ModulatorShape
+import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
@@ -20,6 +22,8 @@ import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StylePool
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 import dev.geode.feature.customization.core.Fixtures.JULIA
@@ -87,6 +91,27 @@ class CustomizationReducerTest {
     private val handState = CustomizationState(withHand, undo = listOf(julia))
     private val handId = withHand.modulators.single().id
     private val playing = Edits.playModulator(withHand, handId, true)
+    private val palettes = Automations(palette = PaletteChanges())
+    private val switching = StyleSwitching(pool = StylePool.VISUALIZER)
+    private val autoState =
+        CustomizationState(
+            Edits.setAutomations(julia, Automations(style = switching, palette = PaletteChanges())),
+            undo = listOf(julia),
+            visualizerStyles = listOf(JULIA, TUNNEL),
+        )
+    private val autoSwitched = Edits.switchStyle(autoState.current, styles.manifestOf(JULIA), styles.manifestOf(TUNNEL))
+    private val stuckState = autoState.copy(visualizerStyles = listOf(JULIA))
+    private val picksState =
+        autoState.copy(
+            current = Edits.setAutomations(julia, Automations(style = StyleSwitching(pool = StylePool.PICKS, seed = 5L))),
+            styleSwitches = 3,
+        )
+    private val picked =
+        checkNotNull(
+            Automation.nextStyle(StyleSwitching(pool = StylePool.PICKS, seed = 5L), JULIA, emptyList(), styles.styles.map { it.id }, 3),
+        )
+    private val pickedSwitch = Edits.switchStyle(picksState.current, styles.manifestOf(JULIA), styles.manifestOf(picked.style))
+    private val reset = Edits.setAutomations(zoomed, palettes)
 
     private val rows: List<Row> =
         edits("set shared", CustomizationCommand.SetShared(SharedProperty.SPEED, 2f)) { Edits.setShared(it, SharedProperty.SPEED, 2f) } +
@@ -106,6 +131,7 @@ class CustomizationReducerTest {
             } +
             edits("remove reaction", CustomizationCommand.RemoveReaction(ReactionId(1))) { Edits.removeReaction(it, ReactionId(1)) } +
             edits("add modulator", CustomizationCommand.AddModulator(lfo)) { Edits.addModulator(it, lfo) } +
+            edits("set automations", CustomizationCommand.SetAutomations(palettes)) { Edits.setAutomations(it, palettes) } +
             edits("trim signal", CustomizationCommand.TrimSignal(SoundSignal.BASS, SignalTrim(gain = 2f))) {
                 Edits.trimSignal(it, SoundSignal.BASS, SignalTrim(gain = 2f))
             } +
@@ -137,6 +163,12 @@ class CustomizationReducerTest {
                     Next(handState),
                 ),
                 Row("reset to Style", withUndo, command(CustomizationCommand.ResetToStyle), edited(withUndo, julia)),
+                Row(
+                    "reset to Style keeps the Automations",
+                    CustomizationState(reset),
+                    command(CustomizationCommand.ResetToStyle),
+                    edited(CustomizationState(reset), Edits.setAutomations(julia, palettes)),
+                ),
                 Row("reset when already at the Style", fresh, command(CustomizationCommand.ResetToStyle), Next(fresh)),
                 Row(
                     "undo",
@@ -145,6 +177,28 @@ class CustomizationReducerTest {
                     Next(CustomizationState(julia, redo = listOf(zoomed)), listOf(publish(julia))),
                 ),
                 Row("undo with nothing to undo", fresh, command(CustomizationCommand.Undo), Next(fresh)),
+                Row(
+                    "undo and redo leave the Visualizer styles and the switch count alone",
+                    autoState.copy(styleSwitches = 4),
+                    command(CustomizationCommand.Undo),
+                    Next(
+                        autoState.copy(current = julia, undo = emptyList(), redo = listOf(autoState.current), styleSwitches = 4),
+                        listOf(publish(julia)),
+                    ),
+                ),
+                Row(
+                    "an edit leaves the Visualizer styles and the switch count alone",
+                    autoState.copy(styleSwitches = 4),
+                    command(CustomizationCommand.SetShared(SharedProperty.SPEED, 2f)),
+                    Next(
+                        autoState.copy(
+                            current = Edits.setShared(autoState.current, SharedProperty.SPEED, 2f),
+                            undo = listOf(julia, autoState.current),
+                            styleSwitches = 4,
+                        ),
+                        listOf(publish(Edits.setShared(autoState.current, SharedProperty.SPEED, 2f))),
+                    ),
+                ),
                 Row("undo with only redo", withRedo, command(CustomizationCommand.Undo), Next(withRedo)),
                 Row(
                     "redo",
@@ -210,6 +264,32 @@ class CustomizationReducerTest {
                     fresh,
                     CustomizationEvent.PresetLoaded(PresetRules.capture("Tunnel", tunnel, PresetRules.ALL_PARTS - PresetPart.STYLE)),
                     Next(fresh),
+                ),
+                Row(
+                    "a Style switch that is due is live, not history, keeps the Automations and counts the switch",
+                    autoState,
+                    CustomizationEvent.StyleDue,
+                    Next(
+                        autoState.copy(current = autoSwitched, styleSwitches = 2),
+                        listOf(publish(autoSwitched), Emit(CustomizationFact.StyleChanged(TUNNEL))),
+                    ),
+                ),
+                Row(
+                    "a Style switch due on the app's picks takes the next of the shuffle",
+                    picksState,
+                    CustomizationEvent.StyleDue,
+                    Next(
+                        picksState.copy(current = pickedSwitch, styleSwitches = picked.played),
+                        listOf(publish(pickedSwitch), Emit(CustomizationFact.StyleChanged(picked.style))),
+                    ),
+                ),
+                Row("a Style switch due with switching off", fresh, CustomizationEvent.StyleDue, Next(fresh)),
+                Row("a Style switch due with nowhere to go", stuckState, CustomizationEvent.StyleDue, Next(stuckState)),
+                Row(
+                    "the Visualizer styles are kept beside the history and reach nothing else",
+                    withUndo,
+                    command(CustomizationCommand.UseVisualizerStyles(listOf(TUNNEL, JULIA))),
+                    Next(withUndo.copy(visualizerStyles = listOf(TUNNEL, JULIA))),
                 ),
                 Row(
                     "a failed piece of work is reported",
