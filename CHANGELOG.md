@@ -11,6 +11,12 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Playlists come back on the feature stores (#17, Library slice).**
+  Playback keeps each playlist's tracks and takes rename, add, reorder and
+  remove Commands; a new playlist may start empty. The Library passes them
+  on and imports PLS and XSPF files as well as M3U. The old Library screens
+  edit playlists through them again, and the car browses a Playlists folder.
+
 - **Settings switch over to their feature store (#17, Settings slice).**
   Every reader of the old `GuiPrefs` and `PlayerPrefs`, and of the
   equalizer and export defaults, now reads Settings' one app-scoped store
