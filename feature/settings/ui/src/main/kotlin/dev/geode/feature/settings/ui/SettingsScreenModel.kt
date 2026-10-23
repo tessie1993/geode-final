@@ -66,6 +66,9 @@ sealed interface SettingsAction {
         val section: SettingsSection,
     ) : SettingsAction
 
+    /** Pick the folder Studio saves its videos to (#21); the route opens the system's folder picker. */
+    data object PickVideoFolder : SettingsAction
+
     /** Pick a folder to mirror presets to; the route opens the system's folder picker. */
     data object PickPresetMirror : SettingsAction
 

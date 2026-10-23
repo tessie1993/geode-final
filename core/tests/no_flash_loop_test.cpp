@@ -52,8 +52,8 @@ ModulatorSpec square(float periodSeconds) {
 // from near black to bright, each long enough to rise most of the way even at the No-flash rise.
 CustomizationPlan strobe() {
     CustomizationPlan plan = CustomizationPlan::defaults();
-    plan.shared[static_cast<size_t>(Shared::Brightness)] = mod::spec(Shared::Brightness).min;
-    plan.shared[static_cast<size_t>(Shared::Intensity)] = mod::spec(Shared::Intensity).min;
+    plan.shared[static_cast<size_t>(Shared::Brightness)] = 0.0f;  // its darkest: a fraction of its range
+    plan.shared[static_cast<size_t>(Shared::Intensity)] = 0.0f;
     const int c = plan.add(square(0.25f));
     plan.add(link(Source::modulator(c), Target::shared(Shared::Brightness)));
     plan.add(link(Source::modulator(c), Target::shared(Shared::Intensity)));

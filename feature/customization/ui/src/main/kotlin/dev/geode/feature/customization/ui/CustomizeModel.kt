@@ -3,6 +3,7 @@ package dev.geode.feature.customization.ui
 import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.MacroLink
@@ -118,8 +119,9 @@ data class ModulatorRow(
 )
 
 /**
- * Everything the Customize panel draws (ADR-0003: an immutable screen model), for the basic view and
- * the Advanced view alike. Which view is open is App UI state the screen keeps itself.
+ * Everything the Customize panel and [ModulatorsAutomationScreen] draw (ADR-0003: an immutable screen
+ * model), for the basic view and the Advanced view alike. Which view is open is App UI state the screen
+ * keeps itself.
  */
 @Immutable
 data class CustomizeModel(
@@ -137,6 +139,7 @@ data class CustomizeModel(
     val extras: List<SliderRow>,
     val sources: List<ReactionSource>,
     val targets: List<Target>,
+    val automations: Automations,
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 }
@@ -200,5 +203,6 @@ fun CustomizationState.toCustomizeModel(
                 customization.modulators.flatMap { modulator ->
                     ModulatorParameter.entries.map { Target.ModulatorField(modulator.id, it) }
                 },
+        automations = customization.automations,
     )
 }

@@ -165,6 +165,7 @@ object SettingsRules {
         command: FolderCommand,
     ): FolderSettings =
         when (command) {
+            is FolderCommand.SetVideoFolder -> folders.copy(videoFolder = command.folder)
             is FolderCommand.SetPresetMirror -> folders.copy(presetMirror = command.folder)
             is FolderCommand.SetPresetFolder -> folders.copy(presetFolder = command.folder)
             is FolderCommand.AddMusicFolder -> folders.copy(musicFolders = folders.musicFolders + command.folder)

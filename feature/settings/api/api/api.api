@@ -515,18 +515,31 @@ public final class dev/geode/feature/settings/api/FolderCommand$SetPresetMirror 
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/settings/api/FolderCommand$SetVideoFolder : dev/geode/feature/settings/api/FolderCommand {
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-5agCEG0 ()Ljava/lang/String;
+	public final fun copy-_Kn6y2c (Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderCommand$SetVideoFolder;
+	public static synthetic fun copy-_Kn6y2c$default (Ldev/geode/feature/settings/api/FolderCommand$SetVideoFolder;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderCommand$SetVideoFolder;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFolder-5agCEG0 ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/settings/api/FolderSettings {
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-oLgjRmI ()Ljava/lang/String;
-	public final fun component2 ()Ljava/util/Set;
-	public final fun component3-oLgjRmI ()Ljava/lang/String;
-	public final fun copy--HcJcCQ (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderSettings;
-	public static synthetic fun copy--HcJcCQ$default (Ldev/geode/feature/settings/api/FolderSettings;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderSettings;
+	public final fun component2-oLgjRmI ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4-oLgjRmI ()Ljava/lang/String;
+	public final fun copy-GDx76vk (Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;)Ldev/geode/feature/settings/api/FolderSettings;
+	public static synthetic fun copy-GDx76vk$default (Ldev/geode/feature/settings/api/FolderSettings;Ljava/lang/String;Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/settings/api/FolderSettings;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getMusicFolders ()Ljava/util/Set;
 	public final fun getPresetFolder-oLgjRmI ()Ljava/lang/String;
 	public final fun getPresetMirror-oLgjRmI ()Ljava/lang/String;
+	public final fun getVideoFolder-oLgjRmI ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
