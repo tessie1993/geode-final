@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "CompositeGrade.hpp"
+#include "SharedParams.hpp"
 #include "geode/viz/LiveSignal.hpp"
 #include "geode/render/Quad.hpp"
 
@@ -34,7 +35,7 @@ float Renderer::beginFrame(double timeSeconds) {
     {
         std::lock_guard<std::mutex> lock(stateLock_);
         frameFeatures_ = features_;
-        frameEffects_ = requestedEffects_;
+        frameCustomization_ = requestedCustomization_;
         frameLayerMix_ = layerMix_;
         frameLayerBlend_ = layerBlend_;
         frameTransitionId_ = transitionId_;
@@ -88,6 +89,7 @@ SceneParams Renderer::resolveParams(float dt) {
     SceneParams p = lfo_.apply(displayedParams_, lfoValues);
     p = AdsrEngine::apply(p, adsr_.configs, envValues);
     const bool reducedMotion = reducedMotion_.load(std::memory_order_relaxed);
+    applyCustomization(p, dt, reducedMotion);
     p = safety::apply(p, reducedMotion);
     if (!thermalTierInfo(thermal_.tier()).optionalPasses) {
         p.flowEnabled = false;
@@ -98,6 +100,51 @@ SceneParams Renderer::resolveParams(float dt) {
     postCyclePhase_ = grade::integrateCyclePhase(postCyclePhase_, p.cycleSpeed, dt, p.colorCycle);
     postBeatPulse_ = postBeat_.step(live::hit(frameFeatures_), dt);
     return p;
+}
+
+void Renderer::applyCustomization(SceneParams& p, float dt, bool reducedMotion) {
+    const std::string sceneId = activeScene_ != nullptr ? activeScene_->id() : std::string();
+    std::optional<mod::NativeFrame> shared;
+    if (frameCustomization_) {
+        // Normalised to the active Style's ranges before anything is drawn; the clamp runs last.
+        shared = mod::toNative(rangesFor(sceneId), *frameCustomization_);
+        applySharedCore(p, *shared);
+    }
+    frameEffects_ = shared ? SharedEffects::from(*shared) : SharedEffects{};
+    camera_.step(shared ? CameraInput::from(*shared) : CameraInput{}, live::hit(frameFeatures_), dt, reducedMotion);
+    activeExtras_ = extrasFor(sceneId, shared ? &*shared : nullptr);
+}
+
+const mod::FamilyRanges& Renderer::rangesFor(const std::string& sceneId) {
+    if (sceneId == rangesSceneId_) return ranges_;
+    rangesSceneId_ = sceneId;
+    ranges_ = mod::FamilyRanges::sharedCore();
+    if (const packs::StylePack* pack = registry_.pack(sceneId); pack != nullptr) {
+        for (const packs::ExtraSpec& extra : pack->extras) {
+            const bool stepped = mod::extraNamed(extra.name) == static_cast<int>(mod::Extra::Variant);
+            ranges_.declareExtra(extra.name, extra.min, extra.max, "linear", stepped);
+        }
+    }
+    return ranges_;
+}
+
+ExtraValues Renderer::extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const {
+    ExtraValues values = ExtraValues::neutral();
+    const packs::StylePack* pack = registry_.pack(sceneId);
+    if (pack == nullptr) return values;
+    for (const packs::ExtraSpec& extra : pack->extras) {
+        const int at = mod::extraNamed(extra.name);
+        if (at < 0) continue;
+        const auto e = static_cast<size_t>(at);
+        values.declared[e] = true;
+        values.value[e] = frame != nullptr ? frame->extras[e] : extra.defaultValue;
+    }
+    return values;
+}
+
+void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {
+    scene.setCamera(camera_.pose());
+    scene.setExtras(extras);
 }
 
 void Renderer::resolveLayerScene() {
@@ -151,6 +198,7 @@ float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
     if (layerScene_) {
         bindSecondaryTarget();
         wireFlow(*layerScene_, p);
+        prepareScene(*layerScene_, extrasFor(layerScene_->id(), nullptr));
         layerScene_->setParams(p);
         deliverPcm(*layerScene_);
         layerScene_->update(gainAdjusted(frameFeatures_, p), dt);
@@ -164,6 +212,7 @@ float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
         } else {
             bindSecondaryTarget();
             const SceneParams& op = outgoingParams_ ? *outgoingParams_ : p;
+            prepareScene(*outgoingScene_, extrasFor(outgoingScene_->id(), nullptr));
             outgoingScene_->setParams(op);
             deliverPcm(*outgoingScene_);
             outgoingScene_->update(gainAdjusted(frameFeatures_, op), dt);
@@ -183,6 +232,7 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
         glClear(GL_COLOR_BUFFER_BIT);
     }
     wireFlow(scene, p);
+    prepareScene(scene, activeExtras_);
     scene.setParams(p);
     deliverPcm(scene);
     scene.update(gainAdjusted(frameFeatures_, p), dt);
@@ -253,6 +303,12 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.gateA = grade::gateFor(activeScene_->family()).toVec4();
     Scene* other = layerScene_ ? layerScene_ : outgoingScene_ ? outgoingScene_ : activeScene_;
     in.gateB = grade::gateFor(other->family()).toVec4();
+    // The Camera's flat moves for every picture whose Style does not move a camera of its own, and the
+    // flat endless zoom for the ones whose renderer has none.
+    in.camera = camera_.pose();
+    in.cameraGate = {activeScene_->ownsCamera() ? 0.0f : 1.0f, other->ownsCamera() ? 0.0f : 1.0f,
+                     activeScene_->family() == SceneFamily::Fluid ? 1.0f : 0.0f,
+                     other->family() == SceneFamily::Fluid ? 1.0f : 0.0f};
     // W00: read this frame's latched underlay straight from CompositePass (it owns the texture -
     // see CompositePass.hpp), the same way uFlow/uRipple above are read from Overlays.
     in.underlayTex = compositePass_.underlayTexOrZero();
