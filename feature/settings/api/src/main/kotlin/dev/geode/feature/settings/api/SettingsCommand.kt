@@ -210,6 +210,11 @@ sealed interface ExportCommand : SettingsCommand {
 }
 
 sealed interface FolderCommand : SettingsCommand {
+    /** The folder Studio saves its videos to (#21). It can be changed but not cleared. */
+    data class SetVideoFolder(
+        val folder: FolderUri,
+    ) : FolderCommand
+
     /** Null stops mirroring presets to a folder. */
     data class SetPresetMirror(
         val folder: FolderUri?,
