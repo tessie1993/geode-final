@@ -67,6 +67,7 @@ class NativePlayer(
     private var volume = 1f
     private var gapless = true
     private var crossfadeMs = 0
+
     // Read by the worker to skip an open a newer one has replaced.
     @Volatile
     private var loadedId = -1L
