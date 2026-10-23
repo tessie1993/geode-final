@@ -267,19 +267,18 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
-    // The Visuals journey test (#43) builds the real app-scoped feature stores the way :app will at
-    // the switch-over (#17), and moves between the real routes. Nothing here is wired yet. The routes
-    // are an implementation dependency only because a unit test sees the R classes of :app's main
-    // dependencies alone; as testImplementation, VisualsRoute failed with NoClassDefFoundError on
-    // dev.geode.feature.visuals.ui.R$string.
+    // Visuals and Customization (#17): the Visuals place, full screen and Customize, over their
+    // app-scoped stores, whose Customization reaches the live Visual as a snapshot (ADR-0002).
+    implementation(project(":feature:customization:api"))
+    implementation(project(":feature:customization:core"))
+    implementation(project(":feature:customization:handlers"))
+    implementation(project(":feature:customization:ui"))
+    implementation(project(":feature:visuals:api"))
+    implementation(project(":feature:visuals:core"))
+    implementation(project(":feature:visuals:handlers"))
     implementation(project(":feature:visuals:ui"))
     // The Playback journey test (#17) reads Playback's own timings.
     testImplementation(project(":feature:playback:core"))
-    testImplementation(project(":feature:customization:api"))
-    testImplementation(project(":feature:customization:core"))
-    testImplementation(project(":feature:visuals:api"))
-    testImplementation(project(":feature:visuals:core"))
-    testImplementation(project(":feature:visuals:handlers"))
     testImplementation(testFixtures(project(":arch:kernel")))
     testImplementation(testFixtures(project(":arch:audio")))
 

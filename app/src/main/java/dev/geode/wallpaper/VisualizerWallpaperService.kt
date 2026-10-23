@@ -8,15 +8,22 @@ import android.view.SurfaceHolder
 import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.audio.AudioBus
 import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.PresetStore
+import dev.geode.engine.bridge.NativeSnapshots
+import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.geodeContainer
 import dev.geode.render.FramePacer
 import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
 import dev.geode.ui.ThemeStore
 import dev.geode.util.bestEffort
+import dev.geode.visuals.VisualSnapshots
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -24,6 +31,14 @@ class VisualizerWallpaperService : WallpaperService() {
     /** The app's settings (#17): the wallpaper follows reduced motion as the app does. */
     @Inject
     lateinit var settings: Settings
+
+    /** The person's Customization (#17): the wallpaper shows the Style and Customization the app shows. */
+    @Inject
+    lateinit var customization: @JvmSuppressWildcards CustomizationFeature
+
+    /** Where each Customization reaches the wallpaper's own Visual (ADR-0002). */
+    @Inject
+    lateinit var snapshots: VisualSnapshots
 
     override fun onCreateEngine(): Engine = VisualizerEngine()
 
@@ -33,6 +48,8 @@ class VisualizerWallpaperService : WallpaperService() {
         private val idle = IdleFeatures()
         private var lastFrameMs = 0L
         private var feeder: Thread? = null
+        private var exchange: NativeSnapshots? = null
+        private var following: Job? = null
 
         /**
          * Each engine instance — preview and home screen can both be live at once — owns its
@@ -90,7 +107,7 @@ class VisualizerWallpaperService : WallpaperService() {
             setTouchEventsEnabled(true)
             val engine = VisualizerRenderer(this@VisualizerWallpaperService)
             renderer = engine
-            restoreLiveState(engine)
+            followCustomization(engine)
             engine.pcmProvider = { null }
             glView =
                 WallpaperGlSurfaceView(this@VisualizerWallpaperService).apply {
@@ -102,18 +119,17 @@ class VisualizerWallpaperService : WallpaperService() {
                 }
         }
 
-        private fun restoreLiveState(engine: VisualizerRenderer) {
-            val prefsFiles = GeodePrefsFiles(this@VisualizerWallpaperService)
-            val prefs = prefsFiles.viz
-            prefs.getString("live_state", null)?.let { json ->
-                runCatching { PresetStore.fromJson(json) }.getOrNull()?.let { preset ->
-                    engine.requestedSceneId = preset.sceneId
-                    engine.sceneParams = preset.params
+        /** The Style Customization shows, and each Customization through the wallpaper's own exchange. */
+        private fun followCustomization(engine: VisualizerRenderer) {
+            exchange = snapshots.open().also { engine.snapshots = it }
+            following =
+                this@VisualizerWallpaperService.geodeContainer.appScope.launch {
+                    customization.state
+                        .map { it.current.style }
+                        .distinctUntilChanged()
+                        .collect { engine.requestedSceneId = it }
                 }
-            }
-            prefs.getString("milk_path", null)?.let { path ->
-                if (java.io.File(path).isFile) engine.loadMilkPreset(path)
-            }
+            val prefsFiles = GeodePrefsFiles(this@VisualizerWallpaperService)
             // Settings, once read; before then, what the old settings file said.
             engine.reducedMotion =
                 (settings.state.value as? SettingsState.Ready)?.values?.behavior?.reducedMotion
@@ -239,6 +255,10 @@ class VisualizerWallpaperService : WallpaperService() {
             pacer.stop()
             stopFeeding()
             releaseScenesOnGlThread()
+            following?.cancel()
+            following = null
+            exchange?.let(snapshots::release)
+            exchange = null
             glView?.destroy()
             glView = null
             renderer = null

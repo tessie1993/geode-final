@@ -80,6 +80,11 @@ class CustomizationReducer(
             is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
             is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
             CustomizationCommand.ResetToStyle -> edit(state, Edits.resetToStyle(current, styles.manifestOf(current.style)))
+            CustomizationCommand.CaptureA -> Next(state.copy(compare = state.compare.copy(a = current, blend = 0f)))
+            CustomizationCommand.CaptureB -> Next(state.copy(compare = state.compare.copy(b = current, blend = 1f)))
+            CustomizationCommand.RecallA -> recall(state, state.compare.a, 0f)
+            CustomizationCommand.RecallB -> recall(state, state.compare.b, 1f)
+            is CustomizationCommand.Blend -> blend(state, command.position)
             CustomizationCommand.Undo -> undo(state)
             CustomizationCommand.Redo -> redo(state)
             is CustomizationCommand.SavePreset ->
@@ -100,6 +105,29 @@ class CustomizationReducer(
         val target = styles[command.style] ?: return Next(state, listOf(ReportFailure("no Style named ${command.style}")))
         if (command.style == state.current.style) return Next(state)
         return edit(state, Edits.switchStyle(state.current, styles.manifestOf(state.current.style), target))
+    }
+
+    /** Back to a captured side of the A/B compare, as one undo step; nothing when it was not captured. */
+    private fun recall(
+        state: CustomizationState,
+        side: Customization?,
+        position: Float,
+    ): Next<CustomizationState, CustomizationEffect> {
+        side ?: return Next(state)
+        val next = edit(state, side)
+        return Next(next.state.copy(compare = state.compare.copy(blend = position)), next.effects)
+    }
+
+    /** The blend between A and B at [position], live; nothing until both are captured. */
+    private fun blend(
+        state: CustomizationState,
+        position: Float,
+    ): Next<CustomizationState, CustomizationEffect> {
+        val a = state.compare.a ?: return Next(state)
+        val b = state.compare.b ?: return Next(state)
+        val at = position.coerceIn(0f, 1f)
+        val next = live(state, AbBlend.between(a, b, at))
+        return Next(next.state.copy(compare = state.compare.copy(blend = at)), next.effects)
     }
 
     /** One undo step to [next], unless it changes nothing. */

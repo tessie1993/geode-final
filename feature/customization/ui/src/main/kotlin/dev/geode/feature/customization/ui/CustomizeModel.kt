@@ -111,6 +111,16 @@ data class ReactionGroup(
     val links: List<LinkRow>,
 )
 
+/** The A/B compare as the panel shows it: which sides are captured, and where the blend sits (0 is A, 1 is B). */
+@Immutable
+data class CompareRow(
+    val hasA: Boolean = false,
+    val hasB: Boolean = false,
+    val blend: Float = 0f,
+) {
+    val canBlend: Boolean get() = hasA && hasB
+}
+
 /** One Modulator, and whether a Reaction listens to it: one that nothing listens to does not run. */
 @Immutable
 data class ModulatorRow(
@@ -140,6 +150,7 @@ data class CustomizeModel(
     val sources: List<ReactionSource>,
     val targets: List<Target>,
     val automations: Automations,
+    val compare: CompareRow = CompareRow(),
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 }
@@ -204,5 +215,6 @@ fun CustomizationState.toCustomizeModel(
                     ModulatorParameter.entries.map { Target.ModulatorField(modulator.id, it) }
                 },
         automations = customization.automations,
+        compare = CompareRow(hasA = compare.a != null, hasB = compare.b != null, blend = compare.blend),
     )
 }

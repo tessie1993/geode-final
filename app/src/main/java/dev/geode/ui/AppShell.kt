@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -83,6 +84,11 @@ import dev.geode.ui.shell.Sheet
 import dev.geode.ui.shell.ShellViewModel
 import dev.geode.ui.shell.icon
 import dev.geode.ui.shell.label
+import dev.geode.visuals.CustomizeSheet
+import dev.geode.visuals.LiveVisualBindings
+import dev.geode.visuals.VisualFullScreen
+import dev.geode.visuals.VisualsPage
+import dev.geode.visuals.VisualsTab
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -124,7 +130,12 @@ fun AppRoot() {
         }
     }
     val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
+    val playerPrefs by settingsViewModel.playerPrefs.collectAsStateWithLifecycle()
     val ui by appUi.state.collectAsStateWithLifecycle()
+    val visualsOff by shell.visualsOff.collectAsStateWithLifecycle()
+    // The one live Visual shows behind the Visuals place, full screen and Customize; never with Visuals off (#196).
+    val visualShown = !visualsOff && (ui.fullScreen || ui.place == Place.VISUALS || ui.sheet == Sheet.CUSTOMIZE)
+    var visualsTab by rememberSaveable { mutableStateOf(VisualsTab.STYLES) }
     val playing by shell.playback.state.collectAsStateWithLifecycle()
     val loaded = playing.player != PlayerState.Idle
     // Back closes what is on top, then goes Home, then leaves the app (#182). The sheets, the search
@@ -158,7 +169,7 @@ fun AppRoot() {
                 }
             }
     }
-    VisualizerEngineBindings(viewModel, visualizerView)
+    LiveVisualBindings(visualizerView, shell, running = visualShown, reducedMotion = gui.reducedMotion)
     CrystalMaterialTheme(
         pack = dev.geode.design.theme.ThemePackCatalog.lapisLazuli,
         gui = gui,
@@ -199,11 +210,12 @@ fun AppRoot() {
                         MusicLibrary(shell)
                     }
                 Place.VISUALS ->
-                    VisualsHub(
-                        viewModel,
-                        visualizerView,
-                        onOpenNowPlaying = { appUi.send(AppUiCommand.EnterFullScreen) },
-                        liveBackdrop = gui.clearVisualsMenu && !ui.fullScreen,
+                    VisualsPage(
+                        shell,
+                        tab = visualsTab,
+                        onTab = { visualsTab = it },
+                        onCustomize = { appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
+                        onFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) },
                     )
                 Place.STUDIO -> StudioRoute()
                 Place.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
@@ -217,11 +229,15 @@ fun AppRoot() {
         }
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
+            if (visualShown) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
             val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
-            if (widthClass == WindowWidthSizeClass.COMPACT) {
-                AppShellCompact(ui.place, open, gui, miniPlayer, content = { content(false) })
-            } else {
-                AppShellExpanded(ui.place, open, miniPlayer, content = { content(true) })
+            // Under full screen the shell stays composed, so where the person was survives, but is not drawn.
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (ui.fullScreen) 0f else 1f }) {
+                if (widthClass == WindowWidthSizeClass.COMPACT) {
+                    AppShellCompact(ui.place, open, gui, miniPlayer, content = { content(false) })
+                } else {
+                    AppShellExpanded(ui.place, open, miniPlayer, content = { content(true) })
+                }
             }
             val clipLabel = stringResource(R.string.crash_clip_label)
             crashText?.let { text ->
@@ -249,17 +265,27 @@ fun AppRoot() {
                 )
             }
             if (ui.fullScreen) {
-                VisualizerScreen(
-                    viewModel = viewModel,
-                    visualizerView = visualizerView,
-                    onCollapse = { appUi.send(AppUiCommand.ExitFullScreen) },
-                    onOpenVisuals = {
-                        appUi.send(AppUiCommand.ExitFullScreen)
+                VisualFullScreen(
+                    shell,
+                    visualsOff = visualsOff,
+                    keepScreenOn = playerPrefs.keepScreenOn,
+                    onExit = { appUi.send(AppUiCommand.ExitFullScreen) },
+                    playerControls = { modifier -> PlayerControls(shell, modifier.navigationBarsPadding()) },
+                )
+            }
+            PlayerSheet(shell, ui.sheet)
+            if (ui.sheet == Sheet.CUSTOMIZE) {
+                CustomizeSheet(
+                    shell,
+                    onClose = { appUi.send(AppUiCommand.CloseSheet) },
+                    onBrowsePresets = {
+                        appUi.send(AppUiCommand.CloseSheet)
+                        if (ui.fullScreen) appUi.send(AppUiCommand.ExitFullScreen)
+                        visualsTab = VisualsTab.PRESETS
                         open(Place.VISUALS)
                     },
                 )
             }
-            PlayerSheet(shell, ui.sheet)
             ui.banner?.let { banner ->
                 FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
             }
@@ -340,7 +366,7 @@ private fun PlayerControls(
     )
 }
 
-/** The Queue or Tools sheet the App UI has open, if either; Customize opens from the Visuals. */
+/** The Queue or Tools sheet the App UI has open, if either; Customize has its own (CustomizeSheet). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlayerSheet(

@@ -44,9 +44,6 @@ complexity:
   LargeClass:
     active: true
     threshold: 1100
-    # Pure data catalogs: long by nature, no logic to decompose.
-    excludes:
-      - '**/BuiltInPresets.kt'
 
 potential-bugs:
   active: true

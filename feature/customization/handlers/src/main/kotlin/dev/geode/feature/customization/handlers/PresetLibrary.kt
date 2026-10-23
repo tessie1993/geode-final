@@ -16,6 +16,16 @@ enum class SaveOutcome {
 }
 
 /**
+ * One saved preset as the preset folder holds it: its [name], the [style] it was made on, and the
+ * subfolder it sits in ([folder], "" at the top, `/` between subfolders).
+ */
+data class SavedEntry(
+    val name: String,
+    val style: SceneId,
+    val folder: String,
+)
+
+/**
  * The preset files (ADR-0004): saved and loaded by name in the [places] Settings chose, as versioned
  * JSON ([PresetFormat]). A preset an older Geode saved is converted with [PresetUpgrade], using the app-wide
  * slots it was played with ([legacy]); a preset on a Style this version no longer draws moves to
@@ -85,6 +95,108 @@ class PresetLibrary(
         failure?.let { throw it }
         return converted
     }
+
+    /** Every preset in the preset folder, an older Geode's among them; a file that is not a preset is left out. */
+    fun entries(): List<SavedEntry> {
+        val folder = places.saved()
+        return folder.files().mapNotNull { path ->
+            val stored = runCatching { PresetFormat.decode(folder.read(path), fallbackStyle) }.getOrNull() ?: return@mapNotNull null
+            val (name, style) =
+                when (stored) {
+                    is StoredPreset.Current -> stored.preset.name to stored.preset.style
+                    is StoredPreset.Legacy -> stored.preset.name to stored.preset.style
+                }
+            SavedEntry(name, style, path.substringBeforeLast('/', ""))
+        }
+    }
+
+    /** Every subfolder of the preset folder, empty ones included. */
+    fun folders(): List<String> = places.saved().folders()
+
+    /** The text of the preset [id]'s file, as it is shared. */
+    fun text(id: PresetId): String {
+        val folder = places.saved()
+        return folder.read(pathOf(folder, id.value) ?: throw FileNotFoundException("no preset named ${id.value}"))
+    }
+
+    /** Saves the preset [id] under [name] instead, in the same subfolder, and removes the old file. */
+    fun rename(
+        id: PresetId,
+        name: String,
+    ) {
+        val folder = places.saved()
+        val path = pathOf(folder, id.value) ?: throw FileNotFoundException("no preset named ${id.value}")
+        val renamed = load(id).copy(name = name)
+        val at = path.substringBeforeLast('/', "")
+        folder.write(within(at, fileNameOf(name)), PresetFormat.encode(renamed))
+        if (fileNameOf(name) != path.substringAfterLast('/')) folder.delete(path)
+    }
+
+    /** Moves the preset [id] into the subfolder [to] ("" for the top). */
+    fun move(
+        id: PresetId,
+        to: String,
+    ) {
+        val folder = places.saved()
+        val path = pathOf(folder, id.value) ?: throw FileNotFoundException("no preset named ${id.value}")
+        val target = within(to, path.substringAfterLast('/'))
+        if (target == path) return
+        folder.write(target, folder.read(path))
+        folder.delete(path)
+    }
+
+    /** Deletes the preset [id]'s file, and its copy in the mirror folder when there is one. */
+    fun delete(id: PresetId) {
+        val folder = places.saved()
+        pathOf(folder, id.value)?.let(folder::delete)
+        val mirror = places.mirror() ?: return
+        pathOf(mirror, id.value)?.let(mirror::delete)
+    }
+
+    fun createFolder(path: String) = places.saved().makeFolder(path)
+
+    /** Renames the subfolder [from] to [to], with every preset and folder in it. */
+    fun renameFolder(
+        from: String,
+        to: String,
+    ) {
+        val folder = places.saved()
+        folder.makeFolder(to)
+        folder.folders().filter { it.startsWith("$from/") }.forEach { folder.makeFolder(to + it.removePrefix(from)) }
+        folder.files().filter { it.startsWith("$from/") }.forEach { path ->
+            folder.write(to + path.removePrefix(from), folder.read(path))
+            folder.delete(path)
+        }
+        // The deepest first, so each is empty when it is deleted.
+        (folder.folders().filter { it.startsWith("$from/") }.sortedByDescending { it.length } + from).forEach(folder::deleteFolder)
+    }
+
+    /** Deletes the subfolder [path] when it is empty. */
+    fun deleteFolder(path: String) = places.saved().deleteFolder(path)
+
+    /**
+     * Saves the shared preset file [text] at the top of the preset folder, an older Geode's converted
+     * first, under the name [nameFor] gives for the name it carries. Null when [text] is not a preset.
+     */
+    fun import(
+        text: String,
+        nameFor: (String) -> String,
+    ): SavedEntry? {
+        val stored = runCatching { PresetFormat.decode(text, fallbackStyle) }.getOrNull() ?: return null
+        val preset =
+            when (stored) {
+                is StoredPreset.Current -> stored.preset
+                is StoredPreset.Legacy -> upgrade(stored)
+            }
+        val named = preset.copy(name = nameFor(preset.name))
+        places.saved().write(fileNameOf(named.name), PresetFormat.encode(named))
+        return SavedEntry(named.name, named.style, "")
+    }
+
+    private fun within(
+        folder: String,
+        file: String,
+    ): String = if (folder.isEmpty()) file else "$folder/$file"
 
     private fun upgrade(stored: StoredPreset.Legacy): Preset =
         PresetUpgrade.upgrade(stored.preset, legacy.lfos(), legacy.envelopes(), styles, fallbackStyle).preset

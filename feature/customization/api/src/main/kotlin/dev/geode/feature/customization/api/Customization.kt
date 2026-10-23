@@ -37,12 +37,26 @@ data class Customization(
 )
 
 /**
+ * The A/B compare: two Customizations the person captured, [a] and [b], and where the [blend] between
+ * them sits (0 is A, 1 is B). Kept beside the history, not in it, for the session.
+ */
+data class Compare(
+    val a: Customization? = null,
+    val b: Customization? = null,
+    val blend: Float = 0f,
+) {
+    /** Whether there is something to blend: both sides captured. */
+    val canBlend: Boolean get() = a != null && b != null
+}
+
+/**
  * Customization's state: the [current] Customization and the session's unlimited undo and redo
  * history, the newest step last. The history survives Android killing the app (ADR-0004).
  *
  * Style switching's own bookkeeping sits beside it, outside the history: [visualizerStyles], the
  * Visualizer styles `:app` hands in ([CustomizationCommand.UseVisualizerStyles]), and [styleSwitches],
- * how many times it has switched, which says where the app's picks' shuffle has got to.
+ * how many times it has switched, which says where the app's picks' shuffle has got to. [compare] is
+ * the A/B compare.
  */
 data class CustomizationState(
     val current: Customization,
@@ -50,6 +64,7 @@ data class CustomizationState(
     val redo: List<Customization> = emptyList(),
     val visualizerStyles: List<SceneId> = emptyList(),
     val styleSwitches: Int = 0,
+    val compare: Compare = Compare(),
 )
 
 /** The intents: what the outside may ask of Customization. Every edit can be undone. */
@@ -148,6 +163,27 @@ sealed interface CustomizationCommand {
      */
     data class UseVisualizerStyles(
         val styles: List<SceneId>,
+    ) : CustomizationCommand
+
+    /** Keeps the current Customization as A of the A/B compare. Not an edit. */
+    data object CaptureA : CustomizationCommand
+
+    /** Keeps the current Customization as B of the A/B compare. Not an edit. */
+    data object CaptureB : CustomizationCommand
+
+    /** Back to A of the A/B compare, when there is one. Undoable. */
+    data object RecallA : CustomizationCommand
+
+    /** Back to B of the A/B compare, when there is one. Undoable. */
+    data object RecallB : CustomizationCommand
+
+    /**
+     * Shows the blend at [position] (0 is A, 1 is B) between A and B, once both are captured: their
+     * values in between, and everything else from the nearer side. Live, like dragging a slider
+     * before it is let go: not in the history.
+     */
+    data class Blend(
+        val position: Float,
     ) : CustomizationCommand
 
     /** Back to the current Style's own defaults. Undoable. */

@@ -21,6 +21,11 @@
     <string name="customize_all_presets">All presets</string>
     <string name="customize_no_presets">No presets for this Style yet. Save one from the top bar.</string>
     <string name="customize_looks">Looks</string>
+    <string name="customize_compare">A/B compare</string>
+    <string name="customize_keep_a">Keep as A</string>
+    <string name="customize_keep_b">Keep as B</string>
+    <string name="customize_show_a">A</string>
+    <string name="customize_show_b">B</string>
     <string name="customize_percent">%1$d%%</string>
     <string name="customize_driver_more">%1$s +%2$d</string>
     <string name="customize_macro_knob">%1$s, %2$d%%</string>

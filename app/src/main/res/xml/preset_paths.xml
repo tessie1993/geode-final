@@ -2,10 +2,15 @@
 <!--
   Sharing a preset too long to be a link sends the .json itself, and a raw
   file:// uri is not allowed to leave the app. This exposes ONLY the presets
-  directory, so a share can never hand out anything else in app storage.
+  directory, and the cache folder a shared preset is copied into when it
+  lives in a folder the person picked, so a share can never hand out
+  anything else in app storage.
 -->
 <paths>
     <files-path
         name="presets"
         path="presets/" />
+    <cache-path
+        name="shared_presets"
+        path="shared-presets/" />
 </paths>

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -82,6 +83,8 @@ internal fun BasicView(panel: PanelState) {
         }
     }
 
+    CompareSection(model.compare, panel.send)
+
     if (model.looks.isNotEmpty()) {
         SectionTitle(stringResource(R.string.customize_looks))
         ChipStrip {
@@ -89,6 +92,24 @@ internal fun BasicView(panel: PanelState) {
                 ChoiceChip(look.name, model.isCurrent(look)) { panel.send(CustomizationCommand.ChooseStyle(look.style)) }
             }
         }
+    }
+}
+
+/** The A/B compare: keep the Customization on show as A or B, go back to either, or blend between them. */
+@Composable
+private fun CompareSection(
+    compare: CompareRow,
+    send: (CustomizationCommand) -> Unit,
+) {
+    SectionTitle(stringResource(R.string.customize_compare))
+    ChipStrip {
+        ChoiceChip(stringResource(R.string.customize_keep_a), selected = false) { send(CustomizationCommand.CaptureA) }
+        ChoiceChip(stringResource(R.string.customize_keep_b), selected = false) { send(CustomizationCommand.CaptureB) }
+        if (compare.hasA) ChoiceChip(stringResource(R.string.customize_show_a), compare.blend == 0f) { send(CustomizationCommand.RecallA) }
+        if (compare.hasB) ChoiceChip(stringResource(R.string.customize_show_b), compare.blend == 1f) { send(CustomizationCommand.RecallB) }
+    }
+    if (compare.canBlend) {
+        Slider(value = compare.blend, onValueChange = { send(CustomizationCommand.Blend(it)) })
     }
 }
 

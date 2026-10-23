@@ -10,6 +10,7 @@ import java.io.IOException
 class MemoryPresetFolder(
     val contents: MutableMap<String, String> = mutableMapOf(),
     var broken: Boolean = false,
+    val made: MutableSet<String> = mutableSetOf(),
 ) : PresetFolder {
     override fun files(): List<String> = contents.keys.filter { it.endsWith(".json") }.sorted()
 
@@ -21,6 +22,22 @@ class MemoryPresetFolder(
     ) {
         if (broken) throw IOException("the folder refused $path")
         contents[path] = text
+    }
+
+    override fun delete(path: String) {
+        contents.remove(path)
+    }
+
+    override fun folders(): List<String> =
+        (made + contents.keys.filter { '/' in it }.map { it.substringBeforeLast('/') }).sorted()
+
+    override fun makeFolder(path: String) {
+        made += path
+    }
+
+    override fun deleteFolder(path: String) {
+        if (contents.keys.any { it.startsWith("$path/") }) throw IOException("$path is not empty")
+        made.remove(path)
     }
 }
 

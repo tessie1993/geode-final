@@ -5,6 +5,7 @@ import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
+import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
@@ -37,6 +38,20 @@ class VisualizerRenderer(
 
     @Volatile
     var features: AudioFeatures = AudioFeatures.empty()
+
+    /**
+     * Where each frame reads the sound's features, on the GL thread, when set: straight from the
+     * engine's analysis, so the Visual keeps reacting however busy the UI is. Null reads [features].
+     */
+    @Volatile
+    var featuresProvider: (() -> AudioFeatures)? = null
+
+    /**
+     * The Customization exchange this Visual reads its snapshots from (ADR-0002, ADR-0004): attached
+     * on the GL thread at the next frame, and again whenever it changes. Null detaches.
+     */
+    @Volatile
+    var snapshots: NativeSnapshots? = null
 
     @Volatile
     var requestedSceneId: SceneId = SceneIds.DEFAULT
@@ -77,7 +92,7 @@ class VisualizerRenderer(
     @Volatile
     var onShaderError: (String?) -> Unit = {}
 
-    // Assigned from Main (EnginePlumbing.kt) and read on the GL thread in onDrawFrame.
+    // Assigned from Main and read on the GL thread in onDrawFrame.
     @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
 
@@ -97,6 +112,9 @@ class VisualizerRenderer(
     private var nativeAdsr: List<AdsrConfig>? = null
     private var nativeThermalSampleMs = 0L
 
+    // GL thread only: the exchange the native renderer reads now; a different [snapshots] is attached.
+    private var attachedSnapshots: NativeSnapshots? = null
+
     // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
     private val displayEvents = DisplayEvents()
 
@@ -115,7 +133,10 @@ class VisualizerRenderer(
     }
 
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
-    fun releaseScenes() = nativeViz.destroy()
+    fun releaseScenes() {
+        nativeViz.destroy()
+        attachedSnapshots = null
+    }
 
     fun loadMilkPreset(path: String) {
         lastMilkPreset = path
@@ -191,7 +212,12 @@ class VisualizerRenderer(
             nativeViz.setAdsrConfigs(adsr)
             nativeAdsr = adsr
         }
-        nativeViz.setFeatures(displayEvents.frame(features))
+        val wanted = snapshots
+        if (wanted !== attachedSnapshots && nativeViz.isCreated) {
+            nativeViz.attachSnapshots(wanted)
+            attachedSnapshots = wanted
+        }
+        nativeViz.setFeatures(displayEvents.frame(featuresProvider?.invoke() ?: features))
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)

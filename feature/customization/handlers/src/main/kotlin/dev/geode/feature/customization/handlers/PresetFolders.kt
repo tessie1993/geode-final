@@ -26,6 +26,18 @@ interface PresetFolder {
         path: String,
         text: String,
     )
+
+    /** Deletes the file at [path]; one that is not there is already gone. */
+    fun delete(path: String)
+
+    /** Every subfolder, empty ones included, by its path. */
+    fun folders(): List<String>
+
+    /** Makes the subfolder [path], and the folders above it, unless it is there already. */
+    fun makeFolder(path: String)
+
+    /** Deletes the subfolder [path] when it is empty; throws when it holds anything. */
+    fun deleteFolder(path: String)
 }
 
 /**
@@ -74,6 +86,34 @@ class DirectoryPresetFolder(
             partial.delete()
             throw IOException("could not replace $target")
         }
+    }
+
+    override fun delete(path: String) {
+        val file = fileAt(path)
+        if (file.exists() && !file.delete()) throw IOException("could not delete $path")
+    }
+
+    override fun folders(): List<String> =
+        if (!root.isDirectory) {
+            emptyList()
+        } else {
+            root
+                .walkTopDown()
+                .filter { it.isDirectory && it != root }
+                .map { it.relativeTo(root).invariantSeparatorsPath }
+                .sorted()
+                .toList()
+        }
+
+    override fun makeFolder(path: String) {
+        val folder = fileAt(path)
+        if (!(folder.isDirectory || folder.mkdirs())) throw IOException("could not make $path")
+    }
+
+    // File.delete refuses a folder that holds anything.
+    override fun deleteFolder(path: String) {
+        val folder = fileAt(path)
+        if (folder.isDirectory && !folder.delete()) throw IOException("could not delete $path")
     }
 
     private fun folderFor(target: File): File {
@@ -135,6 +175,32 @@ class DocumentTreePresetFolder(
         // "wt" truncates: a shorter preset never keeps the tail of the longer one it replaced.
         val output = context.contentResolver.openOutputStream(file.uri, "wt") ?: throw IOException("could not write $path")
         output.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+    }
+
+    override fun delete(path: String) {
+        val file = find(path) ?: return
+        if (!file.delete()) throw IOException("could not delete $path")
+    }
+
+    override fun folders(): List<String> = folders(root(), "")
+
+    private fun folders(
+        folder: DocumentFile,
+        prefix: String,
+    ): List<String> =
+        folder.listFiles().filter { it.isDirectory }.flatMap { child ->
+            val name = child.name ?: return@flatMap emptyList()
+            listOf("$prefix$name") + folders(child, "$prefix$name/")
+        }
+
+    override fun makeFolder(path: String) {
+        path.split('/').fold(root(), ::subfolder)
+    }
+
+    override fun deleteFolder(path: String) {
+        val folder = find(path)?.takeIf { it.isDirectory } ?: return
+        if (folder.listFiles().isNotEmpty()) throw IOException("$path is not empty")
+        if (!folder.delete()) throw IOException("could not delete $path")
     }
 
     private fun subfolder(

@@ -104,6 +104,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_music">Music</string>
     <string name="nav_visuals">Visuals</string>
+    <string name="visuals_tab_styles">Styles</string>
     <string name="nav_studio">Studio</string>
     <string name="nav_settings">Settings</string>
 
@@ -126,52 +127,26 @@
 
 
     <!-- Transport controls. Spoken by screen readers, so they name the action. -->
-    <string name="action_previous">Previous</string>
-    <string name="action_next">Next</string>
 
     <!-- Now Playing: what the app is listening to, and to what. -->
     <string name="source_live_input">Live input</string>
-    <string name="subtitle_unknown_artist">Unknown artist</string>
 
-    <string name="action_shuffle">Shuffle</string>
-    <string name="action_play">Play</string>
-    <string name="action_pause">Pause</string>
-    <string name="action_repeat">Repeat</string>
-    <string name="action_favourite_add">Add to favourites</string>
-    <string name="action_favourite_remove">Remove from favourites</string>
     <string name="action_resume_last_played">Resume last played</string>
 
     <!-- A–B loop: one control, three states, named so colour is not the only cue. -->
-    <string name="ab_loop_idle">A–B</string>
-    <string name="ab_loop_set_b">Set B</string>
-    <string name="ab_loop_looping">Looping</string>
 
-    <string name="queue">Queue</string>
 
     <!-- Quick actions under the player. -->
 
     <!-- Now Playing, full screen. -->
-    <string name="action_collapse">Collapse</string>
 
     <!-- Panel chips under the transport. -->
-    <string name="panel_now">Now</string>
-    <string name="panel_lyrics">Lyrics</string>
 
     <!-- Seek bar. Spoken, not drawn: the bar itself is a bare canvas. -->
-    <string name="seek_description">Seek. %1$s of %2$s</string>
 
     <!-- Lyrics panel. -->
-    <string name="lyrics_none">No lyrics</string>
-    <string name="lyrics_none_explainer">Drop an .lrc file next to the track — same name, .lrc extension — and it shows up here, timed and following the music. Words written into the file\'s own tags are read too. Nothing is fetched: the app has no network access.</string>
-    <string name="lyrics_source_timed">Timed lyrics from %1$s. Tap a line to jump there.</string>
-    <string name="lyrics_source_untimed">Untimed lyrics from %1$s.</string>
 
     <!-- Queue panel. -->
-    <string name="queue_empty_explainer">Nothing queued. Playing anything from a list — the library, a shelf on Home, a search result — queues that whole list.</string>
-    <string name="queue_save_as_playlist">Save as playlist</string>
-    <string name="queue_save_dialog_title">Save queue as playlist</string>
-    <string name="action_move_up">Move up</string>
-    <string name="action_remove_from_queue">Remove from queue</string>
 
     <!-- Library: tabs, permission recovery, playlists and folders. -->
     <string name="library_tab_tracks">Tracks</string>
@@ -580,14 +555,4 @@
     <string name="action_dismiss">Dismiss</string>
     <string name="preset_link_imported">Preset \"%1$s\" imported — it is in Visuals › Presets.</string>
     <string name="preset_link_unreadable">That preset link could not be read. It may have been cut short in transit.</string>
-    <string name="palette_base_hue">Base hue %1$s</string>
-    <string name="palette_hue_span">Hue span %1$s</string>
-    <string name="palette_apply_gradient">Apply gradient</string>
-    <string name="palette_from_current">From current</string>
-    <string name="palette_name_label">Palette name</string>
-    <string name="palette_save">Save palette</string>
-    <string name="palette_saved_heading">Saved palettes</string>
-    <string name="palette_none_yet">None yet — build a gradient above and save it.</string>
-    <string name="palette_edit">Edit</string>
-    <string name="palette_delete">Delete</string>
 </resources>

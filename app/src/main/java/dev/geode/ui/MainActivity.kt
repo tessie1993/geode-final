@@ -11,14 +11,25 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.R
+import dev.geode.feature.visuals.api.Visuals
+import dev.geode.feature.visuals.api.VisualsCommand
+import dev.geode.feature.visuals.api.VisualsFact
+import dev.geode.feature.visuals.core.PresetLinks
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
 
-    private val visualsViewModel: VisualsViewModel by viewModels()
+    /** The Visuals store, which imports a preset link shared into the app (#144). */
+    @Inject
+    lateinit var visuals: @JvmSuppressWildcards Visuals
 
     private val playerViewModel: PlayerViewModel by viewModels()
 
@@ -29,15 +40,26 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun importSharedPreset(intent: Intent?) {
-        val data = intent?.data?.toString() ?: return
-        val message =
-            when (val result = visualsViewModel.importSharedPreset(data)) {
-                PresetLinkImport.NotALink -> return
-                is PresetLinkImport.Imported -> getString(R.string.preset_link_imported, result.name.value)
-                PresetLinkImport.Unreadable -> getString(R.string.preset_link_unreadable)
-            }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        val link = intent?.data?.toString()?.let(PresetLinks::findIn) ?: return
+        visuals.send(VisualsCommand.ImportPresetLink(link))
         intent.data = null
+    }
+
+    /** How a preset link shared into the app went, said once it has been imported or refused. */
+    private fun reportPresetImports() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                visuals.events.collect { fact ->
+                    val message =
+                        when (fact) {
+                            is VisualsFact.PresetImported -> getString(R.string.preset_link_imported, fact.id.value)
+                            is VisualsFact.PresetNotImported -> getString(R.string.preset_link_unreadable)
+                            else -> return@collect
+                        }
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -71,6 +93,7 @@ class MainActivity : ComponentActivity() {
             AppRoot()
         }
         keepSplashUntilUserDataLoaded()
+        reportPresetImports()
         if (savedInstanceState == null) {
             importSharedPreset(intent)
             playFromSearch(intent)

@@ -8,9 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class VizStateStore(
@@ -19,17 +17,13 @@ internal class VizStateStore(
 ) {
     val state = MutableStateFlow(restore())
 
-    private val _activeMilkPath =
-        MutableStateFlow(prefs.getString(KEY_MILK_PATH, null)?.takeIf { File(it).isFile })
-    val activeMilkPath: StateFlow<String?> = _activeMilkPath
-
     @Volatile
     private var dirty = false
 
     private val scheduled = AtomicBoolean(false)
 
     private fun restore(): VizUiState {
-        var base = VizUiState(presets = BuiltInPresets.ALL)
+        var base = VizUiState()
         // Restore the transition id first, then re-derive the style from it (falling back to
         // whatever default the style key carries) so the two never disagree after a restore.
         val transitionId = prefs.getString(KEY_TRANSITION_ID, null)
@@ -76,21 +70,8 @@ internal class VizStateStore(
             .commit()
     }
 
-    fun noteMilkPreset(path: String) {
-        _activeMilkPath.value = path
-        prefs.edit().putString(KEY_MILK_PATH, path).apply()
-    }
-
-    fun dropRemovedMilkPaths(paths: List<String>) {
-        if (_activeMilkPath.value in paths) _activeMilkPath.value = null
-        if (prefs.getString(KEY_MILK_PATH, null) in paths) {
-            prefs.edit().remove(KEY_MILK_PATH).apply()
-        }
-    }
-
     private companion object {
         const val KEY_LIVE_STATE = "live_state"
-        const val KEY_MILK_PATH = "milk_path"
         const val KEY_TRANSITION_ID = "transition_id"
         const val KEY_TRANSITION_DURATION_SEC = "transition_duration_sec"
         const val PERSIST_WINDOW_MS = 400L
