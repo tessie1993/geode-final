@@ -33,6 +33,7 @@ import dev.geode.R
 import dev.geode.design.CrystalButton
 import dev.geode.design.CrystalOverline
 import dev.geode.design.crystalPanel
+import dev.geode.ui.shell.Place
 
 /**
  * The walkthrough, over the live app.
@@ -50,7 +51,7 @@ fun TutorialOverlay(
     steps: List<TutorialStep>,
     dontShowAgain: Boolean,
     onDontShowAgainChange: (Boolean) -> Unit,
-    onNavigate: (GeodeRoute) -> Unit,
+    onNavigate: (Place) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

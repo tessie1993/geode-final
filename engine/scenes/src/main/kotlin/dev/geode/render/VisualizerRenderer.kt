@@ -44,6 +44,13 @@ class VisualizerRenderer(
     @Volatile
     var sceneParams: SceneParams = SceneParams.DEFAULT
 
+    /**
+     * The Visual quality on screen (Settings' CPU/GPU section, #28) as a render scale ceiling, 1 for
+     * full quality. The automatic cooling when the phone is hot can only lower it further.
+     */
+    @Volatile
+    var qualityCeiling: Float = 1f
+
     /** Vestibular accessibility only; the flash clamp is unconditional inside the native safety pass. */
     @Volatile
     var reducedMotion: Boolean = false
@@ -189,6 +196,7 @@ class VisualizerRenderer(
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
         nativeViz.setPacedFps(ThermalGovernor.pacedFps)
+        nativeViz.setQualityCeiling(qualityCeiling)
         val now = SystemClock.elapsedRealtime()
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
             nativeThermalSampleMs = now

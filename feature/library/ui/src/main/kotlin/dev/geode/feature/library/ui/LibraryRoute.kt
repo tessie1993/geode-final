@@ -1,8 +1,11 @@
 package dev.geode.feature.library.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,6 +67,11 @@ fun LibraryRoute(
             exporting.value = null
             if (uri != null && pick != null) library.send(LibraryCommand.ExportPlaylist(pick, uri.toString()))
         }
+    // The phone asks the person before a file is deleted; once it is, the Library looks again.
+    val deleter =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) library.send(LibraryCommand.Rescan)
+        }
     val artwork =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             val onPicked = artworkPicked.value
@@ -85,6 +93,10 @@ fun LibraryRoute(
                 is LibraryAction.ExportPlaylist -> {
                     exporting.value = action.pick
                     exporter.launch(action.name.ifBlank { DEFAULT_FILE_NAME } + M3U_EXTENSION)
+                }
+                is LibraryAction.DeleteFile -> {
+                    val request = MediaStore.createDeleteRequest(resolver, listOf(Uri.parse(action.song.value)))
+                    deleter.launch(IntentSenderRequest.Builder(request.intentSender).build())
                 }
                 is LibraryAction.PickArtwork -> {
                     artworkPicked.value = action.onPicked

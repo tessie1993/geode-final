@@ -127,6 +127,19 @@ sealed interface PlayerState {
     ) : PlayerState
 }
 
+/** The queue [this] state plays from, or null while nothing is loaded. */
+val PlayerState.currentQueue: Queue?
+    get() =
+        when (this) {
+            PlayerState.Idle -> null
+            is PlayerState.Loading -> queue
+            is PlayerState.Buffering -> queue
+            is PlayerState.Playing -> queue
+            is PlayerState.Paused -> queue
+            is PlayerState.Ended -> queue
+            is PlayerState.Error -> queue
+        }
+
 /** A playlist Playback keeps. */
 @JvmInline
 value class PlaylistId(

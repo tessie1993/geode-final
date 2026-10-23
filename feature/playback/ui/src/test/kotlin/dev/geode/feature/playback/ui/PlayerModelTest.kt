@@ -2,6 +2,8 @@ package dev.geode.feature.playback.ui
 
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.ListeningOptions
+import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.LoadReason
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
@@ -9,6 +11,7 @@ import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
+import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -72,6 +75,72 @@ class PlayerModelTest {
         assertEquals(PlaybackCommand.Previous, PlayerAction.Previous.toCommand(playing))
         assertEquals(PlaybackCommand.SeekTo(Millis(3_000)), PlayerAction.SeekTo(Millis(3_000)).toCommand(playing))
         assertNull(PlayerAction.Expand.toCommand(playing))
+    }
+
+    @Test
+    fun `the Player controls show Playback's shuffle and repeat`() {
+        val options = ListeningOptions(shuffle = true, repeat = RepeatMode.ONE)
+
+        val model = PlaybackState(PlayerState.Playing(queue, moving), options = options).toPlayerModel(Millis.ZERO)
+
+        assertEquals(true, model.shuffle)
+        assertEquals(RepeatMode.ONE, model.repeat)
+        assertEquals(false, PlaybackState(PlayerState.Idle).toPlayerModel(Millis.ZERO).shuffle)
+    }
+
+    @Test
+    fun `shuffle flips and repeat goes off, the queue, this song, off`() {
+        val model = PlaybackState(PlayerState.Playing(queue, moving)).toPlayerModel(Millis.ZERO)
+
+        assertEquals(PlaybackCommand.SetShuffle(true), PlayerAction.ToggleShuffle.toCommand(model))
+        assertEquals(PlaybackCommand.SetShuffle(false), PlayerAction.ToggleShuffle.toCommand(model.copy(shuffle = true)))
+        assertEquals(
+            listOf(RepeatMode.ALL, RepeatMode.ONE, RepeatMode.OFF).map(PlaybackCommand::SetRepeat),
+            listOf(RepeatMode.OFF, RepeatMode.ALL, RepeatMode.ONE).map { PlayerAction.CycleRepeat.toCommand(model.copy(repeat = it)) },
+        )
+    }
+
+    @Test
+    fun `opening the queue or the tools, and the heart, are not Playback's`() {
+        val model = PlaybackState(PlayerState.Playing(queue, moving)).toPlayerModel(Millis.ZERO)
+
+        assertEquals(
+            listOf(null, null, null),
+            listOf(PlayerAction.OpenQueue, PlayerAction.OpenTools, PlayerAction.ToggleFavourite).map { it.toCommand(model) },
+        )
+    }
+
+    @Test
+    fun `the A-B loop is shaded only on its own track`() {
+        val playing = PlayerState.Playing(queue, moving)
+
+        fun loopOf(loop: AbLoop) = PlaybackState(playing, loop = loop).toPlayerModel(Millis.ZERO).loop
+
+        assertNull(loopOf(AbLoop.Off))
+        assertEquals(LoopSpan(Millis(1_000), null), loopOf(AbLoop.Starting(a.id, Millis(1_000))))
+        assertEquals(LoopSpan(Millis(1_000), Millis(9_000)), loopOf(AbLoop.On(a.id, Millis(1_000), Millis(9_000))))
+        assertNull(loopOf(AbLoop.Starting(b.id, Millis(1_000))))
+        assertNull(loopOf(AbLoop.On(b.id, Millis(1_000), Millis(9_000))))
+    }
+
+    @Test
+    fun `with nothing playing no A-B loop is shaded`() {
+        val state = PlaybackState(PlayerState.Idle, loop = AbLoop.On(a.id, Millis(1_000), Millis(9_000)))
+
+        assertEquals(PlayerModel.IDLE, state.toPlayerModel(Millis.ZERO))
+    }
+
+    @Test
+    fun `while the seek bar is dragged the time shown is where it would seek to`() {
+        val model = PlayerModel(PlayerStatus.PLAYING, a, Millis(13_000), meantToPlay = true, canGoPrevious = true, canGoNext = true)
+
+        assertEquals(Millis(13_000), model.timeShown(null))
+        assertEquals(Millis.ZERO, model.timeShown(0f))
+        assertEquals(Millis(50_000), model.timeShown(0.25f))
+        assertEquals(Millis(200_000), model.timeShown(1f))
+        assertEquals(Millis.ZERO, model.timeShown(-0.5f))
+        assertEquals(Millis(200_000), model.timeShown(1.5f))
+        assertEquals(Millis.ZERO, PlayerModel.IDLE.timeShown(0.5f))
     }
 
     @Test

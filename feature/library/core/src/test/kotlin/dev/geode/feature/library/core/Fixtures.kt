@@ -7,6 +7,10 @@ import dev.geode.feature.library.api.LibraryPlaylist
 import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.library.api.Play
 import dev.geode.feature.library.api.PlaylistRef
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 
 /** The songs, plays and playlists the Library's core tests share. */
@@ -82,6 +86,17 @@ internal object Fixtures {
     val evening = LibraryPlaylist(PlaylistRef(7), "Evening", trackCount = 2)
     val morning = LibraryPlaylist(PlaylistRef(3), "Morning", trackCount = 5)
 
+    /** A smart playlist of Ann's songs: Alpha and Gamma. */
+    val annSongs = SmartPlaylist("Ann songs", listOf(SmartRule(RuleField.ARTIST, RuleOp.IS, "ann")))
+
+    /** A smart playlist of the songs played at least once, or favourites: Alpha and beta. */
+    val played =
+        SmartPlaylist(
+            "played",
+            listOf(SmartRule(RuleField.PLAY_COUNT, RuleOp.AT_LEAST, "1"), SmartRule(RuleField.FAVOURITE, RuleOp.IS, "")),
+            matchAll = false,
+        )
+
     /** A Library that has finished scanning, at the top of Songs. */
     val ready: LibraryState =
         shown(
@@ -93,6 +108,9 @@ internal object Fixtures {
                 playlists = listOf(evening, morning),
             ),
         )
+
+    /** [ready] with its smart playlists, by name. */
+    val smart: LibraryState = shown(ready.copy(smartPlaylists = listOf(annSongs, played)))
 
     /** [state] with the page it shows. */
     fun shown(state: LibraryState): LibraryState = state.copy(page = LibraryPages.pageOf(state))

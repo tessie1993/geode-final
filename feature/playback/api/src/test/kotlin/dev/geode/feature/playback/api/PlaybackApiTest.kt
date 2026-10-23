@@ -4,6 +4,7 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,6 +12,24 @@ import org.junit.Test
 class PlaybackApiTest {
     private val a = Track(TrackId("content://a"), "Alpha", "Ann", Millis(200_000))
     private val b = Track(TrackId("content://b"), "Beta", "Bob", Millis(180_000))
+
+    @Test
+    fun `every state but Idle plays from a queue`() {
+        val queue = Queue(listOf(a, b), 1)
+        val mark = PlayMark.still(Millis.ZERO)
+        val loaded =
+            listOf(
+                PlayerState.Loading(queue, mark, playWhenReady = true, LoadReason.RESTORE),
+                PlayerState.Buffering(queue, mark),
+                PlayerState.Playing(queue, mark),
+                PlayerState.Paused(queue, mark),
+                PlayerState.Ended(queue),
+                PlayerState.Error(PlaybackFailure.ENGINE_NOT_RESPONDING, queue),
+            )
+
+        assertNull(PlayerState.Idle.currentQueue)
+        assertEquals(List(loaded.size) { queue }, loaded.map { it.currentQueue })
+    }
 
     @Test
     fun `a queue knows its current track and its neighbours`() {

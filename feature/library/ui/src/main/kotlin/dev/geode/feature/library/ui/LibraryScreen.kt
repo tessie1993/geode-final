@@ -2,6 +2,7 @@ package dev.geode.feature.library.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,11 +16,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Favorite
@@ -30,6 +33,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -43,6 +47,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,12 +69,16 @@ import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.PlaylistRef
+import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.SongRow
 
 /**
  * The Library (#37): its views, one search, sort and filter, and every song, album, artist, folder and
  * playlist with what can be done with it. Stateless (ADR-0003): it draws [model] and sends every tap to
  * [onAction]. Which menu or editor is open is App UI state, kept here. The per-theme layouts are #74.
+ *
+ * Smart playlists (#146) sit under Playback's playlists: each opens to the songs its rules pick now,
+ * and its rules are written in the smart playlist editor.
  */
 @Composable
 fun LibraryScreen(
@@ -77,9 +86,11 @@ fun LibraryScreen(
     onAction: (LibraryAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // The song whose info is being edited: App UI state only (ADR-0003).
+    // The song whose info is being edited, and the smart playlist: App UI state only (ADR-0003).
     var editing by remember { mutableStateOf<SongRow?>(null) }
+    var smart by remember { mutableStateOf<SmartEditing?>(null) }
     val send = { command: LibraryCommand -> onAction(LibraryAction.Send(command)) }
+    val editSmart: (String) -> Unit = { name -> model.smartPlaylist(name)?.let { smart = SmartEditing(it) } }
     Surface(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopBar(model, send)
@@ -87,7 +98,13 @@ fun LibraryScreen(
             ViewChips(model.view, send)
             Controls(model, send)
             IndexBanner(model.index, onAction)
-            Content(model, onAction, onEdit = { editing = it })
+            Content(
+                model,
+                onAction,
+                onEdit = { editing = it },
+                onNewSmart = { smart = SmartEditing(null) },
+                onEditSmart = editSmart,
+            )
         }
     }
     editing?.let { row ->
@@ -101,7 +118,23 @@ fun LibraryScreen(
             onPickArtwork = { picked -> onAction(LibraryAction.PickArtwork(picked)) },
         )
     }
+    smart?.let { open ->
+        SmartPlaylistEditorDialog(
+            playlist = open.playlist,
+            taken = model.takenSmartNames(open.playlist),
+            onSave = { playlist ->
+                send(LibraryCommand.SaveSmartPlaylist(playlist, replacing = open.playlist?.name))
+                smart = null
+            },
+            onDismiss = { smart = null },
+        )
+    }
 }
+
+/** The smart playlist editor is open on [playlist], or on a new one when it is null. */
+private class SmartEditing(
+    val playlist: SmartPlaylist?,
+)
 
 @Composable
 private fun TopBar(
@@ -220,11 +253,19 @@ private fun Content(
     model: LibraryModel,
     onAction: (LibraryAction) -> Unit,
     onEdit: (SongRow) -> Unit,
+    onNewSmart: () -> Unit,
+    onEditSmart: (String) -> Unit,
 ) {
     val send = { command: LibraryCommand -> onAction(LibraryAction.Send(command)) }
     val page = model.page
     if (isEmpty(page)) {
-        Empty(page, model.index)
+        // A smart playlist that picks nothing still shows its header, to edit its rules.
+        val place = model.place
+        val smart = page is Page.Songs && place is Place.Group && place.key.kind == GroupKind.SMART_PLAYLIST
+        if (place is Place.Group && smart) {
+            GroupHeader(place, songCount = 0, onAction, onEditSmart)
+        }
+        Empty(page, model.index, smart)
         return
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LibraryDimens.gutter)) {
@@ -232,17 +273,19 @@ private fun Content(
             is Page.Songs -> {
                 val place = model.place
                 if (place is Place.Group) {
-                    item { GroupHeader(place, page.rows.size, onAction) }
+                    item { GroupHeader(place, page.rows.size, onAction, onEditSmart) }
                 }
+                item { ShuffleShown(send) }
                 songs(page.rows, onAction, onEdit) { row -> send(LibraryCommand.Play(Pick.Shown, from = row.song.id)) }
             }
             is Page.Groups -> {
                 if (model.view == LibraryView.PLAYLISTS) {
-                    item { PlaylistsHeader(onAction) }
+                    item { PlaylistsHeader(onAction, onNewSmart) }
                 }
-                groups(page.rows, send)
+                groups(page.rows, send, onEditSmart)
             }
-            is Page.Found -> found(page, onAction, onEdit)
+            is Page.Found -> found(page, onAction, onEdit, onEditSmart)
+            is Page.Duplicates -> duplicates(page, onAction, onEdit)
         }
     }
 }
@@ -253,12 +296,14 @@ private fun isEmpty(page: Page): Boolean =
         // The playlists page always has its import button.
         is Page.Groups -> false
         is Page.Found -> page.isEmpty
+        is Page.Duplicates -> page.groups.isEmpty()
     }
 
 @Composable
 private fun Empty(
     page: Page,
     index: IndexStatus,
+    smart: Boolean,
 ) {
     if (index == IndexStatus.Loading) return
     Column(
@@ -274,6 +319,10 @@ private fun Empty(
         )
         if (page is Page.Found) {
             Text(stringResource(R.string.library_nothing_found, page.query), style = MaterialTheme.typography.titleMedium)
+        } else if (smart) {
+            Text(stringResource(R.string.library_smart_nothing_matches), style = MaterialTheme.typography.titleMedium)
+        } else if (page is Page.Duplicates) {
+            Text(stringResource(R.string.library_duplicates_none), style = MaterialTheme.typography.titleMedium)
         } else {
             Text(stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -296,17 +345,47 @@ private fun LazyListScope.songs(
     }
 }
 
+/** Each group's copies under one heading; a copy's menu offers to delete its file. */
+private fun LazyListScope.duplicates(
+    page: Page.Duplicates,
+    onAction: (LibraryAction) -> Unit,
+    onEdit: (SongRow) -> Unit,
+) {
+    page.groups.forEach { group ->
+        // A track is in one group only, so its first copy keys the heading.
+        item(key = "duplicates:" + group.rows.first().song.id.value) {
+            Text(
+                pluralStringResource(R.plurals.library_duplicates_group, group.rows.size, group.title, group.artist, group.rows.size),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = LibraryDimens.gutter, end = LibraryDimens.gutter, top = LibraryDimens.gap),
+            )
+        }
+        items(group.rows, key = { "song:" + it.song.id.value }) { row ->
+            SongItem(
+                row,
+                onAction,
+                onEdit,
+                onPlay = { onAction(LibraryAction.Send(LibraryCommand.Play(Pick.Songs(listOf(it.song.id)), from = it.song.id))) },
+                onDelete = { onAction(LibraryAction.DeleteFile(row.song.id)) },
+            )
+        }
+    }
+}
+
 private fun LazyListScope.groups(
     rows: List<GroupRow>,
     send: (LibraryCommand) -> Unit,
+    onEditSmart: (String) -> Unit,
 ) {
-    items(rows, key = { "group:" + it.key.kind + it.key.name }) { row -> GroupItem(row, send) }
+    items(rows, key = { "group:" + it.key.kind + it.key.name }) { row -> GroupItem(row, send, onEditSmart) }
 }
 
 private fun LazyListScope.found(
     page: Page.Found,
     onAction: (LibraryAction) -> Unit,
     onEdit: (SongRow) -> Unit,
+    onEditSmart: (String) -> Unit,
 ) {
     val send = { command: LibraryCommand -> onAction(LibraryAction.Send(command)) }
     if (page.songs.isNotEmpty()) {
@@ -321,8 +400,20 @@ private fun LazyListScope.found(
     ).filter { (_, rows) -> rows.isNotEmpty() }
         .forEach { (title, rows) ->
             item { SectionTitle(title) }
-            groups(rows, send)
+            groups(rows, send, onEditSmart)
         }
+}
+
+/** Shuffle what the page lists (owner, #17: Shuffle all is in Music). */
+@Composable
+private fun ShuffleShown(send: (LibraryCommand) -> Unit) {
+    TextButton(
+        onClick = { send(LibraryCommand.Shuffle(Pick.Shown)) },
+        modifier = Modifier.padding(horizontal = LibraryDimens.gutter),
+    ) {
+        Icon(Icons.Filled.Shuffle, contentDescription = null)
+        Text(stringResource(R.string.library_action_shuffle), Modifier.padding(start = LibraryDimens.small))
+    }
 }
 
 @Composable
@@ -347,6 +438,7 @@ private fun SongItem(
     onAction: (LibraryAction) -> Unit,
     onEdit: (SongRow) -> Unit,
     onPlay: (SongRow) -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     val send = { command: LibraryCommand -> onAction(LibraryAction.Send(command)) }
     val song = row.song
@@ -403,6 +495,12 @@ private fun SongItem(
                     menu = false
                     send(LibraryCommand.ExcludeFolder(song.folder))
                 }
+                if (onDelete != null) {
+                    MenuItem(R.string.library_action_delete_file) {
+                        menu = false
+                        onDelete()
+                    }
+                }
             }
         }
     }
@@ -412,8 +510,10 @@ private fun SongItem(
 private fun GroupItem(
     row: GroupRow,
     send: (LibraryCommand) -> Unit,
+    onEditSmart: (String) -> Unit,
 ) {
     val playlist = row.key.kind == GroupKind.PLAYLIST
+    val smart = row.key.kind == GroupKind.SMART_PLAYLIST
     var menu by remember { mutableStateOf(false) }
     Row(
         Modifier
@@ -462,6 +562,16 @@ private fun GroupItem(
                         send(LibraryCommand.AddToQueue(pick))
                     }
                 }
+                if (smart) {
+                    MenuItem(R.string.library_action_edit_rules) {
+                        menu = false
+                        onEditSmart(row.key.name)
+                    }
+                    MenuItem(R.string.library_action_delete_smart) {
+                        menu = false
+                        send(LibraryCommand.DeleteSmartPlaylist(row.key.name))
+                    }
+                }
             }
         }
     }
@@ -472,6 +582,7 @@ private fun GroupHeader(
     place: Place.Group,
     songCount: Int,
     onAction: (LibraryAction) -> Unit,
+    onEditSmart: (String) -> Unit,
 ) {
     val send = { command: LibraryCommand -> onAction(LibraryAction.Send(command)) }
     val pick = Pick.Group(place.key)
@@ -511,23 +622,41 @@ private fun GroupHeader(
                 Text(stringResource(R.string.library_action_add_to_queue))
             }
         }
-        OutlinedButton(onClick = { onAction(LibraryAction.ExportPlaylist(pick, name)) }) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
-            Text(stringResource(R.string.library_action_export), Modifier.padding(start = LibraryDimens.small))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
+            OutlinedButton(onClick = { onAction(LibraryAction.ExportPlaylist(pick, name)) }) {
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
+                Text(stringResource(R.string.library_action_export), Modifier.padding(start = LibraryDimens.small))
+            }
+            if (place.key.kind == GroupKind.SMART_PLAYLIST) {
+                OutlinedButton(onClick = { onEditSmart(place.key.name) }) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                    Text(stringResource(R.string.library_action_edit_rules), Modifier.padding(start = LibraryDimens.small))
+                }
+            }
         }
         HorizontalDivider()
     }
 }
 
 @Composable
-private fun PlaylistsHeader(onAction: (LibraryAction) -> Unit) {
+private fun PlaylistsHeader(
+    onAction: (LibraryAction) -> Unit,
+    onNewSmart: () -> Unit,
+) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = LibraryDimens.gutter, vertical = LibraryDimens.small),
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = LibraryDimens.gutter, vertical = LibraryDimens.small),
         horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small),
     ) {
         OutlinedButton(onClick = { onAction(LibraryAction.ImportPlaylist) }) {
             Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
             Text(stringResource(R.string.library_action_import), Modifier.padding(start = LibraryDimens.small))
+        }
+        OutlinedButton(onClick = onNewSmart) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+            Text(stringResource(R.string.library_smart_new), Modifier.padding(start = LibraryDimens.small))
         }
     }
 }
@@ -565,6 +694,7 @@ private fun iconOf(kind: GroupKind): ImageVector =
         GroupKind.GENRE -> Icons.Filled.Category
         GroupKind.FOLDER -> Icons.Filled.Folder
         GroupKind.PLAYLIST -> Icons.AutoMirrored.Filled.QueueMusic
+        GroupKind.SMART_PLAYLIST -> Icons.Filled.AutoAwesome
     }
 
 /** A group's name as shown: its own, or "Unknown …" when the tags name none. */
@@ -577,7 +707,7 @@ private fun groupTitle(row: GroupRow): String =
                 GroupKind.ARTIST, GroupKind.ALBUM_ARTIST -> R.string.library_unknown_artist
                 GroupKind.GENRE -> R.string.library_unknown_genre
                 GroupKind.COMPOSER -> R.string.library_unknown_composer
-                GroupKind.FOLDER, GroupKind.PLAYLIST -> R.string.library_unknown_folder
+                GroupKind.FOLDER, GroupKind.PLAYLIST, GroupKind.SMART_PLAYLIST -> R.string.library_unknown_folder
             },
         )
     }
@@ -603,6 +733,7 @@ internal fun viewName(view: LibraryView): String =
             LibraryView.FAVOURITES -> R.string.library_view_favourites
             LibraryView.RECENTLY_ADDED -> R.string.library_view_recently_added
             LibraryView.RECENTLY_PLAYED -> R.string.library_view_recently_played
+            LibraryView.DUPLICATES -> R.string.library_view_duplicates
             LibraryView.MOST_PLAYED -> R.string.library_view_most_played
         },
     )

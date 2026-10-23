@@ -1,6 +1,7 @@
 package dev.geode.feature.visuals.core
 
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.visuals.api.MilkdropShelf
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
@@ -25,11 +26,21 @@ import dev.geode.kernel.ReportFailure
  *
  * The presets are listed when the store starts and again whenever the browser asks, so presets saved
  * from Customize or put in the preset folder by hand show up.
+ *
+ * The MilkDrop presets and textures (#145) are listed once when the store starts. An import runs one
+ * at a time, and only once the folder has been listed; while it runs, another is ignored. Its report
+ * stays until the person dismisses it or starts the next import. An import that fails as a whole is
+ * reported on the app-wide error channel, and the next one may start.
  */
 object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
     /** What the store carries out once, when it is built. */
     val start: List<VisualsEffect> =
-        listOf(Perform(VisualsWork.FollowCurrentStyle), Perform(VisualsWork.LoadLibrary), Perform(VisualsWork.LoadPresets))
+        listOf(
+            Perform(VisualsWork.FollowCurrentStyle),
+            Perform(VisualsWork.LoadLibrary),
+            Perform(VisualsWork.LoadPresets),
+            Perform(VisualsWork.ListMilkdrop),
+        )
 
     override fun reduce(
         state: VisualsState,
@@ -43,6 +54,8 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsEvent.PresetEncoded -> PresetEdits.encoded(state, event)
             is VisualsEvent.PresetImported -> PresetEdits.imported(state, event.preset)
             is VisualsEvent.ImportRefused -> Next(state, listOf(Emit(VisualsFact.PresetNotImported(event.problem))))
+            is VisualsEvent.MilkdropListed -> listed(state, event)
+            is VisualsEvent.MilkdropImported -> imported(state, event)
             is VisualsEvent.WorkFailed -> failed(state, event.failure)
         }
 
@@ -70,15 +83,23 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsCommand.SharePreset -> PresetEdits.share(state, command.id)
             is VisualsCommand.ImportPresetLink -> PresetEdits.importLink(state, command.text)
             is VisualsCommand.ImportPresetFile -> Next(state, listOf(Perform(VisualsWork.ImportPresetFile(command.uri))))
+            is VisualsCommand.ImportMilkdrop -> import(state, command)
+            VisualsCommand.DismissImportReport -> dismiss(state)
         }
 
-    /** Reports [failure]; after one that may leave the presets on the phone different, lists them again. */
+    /**
+     * Reports [failure]; after one that may leave the presets on the phone different, lists them again,
+     * and after a MilkDrop import that failed as a whole, lets the next one start.
+     */
     private fun failed(
         state: VisualsState,
         failure: WorkFailure,
     ): Next<VisualsState, VisualsEffect> {
         val report = ReportFailure(failure.message)
-        return Next(state, if (failure.resyncs) listOf(report, Perform(VisualsWork.LoadPresets)) else listOf(report))
+        val effects = if (failure.resyncs) listOf(report, Perform(VisualsWork.LoadPresets)) else listOf(report)
+        val shelf = state.milkdrop
+        if (failure != WorkFailure.MILKDROP_NOT_IMPORTED || shelf == null) return Next(state, effects)
+        return Next(state.copy(milkdrop = shelf.copy(importing = false)), effects)
     }
 
     /** Applies [change] to the loaded library and saves the result; nothing happens when it changes nothing. */
@@ -119,6 +140,37 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
         if (current == null || library.recent.firstOrNull() == current) return Next(state.copy(library = library))
         return saving(state, library.withRecent(current))
     }
+
+    private fun import(
+        state: VisualsState,
+        command: VisualsCommand.ImportMilkdrop,
+    ): Next<VisualsState, VisualsEffect> {
+        val shelf = state.milkdrop
+        val files = command.files.distinct()
+        if (shelf == null || shelf.importing || files.isEmpty()) return Next(state)
+        return Next(
+            state.copy(milkdrop = shelf.copy(importing = true, lastImport = null)),
+            listOf(Perform(VisualsWork.ImportMilkdrop(command.kind, files))),
+        )
+    }
+
+    private fun dismiss(state: VisualsState): Next<VisualsState, VisualsEffect> {
+        val shelf = state.milkdrop ?: return Next(state)
+        if (shelf.lastImport == null) return Next(state)
+        return Next(state.copy(milkdrop = shelf.copy(lastImport = null)))
+    }
+
+    private fun listed(
+        state: VisualsState,
+        event: VisualsEvent.MilkdropListed,
+    ): Next<VisualsState, VisualsEffect> =
+        if (state.milkdrop != null) Next(state) else Next(state.copy(milkdrop = MilkdropShelf(event.presets, event.textures)))
+
+    private fun imported(
+        state: VisualsState,
+        event: VisualsEvent.MilkdropImported,
+    ): Next<VisualsState, VisualsEffect> =
+        Next(state.copy(milkdrop = MilkdropShelf(event.presets, event.textures, importing = false, lastImport = event.report)))
 
     /** [state] with [library], saved. */
     internal fun saving(
