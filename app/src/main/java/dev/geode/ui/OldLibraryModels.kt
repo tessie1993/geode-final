@@ -61,6 +61,31 @@ internal object OldLibraryModels {
         name: String,
     ): LibraryCommand? = playlistNamed(state, name)?.let { LibraryCommand.DeletePlaylist(it.id) }
 
+    fun renamePlaylist(
+        state: LibraryState,
+        name: String,
+        newName: String,
+    ): LibraryCommand? = playlistNamed(state, name)?.let { LibraryCommand.RenamePlaylist(it.id, newName.trim()) }
+
+    fun addToPlaylist(
+        state: LibraryState,
+        name: String,
+        songs: List<TrackId>,
+    ): LibraryCommand? = playlistNamed(state, name)?.let { LibraryCommand.AddToPlaylist(it.id, Pick.Songs(songs)) }
+
+    fun moveInPlaylist(
+        state: LibraryState,
+        name: String,
+        from: Int,
+        to: Int,
+    ): LibraryCommand? = playlistNamed(state, name)?.let { LibraryCommand.MoveInPlaylist(it.id, from, to) }
+
+    fun removeFromPlaylist(
+        state: LibraryState,
+        name: String,
+        index: Int,
+    ): LibraryCommand? = playlistNamed(state, name)?.let { LibraryCommand.RemoveFromPlaylist(it.id, index) }
+
     /** The old editor's title, artist and album; its other fields are only written into the file itself. */
     fun edit(
         state: LibraryState,

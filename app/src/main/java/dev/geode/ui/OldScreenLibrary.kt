@@ -123,8 +123,32 @@ class OldScreenLibrary internal constructor(
         OldLibraryModels.deletePlaylist(library.state.value, name)?.let(library::send)
     }
 
-    /** Reads the M3U file the user picked into a playlist; [playlistsImported] tells how it went. */
-    fun importPlaylist(file: String) = library.send(LibraryCommand.ImportPlaylist(file, name = ""))
+    fun renamePlaylist(
+        name: String,
+        newName: String,
+    ) = sendFor { OldLibraryModels.renamePlaylist(it, name, newName) }
+
+    fun addToPlaylist(
+        name: String,
+        songs: List<TrackId>,
+    ) = sendFor { OldLibraryModels.addToPlaylist(it, name, songs) }
+
+    fun moveInPlaylist(
+        name: String,
+        from: Int,
+        to: Int,
+    ) = sendFor { OldLibraryModels.moveInPlaylist(it, name, from, to) }
+
+    fun removeFromPlaylist(
+        name: String,
+        index: Int,
+    ) = sendFor { OldLibraryModels.removeFromPlaylist(it, name, index) }
+
+    /** Reads the M3U, PLS or XSPF file the user picked into a playlist called [name]; [playlistsImported] tells how it went. */
+    fun importPlaylist(
+        file: String,
+        name: String,
+    ) = library.send(LibraryCommand.ImportPlaylist(file, name))
 
     fun addMusicFolder(folder: String) {
         settings.send(FolderCommand.AddMusicFolder(FolderUri(folder)))
@@ -170,6 +194,11 @@ class OldScreenLibrary internal constructor(
 
     private fun reloadSmartPlaylists() {
         scope.launch { smartPlaylists.value = withContext(Dispatchers.IO) { smart.list() } }
+    }
+
+    /** Sends what [command] makes of the Library's state now, if anything. */
+    private fun sendFor(command: (LibraryState) -> LibraryCommand?) {
+        command(library.state.value)?.let(library::send)
     }
 
     private fun <T> follow(read: (LibraryState) -> T): StateFlow<T> =

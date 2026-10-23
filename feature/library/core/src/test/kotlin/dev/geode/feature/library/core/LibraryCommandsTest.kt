@@ -124,7 +124,38 @@ class LibraryCommandsTest {
                 tell(PlaybackCommand.CreatePlaylist("Mix", tracks(beta))),
             ),
             row(ready, LibraryCommand.CreatePlaylist(" ", Pick.Songs(listOf(beta.id))), ready),
-            row(ready, LibraryCommand.CreatePlaylist("Mix", Pick.Songs(emptyList())), ready),
+            // An empty one, to fill later.
+            row(
+                ready,
+                LibraryCommand.CreatePlaylist("Mix", Pick.Songs(emptyList())),
+                ready,
+                tell(PlaybackCommand.CreatePlaylist("Mix", emptyList())),
+            ),
+            row(
+                ready,
+                LibraryCommand.RenamePlaylist(PlaylistRef(7), "Dusk"),
+                ready,
+                tell(PlaybackCommand.RenamePlaylist(PlaylistId(7), "Dusk")),
+            ),
+            row(
+                ready,
+                LibraryCommand.AddToPlaylist(PlaylistRef(7), Pick.Songs(listOf(gamma.id, unknown, alpha.id))),
+                ready,
+                tell(PlaybackCommand.AddToPlaylist(PlaylistId(7), tracks(gamma, alpha))),
+            ),
+            row(ready, LibraryCommand.AddToPlaylist(PlaylistRef(7), Pick.Songs(listOf(unknown))), ready),
+            row(
+                ready,
+                LibraryCommand.MoveInPlaylist(PlaylistRef(7), from = 1, to = 0),
+                ready,
+                tell(PlaybackCommand.MoveInPlaylist(PlaylistId(7), from = 1, to = 0)),
+            ),
+            row(
+                ready,
+                LibraryCommand.RemoveFromPlaylist(PlaylistRef(7), index = 1),
+                ready,
+                tell(PlaybackCommand.RemoveFromPlaylist(PlaylistId(7), index = 1)),
+            ),
             row(ready, LibraryCommand.DeletePlaylist(PlaylistRef(7)), ready, tell(PlaybackCommand.DeletePlaylist(PlaylistId(7)))),
             row(
                 ready,

@@ -134,6 +134,21 @@ class LibraryJourneyRobolectricTest {
     private val where: MutableState<Where> = mutableStateOf(Where.LIBRARY)
 
     @Test
+    fun `a playlist made empty in the old Library is filled, reordered, cut and renamed in Playback`() {
+        oldScreens.createPlaylist("Later", emptyList())
+        oldScreens.addToPlaylist("Later", listOf(alpha.id, beta.id, gamma.id))
+        oldScreens.moveInPlaylist("Later", from = 2, to = 0)
+        oldScreens.removeFromPlaylist("Later", index = 1)
+        oldScreens.renamePlaylist("Later", "Dusk")
+
+        val playlist = library.state.value.playlists.single()
+        assertEquals("Dusk", playlist.name)
+        assertEquals(listOf(gamma.id, beta.id), playlist.songs)
+        assertEquals(listOf(gamma.id, beta.id), playback.state.value.playlists.single().tracks.map { it.id })
+        assertEquals(emptyList<FeatureFailure>(), failures)
+    }
+
+    @Test
     fun `a song played from the old Library reaches Playback, with the list it was in`() {
         val shown = oldScreens.deviceTracks.value.map { it.uri }
         assertEquals(listOf(alpha.id, beta.id, gamma.id), shown)

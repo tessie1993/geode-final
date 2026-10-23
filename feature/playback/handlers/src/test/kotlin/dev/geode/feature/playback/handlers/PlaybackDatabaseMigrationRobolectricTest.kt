@@ -42,7 +42,7 @@ class PlaybackDatabaseMigrationRobolectricTest {
             val database = PlaybackDatabase.open(context, name)
             val storage = RoomPlaybackStorage(database.dao())
             try {
-                assertEquals(listOf(PlaylistSummary(PlaylistId(1), "Evening", 2)), storage.playlists.first())
+                assertEquals(listOf(PlaylistSummary(PlaylistId(1), "Evening", 2, listOf(night, tide))), storage.playlists.first())
                 assertEquals(listOf(night, tide), storage.playlistTracks(PlaylistId(1)))
                 assertEquals(
                     listOf(PlayedTrack(night, Millis(1_700_000_200_000)), PlayedTrack(tide, Millis(1_700_000_100_000))),

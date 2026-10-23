@@ -1,10 +1,12 @@
 package dev.geode.feature.library.core
 
 import dev.geode.feature.library.api.Song
+import java.net.URLDecoder
 
 /**
- * M3U playlists (#37: import and export), as plain text. Extended M3U is written, and any M3U is
- * read: an entry is any line that is not blank and not a `#` comment.
+ * Playlist files (#37: import and export), as plain text. Extended M3U is written. Any M3U is read (an
+ * entry is any line that is not blank and not a `#` comment), and so are PLS (its `FileN=` lines, in
+ * number order) and XSPF (its `<location>`s), which the old Library read too (#17).
  */
 internal object M3u {
     private const val HEADER = "#EXTM3U"
@@ -29,14 +31,45 @@ internal object M3u {
             }
         }
 
-    /** The entries of the M3U playlist [text], in order, as paths with forward slashes. */
-    fun read(text: String): List<String> =
+    private val plsFile = Regex("^file(\\d+)\\s*=(.*)$", RegexOption.IGNORE_CASE)
+    private val xspfLocation = Regex("<(?:\\w+:)?location\\b[^>]*>(.*?)</(?:\\w+:)?location>", RegexOption.DOT_MATCHES_ALL)
+
+    /** The entries of the playlist [text] (M3U, PLS or XSPF), in order, as paths with forward slashes. */
+    fun read(text: String): List<String> {
+        val body = text.removePrefix(BYTE_ORDER_MARK.toString())
+        val head = body.trimStart()
+        val entries =
+            when {
+                head.startsWith('<') -> xspf(body)
+                head.startsWith("[playlist]", ignoreCase = true) -> pls(body)
+                else ->
+                    body
+                        .lines()
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() && !it.startsWith('#') }
+            }
+        return entries.map { it.removePrefix(FILE_SCHEME).replace('\\', '/') }
+    }
+
+    private fun pls(text: String): List<String> =
         text
-            .removePrefix(BYTE_ORDER_MARK.toString())
             .lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() && !it.startsWith('#') }
-            .map { it.removePrefix(FILE_SCHEME).replace('\\', '/') }
+            .mapNotNull { line -> plsFile.find(line.trim())?.destructured?.let { (number, file) -> number.toInt() to file.trim() } }
+            .sortedBy { it.first }
+            .map { it.second }
+            .filter { it.isNotEmpty() }
+
+    /** Each location, with its XML escapes and its url's percent escapes undone. */
+    private fun xspf(text: String): List<String> =
+        xspfLocation
+            .findAll(text)
+            .map { it.groupValues[1].trim().unescaped() }
+            .filter { it.isNotEmpty() }
+            .map { location -> runCatching { URLDecoder.decode(location.replace("+", "%2B"), Charsets.UTF_8) }.getOrDefault(location) }
+            .toList()
+
+    private fun String.unescaped(): String =
+        replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
 
     /**
      * The songs [entries] name, in order, skipping those not in [songs]. An entry names a song by its

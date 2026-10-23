@@ -126,6 +126,13 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             is LibraryCommand.AddToQueue -> enqueue(state, command.pick, next = false)
             is LibraryCommand.CreatePlaylist -> createPlaylist(state, command)
             is LibraryCommand.DeletePlaylist -> Next(state, listOf(tell(PlaybackCommand.DeletePlaylist(PlaylistId(command.id.value)))))
+            is LibraryCommand.RenamePlaylist ->
+                Next(state, listOf(tell(PlaybackCommand.RenamePlaylist(PlaylistId(command.id.value), command.name))))
+            is LibraryCommand.AddToPlaylist -> addToPlaylist(state, command)
+            is LibraryCommand.MoveInPlaylist ->
+                Next(state, listOf(tell(PlaybackCommand.MoveInPlaylist(PlaylistId(command.id.value), command.from, command.to))))
+            is LibraryCommand.RemoveFromPlaylist ->
+                Next(state, listOf(tell(PlaybackCommand.RemoveFromPlaylist(PlaylistId(command.id.value), command.index))))
             is LibraryCommand.ImportPlaylist -> import(state, command)
             is LibraryCommand.ExportPlaylist -> export(state, command)
         }
@@ -227,9 +234,18 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
         state: LibraryState,
         command: LibraryCommand.CreatePlaylist,
     ): Next<LibraryState, LibraryEffect> {
+        if (command.name.isBlank()) return Next(state)
         val songs = LibraryPages.songsOf(state, command.pick)
-        if (command.name.isBlank() || songs.isEmpty()) return Next(state)
         return Next(state, listOf(tell(PlaybackCommand.CreatePlaylist(command.name.trim(), songs.map { it.toTrack() }))))
+    }
+
+    private fun addToPlaylist(
+        state: LibraryState,
+        command: LibraryCommand.AddToPlaylist,
+    ): Next<LibraryState, LibraryEffect> {
+        val songs = LibraryPages.songsOf(state, command.pick)
+        if (songs.isEmpty()) return Next(state)
+        return Next(state, listOf(tell(PlaybackCommand.AddToPlaylist(PlaylistId(command.id.value), songs.map { it.toTrack() }))))
     }
 
     private fun import(

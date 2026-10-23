@@ -139,6 +139,8 @@ data class PlaylistSummary(
     val id: PlaylistId,
     val name: String,
     val trackCount: Int,
+    /** The playlist's tracks, in order. */
+    val tracks: List<Track> = emptyList(),
 )
 
 /** One entry of the play history: [track] started playing at [playedAt], wall-clock time. */
@@ -285,9 +287,33 @@ sealed interface PlaybackCommand {
         val id: PlaylistId,
     ) : PlaybackCommand
 
+    /** Saves [tracks] as a playlist named [name]; it may start empty and be filled later. */
     data class CreatePlaylist(
         val name: String,
         val tracks: List<Track>,
+    ) : PlaybackCommand
+
+    data class RenamePlaylist(
+        val id: PlaylistId,
+        val name: String,
+    ) : PlaybackCommand
+
+    /** Puts [tracks] at the end of the playlist. */
+    data class AddToPlaylist(
+        val id: PlaylistId,
+        val tracks: List<Track>,
+    ) : PlaybackCommand
+
+    /** Moves the playlist's track at [from] to [to]; indexes are positions in the playlist. */
+    data class MoveInPlaylist(
+        val id: PlaylistId,
+        val from: Int,
+        val to: Int,
+    ) : PlaybackCommand
+
+    data class RemoveFromPlaylist(
+        val id: PlaylistId,
+        val index: Int,
     ) : PlaybackCommand
 
     /** Saves the play history, each track once, most recent first, as a playlist named [name]. */

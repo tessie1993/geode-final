@@ -22,7 +22,7 @@ class MemoryPlaybackStorage : PlaybackStorage {
     var listening: ListeningOptions? = null
     val plays = MutableStateFlow<List<PlayedTrack>>(emptyList())
     val points = MutableStateFlow<Map<TrackId, Millis>>(emptyMap())
-    private val lists = MutableStateFlow<List<Triple<PlaylistSummary, List<Track>, Millis>>>(emptyList())
+    private val lists = MutableStateFlow<List<Pair<PlaylistSummary, Millis>>>(emptyList())
     private val marks = MutableStateFlow<List<Bookmark>>(emptyList())
 
     override val playlists: Flow<List<PlaylistSummary>> = lists.map { all -> all.map { it.first } }
@@ -32,7 +32,8 @@ class MemoryPlaybackStorage : PlaybackStorage {
     override suspend fun playlistTracks(id: PlaylistId): List<Track> =
         lists.value
             .firstOrNull { it.first.id == id }
-            ?.second
+            ?.first
+            ?.tracks
             .orEmpty()
 
     override suspend fun createPlaylist(
@@ -42,9 +43,23 @@ class MemoryPlaybackStorage : PlaybackStorage {
     ): PlaylistId {
         val id = PlaylistId(lists.value.size + 1L)
         // The newest first, as Playback's database lists them.
-        lists.value =
-            (lists.value + Triple(PlaylistSummary(id, name, tracks.size), tracks, createdAt)).sortedByDescending { it.third.value }
+        lists.value = (lists.value + (PlaylistSummary(id, name, tracks.size, tracks) to createdAt)).sortedByDescending { it.second.value }
         return id
+    }
+
+    override suspend fun renamePlaylist(
+        id: PlaylistId,
+        name: String,
+    ) {
+        lists.value = lists.value.map { if (it.first.id == id) it.first.copy(name = name) to it.second else it }
+    }
+
+    override suspend fun replacePlaylistTracks(
+        id: PlaylistId,
+        tracks: List<Track>,
+    ) {
+        lists.value =
+            lists.value.map { if (it.first.id == id) it.first.copy(trackCount = tracks.size, tracks = tracks) to it.second else it }
     }
 
     override suspend fun deletePlaylist(id: PlaylistId) {

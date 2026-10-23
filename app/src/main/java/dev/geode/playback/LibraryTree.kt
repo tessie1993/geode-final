@@ -14,7 +14,7 @@ import dev.geode.ui.OldLibraryModels
  * The browse tree Android Auto and other browsers walk. Folder ids are fixed words or `<kind>/<name>`;
  * a playable id is `<parentId>|<uri>` so the parent list can be rebuilt when one of its rows is tapped.
  * The songs and favourites are the Library's state, [library]; [recent] is Playback's play history, the
- * most recent first (#17). The playlists wait until the Library's `:api` names their songs.
+ * most recent first (#17). A playlist is named by its id, which keeps across renames.
  */
 class LibraryTree(
     private val context: Context,
@@ -45,6 +45,8 @@ class LibraryTree(
             TRACKS -> tracks().map { playable(parentId, it) }
             ALBUMS -> groups(ALBUMS, tracks().map { it.album }, MediaMetadata.MEDIA_TYPE_ALBUM)
             ARTISTS -> groups(ARTISTS, tracks().map { it.artist }, MediaMetadata.MEDIA_TYPE_ARTIST)
+            PLAYLISTS ->
+                library().playlists.map { folder("$PLAYLISTS/${it.id.value}", it.name, MediaMetadata.MEDIA_TYPE_PLAYLIST) }
             FAVOURITES -> tracks().filter { it.uri in library().favourites }.map { playable(parentId, it) }
             RECENT ->
                 recent()
@@ -77,6 +79,7 @@ class LibraryTree(
             folder(TRACKS, context.getString(R.string.library_tab_tracks), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED),
             folder(ALBUMS, context.getString(R.string.library_tab_albums), MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
             folder(ARTISTS, context.getString(R.string.library_tab_artists), MediaMetadata.MEDIA_TYPE_FOLDER_ARTISTS),
+            folder(PLAYLISTS, context.getString(R.string.library_tab_playlists), MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS),
             folder(FAVOURITES, context.getString(R.string.auto_favourites), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED),
             folder(RECENT, context.getString(R.string.auto_recently_played), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED),
         )
@@ -88,6 +91,13 @@ class LibraryTree(
             when (kind) {
                 ALBUMS -> tracks().filter { it.album == name }
                 ARTISTS -> tracks().filter { it.artist == name }
+                PLAYLISTS ->
+                    library()
+                        .playlists
+                        .firstOrNull { it.id.value.toString() == name }
+                        ?.songs
+                        ?.let(::rowsFor)
+                        .orEmpty()
                 else -> emptyList()
             }
         return rows.map { playable(parentId, it) }
@@ -153,10 +163,11 @@ class LibraryTree(
         const val TRACKS = "tracks"
         const val ALBUMS = "albums"
         const val ARTISTS = "artists"
+        const val PLAYLISTS = "playlists"
         const val FAVOURITES = "favourites"
         const val RECENT = "recent"
         private const val SEPARATOR = "|"
         private const val RECENT_LIMIT = 50
-        private val TOP_LEVEL = setOf(TRACKS, ALBUMS, ARTISTS, FAVOURITES, RECENT)
+        private val TOP_LEVEL = setOf(TRACKS, ALBUMS, ARTISTS, PLAYLISTS, FAVOURITES, RECENT)
     }
 }

@@ -96,6 +96,26 @@ class OldLibraryModelsTest {
     }
 
     @Test
+    fun `a playlist named by the old screens is renamed, added to, reordered and cut by Playback's id`() {
+        assertEquals(LibraryCommand.RenamePlaylist(PlaylistRef(7), "Dusk"), OldLibraryModels.renamePlaylist(state, "Evening", " Dusk "))
+        assertEquals(
+            LibraryCommand.AddToPlaylist(PlaylistRef(7), Pick.Songs(listOf(b.id))),
+            OldLibraryModels.addToPlaylist(state, "Evening", listOf(b.id)),
+        )
+        assertEquals(LibraryCommand.MoveInPlaylist(PlaylistRef(7), 1, 0), OldLibraryModels.moveInPlaylist(state, "Evening", 1, 0))
+        assertEquals(LibraryCommand.RemoveFromPlaylist(PlaylistRef(7), 1), OldLibraryModels.removeFromPlaylist(state, "Evening", 1))
+        assertNull(OldLibraryModels.renamePlaylist(state, "Morning", "Dusk"))
+        assertNull(OldLibraryModels.addToPlaylist(state, "Morning", listOf(b.id)))
+        assertNull(OldLibraryModels.moveInPlaylist(state, "Morning", 1, 0))
+        assertNull(OldLibraryModels.removeFromPlaylist(state, "Morning", 1))
+    }
+
+    @Test
+    fun `a new playlist may start empty`() {
+        assertEquals(LibraryCommand.CreatePlaylist("Later", Pick.Songs(emptyList())), OldLibraryModels.createPlaylist("Later", emptyList()))
+    }
+
+    @Test
     fun `a new playlist is made of the songs it was asked for, its name trimmed`() {
         assertEquals(
             LibraryCommand.CreatePlaylist("Night", Pick.Songs(listOf(b.id))),

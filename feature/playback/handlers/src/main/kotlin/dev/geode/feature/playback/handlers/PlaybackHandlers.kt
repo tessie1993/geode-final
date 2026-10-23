@@ -89,6 +89,9 @@ class PlaybackHandlers(
                     results.report(PlaybackEvent.PlaylistSaved(work.name))
                 }
             is PlaybackWork.DeletePlaylist -> guarded(results, StorageFailure.DELETE_PLAYLIST) { storage.deletePlaylist(work.id) }
+            is PlaybackWork.RenamePlaylist -> guarded(results, StorageFailure.SAVE_PLAYLIST) { storage.renamePlaylist(work.id, work.name) }
+            is PlaybackWork.SavePlaylistTracks ->
+                guarded(results, StorageFailure.SAVE_PLAYLIST) { storage.replacePlaylistTracks(work.id, work.tracks) }
             // The listening tools (#35).
             PlaybackWork.RestoreListening ->
                 guarded(results, StorageFailure.READ) {

@@ -3,6 +3,7 @@ package dev.geode.ui
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -167,7 +168,37 @@ class LibraryViewModel
             songs: List<TrackId>,
         ) = old.createPlaylist(name, songs)
 
-        fun importPlaylistFile(uri: Uri) = old.importPlaylist(uri.toString())
+        /** Named as its file is, without the extension. */
+        fun importPlaylistFile(uri: Uri) {
+            val fileName =
+                runCatching {
+                    application.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                        if (c.moveToFirst()) c.getString(0) else null
+                    }
+                }.getOrNull().orEmpty()
+            old.importPlaylist(uri.toString(), fileName.substringBeforeLast('.'))
+        }
+
+        fun renameMusicPlaylist(
+            name: String,
+            newName: String,
+        ) = old.renamePlaylist(name, newName)
+
+        fun addTrackToPlaylist(
+            playlist: String,
+            uri: TrackId,
+        ) = old.addToPlaylist(playlist, listOf(uri))
+
+        fun moveMusicPlaylistTrack(
+            playlist: String,
+            from: Int,
+            to: Int,
+        ) = old.moveInPlaylist(playlist, from, to)
+
+        fun removeTrackFromPlaylist(
+            playlist: String,
+            index: Int,
+        ) = old.removeFromPlaylist(playlist, index)
 
         fun deleteMusicPlaylist(name: String) = old.deletePlaylist(name)
 

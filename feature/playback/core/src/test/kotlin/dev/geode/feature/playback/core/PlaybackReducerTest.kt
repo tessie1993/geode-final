@@ -57,7 +57,7 @@ class PlaybackReducerTest {
     private val heard = PlayMark(Millis(31_000), Millis(1_001_000), moving = true)
 
     private val playlist = PlaylistId(7)
-    private val playlists = listOf(PlaylistSummary(playlist, "Evening", trackCount = 2))
+    private val playlists = listOf(PlaylistSummary(playlist, "Evening", trackCount = 2, tracks = listOf(a, b)))
     private val history = listOf(PlayedTrack(b, Millis(3_000)), PlayedTrack(a, Millis(2_000)), PlayedTrack(b, Millis(1_000)))
 
     // One of each state, and Loading both ways, since whether it plays once open changes the answers.
@@ -81,6 +81,10 @@ class PlaybackReducerTest {
     private val createPlaylist = command(PlaybackCommand.CreatePlaylist("Mix", listOf(a)))
     private val saveHistory = command(PlaybackCommand.SaveHistoryAsPlaylist("Was"))
     private val deletePlaylist = command(PlaybackCommand.DeletePlaylist(playlist))
+    private val renamePlaylist = command(PlaybackCommand.RenamePlaylist(playlist, " Dusk "))
+    private val addToPlaylist = command(PlaybackCommand.AddToPlaylist(playlist, listOf(c)))
+    private val moveInPlaylist = command(PlaybackCommand.MoveInPlaylist(playlist, from = 0, to = 1))
+    private val removeFromPlaylist = command(PlaybackCommand.RemoveFromPlaylist(playlist, index = 0))
     private val started = PlaybackEvent.Started(heard)
     private val pausedHeard = PlaybackEvent.Paused(heard)
     private val seeked = PlaybackEvent.Seeked(heard)
@@ -104,6 +108,10 @@ class PlaybackReducerTest {
             createPlaylist,
             saveHistory,
             deletePlaylist,
+            renamePlaylist,
+            addToPlaylist,
+            moveInPlaylist,
+            removeFromPlaylist,
             started,
             pausedHeard,
             seeked,
@@ -283,6 +291,10 @@ class PlaybackReducerTest {
                     // Each track once, the most recent first.
                     row(state, saveHistory, state, Perform(PlaybackWork.CreatePlaylist("Was", listOf(b, a)))),
                     row(state, deletePlaylist, state, Perform(PlaybackWork.DeletePlaylist(playlist))),
+                    row(state, renamePlaylist, state, Perform(PlaybackWork.RenamePlaylist(playlist, "Dusk"))),
+                    row(state, addToPlaylist, state, Perform(PlaybackWork.SavePlaylistTracks(playlist, listOf(a, b, c)))),
+                    row(state, moveInPlaylist, state, Perform(PlaybackWork.SavePlaylistTracks(playlist, listOf(b, a)))),
+                    row(state, removeFromPlaylist, state, Perform(PlaybackWork.SavePlaylistTracks(playlist, listOf(b)))),
                     Row(state, playlistsChanged, Next(PlaybackState(state, emptyList(), history))),
                     Row(state, historyChanged, Next(PlaybackState(state, playlists, emptyList()))),
                     row(state, saved, state, Emit(PlaybackFact.PlaylistSaved("Mix"))),
@@ -386,6 +398,44 @@ class PlaybackReducerTest {
         val missing = states.flatMap { state -> events.map { kind(state) to it } }.filterNot { it in covered }
 
         assertEquals(emptyList<Pair<String, PlaybackEvent>>(), missing)
+    }
+
+    @Test
+    fun `a playlist edit that changes nothing, or names no playlist, saves nothing`() {
+        val unknown = PlaylistId(99)
+        val nothing =
+            listOf(
+                PlaybackCommand.CreatePlaylist(" ", listOf(a)),
+                PlaybackCommand.RenamePlaylist(playlist, " "),
+                PlaybackCommand.RenamePlaylist(unknown, "Dusk"),
+                PlaybackCommand.AddToPlaylist(playlist, emptyList()),
+                PlaybackCommand.AddToPlaylist(unknown, listOf(c)),
+                PlaybackCommand.MoveInPlaylist(playlist, from = 1, to = 1),
+                PlaybackCommand.MoveInPlaylist(playlist, from = 2, to = 0),
+                PlaybackCommand.MoveInPlaylist(playlist, from = -1, to = 0),
+                PlaybackCommand.MoveInPlaylist(unknown, from = 0, to = 1),
+                PlaybackCommand.RemoveFromPlaylist(playlist, index = 2),
+                PlaybackCommand.RemoveFromPlaylist(playlist, index = -1),
+                PlaybackCommand.RemoveFromPlaylist(unknown, index = 0),
+            )
+        val state = PlaybackState(playing, playlists, history)
+        for (edit in nothing) {
+            assertEquals("$edit", emptyList<PlaybackEffect>(), PlaybackReducer.reduce(state, command(edit)).effects)
+        }
+    }
+
+    @Test
+    fun `a playlist may be made empty and filled later, and a move past the end goes to the end`() {
+        val state = PlaybackState(playing, playlists, history)
+
+        assertEquals(
+            listOf(Perform(PlaybackWork.CreatePlaylist("Later", emptyList()))),
+            PlaybackReducer.reduce(state, command(PlaybackCommand.CreatePlaylist("Later", emptyList()))).effects,
+        )
+        assertEquals(
+            listOf(Perform(PlaybackWork.SavePlaylistTracks(playlist, listOf(b, a)))),
+            PlaybackReducer.reduce(state, command(PlaybackCommand.MoveInPlaylist(playlist, from = 0, to = 9))).effects,
+        )
     }
 
     @Test

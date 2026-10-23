@@ -9,6 +9,7 @@ import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
+import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.PlayerState.Buffering
 import dev.geode.feature.playback.api.PlayerState.Ended
@@ -98,9 +99,17 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is PlaybackCommand.SeekTo -> player(state, seekTo(state.player, command.position))
             is PlaybackCommand.PlayPlaylist -> Next(state, listOf(Perform(PlaybackWork.OpenPlaylist(command.id))))
             is PlaybackCommand.CreatePlaylist -> createPlaylist(state, command.name, command.tracks)
-            is PlaybackCommand.SaveHistoryAsPlaylist ->
-                createPlaylist(state, command.name, state.history.map { it.track }.distinctBy { it.id })
+            is PlaybackCommand.SaveHistoryAsPlaylist -> saveHistory(state, command.name)
             is PlaybackCommand.DeletePlaylist -> Next(state, listOf(Perform(PlaybackWork.DeletePlaylist(command.id))))
+            is PlaybackCommand.RenamePlaylist -> renamePlaylist(state, command)
+            is PlaybackCommand.AddToPlaylist ->
+                editPlaylist(state, command.id) { tracks -> if (command.tracks.isEmpty()) null else tracks + command.tracks }
+            is PlaybackCommand.MoveInPlaylist ->
+                editPlaylist(state, command.id) { tracks -> moved(tracks, command.from, command.to) }
+            is PlaybackCommand.RemoveFromPlaylist ->
+                editPlaylist(state, command.id) { tracks ->
+                    if (command.index in tracks.indices) tracks.filterIndexed { index, _ -> index != command.index } else null
+                }
             is PlaybackCommand.PlayNext -> Listening.insert(state, command.tracks, next = true)
             is PlaybackCommand.AddToQueue -> Listening.insert(state, command.tracks, next = false)
             is PlaybackCommand.PlayQueueItem -> Listening.playQueueItem(state, command.index)
@@ -127,11 +136,53 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
         name: String,
         tracks: List<Track>,
     ): Next<PlaybackState, PlaybackEffect> =
-        if (name.isBlank() || tracks.isEmpty()) {
+        if (name.isBlank()) {
             Next(state)
         } else {
             Next(state, listOf(Perform(PlaybackWork.CreatePlaylist(name.trim(), tracks))))
         }
+
+    /** Nothing played, nothing saved. */
+    private fun saveHistory(
+        state: PlaybackState,
+        name: String,
+    ): Next<PlaybackState, PlaybackEffect> {
+        val tracks = state.history.map { it.track }.distinctBy { it.id }
+        return if (tracks.isEmpty()) Next(state) else createPlaylist(state, name, tracks)
+    }
+
+    private fun renamePlaylist(
+        state: PlaybackState,
+        command: PlaybackCommand.RenamePlaylist,
+    ): Next<PlaybackState, PlaybackEffect> =
+        if (command.name.isBlank() || state.playlists.none { it.id == command.id }) {
+            Next(state)
+        } else {
+            Next(state, listOf(Perform(PlaybackWork.RenamePlaylist(command.id, command.name.trim()))))
+        }
+
+    /** Saves what [edit] makes of the playlist's tracks; nothing when it makes nothing of them, or the playlist is not there. */
+    private fun editPlaylist(
+        state: PlaybackState,
+        id: PlaylistId,
+        edit: (List<Track>) -> List<Track>?,
+    ): Next<PlaybackState, PlaybackEffect> {
+        val playlist = state.playlists.firstOrNull { it.id == id } ?: return Next(state)
+        val tracks = edit(playlist.tracks) ?: return Next(state)
+        return Next(state, listOf(Perform(PlaybackWork.SavePlaylistTracks(id, tracks))))
+    }
+
+    /** [tracks] with the one at [from] moved to [to] (held inside the list), or null when nothing moves. */
+    private fun moved(
+        tracks: List<Track>,
+        from: Int,
+        to: Int,
+    ): List<Track>? {
+        if (from !in tracks.indices) return null
+        val target = to.coerceIn(0, tracks.lastIndex)
+        if (target == from) return null
+        return tracks.toMutableList().apply { add(target, removeAt(from)) }
+    }
 
     // Commands.
 

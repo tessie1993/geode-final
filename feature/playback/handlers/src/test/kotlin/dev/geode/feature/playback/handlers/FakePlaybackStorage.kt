@@ -38,8 +38,26 @@ class FakePlaybackStorage : PlaybackStorage {
         checkWrites()
         val id = PlaylistId(nextId++)
         tracksOf[id] = tracks
-        saved.value = listOf(PlaylistSummary(id, name, tracks.size) to tracks) + saved.value
+        saved.value = listOf(PlaylistSummary(id, name, tracks.size, tracks) to tracks) + saved.value
         return id
+    }
+
+    override suspend fun renamePlaylist(
+        id: PlaylistId,
+        name: String,
+    ) {
+        checkWrites()
+        saved.value = saved.value.map { if (it.first.id == id) it.first.copy(name = name) to it.second else it }
+    }
+
+    override suspend fun replacePlaylistTracks(
+        id: PlaylistId,
+        tracks: List<Track>,
+    ) {
+        checkWrites()
+        tracksOf[id] = tracks
+        saved.value =
+            saved.value.map { if (it.first.id == id) it.first.copy(trackCount = tracks.size, tracks = tracks) to tracks else it }
     }
 
     override suspend fun deletePlaylist(id: PlaylistId) {
