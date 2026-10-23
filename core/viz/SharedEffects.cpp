@@ -11,9 +11,10 @@ float perFrame(float perFrame, float dt) {
     if (!(dt > 0.0f) || !std::isfinite(dt) || !(perFrame > 0.0f)) return 0.0f;
     return std::pow(perFrame, dt * sharedfx::kReferenceFps);
 }
-}  // namespace
 
-SharedEffects SharedEffects::from(const mod::Evaluated& e) {
+// The effects read from any frame that gives each Shared core property's value.
+template <typename Frame>
+SharedEffects effectsOf(const Frame& e) {
     SharedEffects fx;
     fx.trails = e[mod::Shared::Trails];
     fx.trailZoom = e[mod::Shared::TrailZoom];
@@ -25,6 +26,11 @@ SharedEffects SharedEffects::from(const mod::Evaluated& e) {
     fx.particleSize = e[mod::Shared::ParticleSize];
     return fx;
 }
+}  // namespace
+
+SharedEffects SharedEffects::from(const mod::Evaluated& e) { return effectsOf(e); }
+
+SharedEffects SharedEffects::from(const mod::NativeFrame& frame) { return effectsOf(frame); }
 
 namespace sharedfx {
 

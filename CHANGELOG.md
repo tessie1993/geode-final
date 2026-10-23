@@ -22,23 +22,22 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
   handlers' database tests.
 
-- **Player: lyrics, the A-B loop on the seek bar, and the app-wide error
-  banner (#147, ADR-0004, ADR-0005).** Playback now looks up the current
-  track's lyrics (an `.lrc` file with its name beside it, else its own tags,
-  read as the old player read them) each time the current track changes,
-  keeping only answers for the track still current. The new `PlayerScreen`
-  shades the A-B loop on a plain seek bar with a playhead, and opens the
-  lyrics in place of the artwork: timed lyrics follow the music and a tapped
-  line plays from there. Tracks are never analysed, only the live audio
-  (owner, 2026-10-22), so there is no seek waveform. The app-wide error
-  banner is App UI logic, not Playback's (owner, 2026-10-22):
-  `AppErrorBannerState` in `:app` hears the shared error channel and keeps
-  one failure at a time, a newer one replacing it, until it is dismissed or
-  eight seconds after it is first on screen; the stateless
-  `ErrorBanner(model, onAction)` draws it. `playbackStore(...)` gains only an
-  optional `lyrics` source. Built alongside the old `PlaybackNoticeBanner` and
-  lyrics panel; wired in at the switch-over (#17), which passes the lyrics
-  source and lays `AppErrorBanner` over every screen.
+- **Studio as a feature: Projects and the library (#21, ADR-0003,
+  ADR-0005).** `:feature:studio:{api,core,handlers,ui}`. Users create, rename
+  and delete Projects, choose the default Project (there is no built-in
+  one), and move videos between Projects. Deleting a Project that still has
+  videos asks "Delete N videos too?": yes deletes them with their files, no
+  moves them to another Project; nothing is deleted silently. Every video is
+  saved to one folder picked with the system folder picker in Studio's own
+  first-run step and kept in Settings > Default paths as the new **Video
+  save folder** (`video_folder_uri`); Studio follows it through Settings'
+  interface. Projects, videos and the default Project live in Studio's own
+  Room database, which the render queue (#22) will share.
+  `StudioCommand.AddVideos` is how Renders, Recordings, Edits, Shorts and the
+  old `Movies/Geode` exports (imported once at the switch-over, #17) enter
+  the library: without a Project they go to the default one, and with no
+  default they are handed back to ask about. Built alongside the old Studio;
+  wired in at the switch-over (#17).
 
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
