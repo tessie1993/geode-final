@@ -15,7 +15,7 @@ The app's own screens and controls: tabs, buttons, panels, sheets, the mini-play
 _Avoid_: visuals, visual design, interface (an architecture term)
 
 **Bar**:
-The App UI's bottom navigation, the same in every Element, in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app.
+The App UI's bottom navigation, the same in every Element, in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app. Back from any page returns to Home, and Back on Home sends the app to the background.
 _Avoid_: tabs, nav bar, menu
 
 **Home**:
@@ -30,8 +30,12 @@ _Avoid_: onboarding wizard, welcome flow
 The small player above the Bar. Tapping it always opens the full-screen Visual, unless Visuals off is on, when it opens the plain player.
 _Avoid_: now-playing bar, player bar
 
+**Player controls**:
+Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual they appear on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets.
+_Avoid_: transport, media controls
+
 **Visuals off**:
-The battery-saving setting that stops the Visual entirely: nothing draws it, so the player shows a still background, and no Render or Recording can be made. The Element and its Hero scene still run, and Studio still works with videos already saved.
+The battery-saving setting, in Settings > Battery beside Visual quality and the CPU/GPU save mode, that stops the Visual entirely: nothing draws it, so the player shows a still background, and no Render or Recording can be made. The Element and its Hero scene still run, and Studio still works with videos already saved.
 _Avoid_: low power mode, disable visualizer
 
 **Element**:
@@ -103,6 +107,10 @@ _Avoid_: Editor, export screen
 **Project**:
 A named group of Renders, Recordings, Edits and Shorts, kept as its own folder inside the Save folder. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported. Only the user deletes videos: deleting a Project, after a confirmation, deletes its folder and every video in it, and nothing is ever deleted automatically.
 _Avoid_: album, collection, folder (for the concept)
+
+**Preset folder**:
+The optional folder where saved Customization presets go, chosen in Settings > Default paths and separate from the Save folder. Until one is chosen, presets stay inside the app.
+_Avoid_: preset path, library folder
 
 **Save folder**:
 The one folder on the device where every Project lives, chosen by the user during the first-run setup. The app does not finish starting until a Save folder is chosen, and if it is lost later (deleted, or access withdrawn) the app asks again before going on.
