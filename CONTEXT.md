@@ -15,7 +15,7 @@ The app's own screens and controls: tabs, buttons, panels, sheets, the mini-play
 _Avoid_: visuals, visual design, interface (an architecture term)
 
 **Bar**:
-The App UI's bottom navigation, the same in every Element, in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app. Back from any page returns to Home, and Back on Home sends the app to the background.
+The App UI's bottom navigation, the same in every Element and for every user (no page is ever hidden), in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app. Back from any page returns to Home, and Back on Home sends the app to the background.
 _Avoid_: tabs, nav bar, menu
 
 **Home**:
@@ -31,7 +31,7 @@ The small player above the Bar. Tapping it always opens the full-screen Visual, 
 _Avoid_: now-playing bar, player bar
 
 **Player controls**:
-Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual they appear on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets.
+Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual every other touch belongs to the Style's touch interaction, so the controls appear only on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets.
 _Avoid_: transport, media controls
 
 **Visuals off**:
