@@ -105,7 +105,7 @@ One piece of music on the device, as the Library lists it and the player plays i
 _Avoid_: song, file
 
 **Live input**:
-The microphone, or a USB or line input, as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording.
+The microphone as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording. There is no line or USB input.
 _Avoid_: capture, mic mode
 
 ### Studio
