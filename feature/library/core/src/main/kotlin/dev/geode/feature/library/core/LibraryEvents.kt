@@ -65,6 +65,12 @@ sealed interface LibraryEvent {
         val failure: StorageFailure,
     ) : LibraryEvent
 
+    /** Writing a song's file for [command] ended with [outcome]. */
+    data class SongFileWriteEnded(
+        val command: LibraryCommand.WriteSongFile,
+        val outcome: FileWriteOutcome,
+    ) : LibraryEvent
+
     /** Wall-clock time is [now], for the smart playlist rules that count days. */
     data class ClockRead(
         val now: Millis,
@@ -87,6 +93,17 @@ enum class ScanFailure {
 
     /** The phone's media index could not be read. */
     MEDIA_INDEX,
+}
+
+/** How writing tags into a song's file went. */
+enum class FileWriteOutcome {
+    WRITTEN,
+
+    /** The phone must ask the person before Geode may change the file (scoped storage). */
+    NEEDS_CONSENT,
+
+    /** The file could not be written, and asking the person would not help. */
+    REFUSED,
 }
 
 /** What went wrong with the Library's database or a playlist file, as the handlers report it. */
@@ -136,6 +153,11 @@ sealed interface LibraryWork {
 
     data class SaveExcludedFolders(
         val folders: Set<String>,
+    ) : LibraryWork
+
+    /** Write [command]'s tags into its song's file, and report how it went. */
+    data class WriteSongFile(
+        val command: LibraryCommand.WriteSongFile,
     ) : LibraryWork
 
     /** Save [playlist], in place of the smart playlist named [replacing] when there is one. */

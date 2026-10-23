@@ -11,6 +11,7 @@ import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
+import dev.geode.feature.library.api.TagEdit
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.Track
@@ -51,6 +52,7 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             is LibraryEvent.PlaylistFileRead -> imported(state, event.name, event.text)
             is LibraryEvent.PlaylistFileWritten -> Next(state, listOf(Emit(LibraryFact.PlaylistExported(event.file, event.songs))))
             is LibraryEvent.StorageFailed -> storageFailed(state, event.failure)
+            is LibraryEvent.SongFileWriteEnded -> fileWritten(state, event)
             is LibraryEvent.ClockRead -> shown(state.copy(now = event.now), StartTimer(ClockTick, CLOCK_TICK, LibraryEvent.ClockDue))
             LibraryEvent.ClockDue -> Next(state, listOf(Perform(LibraryWork.ReadClock)))
         }
@@ -133,6 +135,7 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             LibraryCommand.Rescan -> rescan(state)
             is LibraryCommand.ToggleFavourite -> toggleFavourite(state, command)
             is LibraryCommand.EditSong -> edit(state, command)
+            is LibraryCommand.WriteSongFile -> writeFile(state, command)
             is LibraryCommand.ExcludeFolder -> exclude(state, command.folder)
             is LibraryCommand.IncludeFolder -> include(state, command.folder)
             is LibraryCommand.Play -> play(state, command)
@@ -190,17 +193,58 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
         state: LibraryState,
         command: LibraryCommand.EditSong,
     ): Next<LibraryState, LibraryEffect> {
-        val edit =
-            SongEdit(
-                title = command.edit.title.trim(),
-                artist = command.edit.artist.trim(),
-                album = command.edit.album.trim(),
-                artwork = command.edit.artwork?.takeIf { it.isNotBlank() },
-            )
+        val edit = tidied(command.edit)
         if (edit.title.isEmpty() || state.songs.none { it.id == command.song }) return Next(state)
         val songs = state.songs.map { if (it.id == command.song) it.edited(edit) else it }
         return shown(state.copy(songs = songs), Perform(LibraryWork.SaveEdit(command.song, edit)))
     }
+
+    /** The file is written first; the Library takes the edit only once it is (as the old track info editor did). */
+    private fun writeFile(
+        state: LibraryState,
+        command: LibraryCommand.WriteSongFile,
+    ): Next<LibraryState, LibraryEffect> {
+        val edit = tidied(command.edit)
+        if (edit.title.isEmpty() || state.songs.none { it.id == command.song }) return Next(state)
+        val tags =
+            TagEdit(
+                genre = command.tags.genre.trim(),
+                year = command.tags.year.coerceAtLeast(0),
+                track = command.tags.track.coerceAtLeast(0),
+                comment = command.tags.comment.trim(),
+            )
+        return Next(state, listOf(Perform(LibraryWork.WriteSongFile(command.copy(edit = edit, tags = tags)))))
+    }
+
+    /** A write the phone refused is tried once more after the person agrees, and not again. */
+    private fun fileWritten(
+        state: LibraryState,
+        event: LibraryEvent.SongFileWriteEnded,
+    ): Next<LibraryState, LibraryEffect> {
+        val command = event.command
+        val notWritten = Emit(LibraryFact.SongFileNotWritten(command.song))
+        return when (event.outcome) {
+            FileWriteOutcome.WRITTEN -> {
+                val edited = edit(state, LibraryCommand.EditSong(command.song, command.edit))
+                Next(edited.state, edited.effects + Emit(LibraryFact.SongFileWritten(command.song)))
+            }
+            FileWriteOutcome.NEEDS_CONSENT ->
+                if (command.consented) {
+                    Next(state, listOf(notWritten))
+                } else {
+                    Next(state, listOf(Emit(LibraryFact.SongFileNeedsConsent(command.song, command.copy(consented = true)))))
+                }
+            FileWriteOutcome.REFUSED -> Next(state, listOf(notWritten))
+        }
+    }
+
+    private fun tidied(edit: SongEdit): SongEdit =
+        SongEdit(
+            title = edit.title.trim(),
+            artist = edit.artist.trim(),
+            album = edit.album.trim(),
+            artwork = edit.artwork?.takeIf { it.isNotBlank() },
+        )
 
     private fun exclude(
         state: LibraryState,

@@ -8,6 +8,7 @@ import dev.geode.feature.library.api.LibraryPlaylist
 import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.library.api.Play
 import dev.geode.feature.library.api.PlaylistRef
+import dev.geode.feature.library.core.FileWriteOutcome
 import dev.geode.feature.library.core.LibraryEvent
 import dev.geode.feature.library.core.LibraryReducer
 import dev.geode.feature.library.core.LibraryWork
@@ -35,7 +36,7 @@ val MEDIA_CHANGE_QUIET = Millis(2_000)
 
 /**
  * Where the Library's handlers read and write: the phone's media index, Geode's tag reader, the
- * Library's own database, and the playlist files the user picks.
+ * Library's own database, the playlist files the user picks, and Geode's tag writer.
  */
 class LibrarySources(
     val scanner: MediaScanner,
@@ -44,13 +45,14 @@ class LibrarySources(
     val files: PlaylistFiles,
     /** Wall-clock time, for the smart playlist rules that count days. */
     val clock: () -> Millis = { Millis(System.currentTimeMillis()) },
+    val tagWriter: TagWriter = TagWriter.NONE,
 )
 
 /**
  * Carries out the Library's work (ADR-0005): it scans the phone's music into the index, keeps the
  * favourites, edits, excluded folders and smart playlists, reads the clock, reads and writes playlist
- * files, and talks to Playback through its `:api` only, sending it Commands and reading its playlists
- * and history. Every failure is caught here and reported as a named event.
+ * files, writes edited tags into song files, and talks to Playback through its `:api` only, sending
+ * it Commands and reading its playlists and history. Every failure is caught here and reported as a named event.
  */
 class LibraryHandlers(
     private val playback: Playback,
@@ -86,6 +88,11 @@ class LibraryHandlers(
                 guarded(results, StorageFailure.READ_PLAYLIST_FILE) {
                     results.report(LibraryEvent.PlaylistFileRead(work.name, sources.files.read(work.file)))
                 }
+            is LibraryWork.WriteSongFile -> {
+                val command = work.command
+                val outcome = attempt { sources.tagWriter.write(command.song, command.edit, command.tags) } ?: FileWriteOutcome.REFUSED
+                results.report(LibraryEvent.SongFileWriteEnded(command, outcome))
+            }
             is LibraryWork.WritePlaylistFile ->
                 guarded(results, StorageFailure.WRITE_PLAYLIST_FILE) {
                     sources.files.write(work.file, work.text)

@@ -45,6 +45,17 @@ data class SongEdit(
     val artwork: String? = null,
 )
 
+/**
+ * What the track info editor writes into a song's file besides [SongEdit]'s title, artist and album:
+ * the tags only the file keeps (the old track info editor's fields, #17). [year] and [track] are 0 for none.
+ */
+data class TagEdit(
+    val genre: String = "",
+    val year: Int = 0,
+    val track: Int = 0,
+    val comment: String = "",
+)
+
 /** The Library's views (owner decisions on #37). */
 enum class LibraryView {
     SONGS,
@@ -190,6 +201,12 @@ enum class SortKey {
     DATE_ADDED,
     LENGTH,
     PLAYS,
+
+    /** By artist, then name (the old Library's sort). */
+    ARTIST,
+
+    /** By album, then name (the old Library's sort). */
+    ALBUM,
 }
 
 /** How lists are ordered: by [key], smallest first unless [descending]. */
@@ -380,6 +397,18 @@ sealed interface LibraryCommand {
         val edit: SongEdit,
     ) : LibraryCommand
 
+    /**
+     * Writes [edit] and [tags] into [song]'s file and, once they are written, changes its info in the
+     * Library as [EditSong] does with [edit]. When the phone must ask the person first,
+     * [LibraryFact.SongFileNeedsConsent] says so; once they agree, the Command it carries tries once more.
+     */
+    data class WriteSongFile(
+        val song: TrackId,
+        val edit: SongEdit,
+        val tags: TagEdit,
+        val consented: Boolean = false,
+    ) : LibraryCommand
+
     data class ExcludeFolder(
         val folder: String,
     ) : LibraryCommand
@@ -487,5 +516,24 @@ sealed interface LibraryFact {
     data class PlaylistExported(
         val file: String,
         val songs: Int,
+    ) : LibraryFact
+
+    /** [song]'s file holds the new tags, and the Library its new info. */
+    data class SongFileWritten(
+        val song: TrackId,
+    ) : LibraryFact
+
+    /**
+     * The phone must ask the person before Geode changes [song]'s file. Once they agree, [retry] tries
+     * the write once more.
+     */
+    data class SongFileNeedsConsent(
+        val song: TrackId,
+        val retry: LibraryCommand.WriteSongFile,
+    ) : LibraryFact
+
+    /** [song]'s file could not be written; the Library's info for it is left as it was. */
+    data class SongFileNotWritten(
+        val song: TrackId,
     ) : LibraryFact
 }

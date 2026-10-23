@@ -306,7 +306,8 @@ class LibraryPagesTest {
 
         val byFolder = LibraryPages.pageOf(ready.copy(query = "rock")) as Page.Found
         assertEquals(listOf("/music/rock", "/music/rock/live"), byFolder.folders.map { it.key.name })
-        assertEquals(emptyList<SongRow>(), byFolder.songs)
+        // Songs are found by their folder too, as the old search found them.
+        assertEquals(listOf(alpha, gamma), byFolder.songs.map { it.song })
 
         val byPlaylist = LibraryPages.pageOf(ready.copy(query = "even")) as Page.Found
         assertEquals(listOf("Evening"), byPlaylist.playlists.map { it.title })

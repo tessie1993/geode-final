@@ -133,15 +133,18 @@ internal object LibraryPages {
                 LibraryView.DUPLICATES -> Page.Duplicates(duplicates())
             }
 
+        /** What [query] finds: songs by title, artist, album or folder, and groups by name (as the old search found them). */
         fun found(query: String): Page.Found {
-            fun String.matches() = contains(query, ignoreCase = true)
+            val terms = LibrarySearch.terms(query)
+
+            fun matches(vararg fields: String) = LibrarySearch.matches(terms, fields.toList())
             return Page.Found(
                 query = query,
-                songs = rows(sorted(visible.filter { it.title.matches() || it.artist.matches() || it.album.matches() })),
-                albums = groups(GroupKind.ALBUM).filter { it.title.matches() },
-                artists = groups(GroupKind.ARTIST).filter { it.title.matches() },
-                folders = groups(GroupKind.FOLDER).filter { it.key.name.matches() },
-                playlists = playlists().filter { it.title.matches() },
+                songs = rows(sorted(visible.filter { matches(it.title, it.artist, it.album, it.folder) })),
+                albums = groups(GroupKind.ALBUM).filter { matches(it.title) },
+                artists = groups(GroupKind.ARTIST).filter { matches(it.title) },
+                folders = groups(GroupKind.FOLDER).filter { matches(it.key.name) },
+                playlists = playlists().filter { matches(it.title) },
             )
         }
 
@@ -169,6 +172,8 @@ internal object LibraryPages {
                     SortKey.DATE_ADDED -> compareBy<Song> { it.addedAt.value }.then(byTitle)
                     SortKey.LENGTH -> compareBy<Song> { it.duration.value }.then(byTitle)
                     SortKey.PLAYS -> compareBy<Song> { plays(it) }.then(byTitle)
+                    SortKey.ARTIST -> compareBy<Song, String>(String.CASE_INSENSITIVE_ORDER) { it.artist }.then(byTitle)
+                    SortKey.ALBUM -> compareBy<Song, String>(String.CASE_INSENSITIVE_ORDER) { it.album }.then(byTitle)
                 }
             return songs.sortedWith(order.directed(state.sort))
         }
@@ -228,11 +233,14 @@ internal object LibraryPages {
                     SortKey.DATE_ADDED -> compareBy<Group> { group -> group.value.maxOf { it.addedAt.value } }.then(byName)
                     SortKey.LENGTH -> compareBy<Group> { group -> group.value.sumOf { it.duration.value } }.then(byName)
                     SortKey.PLAYS -> compareBy<Group> { group -> group.value.sumOf { plays(it) } }.then(byName)
+                    SortKey.ARTIST -> byFirst(Song::artist)
+                    SortKey.ALBUM -> byFirst(Song::album)
                 }
+            val folderLabels = if (kind == GroupKind.FOLDER) FolderLabels.of(groups.keys) else emptyMap()
             return groups.entries.sortedWith(order.directed(state.sort)).map { (name, songs) ->
                 GroupRow(
                     key = GroupKey(kind, name),
-                    title = if (kind == GroupKind.FOLDER) name.substringAfterLast('/') else name,
+                    title = folderLabels[name] ?: name,
                     detail = if (kind == GroupKind.ALBUM) songs.first().shownAlbumArtist else "",
                     songCount = songs.size,
                     artwork = songs.firstNotNullOfOrNull { it.artwork },
@@ -261,6 +269,11 @@ internal object LibraryPages {
                     )
                 }
     }
+
+    /** Groups by the [field] of theirs that sorts first, then by name. */
+    private fun byFirst(field: (Song) -> String): Comparator<Group> =
+        compareBy<Group, String>(String.CASE_INSENSITIVE_ORDER) { group -> group.value.minOfWith(String.CASE_INSENSITIVE_ORDER, field) }
+            .then(byName)
 
     private val byTitle: Comparator<Song> =
         compareBy<Song, String>(String.CASE_INSENSITIVE_ORDER) { it.title }.thenBy { it.id.value }
