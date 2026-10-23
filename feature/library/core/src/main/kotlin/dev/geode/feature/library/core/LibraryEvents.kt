@@ -61,6 +61,18 @@ sealed interface LibraryEvent {
         val songs: Int,
     ) : LibraryEvent
 
+    /** [edit] was written into [song]'s file. */
+    data class TagsWritten(
+        val song: TrackId,
+        val edit: SongEdit,
+    ) : LibraryEvent
+
+    /** [song]'s file may be changed only once the phone has asked the person. */
+    data class TagsNeedConsent(
+        val song: TrackId,
+        val edit: SongEdit,
+    ) : LibraryEvent
+
     data class StorageFailed(
         val failure: StorageFailure,
     ) : LibraryEvent
@@ -100,6 +112,7 @@ enum class StorageFailure {
     WRITE_PLAYLIST_FILE,
     SAVE_SMART_PLAYLIST,
     DELETE_SMART_PLAYLIST,
+    WRITE_TAGS,
 }
 
 /** Work for the Library's handlers. */
@@ -130,6 +143,12 @@ sealed interface LibraryWork {
     ) : LibraryWork
 
     data class SaveEdit(
+        val song: TrackId,
+        val edit: SongEdit,
+    ) : LibraryWork
+
+    /** Write [edit] into [song]'s file, where the fields it leaves null keep what the file has. */
+    data class WriteTags(
         val song: TrackId,
         val edit: SongEdit,
     ) : LibraryWork

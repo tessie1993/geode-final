@@ -8,6 +8,7 @@ import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
+import dev.geode.feature.library.core.edited
 
 /**
  * What the Library keeps (ADR-0004): the index, the tags Geode's reader filled in, the user's edits,
@@ -100,10 +101,21 @@ class RoomLibraryStorage(
     override suspend fun saveEdit(
         song: TrackId,
         edit: SongEdit,
-    ) = dao.putEdit(EditEntity(song.value, edit.title, edit.artist, edit.album, edit.artwork))
+    ) = dao.putEdit(
+        EditEntity(
+            song.value,
+            edit.title,
+            edit.artist,
+            edit.album,
+            edit.artwork,
+            edit.genre,
+            edit.year,
+            edit.trackNumber,
+            edit.comment,
+        ),
+    )
 
-    override suspend fun edits(): Map<TrackId, SongEdit> =
-        dao.edits().associate { TrackId(it.trackId) to SongEdit(it.title, it.artist, it.album, it.artwork) }
+    override suspend fun edits(): Map<TrackId, SongEdit> = dao.edits().associate { TrackId(it.trackId) to it.toEdit() }
 
     override suspend fun saveExcludedFolders(folders: Set<String>) = dao.replaceExcludedFolders(folders.map(::ExcludedFolderEntity))
 
@@ -147,9 +159,11 @@ class RoomLibraryStorage(
         val edits = dao.edits().associateBy { it.trackId }
         return rows.map { row ->
             val song = row.toSong()
-            edits[row.trackId]?.let { song.copy(title = it.title, artist = it.artist, album = it.album, artwork = it.artwork) } ?: song
+            edits[row.trackId]?.let { song.edited(it.toEdit()) } ?: song
         }
     }
+
+    private fun EditEntity.toEdit() = SongEdit(title, artist, album, artwork, genre, year, trackNumber, comment)
 
     private fun SongEntity.toSong() =
         Song(

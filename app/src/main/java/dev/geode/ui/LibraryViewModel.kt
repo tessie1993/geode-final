@@ -8,21 +8,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.data.NativeTags
 import dev.geode.data.SmartPlaylist
-import dev.geode.data.TagWriteOutcome
-import dev.geode.data.TrackTagEdit
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.LibraryFact
-import dev.geode.playback.toUri
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 private const val KEY_QUERY = "library_query"
@@ -124,44 +118,6 @@ class LibraryViewModel
         fun removeMediaRoot(uriStr: String) = old.removeMusicFolder(uriStr)
 
         fun rescanMediaRoots() = old.rescan()
-
-        fun trackInfoFor(uri: TrackId): LibraryTrack = old.trackInfo(uri)
-
-        fun saveTrackInfo(
-            uri: TrackId,
-            title: String,
-            artist: String,
-            album: String,
-        ) = old.saveTrackInfo(uri, title, artist, album)
-
-        /** Writes the edit into the audio file itself, keeping its album artist; see [TagWriteOutcome] for the result. */
-        suspend fun writeTrackInfo(
-            uri: TrackId,
-            title: String,
-            artist: String,
-            album: String,
-            genre: String,
-            year: Int,
-            trackNo: Int,
-            comment: String,
-        ): TagWriteOutcome =
-            withContext(Dispatchers.IO) {
-                val target = uri.toUri()
-                val resolver = application.contentResolver
-                val existing = NativeTags.read(resolver, target)
-                val edit =
-                    TrackTagEdit(
-                        title = title,
-                        artist = artist,
-                        album = album,
-                        albumArtist = existing?.albumArtist.orEmpty(),
-                        genre = genre,
-                        comment = comment,
-                        year = year,
-                        track = trackNo,
-                    )
-                NativeTags.write(resolver, target, edit)
-            }
 
         fun createMusicPlaylist(
             name: String,

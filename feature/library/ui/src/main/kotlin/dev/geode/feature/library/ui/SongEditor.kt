@@ -1,20 +1,25 @@
 package dev.geode.feature.library.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,11 +34,21 @@ import androidx.compose.ui.res.stringResource
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 
-/** The song info editor (#37) in a dialog: title, artist, album and cover art. */
+/** Genres offered with one tap, as the old track info editor offered them. They are tag values, not words to translate. */
+private val COMMON_GENRES = listOf("Electronic", "Rock", "Pop", "Hip-Hop", "Jazz", "Classical", "Ambient", "Other")
+
+private const val YEAR_DIGITS = 4
+private const val TRACK_NUMBER_DIGITS = 3
+private const val COMMENT_LINES = 3
+
+/**
+ * The song info editor (#37) in a dialog: title, artist, album, cover art, genre, year, track number and
+ * comment, and whether to write them into the file too. [onSave] gets the edit and that choice.
+ */
 @Composable
 internal fun SongEditorDialog(
     song: Song,
-    onSave: (SongEdit) -> Unit,
+    onSave: (SongEdit, Boolean) -> Unit,
     onDismiss: () -> Unit,
     onPickArtwork: ((String) -> Unit) -> Unit,
 ) {
@@ -46,10 +61,11 @@ internal fun SongEditorDialog(
                 fields,
                 onChange = { fields = it },
                 onPickArtwork = { onPickArtwork { picked -> fields = fields.copy(artwork = picked) } },
+                Modifier.verticalScroll(rememberScrollState()),
             )
         },
         confirmButton = {
-            TextButton(onClick = { onSave(fields.toEdit()) }, enabled = fields.canSave) {
+            TextButton(onClick = { onSave(fields.toEdit(song), fields.writeToFile) }, enabled = fields.canSave) {
                 Text(stringResource(R.string.library_edit_save))
             }
         },
@@ -96,6 +112,44 @@ fun SongEditor(
                 }
             }
         }
+        Field(fields.genre, R.string.library_edit_genre) { onChange(fields.copy(genre = it)) }
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
+            COMMON_GENRES.forEach { genre ->
+                FilterChip(
+                    selected = fields.genre.equals(genre, ignoreCase = true),
+                    onClick = { onChange(fields.copy(genre = genre)) },
+                    label = { Text(genre) },
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
+            Field(fields.year, R.string.library_edit_year, Modifier.weight(1f)) {
+                onChange(fields.copy(year = it.filter(Char::isDigit).take(YEAR_DIGITS)))
+            }
+            Field(fields.trackNumber, R.string.library_edit_track_number, Modifier.weight(1f)) {
+                onChange(fields.copy(trackNumber = it.filter(Char::isDigit).take(TRACK_NUMBER_DIGITS)))
+            }
+        }
+        OutlinedTextField(
+            value = fields.comment,
+            onValueChange = { onChange(fields.copy(comment = it)) },
+            label = { Text(stringResource(R.string.library_edit_comment)) },
+            minLines = COMMENT_LINES,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(stringResource(R.string.library_edit_write_file), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = fields.writeToFile, onCheckedChange = { onChange(fields.copy(writeToFile = it)) })
+        }
+        Text(
+            stringResource(R.string.library_edit_write_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -103,6 +157,7 @@ fun SongEditor(
 private fun Field(
     value: String,
     label: Int,
+    modifier: Modifier = Modifier,
     onValueChange: (String) -> Unit,
 ) {
     OutlinedTextField(
@@ -110,6 +165,6 @@ private fun Field(
         onValueChange = onValueChange,
         label = { Text(stringResource(label)) },
         singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     )
 }
