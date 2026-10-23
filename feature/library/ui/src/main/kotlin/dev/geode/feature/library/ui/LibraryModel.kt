@@ -205,10 +205,8 @@ internal object LibraryDimens {
     val small = 8.dp
     val tiny = 4.dp
     val rowArtwork = 48.dp
-    val rowArtworkCorner = 8.dp
     val rowIcon = 24.dp
     val headerArtwork = 96.dp
-    val headerArtworkCorner = 16.dp
     val headerIcon = 48.dp
     val editorArtwork = 72.dp
 }

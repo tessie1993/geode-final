@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.feature.library.api.RuleField
 import dev.geode.feature.library.api.RuleOp
 import dev.geode.feature.library.api.SmartPlaylist
@@ -100,7 +101,7 @@ fun SmartPlaylistEditor(
             Text(
                 stringResource(R.string.library_smart_no_rules),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
             )
         }
         fields.rules.forEachIndexed { index, rule ->
@@ -168,7 +169,7 @@ private fun RuleEditor(
                 Text(
                     stringResource(R.string.library_smart_flag_hint),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = LocalElementTokens.current.colors.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
             }

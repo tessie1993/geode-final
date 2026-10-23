@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Favorite
@@ -43,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
@@ -80,15 +80,15 @@ private fun Artwork(modifier: Modifier) {
     Box(
         modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(PlayerDimens.artworkCorner))
-            .background(MaterialTheme.colorScheme.primaryContainer),
+            .clip(LocalElementTokens.current.shapes.card)
+            .background(LocalElementTokens.current.colors.surfaceHigh),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             Icons.Filled.MusicNote,
             contentDescription = null,
             modifier = Modifier.size(PlayerDimens.artworkIcon),
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            tint = LocalElementTokens.current.colors.active,
         )
     }
 }
@@ -106,7 +106,7 @@ private fun Titles(model: PlayerModel) {
         Text(
             model.track?.artist ?: stringResource(R.string.playback_nothing_playing_hint),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = LocalElementTokens.current.colors.textSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -184,7 +184,7 @@ private fun Options(
                     Icon(
                         Icons.Filled.Favorite,
                         stringResource(R.string.playback_action_unfavourite),
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = LocalElementTokens.current.colors.active,
                     )
                 } else {
                     Icon(Icons.Filled.FavoriteBorder, stringResource(R.string.playback_action_favourite))
@@ -222,11 +222,12 @@ private fun Status(model: PlayerModel) {
             PlayerStatus.ERROR -> failureText(model.failure)
             PlayerStatus.IDLE, PlayerStatus.PLAYING, PlayerStatus.PAUSED -> null
         }
+    val colors = LocalElementTokens.current.colors
     // Always laid out, so the controls do not jump when a status comes and goes.
     Text(
         text.orEmpty(),
         style = MaterialTheme.typography.bodyMedium,
-        color = if (model.status == PlayerStatus.ERROR) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (model.status == PlayerStatus.ERROR) colors.error else colors.textSecondary,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -251,7 +252,7 @@ fun MiniPlayer(
 ) {
     val track = model.track ?: return
     val openLabel = stringResource(R.string.playback_action_open_player)
-    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
+    Surface(modifier.fillMaxWidth(), color = LocalElementTokens.current.colors.surface) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -265,7 +266,7 @@ fun MiniPlayer(
                     Icons.Filled.MusicNote,
                     contentDescription = null,
                     modifier = Modifier.size(PlayerDimens.miniIcon),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = LocalElementTokens.current.colors.active,
                 )
                 Spacer(Modifier.size(PlayerDimens.miniGutter))
                 Column(Modifier.weight(1f)) {
@@ -273,7 +274,7 @@ fun MiniPlayer(
                     Text(
                         track.artist,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = LocalElementTokens.current.colors.textSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

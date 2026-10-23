@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -60,6 +59,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.GroupRow
 import dev.geode.feature.library.api.IndexStatus
@@ -219,8 +219,8 @@ private fun IndexBanner(
         IndexStatus.Ready -> Unit
         IndexStatus.NeedsPermission ->
             Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = RoundedCornerShape(LibraryDimens.rowArtworkCorner),
+                color = LocalElementTokens.current.colors.surface,
+                shape = LocalElementTokens.current.shapes.card,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = LibraryDimens.gutter, vertical = LibraryDimens.small),
             ) {
                 Row(Modifier.padding(LibraryDimens.gap), verticalAlignment = Alignment.CenterVertically) {
@@ -242,7 +242,7 @@ private fun Progress(label: String) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = LocalElementTokens.current.colors.textSecondary,
             modifier = Modifier.padding(top = LibraryDimens.tiny),
         )
     }
@@ -315,7 +315,7 @@ private fun Empty(
             Icons.Filled.LibraryMusic,
             contentDescription = null,
             modifier = Modifier.size(LibraryDimens.headerIcon),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = LocalElementTokens.current.colors.textSecondary,
         )
         if (page is Page.Found) {
             Text(stringResource(R.string.library_nothing_found, page.query), style = MaterialTheme.typography.titleMedium)
@@ -328,7 +328,7 @@ private fun Empty(
             Text(
                 stringResource(R.string.library_empty_hint),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
             )
         }
     }
@@ -357,7 +357,7 @@ private fun LazyListScope.duplicates(
             Text(
                 pluralStringResource(R.plurals.library_duplicates_group, group.rows.size, group.title, group.artist, group.rows.size),
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = LocalElementTokens.current.colors.active,
                 modifier = Modifier.padding(start = LibraryDimens.gutter, end = LibraryDimens.gutter, top = LibraryDimens.gap),
             )
         }
@@ -421,7 +421,7 @@ private fun SectionTitle(title: Int) {
     Text(
         stringResource(title),
         style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        color = LocalElementTokens.current.colors.active,
         modifier =
             Modifier.padding(
                 start = LibraryDimens.gutter,
@@ -459,18 +459,22 @@ private fun SongItem(
                     .filter { it.isNotBlank() }
                     .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(formatLength(song.duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            formatLength(song.duration),
+            style = MaterialTheme.typography.labelMedium,
+            color = LocalElementTokens.current.colors.textSecondary,
+        )
         IconButton(onClick = { send(LibraryCommand.ToggleFavourite(song.id)) }) {
             Icon(
                 if (row.favourite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription =
                     stringResource(if (row.favourite) R.string.library_action_unfavourite else R.string.library_action_favourite),
-                tint = if (row.favourite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (row.favourite) LocalElementTokens.current.colors.active else LocalElementTokens.current.colors.textSecondary,
             )
         }
         Box {
@@ -531,7 +535,7 @@ private fun GroupItem(
                     .filter { it.isNotBlank() }
                     .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -595,15 +599,15 @@ private fun GroupHeader(
             Box(
                 Modifier
                     .size(LibraryDimens.headerArtwork)
-                    .clip(RoundedCornerShape(LibraryDimens.headerArtworkCorner))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .clip(LocalElementTokens.current.shapes.card)
+                    .background(LocalElementTokens.current.colors.surfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     iconOf(place.key.kind),
                     contentDescription = null,
                     modifier = Modifier.size(LibraryDimens.headerIcon),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = LocalElementTokens.current.colors.active,
                 )
             }
             Column {
@@ -611,7 +615,7 @@ private fun GroupHeader(
                 Text(
                     pluralStringResource(R.plurals.library_song_count, songCount, songCount),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = LocalElementTokens.current.colors.textSecondary,
                 )
             }
         }
@@ -674,15 +678,15 @@ private fun Artwork(icon: ImageVector) {
     Box(
         Modifier
             .size(LibraryDimens.rowArtwork)
-            .clip(RoundedCornerShape(LibraryDimens.rowArtworkCorner))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .clip(LocalElementTokens.current.shapes.card)
+            .background(LocalElementTokens.current.colors.surface),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             icon,
             contentDescription = null,
             modifier = Modifier.size(LibraryDimens.rowIcon),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = LocalElementTokens.current.colors.textSecondary,
         )
     }
 }

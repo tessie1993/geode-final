@@ -3,7 +3,6 @@ package dev.geode.feature.playback.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -18,6 +17,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.engine.types.Millis
 
 /** No drag is going on. */
@@ -102,12 +102,12 @@ private class SeekBarColors(
     companion object {
         @Composable
         fun current(): SeekBarColors {
-            val scheme = MaterialTheme.colorScheme
+            val colors = LocalElementTokens.current.colors
             return SeekBarColors(
-                played = scheme.primary,
-                unplayed = scheme.onSurfaceVariant.copy(alpha = UNPLAYED_ALPHA),
-                loop = scheme.secondary.copy(alpha = LOOP_ALPHA),
-                playhead = scheme.onSurface.copy(alpha = PLAYHEAD_ALPHA),
+                played = colors.active,
+                unplayed = colors.textSecondary.copy(alpha = UNPLAYED_ALPHA),
+                loop = colors.accent.copy(alpha = LOOP_ALPHA),
+                playhead = colors.textPrimary.copy(alpha = PLAYHEAD_ALPHA),
             )
         }
     }

@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.feature.playback.api.Track
 
 /**
@@ -51,7 +52,7 @@ fun QueueScreen(
                     Text(
                         stringResource(R.string.playback_queue_empty),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = LocalElementTokens.current.colors.textSecondary,
                     )
                 }
             } else {
@@ -101,14 +102,14 @@ private fun QueueRow(
                 Icons.Filled.PlayArrow,
                 stringResource(R.string.playback_now_playing),
                 Modifier.size(PlayerDimens.miniIcon),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = LocalElementTokens.current.colors.active,
             )
         } else {
             Icon(
                 Icons.Filled.MusicNote,
                 contentDescription = null,
                 modifier = Modifier.size(PlayerDimens.miniIcon),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = LocalElementTokens.current.colors.textSecondary,
             )
         }
         Column(Modifier.weight(1f)) {
@@ -116,14 +117,14 @@ private fun QueueRow(
                 track.title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (current) FontWeight.Bold else null,
-                color = if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                color = if (current) LocalElementTokens.current.colors.active else LocalElementTokens.current.colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 stringResource(R.string.playback_queue_track_detail, track.artist, formatTime(track.duration)),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

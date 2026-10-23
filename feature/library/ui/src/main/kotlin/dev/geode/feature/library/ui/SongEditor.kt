@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MusicNote
@@ -26,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 
@@ -73,14 +73,14 @@ fun SongEditor(
             Box(
                 Modifier
                     .size(LibraryDimens.editorArtwork)
-                    .clip(RoundedCornerShape(LibraryDimens.rowArtworkCorner))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .clip(LocalElementTokens.current.shapes.card)
+                    .background(LocalElementTokens.current.colors.surfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     if (fields.artwork == null) Icons.Filled.MusicNote else Icons.Filled.Image,
                     contentDescription = stringResource(R.string.library_edit_artwork),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = LocalElementTokens.current.colors.active,
                 )
             }
             Column {

@@ -1,21 +1,20 @@
 package dev.geode.feature.playback.ui
 
 import android.content.res.Configuration
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import dev.geode.design.element.ElementSkins
+import dev.geode.design.element.ElementTheme
 
-// The previews (ADR-0003). The theme is Material's own until the App UI's
-// theme moves to :design (#61).
+// The previews (ADR-0003), inside the :design theme: two Elements, so a preview shows the screen
+// follows whichever is chosen.
 
 @Composable
 internal fun PreviewTheme(
     dark: Boolean,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme(), content = content)
+    ElementTheme(if (dark) ElementSkins.Stone else ElementSkins.Water, content)
 }
 
 @Composable

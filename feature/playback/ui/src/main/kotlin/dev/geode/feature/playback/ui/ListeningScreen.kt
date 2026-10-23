@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.element.LocalElementTokens
 import dev.geode.engine.types.Millis
 import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.Bookmark
@@ -71,7 +72,7 @@ fun ListeningScreen(
 
 @Composable
 private fun Heading(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+    Text(text, style = MaterialTheme.typography.titleSmall, color = LocalElementTokens.current.colors.active)
 }
 
 @Composable
@@ -106,7 +107,7 @@ private fun SleepSection(
                 is SleepTimer.Counting -> stringResource(R.string.playback_sleep_pausing_in, formatTime(sleep.remaining))
                 SleepTimer.AfterTrack -> stringResource(R.string.playback_sleep_pausing_after)
             }
-        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = LocalElementTokens.current.colors.textSecondary) }
     }
 }
 
@@ -184,7 +185,7 @@ private fun LoopSection(
                 is AbLoop.On -> stringResource(R.string.playback_loop_on, formatTime(loop.start), formatTime(loop.end))
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = LocalElementTokens.current.colors.textSecondary,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(PlayerDimens.small)) {
             OutlinedButton(onClick = { onAction(ListeningAction.MarkLoop) }, enabled = model.trackOpen) {
@@ -218,7 +219,7 @@ private fun BookmarkSection(
             Text(
                 stringResource(R.string.playback_bookmarks_empty),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
             )
         }
         model.bookmarks.forEach { BookmarkRow(it, onAction) }
@@ -235,13 +236,13 @@ private fun BookmarkRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(PlayerDimens.miniGutter),
     ) {
-        Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Filled.Bookmark, contentDescription = null, tint = LocalElementTokens.current.colors.active)
         Column(Modifier.weight(1f)) {
             Text(bookmark.track.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 stringResource(R.string.playback_queue_track_detail, bookmark.track.artist, formatTime(bookmark.position)),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = LocalElementTokens.current.colors.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

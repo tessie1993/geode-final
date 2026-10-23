@@ -9,7 +9,6 @@ internal object PlayerDimens {
     val gap = 16.dp
     val small = 8.dp
     val artworkMaxWidth = 360.dp
-    val artworkCorner = 24.dp
     val artworkIcon = 96.dp
     val mainButton = 72.dp
     val mainIcon = 40.dp
