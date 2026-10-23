@@ -256,8 +256,8 @@ jobs:
             dir: core/audio
           - library: geode_analysis
             dir: core/analysis
-          - library: geode_viz
-            dir: core/viz
+          # geode_viz is paused for now (owner, 2026-10-23): its run outgrows the job's time limit on
+          # most pull requests. Its floor stays in native-thresholds.properties for when it returns.
     env:
       # Mull is built per LLVM major; 18 is the runner's clang. Pinned to an exact package and its hash.
       LLVM_MAJOR: "18"
