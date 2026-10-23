@@ -67,6 +67,9 @@ class NativePlayer(
     private var volume = 1f
     private var gapless = true
     private var crossfadeMs = 0
+
+    // Read by the worker to skip an open a newer one has replaced.
+    @Volatile
     private var loadedId = -1L
     private var queuedId = -1L
     private var queuedUid = -1L
@@ -345,23 +348,24 @@ class NativePlayer(
         invalidateState()
     }
 
-    private fun endedWithoutPreRoll(): Boolean {
-        val preRolls = gapless || crossfadeMs > 0
-        return prepared && !preRolls && GeodeNative.playerState(handle) == ENGINE_ENDED
-    }
+    // The track ended with nothing joined after it: nothing was pre-rolled (gapless and crossfade off),
+    // or the pre-rolled track could not be decoded and the engine dropped it.
+    private fun endedWithoutPreRoll(): Boolean = prepared && GeodeNative.playerState(handle) == ENGINE_ENDED
 
     private fun openCurrent(positionMs: Long): ListenableFuture<*> {
         val entry = entries.getOrNull(currentIndex) ?: return done()
         val id = nextLoad++
+        // Only this open counts from now on: a join into the old pre-roll must not take over from it.
+        loads.clear()
         loads[id] = entry.uid
         loadedId = id
         queuedId = -1
-        val play = playWhenReady
         return Futures.submit(
             Callable {
                 // A shutdownNow() from handleRelease() can still let a queued task start; don't
-                // touch the (possibly already destroyed) native handle once released.
-                if (released) return@Callable
+                // touch the (possibly already destroyed) native handle once released. An open a
+                // newer one replaced while it waited is skipped.
+                if (released || loadedId != id) return@Callable
                 val fd = openFd(entry.item)
                 if (fd == null) {
                     main.post {
@@ -372,8 +376,13 @@ class NativePlayer(
                 }
                 GeodeNative.playerOpen(handle, fd.first, 0L, fd.second, id)
                 if (positionMs > 0L) GeodeNative.playerSeek(handle, Millis(positionMs).toMicros().value)
-                if (play) GeodeNative.playerPlay(handle)
-                main.post { queueNext() }
+                // Play or pause as the listener wants it now, not as they did when the open was asked
+                // for: a pause pressed while the file opened holds.
+                main.post {
+                    if (released || loadedId != id) return@post
+                    if (playWhenReady) GeodeNative.playerPlay(handle) else GeodeNative.playerPause(handle)
+                    queueNext()
+                }
             },
             worker,
         )

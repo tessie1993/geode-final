@@ -171,6 +171,10 @@ jobs:
             task: ":engine:audio-android:pitestDebug"
             dir: engine/audio-android
             name: audio-android
+          - module: ":engine:live"
+            task: ":engine:live:pitestDebug"
+            dir: engine/live
+            name: live
           - module: ":app"
             task: ":app:pitestDebug"
             dir: app

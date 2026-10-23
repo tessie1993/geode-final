@@ -144,6 +144,7 @@ void CompositePass::draw(const Inputs& inputs) {
     bindTextures(program, inputs);
     uploadFrameUniforms(program, inputs, definition);
     uploadGradeUniforms(program, inputs);
+    uploadCameraUniforms(program, inputs);
 
     glUniform4fv(program.loc("uGateA"), 1, inputs.gateA.data());
     glUniform4fv(program.loc("uGateB"), 1, inputs.gateB.data());
@@ -229,6 +230,15 @@ void CompositePass::uploadGradeUniforms(UniformCache& p, const Inputs& inputs) {
     glUniform1f(p.loc("uPostGamma"), fx.gamma);
     glUniform1f(p.loc("uPostHue"), fx.colorShift + inputs.postCyclePhase);
     glUniform1f(p.loc("uPostPulse"), grade::pulseAmount(fx.pulse, inputs.postBeatPulse));
+}
+
+void CompositePass::uploadCameraUniforms(UniformCache& p, const Inputs& inputs) {
+    const CameraPose& cam = inputs.camera;
+    glUniform4fv(p.loc("uCamGate"), 1, inputs.cameraGate.data());
+    glUniform1f(p.loc("uCamPush"), cam.push);
+    glUniform2f(p.loc("uCamTilt"), cam.tiltYaw, cam.tiltPitch);
+    glUniform3f(p.loc("uCamShake"), cam.shakeX, cam.shakeY, cam.shakeRoll);
+    glUniform2f(p.loc("uCamDive"), cam.travelDive, cam.endlessDive);
 }
 
 }  // namespace geode::viz

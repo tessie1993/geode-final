@@ -77,6 +77,7 @@ private:
     void reconcile();
     void pump();
     void fill(Track& track);
+    void failTrack(Track& track, const std::string& message);
     Deck* newDeck(Track& track, int64_t startFrame);
     void postCommand(DeckCommand command);
     void updateState();
