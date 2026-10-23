@@ -20,7 +20,6 @@ pitestGradle = "1.19.0"
 pitestAndroidGradle = "0.3.0"
 pitest = "1.30.1"
 kover = "0.9.11"
-roborazzi = "1.76.0"
 robolectric = "4.17"
 orgJson = "20240303"
 # Architecture test of ADR-0003 (#33), test scope only.
@@ -60,8 +59,6 @@ androidx-test-runner = { module = "androidx.test:runner", version.ref = "android
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
-roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
-roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 org-json = { module = "org.json:json", version.ref = "orgJson" }
 konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
@@ -78,7 +75,6 @@ android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref
 pitest-gradle = { module = "info.solidsoft.pitest:info.solidsoft.pitest.gradle.plugin", version.ref = "pitestGradle" }
 pitest-android-gradle = { module = "pl.droidsonroids.pitest:pl.droidsonroids.pitest.gradle.plugin", version.ref = "pitestAndroidGradle" }
 kover-gradle = { module = "org.jetbrains.kotlinx.kover:org.jetbrains.kotlinx.kover.gradle.plugin", version.ref = "kover" }
-roborazzi-gradle = { module = "io.github.takahirom.roborazzi:io.github.takahirom.roborazzi.gradle.plugin", version.ref = "roborazzi" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version = "1.4.0" }

@@ -10,7 +10,7 @@ import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.SleepTimer
 import dev.geode.feature.playback.api.Track
 
-/** The models the queue and listening tools previews, and so their screenshots, draw (#35). */
+/** The models the queue and listening tools previews draw (#35). */
 internal object ListeningPreviewModels {
     private val night = Track(TrackId("content://preview/1"), "Night Drive", "Ann Arbor", Millis(215_000))
     private val tide = Track(TrackId("content://preview/2"), "Low Tide", "Bob Marsh", Millis(187_000))
