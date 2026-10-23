@@ -27,7 +27,7 @@ import dev.geode.feature.library.api.SongRow
 import dev.geode.feature.library.api.Sort
 import dev.geode.feature.library.api.SortKey
 
-// The previews the screenshot tests render (ADR-0003). The theme is Material's own until the App UI's
+// The previews (ADR-0003). The theme is Material's own until the App UI's
 // theme moves to :design (#61); the per-theme layouts are #74.
 
 @Composable
@@ -138,7 +138,7 @@ internal fun SmartPlaylistEditorDarkPreview() =
         }
     }
 
-/** The models the previews, and so the screenshots, draw. */
+/** The models the previews draw. */
 internal object PreviewModels {
     private fun song(
         id: Int,

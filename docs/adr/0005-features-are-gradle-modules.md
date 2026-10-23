@@ -14,7 +14,7 @@ The owner wants the parts of the app not interwoven: the state machine, the hand
 | `:feature:x:api` | pure JVM | the **public interface**: the state the outside may read, its Commands and its events | `:arch:kernel` |
 | `:feature:x:core` | pure JVM | the **state machine and reducer**: sealed states, internal events, effects as data | its own `:api`, `:arch:kernel`, other features' `:api` |
 | `:feature:x:handlers` | Android library | the **effect handlers**: they carry out effects (IO, database, the audio adapter, the system) and report results back as events | its own `:core` and `:api`, `:arch:*`, other features' `:api` (to send them Commands, e.g. Capture asking Playback to pause) |
-| `:feature:x:ui` | Android library, Compose | the **stateless screens** `XScreen(model, onAction)`, with previews and screenshots | its own `:api` and `:design` |
+| `:feature:x:ui` | Android library, Compose | the **stateless screens** `XScreen(model, onAction)`, with previews (screenshots dropped by #184) | its own `:api` and `:design` |
 
 - **The reducer sits in between.** The UI sends Commands and renders state. Handlers only receive effects and report events. Neither the UI nor the handlers know about each other or about the reducer's internals.
 - **Features talk only through each other's `:api`.** No module may depend on another feature's `:core`, `:handlers` or `:ui`. The compiler enforces this. The Konsist architecture test plus a module-graph check fail CI on any other break: Android code in `:api` or `:core`, a cycle, or a wrong-direction dependency.

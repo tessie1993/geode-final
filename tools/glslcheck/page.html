@@ -65,8 +65,8 @@ makeTexture('palette', 256, 1, (x, y, px) => {
 });
 makeTexture('flow', 2, 2, (x, y, px) => { px[0] = px[1] = 128; px[2] = 0; px[3] = 255; });
 makeTexture('white', 2, 2, (x, y, px) => { px[0] = px[1] = px[2] = px[3] = 255; });
-// Seeded (mulberry32), not Math.random: CI compares every frame with a committed golden, and a
-// noise texture that changes per run made the bloom variants differ between runs.
+// Seeded (mulberry32), not Math.random: a noise texture that changes per run made the bloom
+// variants differ between runs.
 const noiseRandom = (() => {
   let a = 0x9e3779b9;
   return () => {

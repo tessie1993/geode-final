@@ -32,12 +32,11 @@ extensions.configure<pl.droidsonroids.gradle.pitest.PitestPluginExtension> {
             // Studio redo (#13) replaces.
             "dev.geode.ui.studio.TimelineLanesKt",
         )
-    // Screenshot tests render the App UI for Roborazzi; they assert pixels, not behaviour, and are
-    // far too slow to rerun per mutant. Other Robolectric tests are named *RobolectricTest and stay
-    // out for the reason below: they need the real framework, not the mockable android.jar.
+    // Robolectric tests are named *RobolectricTest and stay out for the reason below: they need the
+    // real framework, not the mockable android.jar.
     // *KonsistTest reads source files rather than running the classes under mutation, so it cannot
     // kill a mutant; it stays out with the rest.
-    excludedTestClasses = setOf("*ScreenshotTest", "*RobolectricTest", "*KonsistTest")
+    excludedTestClasses = setOf("*RobolectricTest", "*KonsistTest")
     // The tests PIT runs are plain JVM tests (Robolectric ones are excluded above), so they keep the
     // same mockable android.jar the unit-test task gives them.
     excludeMockableAndroidJar = false
