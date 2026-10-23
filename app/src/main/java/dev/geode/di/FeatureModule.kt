@@ -9,6 +9,7 @@ import dev.geode.RingLog
 import dev.geode.audio.EngineTuning
 import dev.geode.audio.adapter.AudioAdapter
 import dev.geode.audio.adapter.NativeAudioAdapter
+import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.PlaybackSettings
@@ -57,6 +58,7 @@ object FeatureModule {
     fun provideAudioAdapter(
         application: Application,
         settings: Settings,
+        snapshots: NativeSnapshots,
     ): AudioAdapter =
         NativeAudioAdapter(
             application,
@@ -73,7 +75,11 @@ object FeatureModule {
             // So is the crossfade's curve. Its length and gapless reach the adapter from Playback.
             crossfadeCurve = { (settings.playbackValues()?.crossfadeCurve ?: CrossfadeCurve.EQUAL_POWER).ordinal },
             // Settings tune the engine from the moment it opens, for as long as it runs.
-            onOpened = { session -> EngineTuning(settings, session, application.geodeContainer.appScope).start() },
+            onOpened = { session ->
+                EngineTuning(settings, session, application.geodeContainer.appScope).start()
+                // The analysis takes the Sound signals' tuning from each Customization (#17).
+                session.analysis.attachSnapshots(snapshots)
+            },
         ).also { adapter ->
             // A new curve applies from the next crossfade on.
             application.geodeContainer.appScope.launch {

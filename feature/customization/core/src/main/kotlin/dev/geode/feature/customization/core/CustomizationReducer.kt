@@ -22,7 +22,8 @@ import dev.geode.kernel.ReportFailure
  * - Setting the Automations is the person's edit; what the Automations do by themselves, Style
  *   switching's moves ([CustomizationEvent.StyleDue]), is live and stays out of the history. They are
  *   kept across a change of Style and a reset to Style, and never saved in a preset.
- * - The Visualizer styles `:app` hands in are kept beside the history, not in it.
+ * - The Visualizer styles `:app` hands in are kept beside the history, not in it, as are A/B
+ *   compare's slots; switching to a slot is an edit.
  * - A change of Style is announced as [CustomizationFact.StyleChanged].
  *
  * [styles] are the manifests of the Styles this version knows.
@@ -80,6 +81,9 @@ class CustomizationReducer(
             is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
             is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
             CustomizationCommand.ResetToStyle -> edit(state, Edits.resetToStyle(current, styles.manifestOf(current.style)))
+            is CustomizationCommand.KeepForCompare -> Next(state.copy(compare = state.compare + (command.slot to current)))
+            is CustomizationCommand.Compare ->
+                state.compare[command.slot]?.let { kept -> edit(state, kept.copy(automations = current.automations)) } ?: Next(state)
             CustomizationCommand.Undo -> undo(state)
             CustomizationCommand.Redo -> redo(state)
             is CustomizationCommand.SavePreset ->
