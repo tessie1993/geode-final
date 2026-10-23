@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import dev.geode.audio.adapter.FakeAudioAdapter
@@ -172,10 +173,11 @@ class LibraryJourneyRobolectricTest {
     /** A stand-in for the app shell: the old Library reading the store, the player, and full screen. */
     @Composable
     private fun App() {
+        val tracks = oldScreens.deviceTracks.collectAsState()
         Column {
             when (where.value) {
                 Where.LIBRARY -> {
-                    oldScreens.deviceTracks.value.forEach { Text(it.title) }
+                    tracks.value.forEach { Text(it.title) }
                     MiniPlayerRoute(playback, elapsedNow = { clock.now }, onExpand = { where.value = Where.PLAYER })
                 }
                 Where.PLAYER -> PlayerRoute(playback, elapsedNow = { clock.now })

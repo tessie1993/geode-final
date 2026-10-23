@@ -8,9 +8,11 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import dev.geode.audio.MicCapture
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
@@ -43,6 +45,7 @@ import kotlinx.coroutines.withContext
  * The player and the analysis are main-thread objects, so everything runs on [main]. [nativeEngine]
  * says which player to open, Geode's own or ExoPlayer, and is waited for before the engine opens.
  */
+@OptIn(UnstableApi::class)
 class NativeAudioAdapter(
     private val application: Application,
     private val nativeEngine: suspend () -> Boolean,
