@@ -27,6 +27,9 @@ internal object SettingsKeys {
     const val COMPACT_PLAYER = "gui_compact_player"
     const val CLEAR_VISUALS_MENU = "gui_clear_visuals_menu"
 
+    /** Ambient (#100), new so in no old file. Stored by name. */
+    const val AMBIENT_MODE = "gui_ambient_mode"
+
     // Playback (geode-player).
     const val SPEED = "speed"
     const val PITCH = "pitch_semitones"
@@ -80,8 +83,8 @@ internal object SettingsKeys {
     /** New with the Default paths section (#101), so in no old file. */
     const val PRESET_FOLDER = "preset_folder_uri"
 
-    /** New with Home's floating assets (#100), so in no old file. Stored by name. */
-    const val AMBIENT_MODE = "gui_ambient_mode"
+    /** New with Studio (#21), so in no old file: the old Studio always saved to Movies/Geode. */
+    const val VIDEO_FOLDER = "video_folder_uri"
 
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"

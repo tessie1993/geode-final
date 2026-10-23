@@ -55,10 +55,12 @@ import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.Target
 
-/** The sections of the Advanced view (#12), in the order its tabs show them. */
+/**
+ * The sections of the Advanced view (#12), in the order its tabs show them. Modulators have their own
+ * screen, [ModulatorsAutomationScreen], beside the Automations.
+ */
 enum class AdvancedSection {
     REACTIONS,
-    MODULATORS,
     CAMERA,
     EFFECTS,
     EXTRAS,
@@ -294,7 +296,7 @@ internal fun back(page: CustomizePage): CustomizePage =
             if (page.target == null || page.learn) {
                 CustomizePage.Advanced(AdvancedSection.REACTIONS)
             } else {
-                CustomizePage.Advanced(sectionOf(page.target))
+                CustomizePage.Advanced(sectionOf(page.target) ?: AdvancedSection.REACTIONS)
             }
         is CustomizePage.ChooseTarget ->
             if (page.macro != null) {
@@ -305,8 +307,8 @@ internal fun back(page: CustomizePage): CustomizePage =
         is CustomizePage.EditReaction -> CustomizePage.Advanced(AdvancedSection.REACTIONS)
     }
 
-/** The Advanced section a slider for [target] lives in. */
-internal fun sectionOf(target: Target): AdvancedSection =
+/** The Advanced section a slider for [target] lives in; null for a Modulator's, which live on [ModulatorsAutomationScreen]. */
+internal fun sectionOf(target: Target): AdvancedSection? =
     when (target) {
         is Target.Shared ->
             if (target.property.group == SharedGroup.CAMERA) {
@@ -316,7 +318,7 @@ internal fun sectionOf(target: Target): AdvancedSection =
             }
         is Target.Extra -> AdvancedSection.EXTRAS
         is Target.MacroSlot -> AdvancedSection.MACROS
-        is Target.ModulatorField -> AdvancedSection.MODULATORS
+        is Target.ModulatorField -> null
     }
 
 @Composable

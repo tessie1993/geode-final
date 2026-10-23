@@ -173,6 +173,12 @@ class SettingsCodecTest {
                 ),
         )
 
+    /**
+     * The keys written since the old files, each at its default: whatever the codec writes beyond
+     * [today]. A new setting joins this by itself; its own tests pin its name and format.
+     */
+    private val newKeysAtDefaults: Map<String, Any?> = SettingsCodec.encode(SettingsValues()) - today.keys
+
     @Test
     fun `nothing stored reads as the defaults`() {
         assertEquals(SettingsValues(), SettingsCodec.decode(emptyMap()))
@@ -185,7 +191,13 @@ class SettingsCodecTest {
 
     @Test
     fun `settings are written in today's keys and formats`() {
-        assertEquals(today + ("preset_folder_uri" to null) + ("gui_ambient_mode" to "DRIFTING"), SettingsCodec.encode(todayValues))
+        assertEquals(today + newKeysAtDefaults, SettingsCodec.encode(todayValues))
+    }
+
+    @Test
+    fun `the keys written since the old files are in no old file`() {
+        assertTrue(newKeysAtDefaults.isNotEmpty())
+        assertTrue(newKeysAtDefaults.keys.none { key -> SettingsKeys.LEGACY_FILES.values.any { key in it } })
     }
 
     @Test
@@ -194,12 +206,12 @@ class SettingsCodecTest {
 
         assertEquals(null, loaded.folders.presetFolder)
         assertEquals(today, SettingsCodec.encode(loaded).filterKeys { it in today })
-        assertEquals(setOf("preset_folder_uri", "gui_ambient_mode"), SettingsCodec.encode(loaded).keys - today.keys)
+        assertEquals(newKeysAtDefaults, SettingsCodec.encode(loaded) - today.keys)
     }
 
     @Test
     fun `the preset folder is kept in its own key, apart from the preset mirror`() {
-        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets") + ("gui_ambient_mode" to "DRIFTING")
+        val stored = today + newKeysAtDefaults + ("preset_folder_uri" to "content://tree/geode-presets")
 
         val values = SettingsCodec.decode(stored)
 
@@ -212,6 +224,24 @@ class SettingsCodecTest {
     fun `the preset folder is new, so it is read from no old file`() {
         assertTrue(SettingsKeys.LEGACY_FILES.values.none { "preset_folder_uri" in it })
         assertEquals(null, SettingsCodec.decode(mapOf("preset_folder_uri" to 7)).folders.presetFolder)
+    }
+
+    @Test
+    fun `the video save folder is kept in its own key and read back unchanged`() {
+        val stored = today + newKeysAtDefaults + ("video_folder_uri" to "content://tree/geode-videos")
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(FolderUri("content://tree/geode-videos"), values.folders.videoFolder)
+        assertEquals(null, values.folders.presetFolder)
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `the video save folder is new, so it is read from no old file and starts unpicked`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "video_folder_uri" in it })
+        assertEquals(null, SettingsCodec.decode(today).folders.videoFolder)
+        assertEquals(null, SettingsCodec.decode(mapOf("video_folder_uri" to 7)).folders.videoFolder)
     }
 
     @Test
@@ -229,6 +259,7 @@ class SettingsCodecTest {
         assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(today).look.ambientMode)
         assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to "Wobbling")).look.ambientMode)
         assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to 2)).look.ambientMode)
+        assertEquals("DRIFTING", SettingsCodec.encode(SettingsValues())["gui_ambient_mode"])
     }
 
     @Test
@@ -250,7 +281,7 @@ class SettingsCodecTest {
         assertTrue("gui_font_color" in stored && stored["gui_font_color"] == null)
         assertTrue("preset_mirror_uri" in stored && stored["preset_mirror_uri"] == null)
         assertTrue("preset_folder_uri" in stored && stored["preset_folder_uri"] == null)
-        assertEquals("DRIFTING", stored["gui_ambient_mode"])
+        assertTrue("video_folder_uri" in stored && stored["video_folder_uri"] == null)
         assertEquals(SettingsValues(), SettingsCodec.decode(stored))
     }
 

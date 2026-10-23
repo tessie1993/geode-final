@@ -32,7 +32,7 @@
     <string name="look_compact_player">Compact player</string>
     <string name="look_clear_visuals_menu">Clear Visuals menu</string>
     <string name="look_group_home">Home</string>
-    <string name="look_ambient_mode">Floating assets</string>
+    <string name="look_ambient_mode">Ambient</string>
     <string name="look_ambient_drifting">Drifting</string>
     <string name="look_ambient_still">Still</string>
     <string name="look_ambient_off">Off</string>
@@ -111,6 +111,8 @@
     <string name="export_loudness_as_is">Leave as mixed</string>
 
     <!-- Default paths -->
+    <string name="folders_group_video_folder">Video save folder</string>
+    <string name="folders_video_folder_none">Not chosen yet. Studio asks for it the first time it opens.</string>
     <string name="folders_group_preset_folder">Preset folder</string>
     <string name="folders_preset_folder_app">Saved presets and MilkDrop presets are kept in the app.</string>
     <string name="folders_preset_folder_reset">Keep them in the app</string>

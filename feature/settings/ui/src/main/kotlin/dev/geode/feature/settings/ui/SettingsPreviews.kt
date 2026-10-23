@@ -30,6 +30,7 @@ internal val previewValues =
         equalizer = EqualizerSettings(enabled = true, bands = EqualizerPreset.ROCK.levels, preset = EqualizerPreset.ROCK),
         folders =
             FolderSettings(
+                videoFolder = FolderUri("content://tree/primary:Movies/Geode Studio"),
                 presetMirror = FolderUri("content://tree/primary:Backup"),
                 presetFolder = FolderUri("content://tree/primary:Presets"),
                 musicFolders = setOf(FolderUri("content://tree/primary:Music")),

@@ -17,7 +17,11 @@ class CustomizePagesTest {
         assertEquals(AdvancedSection.EFFECTS, sectionOf(Target.Shared(SharedProperty.VIGNETTE)))
         assertEquals(AdvancedSection.EXTRAS, sectionOf(Target.Extra(ExtraKind.SWIRL)))
         assertEquals(AdvancedSection.MACROS, sectionOf(Target.MacroSlot(1)))
-        assertEquals(AdvancedSection.MODULATORS, sectionOf(Target.ModulatorField(ModulatorId(1), ModulatorParameter.RATE)))
+        assertEquals(null, sectionOf(Target.ModulatorField(ModulatorId(1), ModulatorParameter.RATE)))
+        assertEquals(
+            CustomizePage.Advanced(AdvancedSection.REACTIONS),
+            back(CustomizePage.ChooseSource(target = Target.ModulatorField(ModulatorId(1), ModulatorParameter.RATE))),
+        )
     }
 
     @Test

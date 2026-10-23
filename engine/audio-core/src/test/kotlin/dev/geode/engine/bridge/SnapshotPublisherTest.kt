@@ -30,6 +30,7 @@ class SnapshotPublisherTest {
             params = List(CustomizationSnapshot.PARAMS_COUNT) { 0f },
             lfo = List(CustomizationSnapshot.LFO_COUNT) { 0f },
             adsr = List(CustomizationSnapshot.ADSR_COUNT) { 0f },
+            plan = List(CustomizationSnapshot.PLAN_COUNT) { 0f },
             soundSensitivity = 1f,
             soundRefractoryMs = 100f,
             soundAttackSeconds = 0.01f,
