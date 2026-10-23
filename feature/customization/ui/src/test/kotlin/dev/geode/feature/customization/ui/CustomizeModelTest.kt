@@ -185,7 +185,7 @@ class CustomizeModelTest {
     }
 
     @Test
-    fun `the A/B compare slots that keep something are offered`() {
+    fun `the A and B compare slots that keep something are offered`() {
         val state = CustomizationState(customization, compare = mapOf(CompareSlot.B to customization))
         assertEquals(setOf(CompareSlot.B), state.toCustomizeModel().kept)
         assertEquals(emptySet<CompareSlot>(), CustomizationState(customization).toCustomizeModel().kept)
