@@ -10,7 +10,6 @@ import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.playback.PlaybackSession
-import dev.geode.render.VisualSafety
 import dev.geode.ui.OldScreenSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -54,6 +53,7 @@ class EngineTuning(
 
     private fun applyAnalysis(analysis: AnalysisSettings) {
         session.analysis.beatSensitivity = analysis.beatSensitivity
-        session.analysis.beatMinIntervalMs = VisualSafety.beatMinIntervalMs(analysis.beatMinIntervalMs)
+        // The beats the person heard, at the gap they chose; the No-flash rule is the engine's, every frame.
+        session.analysis.beatMinIntervalMs = analysis.beatMinIntervalMs
     }
 }
