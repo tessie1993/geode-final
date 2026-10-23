@@ -173,6 +173,11 @@ class NativeViz(
         if (handle != 0L) GeodeNative.vizSetPacedFps(handle, fps)
     }
 
+    /** The Visual quality on screen as a render scale ceiling; the thermal ceiling can only lower it. */
+    fun setQualityCeiling(ceiling: Float) {
+        if (handle != 0L) GeodeNative.vizSetQualityCeiling(handle, ceiling)
+    }
+
     /** The frame pacer's latest window, which the scene and trail buffers scale with. */
     fun setFrameLoad(stats: FrameStats) {
         if (handle != 0L) GeodeNative.vizSetFrameLoad(handle, stats.frames, stats.p95Ms)

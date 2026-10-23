@@ -9,12 +9,13 @@ import dev.geode.kernel.Feature
  * where a Style is chosen for the Visual, and full-screen visual mode.
  *
  * It owns only how the person finds Styles: the Style list grouped by family, their Favourites, the
- * Styles they used most recently, and folders they make, which can nest. Which Style the Visual
+ * Styles they used most recently, and folders they make, which can nest; and the MilkDrop presets and
+ * textures, built-in and the ones the person imports through the system picker. Which Style the Visual
  * shows belongs to Customization; choosing one here asks Customization for it, and [VisualsState.current]
  * follows what Customization says. It also keeps the Presets browser (#144): the built-in and saved
- * presets by folder, applied through Customization, and shared as links or files. The music belongs to Playback, which this feature never touches,
- * so moving between the Visuals tab, full-screen visual mode and any other place never restarts the
- * music or the Visual.
+ * presets by folder, applied through Customization, and shared as links or files. The music belongs to
+ * Playback, which this feature never touches, so moving between the Visuals tab, full-screen visual mode
+ * and any other place never restarts the music or the Visual.
  */
 typealias Visuals = Feature<VisualsState, VisualsCommand, VisualsFact>
 
@@ -81,14 +82,16 @@ data class StyleLibrary(
 /**
  * Everything Visuals lets the outside read: the [styles] this version draws, in the order they are
  * listed, the Style the Visual shows now ([current], null until Customization has said), the
- * person's [library], null until it has been read back from the phone, and the [presets], null until
- * they have been listed.
+ * person's [library], null until it has been read back from the phone, the [presets], null until
+ * they have been listed, and the MilkDrop presets and textures, built-in and imported ([milkdrop],
+ * null until the MilkDrop folder has been listed).
  */
 data class VisualsState(
     val styles: List<StyleEntry> = emptyList(),
     val current: SceneId? = null,
     val library: StyleLibrary? = null,
     val presets: PresetShelf? = null,
+    val milkdrop: MilkdropShelf? = null,
 )
 
 /**
@@ -140,6 +143,19 @@ sealed interface VisualsCommand {
         val folder: FolderId,
         val style: SceneId,
     ) : VisualsCommand
+
+    /**
+     * Imports [files] (content uris from the system picker) as MilkDrop presets or textures, each on
+     * its own: a broken one is reported in [MilkdropShelf.lastImport] and the rest still come in. Does
+     * nothing while another import runs or before the MilkDrop folder has been listed.
+     */
+    data class ImportMilkdrop(
+        val kind: MilkdropKind,
+        val files: List<String>,
+    ) : VisualsCommand
+
+    /** Forgets [MilkdropShelf.lastImport], once the person has read it. */
+    data object DismissImportReport : VisualsCommand
 
     /** Lists the presets again, to pick up ones saved elsewhere (Customize, or the preset folder). */
     data object ReloadPresets : VisualsCommand

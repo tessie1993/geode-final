@@ -278,6 +278,7 @@ dependencies {
     testImplementation(project(":feature:customization:api"))
     testImplementation(project(":feature:customization:core"))
     testImplementation(project(":feature:visuals:api"))
+    testImplementation(project(":feature:visuals:core"))
     testImplementation(project(":feature:visuals:handlers"))
     testImplementation(testFixtures(project(":arch:kernel")))
     testImplementation(testFixtures(project(":arch:audio")))

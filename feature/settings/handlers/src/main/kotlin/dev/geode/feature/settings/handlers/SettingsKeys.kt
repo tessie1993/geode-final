@@ -83,6 +83,15 @@ internal object SettingsKeys {
     /** New with Studio (#21), so in no old file: the old Studio always saved to Movies/Geode. */
     const val VIDEO_FOLDER = "video_folder_uri"
 
+    // New with #28's preferences, so in no old file.
+    const val EXPORT_FINISHED_ALERTS = "export_finished_alerts"
+    const val BACKGROUND_MUSIC = "background_music"
+    const val BACKGROUND_RENDERS = "background_renders"
+    const val BACKGROUND_RECORDING = "background_recording"
+    const val VISUAL_QUALITY = "visual_quality"
+    const val VISUAL_FRAME_RATE = "visual_frame_rate"
+    const val SAVE_MODE = "cpu_gpu_save_mode"
+
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"
     const val SETUP_DONE = "gui_setup_done"

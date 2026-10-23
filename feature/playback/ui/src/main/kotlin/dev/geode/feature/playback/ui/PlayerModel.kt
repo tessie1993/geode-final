@@ -2,6 +2,7 @@ package dev.geode.feature.playback.ui
 
 import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.Millis
+import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
@@ -26,6 +27,8 @@ enum class PlayerStatus {
  * Everything the player and the mini-player draw (ADR-0003: an immutable screen model). [position]
  * is already worked out for the moment drawn; [meantToPlay] decides whether the main button pauses.
  * [shuffle] and [repeat] are Playback's options, shown on the Player controls.
+ *
+ * The A-B [loop] is shaded on the seek bar (#147).
  */
 @Immutable
 data class PlayerModel(
@@ -38,6 +41,7 @@ data class PlayerModel(
     val failure: PlaybackFailure? = null,
     val shuffle: Boolean = false,
     val repeat: RepeatMode = RepeatMode.OFF,
+    val loop: LoopSpan? = null,
 ) {
     val duration: Millis get() = track?.duration ?: Millis.ZERO
 
@@ -76,8 +80,35 @@ sealed interface PlayerAction {
     data object ToggleFavourite : PlayerAction
 }
 
+/** The A-B loop on the seek bar: from [start] to [end], or to the end of the track while B is not set. */
+data class LoopSpan(
+    val start: Millis,
+    val end: Millis?,
+)
+
+/**
+ * The time the player shows under the seek bar: where a drag of it would seek to while one goes on
+ * ([dragged], how far along the track from 0 to 1), else the [PlayerModel.position], as the old Slider
+ * showed it.
+ */
+fun PlayerModel.timeShown(dragged: Float?): Millis = dragged?.let { Millis((it.coerceIn(0f, 1f) * duration.value).toLong()) } ?: position
+
 /** The player's model at [now], on the monotonic clock the marks use. */
-fun PlaybackState.toPlayerModel(now: Millis): PlayerModel = playerModel(now).copy(shuffle = options.shuffle, repeat = options.repeat)
+fun PlaybackState.toPlayerModel(now: Millis): PlayerModel {
+    val model = playerModel(now).copy(shuffle = options.shuffle, repeat = options.repeat)
+    val track = model.track ?: return model
+    return model.copy(loop = loopSpan(loop, track))
+}
+
+private fun loopSpan(
+    loop: AbLoop,
+    track: Track,
+): LoopSpan? =
+    when (loop) {
+        AbLoop.Off -> null
+        is AbLoop.Starting -> LoopSpan(loop.start, null).takeIf { loop.track == track.id }
+        is AbLoop.On -> LoopSpan(loop.start, loop.end).takeIf { loop.track == track.id }
+    }
 
 private fun PlaybackState.playerModel(now: Millis): PlayerModel =
     when (val player = player) {

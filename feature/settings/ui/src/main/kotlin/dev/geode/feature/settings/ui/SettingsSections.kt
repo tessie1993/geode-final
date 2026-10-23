@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
+import dev.geode.feature.settings.api.BackgroundCommand
 import dev.geode.feature.settings.api.BeatTuning
 import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.BehaviorSettings
@@ -36,6 +37,8 @@ import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Minutes
 import dev.geode.feature.settings.api.OnboardingCommand
 import dev.geode.feature.settings.api.OnboardingSettings
+import dev.geode.feature.settings.api.PerformanceCommand
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.PlaybackCommand
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.PlayerPosition
@@ -44,6 +47,8 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.VisualFrameRate
+import dev.geode.feature.settings.api.VisualQuality
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -259,6 +264,51 @@ internal fun LazyListScope.exportSection(
             }
         }
     }
+    item {
+        SettingsGroup(stringResource(R.string.export_group_alerts)) {
+            SwitchRow(stringResource(R.string.export_finished_alerts), export.finishedAlerts) {
+                change(ExportCommand.SetFinishedAlerts(it))
+            }
+        }
+    }
+}
+
+/**
+ * Battery (#28, owner 2026-10-23): the CPU/GPU save mode, and how sharp and how often the Visual is
+ * drawn on screen. Save mode overrides both while it is on; cooling down when hot is automatic.
+ */
+internal fun LazyListScope.batterySection(
+    performance: PerformanceSettings,
+    change: (SettingsCommand) -> Unit,
+) {
+    item {
+        SettingsGroup(stringResource(R.string.battery_group_save_mode)) {
+            SwitchRow(stringResource(R.string.save_mode), performance.saveMode) { change(PerformanceCommand.SetSaveMode(it)) }
+            Note(stringResource(R.string.save_mode_note))
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.cpu_gpu_group_visual)) {
+            if (performance.saveMode) Note(stringResource(R.string.cpu_gpu_save_mode_on))
+            ChoiceRow(
+                stringResource(R.string.cpu_gpu_quality),
+                VisualQuality.entries,
+                performance.visualQuality,
+                { visualQualityName(it) },
+            ) { change(PerformanceCommand.SetVisualQuality(it)) }
+            ChoiceRow(
+                stringResource(R.string.cpu_gpu_frame_rate),
+                VisualFrameRate.entries,
+                performance.visualFrameRate,
+                { visualFrameRateName(it) },
+            ) { change(PerformanceCommand.SetVisualFrameRate(it)) }
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.cpu_gpu_group_heat)) {
+            Note(stringResource(R.string.cpu_gpu_heat_note))
+        }
+    }
 }
 
 /**
@@ -339,8 +389,8 @@ private fun FolderChoiceGroup(
 }
 
 /**
- * Application preferences (was Behavior): keeping the screen on, touch, motion and the live
- * wallpaper. #28's run-in-background switches join them.
+ * Application preferences (was Behavior): keeping the screen on, what runs in the background (#28),
+ * touch, motion and the live wallpaper.
  */
 internal fun LazyListScope.applicationSection(
     values: SettingsValues,
@@ -352,6 +402,17 @@ internal fun LazyListScope.applicationSection(
         SettingsGroup(stringResource(R.string.application_group_screen)) {
             SwitchRow(stringResource(R.string.playback_keep_screen_on), values.playback.keepScreenOn) {
                 change(PlaybackCommand.SetKeepScreenOn(it))
+            }
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.application_group_background)) {
+            SwitchRow(stringResource(R.string.background_music), values.background.music) { change(BackgroundCommand.SetMusic(it)) }
+            SwitchRow(stringResource(R.string.background_renders), values.background.renders) {
+                change(BackgroundCommand.SetRenders(it))
+            }
+            SwitchRow(stringResource(R.string.background_recording), values.background.recording) {
+                change(BackgroundCommand.SetRecording(it))
             }
         }
     }

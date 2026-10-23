@@ -7,16 +7,14 @@ import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
 
-/**
- * The Settings sections, in the order they are shown (#101). CPU/GPU goes between [DEFAULT_PATHS]
- * and [HELP] once #28 gives it its settings; until then it would be empty, so it is not shown.
- */
+/** The Settings sections, in the order they are shown (#101). */
 enum class SettingsSection {
     THEME,
     APPLICATION,
     AUDIO,
     EXPORT,
     DEFAULT_PATHS,
+    BATTERY,
     HELP,
     ABOUT,
 }
