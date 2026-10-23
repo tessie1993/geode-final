@@ -49,6 +49,5 @@ object SleepFadeOut {
     fun fadeStartsIn(remaining: Millis): Millis = (remaining - FADE).coerceAtLeast(Millis.ZERO)
 
     private fun wantsToPlay(playback: Playback): Boolean =
-        dev.geode.ui.OldScreenModels
-            .meantToPlay(playback.state.value.player)
+        playback.state.value.player.meantToPlay
 }

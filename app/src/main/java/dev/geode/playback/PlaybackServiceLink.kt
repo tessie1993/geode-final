@@ -9,7 +9,6 @@ import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.RingLog
 import dev.geode.feature.playback.api.Playback
 import dev.geode.geodeContainer
-import dev.geode.ui.OldScreenModels
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -36,7 +35,7 @@ class PlaybackServiceLink(
         val app = context.applicationContext
         app.geodeContainer.appScope.launch {
             playback.state
-                .map { OldScreenModels.meantToPlay(it.player) }
+                .map { it.player.meantToPlay }
                 .distinctUntilChanged()
                 .filter { it }
                 // A MediaController is only touched on the main thread, isConnected included.
