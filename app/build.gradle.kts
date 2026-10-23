@@ -10,7 +10,6 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     id("geode.mutation-android")
-    id("geode.screenshots")
 }
 
 val keystoreProps =
@@ -247,6 +246,12 @@ dependencies {
     // The architecture test of ADR-0003: feature cores stay plain Kotlin, features use each other
     // only through their interface, and the feature graph has no cycles.
     testImplementation(libs.konsist)
+    // The *RobolectricTest classes run against the real framework; the Visuals journey test drives
+    // the real routes through a Compose test rule, which starts its activity from ui-test-manifest.
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
     // The Visuals journey test (#43) builds the real app-scoped feature stores the way :app will at
     // the switch-over (#17), and moves between the real routes. Nothing here is wired yet. The routes
     // are an implementation dependency only because a unit test sees the R classes of :app's main
@@ -264,4 +269,14 @@ dependencies {
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
+}
+
+// Robolectric's Android 16 environment sets up ApplicationSharedMemory through
+// jdk.internal.access.SharedSecrets, which JDK 21 does not export to unnamed modules.
+tasks.withType<Test>().configureEach {
+    jvmArgs(
+        "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+        "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+    )
 }
