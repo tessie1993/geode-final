@@ -85,7 +85,7 @@ object VisualsModule {
     @Suppress("InjectDispatcher")
     fun provideVisuals(
         application: Application,
-        customization: CustomizationFeature,
+        customization: @JvmSuppressWildcards CustomizationFeature,
         runtime: FeatureRuntime,
     ): Visuals =
         visualsStore(

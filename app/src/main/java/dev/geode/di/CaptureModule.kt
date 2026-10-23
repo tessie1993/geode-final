@@ -25,7 +25,7 @@ object CaptureModule {
     @Singleton
     fun provideCapture(
         audio: AudioAdapter,
-        playback: Playback,
+        playback: @JvmSuppressWildcards Playback,
         runtime: FeatureRuntime,
     ): Capture = captureStore(audio, PlaybackMusicControl(playback), runtime)
 }
