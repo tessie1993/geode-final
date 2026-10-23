@@ -235,6 +235,16 @@ class VisualsJourneyRobolectricTest {
 
         override suspend fun deletePlaylist(id: PlaylistId) = Unit
 
+        override suspend fun renamePlaylist(
+            id: PlaylistId,
+            name: String,
+        ) = Unit
+
+        override suspend fun replacePlaylistTracks(
+            id: PlaylistId,
+            tracks: List<Track>,
+        ) = Unit
+
         override suspend fun recordPlay(
             track: Track,
             playedAt: Millis,

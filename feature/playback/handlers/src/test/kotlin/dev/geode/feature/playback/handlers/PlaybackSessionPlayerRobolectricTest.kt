@@ -2,6 +2,8 @@ package dev.geode.feature.playback.handlers
 
 import android.app.Application
 import android.os.Looper
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import dev.geode.audio.adapter.FakeAudioAdapter
 import dev.geode.audio.adapter.PlaybackAnnouncement
@@ -15,6 +17,7 @@ import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.core.MediaControls
 import dev.geode.kernel.FakeClock
 import dev.geode.kernel.inPlaceRuntime
 import kotlinx.coroutines.CoroutineScope
@@ -180,4 +183,90 @@ class PlaybackSessionPlayerRobolectricTest {
         assertEquals(PlayerState.Paused(atA, PlayMark(Millis.ZERO, Millis.ZERO, moving = true)), playback.state.value.player)
         assertFalse(player.playWhenReady)
     }
+
+    private fun item(track: Track): MediaItem =
+        MediaItem
+            .Builder()
+            .setMediaId(track.id.value)
+            .setMediaMetadata(
+                MediaMetadata
+                    .Builder()
+                    .setTitle(track.title)
+                    .setArtist(track.artist)
+                    .setDurationMs(track.duration.value)
+                    .build(),
+            ).build()
+
+    @Test
+    fun `songs a car hands over are played or queued by Playback`() {
+        val playback = FakePlayback(playing)
+        val player = player(playback)
+
+        player.setMediaItems(listOf(item(a), item(c)), 1, 7_000)
+        player.prepare()
+        player.addMediaItems(listOf(item(c)))
+        player.addMediaItems(2, listOf(item(a)))
+        player.removeMediaItems(0, 2)
+        player.moveMediaItem(2, 0)
+        idle()
+
+        assertEquals(
+            listOf(
+                PlaybackCommand.Play(listOf(a, c), 1, Millis(7_000)),
+                PlaybackCommand.AddToQueue(listOf(c)),
+                PlaybackCommand.PlayNext(listOf(a)),
+                PlaybackCommand.RemoveFromQueue(1),
+                PlaybackCommand.RemoveFromQueue(0),
+                PlaybackCommand.MoveInQueue(2, 0),
+            ),
+            playback.sent,
+        )
+    }
+
+    @Test
+    fun `an item with nothing known but its id plays from the start of the first song`() {
+        val playback = FakePlayback(PlayerState.Idle)
+        val player = player(playback)
+
+        player.setMediaItem(MediaItem.Builder().setMediaId("content://z").build())
+        idle()
+
+        assertEquals(listOf(PlaybackCommand.Play(listOf(Track(TrackId("content://z"), "", "", Millis.ZERO)), 0)), playback.sent)
+    }
+
+    @Test
+    fun `a car's resume opens the song where it was left, with Playback's own reducer`() {
+        val audio = FakeAudioAdapter()
+        val playback = playbackStore(audio, FakePlaybackStorage(), clocks, inPlaceRuntime(clock))
+        val player = PlaybackSessionPlayer(playback, clocks, scope).also { idle() }
+
+        player.setMediaItems(listOf(item(a), item(c)), 1, 7_000)
+        idle()
+        audio.announce(PlaybackAnnouncement.TrackChanged(c.id, PlaybackMark(Millis(7_000), Millis.ZERO, moving = false)))
+
+        val atC = Queue(listOf(a, c), 1)
+        assertEquals(listOf("load(${c.id}, ${Millis(7_000)})", "setPlaying(true)"), audio.calls.take(2))
+        assertEquals(PlayerState.Buffering(atC, PlayMark.still(Millis(7_000))), playback.state.value.player)
+    }
+
+    @Test
+    fun `a car moving several songs at once moves each of them, in order`() {
+        val audio = FakeAudioAdapter()
+        val playback = playbackStore(audio, FakePlaybackStorage(), clocks, inPlaceRuntime(clock))
+        val d = Track(TrackId("content://d"), "Delta", "Di", Millis(100_000))
+        val e = Track(TrackId("content://e"), "Echo", "Ed", Millis(100_000))
+        val f = Track(TrackId("content://f"), "Foxtrot", "Fi", Millis(100_000))
+        playback.send(PlaybackCommand.Play(listOf(a, b, c, d, e, f)))
+        val player = PlaybackSessionPlayer(playback, clocks, scope).also { idle() }
+
+        player.moveMediaItems(1, 3, 3)
+        idle()
+        assertEquals(listOf(a, d, e, b, c, f), playback.state.value.queue())
+
+        player.moveMediaItems(3, 5, 1)
+        idle()
+        assertEquals(listOf(a, b, c, d, e, f), playback.state.value.queue())
+    }
+
+    private fun dev.geode.feature.playback.api.PlaybackState.queue(): List<Track>? = MediaControls.sessionOf(player).queue?.tracks
 }

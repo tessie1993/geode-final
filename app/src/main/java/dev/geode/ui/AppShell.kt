@@ -180,9 +180,6 @@ fun AppRoot() {
                 onNext = viewModel::next,
             )
         }
-        // Someone who came here to listen does not get a render queue in their navigation bar.
-        // First run no longer asks, so everyone starts with everything and narrows it in Settings.
-        val showsStudio = gui.intent.showsStudio
         // Set by Settings > Help to replay the tour after it has already been seen; the automatic
         // first-run showing is a function of the stored prefs instead, so this stays false there.
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
@@ -194,7 +191,8 @@ fun AppRoot() {
         // out from under the person who was reading it — the checkbox is about the NEXT install,
         // not this minute.
         LaunchedEffect(offerTutorial) { if (offerTutorial) tutorialRunning = true }
-        val navEntries = geodeNavEntries(showsStudio)
+        // The bar always shows every place (owner decision, #17): there is no listen-only app.
+        val navEntries = geodeNavEntries(showsStudio = true)
         val routeContent: @Composable (route: GeodeRoute, twoPane: Boolean) -> Unit = { route, twoPane ->
             when (route) {
                 GeodeDestination.HOME -> HomeScreen(onOpenSettings = appState::openSettings)
@@ -319,14 +317,14 @@ fun AppRoot() {
                 FirstRunGate(
                     onDone = {
                         settingsViewModel.setGuiPrefs(gui.copy(setupDone = true))
-                        appState.navigateTo(gui.intent.landingDestination)
+                        appState.navigateTo(GeodeDestination.PLAYER)
                     },
                 )
             } else if (tutorialRunning) {
                 // Offered once setup is out of the way, so the tour walks a real app with a real
                 // library rather than a set of empty tabs.
                 TutorialOverlay(
-                    steps = TutorialStep.forNav(showsStudio),
+                    steps = TutorialStep.forNav(showsStudio = true),
                     dontShowAgain = !gui.tutorialOnFirstRun,
                     onDontShowAgainChange = { settingsViewModel.setGuiPrefs(gui.copy(tutorialOnFirstRun = !it)) },
                     onNavigate = appState::navigateTo,
@@ -574,7 +572,7 @@ fun SearchScreen(
 
     val terms = remember(debounced) { SearchMatcher.terms(debounced) }
     val trackResults =
-        remember(terms, deviceTracks, library.tracks) {
+        remember(terms, deviceTracks) {
             val candidates =
                 deviceTracks.map { t ->
                     SearchTrackRow(
@@ -584,16 +582,7 @@ fun SearchScreen(
                         fields = listOf(t.title, t.artist, t.album, t.folder),
                         fromDevice = true,
                     )
-                } +
-                    library.tracks.map { t ->
-                        SearchTrackRow(
-                            uri = t.uri,
-                            title = t.title,
-                            subtitle = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · "),
-                            fields = listOf(t.title, t.artist, t.album, t.genre),
-                            fromDevice = false,
-                        )
-                    }
+                }
             SearchMatcher.filterTracks(
                 terms = terms,
                 items = candidates,
@@ -699,8 +688,8 @@ fun SearchScreen(
                                 Text(
                                     pluralStringResource(
                                         R.plurals.track_count,
-                                        pl.trackUris.size,
-                                        pl.trackUris.size,
+                                        pl.trackCount,
+                                        pl.trackCount,
                                     ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

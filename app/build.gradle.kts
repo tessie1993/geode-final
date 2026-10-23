@@ -209,6 +209,20 @@ dependencies {
     // The feature architecture (ADR-0005). :app only wires: Hilt bindings and the real adapters.
     implementation(project(":arch:kernel"))
     implementation(project(":arch:audio"))
+    // The switch-over (#17): the features :app wires in, one source of truth each.
+    implementation(project(":feature:playback:api"))
+    implementation(project(":feature:playback:handlers"))
+    // Playback's Room database is opened here, so its supertype is on :app's compile path too.
+    implementation(libs.room.runtime)
+    // Playback's routes: the journey test hosts them, and the routes are wired into the navigation
+    // graph (#136) once it lands. An implementation dependency, so Robolectric sees their resources.
+    implementation(project(":feature:playback:ui"))
+    implementation(project(":feature:settings:api"))
+    implementation(project(":feature:settings:handlers"))
+    implementation(project(":feature:library:api"))
+    implementation(project(":feature:library:handlers"))
+    // Settings' DataStore is built here, so its type is on :app's compile path too.
+    implementation(libs.datastore.preferences)
     // The App UI's design tokens, theme and common components.
     implementation(project(":design"))
 
@@ -254,8 +268,8 @@ dependencies {
     // dependencies alone; as testImplementation, VisualsRoute failed with NoClassDefFoundError on
     // dev.geode.feature.visuals.ui.R$string.
     implementation(project(":feature:visuals:ui"))
-    testImplementation(project(":feature:playback:api"))
-    testImplementation(project(":feature:playback:handlers"))
+    // The Playback journey test (#17) reads Playback's own timings.
+    testImplementation(project(":feature:playback:core"))
     testImplementation(project(":feature:customization:api"))
     testImplementation(project(":feature:customization:core"))
     testImplementation(project(":feature:visuals:api"))

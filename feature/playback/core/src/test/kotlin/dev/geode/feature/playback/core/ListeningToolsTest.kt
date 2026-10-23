@@ -52,6 +52,7 @@ class ListeningToolsTest {
     private val b = Track(TrackId("content://b"), "Beta", "Bob", Millis(180_000))
     private val c = Track(TrackId("content://c"), "Gamma", "Cy", Millis(240_000))
     private val long = Track(TrackId("content://long"), "Lecture", "Lu", Millis(3_600_000))
+    private val unknown = Track(TrackId("content://u"), "", "", Millis.ZERO)
     private val abc = listOf(a, b, c)
     private val atA = Queue(abc, 0)
     private val atB = Queue(abc, 1)
@@ -670,6 +671,14 @@ class ListeningToolsTest {
             ),
             looping(playing, AbLoop.Off, PlaybackCommand.MarkLoop(Millis(999_999)), playing, AbLoop.Starting(b.id, b.duration)),
             looping(playing, AbLoop.Off, PlaybackCommand.MarkLoop(Millis(-5)), playing, AbLoop.Starting(b.id, Millis.ZERO)),
+            // A song whose length is not known yet is looped where it is marked, not at its start.
+            looping(
+                Paused(Queue(listOf(unknown), 0), stopped),
+                AbLoop.Off,
+                PlaybackCommand.MarkLoop(Millis(90_000)),
+                Paused(Queue(listOf(unknown), 0), stopped),
+                AbLoop.Starting(unknown.id, Millis(90_000)),
+            ),
             looping(playing, on(50_000, 80_000), PlaybackCommand.ClearLoop, playing, AbLoop.Off, cancelLoop),
             looping(
                 Playing(atB, PlayMark(Millis(70_000), Millis(9), true)),

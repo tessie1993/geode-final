@@ -157,11 +157,11 @@ class LibraryStoreTest {
 
         playback.state.value =
             PlaybackState(
-                playlists = listOf(PlaylistSummary(PlaylistId(2), "Evening", trackCount = 3)),
+                playlists = listOf(PlaylistSummary(PlaylistId(2), "Evening", trackCount = 1, tracks = listOf(track(alpha)))),
                 history = listOf(PlayedTrack(track(alpha), Millis(500))),
             )
 
-        assertEquals(listOf(LibraryPlaylist(PlaylistRef(2), "Evening", 3)), library.state.value.playlists)
+        assertEquals(listOf(LibraryPlaylist(PlaylistRef(2), "Evening", 1, listOf(alpha.id))), library.state.value.playlists)
         assertEquals(listOf(Play(alpha.id, Millis(500))), library.state.value.plays)
     }
 

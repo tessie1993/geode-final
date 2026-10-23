@@ -53,6 +53,14 @@ data class QueueTrack(
     val uri: TrackId,
     val title: String = "",
     val artist: String = "",
+    /** Zero while the length is not known. */
+    val duration: Millis = Millis.ZERO,
+)
+
+/** The A-B loop as the old player shows it: its start, and its end once set. */
+data class AbLoop(
+    val start: Millis,
+    val end: Millis? = null,
 )
 
 data class QueueUiState(

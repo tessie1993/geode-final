@@ -163,6 +163,17 @@ sealed interface PlaybackWork {
         val id: PlaylistId,
     ) : PlaybackWork
 
+    data class RenamePlaylist(
+        val id: PlaylistId,
+        val name: String,
+    ) : PlaybackWork
+
+    /** Make [tracks] the whole of the playlist, in order. */
+    data class SavePlaylistTracks(
+        val id: PlaylistId,
+        val tracks: List<Track>,
+    ) : PlaybackWork
+
     /** Read the listening options saved last time. */
     data object RestoreListening : PlaybackWork
 
