@@ -322,6 +322,30 @@ class CustomizationReducerTest {
     }
 
     @Test
+    fun `a new store converts old presets and then hands its starting Customization to the engine`() {
+        assertEquals(
+            listOf(Perform(CustomizationWork.UpgradePresets), publish(zoomed)),
+            CustomizationReducer.start(CustomizationState(zoomed, undo = listOf(julia))),
+        )
+    }
+
+    @Test
+    fun `every failed piece of work is reported under its own message`() {
+        val expected =
+            mapOf(
+                WorkFailure.PRESET_NOT_LOADED to "could not load the preset",
+                WorkFailure.PRESET_NOT_SAVED to "could not save the preset",
+                WorkFailure.ENGINE_REFUSED to "the engine did not take the Customization",
+                WorkFailure.PRESET_NOT_MIRRORED to "saved the preset, but could not copy it to the mirror folder",
+                WorkFailure.PRESETS_NOT_UPGRADED to "could not upgrade the presets saved by an older Geode",
+            )
+        assertEquals(WorkFailure.entries.toSet(), expected.keys)
+        expected.forEach { (failure, message) ->
+            assertEquals(Next(fresh, listOf(ReportFailure(message))), reducer.reduce(fresh, CustomizationEvent.WorkFailed(failure)))
+        }
+    }
+
+    @Test
     fun `every failure has its own message`() {
         val messages = WorkFailure.entries.map { it.message }
         assertEquals(WorkFailure.entries.size, messages.toSet().size)
