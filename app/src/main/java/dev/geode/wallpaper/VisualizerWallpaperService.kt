@@ -31,6 +31,7 @@ class VisualizerWallpaperService : WallpaperService() {
     private inner class VisualizerEngine : Engine() {
         private var glView: WallpaperGlSurfaceView? = null
         private var renderer: VisualizerRenderer? = null
+
         // Nothing playing is silence: the wallpaper moves on the Style's own time, never on made-up sound.
         private val silence = AudioFeatures.empty()
         private var feeder: Thread? = null
