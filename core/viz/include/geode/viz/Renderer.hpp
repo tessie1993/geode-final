@@ -103,8 +103,8 @@ private:
     scale::ScaleInputs scaleInputs(const Scene* scene);
     // Moves every scene target to `size`, keeping the picture (Framebuffer::resizePreserving).
     void applyRenderSize(scale::RenderSize size);
-    // The render scale the Style's manifest declares; read once per Style.
-    float styleScaleFor(const std::string& sceneId);
+    // The render scale the Style's pack declares (its manifest's "renderScale").
+    float styleScaleFor(const std::string& sceneId) const;
     Scene* resolveActiveScene();
     SceneParams resolveParams(float dt);
     void resolveLayerScene();
@@ -145,7 +145,6 @@ private:
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;
     scale::LoadScaleController loadScale_;
-    std::vector<std::pair<std::string, float>> styleScales_;
     LfoEngine lfo_;
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
@@ -153,16 +152,13 @@ private:
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
-    // What the renderer holds before the app's first setScene. The app requests its Style
-    // (SceneIds.DEFAULT, the one place the default Style is chosen) before every frame, so this
-    // only needs to name a Style that always builds.
-    static constexpr const char* kStartSceneId = "aurora";
-
     mutable std::mutex stateLock_;
     SceneParams requestedParams_;
     SharedEffects requestedEffects_;
     GeodeFeatureFrame features_{};
-    std::string requestedSceneId_ = kStartSceneId;
+    // Empty until the app's first setScene: the app requests its Style (SceneIds.DEFAULT, the one place
+    // the default Style is chosen) before every frame, and until then the renderer draws black.
+    std::string requestedSceneId_;
     std::string layerSceneId_;
     float layerMix_ = 0.5f;
     int layerBlend_ = static_cast<int>(BlendMode::Screen);

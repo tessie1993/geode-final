@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "life_bug",
+  "label": "Smooth Bugs",
+  "family": "life",
+  "parameters": {
+    "rule": 0,
+    "dt": 1.0,
+    "core": 2,
+    "mu": 0.31,
+    "sigma": 0.049,
+    "look": 4,
+    "seedJitter": 8.0,
+    "hueOffset": 0.85
+  }
+}

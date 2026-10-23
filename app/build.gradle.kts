@@ -110,6 +110,12 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
+        resources {
+            // :engine:scenes ships its Style packs as assets (the native renderer reads them) and as Java
+            // resources (StylePacks.kt reads the manifests). Kotlin never reads a pack's shader, so the
+            // APK carries the shaders once, as assets.
+            excludes += "styles/**/*.glsl"
+        }
     }
 
     bundle {

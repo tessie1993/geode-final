@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "scope",
+  "label": "Scope",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

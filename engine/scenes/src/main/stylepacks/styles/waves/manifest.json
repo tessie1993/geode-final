@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "waves",
+  "label": "Waves",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

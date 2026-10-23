@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "harmonic_shell",
+  "label": "Harmonic Shell",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 5,
+    "geometryOverride": 0,
+    "scale": 0.72,
+    "fill": 1.2,
+    "line": 0.72,
+    "glow": 0.95,
+    "iridescence": 1.25,
+    "caustic": 1.3,
+    "swirl": 0.45,
+    "hueOffset": 0.1,
+    "hueSpan": 1.35
+  }
+}

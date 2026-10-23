@@ -29,7 +29,8 @@ namespace geode::viz {
 // tools/projectm-v4.1.7-render-clock.patch) at full detail, so the same input gives the same frames.
 class MilkdropScene : public Scene {
 public:
-    MilkdropScene(ProgramLoader loader, SceneHost host) : loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
+    MilkdropScene(std::string id, ProgramLoader loader, SceneHost host)
+        : id_(std::move(id)), loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
     ~MilkdropScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -81,7 +82,7 @@ private:
     void drainEngineErrors();
     void set1f(const char* name, float value) { glUniform1f(postLocs_.loc(name), value); }
 
-    std::string id_ = "milkdrop";
+    std::string id_;
     ProgramLoader loader_;
     SceneHost host_;
     std::vector<float> pcm_;

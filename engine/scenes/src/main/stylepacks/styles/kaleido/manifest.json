@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "kaleido",
+  "label": "Kaleido",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

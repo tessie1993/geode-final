@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "acid_solar",
+  "label": "Solar Flare",
+  "family": "acid",
+  "parameters": {
+    "mode": 7,
+    "source": 1,
+    "zoom": 1.012,
+    "rotate": 0.0018,
+    "hueRate": 0.08,
+    "feedback": 0.93,
+    "overdrive": 0.3,
+    "hueOffset": 0.06
+  }
+}

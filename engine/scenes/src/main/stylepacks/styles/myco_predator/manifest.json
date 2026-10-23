@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "myco_predator",
+  "label": "Predator",
+  "family": "mycelium",
+  "parameters": {
+    "agentRes": 176,
+    "sensorDist": 12.0,
+    "moveStep": 1.25,
+    "speciesMix": 0.35,
+    "selfA": 0.35,
+    "crossAb": 1.6,
+    "crossBa": -1.3,
+    "reaim": 0.25,
+    "look": 4,
+    "hueOffset": 0.03
+  }
+}

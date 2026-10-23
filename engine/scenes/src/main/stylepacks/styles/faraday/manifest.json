@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "faraday",
+  "label": "Faraday",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 4,
+    "geometryOverride": 0,
+    "scale": 1.18,
+    "fill": 1.1,
+    "line": 0.78,
+    "glow": 1.08,
+    "iridescence": 0.65,
+    "caustic": 1.2,
+    "flow": 1.55,
+    "hueOffset": -0.12,
+    "hueSpan": 1.15
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "fractal_temple",
+  "label": "Fractal Temple",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

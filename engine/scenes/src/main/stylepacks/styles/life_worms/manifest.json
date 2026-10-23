@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "life_worms",
+  "label": "Ember Worms",
+  "family": "life",
+  "parameters": {
+    "rule": 1,
+    "dt": 1.0,
+    "feed": 0.078,
+    "kill": 0.061,
+    "substeps": 4,
+    "look": 5,
+    "seedJitter": 10.0
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "myco_sporestorm",
+  "label": "Spore Storm",
+  "family": "mycelium",
+  "parameters": {
+    "sensorDist": 8.0,
+    "deposit": 0.16,
+    "decay": 0.87,
+    "reaim": 0.5,
+    "hueOffset": 0.68
+  }
+}

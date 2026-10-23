@@ -2,104 +2,49 @@ package dev.geode.render.scene
 
 import dev.geode.engine.types.SceneId
 
-/** Which scene class a style id builds. One entry per renderer, not per style. */
-enum class SceneKind {
-    SHADER,
+/**
+ * Which renderer draws a Style: one entry per renderer, not per Style. A Style pack names its renderer
+ * by [familyName] (`"family"` in its manifest); `geode/viz/StyleProfiles.hpp` lists the same names.
+ */
+enum class SceneKind(
+    val familyName: String,
+) {
+    SHADER("shader"),
 
-    LIFE,
+    LIFE("life"),
 
-    MYCELIUM,
+    MYCELIUM("mycelium"),
 
-    ACID,
+    ACID("acid"),
 
-    MILKDROP,
+    MILKDROP("milkdrop"),
 
-    FLUID,
+    FLUID("fluid"),
 
-    CURL_FLOW,
+    CURL_FLOW("curl_flow"),
 
-    WATER,
+    WATER("water"),
 
-    CYMATICS,
+    CYMATICS("cymatics"),
+    ;
+
+    companion object {
+        /** The renderer a manifest's `"family"` names; null for a name no renderer has. */
+        fun forFamily(name: String): SceneKind? = entries.firstOrNull { it.familyName == name }
+    }
 }
 
+/** What a Style can do, read from its pack ([StylePacks]). */
 object SceneCapabilities {
-    /** Fragment style id -> the APK asset the native ShaderScene compiles. */
-    val SHADER_SCENES: Map<SceneId, String> =
-        linkedMapOf(
-            SceneIds.JULIA to "shaders/julia_frag.glsl",
-            SceneIds.TUNNEL to "shaders/tunnel_frag.glsl",
-            SceneIds.MANDEL to "shaders/mandel_frag.glsl",
-            SceneIds.KALEIDO to "shaders/kaleido_frag.glsl",
-            SceneIds.PLASMA to "shaders/plasma_frag.glsl",
-            SceneIds.BARS to "shaders/bars_frag.glsl",
-            SceneIds.RING to "shaders/ring_frag.glsl",
-            SceneIds.SCOPE to "shaders/scope_frag.glsl",
-            SceneIds.LISS to "shaders/liss_frag.glsl",
-            SceneIds.WARP to "shaders/warp_frag.glsl",
-            SceneIds.GRID to "shaders/grid_frag.glsl",
-            SceneIds.VORONOI to "shaders/voronoi_frag.glsl",
-            SceneIds.METABALLS to "shaders/metaballs_frag.glsl",
-            SceneIds.RIPPLES to "shaders/ripples_frag.glsl",
-            SceneIds.STARFIELD to "shaders/starfield_frag.glsl",
-            SceneIds.WAVES to "shaders/waves_frag.glsl",
-            SceneIds.HEXGRID to "shaders/hexgrid_frag.glsl",
-            SceneIds.SPIRAL to "shaders/spiral_frag.glsl",
-            SceneIds.AURORA to "shaders/aurora_frag.glsl",
-            SceneIds.SOLAR to "shaders/solar_frag.glsl",
-            SceneIds.WINTER to "shaders/winter_frag.glsl",
-            SceneIds.LAVA to "shaders/lava_frag.glsl",
-            // The five styles built on the shared GLSL libraries (lib_scene_uniforms,
-            // lib_scene_grade, lib_sdf3, lib_touch) rather than on their own copy of
-            // the boilerplate. Same ShaderScene, same uniform contract.
-            SceneIds.VANISHING to "shaders/vanishing_frag.glsl",
-            SceneIds.MORPHOGEN to "shaders/morphogen_frag.glsl",
-            SceneIds.NEBULA to "shaders/nebula_frag.glsl",
-            SceneIds.NONEUCLID to "shaders/noneuclid_frag.glsl",
-            SceneIds.KIFS to "shaders/kifs_frag.glsl",
-            SceneIds.ORB_LATTICE to "shaders/orb_lattice_frag.glsl",
-            SceneIds.ROD_TUNNEL to "shaders/rod_tunnel_frag.glsl",
-            SceneIds.NEON_TILES to "shaders/neon_tiles_frag.glsl",
-            // The three reference looks (see CHANGELOG): 2D tunnel and sphere
-            // mappings, no raymarch, so none of them joins MARCHED_SCENES.
-            SceneIds.CHROMA_ORB to "shaders/chroma_orb_frag.glsl",
-            SceneIds.MANDALA_DOME to "shaders/mandala_dome_frag.glsl",
-            SceneIds.BEAD_VORTEX to "shaders/bead_vortex_frag.glsl",
-            // The four looks taken from the reference clips. Each pairs its own
-            // structure with the curl-advected dye and mote layer in
-            // lib_scene_motion, so the fluid is in the style rather than bolted
-            // on by the composite. All four are 2D perspective constructions, so
-            // none of them joins MARCHED_SCENES either.
-            SceneIds.MERKABA_GRID to "shaders/merkaba_grid_frag.glsl",
-            SceneIds.SPIRAL_EYE to "shaders/spiral_eye_frag.glsl",
-            SceneIds.BLACKLIGHT_BLOOM to "shaders/blacklight_bloom_frag.glsl",
-            SceneIds.FRACTAL_TEMPLE to "shaders/fractal_temple_frag.glsl",
-            // The two that put the fluid into 3D: both march, so unlike the four
-            // above they DO spend the Detail budget and both join MARCHED_SCENES.
-            SceneIds.CURL_BLOOM to "shaders/curl_bloom_frag.glsl",
-            SceneIds.NECTAR_FLOW to "shaders/nectar_flow_frag.glsl",
-        )
-
     /**
-     * The fragment styles that raymarch, and so spend the [MarchBudget] the Detail control sets.
+     * True for a Style that raymarches, and so spends the [MarchBudget] the Detail control sets
+     * (`"detail": "march"` in its manifest).
      *
-     * A per-STYLE set rather than a [SceneKind], because only eight of the 39 shader styles march;
-     * scoping Detail to `SceneKind.SHADER` would put a dead slider in front of anyone looking at
-     * Plasma, which is exactly what [ParamScope]'s no-dead-controls rule exists to prevent.
+     * Per Style rather than per [SceneKind], because only some shader Styles march; scoping Detail to
+     * `SceneKind.SHADER` would put a dead slider in front of anyone looking at Plasma, which is exactly
+     * what [ParamScope]'s no-dead-controls rule exists to prevent.
      */
-    val MARCHED_SCENES: Set<SceneId> =
-        setOf(
-            SceneIds.VANISHING,
-            SceneIds.MORPHOGEN,
-            SceneIds.NEBULA,
-            SceneIds.NONEUCLID,
-            SceneIds.KIFS,
-            SceneIds.ROD_TUNNEL,
-            // Curl Bloom marches a distance field; Nectar Flow marches a volume.
-            // Different loops, but Detail is the budget for both.
-            SceneIds.CURL_BLOOM,
-            SceneIds.NECTAR_FLOW,
-        )
+    fun isMarched(sceneId: SceneId): Boolean = StylePacks.find(sceneId)?.detail == DetailUse.MARCH
 
     /**
      * The renderer [sceneId] builds.
@@ -108,10 +53,10 @@ object SceneCapabilities {
      * loads as the default Style ([storedOrDefault]), so the Customize panel describes what will
      * actually be on screen rather than an id nothing can render.
      */
-    fun kindOf(sceneId: SceneId): SceneKind = kindOrNull(sceneId) ?: defaultKind
+    fun kindOf(sceneId: SceneId): SceneKind = StylePacks.find(sceneId)?.kind ?: defaultKind
 
     /** True while some Style is built from [sceneId]. */
-    fun isKnown(sceneId: SceneId): Boolean = kindOrNull(sceneId) != null
+    fun isKnown(sceneId: SceneId): Boolean = StylePacks.find(sceneId) != null
 
     /**
      * The Style a stored id loads as: [sceneId] itself while a Style still has that id, otherwise
@@ -124,34 +69,48 @@ object SceneCapabilities {
     fun storedOrDefault(sceneId: SceneId): SceneId = if (isKnown(sceneId)) sceneId else SceneIds.DEFAULT
 
     private val defaultKind: SceneKind by lazy {
-        checkNotNull(kindOrNull(SceneIds.DEFAULT)) { "SceneIds.DEFAULT (${SceneIds.DEFAULT}) names no Style" }
+        checkNotNull(StylePacks.find(SceneIds.DEFAULT)?.kind) { "SceneIds.DEFAULT (${SceneIds.DEFAULT}) names no Style" }
     }
 
-    private fun kindOrNull(sceneId: SceneId): SceneKind? =
-        when {
-            sceneId in SHADER_SCENES -> SceneKind.SHADER
-            sceneId == SceneIds.MILKDROP -> SceneKind.MILKDROP
-            VisualStyleCatalog.isFluid(sceneId) -> SceneKind.FLUID
-            sceneId == SceneIds.CURLFLOW -> SceneKind.CURL_FLOW
-            sceneId == SceneIds.WATER -> SceneKind.WATER
-            VisualStyleCatalog.isCymatics(sceneId) -> SceneKind.CYMATICS
-            VisualStyleCatalog.life(sceneId) != null -> SceneKind.LIFE
-            VisualStyleCatalog.myco(sceneId) != null -> SceneKind.MYCELIUM
-            VisualStyleCatalog.acid(sceneId) != null -> SceneKind.ACID
-            else -> null
-        }
+    /** The Style's display name; an id no Style has is title-cased so it still reads as a name. */
+    fun label(sceneId: SceneId): String =
+        StylePacks.find(sceneId)?.label
+            ?: sceneId.value.split('_').joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
 
-    fun isFluid(sceneId: SceneId): Boolean = VisualStyleCatalog.isFluid(sceneId)
+    private fun isKind(
+        sceneId: SceneId,
+        kind: SceneKind,
+    ): Boolean = StylePacks.find(sceneId)?.kind == kind
 
-    fun isWater(sceneId: SceneId): Boolean = sceneId == SceneIds.WATER
+    fun isFluid(sceneId: SceneId): Boolean = isKind(sceneId, SceneKind.FLUID)
 
-    fun isCymatics(sceneId: SceneId): Boolean = VisualStyleCatalog.isCymatics(sceneId)
+    fun isWater(sceneId: SceneId): Boolean = isKind(sceneId, SceneKind.WATER)
 
-    fun hasJourney(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW || sceneId == SceneIds.WATER
+    fun isCymatics(sceneId: SceneId): Boolean = isKind(sceneId, SceneKind.CYMATICS)
 
-    fun hasEmitters(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.WATER
+    fun isMilkdrop(sceneId: SceneId): Boolean = isKind(sceneId, SceneKind.MILKDROP)
 
-    fun hasParticleLayer(sceneId: SceneId): Boolean = isFluid(sceneId) || sceneId == SceneIds.CURLFLOW
+    fun hasJourney(sceneId: SceneId): Boolean = isFluid(sceneId) || isKind(sceneId, SceneKind.CURL_FLOW) || isWater(sceneId)
+
+    fun hasEmitters(sceneId: SceneId): Boolean = isFluid(sceneId) || isWater(sceneId)
+
+    fun hasParticleLayer(sceneId: SceneId): Boolean = isFluid(sceneId) || isKind(sceneId, SceneKind.CURL_FLOW)
 
     fun usesPointSprites(sceneId: SceneId): Boolean = hasParticleLayer(sceneId)
+
+    /**
+     * The Cymatics geometry a Cymatics Style forces (its pack's `geometryOverride`), as an index into
+     * [SceneParams.CYMATICS_GEOMETRIES]; null when the user's own choice applies.
+     */
+    fun cymaticsGeometryOverride(sceneId: SceneId): Int? =
+        StylePacks
+            .find(sceneId)
+            ?.takeIf { it.kind == SceneKind.CYMATICS }
+            ?.parameters
+            ?.get(CYMATICS_GEOMETRY_OVERRIDE)
+            ?.let { Math.round(it) }
+            ?.takeIf { it >= 0 }
+
+    /** The Cymatics family parameter naming a forced geometry (`styles/families.json`). */
+    private const val CYMATICS_GEOMETRY_OVERRIDE = "geometryOverride"
 }

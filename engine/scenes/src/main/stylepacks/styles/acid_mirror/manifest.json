@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "acid_mirror",
+  "label": "Mirror Room",
+  "family": "acid",
+  "parameters": {
+    "mode": 8,
+    "source": 0,
+    "zoom": 1.009,
+    "rotate": 0.0008,
+    "hueRate": 0.035,
+    "feedback": 0.958,
+    "modulate": 0.45,
+    "hueOffset": 0.85
+  }
+}

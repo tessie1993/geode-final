@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "acid_tv",
+  "label": "TV Acid",
+  "family": "acid",
+  "parameters": {
+    "mode": 0,
+    "source": 0,
+    "glitch": 0.3,
+    "overdrive": 0.8,
+    "liquid": 0.8,
+    "scanline": 0.25,
+    "curve": 0.3,
+    "saturation": 1.15
+  }
+}

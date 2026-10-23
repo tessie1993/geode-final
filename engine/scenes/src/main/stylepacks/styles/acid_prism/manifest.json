@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "acid_prism",
+  "label": "Prism Drift",
+  "family": "acid",
+  "parameters": {
+    "mode": 4,
+    "source": 1,
+    "zoom": 1.008,
+    "rotate": -0.0014,
+    "hueRate": 0.02,
+    "feedback": 0.96,
+    "hueOffset": 0.45
+  }
+}

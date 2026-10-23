@@ -411,6 +411,11 @@ jobs:
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: 140
+      # Every Style is a data pack (docs/style-packs.md); the shaders below are rendered from them.
+      - name: Validate every Style pack
+        run: |
+          python3 tools/ci/check_style_packs.py --self-test
+          python3 tools/ci/check_style_packs.py
       - name: Render every Style (compile + non-black frame)
         env:
           MUSICVIZ_CHROMIUM: ${{ steps.chrome.outputs.chrome-path }}
