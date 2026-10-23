@@ -179,6 +179,25 @@ abstract class PlaybackDao {
     @Query("SELECT * FROM playlist_tracks WHERE playlistId = :id ORDER BY position")
     abstract suspend fun playlistTracks(id: Long): List<PlaylistTrackRow>
 
+    /** Every playlist's tracks, each playlist's in order. */
+    @Query("SELECT * FROM playlist_tracks ORDER BY playlistId, position")
+    abstract fun allPlaylistTracks(): Flow<List<PlaylistTrackRow>>
+
+    @Query("UPDATE playlists SET name = :name WHERE id = :id")
+    abstract suspend fun renamePlaylist(
+        id: Long,
+        name: String,
+    )
+
+    @Transaction
+    open suspend fun replacePlaylistTracks(
+        id: Long,
+        tracks: List<TrackColumns>,
+    ) {
+        deletePlaylistTracks(id)
+        insertPlaylistTracks(tracks.mapIndexed { position, track -> PlaylistTrackRow(id, position, track) })
+    }
+
     @Transaction
     open suspend fun createPlaylist(
         playlist: PlaylistRow,

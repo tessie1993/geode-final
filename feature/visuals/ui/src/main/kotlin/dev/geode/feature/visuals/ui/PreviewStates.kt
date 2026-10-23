@@ -1,14 +1,19 @@
 package dev.geode.feature.visuals.ui
 
+import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.BrokenFile
+import dev.geode.feature.visuals.api.BuiltInPreset
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
-import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
+import dev.geode.feature.visuals.api.PresetFolderPath
+import dev.geode.feature.visuals.api.PresetShelf
+import dev.geode.feature.visuals.api.SavedPreset
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
@@ -27,6 +32,36 @@ internal object PreviewStates {
     private val deep = Folder(FolderId(2), "Deep blue", calm.id, listOf(ink.id))
     private val party = Folder(FolderId(3), "Party", null, emptyList())
 
+    private val calmPresets = PresetFolderPath("Calm")
+    private val rainy = PresetFolderPath("Calm/Rainy days")
+    private val partyPresets = PresetFolderPath("Party")
+
+    /** Built-in presets for three Styles, saved ones at the top and in nested folders. */
+    val shelf =
+        PresetShelf(
+            builtIn =
+                listOf(
+                    BuiltInPreset(PresetId("Fluid Ink · Calm wash"), ink.id),
+                    BuiltInPreset(PresetId("Fluid Ink · Neon hits"), ink.id),
+                    BuiltInPreset(PresetId("Tunnel · Chill"), tunnel.id),
+                    BuiltInPreset(PresetId("Tunnel · Punchy"), tunnel.id),
+                    BuiltInPreset(PresetId("Bars · Retro"), bars.id),
+                ),
+            saved =
+                listOf(
+                    SavedPreset(PresetId("Bass heavy"), tunnel.id, partyPresets),
+                    SavedPreset(PresetId("Late night drive"), ink.id),
+                    SavedPreset(PresetId("Rain on glass"), ink.id, rainy),
+                    SavedPreset(PresetId("Slow burn"), chladni.id, calmPresets),
+                    SavedPreset(PresetId("Sunday morning"), aurora.id),
+                ),
+            folders = listOf(calmPresets, rainy, partyPresets),
+        )
+
+    val calmPresetFolder: PresetFolderPath = calmPresets
+
+    val tunnelStyle: SceneId = tunnel.id
+
     val ready =
         VisualsState(
             styles = listOf(tunnel, bars, ink, aurora, chladni, milk),
@@ -37,13 +72,14 @@ internal object PreviewStates {
                     recent = listOf(ink.id, tunnel.id),
                     folders = listOf(calm, deep, party),
                 ),
+            presets = shelf,
         )
 
-    val loading = ready.copy(current = null, library = null)
+    val loading = ready.copy(current = null, library = null, presets = null)
 
     val calmFolder: FolderId = calm.id
 
-    private val shelf =
+    private val milkdropShelf =
         MilkdropShelf(
             presets =
                 listOf(
@@ -59,18 +95,18 @@ internal object PreviewStates {
                     imported = listOf("Beach at dusk"),
                     broken =
                         listOf(
-                            BrokenFile("shopping list.milk", ImportProblem.NOT_A_PRESET),
-                            BrokenFile("aurora_veil.milk", ImportProblem.ALREADY_THERE),
+                            BrokenFile("shopping list.milk", MilkdropImportProblem.NOT_A_PRESET),
+                            BrokenFile("aurora_veil.milk", MilkdropImportProblem.ALREADY_THERE),
                         ),
                 ),
         )
 
     /** MilkDrop listed, just after an import that left two files out. */
-    val milkdrop = ready.copy(milkdrop = shelf)
+    val milkdrop = ready.copy(milkdrop = milkdropShelf)
 
     /** MilkDrop before its folder has been listed. */
     val milkdropLoading = ready
 
     /** An import running, with no textures yet. */
-    val milkdropImporting = ready.copy(milkdrop = shelf.copy(textures = emptyList(), importing = true, lastImport = null))
+    val milkdropImporting = ready.copy(milkdrop = milkdropShelf.copy(textures = emptyList(), importing = true, lastImport = null))
 }

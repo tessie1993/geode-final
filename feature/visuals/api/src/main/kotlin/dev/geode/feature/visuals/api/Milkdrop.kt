@@ -19,7 +19,7 @@ enum class MilkdropKind {
 }
 
 /** Why a picked file was not imported. Nothing about it reached the MilkDrop folder. */
-enum class ImportProblem {
+enum class MilkdropImportProblem {
     /** Not a MilkDrop preset: no `[preset00]` section, or not text at all. */
     NOT_A_PRESET,
 
@@ -44,7 +44,7 @@ enum class ImportProblem {
 /** A picked file that was not imported: the [name] it was picked by, and why. */
 data class BrokenFile(
     val name: String,
-    val problem: ImportProblem,
+    val problem: MilkdropImportProblem,
 )
 
 /**

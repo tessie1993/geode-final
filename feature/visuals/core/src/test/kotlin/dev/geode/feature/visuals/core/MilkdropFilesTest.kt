@@ -1,7 +1,7 @@
 package dev.geode.feature.visuals.core
 
 import dev.geode.feature.visuals.api.BrokenFile
-import dev.geode.feature.visuals.api.ImportProblem
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropKind.PRESETS
 import dev.geode.feature.visuals.api.MilkdropKind.TEXTURES
@@ -51,7 +51,7 @@ class MilkdropFilesTest {
         kind: MilkdropKind,
         file: PickedFile,
         present: List<String> = emptyList(),
-    ): ImportProblem? = (one(kind, file, present) as? Planned.Refuse)?.broken?.problem
+    ): MilkdropImportProblem? = (one(kind, file, present) as? Planned.Refuse)?.broken?.problem
 
     @Test
     fun `a good preset is written as a milk file, shown by its name`() {
@@ -74,11 +74,11 @@ class MilkdropFilesTest {
 
     @Test
     fun `broken presets are refused with the reason`() {
-        assertEquals(ImportProblem.NOT_A_PRESET, problem(PRESETS, read("notes.milk", "just some notes".toByteArray())))
-        assertEquals(ImportProblem.NOT_A_PRESET, problem(PRESETS, read("photo.milk", png)))
-        assertEquals(ImportProblem.EMPTY, problem(PRESETS, read("empty.milk", ByteArray(0))))
-        assertEquals(ImportProblem.TOO_LARGE, problem(PRESETS, PickedFile.TooLarge("huge.milk")))
-        assertEquals(ImportProblem.UNREADABLE, problem(PRESETS, PickedFile.Unreadable("gone.milk")))
+        assertEquals(MilkdropImportProblem.NOT_A_PRESET, problem(PRESETS, read("notes.milk", "just some notes".toByteArray())))
+        assertEquals(MilkdropImportProblem.NOT_A_PRESET, problem(PRESETS, read("photo.milk", png)))
+        assertEquals(MilkdropImportProblem.EMPTY, problem(PRESETS, read("empty.milk", ByteArray(0))))
+        assertEquals(MilkdropImportProblem.TOO_LARGE, problem(PRESETS, PickedFile.TooLarge("huge.milk")))
+        assertEquals(MilkdropImportProblem.UNREADABLE, problem(PRESETS, PickedFile.Unreadable("gone.milk")))
     }
 
     @Test
@@ -99,15 +99,15 @@ class MilkdropFilesTest {
 
     @Test
     fun `a preset already there, built-in or own, is left as it was`() {
-        assertEquals(ImportProblem.ALREADY_THERE, problem(PRESETS, read("Ocean.milk", preset), listOf("ocean.milk")))
+        assertEquals(MilkdropImportProblem.ALREADY_THERE, problem(PRESETS, read("Ocean.milk", preset), listOf("ocean.milk")))
         // A built-in's own name is taken even though importing it would make that name safe first.
         assertEquals(
-            ImportProblem.ALREADY_THERE,
+            MilkdropImportProblem.ALREADY_THERE,
             problem(PRESETS, read("Flexi - don't panic.milk", preset), listOf("Flexi - don't panic.milk")),
         )
-        assertEquals(ImportProblem.ALREADY_THERE, problem(PRESETS, read("Ocean", preset), listOf("Ocean.milk")))
+        assertEquals(MilkdropImportProblem.ALREADY_THERE, problem(PRESETS, read("Ocean", preset), listOf("Ocean.milk")))
         // Taken under the safe name it would be kept under, from an earlier import of the same file.
-        assertEquals(ImportProblem.ALREADY_THERE, problem(PRESETS, read("a/b.milk", preset), listOf("a_b-c14cddc0.milk")))
+        assertEquals(MilkdropImportProblem.ALREADY_THERE, problem(PRESETS, read("a/b.milk", preset), listOf("a_b-c14cddc0.milk")))
         assertTrue(one(PRESETS, read("Ocean.milk", preset), listOf("Ocean2.milk")) is Planned.Write)
     }
 
@@ -144,17 +144,17 @@ class MilkdropFilesTest {
 
     @Test
     fun `broken textures are refused with the reason`() {
-        assertEquals(ImportProblem.WRONG_TYPE, problem(TEXTURES, read("clip.gif", png)))
-        assertEquals(ImportProblem.WRONG_TYPE, problem(TEXTURES, read("noextension", png)))
-        assertEquals(ImportProblem.WRONG_TYPE, problem(TEXTURES, PickedFile.Unreadable("clip.webp")))
-        assertEquals(ImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.png", jpeg)))
-        assertEquals(ImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.jpg", png)))
-        assertEquals(ImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.bmp", dds)))
-        assertEquals(ImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.dds", bmp)))
-        assertEquals(ImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("short.png", png.copyOf(3))))
-        assertEquals(ImportProblem.EMPTY, problem(TEXTURES, read("empty.png", ByteArray(0))))
-        assertEquals(ImportProblem.TOO_LARGE, problem(TEXTURES, PickedFile.TooLarge("huge.dds")))
-        assertEquals(ImportProblem.UNREADABLE, problem(TEXTURES, PickedFile.Unreadable("gone.png")))
+        assertEquals(MilkdropImportProblem.WRONG_TYPE, problem(TEXTURES, read("clip.gif", png)))
+        assertEquals(MilkdropImportProblem.WRONG_TYPE, problem(TEXTURES, read("noextension", png)))
+        assertEquals(MilkdropImportProblem.WRONG_TYPE, problem(TEXTURES, PickedFile.Unreadable("clip.webp")))
+        assertEquals(MilkdropImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.png", jpeg)))
+        assertEquals(MilkdropImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.jpg", png)))
+        assertEquals(MilkdropImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.bmp", dds)))
+        assertEquals(MilkdropImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("fake.dds", bmp)))
+        assertEquals(MilkdropImportProblem.NOT_AN_IMAGE, problem(TEXTURES, read("short.png", png.copyOf(3))))
+        assertEquals(MilkdropImportProblem.EMPTY, problem(TEXTURES, read("empty.png", ByteArray(0))))
+        assertEquals(MilkdropImportProblem.TOO_LARGE, problem(TEXTURES, PickedFile.TooLarge("huge.dds")))
+        assertEquals(MilkdropImportProblem.UNREADABLE, problem(TEXTURES, PickedFile.Unreadable("gone.png")))
     }
 
     @Test
@@ -173,9 +173,9 @@ class MilkdropFilesTest {
 
     @Test
     fun `a texture whose name before the extension is taken is left as it was`() {
-        assertEquals(ImportProblem.ALREADY_THERE, problem(TEXTURES, read("Clouds.jpg", jpeg), listOf("clouds.png")))
+        assertEquals(MilkdropImportProblem.ALREADY_THERE, problem(TEXTURES, read("Clouds.jpg", jpeg), listOf("clouds.png")))
         // Taken under the name as picked, even though it would be kept under a safe one.
-        assertEquals(ImportProblem.ALREADY_THERE, problem(TEXTURES, read("my tex.png", png), listOf("my tex.png")))
+        assertEquals(MilkdropImportProblem.ALREADY_THERE, problem(TEXTURES, read("my tex.png", png), listOf("my tex.png")))
         assertTrue(one(TEXTURES, read("clouds.png", png), listOf("clouds2.png")) is Planned.Write)
     }
 
@@ -195,9 +195,9 @@ class MilkdropFilesTest {
         assertEquals(listOf("a.milk", null, null, null, "b.milk"), planned.map { (it as? Planned.Write)?.stored })
         assertEquals(
             listOf(
-                BrokenFile("broken.milk", ImportProblem.NOT_A_PRESET),
-                BrokenFile("A.milk", ImportProblem.ALREADY_THERE),
-                BrokenFile("lost.milk", ImportProblem.UNREADABLE),
+                BrokenFile("broken.milk", MilkdropImportProblem.NOT_A_PRESET),
+                BrokenFile("A.milk", MilkdropImportProblem.ALREADY_THERE),
+                BrokenFile("lost.milk", MilkdropImportProblem.UNREADABLE),
             ),
             planned.mapNotNull { (it as? Planned.Refuse)?.broken },
         )

@@ -1,7 +1,7 @@
 package dev.geode.feature.visuals.core
 
 import dev.geode.feature.visuals.api.BrokenFile
-import dev.geode.feature.visuals.api.ImportProblem
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import java.security.MessageDigest
@@ -109,15 +109,15 @@ object MilkdropFiles {
         file: PickedFile,
         taken: Set<String>,
     ): Planned {
-        fun refuse(problem: ImportProblem) = Planned.Refuse(BrokenFile(file.name, problem))
-        if (kind == MilkdropKind.TEXTURES && extension(file.name) !in TEXTURE_EXTENSIONS) return refuse(ImportProblem.WRONG_TYPE)
+        fun refuse(problem: MilkdropImportProblem) = Planned.Refuse(BrokenFile(file.name, problem))
+        if (kind == MilkdropKind.TEXTURES && extension(file.name) !in TEXTURE_EXTENSIONS) return refuse(MilkdropImportProblem.WRONG_TYPE)
         return when (file) {
-            is PickedFile.Unreadable -> refuse(ImportProblem.UNREADABLE)
-            is PickedFile.TooLarge -> refuse(ImportProblem.TOO_LARGE)
+            is PickedFile.Unreadable -> refuse(MilkdropImportProblem.UNREADABLE)
+            is PickedFile.TooLarge -> refuse(MilkdropImportProblem.TOO_LARGE)
             is PickedFile.Read -> {
                 val stored = storedName(kind, file.name)
                 val clash = key(kind, stored) in taken || key(kind, asNamed(kind, file.name)) in taken
-                val problem = if (clash) ImportProblem.ALREADY_THERE else contentProblem(kind, file.name, file.bytes)
+                val problem = if (clash) MilkdropImportProblem.ALREADY_THERE else contentProblem(kind, file.name, file.bytes)
                 if (problem == null) Planned.Write(file.name, stored, shown(kind, stored), file.bytes) else refuse(problem)
             }
         }
@@ -127,11 +127,11 @@ object MilkdropFiles {
         kind: MilkdropKind,
         name: String,
         bytes: ByteArray,
-    ): ImportProblem? =
+    ): MilkdropImportProblem? =
         when {
-            bytes.isEmpty() -> ImportProblem.EMPTY
-            kind == MilkdropKind.PRESETS -> if (isPreset(bytes)) null else ImportProblem.NOT_A_PRESET
-            else -> if (isImage(extension(name), bytes)) null else ImportProblem.NOT_AN_IMAGE
+            bytes.isEmpty() -> MilkdropImportProblem.EMPTY
+            kind == MilkdropKind.PRESETS -> if (isPreset(bytes)) null else MilkdropImportProblem.NOT_A_PRESET
+            else -> if (isImage(extension(name), bytes)) null else MilkdropImportProblem.NOT_AN_IMAGE
         }
 
     /** Whether [bytes] read as a MilkDrop preset: text, with a `[preset00]` section. */

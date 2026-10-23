@@ -1,5 +1,6 @@
 package dev.geode.feature.playback.handlers
 
+import android.os.Bundle
 import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -13,8 +14,11 @@ import androidx.media3.common.util.Util
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.Queue
+import dev.geode.feature.playback.api.Track
 import dev.geode.feature.playback.core.MediaControl
 import dev.geode.feature.playback.core.MediaControls
 import dev.geode.feature.playback.core.SessionStatus
@@ -33,14 +37,19 @@ import kotlinx.coroutines.launch
  * to Playback as a Command, never to the audio engine. Playback then drives the engine and the
  * change comes back here through its state.
  *
+ * A car or another media browser can also hand it songs to play or queue (#17): setting the items
+ * plays them, adding them queues them, and moving or removing one changes Playback's queue. Each item
+ * names its song by its media id, the [TrackId] Playback plays.
+ *
  * Built on the main looper, and [scope] must run on it too: it follows Playback's state for the life
- * of the player.
+ * of the player. [extrasOf] adds what the app's artwork loader needs to each song's metadata.
  */
 @OptIn(UnstableApi::class)
 class PlaybackSessionPlayer(
     private val playback: Playback,
     private val clocks: PlaybackClocks,
     scope: CoroutineScope,
+    private val extrasOf: (Track) -> Bundle? = { null },
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
     private val following: Job = scope.launch { playback.state.collect { invalidateState() } }
 
@@ -56,6 +65,53 @@ class PlaybackSessionPlayer(
         positionMs: Long,
         seekCommand: Int,
     ): ListenableFuture<*> = control(controlFor(mediaItemIndex, positionMs, seekCommand))
+
+    override fun handleSetMediaItems(
+        mediaItems: List<MediaItem>,
+        startIndex: Int,
+        startPositionMs: Long,
+    ): ListenableFuture<*> {
+        if (mediaItems.isNotEmpty()) {
+            val start = if (startIndex == C.INDEX_UNSET) 0 else startIndex.coerceIn(0, mediaItems.lastIndex)
+            // The place goes with the songs: a seek sent after them would land while the song still opens.
+            val from = if (startPositionMs == C.TIME_UNSET) Millis.ZERO else Millis(startPositionMs.coerceAtLeast(0))
+            playback.send(PlaybackCommand.Play(mediaItems.map(::trackOf), start, from))
+        }
+        return Futures.immediateVoidFuture()
+    }
+
+    override fun handleAddMediaItems(
+        index: Int,
+        mediaItems: List<MediaItem>,
+    ): ListenableFuture<*> {
+        val tracks = mediaItems.map(::trackOf)
+        val queue = MediaControls.sessionOf(playback.state.value.player).queue
+        // Right after the current song is "play next"; anywhere else joins the end of the queue.
+        val next = queue != null && index == queue.index + 1 && index < queue.tracks.size
+        if (tracks.isNotEmpty()) playback.send(if (next) PlaybackCommand.PlayNext(tracks) else PlaybackCommand.AddToQueue(tracks))
+        return Futures.immediateVoidFuture()
+    }
+
+    override fun handleRemoveMediaItems(
+        fromIndex: Int,
+        toIndex: Int,
+    ): ListenableFuture<*> {
+        // From the end, so the indexes still to go stay where they were.
+        for (index in toIndex - 1 downTo fromIndex) playback.send(PlaybackCommand.RemoveFromQueue(index))
+        return Futures.immediateVoidFuture()
+    }
+
+    override fun handleMoveMediaItems(
+        fromIndex: Int,
+        toIndex: Int,
+        newIndex: Int,
+    ): ListenableFuture<*> {
+        moves(fromIndex, toIndex, newIndex).forEach(playback::send)
+        return Futures.immediateVoidFuture()
+    }
+
+    /** Playback opens what it is asked to play by itself, so there is nothing to prepare. */
+    override fun handlePrepare(): ListenableFuture<*> = Futures.immediateVoidFuture()
 
     override fun handleRelease(): ListenableFuture<*> {
         following.cancel()
@@ -77,7 +133,7 @@ class PlaybackSessionPlayer(
                 .setPlayerError(view.failure?.let { PlaybackException(describe(it), null, PlaybackException.ERROR_CODE_TIMEOUT) })
         view.queue?.let { queue ->
             builder
-                .setPlaylist(itemsOf(queue))
+                .setPlaylist(itemsOf(queue, extrasOf))
                 .setCurrentMediaItemIndex(queue.index)
                 .setContentPositionMs { view.mark.positionAt(clocks.elapsed()).value }
         }
@@ -95,6 +151,9 @@ class PlaybackSessionPlayer(
                 .add(Player.COMMAND_GET_CURRENT_MEDIA_ITEM)
                 .add(Player.COMMAND_GET_TIMELINE)
                 .add(Player.COMMAND_GET_METADATA)
+                .add(Player.COMMAND_PREPARE)
+                .add(Player.COMMAND_SET_MEDIA_ITEM)
+                .add(Player.COMMAND_CHANGE_MEDIA_ITEMS)
                 .build()
 
         fun commandsOf(view: SessionView): Player.Commands =
@@ -120,7 +179,10 @@ class PlaybackSessionPlayer(
             }
 
         /** Each queued track, with a uid of its place too, since a queue may hold a track twice. */
-        fun itemsOf(queue: Queue): List<MediaItemData> =
+        fun itemsOf(
+            queue: Queue,
+            extrasOf: (Track) -> Bundle?,
+        ): List<MediaItemData> =
             queue.tracks.mapIndexed { index, track ->
                 MediaItemData
                     .Builder("$index:${track.id.value}")
@@ -133,13 +195,49 @@ class PlaybackSessionPlayer(
                                     .Builder()
                                     .setTitle(track.title)
                                     .setArtist(track.artist)
-                                    .setDurationMs(track.duration.value)
+                                    .setDurationMs(track.duration.value.takeIf { known(track) })
+                                    .setExtras(extrasOf(track))
                                     .build(),
                             ).build(),
-                    ).setDurationUs(Util.msToUs(track.duration.value))
+                    ).setDurationUs(if (known(track)) Util.msToUs(track.duration.value) else C.TIME_UNSET)
                     .setIsSeekable(true)
                     .build()
             }
+
+        /**
+         * Moving the items from [fromIndex] until [toIndex] so the first lands at [newIndex], as one
+         * Playback move per item: each item in turn, keeping their order.
+         */
+        fun moves(
+            fromIndex: Int,
+            toIndex: Int,
+            newIndex: Int,
+        ): List<PlaybackCommand> {
+            val count = toIndex - fromIndex
+            return when {
+                count <= 0 || newIndex == fromIndex -> emptyList()
+                newIndex < fromIndex -> List(count) { PlaybackCommand.MoveInQueue(fromIndex + it, newIndex + it) }
+                else -> List(count) { PlaybackCommand.MoveInQueue(fromIndex, newIndex + count - 1) }
+            }
+        }
+
+        /** Whether [track]'s length is known: zero means nothing has said yet. */
+        fun known(track: Track): Boolean = track.duration > Millis.ZERO
+
+        /** The song [item] names: its media id is the [TrackId], its metadata the rest, as far as it is known. */
+        fun trackOf(item: MediaItem): Track =
+            Track(
+                id = TrackId(item.mediaId),
+                title =
+                    item.mediaMetadata.title
+                        ?.toString()
+                        .orEmpty(),
+                artist =
+                    item.mediaMetadata.artist
+                        ?.toString()
+                        .orEmpty(),
+                duration = item.mediaMetadata.durationMs?.let(::Millis) ?: Millis.ZERO,
+            )
 
         /**
          * What a seek on the session asks for. Next and previous go to Playback as they are: it

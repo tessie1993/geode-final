@@ -30,8 +30,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.forest.ForestShapes
 import dev.geode.design.forest.ForestSpacing
-import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 
@@ -60,7 +60,7 @@ fun MilkdropScreen(
             item { ShelfHint(R.string.milkdrop_loading) }
         } else {
             item { ShelfTitle(R.string.milkdrop_presets) }
-            items(model.presets, key = { "preset-${it.file}" }) { PresetRow(it) }
+            items(model.presets, key = { "preset-${it.file}" }) { MilkdropPresetRow(it) }
             item { ShelfTitle(R.string.milkdrop_textures) }
             if (model.textures.isEmpty()) item { ShelfHint(R.string.milkdrop_no_textures) }
             items(model.textures, key = { "texture-$it" }) { TextureRow(it) }
@@ -179,7 +179,7 @@ private fun ShelfHint(
 }
 
 @Composable
-private fun PresetRow(preset: MilkdropPreset) {
+private fun MilkdropPresetRow(preset: MilkdropPreset) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -222,15 +222,15 @@ private fun TextureRow(name: String) {
 
 /** How a problem is said on screen. */
 @get:StringRes
-internal val ImportProblem.label: Int
+internal val MilkdropImportProblem.label: Int
     get() =
         when (this) {
-            ImportProblem.NOT_A_PRESET -> R.string.milkdrop_problem_not_a_preset
-            ImportProblem.NOT_AN_IMAGE -> R.string.milkdrop_problem_not_an_image
-            ImportProblem.WRONG_TYPE -> R.string.milkdrop_problem_wrong_type
-            ImportProblem.TOO_LARGE -> R.string.milkdrop_problem_too_large
-            ImportProblem.EMPTY -> R.string.milkdrop_problem_empty
-            ImportProblem.UNREADABLE -> R.string.milkdrop_problem_unreadable
-            ImportProblem.ALREADY_THERE -> R.string.milkdrop_problem_already_there
-            ImportProblem.NOT_SAVED -> R.string.milkdrop_problem_not_saved
+            MilkdropImportProblem.NOT_A_PRESET -> R.string.milkdrop_problem_not_a_preset
+            MilkdropImportProblem.NOT_AN_IMAGE -> R.string.milkdrop_problem_not_an_image
+            MilkdropImportProblem.WRONG_TYPE -> R.string.milkdrop_problem_wrong_type
+            MilkdropImportProblem.TOO_LARGE -> R.string.milkdrop_problem_too_large
+            MilkdropImportProblem.EMPTY -> R.string.milkdrop_problem_empty
+            MilkdropImportProblem.UNREADABLE -> R.string.milkdrop_problem_unreadable
+            MilkdropImportProblem.ALREADY_THERE -> R.string.milkdrop_problem_already_there
+            MilkdropImportProblem.NOT_SAVED -> R.string.milkdrop_problem_not_saved
         }

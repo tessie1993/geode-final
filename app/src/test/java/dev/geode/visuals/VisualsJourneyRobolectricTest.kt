@@ -16,6 +16,7 @@ import dev.geode.audio.adapter.FakeAudioAdapter
 import dev.geode.audio.adapter.PlaybackAnnouncement
 import dev.geode.audio.adapter.PlaybackMark
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.customization.api.Customization
@@ -23,6 +24,7 @@ import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFact
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.api.CustomizationState
+import dev.geode.feature.customization.api.Preset
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.core.CUSTOMIZATION_FEATURE
 import dev.geode.feature.customization.core.CustomizationEvent
@@ -46,12 +48,16 @@ import dev.geode.feature.playback.handlers.PlaybackStorage
 import dev.geode.feature.playback.handlers.SavedSession
 import dev.geode.feature.playback.handlers.playbackStore
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.PresetFolderPath
+import dev.geode.feature.visuals.api.SavedPreset
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.core.PickedFile
 import dev.geode.feature.visuals.handlers.MilkdropFolder
 import dev.geode.feature.visuals.handlers.PickedFiles
+import dev.geode.feature.visuals.handlers.PresetFiles
+import dev.geode.feature.visuals.handlers.SavedPresets
 import dev.geode.feature.visuals.handlers.VisualsStorage
 import dev.geode.feature.visuals.handlers.visualsStore
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
@@ -71,6 +77,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.FileNotFoundException
 
 /**
  * The acceptance test of #43: the music and the Visual survive entering and leaving full-screen visual
@@ -128,6 +135,7 @@ class VisualsJourneyRobolectricTest {
         visualsStore(
             customization,
             MemoryVisualsStorage(),
+            NoPresetFiles,
             BuiltInStyles.all,
             EmptyMilkdropFolder,
             NoPicks,
@@ -224,6 +232,43 @@ class VisualsJourneyRobolectricTest {
         compose.waitForIdle()
     }
 
+    /** No presets: the journey never opens the Presets browser. */
+    private object NoPresetFiles : PresetFiles {
+        override suspend fun builtIn(): List<Preset> = emptyList()
+
+        override suspend fun saved(): SavedPresets = SavedPresets(emptyList(), emptyList())
+
+        override suspend fun rename(
+            id: PresetId,
+            name: String,
+        ) = Unit
+
+        override suspend fun move(
+            id: PresetId,
+            folder: PresetFolderPath,
+        ) = Unit
+
+        override suspend fun delete(id: PresetId) = Unit
+
+        override suspend fun createFolder(folder: PresetFolderPath) = Unit
+
+        override suspend fun renameFolder(
+            from: PresetFolderPath,
+            to: PresetFolderPath,
+        ) = Unit
+
+        override suspend fun deleteFolder(folder: PresetFolderPath) = Unit
+
+        override suspend fun text(id: PresetId): String = throw FileNotFoundException(id.value)
+
+        override suspend fun import(
+            text: String,
+            name: (String) -> String,
+        ): SavedPreset? = null
+
+        override suspend fun readDocument(uri: String): String = throw FileNotFoundException(uri)
+    }
+
     private class MemoryVisualsStorage : VisualsStorage {
         private var saved = StyleLibrary()
 
@@ -265,6 +310,16 @@ class VisualsJourneyRobolectricTest {
         ): PlaylistId = PlaylistId(1)
 
         override suspend fun deletePlaylist(id: PlaylistId) = Unit
+
+        override suspend fun renamePlaylist(
+            id: PlaylistId,
+            name: String,
+        ) = Unit
+
+        override suspend fun replacePlaylistTracks(
+            id: PlaylistId,
+            tracks: List<Track>,
+        ) = Unit
 
         override suspend fun recordPlay(
             track: Track,

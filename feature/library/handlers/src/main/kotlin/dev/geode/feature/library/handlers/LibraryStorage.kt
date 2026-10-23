@@ -36,6 +36,9 @@ interface LibraryStorage {
         edit: SongEdit,
     )
 
+    /** The user's edits, by song. */
+    suspend fun edits(): Map<TrackId, SongEdit>
+
     suspend fun saveExcludedFolders(folders: Set<String>)
 }
 
@@ -84,6 +87,9 @@ class RoomLibraryStorage(
         song: TrackId,
         edit: SongEdit,
     ) = dao.putEdit(EditEntity(song.value, edit.title, edit.artist, edit.album, edit.artwork))
+
+    override suspend fun edits(): Map<TrackId, SongEdit> =
+        dao.edits().associate { TrackId(it.trackId) to SongEdit(it.title, it.artist, it.album, it.artwork) }
 
     override suspend fun saveExcludedFolders(folders: Set<String>) = dao.replaceExcludedFolders(folders.map(::ExcludedFolderEntity))
 

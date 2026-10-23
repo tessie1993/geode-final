@@ -181,7 +181,7 @@ private fun SearchField(
 }
 
 @Composable
-private fun SectionTitle(title: String) {
+internal fun SectionTitle(title: String) {
     Text(
         title,
         modifier = Modifier.padding(top = ForestSpacing.Small, start = ForestSpacing.Small),
@@ -213,7 +213,7 @@ private fun FoldersTitle(
 }
 
 @Composable
-private fun Hint(
+internal fun Hint(
     @StringRes text: Int,
 ) {
     Text(

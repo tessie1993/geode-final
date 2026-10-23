@@ -4,9 +4,21 @@ import android.content.ContentUris
 import android.content.Context
 import android.provider.MediaStore
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import dev.geode.playback.toTrackId
 
-/** The music MediaStore already indexes, read the same way for the library screen and the Android Auto tree. */
+/** A song as the old screens list it. */
+data class DeviceTrack(
+    val uri: TrackId,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val folder: String,
+    val duration: Millis,
+    val addedSec: Long = 0L,
+)
+
+/** The music MediaStore already indexes, read directly by the one-time imports of the old player and Library (#17). */
 object DeviceTrackQuery {
     fun query(context: Context): List<DeviceTrack> {
         val permission =

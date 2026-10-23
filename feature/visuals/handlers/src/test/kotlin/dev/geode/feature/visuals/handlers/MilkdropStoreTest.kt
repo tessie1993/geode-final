@@ -3,8 +3,8 @@ package dev.geode.feature.visuals.handlers
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.visuals.api.BrokenFile
-import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
@@ -40,6 +40,7 @@ class MilkdropStoreTest {
         visualsStore(
             FakeCustomization(milk),
             FakeVisualsStorage(),
+            FakePresetFiles(),
             listOf(manifest(milk, StyleFamily.MILKDROP)),
             folder,
             picked,
@@ -81,11 +82,11 @@ class MilkdropStoreTest {
                 imported = listOf("Ocean", "Zen"),
                 broken =
                     listOf(
-                        BrokenFile("notes.milk", ImportProblem.NOT_A_PRESET),
-                        BrokenFile("tidal_drift.milk", ImportProblem.ALREADY_THERE),
-                        BrokenFile("huge.milk", ImportProblem.TOO_LARGE),
-                        BrokenFile("6", ImportProblem.UNREADABLE),
-                        BrokenFile("content://7", ImportProblem.UNREADABLE),
+                        BrokenFile("notes.milk", MilkdropImportProblem.NOT_A_PRESET),
+                        BrokenFile("tidal_drift.milk", MilkdropImportProblem.ALREADY_THERE),
+                        BrokenFile("huge.milk", MilkdropImportProblem.TOO_LARGE),
+                        BrokenFile("6", MilkdropImportProblem.UNREADABLE),
+                        BrokenFile("content://7", MilkdropImportProblem.UNREADABLE),
                     ),
             ),
             shelf.lastImport,
@@ -117,7 +118,11 @@ class MilkdropStoreTest {
             ImportReport(
                 MilkdropKind.TEXTURES,
                 imported = listOf("my_sky_ad221c51.png"),
-                broken = listOf(BrokenFile("Clouds.png", ImportProblem.ALREADY_THERE), BrokenFile("fake.png", ImportProblem.NOT_AN_IMAGE)),
+                broken =
+                    listOf(
+                        BrokenFile("Clouds.png", MilkdropImportProblem.ALREADY_THERE),
+                        BrokenFile("fake.png", MilkdropImportProblem.NOT_AN_IMAGE),
+                    ),
             ),
             shelf.lastImport,
         )
@@ -146,7 +151,7 @@ class MilkdropStoreTest {
             visuals.state.value.milkdrop
                 ?.lastImport
         assertEquals(listOf("Zen"), report?.imported)
-        assertEquals(listOf(BrokenFile("Ocean.milk", ImportProblem.NOT_SAVED)), report?.broken)
+        assertEquals(listOf(BrokenFile("Ocean.milk", MilkdropImportProblem.NOT_SAVED)), report?.broken)
     }
 
     @Test

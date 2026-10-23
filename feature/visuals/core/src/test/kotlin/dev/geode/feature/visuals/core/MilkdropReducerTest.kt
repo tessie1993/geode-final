@@ -1,8 +1,8 @@
 package dev.geode.feature.visuals.core
 
 import dev.geode.feature.visuals.api.BrokenFile
-import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
@@ -29,7 +29,8 @@ class MilkdropReducerTest {
 
     private val listed = ready.copy(milkdrop = MilkdropShelf(presets, textures))
     private val importing = ready.copy(milkdrop = MilkdropShelf(presets, textures, importing = true))
-    private val report = ImportReport(MilkdropKind.PRESETS, listOf("mine"), listOf(BrokenFile("bad.milk", ImportProblem.NOT_A_PRESET)))
+    private val report =
+        ImportReport(MilkdropKind.PRESETS, listOf("mine"), listOf(BrokenFile("bad.milk", MilkdropImportProblem.NOT_A_PRESET)))
     private val reported = ready.copy(milkdrop = MilkdropShelf(presets, textures, lastImport = report))
 
     private val picked = listOf("content://picked/1", "content://picked/2")

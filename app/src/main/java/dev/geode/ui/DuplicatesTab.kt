@@ -1,6 +1,5 @@
 package dev.geode.ui
 
-import android.app.Activity
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -28,21 +27,19 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.geode.R
+import dev.geode.engine.types.TrackId
 import dev.geode.playback.toUri
 
 /** Same title, artist and length, listed side by side so the spare copy can be played to check and then deleted. */
 @Composable
 internal fun DuplicatesTab(
     tracks: List<DeviceTrack>,
-    playerViewModel: PlayerViewModel,
-    onDeleted: () -> Unit,
+    onPlay: (TrackId) -> Unit,
 ) {
     val context = LocalContext.current
     val groups = remember(tracks) { LibraryDuplicates.find(tracks) }
-    val deleter =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) onDeleted()
-        }
+    // The Library sees a deleted file go by itself, through the phone's media index.
+    val deleter = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {}
     LazyColumn(Modifier.fillMaxSize()) {
         if (groups.isEmpty()) {
             item { Text(stringResource(R.string.duplicates_none), Modifier.padding(16.dp)) }
@@ -61,7 +58,7 @@ internal fun DuplicatesTab(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickable { playerViewModel.playTrack(track.uri) }
+                        .clickable { onPlay(track.uri) }
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {

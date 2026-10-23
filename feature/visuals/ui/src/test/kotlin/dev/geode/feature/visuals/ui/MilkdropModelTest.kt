@@ -1,8 +1,8 @@
 package dev.geode.feature.visuals.ui
 
 import dev.geode.feature.visuals.api.BrokenFile
-import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
@@ -16,7 +16,8 @@ import org.junit.Test
 
 class MilkdropModelTest {
     private val presets = listOf(MilkdropPreset("aurora_veil.milk", "Aurora Veil", "Geode", builtIn = true))
-    private val report = ImportReport(MilkdropKind.TEXTURES, listOf("clouds.png"), listOf(BrokenFile("x.gif", ImportProblem.WRONG_TYPE)))
+    private val report =
+        ImportReport(MilkdropKind.TEXTURES, listOf("clouds.png"), listOf(BrokenFile("x.gif", MilkdropImportProblem.WRONG_TYPE)))
 
     @Test
     fun `before the folder is listed the screen waits, and nothing can be imported`() {

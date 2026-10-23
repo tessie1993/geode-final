@@ -9,6 +9,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
@@ -163,6 +164,8 @@ fun ExportHost(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val viz by viewModel.vizState.collectAsStateWithLifecycle()
     val export by studioViewModel.exportState.collectAsStateWithLifecycle()
+    // The song's tempo comes from the export's whole-song analysis (ADR-0001), never the live Visual.
+    val exportTempo by studioViewModel.exportTempo.collectAsStateWithLifecycle()
     val loop by studioViewModel.loopState.collectAsStateWithLifecycle()
 
     // On API 33+ a render's progress notification (ExportService, foreground since it must
@@ -279,11 +282,12 @@ fun ExportHost(
                     onDismiss()
                 },
             )
-        ExportEntryMode.Standard ->
+        ExportEntryMode.Standard -> {
+            LaunchedEffect(Unit) { studioViewModel.prepareExportTempo() }
             SettingsDialog(
                 export = export,
                 hasMedia = state.hasMedia,
-                bpm = viz.bpm,
+                bpm = exportTempo,
                 trackDuration = state.duration,
                 onStart = { aspect, fps, loopSafe, range, codec ->
                     requestNotificationPermissionOnce()
@@ -316,6 +320,7 @@ fun ExportHost(
                     onDismiss()
                 },
             )
+        }
     }
 
     if (notificationRationaleVisible) {

@@ -4,14 +4,16 @@ import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.MilkdropShelf
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.VisualsCommand
+import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.api.VisualsState
+import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.Reducer
 import dev.geode.kernel.ReportFailure
 
 /**
- * The Visuals feature's state machine (#43).
+ * The Visuals feature's state machine (#43), with the Presets browser (#144) in [PresetEdits].
  *
  * Which Style the Visual shows is Customization's (ADR-0002): choosing one only asks Customization,
  * and [VisualsState.current] moves when Customization says so, whoever asked (this tab, a preset, an
@@ -22,6 +24,9 @@ import dev.geode.kernel.ReportFailure
  * that is saved at once. A library that cannot be read stays unloaded, so a failed read is never
  * saved over.
  *
+ * The presets are listed when the store starts and again whenever the browser asks, so presets saved
+ * from Customize or put in the preset folder by hand show up.
+ *
  * The MilkDrop presets and textures (#145) are listed once when the store starts. An import runs one
  * at a time, and only once the folder has been listed; while it runs, another is ignored. Its report
  * stays until the person dismisses it or starts the next import. An import that fails as a whole is
@@ -30,7 +35,12 @@ import dev.geode.kernel.ReportFailure
 object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
     /** What the store carries out once, when it is built. */
     val start: List<VisualsEffect> =
-        listOf(Perform(VisualsWork.FollowCurrentStyle), Perform(VisualsWork.LoadLibrary), Perform(VisualsWork.ListMilkdrop))
+        listOf(
+            Perform(VisualsWork.FollowCurrentStyle),
+            Perform(VisualsWork.LoadLibrary),
+            Perform(VisualsWork.LoadPresets),
+            Perform(VisualsWork.ListMilkdrop),
+        )
 
     override fun reduce(
         state: VisualsState,
@@ -40,6 +50,10 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsEvent.Command -> command(state, event.command)
             is VisualsEvent.CurrentStyle -> shown(state, event.style)
             is VisualsEvent.LibraryLoaded -> loaded(state, event.library)
+            is VisualsEvent.PresetsLoaded -> Next(state.copy(presets = PresetEdits.tidy(event.shelf)))
+            is VisualsEvent.PresetEncoded -> PresetEdits.encoded(state, event)
+            is VisualsEvent.PresetImported -> PresetEdits.imported(state, event.preset)
+            is VisualsEvent.ImportRefused -> Next(state, listOf(Emit(VisualsFact.PresetNotImported(event.problem))))
             is VisualsEvent.MilkdropListed -> listed(state, event)
             is VisualsEvent.MilkdropImported -> imported(state, event)
             is VisualsEvent.WorkFailed -> failed(state, event.failure)
@@ -58,9 +72,35 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsCommand.DeleteFolder -> edit(state) { LibraryEdits.delete(it, command.id) }
             is VisualsCommand.AddToFolder -> edit(state) { LibraryEdits.add(it, state, command) }
             is VisualsCommand.RemoveFromFolder -> edit(state) { LibraryEdits.remove(it, command) }
+            VisualsCommand.ReloadPresets -> Next(state, listOf(Perform(VisualsWork.LoadPresets)))
+            is VisualsCommand.ApplyPreset -> PresetEdits.apply(state, command.id)
+            is VisualsCommand.RenamePreset -> PresetEdits.rename(state, command)
+            is VisualsCommand.MovePreset -> PresetEdits.move(state, command)
+            is VisualsCommand.DeletePreset -> PresetEdits.delete(state, command.id)
+            is VisualsCommand.CreatePresetFolder -> PresetEdits.createFolder(state, command)
+            is VisualsCommand.RenamePresetFolder -> PresetEdits.renameFolder(state, command)
+            is VisualsCommand.DeletePresetFolder -> PresetEdits.deleteFolder(state, command.folder)
+            is VisualsCommand.SharePreset -> PresetEdits.share(state, command.id)
+            is VisualsCommand.ImportPresetLink -> PresetEdits.importLink(state, command.text)
+            is VisualsCommand.ImportPresetFile -> Next(state, listOf(Perform(VisualsWork.ImportPresetFile(command.uri))))
             is VisualsCommand.ImportMilkdrop -> import(state, command)
             VisualsCommand.DismissImportReport -> dismiss(state)
         }
+
+    /**
+     * Reports [failure]; after one that may leave the presets on the phone different, lists them again,
+     * and after a MilkDrop import that failed as a whole, lets the next one start.
+     */
+    private fun failed(
+        state: VisualsState,
+        failure: WorkFailure,
+    ): Next<VisualsState, VisualsEffect> {
+        val report = ReportFailure(failure.message)
+        val effects = if (failure.resyncs) listOf(report, Perform(VisualsWork.LoadPresets)) else listOf(report)
+        val shelf = state.milkdrop
+        if (failure != WorkFailure.MILKDROP_NOT_IMPORTED || shelf == null) return Next(state, effects)
+        return Next(state.copy(milkdrop = shelf.copy(importing = false)), effects)
+    }
 
     /** Applies [change] to the loaded library and saves the result; nothing happens when it changes nothing. */
     private inline fun edit(
@@ -131,16 +171,6 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
         event: VisualsEvent.MilkdropImported,
     ): Next<VisualsState, VisualsEffect> =
         Next(state.copy(milkdrop = MilkdropShelf(event.presets, event.textures, importing = false, lastImport = event.report)))
-
-    private fun failed(
-        state: VisualsState,
-        failure: WorkFailure,
-    ): Next<VisualsState, VisualsEffect> {
-        val report = listOf(ReportFailure(failure.message))
-        val shelf = state.milkdrop
-        if (failure != WorkFailure.MILKDROP_NOT_IMPORTED || shelf == null) return Next(state, report)
-        return Next(state.copy(milkdrop = shelf.copy(importing = false)), report)
-    }
 
     /** [state] with [library], saved. */
     internal fun saving(

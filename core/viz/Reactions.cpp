@@ -44,6 +44,14 @@ float react(float base, float input, const ReactionShape& shape) {
     return std::isnan(moved) ? low : std::clamp(moved, low, high);
 }
 
+float drift(float base, float input, const ReactionShape& shape) {
+    const float low = std::min(unit(shape.low), unit(shape.high));
+    const float high = std::max(unit(shape.low), unit(shape.high));
+    const float swing = (curve(input, shape.curve) - kMacroRestFraction) * unit(shape.amount);
+    const float moved = shape.invert ? base - swing : base + swing;
+    return std::isnan(moved) ? low : std::clamp(moved, low, high);
+}
+
 float Follower::step(float input, float riseSeconds, float fallSeconds, float dt) {
     if (std::isnan(input) || !(dt > 0.0f)) return value_;
     const float target = std::clamp(input, 0.0f, 1.0f);

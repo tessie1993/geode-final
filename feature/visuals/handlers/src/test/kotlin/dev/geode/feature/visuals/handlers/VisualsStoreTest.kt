@@ -43,6 +43,7 @@ class VisualsStoreTest {
         visualsStore(
             customization,
             storage,
+            FakePresetFiles(),
             manifests,
             FakeMilkdropFolder(),
             FakePickedFiles(emptyMap()),

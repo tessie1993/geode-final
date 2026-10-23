@@ -20,6 +20,12 @@ data class CustomizationSnapshot(
     val lfo: List<Float>,
     /** The hit-envelope Modulators: GEODE_ADSR_SLOTS slots of GEODE_ADSR_CONFIG_FLOATS each. */
     val adsr: List<Float>,
+    /**
+     * The Customization's values, Reactions, Modulators, Macro links and Automations, as the
+     * ReactionGraph evaluates them each frame: the layout in PlanCodec.hpp, all 0 when no plan is
+     * carried.
+     */
+    val plan: List<Float>,
     /** How readily a Sound signal fires: the onset sensitivity. */
     val soundSensitivity: Float,
     /** The shortest gap between two onsets, in milliseconds. */
@@ -34,6 +40,7 @@ data class CustomizationSnapshot(
         require(params.size == PARAMS_COUNT) { "params: ${params.size} of $PARAMS_COUNT" }
         require(lfo.size == LFO_COUNT) { "lfo: ${lfo.size} of $LFO_COUNT" }
         require(adsr.size == ADSR_COUNT) { "adsr: ${adsr.size} of $ADSR_COUNT" }
+        require(plan.size == PLAN_COUNT) { "plan: ${plan.size} of $PLAN_COUNT" }
     }
 
     /** The snapshot in the schema's wire format, ready for the bridge. */
@@ -48,6 +55,7 @@ data class CustomizationSnapshot(
         params.forEach { out.putFloat(it) }
         lfo.forEach { out.putFloat(it) }
         adsr.forEach { out.putFloat(it) }
+        plan.forEach { out.putFloat(it) }
         out.putFloat(soundSensitivity)
         out.putFloat(soundRefractoryMs)
         out.putFloat(soundAttackSeconds)
@@ -60,11 +68,12 @@ data class CustomizationSnapshot(
         const val MAGIC: Int = 0x31534347
         const val VERSION: Short = 1
         const val HEADER_BYTES: Int = 12
-        const val PAYLOAD_BYTES: Int = 725
+        const val PAYLOAD_BYTES: Int = 16325
         const val WIRE_BYTES: Int = HEADER_BYTES + PAYLOAD_BYTES
         const val PARAMS_COUNT: Int = 132
         const val LFO_COUNT: Int = 24
         const val ADSR_COUNT: Int = 20
+        const val PLAN_COUNT: Int = 3900
         private const val RESERVED: Short = 0
         private const val FLAG_ON: Byte = 1
         private const val FLAG_OFF: Byte = 0
