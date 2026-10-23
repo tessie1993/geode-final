@@ -77,8 +77,7 @@ sealed interface PlayerAction {
 }
 
 /** The player's model at [now], on the monotonic clock the marks use. */
-fun PlaybackState.toPlayerModel(now: Millis): PlayerModel =
-    playerModel(now).copy(shuffle = options.shuffle, repeat = options.repeat)
+fun PlaybackState.toPlayerModel(now: Millis): PlayerModel = playerModel(now).copy(shuffle = options.shuffle, repeat = options.repeat)
 
 private fun PlaybackState.playerModel(now: Millis): PlayerModel =
     when (val player = player) {
