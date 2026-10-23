@@ -11,6 +11,30 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **No screenshot or golden-image tests (#184).** The owner dropped them to
+  save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
+  every `*ScreenshotTest`, their goldens and the `geode.screenshots`
+  convention plugin), and so do the Visual golden frames
+  (`tools/glslcheck/goldens` and `tools/ci/compare_frames.py`) and the
+  `[record-goldens]` mechanism. The shader job stays as "Shaders compile and
+  render": every Style still has to compile, draw a non-black frame and
+  survive a resize, and every Shared core effect has to draw. Previews stay
+  for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
+  handlers' database tests.
+
+- **The Visuals tab and full-screen visual mode as a feature (#43,
+  ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
+  Styles by family with Favourites, Recent, search and folders the person
+  makes, which nest; choosing a Style asks Customization for it, and the
+  tab follows whatever Customization shows. The library is kept in the
+  feature's own DataStore in a versioned text format. `VisualsRoute` and
+  `FullScreenVisualRoute` draw over the one live Visual with no background of
+  their own; full-screen mode hides the system bars and keeps the screen
+  awake when Keep screen on asks. A journey test over the real Playback,
+  Customization and Visuals stores shows the music and the Visual carry on
+  through full-screen mode and tab switches. Built alongside the old Visuals
+  hub; wired in at the switch-over (#17).
+
 - **A curated set of 50 MilkDrop presets (#93).** Geode's own 6 presets are
   joined by 8 MIT presets by M0Rf30 (projectm-presets at `ec5b039`) and 42
   from projectM's Cream of the Crop pack (`0180df2`), which has no licence; the

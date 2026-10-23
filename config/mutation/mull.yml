@@ -1,0 +1,19 @@
+# Mull's configuration for the C++ mutation jobs (docs/ci.md, "C++ mutation tests"). Read by both the
+# compiler plugin (at build time) and mull-runner, through MULL_CONFIG.
+#
+# Every mutation operator Mull has: a full run, like Pitest's on the Kotlin side.
+mutators:
+  - cxx_all
+# Only the pure native libraries' own code. The CMake build applies the plugin to one library at a
+# time (GEODE_MUTATE); these patterns keep the standard library, GoogleTest and kissfft out of it.
+includePaths:
+  - ".*/core/(util|audio|analysis|viz)/.*"
+excludePaths:
+  - ".*/core/tests/.*"
+  - ".*/third_party/.*"
+  - ".*/_deps/.*"
+# The warmup runs the whole native suite once under Mull, single-threaded and instrumented; it
+# outgrew Mull's 3 s default (and later 30 s: the stress and feedback-loop tests take most of it),
+# and a timed-out warmup aborts the job before any mutant runs.
+timeout: 60000
+quiet: true

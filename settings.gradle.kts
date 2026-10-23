@@ -90,3 +90,13 @@ include(
     ":feature:diagnostics:handlers",
     ":feature:diagnostics:ui",
 )
+
+// Visuals (#43): the Visuals tab, where a Style is chosen, and full-screen visual mode, as routes over
+// the Visuals store, which asks Customization for Styles. Built alongside the old Visuals hub and not
+// yet wired into :app (ADR-0003).
+include(
+    ":feature:visuals:api",
+    ":feature:visuals:core",
+    ":feature:visuals:handlers",
+    ":feature:visuals:ui",
+)

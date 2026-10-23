@@ -65,8 +65,8 @@ makeTexture('palette', 256, 1, (x, y, px) => {
 });
 makeTexture('flow', 2, 2, (x, y, px) => { px[0] = px[1] = 128; px[2] = 0; px[3] = 255; });
 makeTexture('white', 2, 2, (x, y, px) => { px[0] = px[1] = px[2] = px[3] = 255; });
-// Seeded (mulberry32), not Math.random: CI compares every frame with a committed golden, and a
-// noise texture that changes per run made the bloom variants differ between runs.
+// Seeded (mulberry32), not Math.random: a noise texture that changes per run made the bloom
+// variants differ between runs.
 const noiseRandom = (() => {
   let a = 0x9e3779b9;
   return () => {
@@ -87,6 +87,30 @@ makeTexture('dye', 128, 128, (x, y, px) => {
   px[0] = Math.min(255, Math.round(255 * (a * 0.9 + f * 0.8)));
   px[1] = Math.min(255, Math.round(255 * (a * 0.2 + b * 0.8 + f * 0.3)));
   px[2] = Math.min(255, Math.round(255 * (b * 0.9 + f * 0.9)));
+  px[3] = 255;
+});
+
+// The finished picture of a Style, for the Shared core effects: a soft radial gradient with
+// coloured rings and an off-centre bright disc, so geometry, colour and lens effects all show.
+makeTexture('scene', 128, 128, (x, y, px) => {
+  const u = x / 128 - 0.5, v = y / 128 - 0.5;
+  const r = Math.hypot(u, v);
+  const ring = 0.5 + 0.5 * Math.cos(r * 40);
+  const disc = Math.exp(-((u - 0.18) ** 2 + (v - 0.12) ** 2) * 60);
+  const stripe = (Math.floor((u + 0.5) * 8) % 2) * 0.15;
+  px[0] = Math.min(255, Math.round(255 * (0.15 + 0.55 * ring * (0.5 + u) + 0.6 * disc)));
+  px[1] = Math.min(255, Math.round(255 * (0.1 + 0.4 * ring * (0.5 - v) + 0.5 * disc + stripe)));
+  px[2] = Math.min(255, Math.round(255 * (0.25 + 0.5 * (1 - ring) * (0.5 - u) + 0.3 * disc)));
+  px[3] = 255;
+});
+// The last frame, for Trails and Motion blur: the same picture moved and brighter in places.
+makeTexture('history', 128, 128, (x, y, px) => {
+  const u = x / 128 - 0.5, v = y / 128 - 0.5;
+  const disc = Math.exp(-((u + 0.2) ** 2 + (v + 0.15) ** 2) * 50);
+  const ring = 0.5 + 0.5 * Math.cos(Math.hypot(u - 0.08, v) * 40);
+  px[0] = Math.min(255, Math.round(255 * (0.1 + 0.3 * ring + 0.9 * disc)));
+  px[1] = Math.min(255, Math.round(255 * (0.1 + 0.25 * ring + 0.8 * disc)));
+  px[2] = Math.min(255, Math.round(255 * (0.15 + 0.2 * ring + 0.5 * disc)));
   px[3] = 255;
 });
 

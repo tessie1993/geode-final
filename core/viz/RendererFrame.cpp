@@ -34,6 +34,7 @@ float Renderer::beginFrame(double timeSeconds) {
     {
         std::lock_guard<std::mutex> lock(stateLock_);
         frameFeatures_ = features_;
+        frameEffects_ = requestedEffects_;
         frameLayerMix_ = layerMix_;
         frameLayerBlend_ = layerBlend_;
         frameTransitionId_ = transitionId_;
@@ -188,7 +189,17 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
     scene.draw(timeSeconds_);
 }
 
-void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint targetFbo, float dt) {
+GLuint Renderer::applySharedEffects(float dt) {
+    if (!frameEffects_.active()) {
+        sharedFx_.forgetHistory();
+        return fboA_.tex();
+    }
+    // A new Style starts its trails afresh rather than echoing the old one.
+    if (sceneJustSwitched_) sharedFx_.forgetHistory();
+    return sharedFx_.apply(frameEffects_, fboA_.tex(), renderWidth_, renderHeight_, dt, timeSeconds_, quadVao_);
+}
+
+void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt) {
     // The composite draws into the No-flash limiter's candidate target, and the limiter draws the
     // frame that is shown. Only if its targets cannot be made does the composite go straight out.
     const bool limited = noFlash_.bindCandidate(width_, height_);
@@ -198,7 +209,7 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     }
     glDisable(GL_BLEND);
     CompositePass::Inputs& in = compositeInputs_;
-    in.texA = fboA_.tex();
+    in.texA = sceneTex;
     in.texB = fboB_.tex();
     GLuint flowTex = compositePass_.zeroTex();
     float flowStrength = 0.0f;
@@ -290,7 +301,8 @@ void Renderer::render(double timeSeconds, GLuint targetFbo) {
     stepOverlays(*scene, p, dt);
     const float progress = drawSecondaryTargets(p, dt);
     drawSceneTarget(*scene, p, dt);
-    composite(*scene, p, progress, targetFbo, dt);
+    const GLuint sceneTex = applySharedEffects(dt);
+    composite(*scene, p, progress, sceneTex, targetFbo, dt);
 }
 
 }  // namespace geode::viz
