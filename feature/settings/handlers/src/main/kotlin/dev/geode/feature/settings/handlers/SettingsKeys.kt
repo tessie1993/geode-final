@@ -80,6 +80,9 @@ internal object SettingsKeys {
     /** New with the Default paths section (#101), so in no old file. */
     const val PRESET_FOLDER = "preset_folder_uri"
 
+    /** New with Studio (#21), so in no old file: the old Studio always saved to Movies/Geode. */
+    const val VIDEO_FOLDER = "video_folder_uri"
+
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"
     const val SETUP_DONE = "gui_setup_done"

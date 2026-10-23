@@ -267,10 +267,15 @@ data class ExportSettings(
 )
 
 /**
- * The Default paths section (#101): the music folders the library scans, the preset folder, and
- * the folder saved presets are mirrored to.
+ * The Default paths section (#101): the folder Studio saves its videos to, the music folders the
+ * library scans, the preset folder, and the folder saved presets are mirrored to.
  */
 data class FolderSettings(
+    /**
+     * Where Studio saves Renders, Recordings, Edits and Shorts (#21): one folder for every Project,
+     * picked with the system folder picker in Studio's first-run step. Null until it is picked.
+     */
+    val videoFolder: FolderUri? = null,
     /** A folder every saved preset is also copied to, or null for none. */
     val presetMirror: FolderUri? = null,
     val musicFolders: Set<FolderUri> = emptySet(),

@@ -184,7 +184,7 @@ class SettingsCodecTest {
 
     @Test
     fun `settings are written in today's keys and formats`() {
-        assertEquals(today + ("preset_folder_uri" to null), SettingsCodec.encode(todayValues))
+        assertEquals(today + ("preset_folder_uri" to null) + ("video_folder_uri" to null), SettingsCodec.encode(todayValues))
     }
 
     @Test
@@ -193,12 +193,12 @@ class SettingsCodecTest {
 
         assertEquals(null, loaded.folders.presetFolder)
         assertEquals(today, SettingsCodec.encode(loaded).filterKeys { it in today })
-        assertEquals(setOf("preset_folder_uri"), SettingsCodec.encode(loaded).keys - today.keys)
+        assertEquals(setOf("preset_folder_uri", "video_folder_uri"), SettingsCodec.encode(loaded).keys - today.keys)
     }
 
     @Test
     fun `the preset folder is kept in its own key, apart from the preset mirror`() {
-        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets")
+        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets") + ("video_folder_uri" to null)
 
         val values = SettingsCodec.decode(stored)
 
@@ -211,6 +211,24 @@ class SettingsCodecTest {
     fun `the preset folder is new, so it is read from no old file`() {
         assertTrue(SettingsKeys.LEGACY_FILES.values.none { "preset_folder_uri" in it })
         assertEquals(null, SettingsCodec.decode(mapOf("preset_folder_uri" to 7)).folders.presetFolder)
+    }
+
+    @Test
+    fun `the video save folder is kept in its own key and read back unchanged`() {
+        val stored = today + ("preset_folder_uri" to null) + ("video_folder_uri" to "content://tree/geode-videos")
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(FolderUri("content://tree/geode-videos"), values.folders.videoFolder)
+        assertEquals(null, values.folders.presetFolder)
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `the video save folder is new, so it is read from no old file and starts unpicked`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "video_folder_uri" in it })
+        assertEquals(null, SettingsCodec.decode(today).folders.videoFolder)
+        assertEquals(null, SettingsCodec.decode(mapOf("video_folder_uri" to 7)).folders.videoFolder)
     }
 
     @Test
@@ -227,6 +245,7 @@ class SettingsCodecTest {
         assertTrue("gui_font_color" in stored && stored["gui_font_color"] == null)
         assertTrue("preset_mirror_uri" in stored && stored["preset_mirror_uri"] == null)
         assertTrue("preset_folder_uri" in stored && stored["preset_folder_uri"] == null)
+        assertTrue("video_folder_uri" in stored && stored["video_folder_uri"] == null)
         assertEquals(SettingsValues(), SettingsCodec.decode(stored))
     }
 

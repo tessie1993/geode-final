@@ -22,20 +22,22 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
   handlers' database tests.
 
-- **The Presets browser, rebuilt in the Visuals feature (#144, ADR-0003,
-  ADR-0005).** `:feature:visuals` now lists the built-in presets (a folder
-  per Style, with the ones for the Style shown first) and the saved presets
-  by folder, nested as they are in the preset folder. A tap applies a preset
-  through Customization; a saved one can be renamed, moved, shared or
-  deleted, and folders made, renamed and (when empty) deleted. Share links
-  are made and read as before (`geode://preset/` plus the gzipped preset
-  file); a preset too big for a link is shared as its file, and presets come
-  in from a pasted link or a picked file under a free name. The preset files
-  stay Customization's (#142): the browser reaches them through a
-  `PresetFiles` seam that `:app` implements over the same library at the
-  switch-over (#17). `PresetsRoute` and the stateless `PresetsScreen` are
-  reached from an "All presets" button beside Customize's preset chips. Built
-  alongside the old Presets tab, which stays in use until #17.
+- **Studio as a feature: Projects and the library (#21, ADR-0003,
+  ADR-0005).** `:feature:studio:{api,core,handlers,ui}`. Users create, rename
+  and delete Projects, choose the default Project (there is no built-in
+  one), and move videos between Projects. Deleting a Project that still has
+  videos asks "Delete N videos too?": yes deletes them with their files, no
+  moves them to another Project; nothing is deleted silently. Every video is
+  saved to one folder picked with the system folder picker in Studio's own
+  first-run step and kept in Settings > Default paths as the new **Video
+  save folder** (`video_folder_uri`); Studio follows it through Settings'
+  interface. Projects, videos and the default Project live in Studio's own
+  Room database, which the render queue (#22) will share.
+  `StudioCommand.AddVideos` is how Renders, Recordings, Edits, Shorts and the
+  old `Movies/Geode` exports (imported once at the switch-over, #17) enter
+  the library: without a Project they go to the default one, and with no
+  default they are handed back to ask about. Built alongside the old Studio;
+  wired in at the switch-over (#17).
 
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
