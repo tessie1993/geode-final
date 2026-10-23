@@ -8,7 +8,6 @@ import androidx.media3.common.util.UnstableApi
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.analysis.IntelligenceMode
-import dev.geode.analysis.LiveInputProfile
 import dev.geode.audio.AudioBus
 import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
@@ -120,8 +119,6 @@ class PlayerSession internal constructor(
             },
         )
 
-    val micState: StateFlow<MicState> get() = captureController.micState
-
     fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = captureController.setMicEnabled(enabled)
 
     fun hasMicPermission(): Boolean = captureController.hasMicPermission()
@@ -186,8 +183,6 @@ class PlayerSession internal constructor(
     fun setGuiPrefs(prefs: GuiPrefs) = settings.setGuiPrefs(prefs)
 
     fun setPlayerPrefs(prefs: PlayerPrefs) = settings.setPlayerPrefs(prefs)
-
-    fun applyLiveInputProfile(profile: LiveInputProfile) = visual.applyLiveInputProfile(profile)
 
     private val textureController: TextureController =
         TextureController(
