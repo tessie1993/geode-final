@@ -11,17 +11,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.R
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.Pick
+import dev.geode.feature.visuals.api.VisualsCommand
+import dev.geode.feature.visuals.api.VisualsFact
+import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.ui.shell.ShellViewModel
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
-
-    private val visualsViewModel: VisualsViewModel by viewModels()
 
     private val shell: ShellViewModel by viewModels()
 
@@ -35,14 +40,22 @@ class MainActivity : ComponentActivity() {
 
     private fun importSharedPreset(intent: Intent?) {
         val data = intent?.data?.toString() ?: return
-        val message =
-            when (val result = visualsViewModel.importSharedPreset(data)) {
-                PresetLinkImport.NotALink -> return
-                is PresetLinkImport.Imported -> getString(R.string.preset_link_imported, result.name.value)
-                PresetLinkImport.Unreadable -> getString(R.string.preset_link_unreadable)
-            }
-        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        if (PresetLinks.findIn(data) == null) return
+        // Visuals saves the shared preset; what came of it is told below, as its facts arrive (#17).
+        shell.visuals.send(VisualsCommand.ImportPresetLink(data))
         intent.data = null
+    }
+
+    private suspend fun tellPresetImports() {
+        shell.visuals.events.collect { fact ->
+            val message =
+                when (fact) {
+                    is VisualsFact.PresetImported -> getString(R.string.preset_link_imported, fact.id.value)
+                    is VisualsFact.PresetNotImported -> getString(R.string.preset_link_unreadable)
+                    else -> return@collect
+                }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -76,6 +89,7 @@ class MainActivity : ComponentActivity() {
             AppRoot()
         }
         keepSplashUntilUserDataLoaded()
+        lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { tellPresetImports() } }
         if (savedInstanceState == null) {
             importSharedPreset(intent)
             playFromSearch(intent)

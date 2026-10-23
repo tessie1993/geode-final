@@ -4,11 +4,9 @@ import android.app.Application
 import android.net.Uri
 import dev.geode.analysis.AnalysisCache
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.analysis.IntelligenceMode
 import dev.geode.analysis.OfflineAnalyzer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 
 /**
  * A song's whole-file analysis for what exports and renders need (ADR-0001), cached per song, and the
@@ -20,7 +18,6 @@ internal class TrackAnalysisController(
 ) {
     interface Host {
         val guiPrefs: GuiPrefs
-        val vizState: MutableStateFlow<VizUiState>
     }
 
     private val offlineAnalyzer = OfflineAnalyzer(application)
@@ -60,11 +57,6 @@ internal class TrackAnalysisController(
         return offlineAnalyzer
             .analyze(uri, gui.beatSensitivity, gui.effectiveBeatMinIntervalMs, onProgress)
             .also { AnalysisCache.save(application, uri, it) }
-    }
-
-    /** Only the choice is kept: the song playing is never analysed for it (the Visual reacts live, #17). */
-    fun setIntelligenceMode(mode: IntelligenceMode) {
-        host.vizState.update { it.copy(intelligenceMode = mode) }
     }
 
     @Suppress("ReturnCount")

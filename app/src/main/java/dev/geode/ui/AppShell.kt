@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -74,6 +75,7 @@ import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.feature.playback.ui.QueueRoute
 import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
 import dev.geode.ui.shell.AppUiCommand
 import dev.geode.ui.shell.AppUiFact
@@ -109,11 +111,23 @@ fun AppRoot() {
     // permission dialog, in split-screen, partially obscured — burning battery on frames nobody
     // sees. GLSurfaceView's contract is that the owner forwards these two.
     val lifecycleOwner = LocalLifecycleOwner.current
+    val settingsState by shell.settings.state.collectAsStateWithLifecycle()
+    val settingsValues = (settingsState as? SettingsState.Ready)?.values
+    // Settings' Visuals off (#17): while it is on, the Visual is neither drawn nor hosted anywhere.
+    val visualsOff = settingsValues?.performance?.visualsOff ?: false
+    val drawVisual by rememberUpdatedState(!visualsOff)
+    LaunchedEffect(visualsOff) {
+        if (visualsOff) {
+            visualizerView.onPause()
+        } else if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            visualizerView.onResume()
+        }
+    }
     DisposableEffect(lifecycleOwner, visualizerView) {
         val observer =
             LifecycleEventObserver { _, event ->
                 when (event) {
-                    Lifecycle.Event.ON_RESUME -> visualizerView.onResume()
+                    Lifecycle.Event.ON_RESUME -> if (drawVisual) visualizerView.onResume()
                     Lifecycle.Event.ON_PAUSE -> visualizerView.onPause()
                     else -> Unit
                 }
@@ -159,9 +173,13 @@ fun AppRoot() {
                 }
             }
     }
-    VisualizerEngineBindings(viewModel, visualizerView)
-    val settingsState by shell.settings.state.collectAsStateWithLifecycle()
-    val element = (settingsState as? SettingsState.Ready)?.values?.look?.element ?: Element.Default
+    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
+    val element = settingsValues?.look?.element ?: Element.Default
+    val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
+    // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
+    val visual: @Composable () -> Unit = {
+        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
+    }
     GeodeTheme(element, gui) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }
         val miniPlayer: @Composable () -> Unit = {
@@ -190,12 +208,10 @@ fun AppRoot() {
                         MusicLibrary(shell)
                     }
                 Place.VISUALS ->
-                    VisualsHub(
-                        viewModel,
-                        visualizerView,
-                        onOpenNowPlaying = { appUi.send(AppUiCommand.EnterFullScreen) },
-                        liveBackdrop = gui.clearVisualsMenu && !ui.fullScreen,
-                    )
+                    // Full-screen mode hosts the Visual itself, so it is never in two places at once.
+                    VisualsPlace(shell, onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) }) {
+                        if (!ui.fullScreen) visual()
+                    }
                 Place.STUDIO -> StudioRoute()
                 Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
             }
@@ -239,15 +255,7 @@ fun AppRoot() {
                 )
             }
             if (ui.fullScreen) {
-                VisualizerScreen(
-                    viewModel = viewModel,
-                    visualizerView = visualizerView,
-                    onCollapse = { appUi.send(AppUiCommand.ExitFullScreen) },
-                    onOpenVisuals = {
-                        appUi.send(AppUiCommand.ExitFullScreen)
-                        open(Place.VISUALS)
-                    },
-                )
+                FullScreenVisual(shell, keepScreenOn, visual)
             }
             PlayerSheet(shell, ui.sheet)
             ui.banner?.let { banner ->
@@ -312,20 +320,44 @@ private fun PlayerControls(
     )
 }
 
-/** The Queue or Tools sheet the App UI has open, if either; Customize opens from the Visuals. */
+/**
+ * The sheet the App UI has open, if any: the Queue, Tools, or Customize over full-screen mode (owner
+ * decision on #17: Customize is both a Visuals sub-tab and this sheet).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlayerSheet(
     shell: ShellViewModel,
     sheet: Sheet?,
 ) {
-    if (sheet != Sheet.QUEUE && sheet != Sheet.LISTENING) return
-    ModalBottomSheet(onDismissRequest = { shell.appUi.send(AppUiCommand.CloseSheet) }) {
+    if (sheet == null) return
+    val close = { shell.appUi.send(AppUiCommand.CloseSheet) }
+    ModalBottomSheet(onDismissRequest = close) {
         when (sheet) {
             Sheet.QUEUE -> QueueRoute(shell.playback)
             Sheet.LISTENING -> ListeningRoute(shell.playback, elapsedNow = ::elapsedNow)
-            Sheet.CUSTOMIZE -> Unit
+            Sheet.CUSTOMIZE -> CustomizePanel(shell, onHide = close, onBrowsePresets = close)
         }
+    }
+}
+
+/**
+ * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, and the way into the
+ * Customize sheet. Leaving it is the App UI's Back.
+ */
+@Composable
+private fun FullScreenVisual(
+    shell: ShellViewModel,
+    keepScreenOn: Boolean,
+    visual: @Composable () -> Unit,
+) {
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        visual()
+        FullScreenVisualRoute(shell.visuals, keepScreenOn = keepScreenOn, onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) })
+        TextButton(
+            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
+            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),
+        ) { Text(stringResource(R.string.visuals_open_customize)) }
     }
 }
 
