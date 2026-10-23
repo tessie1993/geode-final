@@ -137,10 +137,14 @@ class LibraryHandlers(
                 playback.state
                     .map { state ->
                         state.playlists.map { playlist ->
-                            LibraryPlaylist(PlaylistRef(playlist.id.value), playlist.name, playlist.trackCount, playlist.tracks.map { it.id })
+                            LibraryPlaylist(
+                                PlaylistRef(playlist.id.value),
+                                playlist.name,
+                                playlist.trackCount,
+                                playlist.tracks.map { it.id },
+                            )
                         }
-                    }
-                    .distinctUntilChanged()
+                    }.distinctUntilChanged()
                     .collect { results.report(LibraryEvent.PlaylistsChanged(it)) }
             }
             launch {

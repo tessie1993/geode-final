@@ -9,7 +9,6 @@ import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
-import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.PlayerState.Buffering
 import dev.geode.feature.playback.api.PlayerState.Ended
@@ -18,6 +17,7 @@ import dev.geode.feature.playback.api.PlayerState.Idle
 import dev.geode.feature.playback.api.PlayerState.Loading
 import dev.geode.feature.playback.api.PlayerState.Paused
 import dev.geode.feature.playback.api.PlayerState.Playing
+import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
 import dev.geode.feature.playback.core.EngineStep.Load

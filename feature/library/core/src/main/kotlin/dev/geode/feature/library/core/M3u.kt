@@ -69,7 +69,11 @@ internal object M3u {
             .toList()
 
     private fun String.unescaped(): String =
-        replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
+        replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+            .replace("&amp;", "&")
 
     /**
      * The songs [entries] name, in order, skipping those not in [songs]. An entry names a song by its

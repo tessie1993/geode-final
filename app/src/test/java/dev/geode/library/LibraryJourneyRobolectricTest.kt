@@ -141,10 +141,18 @@ class LibraryJourneyRobolectricTest {
         oldScreens.removeFromPlaylist("Later", index = 1)
         oldScreens.renamePlaylist("Later", "Dusk")
 
-        val playlist = library.state.value.playlists.single()
+        val playlist =
+            library.state.value.playlists
+                .single()
         assertEquals("Dusk", playlist.name)
         assertEquals(listOf(gamma.id, beta.id), playlist.songs)
-        assertEquals(listOf(gamma.id, beta.id), playback.state.value.playlists.single().tracks.map { it.id })
+        assertEquals(
+            listOf(gamma.id, beta.id),
+            playback.state.value.playlists
+                .single()
+                .tracks
+                .map { it.id },
+        )
         assertEquals(emptyList<FeatureFailure>(), failures)
     }
 

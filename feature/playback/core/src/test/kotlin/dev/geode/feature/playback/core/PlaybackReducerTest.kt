@@ -372,7 +372,7 @@ class PlaybackReducerTest {
             row(Loading(atC, start, true, LoadReason.PLAY), PlaybackEvent.Failed, Ended(atC), cancelLoad, save(atC, start)),
             // A track that fails again while it is reloaded is skipped: the music goes on.
             row(Loading(atB, mark, true, RECOVER), PlaybackEvent.Failed, Loading(atC, start, true, LoadReason.PLAY), armLoad, load(c)),
-            // A name is needed, and something to put in the playlist.
+            // A name is needed; a playlist may start empty (#17), to be filled later.
             row(
                 idle,
                 command(PlaybackCommand.CreatePlaylist("  Mix ", listOf(a))),
@@ -380,7 +380,12 @@ class PlaybackReducerTest {
                 Perform(PlaybackWork.CreatePlaylist("Mix", listOf(a))),
             ),
             row(idle, command(PlaybackCommand.CreatePlaylist("  ", listOf(a))), idle),
-            row(idle, command(PlaybackCommand.CreatePlaylist("Mix", emptyList())), idle),
+            row(
+                idle,
+                command(PlaybackCommand.CreatePlaylist("Mix", emptyList())),
+                idle,
+                Perform(PlaybackWork.CreatePlaylist("Mix", emptyList())),
+            ),
             row(idle, command(PlaybackCommand.SaveHistoryAsPlaylist(" ")), idle),
         )
 
