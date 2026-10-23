@@ -52,7 +52,7 @@ internal fun SettingsPlace(
             appVersion = BuildConfig.VERSION_NAME,
             onStartTutorial = onStartTutorial,
             onSetLiveWallpaper = { context.openLiveWallpaperPicker() },
-            aboutExtra = { DiagnosticsSection(shell.diagnostics) },
+            helpExtra = { DiagnosticsSection(shell.diagnostics) },
         )
     }
 }

@@ -48,7 +48,7 @@ private enum class FolderPick {
  * Settings' place (ADR-0003): the only part that touches the Settings store and the system folder
  * picker. Which section is open is App UI state kept here. [fontColors] and [appVersion] come from the
  * app; [onStartTutorial] replays the intro tour and [onSetLiveWallpaper] opens the system's wallpaper
- * picker. [aboutExtra] is drawn at the end of the About section, for what other features add there.
+ * picker. [helpExtra] is drawn at the end of the Help section, for what other features add there (Diagnostics).
  */
 @Composable
 fun SettingsRoute(
@@ -58,7 +58,7 @@ fun SettingsRoute(
     onStartTutorial: () -> Unit,
     onSetLiveWallpaper: () -> Unit,
     modifier: Modifier = Modifier,
-    aboutExtra: @Composable () -> Unit = {},
+    helpExtra: @Composable () -> Unit = {},
 ) {
     val state by settings.state.collectAsStateWithLifecycle()
     var section by rememberSaveable { mutableStateOf(SettingsSection.THEME) }
@@ -94,6 +94,6 @@ fun SettingsRoute(
             }
         },
         modifier = modifier,
-        aboutExtra = aboutExtra,
+        helpExtra = helpExtra,
     )
 }

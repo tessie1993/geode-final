@@ -175,15 +175,6 @@ class OldScreenPlayback internal constructor(
 
     fun enqueue(uri: TrackId) = withDetails(listOf(QueueTrack(uri))) { listOf(PlaybackCommand.AddToQueue(it)) }
 
-    /** Voice search: the phone's songs matching [query] as a queue, or all of them when it is blank. */
-    fun playFromSearch(query: String) {
-        scope.launch {
-            val all = withContext(Dispatchers.IO) { DeviceTrackQuery.query(application) }
-            val queue = LibraryBrowse.search(all, query).map(PlaybackQueue::queueTrack)
-            queue.firstOrNull()?.let { playFrom(queue, it.uri) }
-        }
-    }
-
     /**
      * Sends [command] after every send asked for before it, including those still waiting for songs'
      * details: one Mutex, which hands itself over in the order it was asked for, keeps them in order.

@@ -131,8 +131,6 @@ class PlayerViewModel
 
         fun playNext(uri: TrackId) = playback.playNext(uri)
 
-        fun playFromSearch(query: String) = playback.playFromSearch(query)
-
         fun enqueue(uri: TrackId) = playback.enqueue(uri)
 
         fun shuffleAllHistory() = playback.shuffleAllHistory()

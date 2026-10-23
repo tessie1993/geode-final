@@ -13,6 +13,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.R
+import dev.geode.feature.library.api.LibraryCommand
+import dev.geode.feature.library.api.Pick
+import dev.geode.ui.shell.ShellViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -20,11 +23,13 @@ class MainActivity : ComponentActivity() {
 
     private val visualsViewModel: VisualsViewModel by viewModels()
 
-    private val playerViewModel: PlayerViewModel by viewModels()
+    private val shell: ShellViewModel by viewModels()
 
     private fun playFromSearch(intent: Intent?) {
         if (intent?.action != MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) return
-        playerViewModel.playFromSearch(intent.getStringExtra(SearchManager.QUERY).orEmpty())
+        // Library finds the songs and plays what the search lists, as a search in Music would (#17).
+        shell.library.send(LibraryCommand.Search(intent.getStringExtra(SearchManager.QUERY).orEmpty()))
+        shell.library.send(LibraryCommand.Play(Pick.Shown))
         intent.action = null
     }
 
