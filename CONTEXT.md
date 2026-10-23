@@ -181,9 +181,9 @@ The one app-wide channel every feature reports its failures to, shown in one App
 _Avoid_: event bus, crash reporter
 
 **Audio adapter**:
-The one interface features use to reach the shared native audio pipeline (`:arch:audio`): the player, live capture from the microphone or a USB or line input, and the analysis that feeds the Visual. It announces what happens rather than being polled. It sits beneath Playback and Capture and is not a feature.
+The one interface features use to reach the shared native audio pipeline (`:arch:audio`): the player, Live input from the microphone, and the analysis that feeds the Visual. It announces what happens rather than being polled. It sits beneath Playback and is not a feature.
 _Avoid_: audio service, player session
 
 **Announcement**:
-A change the audio adapter reports as it happens, such as playback started, paused, seeked, track changed, ended or failed, or a capture running, gone quiet or lost.
+A change the audio adapter reports as it happens, such as playback started, paused, seeked, track changed, ended or failed, or Live input running, gone quiet or lost.
 _Avoid_: callback, status poll
