@@ -17,7 +17,8 @@ import kotlin.random.Random
  * [onShare] shares the current Customization as a preset file or code through the share sheet (the
  * app stays offline), and [onHide] leaves the Visual alone once the panel is swiped away. [looks],
  * [presets] and [live] are what the opening place offers: the look picker's Styles, this Style's saved
- * presets, and the engine's live values when it has them.
+ * presets, and the engine's live values when it has them. [onBrowsePresets] opens the Presets browser
+ * (#144), which the Visuals feature keeps.
  */
 @Composable
 fun CustomizeRoute(
@@ -28,6 +29,7 @@ fun CustomizeRoute(
     looks: List<LookChip> = emptyList(),
     presets: List<PresetChip> = emptyList(),
     live: LiveMeters = LiveMeters.NONE,
+    onBrowsePresets: () -> Unit = {},
 ) {
     val state by customization.state.collectAsStateWithLifecycle()
     CustomizeScreen(
@@ -38,6 +40,7 @@ fun CustomizeRoute(
                 CustomizeAction.SurpriseMe -> customization.send(surprise(state.current, Random.Default))
                 CustomizeAction.Share -> onShare(state.current)
                 CustomizeAction.Hide -> onHide()
+                CustomizeAction.BrowsePresets -> onBrowsePresets()
             }
         },
         modifier = modifier,

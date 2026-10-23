@@ -79,6 +79,47 @@ internal fun FullScreenControlsPreview() =
 internal fun FullScreenHiddenPreview() =
     VisualsPreview(dark = true) { FullScreenVisualScreen(PreviewStates.ready.toFullScreenModel(controlsShown = false), onAction = {}) }
 
+@Composable
+internal fun PresetsPreview(
+    state: VisualsState,
+    place: PresetPlace = PresetPlace.TOP,
+    notice: PresetNotice? = null,
+    dark: Boolean = true,
+) = VisualsPreview(dark) { PresetsScreen(state.toPresetsModel(place, notice), onAction = {}) }
+
+@Preview(name = "Presets", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsTopPreview() = PresetsPreview(PreviewStates.ready)
+
+@Preview(name = "Presets, light")
+@Composable
+internal fun PresetsLightPreview() = PresetsPreview(PreviewStates.ready, dark = false)
+
+@Preview(name = "Presets, loading", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsLoadingPreview() = PresetsPreview(PreviewStates.loading)
+
+@Preview(name = "Presets, in a folder", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsFolderPreview() = PresetsPreview(PreviewStates.ready, PresetPlace.Saved(PreviewStates.calmPresetFolder))
+
+@Preview(name = "Presets, built-in", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsBuiltInPreview() = PresetsPreview(PreviewStates.ready, PresetPlace.BuiltIn)
+
+@Preview(name = "Presets, built-in for a Style", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsBuiltInStylePreview() = PresetsPreview(PreviewStates.ready, PresetPlace.BuiltInFor(PreviewStates.tunnelStyle))
+
+@Preview(name = "Presets, imported", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsImportedPreview() = PresetsPreview(PreviewStates.ready, notice = PresetNotice.Imported("Sunday morning 2"))
+
+@Preview(name = "Presets, none saved", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun PresetsNoneSavedPreview() =
+    PresetsPreview(PreviewStates.ready.copy(presets = PreviewStates.shelf.copy(saved = emptyList(), folders = emptyList())))
+
 private const val STAND_IN_DEEP = 0xFF0B2A3C
 private const val STAND_IN_GLOW = 0xFF2E7D6B
 private const val STAND_IN_WARM = 0xFFB0703A

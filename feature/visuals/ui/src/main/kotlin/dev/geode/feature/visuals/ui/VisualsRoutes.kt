@@ -45,6 +45,8 @@ fun VisualsRoute(
         visuals.events.collect { fact ->
             when (fact) {
                 is VisualsFact.FolderCreated -> open = fact.id.value
+                // The Presets browser's facts are its own route's.
+                is VisualsFact.PresetShareReady, is VisualsFact.PresetImported, is VisualsFact.PresetNotImported -> Unit
             }
         }
     }
