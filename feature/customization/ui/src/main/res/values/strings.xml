@@ -17,6 +17,9 @@
     <string name="customize_macros">Macros</string>
     <string name="customize_effects">Effects</string>
     <string name="customize_palettes">Palette</string>
+    <string name="customize_compare">A/B compare</string>
+    <string name="customize_keep_slot">Keep as %1$s</string>
+    <string name="customize_show_slot">Show %1$s</string>
     <string name="customize_presets">Presets for this Style</string>
     <string name="customize_all_presets">All presets</string>
     <string name="customize_no_presets">No presets for this Style yet. Save one from the top bar.</string>
