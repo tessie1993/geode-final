@@ -346,6 +346,11 @@ data class PerformanceSettings(
     val visualFrameRate: VisualFrameRate = VisualFrameRate.SCREEN_MAX,
     /** Saves battery and heat: lower Visual quality, 30 fps, still floating assets, slower renders. */
     val saveMode: Boolean = false,
+    /**
+     * Visuals off (#196): nothing draws or analyses for the Visual, and no Render or Recording can be
+     * made. The Element and its Hero scene still run. Visuals and Studio read it here.
+     */
+    val visualsOff: Boolean = false,
 ) {
     /** The Visual quality to draw at: [VisualQuality.SAVER] in save mode, else the chosen one. */
     val visual: VisualQuality get() = if (saveMode) VisualQuality.SAVER else visualQuality

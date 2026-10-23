@@ -207,6 +207,7 @@ object SettingsRules {
             is PerformanceCommand.SetVisualQuality -> performance.copy(visualQuality = command.quality)
             is PerformanceCommand.SetVisualFrameRate -> performance.copy(visualFrameRate = command.frameRate)
             is PerformanceCommand.SetSaveMode -> performance.copy(saveMode = command.on)
+            is PerformanceCommand.SetVisualsOff -> performance.copy(visualsOff = command.on)
         }
 
     private fun LookSettings.inRange(): LookSettings =

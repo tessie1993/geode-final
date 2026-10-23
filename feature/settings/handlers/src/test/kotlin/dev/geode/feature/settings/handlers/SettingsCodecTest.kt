@@ -182,7 +182,7 @@ class SettingsCodecTest {
      */
     private val newKeysAtDefaults: Map<String, Any?> = SettingsCodec.encode(SettingsValues()) - today.keys
 
-    /** #28's preferences, every one away from its default. */
+    /** #28's and #196's preferences, every one away from its default. */
     private val preferences: Map<String, Any?> =
         mapOf(
             "export_quality" to "QHD1440",
@@ -193,6 +193,7 @@ class SettingsCodecTest {
             "visual_quality" to "BALANCED",
             "visual_frame_rate" to "FPS30",
             "cpu_gpu_save_mode" to true,
+            "visuals_off" to true,
         )
 
     @Test
@@ -243,7 +244,7 @@ class SettingsCodecTest {
         val values = SettingsCodec.decode(stored)
 
         assertEquals(BackgroundSettings(music = false, renders = false, recording = true), values.background)
-        assertEquals(PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS30, saveMode = true), values.performance)
+        assertEquals(PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS30, saveMode = true, visualsOff = true), values.performance)
         assertFalse(values.export.finishedAlerts)
         assertEquals(ExportQuality.QHD1440, values.export.quality)
         assertEquals(stored, SettingsCodec.encode(values))

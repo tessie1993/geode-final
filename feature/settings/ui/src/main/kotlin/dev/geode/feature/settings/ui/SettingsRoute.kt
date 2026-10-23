@@ -27,7 +27,8 @@ fun rememberFolderPicker(onPicked: (FolderUri) -> Unit): () -> Unit {
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             if (uri != null) {
                 runCatching {
-                    resolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    val readWrite = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    resolver.takePersistableUriPermission(uri, readWrite)
                 }
                 onPicked(FolderUri(uri.toString()))
             }

@@ -174,6 +174,7 @@ internal object SettingsCodec {
             visualQuality = enum(K.VISUAL_QUALITY, default.visualQuality),
             visualFrameRate = enum(K.VISUAL_FRAME_RATE, default.visualFrameRate),
             saveMode = boolean(K.SAVE_MODE, default.saveMode),
+            visualsOff = boolean(K.VISUALS_OFF, default.visualsOff),
         )
     }
 
@@ -274,6 +275,7 @@ internal object SettingsCodec {
             K.VISUAL_QUALITY to values.performance.visualQuality.name,
             K.VISUAL_FRAME_RATE to values.performance.visualFrameRate.name,
             K.SAVE_MODE to values.performance.saveMode,
+            K.VISUALS_OFF to values.performance.visualsOff,
         )
 
     /** Typed reads from a stored map; a value of the wrong type reads as absent. */

@@ -92,6 +92,9 @@ internal object SettingsKeys {
     const val VISUAL_FRAME_RATE = "visual_frame_rate"
     const val SAVE_MODE = "cpu_gpu_save_mode"
 
+    // New with #196, so in no old file.
+    const val VISUALS_OFF = "visuals_off"
+
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"
     const val SETUP_DONE = "gui_setup_done"

@@ -221,6 +221,7 @@ class SettingsRulesTest {
                 defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.FPS60)),
             ),
             Row(PerformanceCommand.SetSaveMode(true), defaults.copy(performance = performance.copy(saveMode = true))),
+            Row(PerformanceCommand.SetVisualsOff(true), defaults.copy(performance = performance.copy(visualsOff = true))),
         )
 
     private val folderRows: List<Row> =

@@ -266,6 +266,11 @@ sealed interface PerformanceCommand : SettingsCommand {
     data class SetSaveMode(
         val on: Boolean,
     ) : PerformanceCommand
+
+    /** Visuals off, in Battery (#196). */
+    data class SetVisualsOff(
+        val on: Boolean,
+    ) : PerformanceCommand
 }
 
 sealed interface OnboardingCommand : SettingsCommand {

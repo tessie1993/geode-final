@@ -142,6 +142,9 @@
     <string name="background_recording">Recording keeps going</string>
     <string name="battery_group_save_mode">Save mode</string>
     <string name="save_mode">CPU/GPU save mode</string>
+    <string name="battery_group_visuals_off">Visuals off</string>
+    <string name="visuals_off">Turn the Visuals off</string>
+    <string name="visuals_off_note">Stops the Visual entirely to save battery: nothing is drawn or analysed for it, and no Render or Recording can be made. Music, the Element and videos already saved still work.</string>
     <string name="save_mode_note">Lowers Visual quality, draws at 30 fps, holds the floating assets still and slows renders down.</string>
 
     <!-- CPU/GPU -->

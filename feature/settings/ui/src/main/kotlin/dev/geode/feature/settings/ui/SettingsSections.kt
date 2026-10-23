@@ -274,8 +274,8 @@ internal fun LazyListScope.exportSection(
 }
 
 /**
- * Battery (#28, owner 2026-10-23): the CPU/GPU save mode, and how sharp and how often the Visual is
- * drawn on screen. Save mode overrides both while it is on; cooling down when hot is automatic.
+ * Battery (#28, owner 2026-10-23): the CPU/GPU save mode, Visuals off (#196), and how sharp and how
+ * often the Visual is drawn on screen. Save mode overrides both while it is on; cooling down when hot is automatic.
  */
 internal fun LazyListScope.batterySection(
     performance: PerformanceSettings,
@@ -285,6 +285,12 @@ internal fun LazyListScope.batterySection(
         SettingsGroup(stringResource(R.string.battery_group_save_mode)) {
             SwitchRow(stringResource(R.string.save_mode), performance.saveMode) { change(PerformanceCommand.SetSaveMode(it)) }
             Note(stringResource(R.string.save_mode_note))
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.battery_group_visuals_off)) {
+            SwitchRow(stringResource(R.string.visuals_off), performance.visualsOff) { change(PerformanceCommand.SetVisualsOff(it)) }
+            Note(stringResource(R.string.visuals_off_note))
         }
     }
     item {
