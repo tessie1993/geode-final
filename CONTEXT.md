@@ -14,6 +14,26 @@ _Avoid_: visuals (for the App UI), graphics, animation, visualizer
 The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the Element. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
 _Avoid_: visuals, visual design, interface (an architecture term)
 
+**Bar**:
+The App UI's bottom navigation, the same in every Element, in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app.
+_Avoid_: tabs, nav bar, menu
+
+**Home**:
+The middle page of the Bar: the Element's Hero scene with a now-playing card on it.
+_Avoid_: dashboard, start screen
+
+**First-run setup**:
+What a new install shows before the app opens: a tour of the main features and basic use that can be skipped, the music, notification and microphone permissions, and the Save folder, which cannot be skipped.
+_Avoid_: onboarding wizard, welcome flow
+
+**Mini-player**:
+The small player above the Bar. Tapping it always opens the full-screen Visual, unless Visuals off is on, when it opens the plain player.
+_Avoid_: now-playing bar, player bar
+
+**Visuals off**:
+The battery-saving setting that stops the Visual entirely: nothing draws it, so the player shows a still background, and no Render or Recording can be made. The Element and its Hero scene still run, and Studio still works with videos already saved.
+_Avoid_: low power mode, disable visualizer
+
 **Element**:
 One selectable skin for the App UI, named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
 _Avoid_: theme, style (a Style is a look for the Visual), skin pack, Theme pack
@@ -67,7 +87,7 @@ A generated value that moves targets the way a Sound signal does: an LFO wave, a
 _Avoid_: LFO (only one kind), oscillator
 
 **Automation**:
-Behaviour the Customization performs by itself over the music: switching Style, changing the palette, Camera moves on the beat, sequenced effects, and autopilot Macros.
+Behaviour the Customization performs by itself over the music: switching Style, changing the palette, Camera moves on the beat and sequenced effects. It never takes over the Macros: there is no autopilot.
 _Avoid_: Auto visuals, scripts
 
 **No-flash rule**:
@@ -81,8 +101,12 @@ The place where people turn music into video files: they make Renders and Record
 _Avoid_: Editor, export screen
 
 **Project**:
-A folder of Renders, Recordings, Edits and Shorts that the user creates and names. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported.
+A named group of Renders, Recordings, Edits and Shorts, kept as its own folder inside the Save folder. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported. Only the user deletes videos: deleting a Project, after a confirmation, deletes its folder and every video in it, and nothing is ever deleted automatically.
 _Avoid_: album, collection, folder (for the concept)
+
+**Save folder**:
+The one folder on the device where every Project lives, chosen by the user during the first-run setup. The app does not finish starting until a Save folder is chosen, and if it is lost later (deleted, or access withdrawn) the app asks again before going on.
+_Avoid_: export path, output directory
 
 **Render**:
 A video file made offline from a song or playlist with a Customization. It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
@@ -131,7 +155,7 @@ The App UI's design tokens (colours, type, spacing, sizes, corners), its theme a
 _Avoid_: UI kit, common UI, theme module
 
 **Error channel**:
-The one app-wide channel every feature reports its failures to, shown in one App UI banner and written to the local log (ADR-0004). Reporting never stops the audio or the Visual.
+The one app-wide channel every feature reports its failures to, shown in one App UI banner, over the full-screen Visual too, and written to the local log (ADR-0004). Reporting never stops the audio or the Visual.
 _Avoid_: event bus, crash reporter
 
 **Audio adapter**:
