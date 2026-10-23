@@ -66,9 +66,11 @@ object FeatureRules {
             .filter { it.module.startsWith(ELEMENTS) }
             .flatMap { file ->
                 file.references
-                    .filter { ref -> (ref.startsWith("dev.geode.") && !ref.startsWith("dev.geode.design.")) || ref.startsWith("android.media.") }
+                    .filter { ref -> ref.isBuildCodeButDesign() || ref.startsWith("android.media.") }
                     .map { "${file.path}: ${file.module} uses $it" }
             }
+
+    private fun String.isBuildCodeButDesign(): Boolean = startsWith("dev.geode.") && !startsWith("dev.geode.design.")
 
     /** Features depend on each other in one direction only. */
     fun noFeatureCycles(modules: List<Module>): List<String> {
