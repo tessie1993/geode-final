@@ -3,6 +3,7 @@ package dev.geode.feature.playback.ui
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.ListeningOptions
+import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.LoadReason
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
@@ -107,6 +108,39 @@ class PlayerModelTest {
             listOf(null, null, null),
             listOf(PlayerAction.OpenQueue, PlayerAction.OpenTools, PlayerAction.ToggleFavourite).map { it.toCommand(model) },
         )
+    }
+
+    @Test
+    fun `the A-B loop is shaded only on its own track`() {
+        val playing = PlayerState.Playing(queue, moving)
+
+        fun loopOf(loop: AbLoop) = PlaybackState(playing, loop = loop).toPlayerModel(Millis.ZERO).loop
+
+        assertNull(loopOf(AbLoop.Off))
+        assertEquals(LoopSpan(Millis(1_000), null), loopOf(AbLoop.Starting(a.id, Millis(1_000))))
+        assertEquals(LoopSpan(Millis(1_000), Millis(9_000)), loopOf(AbLoop.On(a.id, Millis(1_000), Millis(9_000))))
+        assertNull(loopOf(AbLoop.Starting(b.id, Millis(1_000))))
+        assertNull(loopOf(AbLoop.On(b.id, Millis(1_000), Millis(9_000))))
+    }
+
+    @Test
+    fun `with nothing playing no A-B loop is shaded`() {
+        val state = PlaybackState(PlayerState.Idle, loop = AbLoop.On(a.id, Millis(1_000), Millis(9_000)))
+
+        assertEquals(PlayerModel.IDLE, state.toPlayerModel(Millis.ZERO))
+    }
+
+    @Test
+    fun `while the seek bar is dragged the time shown is where it would seek to`() {
+        val model = PlayerModel(PlayerStatus.PLAYING, a, Millis(13_000), meantToPlay = true, canGoPrevious = true, canGoNext = true)
+
+        assertEquals(Millis(13_000), model.timeShown(null))
+        assertEquals(Millis.ZERO, model.timeShown(0f))
+        assertEquals(Millis(50_000), model.timeShown(0.25f))
+        assertEquals(Millis(200_000), model.timeShown(1f))
+        assertEquals(Millis.ZERO, model.timeShown(-0.5f))
+        assertEquals(Millis(200_000), model.timeShown(1.5f))
+        assertEquals(Millis.ZERO, PlayerModel.IDLE.timeShown(0.5f))
     }
 
     @Test
