@@ -24,8 +24,8 @@ import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.playback.handlers.PlaybackSessionService
-import dev.geode.ui.OldScreenModels
 import dev.geode.widget.WidgetPublisher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -90,9 +90,9 @@ class GeodePlaybackService : PlaybackSessionService() {
     private fun leftOff(): MediaSession.MediaItemsWithStartPosition? {
         val state =
             runBlocking {
-                withTimeoutOrNull(RESTORE_WAIT_MS) { playback.state.first { OldScreenModels.queueOf(it.player) != null } }
+                withTimeoutOrNull(RESTORE_WAIT_MS) { playback.state.first { it.player.currentQueue != null } }
             } ?: return null
-        val queue = OldScreenModels.queueOf(state.player) ?: return null
+        val queue = state.player.currentQueue ?: return null
         val items =
             queue.tracks.map { track ->
                 MediaItem
@@ -101,14 +101,14 @@ class GeodePlaybackService : PlaybackSessionService() {
                     .setMediaMetadata(
                         MediaMetadata
                             .Builder()
-                            .setTitle(track.title.ifBlank { OldScreenModels.fileNameOf(track.id) })
+                            .setTitle(track.title.ifBlank { track.id.fileName() })
                             .setArtist(track.artist.ifBlank { null })
                             .setDurationMs(track.duration.value)
                             .setExtras(MediaArtwork.embeddedArtExtras(track.id))
                             .build(),
                     ).build()
             }
-        return MediaSession.MediaItemsWithStartPosition(items, queue.index, OldScreenModels.positionAt(state.player, Millis.ZERO).value)
+        return MediaSession.MediaItemsWithStartPosition(items, queue.index, state.player.positionAt(Millis.ZERO).value)
     }
 
     override fun onSessionBuilt(player: Player) {
@@ -212,7 +212,7 @@ class GeodePlaybackService : PlaybackSessionService() {
                 .setMediaMetadata(
                     item.mediaMetadata
                         .buildUpon()
-                        .setTitle(item.mediaMetadata.title ?: OldScreenModels.fileNameOf(TrackId(id)))
+                        .setTitle(item.mediaMetadata.title ?: TrackId(id).fileName())
                         .setDurationMs(length.takeIf { it > 0 })
                         .build(),
                 ).build()

@@ -110,8 +110,8 @@ fun LibraryScreen(
     editing?.let { row ->
         SongEditorDialog(
             song = row.song,
-            onSave = { edit ->
-                send(LibraryCommand.EditSong(row.song.id, edit))
+            onSave = { edit, writeToFile ->
+                send(LibraryCommand.EditSong(row.song.id, edit, writeToFile))
                 editing = null
             },
             onDismiss = { editing = null },
@@ -353,13 +353,8 @@ private fun LazyListScope.duplicates(
 ) {
     page.groups.forEach { group ->
         // A track is in one group only, so its first copy keys the heading.
-        item(
-            key =
-                "duplicates:" +
-                    group.rows
-                        .first()
-                        .song.id.value,
-        ) {
+        val firstSong = group.rows.first().song
+        item(key = "duplicates:" + firstSong.id.value) {
             Text(
                 pluralStringResource(R.plurals.library_duplicates_group, group.rows.size, group.title, group.artist, group.rows.size),
                 style = MaterialTheme.typography.titleSmall,

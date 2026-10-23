@@ -25,7 +25,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import dev.geode.audio.adapter.CaptureSource as AdapterSource
 
 /**
- * Carries out Capture's work against the audio adapter (microphone and USB / line-in only) and
+ * Carries out Capture's work against the audio adapter (the microphone only) and
  * Playback, and turns what the adapter announces into events. Everything that can fail is caught here,
  * at the edge, and reported as a named event for the reducer to decide on (ADR-0005).
  */
@@ -84,13 +84,11 @@ class CaptureHandlers(
     private fun CaptureSource.toAdapter(): AdapterSource =
         when (this) {
             CaptureSource.MICROPHONE -> AdapterSource.MICROPHONE
-            CaptureSource.LINE_IN -> AdapterSource.LINE_IN
         }
 
     private fun AdapterSource.toCapture(): CaptureSource =
         when (this) {
             AdapterSource.MICROPHONE -> CaptureSource.MICROPHONE
-            AdapterSource.LINE_IN -> CaptureSource.LINE_IN
         }
 
     private fun CaptureFailure.toRefusal(): StartRefusal =

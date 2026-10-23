@@ -161,6 +161,7 @@ class LibraryReducerTest {
                 "Could not write the playlist file",
                 "Could not save the smart playlist",
                 "Could not delete the smart playlist",
+                "Could not write the song info into the file",
             ),
             StorageFailure.entries.map(::describe),
         )

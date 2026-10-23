@@ -10,6 +10,10 @@ import dev.geode.engine.types.Millis
 sealed interface SettingsCommand
 
 sealed interface LookCommand : SettingsCommand {
+    data class SetElement(
+        val element: Element,
+    ) : LookCommand
+
     data class SetAccentIntensity(
         val intensity: Float,
     ) : LookCommand
@@ -45,6 +49,10 @@ sealed interface LookCommand : SettingsCommand {
 
     data class SetClearVisualsMenu(
         val on: Boolean,
+    ) : LookCommand
+
+    data class SetAmbientMode(
+        val mode: AmbientMode,
     ) : LookCommand
 }
 
@@ -264,6 +272,11 @@ sealed interface PerformanceCommand : SettingsCommand {
     ) : PerformanceCommand
 
     data class SetSaveMode(
+        val on: Boolean,
+    ) : PerformanceCommand
+
+    /** Visuals off, in Battery (#196). */
+    data class SetVisualsOff(
         val on: Boolean,
     ) : PerformanceCommand
 }

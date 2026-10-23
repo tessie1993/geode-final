@@ -20,13 +20,15 @@ import dev.geode.feature.settings.api.SettingsValues
 
 /**
  * Settings, the whole screen: the sections and the open section's settings (ADR-0003). Stateless: it shows
- * [model] and reports everything the person does to [onAction]; no store, ViewModel or IO.
+ * [model] and reports everything the person does to [onAction]; no store, ViewModel or IO. [helpExtra]
+ * is drawn at the end of the Help section, for what another feature adds there (Diagnostics, #17).
  */
 @Composable
 fun SettingsScreen(
     model: SettingsScreenModel,
     onAction: (SettingsAction) -> Unit,
     modifier: Modifier = Modifier,
+    helpExtra: @Composable () -> Unit = {},
 ) {
     Surface(modifier.fillMaxSize()) {
         Column {
@@ -45,7 +47,7 @@ fun SettingsScreen(
                     Text(stringResource(R.string.settings_loading), style = MaterialTheme.typography.bodyMedium)
                 }
             } else {
-                SectionColumn { section(model, values, onAction) }
+                SectionColumn { section(model, values, onAction, helpExtra) }
             }
         }
     }
@@ -55,6 +57,7 @@ private fun LazyListScope.section(
     model: SettingsScreenModel,
     values: SettingsValues,
     onAction: (SettingsAction) -> Unit,
+    helpExtra: @Composable () -> Unit,
 ) {
     val change: (SettingsCommand) -> Unit = { onAction(SettingsAction.Change(it)) }
     when (model.section) {
@@ -64,7 +67,10 @@ private fun LazyListScope.section(
         SettingsSection.EXPORT -> exportSection(values.export, change)
         SettingsSection.DEFAULT_PATHS -> defaultPathsSection(values.folders, onAction)
         SettingsSection.BATTERY -> batterySection(values.performance, change)
-        SettingsSection.HELP -> helpSection(values.onboarding, onAction)
+        SettingsSection.HELP -> {
+            helpSection(values.onboarding, onAction)
+            item { helpExtra() }
+        }
         SettingsSection.ABOUT -> aboutSection(model.appVersion)
     }
 }

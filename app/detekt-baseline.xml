@@ -41,7 +41,6 @@
     <ID>ReturnCount:AudioTranscoder.kt$AudioTranscoder$fun feedEncoder(): Boolean</ID>
     <ID>ReturnCount:BarTrim.kt$BarTrim$fun trimToBars( durationUs: Long, bpm: Float, ): Long</ID>
     <ID>ReturnCount:BlueNoise.kt$BlueNoise$fun createTexture(context: Context): Int</ID>
-    <ID>ReturnCount:CaptureController.kt$CaptureController$fun setMicEnabled(enabled: Boolean): MicCapture.Failure?</ID>
     <ID>ReturnCount:Chromagram.kt$Chromagram$private fun peakToMedian(): Float</ID>
     <ID>ReturnCount:CyclicPalettes.kt$CyclicPalettes$fun createTexture(context: Context): Int</ID>
     <ID>ReturnCount:CymaticsScene.kt$CymaticsScene$private fun driveSpectrum( f: AudioFeatures, dt: Float, ): FloatArray</ID>

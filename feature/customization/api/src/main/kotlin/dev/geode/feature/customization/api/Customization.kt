@@ -43,6 +43,9 @@ data class Customization(
  * Style switching's own bookkeeping sits beside it, outside the history: [visualizerStyles], the
  * Visualizer styles `:app` hands in ([CustomizationCommand.UseVisualizerStyles]), and [styleSwitches],
  * how many times it has switched, which says where the app's picks' shuffle has got to.
+ *
+ * A/B compare's two slots ([compare]) sit outside the history too: what the person kept to switch
+ * between while they decide.
  */
 data class CustomizationState(
     val current: Customization,
@@ -50,7 +53,14 @@ data class CustomizationState(
     val redo: List<Customization> = emptyList(),
     val visualizerStyles: List<SceneId> = emptyList(),
     val styleSwitches: Int = 0,
+    val compare: Map<CompareSlot, Customization> = emptyMap(),
 )
+
+/** A/B compare's two slots. */
+enum class CompareSlot {
+    A,
+    B,
+}
 
 /** The intents: what the outside may ask of Customization. Every edit can be undone. */
 sealed interface CustomizationCommand {
@@ -152,6 +162,19 @@ sealed interface CustomizationCommand {
 
     /** Back to the current Style's own defaults. Undoable. */
     data object ResetToStyle : CustomizationCommand
+
+    /** Keeps the current Customization in A/B compare's [slot], replacing what it kept. Not an edit. */
+    data class KeepForCompare(
+        val slot: CompareSlot,
+    ) : CustomizationCommand
+
+    /**
+     * Switches to what A/B compare's [slot] keeps, the current Automations kept as they are. An edit
+     * like any other; nothing happens while the slot is empty.
+     */
+    data class Compare(
+        val slot: CompareSlot,
+    ) : CustomizationCommand
 
     data object Undo : CustomizationCommand
 

@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /**
  * The Library's own database (ADR-0004): the library index with the tags Geode's reader filled in,
  * the user's edits to song info, the favourites, the excluded folders and, since version 2, the smart
- * playlists (#146). The playlists and the play history are Playback's (ADR-0005), in Playback's
+ * playlists (#146). Version 3 adds the genre, year, track number and comment to the edits (#17). The playlists and the play history are Playback's (ADR-0005), in Playback's
  * database.
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
@@ -40,11 +40,11 @@ abstract class LibraryDatabase : RoomDatabase() {
     abstract fun dao(): LibraryDao
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         const val NAME = "library.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = arrayOf(AddSmartPlaylists)
+        val MIGRATIONS: Array<Migration> = arrayOf(AddSmartPlaylists, AddEditTags)
 
         fun open(
             context: Context,
@@ -77,7 +77,10 @@ data class SongEntity(
     val tagsRead: Boolean,
 )
 
-/** The user's edit to one song's info. */
+/**
+ * The user's edit to one song's info. Since version 3 (#17) it holds the genre, year, track number and
+ * comment too; null where an older edit left them as they were.
+ */
 @Entity(tableName = "edits")
 data class EditEntity(
     @PrimaryKey val trackId: String,
@@ -85,7 +88,21 @@ data class EditEntity(
     val artist: String,
     val album: String,
     val artwork: String?,
+    val genre: String? = null,
+    val year: Int? = null,
+    val trackNumber: Int? = null,
+    val comment: String? = null,
 )
+
+/** Version 3 (#17): the genre, year, track number and comment of an edit. */
+object AddEditTags : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `genre` TEXT")
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `year` INTEGER")
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `trackNumber` INTEGER")
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `comment` TEXT")
+    }
+}
 
 @Entity(tableName = "favourites")
 data class FavouriteEntity(

@@ -1,5 +1,6 @@
 package dev.geode.feature.library.core
 
+import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.GroupKey
 import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.IndexStatus
@@ -50,6 +51,8 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             is LibraryEvent.PlaysChanged -> shown(state.copy(plays = event.plays))
             is LibraryEvent.PlaylistFileRead -> imported(state, event.name, event.text)
             is LibraryEvent.PlaylistFileWritten -> Next(state, listOf(Emit(LibraryFact.PlaylistExported(event.file, event.songs))))
+            is LibraryEvent.TagsWritten -> edited(state, event.song, event.edit)
+            is LibraryEvent.TagsNeedConsent -> Next(state, listOf(Emit(LibraryFact.TagsNeedConsent(event.song, event.edit))))
             is LibraryEvent.StorageFailed -> storageFailed(state, event.failure)
             is LibraryEvent.ClockRead -> shown(state.copy(now = event.now), StartTimer(ClockTick, CLOCK_TICK, LibraryEvent.ClockDue))
             LibraryEvent.ClockDue -> Next(state, listOf(Perform(LibraryWork.ReadClock)))
@@ -196,10 +199,33 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
                 artist = command.edit.artist.trim(),
                 album = command.edit.album.trim(),
                 artwork = command.edit.artwork?.takeIf { it.isNotBlank() },
+                genre = command.edit.genre?.trim(),
+                year = command.edit.year?.coerceAtLeast(0),
+                trackNumber = command.edit.trackNumber?.coerceAtLeast(0),
+                comment = command.edit.comment?.trim(),
             )
         if (edit.title.isEmpty() || state.songs.none { it.id == command.song }) return Next(state)
-        val songs = state.songs.map { if (it.id == command.song) it.edited(edit) else it }
-        return shown(state.copy(songs = songs), Perform(LibraryWork.SaveEdit(command.song, edit)))
+        // The Library changes only once the file has: a file that cannot be written keeps the edit out of both.
+        if (command.writeToFile) return Next(state, listOf(Perform(LibraryWork.WriteTags(command.song, edit))))
+        return edited(state, command.song, edit)
+    }
+
+    /** [state] with [edit] applied to [song] and saved, its fields left null filled in from the song as it is. */
+    private fun edited(
+        state: LibraryState,
+        song: TrackId,
+        edit: SongEdit,
+    ): Next<LibraryState, LibraryEffect> {
+        val before = state.songs.firstOrNull { it.id == song } ?: return Next(state)
+        val saved =
+            edit.copy(
+                genre = edit.genre ?: before.genre,
+                year = edit.year ?: before.year,
+                trackNumber = edit.trackNumber ?: before.trackNumber,
+                comment = edit.comment ?: before.comment,
+            )
+        val songs = state.songs.map { if (it.id == song) it.edited(saved) else it }
+        return shown(state.copy(songs = songs), Perform(LibraryWork.SaveEdit(song, saved)))
     }
 
     private fun exclude(
@@ -352,14 +378,24 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
 
     private fun tell(command: PlaybackCommand): LibraryEffect = Perform(LibraryWork.Tell(command))
 
-    private fun Song.edited(edit: SongEdit): Song =
-        copy(title = edit.title, artist = edit.artist, album = edit.album, artwork = edit.artwork)
-
     private fun smartKey(name: String?): GroupKey? = name?.let { GroupKey(GroupKind.SMART_PLAYLIST, it) }
 
     /** Smart playlists by name, ignoring case, as the old editor listed them. */
     private val byName: Comparator<SmartPlaylist> = compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
 }
+
+/** [this] song with the user's [edit] applied; the fields the edit leaves null keep what the song has. */
+fun Song.edited(edit: SongEdit): Song =
+    copy(
+        title = edit.title,
+        artist = edit.artist,
+        album = edit.album,
+        artwork = edit.artwork,
+        genre = edit.genre ?: genre,
+        year = edit.year ?: year,
+        trackNumber = edit.trackNumber ?: trackNumber,
+        comment = edit.comment ?: comment,
+    )
 
 /** A song as Playback plays it. */
 fun Song.toTrack(): Track = Track(id, title, artist, duration)
@@ -383,4 +419,5 @@ fun describe(failure: StorageFailure): String =
         StorageFailure.WRITE_PLAYLIST_FILE -> "Could not write the playlist file"
         StorageFailure.SAVE_SMART_PLAYLIST -> "Could not save the smart playlist"
         StorageFailure.DELETE_SMART_PLAYLIST -> "Could not delete the smart playlist"
+        StorageFailure.WRITE_TAGS -> "Could not write the song info into the file"
     }

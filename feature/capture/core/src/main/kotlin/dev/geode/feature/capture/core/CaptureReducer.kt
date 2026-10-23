@@ -140,8 +140,7 @@ object CaptureReducer : Reducer<CaptureState, CaptureEvent, CaptureEffect> {
                         Next(CaptureState.Off, listOf(CancelTimer(StartTimeout), Perform(CaptureWork.End)))
                     is CaptureCommand.Start, is CaptureCommand.ChooseMusic, is CaptureCommand.PermissionAnswered -> Next(state)
                 }
-            is CaptureEvent.Running ->
-                if (event.source == state.source) running(state) else Next(state)
+            is CaptureEvent.Running -> running(state)
             is CaptureEvent.Refused ->
                 when (event.refusal) {
                     StartRefusal.PERMISSION ->
@@ -164,20 +163,14 @@ object CaptureReducer : Reducer<CaptureState, CaptureEvent, CaptureEffect> {
     ): Next<CaptureState, CaptureEffect> =
         when (event) {
             is CaptureEvent.Command ->
-                when (val command = event.command) {
+                when (event.command) {
                     CaptureCommand.Stop, is CaptureCommand.Toggle -> Next(CaptureState.Off, listOf(Perform(CaptureWork.End)))
-                    // Switching source: the song was already decided on when this capture started.
-                    is CaptureCommand.Start ->
-                        if (command.source == state.source) Next(state) else begin(command.source, MusicChoice.KEEP_PLAYING)
-                    is CaptureCommand.ChooseMusic, is CaptureCommand.PermissionAnswered -> Next(state)
+                    // The microphone is the only source, so a start while capturing changes nothing.
+                    is CaptureCommand.Start, is CaptureCommand.ChooseMusic, is CaptureCommand.PermissionAnswered -> Next(state)
                 }
             is CaptureEvent.QuietChanged -> Next(state.copy(quiet = event.quiet))
             is CaptureEvent.Lost ->
-                if (event.source == state.source) {
-                    Next(CaptureState.Failed(state.source, CaptureProblem.SOURCE_LOST), listOf(Emit(CaptureFact.Lost(state.source))))
-                } else {
-                    Next(state)
-                }
+                Next(CaptureState.Failed(state.source, CaptureProblem.SOURCE_LOST), listOf(Emit(CaptureFact.Lost(state.source))))
             is CaptureEvent.WorkFailed -> report(state, event.failure)
             is CaptureEvent.Running, is CaptureEvent.Refused, is CaptureEvent.MusicChecked, CaptureEvent.StartTimedOut -> Next(state)
         }

@@ -2,8 +2,10 @@ package dev.geode.feature.settings.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
@@ -15,6 +17,17 @@ import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
+
+@Composable
+internal fun elementName(element: Element): String =
+    stringResource(
+        when (element) {
+            Element.WATER -> R.string.look_element_water
+            Element.WOOD -> R.string.look_element_wood
+            Element.STONE -> R.string.look_element_stone
+            Element.BIOLUMINESCENCE -> R.string.look_element_bioluminescence
+        },
+    )
 
 @Composable
 internal fun positionName(position: PlayerPosition): String =
@@ -32,6 +45,16 @@ internal fun cornerName(style: CornerStyle): String =
             CornerStyle.SHARP -> R.string.look_corner_sharp
             CornerStyle.ROUNDED -> R.string.look_corner_rounded
             CornerStyle.PILL -> R.string.look_corner_pill
+        },
+    )
+
+@Composable
+internal fun ambientName(mode: AmbientMode): String =
+    stringResource(
+        when (mode) {
+            AmbientMode.DRIFTING -> R.string.look_ambient_drifting
+            AmbientMode.STILL -> R.string.look_ambient_still
+            AmbientMode.OFF -> R.string.look_ambient_off
         },
     )
 

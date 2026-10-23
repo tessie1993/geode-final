@@ -1,8 +1,10 @@
 package dev.geode.ui
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Context
+import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -17,107 +19,131 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.design.CrystalButton
-import dev.geode.design.CrystalOverline
-import dev.geode.design.theme.accentTextColor
+import dev.geode.feature.settings.api.FolderCommand
+import dev.geode.feature.settings.api.FolderUri
+import dev.geode.feature.settings.api.OnboardingCommand
+import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.studio.ui.StudioSetupRoute
+import dev.geode.ui.shell.Place
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** The audio-read permission for this device's API level. */
 internal val audioPermission: String
     get() =
-        if (Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-/**
- * Supplies [FirstRunSetup] with the library plumbing it needs, so the screen itself stays a
- * function of its arguments and can be looked at without a ViewModel in scope.
- */
-@Composable
-internal fun FirstRunGate(onDone: () -> Unit) {
-    val libraryViewModel: LibraryViewModel = geodeViewModel()
-    val context = LocalContext.current
-    val roots by libraryViewModel.mediaRoots.collectAsStateWithLifecycle()
-    val tracks by libraryViewModel.deviceTracks.collectAsStateWithLifecycle()
-    val scanning by libraryViewModel.libraryScanning.collectAsStateWithLifecycle()
+/** What first-run setup asks for (#187): music access, notifications and the microphone. */
+private val setupPermissions: Array<String>
+    get() =
+        buildList {
+            add(audioPermission)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
+            add(Manifest.permission.RECORD_AUDIO)
+        }.toTypedArray()
 
-    var granted by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
-        )
-    }
-    var refused by rememberSaveable { mutableStateOf(false) }
-    val permissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
-            granted = allowed
-            refused = !allowed
-        }
-    val folderPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri != null) libraryViewModel.importFolder(uri)
-        }
-
-    // The scan is a CONSEQUENCE of the grant, not a second thing to ask for. Someone who has just
-    // said yes to music access has already answered "should I read your library"; making them
-    // press a second button to act on their own answer is the app doubting them.
-    LaunchedEffect(granted) { if (granted) libraryViewModel.refreshDeviceTracks() }
-
-    FirstRunSetup(
-        granted = granted,
-        refused = refused,
-        onRequestAccess = { permissionLauncher.launch(audioPermission) },
-        onPickFolder = { folderPicker.launch(null) },
-        folderCount = roots.size,
-        trackCount = tracks.size,
-        scanning = scanning,
-        onDone = onDone,
-    )
+/** The steps of first-run setup that come after the photosensitivity notice, in order. */
+private enum class SetupStep {
+    TOUR,
+    PERMISSIONS,
+    SAVE_FOLDER,
 }
 
 /**
- * First run, after the photosensitivity notice has been acknowledged.
- *
- * Two screens, one of them optional, and no questions. It used to end by asking what the person
- * came here to do — listening, making videos, or both — which asked someone to categorise
- * themselves before they had seen a single thing to categorise. Everyone now starts with the
- * whole app, and Settings > Behaviour narrows it for anyone who wants that later.
+ * First-run setup (#187), over the app, from what Settings keeps: the photosensitivity notice, then
+ * the intro tour (every page can Skip now), the permissions, and the Save folder, which cannot be
+ * skipped. The app does not finish starting until the Save folder is set, and goes back to that step
+ * whenever the folder is lost (deleted, or its access withdrawn). [replayTour] is Settings > Help
+ * replaying the tour, and [onReplayOver] ends it. The tour walks the real app through [onNavigate].
  */
 @Composable
 fun FirstRunSetup(
-    granted: Boolean,
-    refused: Boolean,
-    onRequestAccess: () -> Unit,
-    onPickFolder: () -> Unit,
-    folderCount: Int,
-    trackCount: Int,
-    scanning: Boolean,
-    onDone: () -> Unit,
-    modifier: Modifier = Modifier,
+    settings: Settings,
+    replayTour: Boolean,
+    onReplayOver: () -> Unit,
+    onNavigate: (Place) -> Unit,
 ) {
+    val state by settings.state.collectAsStateWithLifecycle()
+    val values = (state as? SettingsState.Ready)?.values ?: return
+    val onboarding = values.onboarding
+    val folder = values.folders.videoFolder
+    val folderUsable = rememberFolderUsable(folder)
+    var step by rememberSaveable { mutableStateOf(if (onboarding.tutorialOnFirstRun) SetupStep.TOUR else SetupStep.PERMISSIONS) }
+    val finishTour = { settings.send(OnboardingCommand.FinishTutorial) }
+    when {
+        !onboarding.safetyAcknowledged ->
+            SafetyConsent(onAcknowledge = { settings.send(OnboardingCommand.AcknowledgeSafety) })
+        !onboarding.setupDone && step == SetupStep.TOUR ->
+            Tour(settings, onboarding.tutorialOnFirstRun, onNavigate) {
+                finishTour()
+                step = SetupStep.PERMISSIONS
+            }
+        !onboarding.setupDone && step == SetupStep.PERMISSIONS -> PermissionsStep { step = SetupStep.SAVE_FOLDER }
+        !onboarding.setupDone || folderUsable == false ->
+            SaveFolderStep(settings, folder) {
+                if (!onboarding.setupDone) {
+                    settings.send(OnboardingCommand.FinishSetup)
+                    onNavigate(Place.START)
+                }
+            }
+        replayTour ->
+            Tour(settings, onboarding.tutorialOnFirstRun, onNavigate) {
+                finishTour()
+                onReplayOver()
+            }
+    }
+}
+
+@Composable
+private fun Tour(
+    settings: Settings,
+    showNextTime: Boolean,
+    onNavigate: (Place) -> Unit,
+    onOver: () -> Unit,
+) {
+    TutorialOverlay(
+        steps = TutorialStep.entries,
+        dontShowAgain = !showNextTime,
+        onDontShowAgainChange = { settings.send(OnboardingCommand.SetTutorialOnFirstRun(!it)) },
+        onNavigate = onNavigate,
+        onDismiss = onOver,
+    )
+}
+
+/** Music access, notifications and the microphone, asked for together; any answer goes on. */
+@Composable
+private fun PermissionsStep(onDone: () -> Unit) {
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { onDone() }
     Column(
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
                 .systemBarsPadding()
@@ -126,118 +152,70 @@ fun FirstRunSetup(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Access first, and its own screen. The folder step is downstream of it in every sense:
-        // it is worded against a library that is already loading, and most people never need it.
-        if (!granted && !refused) {
-            AccessStep(onRequestAccess = onRequestAccess, onSkip = onDone)
-        } else {
-            FolderStep(
-                granted = granted,
-                folderCount = folderCount,
-                trackCount = trackCount,
-                scanning = scanning,
-                onPickFolder = onPickFolder,
-                onDone = onDone,
-            )
+        Text(
+            stringResource(R.string.first_run_access_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() },
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            stringResource(R.string.first_run_access_body),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(24.dp))
+        CrystalButton(onClick = { ask.launch(setupPermissions) }, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.first_run_access_allow))
+        }
+        Spacer(Modifier.height(10.dp))
+        CrystalButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.first_run_access_skip))
         }
     }
 }
 
+/** The Save folder step: Studio's own setup step, folded into first run (#187). It goes on only with a folder. */
 @Composable
-private fun AccessStep(
-    onRequestAccess: () -> Unit,
-    onSkip: () -> Unit,
-) {
-    StepHeading(
-        title = stringResource(R.string.first_run_access_title),
-        body = stringResource(R.string.first_run_access_body),
-    )
-    Spacer(Modifier.height(24.dp))
-    CrystalButton(onClick = onRequestAccess, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.first_run_access_allow))
-    }
-    Spacer(Modifier.height(10.dp))
-    // A refusable prompt. The app still opens, still visualises live input, and still plays a
-    // folder someone picks by hand, so "not now" is a real answer rather than a dead end.
-    CrystalButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.first_run_access_skip))
-    }
-}
-
-@Composable
-private fun FolderStep(
-    granted: Boolean,
-    folderCount: Int,
-    trackCount: Int,
-    scanning: Boolean,
-    onPickFolder: () -> Unit,
+private fun SaveFolderStep(
+    settings: Settings,
+    folder: FolderUri?,
     onDone: () -> Unit,
 ) {
-    CrystalOverline(stringResource(R.string.first_run_optional))
-    Spacer(Modifier.height(8.dp))
-    StepHeading(
-        title = stringResource(R.string.first_run_folder_title),
-        body = stringResource(R.string.first_run_folder_body),
-    )
-    Spacer(Modifier.height(16.dp))
-    ScanStatus(granted = granted, scanning = scanning, trackCount = trackCount, folderCount = folderCount)
-    Spacer(Modifier.height(20.dp))
-    CrystalButton(onClick = onPickFolder, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.first_run_folder_pick))
-    }
-    Spacer(Modifier.height(10.dp))
-    CrystalButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.first_run_done))
+    Surface(Modifier.fillMaxSize().systemBarsPadding()) {
+        StudioSetupRoute(
+            folder = folder?.value,
+            onFolderPicked = { settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
+            onDone = { if (folder != null) onDone() },
+        )
     }
 }
 
 /**
- * What the app is doing right now, in one line.
- *
- * The track count climbs while the scan runs and stands still when it finishes, which is all
- * anyone needs from this screen — it never blocks on the scan, so this is a reassurance rather
- * than a progress bar someone has to wait out.
+ * Whether [folder] can still be written to: it exists and its persisted read and write grant is still
+ * held. Checked again each time the app comes back to the front. Null while it is being checked.
  */
 @Composable
-private fun ScanStatus(
-    granted: Boolean,
-    scanning: Boolean,
-    trackCount: Int,
-    folderCount: Int,
-) {
-    val line =
-        when {
-            !granted -> stringResource(R.string.first_run_access_denied)
-            trackCount > 0 -> pluralStringResource(R.plurals.first_run_scanning, trackCount, trackCount)
-            scanning -> stringResource(R.string.first_run_scanning_working)
-            folderCount > 0 -> pluralStringResource(R.plurals.first_run_folder_added, folderCount, folderCount)
-            else -> stringResource(R.string.first_run_access_granted)
-        }
-    Text(
-        line,
-        style = MaterialTheme.typography.labelMedium,
-        color = if (granted) accentTextColor() else MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-    )
+private fun rememberFolderUsable(folder: FolderUri?): Boolean? {
+    val context = LocalContext.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val resumed by lifecycle.currentStateFlow.collectAsState()
+    val usable by produceState<Boolean?>(null, folder, resumed.isAtLeast(Lifecycle.State.RESUMED)) {
+        value = withContext(Dispatchers.IO) { folder != null && context.folderUsable(Uri.parse(folder.value)) }
+    }
+    return usable
 }
 
-@Composable
-private fun StepHeading(
-    title: String,
-    body: String,
-) {
-    Text(
-        title,
-        style = MaterialTheme.typography.headlineSmall,
-        color = MaterialTheme.colorScheme.onBackground,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.semantics { heading() },
-    )
-    Spacer(Modifier.height(12.dp))
-    Text(
-        body,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-    )
+private fun Context.folderUsable(tree: Uri): Boolean {
+    val granted =
+        contentResolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission && it.isWritePermission }
+    if (!granted) return false
+    return runCatching {
+        val document = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        contentResolver.query(document, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use {
+            it.moveToFirst()
+        } ?: false
+    }.getOrDefault(false)
 }

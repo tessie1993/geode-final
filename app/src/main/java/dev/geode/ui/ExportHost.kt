@@ -1,346 +1,703 @@
 package dev.geode.ui
 
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.net.Uri
-import android.os.Build
+import android.view.SurfaceView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.content.ContextCompat
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.R
-import dev.geode.engine.types.SceneId
+import dev.geode.design.CrystalButton
+import dev.geode.design.CrystalOverline
+import dev.geode.design.CrystalSlider
+import dev.geode.design.crystalPanel
+import dev.geode.design.theme.accentTextColor
+import dev.geode.export.ClipEdit
+import dev.geode.export.ClipLook
+import dev.geode.export.CubeLut
 import dev.geode.export.ExportAspect
-import dev.geode.export.ExportCodec
-import dev.geode.export.ExportRange
-import dev.geode.export.TimeOfDayDrift
-import dev.geode.render.VisualizerView
+import dev.geode.export.ExportQuality
+import dev.geode.export.ExportRatio
+import dev.geode.export.StudioClip
+import dev.geode.ui.studio.TimelineEditor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
-private data class PendingExport(
-    val aspect: ExportAspect,
-    val fps: Int,
-    val sceneId: SceneId,
-    val loopSafe: Boolean,
-    val rangeStartMs: Long,
-    val rangeDurationMs: Long,
-    val codec: ExportCodec,
-) {
-    val range: ExportRange? get() = if (rangeDurationMs > 0) ExportRange(rangeStartMs, rangeDurationMs) else null
-}
-
-private val PendingExportSaver =
-    listSaver<PendingExport?, Any>(
-        save = { req ->
-            if (req == null) {
-                emptyList()
-            } else {
-                listOf(
-                    req.aspect.width,
-                    req.aspect.height,
-                    req.aspect.bitRate,
-                    req.fps,
-                    req.sceneId.value,
-                    req.loopSafe,
-                    req.rangeStartMs,
-                    req.rangeDurationMs,
-                    req.codec.name,
-                )
-            }
-        },
-        restore = { saved ->
-            if (saved.isEmpty()) {
-                null
-            } else {
-                PendingExport(
-                    aspect = ExportAspect(saved[0] as Int, saved[1] as Int, saved[2] as Int),
-                    fps = saved[3] as Int,
-                    sceneId = SceneId(saved[4] as String),
-                    loopSafe = saved[5] as Boolean,
-                    rangeStartMs = saved[6] as Long,
-                    rangeDurationMs = saved[7] as Long,
-                    codec = ExportCodec.valueOf(saved[8] as String),
-                )
-            }
-        },
-    )
-
-/** [LoopRenderRequest], flattened to primitives so it survives a configuration change. */
-private data class PendingLoopExport(
-    val width: Int,
-    val height: Int,
-    val bitRate: Int,
-    val codec: String,
-    val fps: Int,
-    val loopMs: Long,
-    val crossfadeMs: Long,
-    val driftHueTurns: Float,
-    val driftWarmth: Float,
-    val driftStops: Int,
-    val audioClips: List<String>,
-) {
-    companion object {
-        fun from(request: LoopRenderRequest): PendingLoopExport =
-            PendingLoopExport(
-                width = request.aspect.width,
-                height = request.aspect.height,
-                bitRate = request.aspect.bitRate,
-                codec = request.codec.name,
-                fps = request.fps,
-                loopMs = request.loopMs,
-                crossfadeMs = request.crossfadeMs,
-                driftHueTurns = request.drift.hueTurns,
-                driftWarmth = request.drift.warmth,
-                driftStops = request.drift.stops,
-                audioClips = request.audioClips.map { it.toString() },
-            )
-    }
-}
-
-private val PendingLoopExportSaver =
-    listSaver<PendingLoopExport?, Any>(
-        save = { req ->
-            if (req == null) {
-                emptyList()
-            } else {
-                listOf(
-                    req.width,
-                    req.height,
-                    req.bitRate,
-                    req.codec,
-                    req.fps,
-                    req.loopMs,
-                    req.crossfadeMs,
-                    req.driftHueTurns,
-                    req.driftWarmth,
-                    req.driftStops,
-                    req.audioClips.size,
-                ) + req.audioClips
-            }
-        },
-        restore = { saved ->
-            if (saved.isEmpty()) {
-                null
-            } else {
-                val clipCount = saved[10] as Int
-                PendingLoopExport(
-                    width = saved[0] as Int,
-                    height = saved[1] as Int,
-                    bitRate = saved[2] as Int,
-                    codec = saved[3] as String,
-                    fps = saved[4] as Int,
-                    loopMs = saved[5] as Long,
-                    crossfadeMs = saved[6] as Long,
-                    driftHueTurns = saved[7] as Float,
-                    driftWarmth = saved[8] as Float,
-                    driftStops = saved[9] as Int,
-                    audioClips = (0 until clipCount).map { saved[11 + it] as String },
-                )
-            }
-        },
-    )
-
-/** Which sheet [ExportHost] is showing: the picker between the two kinds of export, or one of them. */
-private enum class ExportEntryMode { Menu, Standard, Loop }
-
+/**
+ * The old Studio's export entry, kept until Studio's own export lands (#17): edit a picked video in
+ * the clip editor, or open the full timeline editor. The clip library itself is gone, replaced by the
+ * Studio feature's Projects and videos.
+ */
 @Composable
-fun ExportHost(
-    viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
-    onDismiss: () -> Unit,
-) {
-    val studioViewModel: StudioViewModel = geodeViewModel()
-    val context = LocalContext.current
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val viz by viewModel.vizState.collectAsStateWithLifecycle()
-    val export by studioViewModel.exportState.collectAsStateWithLifecycle()
-    // The song's tempo comes from the export's whole-song analysis (ADR-0001), never the live Visual.
-    val exportTempo by studioViewModel.exportTempo.collectAsStateWithLifecycle()
-    val loop by studioViewModel.loopState.collectAsStateWithLifecycle()
+fun ExportRoute(viewModel: StudioViewModel = geodeViewModel()) {
+    val studio by viewModel.studio.collectAsStateWithLifecycle()
+    val editor by viewModel.editor.collectAsStateWithLifecycle()
+    var timelineOpen by rememberSaveable { mutableStateOf(false) }
+    var editingUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<StudioClip?>(null) }
 
-    // On API 33+ a render's progress notification (ExportService, foreground since it must
-    // survive the Activity going away) is silently suppressed for anyone who has never granted
-    // POST_NOTIFICATIONS — nothing else in the app asks for it.
-    // Ask once, right as the first render starts, with one rationale dialog first; the render
-    // proceeds either way, whether the permission is granted, denied, or never asked at all.
-    var notificationPermissionAsked by rememberSaveable { mutableStateOf(false) }
-    var notificationRationaleVisible by rememberSaveable { mutableStateOf(false) }
-    val notificationPermission =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-    val requestNotificationPermissionOnce = {
-        val alreadyGranted =
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-                ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) ==
-                PackageManager.PERMISSION_GRANTED
-        if (!notificationPermissionAsked && !alreadyGranted) {
-            notificationPermissionAsked = true
-            notificationRationaleVisible = true
+    if (timelineOpen) {
+        TimelineEditor(state = editor, exportPhase = studio.phase, actions = viewModel, onClose = { timelineOpen = false })
+        return
+    }
+    LaunchedEffect(editingUri) {
+        val wanted: String? = editingUri
+        when {
+            wanted == null -> editing = null
+            editing?.uri != wanted -> viewModel.describeStudioClip(Uri.parse(wanted)) { editing = it }
         }
     }
-
-    var pendingExport by rememberSaveable(stateSaver = PendingExportSaver) {
-        mutableStateOf<PendingExport?>(null)
-    }
-    var pendingLoopExport by rememberSaveable(stateSaver = PendingLoopExportSaver) {
-        mutableStateOf<PendingLoopExport?>(null)
-    }
-    var chosenMode by rememberSaveable { mutableStateOf<ExportEntryMode?>(null) }
-    // A render already under way (from before this dialog was last opened) reopens onto its own
-    // progress instead of the picker, so leaving and coming back never hides a running export.
-    val mode =
-        chosenMode ?: when {
-            loop.phase.isBusy || loop.phase.resultUriOrNull != null || loop.phase.errorOrNull != null -> ExportEntryMode.Loop
-            export.phase.isBusy || export.phase.resultUriOrNull != null || export.phase.errorOrNull != null -> ExportEntryMode.Standard
-            else -> ExportEntryMode.Menu
-        }
-
-    val destinationPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { dest ->
-            val req = pendingExport
-            pendingExport = null
-            if (dest != null && req != null) {
-                viewModel.startExport(
-                    req.aspect,
-                    req.fps,
-                    visualizerView.visualizerRenderer.exportSceneFactory(req.sceneId),
-                    destination = dest,
-                    loopSafe = req.loopSafe,
-                    range = req.range,
-                    codec = req.codec,
-                )
-            }
-        }
-    val loopDestinationPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { dest ->
-            val req = pendingLoopExport
-            pendingLoopExport = null
-            if (dest != null && req != null) {
-                viewModel.startLoopRender(
-                    ExportAspect(req.width, req.height, req.bitRate),
-                    ExportCodec.valueOf(req.codec),
-                    req.fps,
-                    visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                    req.loopMs,
-                    req.crossfadeMs,
-                    TimeOfDayDrift(req.driftHueTurns, req.driftWarmth, req.driftStops),
-                    req.audioClips.map { Uri.parse(it) },
-                    destination = dest,
-                )
-            }
-        }
-    when (mode) {
-        ExportEntryMode.Menu ->
-            AlertDialog(
-                onDismissRequest = onDismiss,
-                title = { Text(stringResource(R.string.export_loop_menu_title)) },
-                text = { Text(stringResource(R.string.export_loop_menu_subtitle)) },
-                confirmButton = {
-                    TextButton(onClick = { chosenMode = ExportEntryMode.Standard }) {
-                        Text(stringResource(R.string.export_loop_menu_standard))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { chosenMode = ExportEntryMode.Loop }) {
-                        Text(stringResource(R.string.export_loop_menu_loop))
-                    }
-                },
-            )
-        ExportEntryMode.Loop ->
-            LoopRenderSheet(
-                state = loop,
-                onStart = { req ->
-                    requestNotificationPermissionOnce()
-                    viewModel.startLoopRender(
-                        req.aspect,
-                        req.codec,
-                        req.fps,
-                        visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                        req.loopMs,
-                        req.crossfadeMs,
-                        req.drift,
-                        req.audioClips,
-                    )
-                },
-                onStartToDestination = { req ->
-                    requestNotificationPermissionOnce()
-                    pendingLoopExport = PendingLoopExport.from(req)
-                    loopDestinationPicker.launch("geode_loop_${System.currentTimeMillis()}.mp4")
-                },
-                onCancel = studioViewModel::cancelLoopRender,
-                onDismiss = {
-                    studioViewModel.clearLoopResult()
-                    onDismiss()
-                },
-            )
-        ExportEntryMode.Standard -> {
-            LaunchedEffect(Unit) { studioViewModel.prepareExportTempo() }
-            SettingsDialog(
-                export = export,
-                hasMedia = state.hasMedia,
-                bpm = exportTempo,
-                trackDuration = state.duration,
-                onStart = { aspect, fps, loopSafe, range, codec ->
-                    requestNotificationPermissionOnce()
-                    viewModel.startExport(
-                        aspect,
-                        fps,
-                        visualizerView.visualizerRenderer.exportSceneFactory(viz.sceneId),
-                        loopSafe = loopSafe,
-                        range = range,
-                        codec = codec,
-                    )
-                },
-                onStartToDestination = { aspect, fps, loopSafe, range, codec ->
-                    requestNotificationPermissionOnce()
-                    pendingExport =
-                        PendingExport(
-                            aspect,
-                            fps,
-                            viz.sceneId,
-                            loopSafe,
-                            range?.startMs ?: 0L,
-                            range?.durationMs ?: 0L,
-                            codec,
-                        )
-                    destinationPicker.launch("geode_${System.currentTimeMillis()}.mp4")
-                },
-                onCancel = studioViewModel::cancelExport,
-                onDismiss = {
-                    studioViewModel.resetExportState()
-                    onDismiss()
-                },
-            )
-        }
-    }
-
-    if (notificationRationaleVisible) {
-        AlertDialog(
-            onDismissRequest = { notificationRationaleVisible = false },
-            title = { Text(stringResource(R.string.export_notification_permission_title)) },
-            text = { Text(stringResource(R.string.export_notification_permission_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        notificationRationaleVisible = false
-                        notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    },
-                ) { Text(stringResource(R.string.action_ok)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { notificationRationaleVisible = false }) {
-                    Text(stringResource(R.string.export_notification_permission_skip))
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                viewModel.describeStudioClip(uri) {
+                    editing = it
+                    editingUri = it.uri
                 }
+            }
+        }
+
+    val clip = editing
+    if (clip == null) {
+        Column(
+            Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CrystalOverline(stringResource(R.string.app_name))
+            Text(stringResource(R.string.export_title), style = MaterialTheme.typography.headlineSmall)
+            Text(
+                stringResource(R.string.studio_empty_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CrystalButton(onClick = { picker.launch(arrayOf("video/*")) }) { Text(stringResource(R.string.studio_open_video)) }
+                CrystalButton(filled = false, onClick = { timelineOpen = true }) { Text(stringResource(R.string.editor_open)) }
+            }
+        }
+    } else {
+        ClipEditor(
+            clip = clip,
+            studio = studio,
+            onExport = { c, e -> viewModel.startStudioExport(c, e) },
+            onExportToDestination = { c, e, destination -> viewModel.startStudioExport(c, e, destination) },
+            onCancelExport = viewModel::cancelStudioExport,
+            onClearResult = viewModel::clearStudioResult,
+            onClose = {
+                viewModel.clearStudioResult()
+                editingUri = null
             },
         )
     }
 }
+
+@UnstableApi
+@Composable
+private fun ClipPreview(
+    clip: StudioClip,
+    edit: ClipEdit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var playing by remember(clip.uri) { mutableStateOf(true) }
+    val player =
+        remember(clip.uri) {
+            ExoPlayer.Builder(context).build().apply {
+                repeatMode = Player.REPEAT_MODE_ONE
+                volume = 0f
+                playWhenReady = true
+            }
+        }
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+
+    LaunchedEffect(player, edit) {
+        delay(REBUILD_SETTLE_MS)
+        val lut = edit.lutUri?.let { uri -> withContext(Dispatchers.IO) { CubeLut.load(context, uri) } }
+        player.setVideoEffects(edit.videoEffects(lut))
+        player.setMediaItems(
+            listOf(
+                MediaItem
+                    .Builder()
+                    .setUri(clip.uri)
+                    .setClippingConfiguration(edit.clipping())
+                    .build(),
+            ),
+        )
+        player.playbackParameters = PlaybackParameters(edit.speed)
+        player.prepare()
+    }
+    LaunchedEffect(player, playing) {
+        player.playWhenReady = playing
+    }
+
+    val aspect =
+        edit.ratio?.let { r ->
+            ExportAspect.of(edit.quality, r).let { it.width.toFloat() / it.height }
+        } ?: if (clip.width > 0 && clip.height > 0) {
+            clip.width.toFloat() / clip.height
+        } else {
+            16f / 9f
+        }
+    val pauseHint = stringResource(R.string.studio_preview_toggle)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(aspect.coerceIn(0.3f, 3.4f))
+            .clip(
+                androidx.compose.foundation.shape
+                    .RoundedCornerShape(8.dp),
+            ).background(Color.Black)
+            .clickable { playing = !playing },
+        contentAlignment = Alignment.Center,
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                SurfaceView(ctx).also { player.setVideoSurfaceView(it) }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (!playing) {
+            Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = pauseHint,
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.zIndex(1f).size(44.dp),
+            )
+        }
+    }
+}
+
+// ----------------------------------------------------------------- clip editor
+
+@Composable
+private fun ClipEditor(
+    clip: StudioClip,
+    studio: StudioUiState,
+    onExport: (StudioClip, ClipEdit) -> Unit,
+    onExportToDestination: (StudioClip, ClipEdit, Uri) -> Unit,
+    onCancelExport: () -> Unit,
+    onClearResult: () -> Unit,
+    onClose: () -> Unit,
+) {
+    var edit by remember(clip.uri) { mutableStateOf(ClipEdit()) }
+    val duration = clip.durationMs.coerceAtLeast(1L)
+    val dismiss = rememberPredictiveDismiss(onDismiss = onClose)
+    val destinationPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("video/mp4")) { uri ->
+            if (uri != null) onExportToDestination(clip, edit, uri)
+        }
+
+    LazyColumn(
+        Modifier.fillMaxSize().dismissTransform(dismiss).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(vertical = 12.dp),
+    ) {
+        item {
+            ClipEditorHeader(
+                clip = clip,
+                resettable = !edit.isIdentity(duration),
+                onReset = { edit = ClipEdit() },
+                onClose = onClose,
+            )
+        }
+        item { ClipEditorPreview(clip = clip, edit = edit) }
+        item { ClipCutSection(clip = clip, edit = edit, duration = duration, onEdit = { edit = it }) }
+        item { ClipLookSection(edit = edit, onEdit = { edit = it }) }
+        item { ClipFrameSection(edit = edit, onEdit = { edit = it }) }
+        item { ClipSoundSection(edit = edit, onEdit = { edit = it }) }
+        item {
+            ClipRenderSection(
+                phase = studio.phase,
+                canExport = edit.trimmedMs(duration) > 0,
+                atDefaults = edit.isIdentity(duration),
+                onExport = { onExport(clip, edit) },
+                onExportToDestination = {
+                    destinationPicker.launch("geode_studio_${System.currentTimeMillis()}.mp4")
+                },
+                onCancelExport = onCancelExport,
+                onClearResult = onClearResult,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ClipEditorHeader(
+    clip: StudioClip,
+    resettable: Boolean,
+    onReset: () -> Unit,
+    onClose: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(clip.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            Text(
+                clip.summary(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (resettable) {
+            TextButton(onClick = onReset) { Text(stringResource(R.string.studio_reset)) }
+        }
+        TextButton(onClick = onClose) { Text(stringResource(R.string.action_back)) }
+    }
+}
+
+@Composable
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+private fun ClipEditorPreview(
+    clip: StudioClip,
+    edit: ClipEdit,
+) {
+    ClipPreview(clip, edit)
+    Text(
+        stringResource(R.string.studio_preview_hint),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ClipCutSection(
+    clip: StudioClip,
+    edit: ClipEdit,
+    duration: Long,
+    onEdit: (ClipEdit) -> Unit,
+) {
+    val outEnd = if (edit.endMs > 0) edit.endMs else duration
+    StudioSection(stringResource(R.string.studio_section_cut)) {
+        Row(Modifier.fillMaxWidth().height(56.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            repeat(FILMSTRIP_FRAMES) { i ->
+                VideoFrame(
+                    clip.uri,
+                    atMs = duration * i / FILMSTRIP_FRAMES,
+                    modifier = Modifier.weight(1f).fillMaxSize(),
+                    corner = 4.dp,
+                )
+            }
+        }
+        RangeSlider(
+            value = edit.startMs.toFloat()..outEnd.toFloat(),
+            onValueChange = { range ->
+                onEdit(
+                    edit.copy(
+                        startMs = range.start.toLong().coerceIn(0L, duration),
+                        endMs = if (range.endInclusive >= duration - 1) 0L else range.endInclusive.toLong(),
+                    ),
+                )
+            },
+            valueRange = 0f..duration.toFloat(),
+        )
+        ClipTrimSummary(edit = edit, duration = duration, outEnd = outEnd)
+    }
+}
+
+@Composable
+private fun ClipTrimSummary(
+    edit: ClipEdit,
+    duration: Long,
+    outEnd: Long,
+) {
+    Text(
+        stringResource(
+            R.string.studio_trim_summary,
+            clock(edit.startMs),
+            clock(outEnd),
+            clock(edit.trimmedMs(duration)),
+        ) +
+            if (edit.speed != 1f) {
+                stringResource(R.string.studio_trim_renders, clock(edit.outputMs(duration)))
+            } else {
+                ""
+            },
+        style = MaterialTheme.typography.labelMedium,
+        color = accentTextColor(),
+    )
+}
+
+@Composable
+private fun ClipLookSection(
+    edit: ClipEdit,
+    onEdit: (ClipEdit) -> Unit,
+) {
+    val context = LocalContext.current
+    val lutPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+                onEdit(edit.copy(lutUri = uri.toString()))
+            }
+        }
+    StudioSection(stringResource(R.string.studio_section_look)) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            ClipLook.entries.forEach { look ->
+                StudioChip(look.label, selected = edit.look == look) {
+                    onEdit(look.applyTo(edit).copy(look = look))
+                }
+            }
+        }
+        StudioSlider(stringResource(R.string.studio_brightness), edit.brightness, -0.5f..0.5f) {
+            onEdit(edit.copy(brightness = it))
+        }
+        StudioSlider(stringResource(R.string.studio_contrast), edit.contrast, -0.6f..0.6f) {
+            onEdit(edit.copy(contrast = it))
+        }
+        StudioSlider(
+            stringResource(R.string.studio_saturation),
+            edit.saturation,
+            -100f..100f,
+            unit = "%",
+        ) { onEdit(edit.copy(saturation = it)) }
+        StudioSlider(
+            stringResource(R.string.studio_hue_shift),
+            edit.hueDegrees,
+            -180f..180f,
+            unit = "°",
+        ) { onEdit(edit.copy(hueDegrees = it)) }
+        Text(
+            stringResource(R.string.studio_look_explainer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            CrystalButton(filled = false, onClick = { lutPicker.launch(arrayOf("*/*")) }) { Text(stringResource(R.string.studio_lut_pick)) }
+            if (edit.lutUri != null) {
+                TextButton(onClick = { onEdit(edit.copy(lutUri = null)) }) { Text(stringResource(R.string.studio_lut_clear)) }
+            }
+        }
+        Text(
+            edit.lutUri?.let { stringResource(R.string.studio_lut_loaded, it.substringAfterLast('/').substringAfterLast(':')) }
+                ?: stringResource(R.string.studio_lut_explainer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        StudioSlider(stringResource(R.string.studio_gamma_red), edit.gammaRed, GAMMA_RANGE, decimals = 2) {
+            onEdit(edit.copy(gammaRed = it))
+        }
+        StudioSlider(stringResource(R.string.studio_gamma_green), edit.gammaGreen, GAMMA_RANGE, decimals = 2) {
+            onEdit(edit.copy(gammaGreen = it))
+        }
+        StudioSlider(stringResource(R.string.studio_gamma_blue), edit.gammaBlue, GAMMA_RANGE, decimals = 2) {
+            onEdit(edit.copy(gammaBlue = it))
+        }
+    }
+}
+
+private val GAMMA_RANGE = 0.5f..2f
+
+@Composable
+private fun ClipFrameSection(
+    edit: ClipEdit,
+    onEdit: (ClipEdit) -> Unit,
+) {
+    StudioSection(stringResource(R.string.studio_section_frame)) {
+        StudioSlider(stringResource(R.string.studio_speed), edit.speed, 0.25f..4f, unit = "×", decimals = 2) {
+            onEdit(edit.copy(speed = it))
+        }
+        StudioSlider(stringResource(R.string.studio_rotate), edit.rotationDegrees, -180f..180f, unit = "°") {
+            onEdit(edit.copy(rotationDegrees = it))
+        }
+        Text(stringResource(R.string.studio_reframe), style = MaterialTheme.typography.labelMedium)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            StudioChip(stringResource(R.string.studio_as_shot), selected = edit.ratio == null) { onEdit(edit.copy(ratio = null)) }
+            ExportRatio.entries.forEach { r ->
+                StudioChip(r.label, selected = edit.ratio == r) { onEdit(edit.copy(ratio = r)) }
+            }
+        }
+        if (edit.ratio != null) {
+            ClipQualityPicker(edit = edit, onEdit = onEdit)
+        }
+    }
+}
+
+@Composable
+private fun ClipQualityPicker(
+    edit: ClipEdit,
+    onEdit: (ClipEdit) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ExportQuality.entries.forEach { q ->
+            StudioChip("${q.shortSide}p", selected = edit.quality == q) { onEdit(edit.copy(quality = q)) }
+        }
+    }
+    Text(
+        stringResource(R.string.studio_reframe_explainer),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ClipSoundSection(
+    edit: ClipEdit,
+    onEdit: (ClipEdit) -> Unit,
+) {
+    StudioSection(stringResource(R.string.studio_section_sound)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.studio_mute), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = edit.mute, onCheckedChange = { onEdit(edit.copy(mute = it)) })
+        }
+        OutlinedTextField(
+            value = edit.caption,
+            onValueChange = { onEdit(edit.copy(caption = it)) },
+            label = { Text(stringResource(R.string.studio_caption)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            stringResource(R.string.studio_caption_explainer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ClipRenderSection(
+    phase: ExportPhase,
+    canExport: Boolean,
+    atDefaults: Boolean,
+    onExport: () -> Unit,
+    onExportToDestination: () -> Unit,
+    onCancelExport: () -> Unit,
+    onClearResult: () -> Unit,
+) {
+    StudioSection(stringResource(R.string.studio_section_render)) {
+        when (phase) {
+            is ExportPhase.Running -> ClipEditorRunning(phase.progress, onCancelExport)
+            is ExportPhase.Done -> ClipEditorDone(phase.resultUri, onClearResult)
+            ExportPhase.Idle, ExportPhase.Loading, is ExportPhase.Failed ->
+                ClipEditorIdle(
+                    message = phase.errorOrNull,
+                    canExport = canExport,
+                    atDefaults = atDefaults,
+                    onExport = onExport,
+                    onExportToDestination = onExportToDestination,
+                )
+        }
+    }
+}
+
+@Composable
+private fun ClipEditorRunning(
+    progress: Float,
+    onCancel: () -> Unit,
+) {
+    LinearProgressIndicator(
+        progress = { progress },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Text(
+        stringResource(R.string.studio_rendering, (progress * 100).roundToInt()),
+        style = MaterialTheme.typography.labelMedium,
+    )
+    CrystalButton(filled = false, onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+}
+
+@Composable
+private fun ClipEditorDone(
+    resultUri: Uri,
+    onClearResult: () -> Unit,
+) {
+    val context = LocalContext.current
+    val chooserTitle = stringResource(R.string.studio_share_chooser)
+    Text(stringResource(R.string.studio_saved), style = MaterialTheme.typography.bodyMedium)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CrystalButton(
+            onClick = { context.shareVideo(resultUri, chooserTitle) },
+        ) { Text(stringResource(R.string.studio_send_ellipsis)) }
+        CrystalButton(
+            filled = false,
+            onClick = { context.viewVideo(resultUri) },
+        ) { Text(stringResource(R.string.studio_play)) }
+        TextButton(onClick = onClearResult) { Text(stringResource(R.string.studio_edit_again)) }
+    }
+    Text(
+        stringResource(R.string.studio_send_explainer),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun ClipEditorIdle(
+    message: String?,
+    canExport: Boolean,
+    atDefaults: Boolean,
+    onExport: () -> Unit,
+    onExportToDestination: () -> Unit,
+) {
+    message?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    }
+    if (atDefaults) {
+        Text(
+            stringResource(R.string.studio_nothing_changed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CrystalButton(enabled = canExport, onClick = onExport) {
+            Text(stringResource(R.string.studio_render))
+        }
+        TextButton(enabled = canExport, onClick = onExportToDestination) {
+            Text(stringResource(R.string.export_render_to_folder))
+        }
+    }
+    Text(
+        stringResource(R.string.studio_renders_new_file),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+private const val FILMSTRIP_FRAMES = 6
+
+@Composable
+private fun StudioSection(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .crystalPanel(
+                0.28f,
+                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.primary,
+                corner = 20.dp,
+            ).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        CrystalOverline(title)
+        content()
+    }
+}
+
+@Composable
+private fun StudioSlider(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    unit: String = "",
+    decimals: Int = 0,
+    onChange: (Float) -> Unit,
+) {
+    Column {
+        Text(
+            stringResource(R.string.studio_slider_value, label, "%.${decimals}f".format(value), unit),
+            style = MaterialTheme.typography.labelMedium,
+        )
+        CrystalSlider(value = value, onValueChange = onChange, valueRange = range)
+    }
+}
+
+@Composable
+private fun StudioChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .crystalPanel(
+                if (selected) 0.5f else 0.2f,
+                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.primary,
+                corner = 14.dp,
+                glowStrength = if (selected) 1f else 0.3f,
+                prismatic = selected,
+            ).clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) accentTextColor() else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun clock(ms: Long): String = "%d:%02d".format(ms / 60_000, (ms / 1000) % 60)
+
+private fun android.content.Context.shareVideo(
+    uri: Uri,
+    chooserTitle: String,
+) {
+    val send =
+        Intent(Intent.ACTION_SEND)
+            .setType("video/mp4")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    runCatching { startActivity(Intent.createChooser(send, chooserTitle)) }
+}
+
+private fun android.content.Context.viewVideo(uri: Uri) {
+    val view =
+        Intent(Intent.ACTION_VIEW)
+            .setDataAndType(uri, "video/mp4")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    runCatching { startActivity(view) }
+}
+
+private const val REBUILD_SETTLE_MS = 250L

@@ -101,27 +101,27 @@ class CaptureStoreTest {
     }
 
     @Test
-    fun `line-in with nothing plugged in is explained, with no fallback to the microphone`() {
-        audio.sources = setOf(AdapterSource.MICROPHONE)
+    fun `a microphone the system will not open is explained, with no fallback`() {
+        audio.sources = emptySet()
 
-        store.send(CaptureCommand.Start(CaptureSource.LINE_IN))
+        store.send(CaptureCommand.Start(CaptureSource.MICROPHONE))
 
-        assertEquals(CaptureState.Failed(CaptureSource.LINE_IN, CaptureProblem.SOURCE_UNAVAILABLE), store.state.value)
-        assertEquals(listOf("startCapture(LINE_IN)"), audio.calls)
+        assertEquals(CaptureState.Failed(CaptureSource.MICROPHONE, CaptureProblem.SOURCE_UNAVAILABLE), store.state.value)
+        assertEquals(listOf("startCapture(MICROPHONE)"), audio.calls)
     }
 
     @Test
-    fun `an unplugged interface stops the capture and is reported once as lost`() =
+    fun `a lost microphone stops the capture and is reported once as lost`() =
         runTest {
             val facts = mutableListOf<CaptureFact>()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { store.events.collect { facts += it } }
-            store.send(CaptureCommand.Start(CaptureSource.LINE_IN))
+            store.send(CaptureCommand.Start(CaptureSource.MICROPHONE))
 
-            audio.announce(CaptureAnnouncement.Lost(AdapterSource.LINE_IN))
-            audio.announce(CaptureAnnouncement.Lost(AdapterSource.LINE_IN))
+            audio.announce(CaptureAnnouncement.Lost(AdapterSource.MICROPHONE))
+            audio.announce(CaptureAnnouncement.Lost(AdapterSource.MICROPHONE))
 
-            assertEquals(CaptureState.Failed(CaptureSource.LINE_IN, CaptureProblem.SOURCE_LOST), store.state.value)
-            assertEquals(listOf(CaptureFact.Lost(CaptureSource.LINE_IN)), facts)
+            assertEquals(CaptureState.Failed(CaptureSource.MICROPHONE, CaptureProblem.SOURCE_LOST), store.state.value)
+            assertEquals(listOf(CaptureFact.Lost(CaptureSource.MICROPHONE)), facts)
         }
 
     @Test
@@ -161,9 +161,9 @@ class CaptureStoreTest {
     fun `a start that throws counts as an unavailable source`() {
         val broken = captureStore(ThrowingStarts(audio), music, inPlaceRuntime(clock, failures))
 
-        broken.send(CaptureCommand.Start(CaptureSource.LINE_IN))
+        broken.send(CaptureCommand.Start(CaptureSource.MICROPHONE))
 
-        assertEquals(CaptureState.Failed(CaptureSource.LINE_IN, CaptureProblem.SOURCE_UNAVAILABLE), broken.state.value)
+        assertEquals(CaptureState.Failed(CaptureSource.MICROPHONE, CaptureProblem.SOURCE_UNAVAILABLE), broken.state.value)
     }
 
     @Test
@@ -207,18 +207,6 @@ class CaptureStoreTest {
         store.send(CaptureCommand.Toggle(CaptureSource.MICROPHONE))
 
         assertEquals(CaptureState.Off, store.state.value)
-    }
-
-    @Test
-    fun `switching source while capturing restarts from the new one without asking again`() {
-        music.playing = true
-        store.send(CaptureCommand.Start(CaptureSource.MICROPHONE))
-        store.send(CaptureCommand.ChooseMusic(MusicChoice.KEEP_PLAYING))
-
-        store.send(CaptureCommand.Start(CaptureSource.LINE_IN))
-
-        assertEquals(CaptureState.Capturing(CaptureSource.LINE_IN, quiet = false), store.state.value)
-        assertEquals(listOf("startCapture(MICROPHONE)", "startCapture(LINE_IN)"), audio.calls)
     }
 
     /** Playback, as far as Capture sees it. */

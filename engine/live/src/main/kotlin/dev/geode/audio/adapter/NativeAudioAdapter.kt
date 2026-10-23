@@ -2,9 +2,6 @@ package dev.geode.audio.adapter
 
 import android.app.Application
 import android.content.pm.PackageManager
-import android.media.AudioDeviceCallback
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -39,8 +36,8 @@ import kotlinx.coroutines.withContext
  * capture's rate; stopping resets it again and goes back to the player's rate.
  *
  * Playback is announced from the player's own listener callbacks (the media session's player), so
- * nothing here polls. Capture is announced from the pump's callbacks and from the system's
- * device-removed callback, which is how an unplugged line input is noticed.
+ * nothing here polls. Capture is announced from the pump's callbacks. The microphone is the only
+ * Live input; line-in is removed (owner decision).
  *
  * The player and the analysis are main-thread objects, so everything runs on [main]. [nativeEngine]
  * says which player to open, Geode's own or ExoPlayer, and is waited for before the engine opens.
@@ -73,19 +70,10 @@ class NativeAudioAdapter(
         withContext(main) {
             buildSet {
                 if (application.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) add(CaptureSource.MICROPHONE)
-                if (lineInput() != null) add(CaptureSource.LINE_IN)
             }
         }
 
-    override suspend fun startCapture(source: CaptureSource): CaptureFailure? =
-        withContext(main) {
-            val device =
-                when (source) {
-                    CaptureSource.MICROPHONE -> null
-                    CaptureSource.LINE_IN -> lineInput() ?: return@withContext CaptureFailure.UNAVAILABLE
-                }
-            opened().beginCapture(source, device)
-        }
+    override suspend fun startCapture(source: CaptureSource): CaptureFailure? = withContext(main) { opened().beginCapture(source) }
 
     override suspend fun stopCapture() {
         withContext(main) { pipeline?.endCapture() }
@@ -185,12 +173,6 @@ class NativeAudioAdapter(
         announced.tryEmit(announcement)
     }
 
-    private fun lineInput(): AudioDeviceInfo? =
-        application
-            .getSystemService(AudioManager::class.java)
-            ?.getDevices(AudioManager.GET_DEVICES_INPUTS)
-            ?.firstOrNull { it.type in LINE_IN_TYPES }
-
     private inner class Pipeline(
         private val session: PlaybackSession,
     ) {
@@ -221,7 +203,6 @@ class NativeAudioAdapter(
             }
 
         private var capturing: CaptureSource? = null
-        private var device: AudioDeviceInfo? = null
 
         @Volatile
         private var playerRateHz = 0
@@ -264,14 +245,6 @@ class NativeAudioAdapter(
                 }
             }
 
-        private val devices =
-            object : AudioDeviceCallback() {
-                override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
-                    val unplugged = device ?: return
-                    if (removedDevices?.any { it.id == unplugged.id } == true) lose()
-                }
-            }
-
         init {
             // The analysis follows the player's format, except while a capture owns it.
             session.onAudioFormat =
@@ -281,7 +254,6 @@ class NativeAudioAdapter(
                 }
             player.addListener(playerListener)
             session.exoPlayer?.let { session.audioFx.attach(it.audioSessionId) }
-            application.getSystemService(AudioManager::class.java)?.registerAudioDeviceCallback(devices, mainHandler)
         }
 
         fun whereThingsStand(): List<AudioAnnouncement> {
@@ -292,18 +264,14 @@ class NativeAudioAdapter(
             return listOfNotNull(PlaybackAnnouncement.TrackChanged(track, mark), playing, capture)
         }
 
-        fun beginCapture(
-            source: CaptureSource,
-            input: AudioDeviceInfo?,
-        ): CaptureFailure? {
+        fun beginCapture(source: CaptureSource): CaptureFailure? {
             if (capturing == source && mic.active) return null
             endCapture()
-            val failure = mic.start(input) { rate -> session.analysis.sampleRateHz = rate }
+            val failure = mic.start { rate -> session.analysis.sampleRateHz = rate }
             if (failure != null) return failure.toCaptureFailure()
             session.sampleRing.beginEpoch()
             session.analysis.reset()
             capturing = source
-            device = input
             announce(CaptureAnnouncement.Running(source))
             return null
         }
@@ -312,13 +280,12 @@ class NativeAudioAdapter(
             if (capturing == null && !mic.active) return
             mic.stop()
             capturing = null
-            device = null
             session.sampleRing.beginEpoch()
             session.analysis.reset()
             session.analysis.sampleRateHz = playerRateHz.takeIf { it > 0 } ?: FALLBACK_RATE_HZ
         }
 
-        /** The capture ended by itself: a read failed or its device was unplugged. */
+        /** The capture ended by itself: a read failed. */
         private fun lose() {
             val source = capturing ?: return
             endCapture()
@@ -345,13 +312,5 @@ class NativeAudioAdapter(
 
         /** The crossfade curve Geode's player uses when nothing says otherwise: equal power. */
         const val EQUAL_POWER_CURVE = 1
-
-        val LINE_IN_TYPES =
-            setOf(
-                AudioDeviceInfo.TYPE_USB_DEVICE,
-                AudioDeviceInfo.TYPE_USB_HEADSET,
-                AudioDeviceInfo.TYPE_LINE_ANALOG,
-                AudioDeviceInfo.TYPE_LINE_DIGITAL,
-            )
     }
 }

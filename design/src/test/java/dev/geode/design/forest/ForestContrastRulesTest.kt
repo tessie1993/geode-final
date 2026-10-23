@@ -9,9 +9,7 @@ import org.junit.Test
 /** The contrast test CI runs over every theme and mode (issue #70). */
 class ForestContrastRulesTest {
     private val everyPalette =
-        ForestThemeId.entries.flatMap { theme ->
-            ForestMode.entries.map { mode -> Triple(theme, mode, ForestPalettes.of(theme, mode)) }
-        }
+        ForestMode.entries.map { mode -> Triple("Deep forest", mode, ForestPalettes.of(mode)) }
 
     @Test
     fun `every theme in every mode keeps all its text at WCAG AA, on glass over the worst backdrop too`() {
@@ -72,7 +70,7 @@ class ForestContrastRulesTest {
     @Test
     fun `a palette with a weak colour is caught, and named`() {
         // Research note: rust #E08A5C drops to 2.75:1 over bright glass, so it is never text.
-        val weakRust = ForestPalettes.EarthLichenDark.copy(highlight = Color(0xFFE08A5C))
+        val weakRust = ForestPalettes.DeepForestDark.copy(highlight = Color(0xFFE08A5C))
 
         val failures = ForestContrastRules.failures(weakRust, ForestMode.Dark).map { it.name }
 
@@ -81,7 +79,7 @@ class ForestContrastRulesTest {
 
     @Test
     fun `on-accent text that disappears into the accent is caught`() {
-        val colors = ForestPalettes.NightForestDark
+        val colors = ForestPalettes.DeepForestDark
         val blind = colors.copy(onAccent = colors.accent)
 
         val failures = ForestContrastRules.failures(blind, ForestMode.Dark).map { it.name }
