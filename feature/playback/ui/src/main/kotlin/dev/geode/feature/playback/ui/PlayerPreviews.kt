@@ -7,7 +7,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 
-// The previews the screenshot tests render (ADR-0003). The theme is Material's own until the App UI's
+// The previews (ADR-0003). The theme is Material's own until the App UI's
 // theme moves to :design (#61).
 
 @Composable

@@ -18,8 +18,7 @@ android {
 }
 
 // Robolectric's Android 16 environment sets up ApplicationSharedMemory through
-// jdk.internal.access.SharedSecrets, which JDK 21 does not export to unnamed modules (the same
-// flags geode.screenshots passes to the screenshot tests).
+// jdk.internal.access.SharedSecrets, which JDK 21 does not export to unnamed modules.
 tasks.withType<Test>().configureEach {
     jvmArgs(
         "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
