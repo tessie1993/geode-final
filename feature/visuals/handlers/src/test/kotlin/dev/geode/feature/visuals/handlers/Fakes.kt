@@ -12,9 +12,11 @@ import dev.geode.feature.customization.api.Preset
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.customization.api.StyleManifest
+import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.SavedPreset
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.core.PickedFile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,6 +77,53 @@ class FakeVisualsStorage(
         check(!failSave) { "disk full" }
         saves++
         saved = library
+    }
+}
+
+/** The MilkDrop folder in memory, which can be made to fail. */
+class FakeMilkdropFolder(
+    presets: List<String> = emptyList(),
+    textures: List<String> = emptyList(),
+) : MilkdropFolder {
+    val stored: Map<MilkdropKind, MutableMap<String, ByteArray>> =
+        mapOf(
+            MilkdropKind.PRESETS to presets.associateWith { ByteArray(0) }.toMutableMap(),
+            MilkdropKind.TEXTURES to textures.associateWith { ByteArray(0) }.toMutableMap(),
+        )
+    var failList = false
+
+    /** Names whose write fails. */
+    val failWrite = mutableSetOf<String>()
+
+    override suspend fun files(kind: MilkdropKind): List<String> {
+        check(!failList) { "folder gone" }
+        return stored.getValue(kind).keys.toList()
+    }
+
+    override suspend fun write(
+        kind: MilkdropKind,
+        name: String,
+        bytes: ByteArray,
+    ) {
+        check(name !in failWrite) { "disk full" }
+        stored.getValue(kind)[name] = bytes
+    }
+}
+
+/** Picked files by uri; a uri it does not know is unreadable, and [throwing] ones throw. */
+class FakePickedFiles(
+    private val files: Map<String, PickedFile>,
+    private val throwing: Set<String> = emptySet(),
+) : PickedFiles {
+    val limits = mutableListOf<Int>()
+
+    override suspend fun read(
+        uri: String,
+        limit: Int,
+    ): PickedFile {
+        limits += limit
+        check(uri !in throwing) { "provider crashed" }
+        return files[uri] ?: PickedFile.Unreadable(uri)
     }
 }
 

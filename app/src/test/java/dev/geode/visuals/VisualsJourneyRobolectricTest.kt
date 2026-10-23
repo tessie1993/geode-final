@@ -47,11 +47,15 @@ import dev.geode.feature.playback.handlers.PlaybackClocks
 import dev.geode.feature.playback.handlers.PlaybackStorage
 import dev.geode.feature.playback.handlers.SavedSession
 import dev.geode.feature.playback.handlers.playbackStore
+import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.SavedPreset
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
+import dev.geode.feature.visuals.core.PickedFile
+import dev.geode.feature.visuals.handlers.MilkdropFolder
+import dev.geode.feature.visuals.handlers.PickedFiles
 import dev.geode.feature.visuals.handlers.PresetFiles
 import dev.geode.feature.visuals.handlers.SavedPresets
 import dev.geode.feature.visuals.handlers.VisualsStorage
@@ -127,7 +131,17 @@ class VisualsJourneyRobolectricTest {
             runtime = runtime,
         )
 
-    private val visuals: Visuals = visualsStore(customization, MemoryVisualsStorage(), NoPresetFiles, BuiltInStyles.all, runtime)
+    private val visuals: Visuals =
+        visualsStore(
+            customization,
+            MemoryVisualsStorage(),
+            NoPresetFiles,
+            BuiltInStyles.all,
+            EmptyMilkdropFolder,
+            NoPicks,
+            emptyList(),
+            runtime,
+        )
 
     private val place: MutableState<Place> = mutableStateOf(Place.VISUALS)
     private var visualStarted = 0
@@ -263,6 +277,24 @@ class VisualsJourneyRobolectricTest {
         override suspend fun save(library: StyleLibrary) {
             saved = library
         }
+    }
+
+    /** MilkDrop import plays no part in this journey. */
+    private object EmptyMilkdropFolder : MilkdropFolder {
+        override suspend fun files(kind: MilkdropKind): List<String> = emptyList()
+
+        override suspend fun write(
+            kind: MilkdropKind,
+            name: String,
+            bytes: ByteArray,
+        ) = Unit
+    }
+
+    private object NoPicks : PickedFiles {
+        override suspend fun read(
+            uri: String,
+            limit: Int,
+        ): PickedFile = PickedFile.Unreadable(uri)
     }
 
     private class MemoryPlaybackStorage : PlaybackStorage {

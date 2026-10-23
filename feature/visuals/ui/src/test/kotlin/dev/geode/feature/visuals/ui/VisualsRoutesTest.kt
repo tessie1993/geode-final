@@ -1,9 +1,11 @@
 package dev.geode.feature.visuals.ui
 
 import android.app.Application
+import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -28,6 +30,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /**
@@ -104,6 +107,29 @@ class VisualsRoutesTest {
             compose.activity.window.decorView
                 .keepsScreenOn(),
         )
+    }
+
+    @Test
+    fun `the MilkDrop place opens the system picker and dismisses the report`() {
+        val milkdrop = RecordingVisuals(PreviewStates.milkdrop)
+        compose.setContent { MilkdropRoute(milkdrop) }
+
+        compose.onNodeWithText("Import textures").performClick()
+        val picker = shadowOf(compose.activity).nextStartedActivityForResult.intent
+        compose.onNodeWithText("OK").performClick()
+
+        assertEquals(Intent.ACTION_OPEN_DOCUMENT, picker.action)
+        assertTrue(picker.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false))
+        assertEquals(listOf("image/*", "application/octet-stream"), picker.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.toList())
+        assertEquals(listOf<VisualsCommand>(VisualsCommand.DismissImportReport), milkdrop.sent)
+    }
+
+    @Test
+    fun `nothing can be imported before the MilkDrop folder is listed`() {
+        compose.setContent { MilkdropRoute(RecordingVisuals(PreviewStates.milkdropLoading)) }
+
+        compose.onNodeWithText("Import presets").assertIsNotEnabled()
+        compose.onNodeWithText("Finding your MilkDrop presets…").assertExists()
     }
 
     private fun View.keepsScreenOn(): Boolean =
