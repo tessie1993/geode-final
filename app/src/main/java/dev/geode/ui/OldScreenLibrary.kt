@@ -40,6 +40,9 @@ import javax.inject.Singleton
  * old smart playlists keep their own files until #146 replaces their editor.
  */
 @Singleton
+// Feature's Command and Fact are in/out, so Kotlin gives constructor parameters of the stores Java
+// wildcards the provided stores lack; without this Dagger finds no binding for them.
+@JvmSuppressWildcards
 class OldScreenLibrary internal constructor(
     private val library: Library,
     private val playback: Playback,

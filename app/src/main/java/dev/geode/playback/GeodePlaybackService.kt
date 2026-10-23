@@ -53,9 +53,9 @@ class GeodePlaybackService : PlaybackSessionService() {
 
     override val playback: Playback get() = store
 
-    // What a car browses: the Library's songs (#17).
+    // What a car browses: the Library's songs (#17). Without wildcards, as [store].
     @Inject
-    lateinit var library: Library
+    lateinit var library: @JvmSuppressWildcards Library
 
     private var widget: WidgetPublisher? = null
     private var artwork: SessionBitmapLoader? = null

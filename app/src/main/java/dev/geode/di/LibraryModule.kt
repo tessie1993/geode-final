@@ -27,6 +27,8 @@ import javax.inject.Singleton
  */
 @Module
 @InstallIn(SingletonComponent::class)
+// The stores' parameters without Java wildcards, so they match the provided stores.
+@JvmSuppressWildcards
 object LibraryModule {
     @Provides
     @Singleton
