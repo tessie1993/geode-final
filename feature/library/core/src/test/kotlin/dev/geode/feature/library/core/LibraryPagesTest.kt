@@ -50,6 +50,53 @@ class LibraryPagesTest {
     private fun names(page: Page): List<String> = (page as Page.Groups).rows.map { it.key.name }
 
     @Test
+    fun `copies of one recording are grouped, whatever their case, punctuation or bracketed notes`() {
+        val copy = alpha.copy(id = TrackId("content://a2"), title = "ALPHA! (Remastered)", artist = "ann", path = "/backup/alpha.mp3")
+        val edge = alpha.copy(id = TrackId("content://a3"), path = "/old/alpha.mp3", duration = Millis(202_000))
+        val tooLong = alpha.copy(id = TrackId("content://a4"), path = "/long/alpha.mp3", duration = Millis(204_001))
+
+        val state = ready.copy(songs = listOf(alpha, beta, copy, edge, tooLong), place = Place.Shelf(LibraryView.DUPLICATES))
+
+        val page = LibraryPages.pageOf(state)
+
+        val groups = (page as Page.Duplicates).groups
+        assertEquals(listOf("Alpha" to "Ann"), groups.map { it.title to it.artist })
+        // By folder; the one more than two seconds longer than its nearest copy stands alone.
+        assertEquals(listOf(copy, alpha, edge), groups.single().rows.map { it.song })
+        assertEquals(SongRow(alpha, favourite = true, plays = 1), groups.single().rows[1])
+    }
+
+    @Test
+    fun `different recordings are not duplicates, and groups go by title`() {
+        val alpha2 = alpha.copy(id = TrackId("content://a2"), path = "/backup/alpha.mp3")
+        val beta2 = beta.copy(id = TrackId("content://b2"), path = "/backup/beta.flac")
+        val otherArtist = alpha.copy(id = TrackId("content://a3"), artist = "Amy", path = "/x/alpha.mp3")
+
+        val state = ready.copy(songs = listOf(beta, alpha, beta2, alpha2, otherArtist), place = Place.Shelf(LibraryView.DUPLICATES))
+
+        val page = LibraryPages.pageOf(state)
+
+        assertEquals(listOf("Alpha", "beta"), (page as Page.Duplicates).groups.map { it.title })
+        assertEquals(Page.Duplicates(emptyList()), LibraryPages.pageOf(ready.copy(place = Place.Shelf(LibraryView.DUPLICATES))))
+    }
+
+    @Test
+    fun `the shown duplicates are every copy, in the order listed`() {
+        val copy = alpha.copy(id = TrackId("content://a2"), path = "/backup/alpha.mp3")
+        val state = ready.copy(songs = listOf(alpha, copy), place = Place.Shelf(LibraryView.DUPLICATES))
+
+        val shown = LibraryPages.songsOf(state.copy(page = LibraryPages.pageOf(state)), Pick.Shown)
+
+        assertEquals(listOf(copy, alpha), shown)
+    }
+
+    @Test
+    fun `names are compared without case, punctuation or bracketed notes`() {
+        assertEquals("alpha beta", normalised("  Alpha,  BETA [Live] "))
+        assertEquals("song", normalised("Song (2011 Remaster)"))
+    }
+
+    @Test
     fun `songs are listed by name, ignoring case, with whether each is a favourite and how often it was played`() {
         assertEquals(
             Page.Songs(

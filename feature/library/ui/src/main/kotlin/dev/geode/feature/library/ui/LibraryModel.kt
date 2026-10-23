@@ -3,6 +3,7 @@ package dev.geode.feature.library.ui
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.dp
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.Filter
 import dev.geode.feature.library.api.IndexStatus
 import dev.geode.feature.library.api.LibraryCommand
@@ -167,6 +168,11 @@ sealed interface LibraryAction {
     data class ExportPlaylist(
         val pick: Pick,
         val name: String,
+    ) : LibraryAction
+
+    /** Delete [song]'s file from the phone, once the phone asks the person. A launcher, so the route's. */
+    data class DeleteFile(
+        val song: TrackId,
     ) : LibraryAction
 
     /** Pick an image as cover art. A launcher, so the route's; [onPicked] gets its content uri. */

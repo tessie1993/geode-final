@@ -114,6 +114,22 @@ class LibraryCommandsTest {
             row(ready, LibraryCommand.Play(Pick.Group(evening)), ready, tell(PlaybackCommand.PlayPlaylist(PlaylistId(7)))),
             row(ready, LibraryCommand.Play(Pick.Group(GroupKey(GroupKind.PLAYLIST, "seven"))), ready),
             row(ready, LibraryCommand.Play(Pick.Songs(emptyList())), ready),
+            // Shuffle turns shuffle on, then plays what was picked; nothing picked, nothing changes.
+            row(
+                ready,
+                LibraryCommand.Shuffle(Pick.Shown),
+                ready,
+                tell(PlaybackCommand.SetShuffle(true)),
+                tell(PlaybackCommand.Play(everything, 0)),
+            ),
+            row(
+                ready,
+                LibraryCommand.Shuffle(Pick.Group(evening)),
+                ready,
+                tell(PlaybackCommand.SetShuffle(true)),
+                tell(PlaybackCommand.PlayPlaylist(PlaylistId(7))),
+            ),
+            row(ready, LibraryCommand.Shuffle(Pick.Songs(emptyList())), ready),
             row(
                 ready,
                 LibraryCommand.PlayNext(Pick.Songs(listOf(gamma.id, alpha.id))),

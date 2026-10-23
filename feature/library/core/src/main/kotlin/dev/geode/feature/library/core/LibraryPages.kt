@@ -1,6 +1,8 @@
 package dev.geode.feature.library.core
 
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.DUPLICATE_LENGTH_SLACK
+import dev.geode.feature.library.api.DuplicateGroup
 import dev.geode.feature.library.api.Filter
 import dev.geode.feature.library.api.GroupKey
 import dev.geode.feature.library.api.GroupKind
@@ -64,6 +66,7 @@ internal object LibraryPages {
                     is Page.Songs -> page.rows.map { it.song }
                     is Page.Found -> page.songs.map { it.song }
                     is Page.Groups -> shelf.sorted(shelf.visible)
+                    is Page.Duplicates -> page.groups.flatMap { group -> group.rows.map { it.song } }
                 }
         }
     }
@@ -127,6 +130,7 @@ internal object LibraryPages {
                 LibraryView.FOLDERS -> Page.Groups(groups(GroupKind.FOLDER))
                 // Playback's in its order, the newest first, then the smart playlists by name.
                 LibraryView.PLAYLISTS -> Page.Groups(playlists())
+                LibraryView.DUPLICATES -> Page.Duplicates(duplicates())
             }
 
         fun found(query: String): Page.Found {
@@ -167,6 +171,33 @@ internal object LibraryPages {
                     SortKey.PLAYS -> compareBy<Song> { plays(it) }.then(byTitle)
                 }
             return songs.sortedWith(order.directed(state.sort))
+        }
+
+        /**
+         * Tracks that look like the same recording: the same title and artist once normalised, then
+         * split wherever two lengths lie more than [DUPLICATE_LENGTH_SLACK] apart. Each group lists its
+         * copies by folder, and the groups go by title.
+         */
+        fun duplicates(): List<DuplicateGroup> =
+            visible
+                .groupBy { normalised(it.title) to normalised(it.artist) }
+                .values
+                .flatMap { same -> byLength(same.sortedBy { it.duration.value }) }
+                .filter { it.size > 1 }
+                .map { copies -> DuplicateGroup(copies.first().title, copies.first().artist, rows(copies.sortedBy { it.folder })) }
+                .sortedBy { it.title.lowercase() }
+
+        private fun byLength(sorted: List<Song>): List<List<Song>> {
+            val runs = mutableListOf<MutableList<Song>>()
+            for (song in sorted) {
+                val run = runs.lastOrNull()
+                if (run != null && song.duration.value - run.last().duration.value <= DUPLICATE_LENGTH_SLACK.value) {
+                    run += song
+                } else {
+                    runs += mutableListOf(song)
+                }
+            }
+            return runs
         }
 
         fun rows(songs: List<Song>): List<SongRow> = songs.map { SongRow(it, it.id in state.favourites, plays(it)) }
@@ -238,3 +269,9 @@ internal object LibraryPages {
 
     private fun <T> Comparator<T>.directed(sort: Sort): Comparator<T> = if (sort.descending) reversed() else this
 }
+
+/** [text] with case, punctuation and bracketed notes ("(Remastered)", "[Live]") set aside. */
+internal fun normalised(text: String): String = text.lowercase().replace(NOISE, " ").replace(SPACES, " ").trim()
+
+private val NOISE = Regex("""[\[(].*?[\])]|[^\p{L}\p{N}\s]""")
+private val SPACES = Regex("""\s+""")

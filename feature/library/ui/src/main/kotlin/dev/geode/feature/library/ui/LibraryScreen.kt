@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -46,6 +47,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -273,6 +275,7 @@ private fun Content(
                 if (place is Place.Group) {
                     item { GroupHeader(place, page.rows.size, onAction, onEditSmart) }
                 }
+                item { ShuffleShown(send) }
                 songs(page.rows, onAction, onEdit) { row -> send(LibraryCommand.Play(Pick.Shown, from = row.song.id)) }
             }
             is Page.Groups -> {
@@ -282,6 +285,7 @@ private fun Content(
                 groups(page.rows, send, onEditSmart)
             }
             is Page.Found -> found(page, onAction, onEdit, onEditSmart)
+            is Page.Duplicates -> duplicates(page, onAction, onEdit)
         }
     }
 }
@@ -292,6 +296,7 @@ private fun isEmpty(page: Page): Boolean =
         // The playlists page always has its import button.
         is Page.Groups -> false
         is Page.Found -> page.isEmpty
+        is Page.Duplicates -> page.groups.isEmpty()
     }
 
 @Composable
@@ -316,6 +321,8 @@ private fun Empty(
             Text(stringResource(R.string.library_nothing_found, page.query), style = MaterialTheme.typography.titleMedium)
         } else if (smart) {
             Text(stringResource(R.string.library_smart_nothing_matches), style = MaterialTheme.typography.titleMedium)
+        } else if (page is Page.Duplicates) {
+            Text(stringResource(R.string.library_duplicates_none), style = MaterialTheme.typography.titleMedium)
         } else {
             Text(stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
             Text(
@@ -335,6 +342,34 @@ private fun LazyListScope.songs(
 ) {
     items(rows, key = { "song:" + it.song.id.value }) { row ->
         SongItem(row, onAction, onEdit, onPlay)
+    }
+}
+
+/** Each group's copies under one heading; a copy's menu offers to delete its file. */
+private fun LazyListScope.duplicates(
+    page: Page.Duplicates,
+    onAction: (LibraryAction) -> Unit,
+    onEdit: (SongRow) -> Unit,
+) {
+    page.groups.forEach { group ->
+        // A track is in one group only, so its first copy keys the heading.
+        item(key = "duplicates:" + group.rows.first().song.id.value) {
+            Text(
+                pluralStringResource(R.plurals.library_duplicates_group, group.rows.size, group.title, group.artist, group.rows.size),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = LibraryDimens.gutter, end = LibraryDimens.gutter, top = LibraryDimens.gap),
+            )
+        }
+        items(group.rows, key = { "song:" + it.song.id.value }) { row ->
+            SongItem(
+                row,
+                onAction,
+                onEdit,
+                onPlay = { onAction(LibraryAction.Send(LibraryCommand.Play(Pick.Songs(listOf(it.song.id)), from = it.song.id))) },
+                onDelete = { onAction(LibraryAction.DeleteFile(row.song.id)) },
+            )
+        }
     }
 }
 
@@ -369,6 +404,18 @@ private fun LazyListScope.found(
         }
 }
 
+/** Shuffle what the page lists (owner, #17: Shuffle all is in Music). */
+@Composable
+private fun ShuffleShown(send: (LibraryCommand) -> Unit) {
+    TextButton(
+        onClick = { send(LibraryCommand.Shuffle(Pick.Shown)) },
+        modifier = Modifier.padding(horizontal = LibraryDimens.gutter),
+    ) {
+        Icon(Icons.Filled.Shuffle, contentDescription = null)
+        Text(stringResource(R.string.library_action_shuffle), Modifier.padding(start = LibraryDimens.small))
+    }
+}
+
 @Composable
 private fun SectionTitle(title: Int) {
     Text(
@@ -391,6 +438,7 @@ private fun SongItem(
     onAction: (LibraryAction) -> Unit,
     onEdit: (SongRow) -> Unit,
     onPlay: (SongRow) -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     val send = { command: LibraryCommand -> onAction(LibraryAction.Send(command)) }
     val song = row.song
@@ -446,6 +494,12 @@ private fun SongItem(
                 MenuItem(R.string.library_action_exclude_folder) {
                     menu = false
                     send(LibraryCommand.ExcludeFolder(song.folder))
+                }
+                if (onDelete != null) {
+                    MenuItem(R.string.library_action_delete_file) {
+                        menu = false
+                        onDelete()
+                    }
                 }
             }
         }
@@ -679,6 +733,7 @@ internal fun viewName(view: LibraryView): String =
             LibraryView.FAVOURITES -> R.string.library_view_favourites
             LibraryView.RECENTLY_ADDED -> R.string.library_view_recently_added
             LibraryView.RECENTLY_PLAYED -> R.string.library_view_recently_played
+            LibraryView.DUPLICATES -> R.string.library_view_duplicates
             LibraryView.MOST_PLAYED -> R.string.library_view_most_played
         },
     )

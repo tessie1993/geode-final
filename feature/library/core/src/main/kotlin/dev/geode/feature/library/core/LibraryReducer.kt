@@ -136,6 +136,7 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
             is LibraryCommand.ExcludeFolder -> exclude(state, command.folder)
             is LibraryCommand.IncludeFolder -> include(state, command.folder)
             is LibraryCommand.Play -> play(state, command)
+            is LibraryCommand.Shuffle -> shuffle(state, command.pick)
             is LibraryCommand.PlayNext -> enqueue(state, command.pick, next = true)
             is LibraryCommand.AddToQueue -> enqueue(state, command.pick, next = false)
             is LibraryCommand.CreatePlaylist -> createPlaylist(state, command)
@@ -232,6 +233,16 @@ object LibraryReducer : Reducer<LibraryState, LibraryEvent, LibraryEffect> {
         if (songs.isEmpty()) return Next(state)
         val startAt = songs.indexOfFirst { it.id == command.from }.coerceAtLeast(0)
         return Next(state, listOf(tell(PlaybackCommand.Play(songs.map { it.toTrack() }, startAt))))
+    }
+
+    /** Shuffle on, then [pick] plays: Playback keeps the shuffle as the person's choice. */
+    private fun shuffle(
+        state: LibraryState,
+        pick: Pick,
+    ): Next<LibraryState, LibraryEffect> {
+        val played = play(state, LibraryCommand.Play(pick))
+        if (played.effects.isEmpty()) return played
+        return Next(state, listOf(tell(PlaybackCommand.SetShuffle(true))) + played.effects)
     }
 
     private fun enqueue(

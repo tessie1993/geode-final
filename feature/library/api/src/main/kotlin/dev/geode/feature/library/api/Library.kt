@@ -59,6 +59,9 @@ enum class LibraryView {
     RECENTLY_ADDED,
     RECENTLY_PLAYED,
     MOST_PLAYED,
+
+    /** Tracks that look like the same recording, side by side, so a spare copy can be checked and deleted. */
+    DUPLICATES,
 }
 
 /** What songs are grouped by in the views that list groups. */
@@ -262,6 +265,11 @@ sealed interface Page {
         val rows: List<GroupRow>,
     ) : Page
 
+    /** Tracks that look like the same recording, a group each. */
+    data class Duplicates(
+        val groups: List<DuplicateGroup>,
+    ) : Page
+
     /** What one search found, across songs, albums, artists, folders and playlists. */
     data class Found(
         val query: String,
@@ -275,6 +283,19 @@ sealed interface Page {
             get() = listOf(songs, albums, artists, folders, playlists).all { it.isEmpty() }
     }
 }
+
+/**
+ * Tracks that look like the same recording: the same [title] and [artist] once case, punctuation and
+ * bracketed notes are set aside, and lengths within [DUPLICATE_LENGTH_SLACK] of each other.
+ */
+data class DuplicateGroup(
+    val title: String,
+    val artist: String,
+    val rows: List<SongRow>,
+)
+
+/** How far apart two copies of one recording may be in length. */
+val DUPLICATE_LENGTH_SLACK = Millis(2_000)
 
 /** Everything the Library lets the outside read. [page] is always what [place], [query], [sort] and [filter] show. */
 data class LibraryState(
@@ -371,6 +392,11 @@ sealed interface LibraryCommand {
     data class Play(
         val pick: Pick,
         val from: TrackId? = null,
+    ) : LibraryCommand
+
+    /** Plays [pick] with shuffle turned on. */
+    data class Shuffle(
+        val pick: Pick,
     ) : LibraryCommand
 
     data class PlayNext(

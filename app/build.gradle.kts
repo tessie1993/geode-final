@@ -227,6 +227,7 @@ dependencies {
     implementation(project(":feature:settings:handlers"))
     implementation(project(":feature:library:api"))
     implementation(project(":feature:library:handlers"))
+    implementation(project(":feature:library:ui"))
     // Settings' DataStore is built here, so its type is on :app's compile path too.
     implementation(libs.datastore.preferences)
     // The App UI's design tokens, theme and common components.

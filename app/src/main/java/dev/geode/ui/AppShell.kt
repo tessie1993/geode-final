@@ -21,16 +21,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
@@ -47,13 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -61,20 +55,18 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.geode.R
-import dev.geode.analysis.SearchMatcher
 import dev.geode.design.CrystalBackground
 import dev.geode.design.CrystalButton
 import dev.geode.design.CrystalNavBar
 import dev.geode.design.CrystalNavItem
 import dev.geode.design.CrystalOverline
 import dev.geode.design.GlowTitle
-import dev.geode.design.crystalShardShape
 import dev.geode.design.luminousHairline
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
 import dev.geode.engine.types.Millis
-import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.LibraryCommand
+import dev.geode.feature.library.ui.LibraryRoute
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.playback.ui.ListeningRoute
@@ -145,9 +137,6 @@ fun AppRoot() {
             }
         }
     }
-    // Music's search, over the page; screen-local (ADR-0003).
-    var searching by rememberSaveable { mutableStateOf(false) }
-
     var crashText by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         crashText =
@@ -197,7 +186,7 @@ fun AppRoot() {
                 Place.MUSIC ->
                     if (twoPane) {
                         Row(Modifier.fillMaxSize()) {
-                            Box(Modifier.weight(1f)) { LibraryScreen(onOpenSearch = { searching = true }) }
+                            Box(Modifier.weight(1f)) { MusicLibrary(shell) }
                             Box(
                                 Modifier
                                     .width(1.dp)
@@ -207,7 +196,7 @@ fun AppRoot() {
                             Box(Modifier.weight(1f)) { PlayerControls(shell) }
                         }
                     } else {
-                        LibraryScreen(onOpenSearch = { searching = true })
+                        MusicLibrary(shell)
                     }
                 Place.VISUALS ->
                     VisualsHub(
@@ -233,9 +222,6 @@ fun AppRoot() {
                 AppShellCompact(ui.place, open, gui, miniPlayer, content = { content(false) })
             } else {
                 AppShellExpanded(ui.place, open, miniPlayer, content = { content(true) })
-            }
-            if (searching) {
-                SearchScreen(viewModel, onClose = { searching = false })
             }
             val clipLabel = stringResource(R.string.crash_clip_label)
             crashText?.let { text ->
@@ -316,6 +302,12 @@ private tailrec fun Context.findActivity(): Activity? =
         is ContextWrapper -> baseContext.findActivity()
         else -> null
     }
+
+/** Music: the Library feature's own place, with its own search (#17). */
+@Composable
+private fun MusicLibrary(shell: ShellViewModel) {
+    LibraryRoute(shell.library, readPermission = audioPermission)
+}
 
 /**
  * Playback's full Player controls, as the owner placed them (#17): the Queue and Tools buttons open
@@ -551,195 +543,6 @@ fun SettingsScreen(
     }
     if (showExport) {
         ExportHost(viewModel, visualizerView) { showExport = false }
-    }
-}
-
-private data class SearchTrackRow(
-    val uri: TrackId,
-    val title: String,
-    val subtitle: String,
-    val fields: List<String>,
-    val fromDevice: Boolean,
-)
-
-@Composable
-fun SearchScreen(
-    viewModel: PlayerViewModel,
-    onClose: () -> Unit,
-) {
-    val settingsViewModel: SettingsViewModel = geodeViewModel()
-    val libraryViewModel: LibraryViewModel = geodeViewModel()
-    var query by rememberSaveable { mutableStateOf("") }
-    var debounced by rememberSaveable { mutableStateOf("") }
-    val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
-    val library by libraryViewModel.library.collectAsStateWithLifecycle()
-    val viz by viewModel.vizState.collectAsStateWithLifecycle()
-    val deviceTracks by libraryViewModel.deviceTracks.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { libraryViewModel.refreshDeviceTracks() }
-    LaunchedEffect(query) {
-        if (query.isNotBlank()) delay(250)
-        debounced = query
-    }
-    val dismiss = rememberPredictiveDismiss(onDismiss = onClose)
-
-    val terms = remember(debounced) { SearchMatcher.terms(debounced) }
-    val trackResults =
-        remember(terms, deviceTracks) {
-            val candidates =
-                deviceTracks.map { t ->
-                    SearchTrackRow(
-                        uri = t.uri,
-                        title = t.title,
-                        subtitle = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · "),
-                        fields = listOf(t.title, t.artist, t.album, t.folder),
-                        fromDevice = true,
-                    )
-                }
-            SearchMatcher.filterTracks(
-                terms = terms,
-                items = candidates,
-                uriOf = { it.uri },
-                fieldsOf = { it.fields },
-                preferred = { it.fromDevice },
-            )
-        }
-    val playlistResults =
-        remember(terms, library.playlists) {
-            library.playlists.filter { SearchMatcher.matches(terms, listOf(it.name)) }
-        }
-    val presetResults =
-        remember(terms, viz.presets) {
-            viz.presets.filter { SearchMatcher.matches(terms, listOf(it.name)) }
-        }
-
-    Box(Modifier.fillMaxSize().dismissTransform(dismiss)) {
-        CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
-        Column(
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(16.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
-                    singleLine = true,
-                    shape = crystalShardShape(14.dp, 5.dp),
-                )
-                IconButton(onClick = onClose) { StoneIconArt(StoneIcon.CLOSE, stringResource(R.string.search_close)) }
-            }
-            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (terms.isEmpty()) {
-                    item {
-                        Text(
-                            stringResource(R.string.search_hint),
-                            Modifier.padding(vertical = 16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    if (trackResults.isNotEmpty()) {
-                        item {
-                            CrystalOverline(
-                                stringResource(R.string.search_heading_tracks, trackResults.size),
-                                Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        items(trackResults, key = { "t:${it.uri.value}" }) { t ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.playFrom(
-                                            trackResults.map { r -> QueueTrack(r.uri, r.title, r.subtitle) },
-                                            t.uri,
-                                        )
-                                        onClose()
-                                    },
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
-                                    Text(t.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    if (t.subtitle.isNotBlank()) {
-                                        Text(
-                                            t.subtitle,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                                IconButton(onClick = { viewModel.enqueue(t.uri) }) {
-                                    StoneIconArt(StoneIcon.QUEUE, stringResource(R.string.action_add_to_queue))
-                                }
-                            }
-                        }
-                    }
-                    if (playlistResults.isNotEmpty()) {
-                        item {
-                            CrystalOverline(
-                                stringResource(R.string.search_heading_playlists, playlistResults.size),
-                                Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        items(playlistResults) { pl ->
-                            Column(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        libraryViewModel.playPlaylist(pl.name)
-                                        onClose()
-                                    }.padding(vertical = 8.dp),
-                            ) {
-                                Text(pl.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    pluralStringResource(
-                                        R.plurals.track_count,
-                                        pl.trackCount,
-                                        pl.trackCount,
-                                    ),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                    if (presetResults.isNotEmpty()) {
-                        item {
-                            CrystalOverline(
-                                stringResource(R.string.search_heading_presets, presetResults.size),
-                                Modifier.padding(top = 8.dp),
-                            )
-                        }
-                        items(presetResults) { p ->
-                            Text(
-                                p.name,
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.applyPreset(p)
-                                        onClose()
-                                    }.padding(vertical = 8.dp),
-                            )
-                        }
-                    }
-                    if (trackResults.isEmpty() && playlistResults.isEmpty() && presetResults.isEmpty()) {
-                        item {
-                            Text(
-                                stringResource(R.string.search_no_results, debounced),
-                                Modifier.padding(vertical = 16.dp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
