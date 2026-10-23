@@ -65,11 +65,12 @@ include(
     ":feature:settings:ui",
 )
 
-// Customization (#39): the model and its reducer; its screens (#42), the basic and Advanced views.
-// Its :handlers come with a later ticket.
+// Customization (#39): the model and its reducer; its handlers (#142), which hand it to the engine and
+// keep the preset files; its screens (#42), the basic and Advanced views.
 include(
     ":feature:customization:api",
     ":feature:customization:core",
+    ":feature:customization:handlers",
     ":feature:customization:ui",
 )
 
