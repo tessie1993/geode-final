@@ -4,17 +4,13 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.LoadReason
-import dev.geode.feature.playback.api.Lyrics
-import dev.geode.feature.playback.api.LyricsSource
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
-import dev.geode.feature.playback.api.SyncedLine
 import dev.geode.feature.playback.api.Track
-import dev.geode.feature.playback.api.TrackLookup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -80,41 +76,6 @@ class PlayerModelTest {
     }
 
     @Test
-    fun `the current track's lyrics are drawn, with the line being sung`() {
-        val lyrics =
-            Lyrics.Synced(
-                listOf(SyncedLine(Millis(5_000), "one"), SyncedLine(Millis(12_000), "two"), SyncedLine(Millis(20_000), "three")),
-                LyricsSource.LRC_FILE,
-            )
-        val state =
-            PlaybackState(
-                PlayerState.Playing(queue, moving),
-                lyrics = TrackLookup.Found(a.id, lyrics),
-            )
-
-        val model = state.toPlayerModel(Millis(4_000))
-
-        assertEquals(lyrics, model.lyrics)
-        assertEquals(1, model.lyricLine)
-        assertEquals(NO_LINE, state.toPlayerModel(Millis(-7_000)).lyricLine)
-    }
-
-    @Test
-    fun `untimed lyrics have no line being sung, and lyrics not found draw nothing`() {
-        val plain = Lyrics.Plain(listOf("one"), LyricsSource.TRACK_TAGS)
-        val playing = PlayerState.Playing(queue, moving)
-
-        val withPlain = PlaybackState(playing, lyrics = TrackLookup.Found(a.id, plain)).toPlayerModel(Millis(4_000))
-        val looking = PlaybackState(playing, lyrics = TrackLookup.Looking(a.id))
-        val missing = PlaybackState(playing, lyrics = TrackLookup.Missing(a.id))
-
-        assertEquals(plain, withPlain.lyrics)
-        assertEquals(NO_LINE, withPlain.lyricLine)
-        assertNull(looking.toPlayerModel(Millis.ZERO).lyrics)
-        assertNull(missing.toPlayerModel(Millis.ZERO).lyrics)
-    }
-
-    @Test
     fun `the A-B loop is shaded only on its own track`() {
         val playing = PlayerState.Playing(queue, moving)
 
@@ -128,13 +89,8 @@ class PlayerModelTest {
     }
 
     @Test
-    fun `with nothing playing there is nothing beside it`() {
-        val state =
-            PlaybackState(
-                PlayerState.Idle,
-                lyrics = TrackLookup.Found(a.id, Lyrics.Plain(listOf("one"), LyricsSource.TRACK_TAGS)),
-                loop = AbLoop.On(a.id, Millis(1_000), Millis(9_000)),
-            )
+    fun `with nothing playing no A-B loop is shaded`() {
+        val state = PlaybackState(PlayerState.Idle, loop = AbLoop.On(a.id, Millis(1_000), Millis(9_000)))
 
         assertEquals(PlayerModel.IDLE, state.toPlayerModel(Millis.ZERO))
     }

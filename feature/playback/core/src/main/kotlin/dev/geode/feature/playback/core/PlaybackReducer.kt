@@ -44,10 +44,7 @@ internal typealias Step = Next<PlayerState, PlaybackEffect>
  *   A track that fails while it opens is skipped silently (owner decision, #34).
  *
  * The listening tools (#35) — the queue, shuffle and repeat, crossfade and gapless, the sleep timer,
- * the A-B loop, bookmarks and the resume points of long tracks — are in [Listening]. What the Player
- * shows beside the music (#147), the current track's lyrics, is in [PlayerDetails]; the store runs
- * this reducer through [PlaybackStoreReducer], which also looks the lyrics up whenever the current
- * track changes.
+ * the A-B loop, bookmarks and the resume points of long tracks — are in [Listening].
  */
 object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
     override fun reduce(
@@ -81,7 +78,6 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is PlaybackEvent.BookmarksChanged -> Next(state.copy(bookmarks = event.bookmarks))
             is PlaybackEvent.ResumePointsChanged -> Next(state.copy(resumePoints = event.points))
             is PlaybackEvent.SimilarPicked -> Listening.similarPicked(state, event.tracks)
-            is PlaybackEvent.LyricsFound -> PlayerDetails.lyricsFound(state, event)
         }
 
     internal fun player(

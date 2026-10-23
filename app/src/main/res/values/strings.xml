@@ -150,9 +150,6 @@
     <string name="engine_failure_audio">The audio engine hit a problem and is restarting.</string>
     <string name="engine_failure_visual">The visual engine hit a problem. It keeps running.</string>
     <string name="engine_failure_other">The engine hit a problem. Geode keeps running.</string>
-    <!-- The app-wide error banner over every screen (#147, ADR-0004): every feature's failures. -->
-    <string name="error_banner_dismiss">Dismiss</string>
-    <string name="error_banner_dismiss_description">Dismiss the message</string>
 
     <plurals name="track_count">
         <item quantity="one">%1$d track</item>

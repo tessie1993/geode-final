@@ -22,9 +22,8 @@ internal fun PreviewTheme(
 internal fun PlayerPreview(
     model: PlayerModel,
     dark: Boolean = false,
-    lyricsOpen: Boolean = false,
 ) {
-    PreviewTheme(dark) { PlayerScreen(model, onAction = {}, lyricsOpen = lyricsOpen) }
+    PreviewTheme(dark) { PlayerScreen(model, onAction = {}) }
 }
 
 @Composable
@@ -67,23 +66,7 @@ internal fun PlayerErrorPreview() = PlayerPreview(PreviewModels.error)
 @Composable
 internal fun PlayerIdlePreview() = PlayerPreview(PreviewModels.idle)
 
-// Lyrics and the A-B loop on the seek bar (#147).
-
-@Preview(name = "Lyrics")
-@Composable
-internal fun PlayerLyricsPreview() = PlayerPreview(PreviewModels.playing, lyricsOpen = true)
-
-@Preview(name = "Lyrics, dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
-@Composable
-internal fun PlayerLyricsDarkPreview() = PlayerPreview(PreviewModels.playing, dark = true, lyricsOpen = true)
-
-@Preview(name = "Lyrics, untimed")
-@Composable
-internal fun PlayerPlainLyricsPreview() = PlayerPreview(PreviewModels.plainLyrics, lyricsOpen = true)
-
-@Preview(name = "No lyrics")
-@Composable
-internal fun PlayerNoLyricsPreview() = PlayerPreview(PreviewModels.noLyrics, lyricsOpen = true)
+// The A-B loop on the seek bar (#147).
 
 @Preview(name = "A-B loop")
 @Composable

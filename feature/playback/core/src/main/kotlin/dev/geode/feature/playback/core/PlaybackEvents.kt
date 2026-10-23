@@ -5,7 +5,6 @@ import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.Bookmark
 import dev.geode.feature.playback.api.BookmarkId
 import dev.geode.feature.playback.api.ListeningOptions
-import dev.geode.feature.playback.api.Lyrics
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
@@ -109,14 +108,6 @@ sealed interface PlaybackEvent {
     data class SimilarPicked(
         val tracks: List<Track>,
     ) : PlaybackEvent
-
-    // What the Player shows beside the music (#147).
-
-    /** [track]'s lyrics, or null when it has none. */
-    data class LyricsFound(
-        val track: TrackId,
-        val lyrics: Lyrics?,
-    ) : PlaybackEvent
 }
 
 /** What went wrong with Playback's database, as the handlers report it. */
@@ -203,11 +194,6 @@ sealed interface PlaybackWork {
     /** Find songs like [queue]'s to keep going with, offline. */
     data class PickSimilar(
         val queue: Queue,
-    ) : PlaybackWork
-
-    /** Find [track]'s lyrics: an `.lrc` file next to it, else its own tags. */
-    data class FindLyrics(
-        val track: TrackId,
     ) : PlaybackWork
 }
 

@@ -50,12 +50,4 @@
     <string name="playback_bookmarks_add">Bookmark this spot</string>
     <string name="playback_bookmarks_empty">No bookmarks yet</string>
     <string name="playback_action_remove_bookmark">Delete the bookmark</string>
-    <!-- Lyrics (#147), worded as the old player had them. -->
-    <string name="playback_lyrics">Lyrics</string>
-    <string name="playback_lyrics_none">No lyrics</string>
-    <string name="playback_lyrics_none_explainer">Drop an .lrc file next to the track — same name, .lrc extension — and it shows up here, timed and following the music. Words written into the file\'s own tags are read too. Nothing is fetched: the app has no network access.</string>
-    <string name="playback_lyrics_from_lrc">an .lrc file next to the track</string>
-    <string name="playback_lyrics_from_tags">the track\'s own tags</string>
-    <string name="playback_lyrics_source_timed">Timed lyrics from %1$s. Tap a line to jump there.</string>
-    <string name="playback_lyrics_source_untimed">Untimed lyrics from %1$s.</string>
 </resources>

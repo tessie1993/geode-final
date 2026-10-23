@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -33,7 +32,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,38 +43,24 @@ import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
  * The full player (#34): what is playing, where it is, and the transport, with the A-B loop shaded on
- * the seek bar and the lyrics in place of the artwork when they are open (#147). Stateless (ADR-0003): it draws
- * [model] and sends every tap to [onAction]; whether the lyrics are open is App UI state only,
- * starting from [lyricsOpen].
+ * the seek bar (#147). Stateless (ADR-0003): it draws [model] and sends every tap to [onAction].
  */
 @Composable
 fun PlayerScreen(
     model: PlayerModel,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
-    lyricsOpen: Boolean = false,
 ) {
-    var showLyrics by rememberSaveable { mutableStateOf(lyricsOpen) }
     Surface(modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().padding(PlayerDimens.gutter),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(PlayerDimens.gap, Alignment.CenterVertically),
         ) {
-            val square = Modifier.widthIn(max = PlayerDimens.artworkMaxWidth).fillMaxWidth().aspectRatio(1f)
-            if (showLyrics) {
-                LyricsPanel(model, onSeek = { onAction(PlayerAction.SeekTo(it)) }, square)
-            } else {
-                Artwork(square)
-            }
+            Artwork(Modifier.widthIn(max = PlayerDimens.artworkMaxWidth).fillMaxWidth())
             Titles(model)
             Timeline(model, onAction)
             Transport(model, onAction)
-            FilterChip(
-                selected = showLyrics,
-                onClick = { showLyrics = !showLyrics },
-                label = { Text(stringResource(R.string.playback_lyrics)) },
-            )
             Status(model)
         }
     }
@@ -86,6 +70,7 @@ fun PlayerScreen(
 private fun Artwork(modifier: Modifier) {
     Box(
         modifier
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(PlayerDimens.artworkCorner))
             .background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,

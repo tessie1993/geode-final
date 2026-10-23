@@ -22,27 +22,12 @@ internal object PlayerDimens {
     val seekBarHeight = 40.dp
     val seekLine = 3.dp
     val playhead = 2.dp
-
-    // The lyrics (#147).
-    val lyricsPaddingY = 12.dp
-    val lyricsGap = 10.dp
 }
 
 /** How faint the part of the seek bar still to play is, the A-B loop's shading and the playhead. */
 internal const val UNPLAYED_ALPHA = 0.45f
 internal const val LOOP_ALPHA = 0.28f
 internal const val PLAYHEAD_ALPHA = 0.85f
-
-/** How faint lyric lines are: already sung, still to come, and untimed. */
-internal const val SUNG_ALPHA = 0.35f
-internal const val COMING_ALPHA = 0.65f
-internal const val PLAIN_ALPHA = 0.85f
-
-/** How far below the top the line being sung is scrolled to, in pixels. */
-internal const val LYRICS_LEAD_PX = 160
-
-/** How long after the user scrolls the lyrics they follow the music again. */
-internal val LYRICS_FOLLOW_AGAIN = Millis(5_000)
 
 /** How far through [position] is of [duration], from 0 to 1. */
 internal fun fraction(

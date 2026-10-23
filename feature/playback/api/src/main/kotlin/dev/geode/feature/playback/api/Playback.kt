@@ -8,10 +8,6 @@ import dev.geode.kernel.Feature
  * Playback as everything outside it sees it (ADR-0003, ADR-0005): what is playing and where, the
  * queue it owns, the playlists and the play history it keeps, and the Commands that change them.
  * Library, Studio, the widget and the notification only send it Commands (ADR-0004).
- *
- * It also holds what the Player shows beside the music (#147): the current track's lyrics. Tracks are
- * never analysed (owner, 2026-10-22), so there is no seek waveform, and the app-wide error banner is
- * the App UI's, not Playback's.
  */
 typealias Playback = Feature<PlaybackState, PlaybackCommand, PlaybackFact>
 
@@ -166,85 +162,6 @@ data class PlaybackState(
     /** Where each long track was left off, so playing it again goes on from there. */
     val resumePoints: Map<TrackId, Millis> = emptyMap(),
     val shuffle: ShuffleOrder = ShuffleOrder(),
-    /** The current track's lyrics (#147). */
-    val lyrics: TrackLookup<Lyrics> = TrackLookup.Idle,
-)
-
-/**
- * What Playback found out about the current track, looked up again each time the current track
- * changes (#147). A result for a track that is no longer current is dropped.
- */
-sealed interface TrackLookup<out T> {
-    /** The track it is about; null when nothing is playing. */
-    val track: TrackId?
-
-    /** Nothing is playing, so there is nothing to look up. */
-    data object Idle : TrackLookup<Nothing> {
-        override val track: TrackId? = null
-    }
-
-    data class Looking(
-        override val track: TrackId,
-    ) : TrackLookup<Nothing>
-
-    data class Found<out T>(
-        override val track: TrackId,
-        val value: T,
-    ) : TrackLookup<T>
-
-    /** [track] has none. */
-    data class Missing(
-        override val track: TrackId,
-    ) : TrackLookup<Nothing>
-}
-
-/** Where a track's lyrics were found. Nothing is fetched: the app has no network access. */
-enum class LyricsSource {
-    /** An `.lrc` file with the track's name, next to the track. */
-    LRC_FILE,
-
-    /** The words written into the track's own tags. */
-    TRACK_TAGS,
-}
-
-/** A track's lyrics: timed, so they follow the music, or plain. */
-sealed interface Lyrics {
-    val source: LyricsSource
-
-    /** Lines timed to the music, in time order. */
-    data class Synced(
-        val lines: List<SyncedLine>,
-        override val source: LyricsSource,
-    ) : Lyrics {
-        /** The line being sung at [position]: the last one whose time has come, or -1 before the first. */
-        fun lineAt(position: Millis): Int {
-            var low = 0
-            var high = lines.lastIndex
-            var found = -1
-            while (low <= high) {
-                val middle = (low + high) / 2
-                if (lines[middle].at <= position) {
-                    found = middle
-                    low = middle + 1
-                } else {
-                    high = middle - 1
-                }
-            }
-            return found
-        }
-    }
-
-    /** Lines with no times: shown whole, not followed. */
-    data class Plain(
-        val lines: List<String>,
-        override val source: LyricsSource,
-    ) : Lyrics
-}
-
-/** One timed line: [text] is sung from [at]. */
-data class SyncedLine(
-    val at: Millis,
-    val text: String,
 )
 
 /** What happens when a track ends (#35). */

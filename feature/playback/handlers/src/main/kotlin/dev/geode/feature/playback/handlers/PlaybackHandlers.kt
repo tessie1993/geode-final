@@ -6,7 +6,6 @@ import dev.geode.audio.adapter.PlaybackAnnouncement
 import dev.geode.audio.adapter.PlaybackMark
 import dev.geode.engine.types.Millis
 import dev.geode.feature.playback.api.ListeningOptions
-import dev.geode.feature.playback.api.Lyrics
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
@@ -15,12 +14,11 @@ import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.ShuffleOrder
 import dev.geode.feature.playback.core.EngineStep
 import dev.geode.feature.playback.core.PlaybackEvent
-import dev.geode.feature.playback.core.PlaybackStoreReducer
+import dev.geode.feature.playback.core.PlaybackReducer
 import dev.geode.feature.playback.core.PlaybackWork
 import dev.geode.feature.playback.core.ResumeChoice
 import dev.geode.feature.playback.core.SIMILAR_BATCH
 import dev.geode.feature.playback.core.StorageFailure
-import dev.geode.feature.playback.core.parseLyrics
 import dev.geode.feature.playback.core.pickSimilar
 import dev.geode.feature.playback.core.resumeChoice
 import dev.geode.kernel.EffectRunner
@@ -57,14 +55,11 @@ class PlaybackClocks(
  * Carries out Playback's work (ADR-0005): it drives the audio adapter and turns what it announces
  * into events (ADR-0004: the adapter announces, nothing polls), and keeps the playlists, the history
  * and the saved session in [storage]. Every failure is caught here and reported as a named event.
- *
- * For the Player (#147) it reads the current track's lyrics from [lyrics].
  */
 class PlaybackHandlers(
     private val audio: AudioAdapter,
     private val storage: PlaybackStorage,
     private val clocks: PlaybackClocks,
-    private val lyrics: LyricsFiles = LyricsFiles.NONE,
 ) : EffectRunner<PlaybackWork, PlaybackEvent> {
     override suspend fun run(
         work: PlaybackWork,
@@ -113,25 +108,8 @@ class PlaybackHandlers(
                 guarded(results, StorageFailure.READ) {
                     results.report(PlaybackEvent.SimilarPicked(pickSimilar(work.queue, storage.knownTracks(), SIMILAR_BATCH)))
                 }
-            // What the Player shows beside the music (#147).
-            is PlaybackWork.FindLyrics -> results.report(PlaybackEvent.LyricsFound(work.track, findLyrics(work)))
         }
     }
-
-    /** The first lyrics found with any words; a file that cannot be read is no lyrics, as in the old player. */
-    private suspend fun findLyrics(work: PlaybackWork.FindLyrics): Lyrics? =
-        unlessUnreadable { lyrics.find(work.track) }.orEmpty().firstNotNullOfOrNull { parseLyrics(it.text, it.source) }
-
-    /** What [read] gives, or null when it throws: lyrics that cannot be read are no lyrics, not a failure. */
-    @Suppress("TooGenericExceptionCaught", "SwallowedException") // Handlers catch everything at their edge (ADR-0005).
-    private suspend fun <T : Any> unlessUnreadable(read: suspend () -> T?): T? =
-        try {
-            read()
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (unreadable: Exception) {
-            null
-        }
 
     private suspend fun keep(work: PlaybackWork.SaveResumePoint) {
         val position = work.mark.positionAt(clocks.elapsed())
@@ -214,9 +192,6 @@ class PlaybackHandlers(
  * the history, the bookmarks and the resume points, and opens where playback was left off with the
  * listening options saved last, all from the start. [shuffleSeed] starts the shuffles, so that each
  * run of the app shuffles differently.
- *
- * For the Player (#147) it looks up each current track's [lyrics]. The failures every feature reports
- * to the runtime's error channel are shown by the App UI's banner, not by Playback.
  */
 fun playbackStore(
     audio: AudioAdapter,
@@ -224,14 +199,13 @@ fun playbackStore(
     clocks: PlaybackClocks,
     runtime: FeatureRuntime,
     shuffleSeed: Long = Random.nextLong(),
-    lyrics: LyricsFiles = LyricsFiles.NONE,
 ): Playback =
     FeatureStore<PlaybackState, PlaybackCommand, PlaybackEvent, PlaybackWork, PlaybackFact>(
         name = PLAYBACK,
         initial = PlaybackState(shuffle = ShuffleOrder(seed = shuffleSeed)),
-        reducer = PlaybackStoreReducer,
+        reducer = PlaybackReducer,
         toEvent = PlaybackEvent::Command,
-        runner = PlaybackHandlers(audio, storage, clocks, lyrics),
+        runner = PlaybackHandlers(audio, storage, clocks),
         runtime = runtime,
         start =
             listOf(
