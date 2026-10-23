@@ -28,7 +28,7 @@ import dev.geode.feature.settings.api.Element
 private const val TILES_PER_ROW = 2
 
 /** The look :design gives [element]. The one place Settings' Elements meet their tokens. */
-internal fun Element.tokens(): ElementTokens =
+fun Element.tokens(): ElementTokens =
     when (this) {
         Element.WATER -> ElementSkins.Water
         Element.WOOD -> ElementSkins.Wood
