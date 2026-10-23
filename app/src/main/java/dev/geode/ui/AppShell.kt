@@ -328,7 +328,10 @@ private fun PlayerControls(
 ) {
     val playing by shell.playback.state.collectAsStateWithLifecycle()
     val library by shell.library.state.collectAsStateWithLifecycle()
-    val song = playing.player.currentQueue?.current?.id
+    val song =
+        playing.player.currentQueue
+            ?.current
+            ?.id
     PlayerRoute(
         shell.playback,
         elapsedNow = ::elapsedNow,
