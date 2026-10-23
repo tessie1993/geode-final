@@ -262,13 +262,24 @@ internal fun LazyListScope.exportSection(
 }
 
 /**
- * Default paths (was Folders, #101): the music folders, where presets live, and the folder they are
- * mirrored to. The video save folder joins them, first, once #21 adds it.
+ * Default paths (was Folders, #101): where Studio saves its videos (#21), the music folders, where
+ * presets live, and the folder they are mirrored to.
  */
 internal fun LazyListScope.defaultPathsSection(
     folders: FolderSettings,
     onAction: (SettingsAction) -> Unit,
 ) {
+    item {
+        // One folder for every Project. Studio's first-run step picks it; here it can be changed, not cleared.
+        FolderChoiceGroup(
+            title = stringResource(R.string.folders_group_video_folder),
+            folder = folders.videoFolder,
+            none = stringResource(R.string.folders_video_folder_none),
+            clear = null,
+            onPick = { onAction(SettingsAction.PickVideoFolder) },
+            onClear = {},
+        )
+    }
     item {
         SettingsGroup(stringResource(R.string.folders_group_music)) {
             if (folders.musicFolders.isEmpty()) Note(stringResource(R.string.folders_music_none))
@@ -305,13 +316,16 @@ internal fun LazyListScope.defaultPathsSection(
     }
 }
 
-/** One chosen folder: shows it, or [none] when there is none, with a button to pick and one to [clear]. */
+/**
+ * One chosen folder: shows it, or [none] when there is none, with a button to pick and one to [clear]
+ * (none when [clear] is null).
+ */
 @Composable
 private fun FolderChoiceGroup(
     title: String,
     folder: FolderUri?,
     none: String,
-    clear: String,
+    clear: String?,
     onPick: () -> Unit,
     onClear: () -> Unit,
 ) {
@@ -319,7 +333,7 @@ private fun FolderChoiceGroup(
         Note(folder?.value ?: none)
         Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
             OutlinedButton(onClick = onPick) { Text(stringResource(R.string.folders_presets_choose)) }
-            if (folder != null) TextButton(onClick = onClear) { Text(clear) }
+            if (folder != null && clear != null) TextButton(onClick = onClear) { Text(clear) }
         }
     }
 }
