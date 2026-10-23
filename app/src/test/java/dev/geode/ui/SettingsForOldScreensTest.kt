@@ -56,7 +56,9 @@ class SettingsForOldScreensTest {
     private val settings = FakeSettings()
     private val playback = FakePlayback()
     private val presets = listOf("Flat", "Bass", "Treble", "Vocal", "Rock", "Electronic")
-    private val old = SettingsForOldScreens(settings, playback, presets, CoroutineScope(UnconfinedTestDispatcher()))
+
+    // The app names the equalizer's bands from the native chain, which the plain JVM cannot load.
+    private val old = SettingsForOldScreens(settings, playback, presets, { "band $it" }, CoroutineScope(UnconfinedTestDispatcher()))
 
     @Test
     fun `the old screens wait for the stored settings, then show them`() {
@@ -104,7 +106,9 @@ class SettingsForOldScreensTest {
         old.useEqualizerPreset(1)
         old.setLoudness(150)
 
-        assertEquals(presets, old.audioFx.value.presets)
+        val fx = old.audioFx.value
+        assertEquals(presets, fx.presets)
+        assertEquals("band 0", fx.bands[0].label)
         assertEquals(
             listOf(
                 EqualizerCommand.SetEnabled(true),

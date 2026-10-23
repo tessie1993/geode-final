@@ -199,11 +199,17 @@ internal object OldScreenSettings {
             loudnessMb = equalizer.loudness.value,
         )
 
-    /** The old equalizer panel's state. [presetNames] are the presets' names, in [EqualizerPreset] order. */
+    /** A band's name on the old equalizer panel: its centre, which only the native chain knows. */
+    fun nativeBandLabel(band: Int): String = AudioFxFormat.freqLabel(NativeDspProcessor.bandCenterMilliHz(band))
+
+    /**
+     * The old equalizer panel's state. [presetNames] are the presets' names, in [EqualizerPreset] order;
+     * [bandLabel] names each band ([nativeBandLabel] in the app).
+     */
     fun audioFxStateOf(
         equalizer: EqualizerSettings,
         presetNames: List<String>,
-        bandLabel: (Int) -> String = { band -> AudioFxFormat.freqLabel(NativeDspProcessor.bandCenterMilliHz(band)) },
+        bandLabel: (Int) -> String,
     ): AudioFxState =
         AudioFxState(
             available = true,

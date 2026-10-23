@@ -32,7 +32,9 @@ class PlayPauseFadeTest {
 
     private val length = Millis(200)
 
-    private fun TestScope.fade() = PlayPauseFade(backgroundScope, stepMs = 25)
+    // The test's own scope, not backgroundScope: advanceUntilIdle does not wait for background work, so
+    // the fades would never finish. Every fade ends, so runTest has nothing left over.
+    private fun TestScope.fade() = PlayPauseFade(this, stepMs = 25)
 
     @Test
     fun `a play asked for while a pause fades out is not paused when that fade ends`() =

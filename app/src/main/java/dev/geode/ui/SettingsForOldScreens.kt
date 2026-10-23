@@ -44,12 +44,19 @@ class SettingsForOldScreens internal constructor(
     private val settings: Settings,
     private val playback: Playback,
     private val presetNames: List<String>,
+    private val bandLabel: (Int) -> String,
     scope: CoroutineScope,
 ) : UserDataRepository,
     PlayerPrefsRepository {
     @Inject
     constructor(settings: Settings, playback: Playback, application: Application) :
-        this(settings, playback, EQUALIZER_PRESETS.map { application.getString(it) }, application.geodeContainer.appScope)
+        this(
+            settings,
+            playback,
+            EQUALIZER_PRESETS.map { application.getString(it) },
+            OldScreenSettings::nativeBandLabel,
+            application.geodeContainer.appScope,
+        )
 
     /** Settings' values, or the defaults while the stored ones are being read. */
     private val values: StateFlow<SettingsValues> =
@@ -95,11 +102,14 @@ class SettingsForOldScreens internal constructor(
         if (after.repeatMode != before.repeatMode) playback.send(PlaybackCommand.SetRepeat(repeatOf(after.repeatMode)))
     }
 
-    /** The old equalizer panel's state, from Settings. */
+    /**
+     * The old equalizer panel's state, from Settings. Its bands are named by [bandLabel], which in the
+     * app asks the native chain, so tests on the plain JVM give their own.
+     */
     val audioFx: StateFlow<AudioFxState> =
         values
-            .map { OldScreenSettings.audioFxStateOf(it.equalizer, presetNames) }
-            .stateIn(scope, SharingStarted.Lazily, OldScreenSettings.audioFxStateOf(values.value.equalizer, presetNames))
+            .map { OldScreenSettings.audioFxStateOf(it.equalizer, presetNames, bandLabel) }
+            .stateIn(scope, SharingStarted.Lazily, OldScreenSettings.audioFxStateOf(values.value.equalizer, presetNames, bandLabel))
 
     fun setEqualizerEnabled(enabled: Boolean) = settings.send(EqualizerCommand.SetEnabled(enabled))
 

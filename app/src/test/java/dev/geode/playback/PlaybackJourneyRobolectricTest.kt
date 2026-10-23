@@ -122,7 +122,8 @@ class PlaybackJourneyRobolectricTest {
 
         oldScreens.next()
         assertEquals(b, (playback.state.value.player as PlayerState.Loading).queue.current)
-        assertTrue(audio.calls.last(), audio.calls.last().startsWith("load("))
+        // A load is always followed by whether to play once it opens, as Playback's own store tests pin.
+        assertEquals(listOf("load(${b.id}, ${Millis.ZERO})", "setPlaying(true)"), audio.calls.takeLast(2))
     }
 
     @Test
