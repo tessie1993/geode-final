@@ -3,12 +3,3 @@
 plugins {
     id("geode.feature-ui")
 }
-
-android {
-    testOptions {
-        unitTests {
-            // The screenshot tests render under Robolectric, which reads the module's real strings.
-            isIncludeAndroidResources = true
-        }
-    }
-}
