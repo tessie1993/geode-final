@@ -132,6 +132,17 @@ uniform float uRippleSpecular;
 uniform sampler2D uUnderlay;
 uniform int uUnderlayBlend;
 uniform float uUnderlayAmount;
+// The Camera (SharedCamera.hpp), drawn here the flat way for every picture whose Style does not move a
+// camera of its own. uCamGate: x/y = the flat moves for uTexA/uTexB, z/w = the flat endless zoom for
+// uTexA/uTexB (only the Styles whose renderer has none). Push-in magnifies, the orbit tilts the picture
+// plane in perspective (radians, x yaw, y pitch), uCamDive holds the 0..1 phases of a dive through the
+// picture (x travel, y endless zoom), and the shake (xy offset, z roll) moves every picture alike.
+// Every one of them is 0 at the Camera's starting values, and then nothing here runs.
+uniform vec4 uCamGate;
+uniform float uCamPush;
+uniform vec2 uCamTilt;
+uniform vec3 uCamShake;
+uniform vec2 uCamDive;
 
 float compHash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -151,12 +162,35 @@ vec3 hueRotate(vec3 c, float a) {
 
 // Applies geometric transforms to a [0,1] uv, operating in centered space.
 // [gate] is this texture's uGateA/uGateB (see their declaration).
-vec2 geo(vec2 uv, vec4 gate) {
+// [cam] says whether the Camera's flat moves apply to this picture; [scale] is this sample's share of a
+// dive (1 when there is none).
+vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
     bool geoOn = gate.x > 0.5;
     bool mirrorOn = gate.y > 0.5;
     bool gradeOn = gate.z > 0.5;
     bool pulseOn = gate.w > 0.5;
     vec2 c = uv - 0.5;
+    // The Camera first, so everything below happens in the moved picture. The shake is a slow, small,
+    // bounded wobble (CameraRig): never a jump.
+    if (abs(uCamShake.x) + abs(uCamShake.y) + abs(uCamShake.z) > 0.000001) {
+        c = mat2(cos(uCamShake.z), -sin(uCamShake.z), sin(uCamShake.z), cos(uCamShake.z)) * c - uCamShake.xy;
+    }
+    if (cam && uCamPush > 0.0001) c /= 1.0 + uCamPush * 0.6;
+    if (cam && abs(uCamTilt.x) + abs(uCamTilt.y) > 0.0001) {
+        // A ray from the eye through this point of the picture plane, turned by the orbit, meets the
+        // plane again here: the picture seen from the side, in true perspective.
+        const float eye = 1.2;
+        vec3 r = vec3(c.x * uRatio, c.y, eye);
+        float cy = cos(uCamTilt.x);
+        float sy = sin(uCamTilt.x);
+        float cp = cos(uCamTilt.y);
+        float sp = sin(uCamTilt.y);
+        r = vec3(cy * r.x + sy * r.z, r.y, -sy * r.x + cy * r.z);
+        r = vec3(r.x, cp * r.y - sp * r.z, sp * r.y + cp * r.z);
+        c = r.xy * (eye / max(r.z, 0.2));
+        c.x /= uRatio;
+    }
+    if (scale != 1.0) c *= scale;
     // Rotation and sway share one angle, exactly like plasma_frag's view()
     // (a = uRotation + uSway * 0.35 * sin(uTime * 0.7)). uPostRotation is an
     // angle, not a rate: the renderer integrates rotation * dt so the slider
@@ -215,6 +249,8 @@ vec2 geo(vec2 uv, vec4 gate) {
         float px = mix(512.0, 40.0, uPostPixelate);
         p = (floor(p * px) + 0.5) / px;
     }
+    // A dive looks past the picture's edge: mirror it there rather than smear the clamped border.
+    if (scale > 1.0) p = 1.0 - abs(1.0 - mod(p, 2.0));
     return p;
 }
 
@@ -223,11 +259,11 @@ vec2 geo(vec2 uv, vec4 gate) {
 // transitions. Order: geometry -> distortion (fisheye, glitch) -> sample
 // (chromatic aberration) -> shading (posterize, scanlines, grain, vignette,
 // bloom, invert).
-vec3 postFx(sampler2D tex, vec2 uv, vec4 gate) {
+vec3 postFxAt(sampler2D tex, vec2 uv, vec4 gate, bool cam, float scale) {
     bool geoOn = gate.x > 0.5;
     bool invertOn = gate.y > 0.5;
     bool gradeOn = gate.z > 0.5;
-    vec2 p = geo(uv, gate);
+    vec2 p = geo(uv, gate, cam, scale);
     if (uFlowStrength > 0.001) {
         // Soft-limit the field to the +-6 range the 0.015 scale was tuned
         // for: emitter velocities reach ~36 (splat force x audio), and an
@@ -324,6 +360,19 @@ vec3 postFx(sampler2D tex, vec2 uv, vec4 gate) {
     return col;
 }
 
+// [cam] is this picture's uCamGate pair: x its flat Camera moves, y its flat endless zoom. A dive
+// (travel, endless zoom) draws the picture at two scales an octave apart and crossfades between them
+// over each cycle, so it flies on without end and never jumps where the cycle starts again.
+vec3 postFx(sampler2D tex, vec2 uv, vec4 gate, vec2 cam) {
+    bool camOn = cam.x > 0.5;
+    float phase = fract((camOn ? uCamDive.x : 0.0) + (cam.y > 0.5 ? uCamDive.y : 0.0));
+    if (phase < 0.0001) return postFxAt(tex, uv, gate, camOn, 1.0);
+    float near = exp2(-phase);
+    vec3 inner = postFxAt(tex, uv, gate, camOn, near);
+    vec3 outer = postFxAt(tex, uv, gate, camOn, near * 2.0);
+    return mix(inner, outer, smoothstep(0.0, 1.0, phase));
+}
+
 // Every sample below goes through postFx, INCLUDING the outgoing texture:
 // sampling uTexB raw made the whole FX chain (vignette, chroma, scanlines,
 // kaleido, bloom...) pop off on the old scene for the entire transition and
@@ -354,8 +403,8 @@ vec3 postFx(sampler2D tex, vec2 uv, vec4 gate) {
 #ifdef MV_TRANSITION
 #define progress uProgress
 #define ratio uRatio
-vec4 getFromColor(vec2 uv) { return vec4(postFx(uTexB, clamp(uv, 0.0, 1.0), uGateB), 1.0); }
-vec4 getToColor(vec2 uv) { return vec4(postFx(uTexA, clamp(uv, 0.0, 1.0), uGateA), 1.0); }
+vec4 getFromColor(vec2 uv) { return vec4(postFx(uTexB, clamp(uv, 0.0, 1.0), uGateB, uCamGate.yw), 1.0); }
+vec4 getToColor(vec2 uv) { return vec4(postFx(uTexA, clamp(uv, 0.0, 1.0), uGateA, uCamGate.xz), 1.0); }
 // __GL_TRANSITION_SOURCE__
 #endif
 
@@ -414,38 +463,38 @@ vec3 blended() {
         return transition(vUv).rgb;
     }
 #endif
-    vec3 a = postFx(uTexA, vUv, uGateA);
+    vec3 a = postFx(uTexA, vUv, uGateA, uCamGate.xz);
     // uStyle 6 is Layers, and it is checked BEFORE the uProgress short-circuit
     // below: uProgress is a transition's clock and sits at 1.0 whenever no
     // transition is running, which is precisely when a layer IS running.
     // Reusing uProgress as the mix would have made the two mutually exclusive
     // for no reason and coupled a persistent setting to a timer.
     if (uStyle == 6) {
-        vec3 b = postFx(uTexB, vUv, uGateB);
+        vec3 b = postFx(uTexB, vUv, uGateB, uCamGate.yw);
         return mix(b, layerBlend(b, a, uBlendMode), clamp(uLayerMix, 0.0, 1.0));
     }
     if (uStyle == 0 || uProgress >= 1.0) {
         return a;
     }
     if (uStyle == 1) {
-        vec3 b = postFx(uTexB, vUv, uGateB);
+        vec3 b = postFx(uTexB, vUv, uGateB, uCamGate.yw);
         return mix(b, a, uProgress);
     } else if (uStyle == 3) {
         float sh = smoothstep(0.0, 1.0, uProgress);
-        vec3 aSlide = postFx(uTexA, clamp(vUv + vec2(1.0 - sh, 0.0), 0.0, 1.0), uGateA);
-        vec3 bSlide = postFx(uTexB, clamp(vUv - vec2(sh, 0.0), 0.0, 1.0), uGateB);
+        vec3 aSlide = postFx(uTexA, clamp(vUv + vec2(1.0 - sh, 0.0), 0.0, 1.0), uGateA, uCamGate.xz);
+        vec3 bSlide = postFx(uTexB, clamp(vUv - vec2(sh, 0.0), 0.0, 1.0), uGateB, uCamGate.yw);
         return vUv.x < sh ? aSlide : bSlide;
     } else if (uStyle == 4) {
         float sh = smoothstep(0.0, 1.0, uProgress);
         vec2 zUv = (vUv - 0.5) / (1.0 + sh * 2.5) + 0.5;
-        vec3 bZoom = postFx(uTexB, clamp(zUv, 0.0, 1.0), uGateB);
+        vec3 bZoom = postFx(uTexB, clamp(zUv, 0.0, 1.0), uGateB, uCamGate.yw);
         vec2 aUv = (vUv - 0.5) * (1.0 + (1.0 - sh) * 0.35) + 0.5;
-        vec3 aZoom = postFx(uTexA, clamp(aUv, 0.0, 1.0), uGateA);
+        vec3 aZoom = postFx(uTexA, clamp(aUv, 0.0, 1.0), uGateA, uCamGate.xz);
         return mix(bZoom, aZoom, sh);
     } else {
         float lumB = dot(texture(uTexB, vUv).rgb, vec3(0.299, 0.587, 0.114));
         vec2 melted = vUv + vec2(0.0, uProgress * (0.25 + lumB * 0.6));
-        vec3 bMelt = postFx(uTexB, clamp(melted, 0.0, 1.0), uGateB);
+        vec3 bMelt = postFx(uTexB, clamp(melted, 0.0, 1.0), uGateB, uCamGate.yw);
         float reveal = smoothstep(0.0, 1.0, uProgress * 1.4 - lumB * 0.4);
         return mix(bMelt, a, clamp(reveal, 0.0, 1.0));
     }

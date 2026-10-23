@@ -231,9 +231,13 @@ void Renderer::setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& 
     adsr_.configs = configs;
 }
 
-void Renderer::setSharedEffects(const SharedEffects& effects) {
+void Renderer::setCustomization(const mod::Evaluated* evaluated) {
     std::lock_guard<std::mutex> lock(stateLock_);
-    requestedEffects_ = effects;
+    if (evaluated != nullptr) {
+        requestedCustomization_ = *evaluated;
+    } else {
+        requestedCustomization_.reset();
+    }
 }
 
 void Renderer::fail(const std::string& message) {

@@ -24,6 +24,8 @@ bool BeatGrid::step(float periodFrames, float confidence, bool onset) {
             if (phase_ < 0.0f) phase_ += 1.0f;
             beat_ = true;
         } else {
+            // Off the grid: an offbeat hit, or the tempo moved. It is not counted as on the grid, and
+            // the grid keeps its phase; the tempo tracker follows a moving tempo within seconds.
             beat_ = false;
         }
     }

@@ -29,7 +29,7 @@ class PlaybackSession internal constructor(
 ) {
     val ring = PcmRingBuffer()
 
-    internal val sampleRing = SampleRing(capacityFrames = 1 shl 16, channelCount = 2)
+    val sampleRing = SampleRing(capacityFrames = 1 shl 16, channelCount = 2)
 
     @Volatile
     var onAudioFormat: ((sampleRateHz: Int, channelCount: Int, encoding: Int) -> Unit)? = null
@@ -38,7 +38,7 @@ class PlaybackSession internal constructor(
 
     internal val clockDriver = SinkClockDriver(presentationClock)
 
-    internal val captureSink =
+    val captureSink =
         PcmSink { samples, frames, channels ->
             ring.writeInterleaved(samples, frames, channels)
             sampleRing.write(samples, frames, channels)

@@ -1,5 +1,8 @@
 package dev.geode.engine.audio
 
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+
 class SampleRing(
     val capacityFrames: Int,
     val channelCount: Int,
@@ -18,15 +21,16 @@ class SampleRing(
     private val channels: Array<FloatArray> = Array(channelCount) { FloatArray(capacityFrames) }
     private val mask: Long = (capacityFrames - 1).toLong()
 
-    @Volatile
-    private var written: Long = 0
+    // The write position and the epoch are atomic: beginEpoch() runs on another thread than write(), and
+    // a write that straddles it must not put back the position the new epoch just cleared.
+    private val writtenRef = AtomicLong(0)
+    private val epochRef = AtomicInteger(0)
 
-    @Volatile
-    private var epochValue: Int = 0
+    private val written: Long get() = writtenRef.get()
 
     val writtenFrames: Long get() = written
 
-    val epoch: Int get() = epochValue
+    val epoch: Int get() = epochRef.get()
 
     @Volatile
     private var sourceChannels: Int = 0
@@ -36,8 +40,8 @@ class SampleRing(
     val oldestAvailable: Long get() = maxOf(0L, written + maxWriteFrames - capacityFrames)
 
     fun beginEpoch() {
-        written = 0
-        epochValue += 1
+        writtenRef.set(0)
+        epochRef.incrementAndGet()
     }
 
     override fun write(
@@ -53,7 +57,9 @@ class SampleRing(
             "$frameCount frames exceeds maxWriteFrames of $maxWriteFrames"
         }
         sourceChannels = sourceChannelCount
-        var w = written
+        val startEpoch = epochRef.get()
+        val start = written
+        var w = start
         var read = 0
         repeat(frameCount) {
             val slot = (w and mask).toInt()
@@ -63,7 +69,8 @@ class SampleRing(
             read += sourceChannelCount
             w++
         }
-        written = w
+        // A beginEpoch() during this write wins: these frames belonged to the epoch it ended.
+        if (epochRef.get() == startEpoch) writtenRef.compareAndSet(start, w)
     }
 
     fun snapshotLatest(out: Array<FloatArray>): Boolean {
