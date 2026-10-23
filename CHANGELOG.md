@@ -11,41 +11,6 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
-- **Playlists come back on the feature stores (#17, Library slice).**
-  Playback keeps each playlist's tracks and takes rename, add, reorder and
-  remove Commands; a new playlist may start empty. The Library passes them
-  on and imports PLS and XSPF files as well as M3U. The old Library screens
-  edit playlists through them again, and the car browses a Playlists folder.
-
-- **Settings switch over to their feature store (#17, Settings slice).**
-  Every reader of the old `GuiPrefs` and `PlayerPrefs`, and of the
-  equalizer and export defaults, now reads Settings' one app-scoped store
-  (DataStore, migrated once from the old files), and every old save becomes
-  Settings Commands for exactly what changed (`SettingsForOldScreens`).
-  `EngineTuning` applies Settings to the audio engine as they change: speed,
-  pitch, silence skipping, headphone handling, ReplayGain, the equalizer and
-  beat detection. The play/pause fade, the engine choice and the live
-  wallpaper's reduced motion read Settings too. Shuffle and repeat belong to
-  Playback. The SharedPreferences-backed settings repositories and
-  `ExportPrefsStore` are gone.
-
-- **Playback switches over to its feature store (#17, Playback slice).** The
-  music, the queue, the play history, the sleep timer, the A-B loop and the
-  listening choices now live in Playback's one app-scoped store (ADR-0003,
-  ADR-0004). Every old caller sends it Commands: the player, the Library, the
-  search overlay, the Visuals hub, Studio, the widget, the play-from-search
-  intent and Android Auto. `GeodePlaybackService` publishes Playback as the media
-  session (notification, lock screen, Bluetooth, the car) and replaces the old
-  `PlaybackService`. `PlayerSession` loses its player, its queue and the 500 ms
-  poll; the old screens read Playback's state through `OldScreenPlayback`, with
-  the position worked out from the clock. A lost microphone capture is noticed
-  when it happens instead of by polling. The play/pause fade moves into the
-  audio adapter. The old saved queue, history, long-track positions and
-  listening choices are imported into Playback's database once. The three
-  verified playback bugs (Buffering forever, a pause overridden by an open in
-  flight, a next-track decode error stopping the current track) are fixed by
-  Playback's state machine and pinned by `PlaybackJourneyRobolectricTest`.
-
 - **No screenshot or golden-image tests (#184).** The owner dropped them to
   save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
   every `*ScreenshotTest`, their goldens and the `geode.screenshots`
@@ -57,20 +22,22 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
   handlers' database tests.
 
-- **Customization's handlers (#142).** A new `:feature:customization:handlers`
-  module carries out Customization's work, built alongside the old code and
-  wired into the app at the switch-over (#17). Each changed Customization goes
-  to the engine as one snapshot through the bridge's `SnapshotPublisher`, with
-  a fresh revision, retried a few times while the engine is busy; `:app` gives
-  the snapshot's other fields. Presets are saved and loaded as versioned JSON
-  files (version 2) in the preset folder chosen in Settings > Default paths, or
-  the app's own folder, and copied to the mirror folder when one is set. When
-  the store is built, every preset an older Geode saved is converted once:
-  its original goes to `presets-v1-backup` first, and the app-wide LFO slots
-  and envelopes it was played with become its Modulators and Reactions. An old
-  preset found later is converted as it is opened. Every failure is a named
-  Customization failure on the app-wide error channel. The store's work runs
-  one piece at a time, so the engine always ends with the newest Customization.
+- **Studio as a feature: Projects and the library (#21, ADR-0003,
+  ADR-0005).** `:feature:studio:{api,core,handlers,ui}`. Users create, rename
+  and delete Projects, choose the default Project (there is no built-in
+  one), and move videos between Projects. Deleting a Project that still has
+  videos asks "Delete N videos too?": yes deletes them with their files, no
+  moves them to another Project; nothing is deleted silently. Every video is
+  saved to one folder picked with the system folder picker in Studio's own
+  first-run step and kept in Settings > Default paths as the new **Video
+  save folder** (`video_folder_uri`); Studio follows it through Settings'
+  interface. Projects, videos and the default Project live in Studio's own
+  Room database, which the render queue (#22) will share.
+  `StudioCommand.AddVideos` is how Renders, Recordings, Edits, Shorts and the
+  old `Movies/Geode` exports (imported once at the switch-over, #17) enter
+  the library: without a Project they go to the default one, and with no
+  default they are handed back to ask about. Built alongside the old Studio;
+  wired in at the switch-over (#17).
 
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
