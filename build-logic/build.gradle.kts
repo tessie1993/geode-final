@@ -32,5 +32,4 @@ dependencies {
     implementation(libs.pitest.gradle)
     implementation(libs.pitest.android.gradle)
     implementation(libs.kover.gradle)
-    implementation(libs.roborazzi.gradle)
 }

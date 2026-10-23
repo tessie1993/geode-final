@@ -380,7 +380,7 @@ The owner reviews and approves every stage. Nothing ships without the owner's ap
 3. **Full set, final.** All states and sizes, delivered as in section 10.
 4. **Engineering check.** The files import into `:design` (and the app icon layers into the app) without warnings; every name, state and size in the index is present; the art tints correctly; nothing breaks the grid or the minimum detail size.
 5. **App icon.** In parallel with steps 1 to 3, the app icon goes through its concept rounds (section 9) and is reviewed on a real phone: in two or more mask shapes, on light and dark wallpapers, with themed icons on, and as the Play Store image.
-6. **In the app.** The icons and the app icon are wired into the app. Continuous integration re-records the App UI screenshots (`docs/ci.md`), and the owner reviews them on a phone in every theme, dark and light, and at the largest system font size. Any fixes go back to the designer as one consolidated list.
+6. **In the app.** The icons and the app icon are wired into the app. The owner reviews them on a phone in every theme, dark and light, and at the largest system font size. Any fixes go back to the designer as one consolidated list.
 7. **Sign-off.** The owner signs off, the final payment is made, and the rights transfer (section 11) takes effect.
 
 ### What to send for each review
