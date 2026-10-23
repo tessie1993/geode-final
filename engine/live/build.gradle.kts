@@ -9,6 +9,8 @@ android {
 // The live audio engine: the native player, its sink tap and DSP, and the microphone Live input. It owns
 // the sound path beneath Playback; :app only wires it.
 dependencies {
+    // The audio adapter interface (ADR-0005) the native adapter here implements.
+    api(project(":arch:audio"))
     api(project(":engine:audio-android"))
     api(project(":engine:scenes"))
     api(libs.media3.exoplayer)
