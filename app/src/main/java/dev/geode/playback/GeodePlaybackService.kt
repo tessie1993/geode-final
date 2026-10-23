@@ -139,9 +139,7 @@ class GeodePlaybackService : PlaybackSessionService() {
             session: MediaLibrarySession,
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
-        ): ListenableFuture<LibraryResult<MediaItem>> {
-            return Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
-        }
+        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
 
         override fun onGetChildren(
             session: MediaLibrarySession,

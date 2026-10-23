@@ -42,7 +42,8 @@ class MemoryPlaybackStorage : PlaybackStorage {
     ): PlaylistId {
         val id = PlaylistId(lists.value.size + 1L)
         // The newest first, as Playback's database lists them.
-        lists.value = (lists.value + Triple(PlaylistSummary(id, name, tracks.size), tracks, createdAt)).sortedByDescending { it.third.value }
+        lists.value =
+            (lists.value + Triple(PlaylistSummary(id, name, tracks.size), tracks, createdAt)).sortedByDescending { it.third.value }
         return id
     }
 
