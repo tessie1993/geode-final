@@ -44,8 +44,6 @@ class PlayerViewModel
 
         val sleepTimerRemaining: StateFlow<Millis?> get() = playback.sleepTimerRemaining
 
-        fun hasMicPermission(): Boolean = session.hasMicPermission()
-
         fun toggleShuffle() = playback.toggleShuffle()
 
         fun cycleRepeatMode() = playback.cycleRepeatMode()

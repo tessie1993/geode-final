@@ -5,11 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.engine.bridge.NativeSnapshots
+import dev.geode.feature.capture.api.Capture
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.diagnostics.api.Diagnostics
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.visuals.api.Visuals
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,6 +35,8 @@ class ShellViewModel
         val diagnostics: Diagnostics,
         val customization: CustomizationFeature,
         val visuals: Visuals,
+        val studio: Studio,
+        val capture: Capture,
         /** The Customization snapshots the live Visual reads (ADR-0004). */
         val snapshots: NativeSnapshots,
         saved: SavedStateHandle,

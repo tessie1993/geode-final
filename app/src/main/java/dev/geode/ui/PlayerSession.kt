@@ -6,11 +6,9 @@ import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
 import dev.geode.data.ExportDefaults
 import dev.geode.data.PlayerPrefs
-import dev.geode.engine.types.Hz
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
@@ -19,7 +17,6 @@ import dev.geode.export.ExportRange
 import dev.geode.export.StudioClip
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.playback.api.Playback
-import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.geodeContainer
 import dev.geode.playback.EngineFailureNotices
 import dev.geode.playback.PlaybackEngine
@@ -37,7 +34,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.job
 import kotlinx.coroutines.joinAll
@@ -46,13 +42,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * What is left of the old app's hub until the switch-over (#17) finishes: the mic, the old Settings
- * bridges and Studio. The Library, Visuals and Customization are their own app-scoped stores (#17);
- * the live Visual reads its sound straight from the engine.
+ * What is left of the old app's hub until the switch-over (#17) finishes: the old Settings bridges
+ * and Studio's export and editor. The Library, Visuals, Customization, Studio and Capture are their
+ * own app-scoped stores (#17); the live Visual reads its sound straight from the engine.
  *
  * Playback is no longer here. The music, the queue and the history belong to the app-scoped
  * [Playback] store; this follows it for what the Visual and the old screens need (the current song
- * for its analysis, lyrics and exports) and sends it Commands (a capture pausing the music).
+ * for its analysis, lyrics and exports).
  */
 @OptIn(UnstableApi::class)
 class PlayerSession internal constructor(
@@ -72,38 +68,6 @@ class PlayerSession internal constructor(
     private val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
 
     private val container = application.geodeContainer
-
-    private val captureController: CaptureController =
-        CaptureController(
-            application,
-            engineSession.captureSink,
-            object : CaptureController.Host {
-                override fun pausePlayback() = playback.send(PlaybackCommand.Pause)
-
-                override fun resetAnalysis() {
-                    engineSession.sampleRing.beginEpoch()
-                    engine.reset()
-                }
-
-                override fun setAnalysisRate(rate: Hz) {
-                    engine.sampleRateHz = rate.value
-                }
-
-                override fun setMicReactivePref(on: Boolean) {
-                    setGuiPrefs(guiPrefs.value.copy(micReactive = on))
-                }
-
-                override val micReactivePref: Boolean get() = guiPrefs.value.micReactive
-            },
-        )
-
-    fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = captureController.setMicEnabled(enabled)
-
-    fun hasMicPermission(): Boolean = captureController.hasMicPermission()
-
-    init {
-        engineSession.onAudioFormat = captureController.audioFormatHook
-    }
 
     private val settings: PlayerSettingsController =
         PlayerSettingsController(oldSettings, container.appScope)
@@ -313,12 +277,9 @@ class PlayerSession internal constructor(
             storeScope.coroutineContext.job.children
                 .toList()
 
-        captureController.shutdown()
         engineFailureNotices.close()
-        if (engineSession.onAudioFormat === captureController.audioFormatHook) engineSession.onAudioFormat = null
         PlaybackEngine.releaseUi()
         scope.cancel()
-
         drainStoreWrites(pendingStoreWrites)
     }
 
@@ -343,19 +304,13 @@ class PlayerSession internal constructor(
     }
 
     init {
-        // Last init block in the class, so every field above is assigned by now — which is what
-        // the capture controller needs before it may call back into this session.
-        // The mic is turned back on once Settings says whether it was on.
-        scope.launch {
-            oldSettings.loaded()
-            captureController.start()
-        }
+        scope.launch { oldSettings.loaded() }
         followPlayback()
     }
 
     /**
-     * Follows Playback for what the Visual and the old screens need: a new song gets its lyrics, and
-     * starting the music ends a live capture (the mic and the music never mix).
+     * Follows Playback for what the Visual and the old screens need: a new song gets its lyrics and
+     * its export analysis is dropped, since the Visual reacts to the live sound only (#17).
      */
     private fun followPlayback() {
         scope.launch {
@@ -363,13 +318,6 @@ class PlayerSession internal constructor(
                 .map { OldScreenModels.queueOf(it.player)?.current?.id }
                 .distinctUntilChanged()
                 .collect { onTrackChanged() }
-        }
-        scope.launch {
-            playback.state
-                .map { OldScreenModels.meantToPlay(it.player) }
-                .distinctUntilChanged()
-                .drop(1)
-                .collect { playing -> if (playing && captureController.micActive) setMicEnabled(false) }
         }
     }
 

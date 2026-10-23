@@ -74,7 +74,10 @@ import dev.geode.feature.playback.ui.PlayerAction
 import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.feature.playback.ui.QueueRoute
 import dev.geode.feature.settings.api.Element
+import dev.geode.feature.settings.api.FolderCommand
+import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
 import dev.geode.ui.shell.AppUiCommand
@@ -212,7 +215,7 @@ fun AppRoot() {
                     VisualsPlace(shell, onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) }) {
                         if (!ui.fullScreen) visual()
                     }
-                Place.STUDIO -> StudioRoute()
+                Place.STUDIO -> StudioPlace(shell)
                 Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
             }
         }
@@ -290,6 +293,25 @@ private fun MusicLibrary(shell: ShellViewModel) {
 }
 
 /**
+ * Studio: the Studio feature's own library place (#17), with the old export entry re-anchored as a
+ * sheet until Studio's own export lands. The save folder is a Settings value, picked here as in the
+ * first-run step.
+ */
+@Composable
+private fun StudioPlace(shell: ShellViewModel) {
+    Box(Modifier.fillMaxSize()) {
+        StudioRoute(
+            shell.studio,
+            onSaveFolderPicked = { shell.settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
+        )
+        TextButton(
+            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.EXPORT)) },
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+        ) { Text(stringResource(R.string.export_title)) }
+    }
+}
+
+/**
  * Playback's full Player controls, as the owner placed them (#17): the Queue and Tools buttons open
  * their sheets, and the heart is Library's favourite for the playing song.
  */
@@ -337,6 +359,8 @@ private fun PlayerSheet(
             Sheet.QUEUE -> QueueRoute(shell.playback)
             Sheet.LISTENING -> ListeningRoute(shell.playback, elapsedNow = ::elapsedNow)
             Sheet.CUSTOMIZE -> CustomizePanel(shell, onHide = close, onBrowsePresets = close)
+            Sheet.CAPTURE -> CaptureRoute(shell.capture)
+            Sheet.EXPORT -> ExportRoute()
         }
     }
 }
@@ -358,6 +382,10 @@ private fun FullScreenVisual(
             onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
             modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),
         ) { Text(stringResource(R.string.visuals_open_customize)) }
+        TextButton(
+            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
+            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp),
+        ) { Text(stringResource(R.string.visuals_open_capture)) }
     }
 }
 
