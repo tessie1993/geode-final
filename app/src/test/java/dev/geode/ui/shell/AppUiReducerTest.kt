@@ -49,7 +49,7 @@ class AppUiReducerTest {
 
     @Test
     fun `Back closes the top thing first, then goes Home, then leaves`() {
-        val table =
+        val table: List<Pair<AppUiState, Next<AppUiState, AppUiEffect>>> =
             listOf(
                 fullWithCustomize to Next(visualsFull),
                 visualsFull to Next(AppUiState(place = Place.VISUALS)),
