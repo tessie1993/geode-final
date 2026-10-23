@@ -235,6 +235,15 @@ dependencies {
     implementation(project(":feature:diagnostics:ui"))
     // First-run setup's Save folder step is Studio's own setup step (#187).
     implementation(project(":feature:studio:ui"))
+    // Studio and Capture (#17): their stores are built and wired here, so their :api, :core and
+    // :handlers (and Capture's screens) are on :app's compile path too.
+    implementation(project(":feature:studio:api"))
+    implementation(project(":feature:studio:core"))
+    implementation(project(":feature:studio:handlers"))
+    implementation(project(":feature:capture:api"))
+    implementation(project(":feature:capture:core"))
+    implementation(project(":feature:capture:handlers"))
+    implementation(project(":feature:capture:ui"))
     implementation(project(":feature:library:api"))
     implementation(project(":feature:library:handlers"))
     implementation(project(":feature:library:ui"))

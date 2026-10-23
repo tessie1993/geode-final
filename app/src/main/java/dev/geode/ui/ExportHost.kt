@@ -2,8 +2,10 @@ package dev.geode.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.view.SurfaceView
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,14 +13,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -27,6 +32,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,350 +41,182 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.R
 import dev.geode.design.CrystalButton
 import dev.geode.design.CrystalOverline
 import dev.geode.design.CrystalSlider
-import dev.geode.design.GlowTitle
 import dev.geode.design.crystalPanel
 import dev.geode.design.theme.accentTextColor
 import dev.geode.export.ClipEdit
 import dev.geode.export.ClipLook
+import dev.geode.export.CubeLut
+import dev.geode.export.ExportAspect
 import dev.geode.export.ExportQuality
 import dev.geode.export.ExportRatio
 import dev.geode.export.StudioClip
-import dev.geode.ui.studio.EditorActions
 import dev.geode.ui.studio.TimelineEditor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
+/**
+ * The old Studio's export entry, kept until Studio's own export lands (#17): edit a picked video in
+ * the clip editor, or open the full timeline editor. The clip library itself is gone, replaced by the
+ * Studio feature's Projects and videos.
+ */
 @Composable
-fun StudioRoute(viewModel: StudioViewModel = geodeViewModel()) {
+fun ExportRoute(viewModel: StudioViewModel = geodeViewModel()) {
     val studio by viewModel.studio.collectAsStateWithLifecycle()
     val editor by viewModel.editor.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) { viewModel.refreshStudioClips() }
-    StudioScreen(
-        state = studio,
-        editor = editor,
-        editorActions = viewModel,
-        onDescribe = viewModel::describeStudioClip,
-        onRename = viewModel::renameStudioClip,
-        onDelete = viewModel::deleteStudioClip,
-        onExport = { clip, edit -> viewModel.startStudioExport(clip, edit) },
-        onExportToDestination = { clip, edit, destination -> viewModel.startStudioExport(clip, edit, destination) },
-        onCancelExport = viewModel::cancelStudioExport,
-        onClearResult = viewModel::clearStudioResult,
-    )
-}
-
-@Composable
-internal fun StudioScreen(
-    state: StudioUiState,
-    editor: EditorUiState,
-    editorActions: EditorActions,
-    onDescribe: (Uri, (StudioClip) -> Unit) -> Unit,
-    onRename: (String, String, (Boolean) -> Unit) -> Unit,
-    onDelete: (String, (Boolean) -> Unit) -> Unit,
-    onExport: (StudioClip, ClipEdit) -> Unit,
-    onExportToDestination: (StudioClip, ClipEdit, Uri) -> Unit,
-    onCancelExport: () -> Unit,
-    onClearResult: () -> Unit,
-) {
-    val context = LocalContext.current
+    var timelineOpen by rememberSaveable { mutableStateOf(false) }
     var editingUri by rememberSaveable { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<StudioClip?>(null) }
-    var timelineOpen by rememberSaveable { mutableStateOf(false) }
+
     if (timelineOpen) {
-        TimelineEditor(state = editor, exportPhase = state.phase, actions = editorActions, onClose = { timelineOpen = false })
+        TimelineEditor(state = editor, exportPhase = studio.phase, actions = viewModel, onClose = { timelineOpen = false })
         return
     }
     LaunchedEffect(editingUri) {
         val wanted: String? = editingUri
         when {
             wanted == null -> editing = null
-            editing?.uri != wanted -> onDescribe(Uri.parse(wanted)) { editing = it }
+            editing?.uri != wanted -> viewModel.describeStudioClip(Uri.parse(wanted)) { editing = it }
         }
     }
-
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             if (uri != null) {
-                onDescribe(uri) {
+                viewModel.describeStudioClip(uri) {
                     editing = it
                     editingUri = it.uri
                 }
             }
         }
 
-    val chooserTitle = stringResource(R.string.studio_share_chooser)
-    Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
+    val clip = editing
+    if (clip == null) {
+        Column(
+            Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             CrystalOverline(stringResource(R.string.app_name))
-            GlowTitle(
-                stringResource(if (editing == null) R.string.nav_studio else R.string.studio_edit),
-            )
-        }
-        val clip = editing
-        if (clip == null) {
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                CrystalButton(filled = false, onClick = { timelineOpen = true }) { Text(stringResource(R.string.editor_open)) }
-            }
-            ClipLibrary(
-                studio = state,
-                onOpen = {
-                    editing = it
-                    editingUri = it.uri
-                },
-                onPick = { picker.launch(arrayOf("video/*")) },
-                onShare = { context.shareVideo(it, chooserTitle) },
-                onRename = { target, name, done -> onRename(target.uri, name, done) },
-                onDelete = { target, done -> onDelete(target.uri, done) },
-            )
-        } else {
-            ClipEditor(
-                clip = clip,
-                studio = state,
-                onExport = onExport,
-                onExportToDestination = onExportToDestination,
-                onCancelExport = onCancelExport,
-                onClearResult = onClearResult,
-                onClose = {
-                    onClearResult()
-                    editingUri = null
-                },
-            )
-        }
-    }
-}
-
-// ---------------------------------------------------------------- clip library
-
-@Composable
-private fun ClipLibrary(
-    studio: StudioUiState,
-    onOpen: (StudioClip) -> Unit,
-    onPick: () -> Unit,
-    onShare: (Uri) -> Unit,
-    onRename: (StudioClip, String, (Boolean) -> Unit) -> Unit,
-    onDelete: (StudioClip, (Boolean) -> Unit) -> Unit,
-) {
-    var renaming by remember { mutableStateOf<StudioClip?>(null) }
-    var deleting by remember { mutableStateOf<StudioClip?>(null) }
-    var notice by remember { mutableStateOf<String?>(null) }
-    val renameFailed = stringResource(R.string.studio_rename_failed)
-    val deleteFailed = stringResource(R.string.studio_delete_failed)
-    ClipList(
-        studio = studio,
-        onOpen = onOpen,
-        onPick = onPick,
-        onShare = onShare,
-        onRenameRequest = { renaming = it },
-        onDeleteRequest = { deleting = it },
-    )
-
-    renaming?.let { clip ->
-        RenameClipDialog(
-            clip = clip,
-            onConfirm = { name ->
-                onRename(clip, name) { ok -> notice = if (ok) null else renameFailed }
-                renaming = null
-            },
-            onDismiss = { renaming = null },
-        )
-    }
-
-    deleting?.let { clip ->
-        DeleteClipDialog(
-            clip = clip,
-            onConfirm = {
-                onDelete(clip) { ok -> notice = if (ok) null else deleteFailed }
-                deleting = null
-            },
-            onDismiss = { deleting = null },
-        )
-    }
-
-    notice?.let { message ->
-        StudioNoticeDialog(message = message, onDismiss = { notice = null })
-    }
-}
-
-@Composable
-private fun ClipList(
-    studio: StudioUiState,
-    onOpen: (StudioClip) -> Unit,
-    onPick: () -> Unit,
-    onShare: (Uri) -> Unit,
-    onRenameRequest: (StudioClip) -> Unit,
-    onDeleteRequest: (StudioClip) -> Unit,
-) {
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(vertical = 12.dp),
-    ) {
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(onClick = onPick) { Text(stringResource(R.string.studio_open_video)) }
-            }
-        }
-        if (studio.clips.isEmpty() && studio.phase != ExportPhase.Loading) {
-            item { ClipLibraryEmpty() }
-        }
-        items(studio.clips.size) { index ->
-            val clip = studio.clips[index]
-            ClipRow(
-                clip = clip,
-                onOpen = { onOpen(clip) },
-                onShare = { onShare(Uri.parse(clip.uri)) },
-                onRename = { onRenameRequest(clip) },
-                onDelete = { onDeleteRequest(clip) },
-            )
-        }
-        if (studio.clips.isNotEmpty()) {
-            item { ClipStorageFooter(studio.clips) }
-        }
-    }
-}
-
-@Composable
-private fun ClipLibraryEmpty() {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .crystalPanel(
-                0.32f,
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.primary,
-                corner = 20.dp,
-            ).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CrystalOverline(stringResource(R.string.studio_empty_title))
-        Text(
-            stringResource(R.string.studio_empty_body),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
-}
-
-@Composable
-private fun ClipRow(
-    clip: StudioClip,
-    onOpen: () -> Unit,
-    onShare: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .crystalPanel(
-                0.28f,
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.primary,
-                corner = 18.dp,
-                glowStrength = 0.4f,
-            ).clickable(onClick = onOpen)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        VideoFrame(clip.uri, atMs = clip.durationMs / 3, modifier = Modifier.width(96.dp).height(56.dp))
-        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+            Text(stringResource(R.string.export_title), style = MaterialTheme.typography.headlineSmall)
             Text(
-                clip.name,
+                stringResource(R.string.studio_empty_body),
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                clip.summary(),
-                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CrystalButton(onClick = { picker.launch(arrayOf("video/*")) }) { Text(stringResource(R.string.studio_open_video)) }
+                CrystalButton(filled = false, onClick = { timelineOpen = true }) { Text(stringResource(R.string.editor_open)) }
+            }
         }
-        TextButton(onClick = onShare) { Text(stringResource(R.string.studio_send)) }
-        TextButton(onClick = onRename) { Text(stringResource(R.string.action_rename)) }
-        TextButton(onClick = onDelete) { Text(stringResource(R.string.action_delete)) }
+    } else {
+        ClipEditor(
+            clip = clip,
+            studio = studio,
+            onExport = { c, e -> viewModel.startStudioExport(c, e) },
+            onExportToDestination = { c, e, destination -> viewModel.startStudioExport(c, e, destination) },
+            onCancelExport = viewModel::cancelStudioExport,
+            onClearResult = viewModel::clearStudioResult,
+            onClose = {
+                viewModel.clearStudioResult()
+                editingUri = null
+            },
+        )
     }
 }
 
+@UnstableApi
 @Composable
-private fun ClipStorageFooter(clips: List<StudioClip>) {
-    val bytes = clips.sumOf { it.sizeBytes }
-    Text(
-        pluralStringResource(R.plurals.clip_count, clips.size, clips.size) +
-            ", " +
-            stringResource(
-                R.string.studio_storage_used,
-                stringResource(R.string.studio_size_gb, bytes / (1024f * 1024f * 1024f)),
+private fun ClipPreview(
+    clip: StudioClip,
+    edit: ClipEdit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    var playing by remember(clip.uri) { mutableStateOf(true) }
+    val player =
+        remember(clip.uri) {
+            ExoPlayer.Builder(context).build().apply {
+                repeatMode = Player.REPEAT_MODE_ONE
+                volume = 0f
+                playWhenReady = true
+            }
+        }
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+
+    LaunchedEffect(player, edit) {
+        delay(REBUILD_SETTLE_MS)
+        val lut = edit.lutUri?.let { uri -> withContext(Dispatchers.IO) { CubeLut.load(context, uri) } }
+        player.setVideoEffects(edit.videoEffects(lut))
+        player.setMediaItems(
+            listOf(
+                MediaItem
+                    .Builder()
+                    .setUri(clip.uri)
+                    .setClippingConfiguration(edit.clipping())
+                    .build(),
             ),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
+        )
+        player.playbackParameters = PlaybackParameters(edit.speed)
+        player.prepare()
+    }
+    LaunchedEffect(player, playing) {
+        player.playWhenReady = playing
+    }
 
-@Composable
-private fun RenameClipDialog(
-    clip: StudioClip,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by remember(clip.uri) { mutableStateOf(clip.name.substringBeforeLast('.')) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.studio_rename_title)) },
-        text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                singleLine = true,
-                label = { Text(stringResource(R.string.studio_rename_field)) },
+    val aspect =
+        edit.ratio?.let { r ->
+            ExportAspect.of(edit.quality, r).let { it.width.toFloat() / it.height }
+        } ?: if (clip.width > 0 && clip.height > 0) {
+            clip.width.toFloat() / clip.height
+        } else {
+            16f / 9f
+        }
+    val pauseHint = stringResource(R.string.studio_preview_toggle)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(aspect.coerceIn(0.3f, 3.4f))
+            .clip(
+                androidx.compose.foundation.shape
+                    .RoundedCornerShape(8.dp),
+            ).background(Color.Black)
+            .clickable { playing = !playing },
+        contentAlignment = Alignment.Center,
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                SurfaceView(ctx).also { player.setVideoSurfaceView(it) }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (!playing) {
+            Icon(
+                Icons.Filled.PlayArrow,
+                contentDescription = pauseHint,
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.zIndex(1f).size(44.dp),
             )
-        },
-        confirmButton = {
-            TextButton(
-                enabled = name.isNotBlank(),
-                onClick = { onConfirm(name) },
-            ) { Text(stringResource(R.string.action_rename)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-    )
-}
-
-@Composable
-private fun DeleteClipDialog(
-    clip: StudioClip,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.studio_delete_title)) },
-        text = { Text(stringResource(R.string.studio_delete_body, clip.name)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.action_delete)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-    )
-}
-
-@Composable
-private fun StudioNoticeDialog(
-    message: String,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.studio_notice_title)) },
-        text = { Text(message) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
-    )
+        }
+    }
 }
 
 // ----------------------------------------------------------------- clip editor
@@ -444,7 +282,7 @@ private fun ClipEditorHeader(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(clip.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(clip.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
             Text(
                 clip.summary(),
                 style = MaterialTheme.typography.labelSmall,
@@ -788,7 +626,6 @@ private fun StudioSection(
                 MaterialTheme.colorScheme.surfaceVariant,
                 MaterialTheme.colorScheme.primary,
                 corner = 20.dp,
-                glowStrength = 0.45f,
             ).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -862,3 +699,5 @@ private fun android.content.Context.viewVideo(uri: Uri) {
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     runCatching { startActivity(view) }
 }
+
+private const val REBUILD_SETTLE_MS = 250L
