@@ -39,7 +39,7 @@ The battery-saving setting, in Settings > Battery beside Visual quality and the 
 _Avoid_: low power mode, disable visualizer
 
 **Element**:
-One selectable skin for the App UI (Water first, and the one new users start in), named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
+One selectable skin for the App UI, named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
 _Avoid_: theme, style (a Style is a look for the Visual), skin pack, Theme pack
 
 **Hero scene**:
