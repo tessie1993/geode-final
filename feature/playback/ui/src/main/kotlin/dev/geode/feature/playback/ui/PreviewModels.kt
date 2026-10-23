@@ -5,7 +5,7 @@ import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.Track
 
-/** The models the previews, and so the screenshots, draw. */
+/** The models the previews draw. */
 internal object PreviewModels {
     private val track = Track(TrackId("content://preview/1"), "Night Drive", "Ann Arbor", Millis(215_000))
 

@@ -18,7 +18,7 @@ dependencies {
     testImplementation(libs.robolectric)
 }
 
-// Robolectric's Android 16 environment needs these on JDK 21, as in geode.screenshots.
+// Robolectric's Android 16 environment needs these on JDK 21.
 tasks.withType<Test>().configureEach {
     jvmArgs(
         "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",

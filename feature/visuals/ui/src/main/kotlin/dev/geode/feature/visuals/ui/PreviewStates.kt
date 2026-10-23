@@ -13,7 +13,7 @@ import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.VisualsState
 
-/** The Visuals states the previews and screenshot tests show. */
+/** The Visuals states the previews show. */
 internal object PreviewStates {
     private val tunnel = StyleEntry(SceneId("tunnel"), "Tunnel", StyleGroup.SHADERS)
     private val bars = StyleEntry(SceneId("bars"), "Bars", StyleGroup.SHADERS)

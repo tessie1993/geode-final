@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **No screenshot or golden-image tests (#184).** The owner dropped them to
+  save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
+  every `*ScreenshotTest`, their goldens and the `geode.screenshots`
+  convention plugin), and so do the Visual golden frames
+  (`tools/glslcheck/goldens` and `tools/ci/compare_frames.py`) and the
+  `[record-goldens]` mechanism. The shader job stays as "Shaders compile and
+  render": every Style still has to compile, draw a non-black frame and
+  survive a resize, and every Shared core effect has to draw. Previews stay
+  for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
+  handlers' database tests.
+
 - **The Presets browser, rebuilt in the Visuals feature (#144, ADR-0003,
   ADR-0005).** `:feature:visuals` now lists the built-in presets (a folder
   per Style, with the ones for the Style shown first) and the saved presets

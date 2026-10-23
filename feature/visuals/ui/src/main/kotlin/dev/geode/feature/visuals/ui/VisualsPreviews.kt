@@ -14,9 +14,8 @@ import dev.geode.design.forest.ForestTheme
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.VisualsState
 
-// The previews the screenshot tests render (ADR-0003). The screens are App UI drawn over the live
-// Visual, so each preview puts a still stand-in behind them: a fixed gradient, never the Visual itself,
-// which the shader golden frames cover.
+// The Visuals previews (ADR-0003). The screens are App UI drawn over the live Visual, so each preview
+// puts a still stand-in behind them: a fixed gradient, never the Visual itself.
 
 /** A still stand-in for the live Visual behind the screens. */
 @Composable

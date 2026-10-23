@@ -24,7 +24,7 @@ import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 
 /**
- * The made-up Customizations the previews and screenshots show: a tunnel-like Style mid-edit. They are
+ * The made-up Customizations the previews show: a tunnel-like Style mid-edit. They are
  * sample data for the App UI only, not a Style's real manifest (that lives in Customization's core).
  */
 internal object PreviewModels {
