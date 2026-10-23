@@ -68,8 +68,7 @@ internal object OldLibraryModels {
         title: String,
         artist: String,
         album: String,
-    ): LibraryCommand? =
-        songOf(state, song)?.let { LibraryCommand.EditSong(song, SongEdit(title, artist, album, it.artwork)) }
+    ): LibraryCommand? = songOf(state, song)?.let { LibraryCommand.EditSong(song, SongEdit(title, artist, album, it.artwork)) }
 
     /** What the old song info editor starts from, or null for a song the Library does not have. */
     fun trackInfoOf(

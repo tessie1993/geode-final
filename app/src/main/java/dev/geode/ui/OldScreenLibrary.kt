@@ -71,8 +71,14 @@ class OldScreenLibrary internal constructor(
     /** The folders the user picked for their music, kept by Settings. */
     val musicFolders: StateFlow<Set<String>> =
         settings.state
-            .map { state -> (state as? SettingsState.Ready)?.values?.folders?.musicFolders.orEmpty().mapTo(mutableSetOf()) { it.value } }
-            .stateIn(scope, SharingStarted.Eagerly, emptySet())
+            .map { state ->
+                (state as? SettingsState.Ready)
+                    ?.values
+                    ?.folders
+                    ?.musicFolders
+                    .orEmpty()
+                    .mapTo(mutableSetOf()) { it.value }
+            }.stateIn(scope, SharingStarted.Eagerly, emptySet())
 
     /** Each M3U file the Library turned into a playlist. */
     val playlistsImported: Flow<LibraryFact.PlaylistImported> = library.events.filterIsInstance()
