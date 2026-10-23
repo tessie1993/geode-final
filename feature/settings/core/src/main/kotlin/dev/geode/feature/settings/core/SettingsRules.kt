@@ -71,6 +71,7 @@ object SettingsRules {
         command: LookCommand,
     ): LookSettings =
         when (command) {
+            is LookCommand.SetElement -> look.copy(element = command.element)
             is LookCommand.SetAccentIntensity -> look.copy(accentIntensity = command.intensity)
             is LookCommand.SetBackgroundDim -> look.copy(backgroundDim = command.dim)
             is LookCommand.SetFontColor -> look.copy(fontColor = command.color)

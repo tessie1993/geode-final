@@ -7,6 +7,7 @@ import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportFrameRate
@@ -44,6 +45,14 @@ internal object SettingsCodec {
 
     private val WHITE = Argb(0xFFFFFFFF.toInt())
 
+    /** The forest theme ids the Elements replaced (#103), and the Element each one became. */
+    private val FOREST_THEME_IDS =
+        mapOf(
+            "DeepForest" to Element.WOOD,
+            "NightForest" to Element.BIOLUMINESCENCE,
+            "EarthLichen" to Element.STONE,
+        )
+
     private val LOUDNESS_IDS =
         mapOf(
             ExportLoudness.YOUTUBE to "youtube",
@@ -75,7 +84,9 @@ internal object SettingsCodec {
 
     private fun Reader.look(): LookSettings {
         val default = LookSettings()
+        val element = string(K.ELEMENT)
         return LookSettings(
+            element = Element.entries.firstOrNull { it.name == element } ?: FOREST_THEME_IDS[element] ?: Element.Default,
             accentIntensity = float(K.ACCENT_INTENSITY, default.accentIntensity),
             backgroundDim = float(K.BACKGROUND_DIM, default.backgroundDim),
             fontColor = int(K.FONT_COLOR)?.let(::Argb) ?: WHITE.takeIf { boolean(K.LEGACY_WHITE_FONT, false) },
@@ -197,6 +208,7 @@ internal object SettingsCodec {
 
     private fun look(look: LookSettings): Map<String, Any?> =
         mapOf(
+            K.ELEMENT to look.element.name,
             K.ACCENT_INTENSITY to look.accentIntensity,
             K.BACKGROUND_DIM to look.backgroundDim,
             K.FONT_COLOR to look.fontColor?.value,

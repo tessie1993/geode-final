@@ -9,6 +9,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCodec
@@ -307,6 +308,16 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `the Element is kept by name and read back`() {
+        for (element in Element.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(element = element)))
+
+            assertEquals(element.name, stored["gui_element"])
+            assertEquals(element, SettingsCodec.decode(stored).look.element)
+        }
+    }
+
+    @Test
     fun `a missing or unknown ambient mode loads as Drifting`() {
         assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(today).look.ambientMode)
         assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to "Wobbling")).look.ambientMode)
@@ -320,10 +331,32 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `a forest theme id loads as the Element that replaced it`() {
+        fun loaded(id: String) = SettingsCodec.decode(mapOf("gui_element" to id)).look.element
+
+        assertEquals(Element.WOOD, loaded("DeepForest"))
+        assertEquals(Element.BIOLUMINESCENCE, loaded("NightForest"))
+        assertEquals(Element.STONE, loaded("EarthLichen"))
+    }
+
+    @Test
+    fun `a missing or unknown Element loads as Water`() {
+        assertEquals(Element.WATER, SettingsCodec.decode(today).look.element)
+        assertEquals(Element.WATER, SettingsCodec.decode(mapOf("gui_element" to "Lapis")).look.element)
+        assertEquals(Element.WATER, SettingsCodec.decode(mapOf("gui_element" to 2)).look.element)
+    }
+
+    @Test
+    fun `the Element is new, so it is read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_element" in it })
+    }
+
+    @Test
     fun `the defaults are written in today's formats too`() {
         val stored = SettingsCodec.encode(SettingsValues())
 
         assertEquals(1.0f, stored["gui_text_scale"])
+        assertEquals("WATER", stored["gui_element"])
         assertEquals("0,0,0,0,0,0,0,0,0,0", stored["band_levels"])
         assertEquals(-1, stored["preset"])
         assertEquals(60, stored["export_fps"])

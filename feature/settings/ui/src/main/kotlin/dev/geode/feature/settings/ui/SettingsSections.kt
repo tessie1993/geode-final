@@ -58,12 +58,17 @@ private const val MILLIBELS_PER_DECIBEL = 100f
 private const val BASS_BOOST_FULL = 1_000f
 private val NO_SLEEP_TIMER = Minutes(0)
 
-/** Theme (was Look): accent, text and layout of the App UI. */
+/** Theme (was Look): the Element, accent, text and layout of the App UI. */
 internal fun LazyListScope.themeSection(
     look: LookSettings,
     fontColors: List<FontColorChoice>,
     change: (SettingsCommand) -> Unit,
 ) {
+    item {
+        SettingsGroup(stringResource(R.string.look_group_element)) {
+            ElementPicker(look.element) { change(LookCommand.SetElement(it)) }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.look_group_colour)) {
             SliderRow(

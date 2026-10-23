@@ -93,8 +93,27 @@ enum class AmbientMode {
     OFF,
 }
 
-/** The Theme section (was Look): accent, text and layout of the App UI. */
+/**
+ * One selectable skin for the App UI (see CONTEXT.md): its material, palette, type, shapes and
+ * motion. It never changes navigation, layout or what a control does. The first wave is these four,
+ * dark only; the look of each belongs to :design.
+ */
+enum class Element {
+    WATER,
+    WOOD,
+    STONE,
+    BIOLUMINESCENCE,
+    ;
+
+    companion object {
+        /** The Element a fresh install starts on, and what an unknown stored value falls back to. */
+        val Default = WATER
+    }
+}
+
+/** The Theme section (was Look): the Element, accent, text and layout of the App UI. */
 data class LookSettings(
+    val element: Element = Element.Default,
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
     val backgroundDim: Float = BACKGROUND_DIM_DEFAULT,
     /** The text colour chosen over the theme's own, or null for the theme's. */

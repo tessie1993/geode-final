@@ -3,12 +3,15 @@ package dev.geode.feature.settings.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import dev.geode.design.element.ElementTheme
 import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.FolderSettings
 import dev.geode.feature.settings.api.FolderUri
+import dev.geode.feature.settings.api.LookSettings
 import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.SettingsValues
 
@@ -43,13 +46,20 @@ internal fun previewModel(
     values: SettingsValues? = previewValues,
 ): SettingsScreenModel = SettingsScreenModel(section, values, previewFontColors, PREVIEW_VERSION)
 
+/** Settings in the Element of [values], as the app's root draws it; Water while they load. */
 @Composable
 internal fun SettingsPreview(
     section: SettingsSection,
     values: SettingsValues? = previewValues,
 ) {
-    MaterialTheme { SettingsScreen(previewModel(section, values), onAction = {}) }
+    val element = values?.look?.element ?: Element.Default
+    ElementTheme(element.tokens()) { SettingsScreen(previewModel(section, values), onAction = {}) }
 }
+
+/** The Theme section with [element] chosen, drawn in it. */
+@Composable
+internal fun SettingsThemeElementPreview(element: Element) =
+    SettingsPreview(SettingsSection.THEME, previewValues.copy(look = LookSettings(element = element)))
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
@@ -61,6 +71,18 @@ internal fun SettingsThemePreview() = SettingsPreview(SettingsSection.THEME)
 internal fun SettingsThemeHomePreview() {
     MaterialTheme { HomeGroup(AmbientMode.STILL, change = {}) }
 }
+
+@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
+@Composable
+internal fun SettingsThemeWoodPreview() = SettingsThemeElementPreview(Element.WOOD)
+
+@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
+@Composable
+internal fun SettingsThemeStonePreview() = SettingsThemeElementPreview(Element.STONE)
+
+@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
+@Composable
+internal fun SettingsThemeBioluminescencePreview() = SettingsThemeElementPreview(Element.BIOLUMINESCENCE)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable

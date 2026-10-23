@@ -10,6 +10,10 @@ import dev.geode.engine.types.Millis
 sealed interface SettingsCommand
 
 sealed interface LookCommand : SettingsCommand {
+    data class SetElement(
+        val element: Element,
+    ) : LookCommand
+
     data class SetAccentIntensity(
         val intensity: Float,
     ) : LookCommand
