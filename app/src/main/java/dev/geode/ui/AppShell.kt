@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -29,6 +30,7 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -56,13 +59,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.geode.R
-import dev.geode.design.CrystalBackground
-import dev.geode.design.CrystalButton
-import dev.geode.design.CrystalNavBar
-import dev.geode.design.CrystalNavItem
-import dev.geode.design.CrystalOverline
-import dev.geode.design.GlowTitle
-import dev.geode.design.luminousHairline
+import dev.geode.design.element.ElementNavBar
+import dev.geode.design.element.ElementNavItem
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
 import dev.geode.engine.types.Millis
@@ -75,10 +73,13 @@ import dev.geode.feature.playback.ui.MiniPlayerRoute
 import dev.geode.feature.playback.ui.PlayerAction
 import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.feature.playback.ui.QueueRoute
+import dev.geode.feature.settings.api.Element
+import dev.geode.feature.settings.api.SettingsState
 import dev.geode.render.VisualizerView
 import dev.geode.ui.shell.AppUiCommand
 import dev.geode.ui.shell.AppUiFact
 import dev.geode.ui.shell.Banner
+import dev.geode.ui.shell.GeodeTheme
 import dev.geode.ui.shell.Place
 import dev.geode.ui.shell.Sheet
 import dev.geode.ui.shell.ShellViewModel
@@ -169,28 +170,18 @@ fun AppRoot() {
                 }
             }
     }
-    LiveVisualBindings(visualizerView, shell, running = visualShown, reducedMotion = gui.reducedMotion)
-    CrystalMaterialTheme(
-        pack = dev.geode.design.theme.ThemePackCatalog.lapisLazuli,
-        gui = gui,
-    ) {
+    VisualizerEngineBindings(viewModel, visualizerView)
+    val settingsState by shell.settings.state.collectAsStateWithLifecycle()
+    val element = (settingsState as? SettingsState.Ready)?.values?.look?.element ?: Element.Default
+    GeodeTheme(element, gui) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }
         val miniPlayer: @Composable () -> Unit = {
             if (ui.playerBarShown(loaded)) {
                 MiniPlayerRoute(shell.playback, elapsedNow = ::elapsedNow, onExpand = { appUi.send(AppUiCommand.EnterFullScreen) })
             }
         }
-        // Set by Settings > Help to replay the tour after it has already been seen; the automatic
-        // first-run showing is a function of the stored prefs instead, so this stays false there.
+        // Set by Settings > Help to replay the intro tour; first-run setup shows it by itself (#187).
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
-        // Offered once, to someone who has finished setup and has not turned the offer off.
-        val offerTutorial = gui.setupDone && !gui.tutorialSeen && gui.tutorialOnFirstRun
-        // Latched the moment the tour is offered, so that from then on its visibility depends on
-        // `tutorialRunning` alone. Without this, ticking "don't show this next time" DURING the
-        // tour clears `tutorialOnFirstRun`, which clears `offerTutorial`, which closes the tour
-        // out from under the person who was reading it — the checkbox is about the NEXT install,
-        // not this minute.
-        LaunchedEffect(offerTutorial) { if (offerTutorial) tutorialRunning = true }
         val page: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             when (ui.place) {
                 Place.HOME -> HomeScreen(shell, loaded, onResume = viewModel::resumeLastPlayed)
@@ -202,7 +193,7 @@ fun AppRoot() {
                                 Modifier
                                     .width(1.dp)
                                     .fillMaxHeight()
-                                    .luminousHairline(MaterialTheme.colorScheme.primary),
+                                    .background(MaterialTheme.colorScheme.outlineVariant),
                             )
                             Box(Modifier.weight(1f)) { PlayerControls(shell) }
                         }
@@ -218,7 +209,7 @@ fun AppRoot() {
                         onFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) },
                     )
                 Place.STUDIO -> StudioRoute()
-                Place.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
+                Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
             }
         }
         val content: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
@@ -228,8 +219,6 @@ fun AppRoot() {
             }
         }
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
-            if (visualShown) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
             val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
             // Under full screen the shell stays composed, so where the person was survives, but is not drawn.
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (ui.fullScreen) 0f else 1f }) {
@@ -251,13 +240,13 @@ fun AppRoot() {
                         )
                     },
                     confirmButton = {
-                        CrystalButton(onClick = {
+                        Button(onClick = {
                             val cm = context.getSystemService(android.content.ClipboardManager::class.java)
                             cm.setPrimaryClip(android.content.ClipData.newPlainText(clipLabel, text))
                         }) { Text(stringResource(R.string.action_copy)) }
                     },
                     dismissButton = {
-                        CrystalButton(filled = false, onClick = {
+                        TextButton(onClick = {
                             java.io.File(context.filesDir, "crash-latest.txt").delete()
                             crashText = null
                         }) { Text(stringResource(R.string.action_dismiss)) }
@@ -289,32 +278,14 @@ fun AppRoot() {
             ui.banner?.let { banner ->
                 FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
             }
-            if (!gui.safetyAcknowledged) {
-                SafetyConsent(
-                    onAcknowledge = { settingsViewModel.setGuiPrefs(gui.copy(safetyAcknowledged = true)) },
-                )
-            } else if (!gui.setupDone) {
-                // Setup runs only after the notice is acknowledged, and only until it is done.
-                FirstRunGate(
-                    onDone = {
-                        settingsViewModel.setGuiPrefs(gui.copy(setupDone = true))
-                        open(Place.MUSIC)
-                    },
-                )
-            } else if (tutorialRunning) {
-                // Offered once setup is out of the way, so the tour walks a real app with a real
-                // library rather than a set of empty tabs.
-                TutorialOverlay(
-                    steps = TutorialStep.entries,
-                    dontShowAgain = !gui.tutorialOnFirstRun,
-                    onDontShowAgainChange = { settingsViewModel.setGuiPrefs(gui.copy(tutorialOnFirstRun = !it)) },
-                    onNavigate = open,
-                    onDismiss = {
-                        tutorialRunning = false
-                        settingsViewModel.setGuiPrefs(gui.copy(tutorialSeen = true))
-                    },
-                )
-            }
+            DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
+            // First-run setup, and the Save folder step again whenever the folder is lost (#187).
+            FirstRunSetup(
+                shell.settings,
+                replayTour = tutorialRunning,
+                onReplayOver = { tutorialRunning = false },
+                onNavigate = open,
+            )
         }
     }
 }
@@ -444,7 +415,7 @@ private fun AppShellCompact(
                     Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .luminousHairline(MaterialTheme.colorScheme.primary),
+                        .background(MaterialTheme.colorScheme.outlineVariant),
                 )
                 PlaceBar(place, onOpen, gui.barOpacity)
             }
@@ -467,7 +438,7 @@ private fun AppShellExpanded(
             Modifier
                 .width(1.dp)
                 .fillMaxHeight()
-                .luminousHairline(MaterialTheme.colorScheme.primary),
+                .background(MaterialTheme.colorScheme.outlineVariant),
         )
         Column(Modifier.weight(1f)) {
             miniPlayer()
@@ -483,11 +454,11 @@ private fun PlaceBar(
     onOpen: (Place) -> Unit,
     opacity: Float,
 ) {
-    CrystalNavBar(
-        items = Place.entries.map { CrystalNavItem(stringResource(it.label), it.icon) },
+    ElementNavBar(
+        items = Place.entries.map { ElementNavItem(stringResource(it.label), it.icon) },
         selected = Place.entries.indexOf(selected),
         onSelect = { onOpen(Place.entries[it]) },
-        opacity = opacity,
+        modifier = Modifier.alpha(opacity),
     )
 }
 
@@ -524,8 +495,8 @@ private fun HomeScreen(
         Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        CrystalOverline(stringResource(R.string.app_name))
-        GlowTitle(stringResource(R.string.nav_home))
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelMedium)
+        Text(stringResource(R.string.nav_home), style = MaterialTheme.typography.headlineMedium)
         // ponytail: an empty slot until the Hero scene lands (#110).
         Box(
             Modifier
@@ -542,36 +513,12 @@ private fun HomeScreen(
                 modifier = Modifier.clip(RoundedCornerShape(16.dp)),
             )
         } else {
-            CrystalButton(onClick = onResume) {
+            Button(onClick = onResume) {
                 StoneIconArt(StoneIcon.PLAY, null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.action_resume_last_played))
             }
         }
-    }
-}
-
-@Composable
-fun SettingsScreen(
-    viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
-    onStartTutorial: () -> Unit,
-) {
-    var showExport by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
-            CrystalOverline(stringResource(R.string.app_name))
-            GlowTitle(stringResource(R.string.nav_settings))
-        }
-        AppSettingsTab(
-            viewModel,
-            exportOpen = showExport,
-            onOpenExport = { showExport = true },
-            onStartTutorial = onStartTutorial,
-        )
-    }
-    if (showExport) {
-        ExportHost(viewModel, visualizerView) { showExport = false }
     }
 }
 

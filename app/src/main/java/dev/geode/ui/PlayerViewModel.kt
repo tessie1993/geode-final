@@ -5,8 +5,6 @@ import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.media3.common.util.UnstableApi
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.analysis.LiveInputProfile
-import dev.geode.audio.MicCapture
 import dev.geode.di.PlayerSessionProvider
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
@@ -40,8 +38,6 @@ class PlayerViewModel
 
         val vizState: StateFlow<VizUiState> get() = session.vizState
 
-        val micState: StateFlow<MicState> get() = session.micState
-
         val historyTick: StateFlow<Int> get() = playback.historyTick
 
         val favourites: StateFlow<Set<TrackId>> get() = library.favourites
@@ -50,7 +46,6 @@ class PlayerViewModel
 
         val sleepTimerRemaining: StateFlow<Millis?> get() = playback.sleepTimerRemaining
 
-        fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = session.setMicEnabled(enabled)
 
         fun hasMicPermission(): Boolean = session.hasMicPermission()
 
@@ -58,7 +53,6 @@ class PlayerViewModel
 
         fun cycleRepeatMode() = playback.cycleRepeatMode()
 
-        fun applyLiveInputProfile(profile: LiveInputProfile) = session.applyLiveInputProfile(profile)
 
         /** Remembers [minutes] as the timer's last length, as the old player did, and starts it. */
         fun startSleepTimer(minutes: Int) {

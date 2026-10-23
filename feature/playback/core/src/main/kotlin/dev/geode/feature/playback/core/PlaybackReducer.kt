@@ -120,6 +120,8 @@ object PlaybackReducer : Reducer<PlaybackState, PlaybackEvent, PlaybackEffect> {
             is PlaybackCommand.SetCrossfade ->
                 Listening.options(state, state.options.copy(crossfade = command.length.coerceIn(Millis.ZERO, MAX_CROSSFADE)))
             is PlaybackCommand.SetGapless -> Listening.options(state, state.options.copy(gapless = command.on))
+            is PlaybackCommand.SetResumeLongTracks ->
+                Listening.options(state, state.options.copy(resumeLongTracks = command.on))
             is PlaybackCommand.SetQueueEnd -> Listening.options(state, state.options.copy(queueEnd = command.end))
             is PlaybackCommand.StartSleepTimer -> Listening.startSleep(state, command.after, command.finishTrack)
             PlaybackCommand.SleepAfterTrack -> Listening.sleepAfterTrack(state)

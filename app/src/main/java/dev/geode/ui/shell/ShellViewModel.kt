@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.diagnostics.api.Diagnostics
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.visuals.PresetSharing
 import dev.geode.visuals.VisualSnapshots
@@ -34,6 +36,8 @@ class ShellViewModel
         val visuals: Visuals,
         val snapshots: VisualSnapshots,
         val sharing: PresetSharing,
+        val settings: Settings,
+        val diagnostics: Diagnostics,
         saved: SavedStateHandle,
     ) : ViewModel() {
         /**

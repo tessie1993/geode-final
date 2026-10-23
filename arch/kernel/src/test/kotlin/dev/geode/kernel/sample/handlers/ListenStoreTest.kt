@@ -35,10 +35,10 @@ class ListenStoreTest {
 
     @Test
     fun `starting listens once the adapter announces the capture running`() {
-        store.send(ListenCommand.Start(ListenSource.LINE_IN))
+        store.send(ListenCommand.Start(ListenSource.MICROPHONE))
 
-        assertEquals(ListenState.Listening(ListenSource.LINE_IN, quiet = false), store.state.value)
-        assertEquals(listOf("startCapture(LINE_IN)"), audio.calls)
+        assertEquals(ListenState.Listening(ListenSource.MICROPHONE, quiet = false), store.state.value)
+        assertEquals(listOf("startCapture(MICROPHONE)"), audio.calls)
         assertEquals(0, clock.pendingCount)
     }
 
@@ -52,14 +52,14 @@ class ListenStoreTest {
     }
 
     @Test
-    fun `an unplugged capture is reported once as lost`() =
+    fun `a lost capture is reported once`() =
         runTest {
             val facts = mutableListOf<ListenFact>()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { store.events.collect { facts += it } }
-            store.send(ListenCommand.Start(ListenSource.LINE_IN))
+            store.send(ListenCommand.Start(ListenSource.MICROPHONE))
 
-            audio.announce(CaptureAnnouncement.Lost(CaptureSource.LINE_IN))
-            audio.announce(CaptureAnnouncement.Lost(CaptureSource.LINE_IN))
+            audio.announce(CaptureAnnouncement.Lost(CaptureSource.MICROPHONE))
+            audio.announce(CaptureAnnouncement.Lost(CaptureSource.MICROPHONE))
 
             assertEquals(ListenState.Off, store.state.value)
             assertEquals(listOf(ListenFact.Lost), facts)

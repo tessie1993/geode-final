@@ -7,10 +7,8 @@ import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.RepeatMode
-import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.LookCommand
 import dev.geode.feature.settings.api.LookSettings
-import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
@@ -55,10 +53,7 @@ class SettingsForOldScreensTest {
 
     private val settings = FakeSettings()
     private val playback = FakePlayback()
-    private val presets = listOf("Flat", "Bass", "Treble", "Vocal", "Rock", "Electronic")
-
-    // The app names the equalizer's bands from the native chain, which the plain JVM cannot load.
-    private val old = SettingsForOldScreens(settings, playback, presets, { "band $it" }, CoroutineScope(UnconfinedTestDispatcher()))
+    private val old = SettingsForOldScreens(settings, playback, CoroutineScope(UnconfinedTestDispatcher()))
 
     @Test
     fun `the old screens wait for the stored settings, then show them`() {
@@ -94,29 +89,6 @@ class SettingsForOldScreensTest {
                 PlaybackCommand.SetRepeat(RepeatMode.ONE),
             ),
             playback.sent,
-        )
-    }
-
-    @Test
-    fun `the equalizer panel reads and changes Settings' equalizer`() {
-        settings.state.value = SettingsState.Ready(SettingsValues())
-
-        old.setEqualizerEnabled(true)
-        old.setEqualizerBand(2, 300)
-        old.useEqualizerPreset(1)
-        old.setLoudness(150)
-
-        val fx = old.audioFx.value
-        assertEquals(presets, fx.presets)
-        assertEquals("band 0", fx.bands[0].label)
-        assertEquals(
-            listOf(
-                EqualizerCommand.SetEnabled(true),
-                EqualizerCommand.SetBand(2, Millibels(300)),
-                EqualizerCommand.UsePreset(dev.geode.feature.settings.api.EqualizerPreset.BASS),
-                EqualizerCommand.SetLoudness(Millibels(150)),
-            ),
-            settings.sent,
         )
     }
 

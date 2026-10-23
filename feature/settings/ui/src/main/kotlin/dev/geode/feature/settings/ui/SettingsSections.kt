@@ -9,6 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BackgroundCommand
@@ -57,12 +58,17 @@ private const val MILLIBELS_PER_DECIBEL = 100f
 private const val BASS_BOOST_FULL = 1_000f
 private val NO_SLEEP_TIMER = Minutes(0)
 
-/** Theme (was Look): accent, text and layout of the App UI. */
+/** Theme (was Look): the Element, accent, text and layout of the App UI. */
 internal fun LazyListScope.themeSection(
     look: LookSettings,
     fontColors: List<FontColorChoice>,
     change: (SettingsCommand) -> Unit,
 ) {
+    item {
+        SettingsGroup(stringResource(R.string.look_group_element)) {
+            ElementPicker(look.element) { change(LookCommand.SetElement(it)) }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.look_group_colour)) {
             SliderRow(
@@ -109,6 +115,20 @@ internal fun LazyListScope.themeSection(
             SwitchRow(stringResource(R.string.look_clear_visuals_menu), look.clearVisualsMenu) {
                 change(LookCommand.SetClearVisualsMenu(it))
             }
+        }
+    }
+    item { HomeGroup(look.ambientMode, change) }
+}
+
+/** Ambient: how much Home's Hero scene moves by itself. Its own group, so its screenshot shows it whole. */
+@Composable
+internal fun HomeGroup(
+    ambientMode: AmbientMode,
+    change: (SettingsCommand) -> Unit,
+) {
+    SettingsGroup(stringResource(R.string.look_group_home)) {
+        ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, ambientMode, { ambientName(it) }) {
+            change(LookCommand.SetAmbientMode(it))
         }
     }
 }
@@ -274,8 +294,8 @@ internal fun LazyListScope.exportSection(
 }
 
 /**
- * Battery (#28, owner 2026-10-23): the CPU/GPU save mode, and how sharp and how often the Visual is
- * drawn on screen. Save mode overrides both while it is on; cooling down when hot is automatic.
+ * Battery (#28, owner 2026-10-23): the CPU/GPU save mode, Visuals off (#196), and how sharp and how
+ * often the Visual is drawn on screen. Save mode overrides both while it is on; cooling down when hot is automatic.
  */
 internal fun LazyListScope.batterySection(
     performance: PerformanceSettings,
@@ -285,6 +305,12 @@ internal fun LazyListScope.batterySection(
         SettingsGroup(stringResource(R.string.battery_group_save_mode)) {
             SwitchRow(stringResource(R.string.save_mode), performance.saveMode) { change(PerformanceCommand.SetSaveMode(it)) }
             Note(stringResource(R.string.save_mode_note))
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.battery_group_visuals_off)) {
+            SwitchRow(stringResource(R.string.visuals_off), performance.visualsOff) { change(PerformanceCommand.SetVisualsOff(it)) }
+            Note(stringResource(R.string.visuals_off_note))
         }
     }
     item {

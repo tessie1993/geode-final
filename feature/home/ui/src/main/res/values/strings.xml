@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The places: the bar's labels, and what each navigation object is read out as. -->
+    <string name="place_home">Home</string>
+    <string name="place_player">Player</string>
+    <string name="place_library">Library</string>
+    <string name="place_visuals">Visuals</string>
+    <string name="place_studio">Studio</string>
+    <string name="place_settings">Settings</string>
+
+    <!-- Home, until its Hero scene arrives. -->
+    <string name="home_title">Home</string>
+    <string name="home_placeholder">Your Element\'s scene will live here.</string>
+</resources>

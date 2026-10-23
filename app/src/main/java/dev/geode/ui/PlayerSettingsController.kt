@@ -1,6 +1,5 @@
 package dev.geode.ui
 
-import dev.geode.audio.AudioFxState
 import dev.geode.data.PlayerPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
@@ -18,24 +17,9 @@ internal class PlayerSettingsController(
 
     val playerPrefs: StateFlow<PlayerPrefs> = settings.prefs
 
-    val audioFxState: StateFlow<AudioFxState> = settings.audioFx
-
     fun setGuiPrefs(prefs: GuiPrefs) {
         scope.launch { settings.setGuiPrefs(prefs) }
     }
 
     fun setPlayerPrefs(prefs: PlayerPrefs) = settings.setPlayerPrefs(prefs)
-
-    fun setAudioFxEnabled(enabled: Boolean) = settings.setEqualizerEnabled(enabled)
-
-    fun setAudioFxBand(
-        band: Int,
-        levelMb: Int,
-    ) = settings.setEqualizerBand(band, levelMb)
-
-    fun useAudioFxPreset(index: Int) = settings.useEqualizerPreset(index)
-
-    fun setAudioFxBassBoost(strength: Int) = settings.setBassBoost(strength)
-
-    fun setAudioFxLoudness(gainMb: Int) = settings.setLoudness(gainMb)
 }

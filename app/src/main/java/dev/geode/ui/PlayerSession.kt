@@ -6,8 +6,6 @@ import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.analysis.LiveInputProfile
-import dev.geode.audio.AudioFxState
 import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
 import dev.geode.data.ExportDefaults
@@ -98,8 +96,6 @@ class PlayerSession internal constructor(
             },
         )
 
-    val micState: StateFlow<MicState> get() = captureController.micState
-
     fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = captureController.setMicEnabled(enabled)
 
     fun hasMicPermission(): Boolean = captureController.hasMicPermission()
@@ -141,26 +137,10 @@ class PlayerSession internal constructor(
 
     val playerPrefs: StateFlow<PlayerPrefs> get() = settings.playerPrefs
 
-    val audioFx: StateFlow<AudioFxState> get() = settings.audioFxState
-
     fun setGuiPrefs(prefs: GuiPrefs) = settings.setGuiPrefs(prefs)
 
     fun setPlayerPrefs(prefs: PlayerPrefs) = settings.setPlayerPrefs(prefs)
 
-    fun setAudioFxEnabled(enabled: Boolean) = settings.setAudioFxEnabled(enabled)
-
-    fun setAudioFxBand(
-        band: Int,
-        levelMb: Int,
-    ) = settings.setAudioFxBand(band, levelMb)
-
-    fun useAudioFxPreset(index: Int) = settings.useAudioFxPreset(index)
-
-    fun setAudioFxBassBoost(strength: Int) = settings.setAudioFxBassBoost(strength)
-
-    fun setAudioFxLoudness(gainMb: Int) = settings.setAudioFxLoudness(gainMb)
-
-    fun applyLiveInputProfile(profile: LiveInputProfile) = visual.applyLiveInputProfile(profile)
 
     /** The song Playback has loaded, read from its state: Playback owns the queue (ADR-0004). */
     private val currentUri: Uri? get() = oldScreens.currentTrack()?.toUri()

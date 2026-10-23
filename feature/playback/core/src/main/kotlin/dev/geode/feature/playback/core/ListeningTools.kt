@@ -313,6 +313,7 @@ internal object Listening {
         event: PlaybackEvent,
         next: Change,
     ): List<PlaybackEffect> {
+        if (!next.state.options.resumeLongTracks) return emptyList()
         val saves =
             next.effects
                 .mapNotNull { (it as? Perform<*>)?.work as? PlaybackWork.SaveSession }
@@ -330,6 +331,7 @@ internal object Listening {
         state: PlaybackState,
     ): List<PlaybackEffect> {
         if (before !is Loading || before.reason != LoadReason.PLAY || before.from.position != Millis.ZERO) return emptyList()
+        if (!state.options.resumeLongTracks) return emptyList()
         val queue = settled(state.player)?.first ?: return emptyList()
         val point = state.resumePoints[queue.current.id] ?: return emptyList()
         return listOf(core.drive(Seek(point)))
