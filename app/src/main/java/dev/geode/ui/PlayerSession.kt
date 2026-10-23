@@ -17,7 +17,6 @@ import dev.geode.data.ExportDefaults
 import dev.geode.data.FilePresetRepository
 import dev.geode.data.LfoStore
 import dev.geode.data.MilkPackImporter
-import dev.geode.data.MilkTexture
 import dev.geode.data.PlayerPrefs
 import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
@@ -43,7 +42,6 @@ import dev.geode.render.LfoConfig
 import dev.geode.render.SceneFactory
 import dev.geode.render.TransitionStyle
 import dev.geode.render.scene.CustomizeTab
-import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneParams
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,8 +81,6 @@ class PlayerSession internal constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val engineSession = PlaybackEngine.acquireForUi(application)
-
-    private val ring = engineSession.ring
 
     private val engine = engineSession.analysis
 
@@ -205,19 +201,6 @@ class PlayerSession internal constructor(
 
     fun applyLiveInputProfile(profile: LiveInputProfile) = visual.applyLiveInputProfile(profile)
 
-    private val textureController: TextureController =
-        TextureController(
-            application,
-            scope,
-            object : TextureController.Host {
-                override fun onGeneratedPresetsRemoved(paths: List<String>) {
-                    vizStateStore.dropRemovedMilkPaths(paths)
-                }
-            },
-        )
-
-    val textures: StateFlow<List<MilkTexture>> get() = textureController.textures
-
     private val modulation: ModulationController =
         ModulationController(
             LfoStore(prefsFiles.general),
@@ -271,28 +254,7 @@ class PlayerSession internal constructor(
         config: LfoConfig,
     ) = modulation.setLfo(index, config)
 
-    fun importTextures(
-        uris: List<Uri>,
-        onImported: () -> Unit,
-    ) = textureController.importTextures(uris, onImported)
-
-    fun removeTexture(name: String) = textureController.removeTexture(name)
-
-    fun useTexture(
-        name: String,
-        onReady: (String) -> Unit,
-    ) = textureController.useTexture(name, onReady)
-
     val features: StateFlow<AudioFeatures> = engine.features
-
-    private val pcmScratch = FloatArray(4096)
-    private var pcmCursor = 0L
-
-    fun latestPcm(): PcmChunk? {
-        val n = ring.copyNewSince(pcmCursor, pcmScratch)
-        pcmCursor = ring.lastCopyEndIndex
-        return if (n > 0) PcmChunk(pcmScratch, n) else null
-    }
 
     private val milkImport = MilkImportController(application, scope)
 
@@ -626,7 +588,6 @@ class PlayerSession internal constructor(
             captureController.start()
         }
         presetLibrary.refreshInitial()
-        textureController.refresh()
         followPlayback()
     }
 
