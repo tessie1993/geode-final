@@ -40,7 +40,7 @@ These decisions extend ADR-0003 (structure: ADR-0005) with how the features beha
 
 ## Content, renders and sync
 
-- **Styles are data packs.** Each Style is a folder holding its shader and a manifest: its family, its parameters with their ranges, its extras, and its default Macros and Reactions. Adding a Style needs no Kotlin or C++ change. CI checks every manifest and every golden frame.
+- **Styles are data packs.** Each Style is a folder holding its shader and a manifest: its family, its parameters with their ranges, its extras, and its default Macros and Reactions. Adding a Style needs no Kotlin or C++ change. CI checks every manifest and every golden frame (since #184, no golden frames: CI checks that every shader compiles and draws a non-black frame).
 - **Renders run one at a time.** While the live Visual is on screen, the render slows down so the live picture stays smooth, then speeds up again.
 - **Presets from a newer version** load what this version knows. Unknown parts are kept unapplied and saved back untouched, with a short note that some parts need a newer Geode. Older presets are upgraded when opened.
 - **The Library notices new music** through Android's media-change notice while the app runs, plus a quick check when the app opens. There is no periodic background job.
