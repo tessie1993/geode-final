@@ -12,9 +12,8 @@ import dev.geode.design.forest.LocalForestColors
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SoundSignal
 
-// The previews the screenshot tests render (ADR-0003), in the water, forest and stone theme (:design).
-// The plain ground behind the panel stands in for the live Visual, which the App UI screenshots never
-// show: the shader golden frames cover it.
+// The Customize panel's previews (ADR-0003), in the water, forest and stone theme (:design).
+// The plain ground behind the panel stands in for the live Visual, which the previews never show.
 
 @Composable
 private fun CustomizePreview(
