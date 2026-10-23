@@ -48,13 +48,11 @@ class ListenHandlers(
     private fun ListenSource.toCapture(): CaptureSource =
         when (this) {
             ListenSource.MICROPHONE -> CaptureSource.MICROPHONE
-            ListenSource.LINE_IN -> CaptureSource.LINE_IN
         }
 
     private fun CaptureSource.toListen(): ListenSource =
         when (this) {
             CaptureSource.MICROPHONE -> ListenSource.MICROPHONE
-            CaptureSource.LINE_IN -> ListenSource.LINE_IN
         }
 
     private fun CaptureFailure.toProblem(): ListenProblem =

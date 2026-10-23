@@ -225,6 +225,13 @@ dependencies {
     implementation(project(":feature:playback:ui"))
     implementation(project(":feature:settings:api"))
     implementation(project(":feature:settings:handlers"))
+    implementation(project(":feature:settings:ui"))
+    implementation(project(":feature:diagnostics:api"))
+    // Diagnostics' ports (the log, the settings, the engine's stats) are wired here, so they are on
+    // :app's compile path too.
+    implementation(project(":feature:diagnostics:core"))
+    implementation(project(":feature:diagnostics:handlers"))
+    implementation(project(":feature:diagnostics:ui"))
     implementation(project(":feature:library:api"))
     implementation(project(":feature:library:handlers"))
     implementation(project(":feature:library:ui"))
