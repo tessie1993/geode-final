@@ -46,6 +46,7 @@ fun zoomSnapshot(customization: Customization): CustomizationSnapshot =
         params = List(CustomizationSnapshot.PARAMS_COUNT) { if (it == 0) customization.shared.getValue(SharedProperty.ZOOM) else 0f },
         lfo = List(CustomizationSnapshot.LFO_COUNT) { 0f },
         adsr = List(CustomizationSnapshot.ADSR_COUNT) { 0f },
+        plan = List(CustomizationSnapshot.PLAN_COUNT) { 0f },
         soundSensitivity = 3f,
         soundRefractoryMs = 60f,
         soundAttackSeconds = 0.01f,
