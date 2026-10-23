@@ -227,6 +227,7 @@ dependencies {
     implementation(project(":feature:settings:handlers"))
     implementation(project(":feature:library:api"))
     implementation(project(":feature:library:handlers"))
+    implementation(project(":feature:library:ui"))
     // Settings' DataStore is built here, so its type is on :app's compile path too.
     implementation(libs.datastore.preferences)
     // The App UI's design tokens, theme and common components.
@@ -244,8 +245,6 @@ dependencies {
     implementation(libs.compose.material3.adaptive)
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
-    implementation(libs.navigation3.runtime)
-    implementation(libs.navigation3.ui)
     ksp(libs.hilt.compiler)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.activity.compose)
@@ -279,6 +278,7 @@ dependencies {
     testImplementation(project(":feature:customization:api"))
     testImplementation(project(":feature:customization:core"))
     testImplementation(project(":feature:visuals:api"))
+    testImplementation(project(":feature:visuals:core"))
     testImplementation(project(":feature:visuals:handlers"))
     testImplementation(testFixtures(project(":arch:kernel")))
     testImplementation(testFixtures(project(":arch:audio")))

@@ -16,17 +16,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,22 +41,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.engine.types.Millis
 import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
- * The full player (#34): what is playing, where it is, and the transport. Stateless (ADR-0003): it
- * draws [model] and sends every tap to [onAction].
+ * The full player (#34): what is playing, where it is, the transport, and the Player controls' options:
+ * shuffle, repeat, the favourite heart, the queue and the listening tools (#17). Stateless (ADR-0003):
+ * it draws [model] and sends every tap to [onAction]. [favourite] is whether the playing song is a
+ * favourite, Library's to say; the heart is hidden while it is null.
+ * The A-B loop is shaded on the seek bar (#147).
  */
 @Composable
 fun PlayerScreen(
     model: PlayerModel,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
+    favourite: Boolean? = null,
 ) {
     Surface(modifier.fillMaxSize()) {
         Column(
@@ -65,6 +69,7 @@ fun PlayerScreen(
             Titles(model)
             Timeline(model, onAction)
             Transport(model, onAction)
+            Options(model, favourite, onAction)
             Status(model)
         }
     }
@@ -114,24 +119,21 @@ private fun Timeline(
     model: PlayerModel,
     onAction: (PlayerAction) -> Unit,
 ) {
-    // Where the thumb is while it is dragged: App UI state only (ADR-0003).
-    var dragged by remember { mutableStateOf<Float?>(null) }
     val seekable = model.status == PlayerStatus.PLAYING || model.status == PlayerStatus.PAUSED || model.status == PlayerStatus.BUFFERING
-    val seekLabel = stringResource(R.string.playback_action_seek)
+    // How far along a drag of the seek bar is, while one goes on: App UI state only (ADR-0003).
+    var dragged by remember { mutableStateOf<Float?>(null) }
     Column(Modifier.fillMaxWidth()) {
-        Slider(
-            value = dragged ?: fraction(model.position, model.duration),
-            onValueChange = { dragged = it },
-            onValueChangeFinished = {
-                dragged?.let { onAction(PlayerAction.SeekTo(Millis((it * model.duration.value).toLong()))) }
-                dragged = null
-            },
+        // A plain seek bar with the A-B loop shaded on it (#147).
+        LoopSeekBar(
+            model,
             enabled = seekable,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = seekLabel },
+            dragged = dragged,
+            onDrag = { dragged = it },
+            onSeek = { onAction(PlayerAction.SeekTo(it)) },
+            modifier = Modifier.fillMaxWidth().height(PlayerDimens.seekBarHeight),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            val shown = dragged?.let { Millis((it * model.duration.value).toLong()) } ?: model.position
-            Text(formatTime(shown), style = MaterialTheme.typography.labelMedium)
+            Text(formatTime(model.timeShown(dragged)), style = MaterialTheme.typography.labelMedium)
             Text(formatTime(model.duration), style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -163,6 +165,37 @@ private fun Transport(
         }
         IconButton(onClick = { onAction(PlayerAction.Next) }, enabled = hasTrack && model.canGoNext) {
             Icon(Icons.Filled.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.sideIcon))
+        }
+    }
+}
+
+@Composable
+private fun Options(
+    model: PlayerModel,
+    favourite: Boolean?,
+    onAction: (PlayerAction) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ShuffleButton(model.shuffle) { onAction(PlayerAction.ToggleShuffle) }
+        RepeatButton(model.repeat) { onAction(PlayerAction.CycleRepeat) }
+        if (favourite != null) {
+            IconButton(onClick = { onAction(PlayerAction.ToggleFavourite) }, enabled = model.track != null) {
+                if (favourite) {
+                    Icon(
+                        Icons.Filled.Favorite,
+                        stringResource(R.string.playback_action_unfavourite),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    Icon(Icons.Filled.FavoriteBorder, stringResource(R.string.playback_action_favourite))
+                }
+            }
+        }
+        IconButton(onClick = { onAction(PlayerAction.OpenQueue) }) {
+            Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.playback_action_open_queue))
+        }
+        IconButton(onClick = { onAction(PlayerAction.OpenTools) }) {
+            Icon(Icons.Filled.Tune, stringResource(R.string.playback_action_open_tools))
         }
     }
 }

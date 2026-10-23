@@ -2,13 +2,17 @@ package dev.geode.feature.library.handlers
 
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 
 /**
  * What the Library keeps (ADR-0004): the index, the tags Geode's reader filled in, the user's edits,
- * the favourites and the excluded folders. [RoomLibraryStorage] keeps them in the Library's own Room
- * database. Any call may throw; the handlers turn that into a named failure.
+ * the favourites, the excluded folders and the smart playlists. [RoomLibraryStorage] keeps them in
+ * the Library's own Room database. Any call may throw; the handlers turn that into a named failure.
  */
 interface LibraryStorage {
     /** Everything saved, the songs with the user's edits applied. */
@@ -40,12 +44,21 @@ interface LibraryStorage {
     suspend fun edits(): Map<TrackId, SongEdit>
 
     suspend fun saveExcludedFolders(folders: Set<String>)
+
+    /** Saves [playlist], in place of the smart playlist named [replacing] when there is one. */
+    suspend fun saveSmartPlaylist(
+        playlist: SmartPlaylist,
+        replacing: String?,
+    )
+
+    suspend fun deleteSmartPlaylist(name: String)
 }
 
 data class SavedLibrary(
     val songs: List<Song>,
     val favourites: Set<TrackId>,
     val excludedFolders: Set<String>,
+    val smartPlaylists: List<SmartPlaylist> = emptyList(),
 )
 
 /** [LibraryStorage] in the Library's own Room database. */
@@ -57,6 +70,7 @@ class RoomLibraryStorage(
             songs = edited(dao.songs()),
             favourites = dao.favourites().map(::TrackId).toSet(),
             excludedFolders = dao.excludedFolders().toSet(),
+            smartPlaylists = smartPlaylists(),
         )
 
     override suspend fun replaceSongs(found: List<Song>): List<Song> {
@@ -92,6 +106,42 @@ class RoomLibraryStorage(
         dao.edits().associate { TrackId(it.trackId) to SongEdit(it.title, it.artist, it.album, it.artwork) }
 
     override suspend fun saveExcludedFolders(folders: Set<String>) = dao.replaceExcludedFolders(folders.map(::ExcludedFolderEntity))
+
+    override suspend fun saveSmartPlaylist(
+        playlist: SmartPlaylist,
+        replacing: String?,
+    ) = dao.replaceSmartPlaylist(
+        replacing = replacing,
+        playlist = SmartPlaylistEntity(playlist.name, playlist.matchAll, playlist.limit),
+        rules =
+            playlist.rules.mapIndexed { position, rule ->
+                SmartRuleEntity(playlist.name, position, rule.field.name, rule.op.name, rule.value)
+            },
+    )
+
+    override suspend fun deleteSmartPlaylist(name: String) = dao.deleteSmartPlaylist(name)
+
+    /**
+     * The saved smart playlists. A rule whose field or comparison this version does not know, such as
+     * one from a newer Geode, is left out; the rest of its playlist is kept.
+     */
+    private suspend fun smartPlaylists(): List<SmartPlaylist> {
+        val rules = dao.smartRules().groupBy { it.playlist }
+        return dao.smartPlaylists().map { row ->
+            SmartPlaylist(
+                name = row.name,
+                rules = rules[row.name].orEmpty().sortedBy { it.position }.mapNotNull { it.toRule() },
+                matchAll = row.matchAll,
+                limit = row.songLimit,
+            )
+        }
+    }
+
+    private fun SmartRuleEntity.toRule(): SmartRule? {
+        val knownField = RuleField.entries.firstOrNull { it.name == field } ?: return null
+        val knownOp = RuleOp.entries.firstOrNull { it.name == op } ?: return null
+        return SmartRule(knownField, knownOp, value)
+    }
 
     private suspend fun edited(rows: List<SongEntity>): List<Song> {
         val edits = dao.edits().associateBy { it.trackId }

@@ -5,6 +5,10 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -55,7 +59,7 @@ class LibraryDatabaseMigrationRobolectricTest {
         )
 
     @Test
-    fun `a version 1 database keeps its index, edits, favourites and excluded folders`() =
+    fun `a version 1 database keeps its index, edits, favourites and excluded folders, and gains smart playlists`() =
         runBlocking {
             val name = "library-v1-sample.db"
             writeSample(name, version = 1, script = "db/library-v1.sql")
@@ -69,6 +73,11 @@ class LibraryDatabaseMigrationRobolectricTest {
                 assertEquals(setOf("/storage/emulated/0/Ringtones"), saved.excludedFolders)
                 // The tags of the second song were never read, and are still to be.
                 assertEquals(listOf(tide.id), storage.songsWithoutTags().map { it.id })
+                // Version 2 adds the smart playlists: none yet, and room for them.
+                assertEquals(emptyList<SmartPlaylist>(), saved.smartPlaylists)
+                val nightly = SmartPlaylist("Night", listOf(SmartRule(RuleField.TITLE, RuleOp.CONTAINS, "night")))
+                storage.saveSmartPlaylist(nightly, replacing = null)
+                assertEquals(listOf(nightly), storage.read().smartPlaylists)
             } finally {
                 database.close()
             }

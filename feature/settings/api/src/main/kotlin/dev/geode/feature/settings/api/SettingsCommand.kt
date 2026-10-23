@@ -207,6 +207,10 @@ sealed interface ExportCommand : SettingsCommand {
     data class SetLoudness(
         val loudness: ExportLoudness,
     ) : ExportCommand
+
+    data class SetFinishedAlerts(
+        val on: Boolean,
+    ) : ExportCommand
 }
 
 sealed interface FolderCommand : SettingsCommand {
@@ -232,6 +236,36 @@ sealed interface FolderCommand : SettingsCommand {
     data class RemoveMusicFolder(
         val folder: FolderUri,
     ) : FolderCommand
+}
+
+/** Run in background (#28), in Application preferences. */
+sealed interface BackgroundCommand : SettingsCommand {
+    data class SetMusic(
+        val on: Boolean,
+    ) : BackgroundCommand
+
+    data class SetRenders(
+        val on: Boolean,
+    ) : BackgroundCommand
+
+    data class SetRecording(
+        val on: Boolean,
+    ) : BackgroundCommand
+}
+
+/** The CPU/GPU section, and the save mode switch in Application preferences (#28). */
+sealed interface PerformanceCommand : SettingsCommand {
+    data class SetVisualQuality(
+        val quality: VisualQuality,
+    ) : PerformanceCommand
+
+    data class SetVisualFrameRate(
+        val frameRate: VisualFrameRate,
+    ) : PerformanceCommand
+
+    data class SetSaveMode(
+        val on: Boolean,
+    ) : PerformanceCommand
 }
 
 sealed interface OnboardingCommand : SettingsCommand {

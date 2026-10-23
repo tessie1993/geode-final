@@ -3,6 +3,9 @@ package dev.geode.feature.visuals.core
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.ImportProblem
+import dev.geode.feature.visuals.api.ImportReport
+import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.PresetShelf
 import dev.geode.feature.visuals.api.SavedPreset
@@ -51,6 +54,19 @@ sealed interface VisualsEvent {
         val problem: ImportProblem,
     ) : VisualsEvent
 
+    /** The MilkDrop folder was listed: the [presets], built-in ones among them, and the [textures]. */
+    data class MilkdropListed(
+        val presets: List<MilkdropPreset>,
+        val textures: List<String>,
+    ) : VisualsEvent
+
+    /** An import finished as [report] says, and left the MilkDrop folder holding [presets] and [textures]. */
+    data class MilkdropImported(
+        val report: ImportReport,
+        val presets: List<MilkdropPreset>,
+        val textures: List<String>,
+    ) : VisualsEvent
+
     /** A piece of work failed at the handlers' edge; the reducer reports it. */
     data class WorkFailed(
         val failure: WorkFailure,
@@ -74,6 +90,8 @@ enum class WorkFailure(
     PRESET_NOT_CHANGED("could not change the saved presets", resyncs = true),
     PRESET_NOT_SHARED("could not read the preset to share it"),
     PRESET_NOT_IMPORTED("could not save the shared preset", resyncs = true),
+    MILKDROP_NOT_LISTED("could not list the MilkDrop presets and textures"),
+    MILKDROP_NOT_IMPORTED("could not import into the MilkDrop folder"),
 }
 
 /** The handlers' work, carried out by `:feature:visuals:handlers`. */
@@ -151,6 +169,18 @@ sealed interface VisualsWork {
     /** Save the preset in the document at [uri]; answered as [ImportPresetLink] is. */
     data class ImportPresetFile(
         val uri: String,
+    ) : VisualsWork
+
+    /** List the MilkDrop folder beside the built-in presets; answered with [VisualsEvent.MilkdropListed]. */
+    data object ListMilkdrop : VisualsWork
+
+    /**
+     * Read each of [files] (content uris), check it ([MilkdropFiles.plan]) and write the good ones into
+     * the MilkDrop folder; answered with [VisualsEvent.MilkdropImported].
+     */
+    data class ImportMilkdrop(
+        val kind: MilkdropKind,
+        val files: List<String>,
     ) : VisualsWork
 }
 

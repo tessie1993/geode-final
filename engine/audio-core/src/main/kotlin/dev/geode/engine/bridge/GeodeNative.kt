@@ -346,6 +346,12 @@ object GeodeNative {
         fps: Float,
     ): Int
 
+    /** The Visual quality on screen as a render scale ceiling under the thermal one (#28). */
+    external fun vizSetQualityCeiling(
+        handle: Long,
+        ceiling: Float,
+    ): Int
+
     external fun vizSetFrameLoad(
         handle: Long,
         frames: Int,

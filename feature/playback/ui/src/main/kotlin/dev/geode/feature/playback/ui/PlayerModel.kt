@@ -2,11 +2,13 @@ package dev.geode.feature.playback.ui
 
 import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.Millis
+import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
+import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.Track
 import java.util.Locale
 
@@ -24,6 +26,9 @@ enum class PlayerStatus {
 /**
  * Everything the player and the mini-player draw (ADR-0003: an immutable screen model). [position]
  * is already worked out for the moment drawn; [meantToPlay] decides whether the main button pauses.
+ * [shuffle] and [repeat] are Playback's options, shown on the Player controls.
+ *
+ * The A-B [loop] is shaded on the seek bar (#147).
  */
 @Immutable
 data class PlayerModel(
@@ -34,6 +39,9 @@ data class PlayerModel(
     val canGoPrevious: Boolean,
     val canGoNext: Boolean,
     val failure: PlaybackFailure? = null,
+    val shuffle: Boolean = false,
+    val repeat: RepeatMode = RepeatMode.OFF,
+    val loop: LoopSpan? = null,
 ) {
     val duration: Millis get() = track?.duration ?: Millis.ZERO
 
@@ -56,10 +64,53 @@ sealed interface PlayerAction {
 
     /** The mini-player was tapped: open the player. Navigation, not a Command. */
     data object Expand : PlayerAction
+
+    data object ToggleShuffle : PlayerAction
+
+    /** Off, then the whole queue, then this song, then off again. */
+    data object CycleRepeat : PlayerAction
+
+    /** Open the queue's sheet. Navigation, not a Command. */
+    data object OpenQueue : PlayerAction
+
+    /** Open the listening tools' sheet. Navigation, not a Command. */
+    data object OpenTools : PlayerAction
+
+    /** Favourite the playing song, or stop. Library's, not Playback's. */
+    data object ToggleFavourite : PlayerAction
 }
 
+/** The A-B loop on the seek bar: from [start] to [end], or to the end of the track while B is not set. */
+data class LoopSpan(
+    val start: Millis,
+    val end: Millis?,
+)
+
+/**
+ * The time the player shows under the seek bar: where a drag of it would seek to while one goes on
+ * ([dragged], how far along the track from 0 to 1), else the [PlayerModel.position], as the old Slider
+ * showed it.
+ */
+fun PlayerModel.timeShown(dragged: Float?): Millis = dragged?.let { Millis((it.coerceIn(0f, 1f) * duration.value).toLong()) } ?: position
+
 /** The player's model at [now], on the monotonic clock the marks use. */
-fun PlaybackState.toPlayerModel(now: Millis): PlayerModel =
+fun PlaybackState.toPlayerModel(now: Millis): PlayerModel {
+    val model = playerModel(now).copy(shuffle = options.shuffle, repeat = options.repeat)
+    val track = model.track ?: return model
+    return model.copy(loop = loopSpan(loop, track))
+}
+
+private fun loopSpan(
+    loop: AbLoop,
+    track: Track,
+): LoopSpan? =
+    when (loop) {
+        AbLoop.Off -> null
+        is AbLoop.Starting -> LoopSpan(loop.start, null).takeIf { loop.track == track.id }
+        is AbLoop.On -> LoopSpan(loop.start, loop.end).takeIf { loop.track == track.id }
+    }
+
+private fun PlaybackState.playerModel(now: Millis): PlayerModel =
     when (val player = player) {
         PlayerState.Idle -> PlayerModel.IDLE
         is PlayerState.Loading -> model(PlayerStatus.LOADING, player.queue, player.from.position, player.playWhenReady)
@@ -93,7 +144,17 @@ fun PlayerAction.toCommand(model: PlayerModel): PlaybackCommand? =
         PlayerAction.Next -> PlaybackCommand.Next
         PlayerAction.Previous -> PlaybackCommand.Previous
         is PlayerAction.SeekTo -> PlaybackCommand.SeekTo(position)
-        PlayerAction.Expand -> null
+        PlayerAction.ToggleShuffle -> PlaybackCommand.SetShuffle(!model.shuffle)
+        PlayerAction.CycleRepeat -> PlaybackCommand.SetRepeat(model.repeat.next())
+        PlayerAction.Expand, PlayerAction.OpenQueue, PlayerAction.OpenTools, PlayerAction.ToggleFavourite -> null
+    }
+
+/** Repeat's next mode: off, then the whole queue, then this song, then off again. */
+internal fun RepeatMode.next(): RepeatMode =
+    when (this) {
+        RepeatMode.OFF -> RepeatMode.ALL
+        RepeatMode.ALL -> RepeatMode.ONE
+        RepeatMode.ONE -> RepeatMode.OFF
     }
 
 /** [millis] as the player prints it: `3:07`, or `1:02:09` past an hour. */
