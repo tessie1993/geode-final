@@ -37,6 +37,12 @@ class AppUiReducerTest {
         command: AppUiCommand,
     ) = AppUiReducer.reduce(state, Command(command))
 
+    /** What the reducer is expected to decide, typed as the App UI's effects. */
+    private fun next(
+        state: AppUiState,
+        effects: List<AppUiEffect> = emptyList(),
+    ): Next<AppUiState, AppUiEffect> = Next(state, effects)
+
     @Test
     fun `the app starts on Home with nothing over it`() {
         assertEquals(AppUiState(Place.HOME, fullScreen = false, sheet = null, banner = null, shown = 0), AppUiState())
@@ -51,42 +57,42 @@ class AppUiReducerTest {
     fun `Back closes the top thing first, then goes Home, then leaves`() {
         val table: List<Pair<AppUiState, Next<AppUiState, AppUiEffect>>> =
             listOf(
-                fullWithCustomize to Next(visualsFull),
-                visualsFull to Next(AppUiState(place = Place.VISUALS)),
-                musicWithQueue to Next(music),
-                music to Next(home),
-                AppUiState(place = Place.SETTINGS) to Next(home),
-                AppUiState(place = Place.STUDIO) to Next(home),
-                AppUiState(place = Place.VISUALS) to Next(home),
-                home to Next(home, listOf(Emit(AppUiFact.LeaveApp))),
+                fullWithCustomize to next(visualsFull),
+                visualsFull to next(AppUiState(place = Place.VISUALS)),
+                musicWithQueue to next(music),
+                music to next(home),
+                AppUiState(place = Place.SETTINGS) to next(home),
+                AppUiState(place = Place.STUDIO) to next(home),
+                AppUiState(place = Place.VISUALS) to next(home),
+                home to next(home, listOf(Emit(AppUiFact.LeaveApp))),
             )
         table.forEach { (before, after) -> assertEquals("Back from $before", after, reduce(before, Back)) }
     }
 
     @Test
     fun `opening a page moves there and closes any sheet`() {
-        assertEquals(Next(AppUiState(place = Place.STUDIO)), reduce(musicWithQueue, Open(Place.STUDIO)))
-        assertEquals(Next(music), reduce(home, Open(Place.MUSIC)))
+        assertEquals(next(AppUiState(place = Place.STUDIO)), reduce(musicWithQueue, Open(Place.STUDIO)))
+        assertEquals(next(music), reduce(home, Open(Place.MUSIC)))
     }
 
     @Test
     fun `opening the page on screen changes nothing, not even an open sheet`() {
-        assertEquals(Next(musicWithQueue), reduce(musicWithQueue, Open(Place.MUSIC)))
-        assertEquals(Next(home), reduce(home, Open(Place.HOME)))
+        assertEquals(next(musicWithQueue), reduce(musicWithQueue, Open(Place.MUSIC)))
+        assertEquals(next(home), reduce(home, Open(Place.HOME)))
     }
 
     @Test
     fun `full screen opens over the page and closes any sheet, and leaving it returns to the page`() {
-        assertEquals(Next(AppUiState(place = Place.MUSIC, fullScreen = true)), reduce(musicWithQueue, EnterFullScreen))
-        assertEquals(Next(AppUiState(place = Place.VISUALS)), reduce(fullWithCustomize, ExitFullScreen))
+        assertEquals(next(AppUiState(place = Place.MUSIC, fullScreen = true)), reduce(musicWithQueue, EnterFullScreen))
+        assertEquals(next(AppUiState(place = Place.VISUALS)), reduce(fullWithCustomize, ExitFullScreen))
     }
 
     @Test
     fun `a sheet opens over full screen, replaces another sheet, and closes`() {
-        assertEquals(Next(fullWithCustomize), reduce(visualsFull, OpenSheet(Sheet.CUSTOMIZE)))
-        assertEquals(Next(AppUiState(place = Place.MUSIC, sheet = Sheet.LISTENING)), reduce(musicWithQueue, OpenSheet(Sheet.LISTENING)))
-        assertEquals(Next(music), reduce(musicWithQueue, CloseSheet))
-        assertEquals(Next(music), reduce(music, CloseSheet))
+        assertEquals(next(fullWithCustomize), reduce(visualsFull, OpenSheet(Sheet.CUSTOMIZE)))
+        assertEquals(next(AppUiState(place = Place.MUSIC, sheet = Sheet.LISTENING)), reduce(musicWithQueue, OpenSheet(Sheet.LISTENING)))
+        assertEquals(next(music), reduce(musicWithQueue, CloseSheet))
+        assertEquals(next(music), reduce(music, CloseSheet))
     }
 
     @Test
@@ -101,7 +107,7 @@ class AppUiReducerTest {
     fun `a failure shows on the banner for 8 seconds, and a newer one replaces it`() {
         val first = AppUiReducer.reduce(music, Failed(FeatureFailure("Library", "scan failed")))
         assertEquals(
-            Next(
+            next(
                 music.copy(banner = Banner(1, "Library", "scan failed"), shown = 1),
                 listOf(StartTimer("banner", Millis(8_000), BannerExpired(1))),
             ),
@@ -109,7 +115,7 @@ class AppUiReducerTest {
         )
         val second = AppUiReducer.reduce(first.state, Failed(FeatureFailure("Playback", "decode error")))
         assertEquals(
-            Next(
+            next(
                 music.copy(banner = Banner(2, "Playback", "decode error"), shown = 2),
                 listOf(StartTimer("banner", Millis(8_000), BannerExpired(2))),
             ),
@@ -120,16 +126,16 @@ class AppUiReducerTest {
     @Test
     fun `the banner's timer clears only the showing it was started for`() {
         val showing = music.copy(banner = Banner(2, "Playback", "decode error"), shown = 2)
-        assertEquals(Next(music.copy(shown = 2)), AppUiReducer.reduce(showing, BannerExpired(2)))
-        assertEquals(Next(showing), AppUiReducer.reduce(showing, BannerExpired(1)))
-        assertEquals(Next(music), AppUiReducer.reduce(music, BannerExpired(1)))
+        assertEquals(next(music.copy(shown = 2)), AppUiReducer.reduce(showing, BannerExpired(2)))
+        assertEquals(next(showing), AppUiReducer.reduce(showing, BannerExpired(1)))
+        assertEquals(next(music), AppUiReducer.reduce(music, BannerExpired(1)))
     }
 
     @Test
     fun `dismissing the banner clears it and its timer`() {
         val showing = music.copy(banner = Banner(1, "Library", "scan failed"), shown = 1)
-        assertEquals(Next(music.copy(shown = 1), listOf(CancelTimer("banner"))), reduce(showing, DismissBanner))
-        assertEquals(Next(music), reduce(music, DismissBanner))
+        assertEquals(next(music.copy(shown = 1), listOf(CancelTimer("banner"))), reduce(showing, DismissBanner))
+        assertEquals(next(music), reduce(music, DismissBanner))
     }
 
     @Test
