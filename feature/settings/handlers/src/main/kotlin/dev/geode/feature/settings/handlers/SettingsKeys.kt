@@ -80,6 +80,9 @@ internal object SettingsKeys {
     /** New with the Default paths section (#101), so in no old file. */
     const val PRESET_FOLDER = "preset_folder_uri"
 
+    /** New with Studio (#21), so in no old file: the old Studio always saved to Movies/Geode. */
+    const val VIDEO_FOLDER = "video_folder_uri"
+
     // New with #28's preferences, so in no old file.
     const val EXPORT_FINISHED_ALERTS = "export_finished_alerts"
     const val BACKGROUND_MUSIC = "background_music"

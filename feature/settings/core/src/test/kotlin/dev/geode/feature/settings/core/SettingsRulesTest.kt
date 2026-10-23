@@ -61,6 +61,7 @@ class SettingsRulesTest {
     private val music = FolderUri("content://tree/music")
     private val more = FolderUri("content://tree/more")
     private val presets = FolderUri("content://tree/presets")
+    private val videos = FolderUri("content://tree/videos")
 
     private val lookRows: List<Row> =
         listOf(
@@ -224,6 +225,7 @@ class SettingsRulesTest {
 
     private val folderRows: List<Row> =
         listOf(
+            Row(FolderCommand.SetVideoFolder(videos), defaults.copy(folders = folders.copy(videoFolder = videos))),
             Row(FolderCommand.SetPresetMirror(music), defaults.copy(folders = folders.copy(presetMirror = music))),
             Row(FolderCommand.SetPresetMirror(null), defaults),
             Row(FolderCommand.SetPresetFolder(presets), defaults.copy(folders = folders.copy(presetFolder = presets))),

@@ -176,18 +176,11 @@ class SettingsCodecTest {
                 ),
         )
 
-    /** The keys written since the old files, at their defaults. */
-    private val newKeysAtDefaults: Map<String, Any?> =
-        mapOf(
-            "preset_folder_uri" to null,
-            "export_finished_alerts" to true,
-            "background_music" to true,
-            "background_renders" to true,
-            "background_recording" to false,
-            "visual_quality" to "HIGH",
-            "visual_frame_rate" to "SCREEN_MAX",
-            "cpu_gpu_save_mode" to false,
-        )
+    /**
+     * The keys written since the old files, each at its default: whatever the codec writes beyond
+     * [today]. A new setting joins this by itself; its own tests pin its name and format.
+     */
+    private val newKeysAtDefaults: Map<String, Any?> = SettingsCodec.encode(SettingsValues()) - today.keys
 
     /** #28's preferences, every one away from its default. */
     private val preferences: Map<String, Any?> =
@@ -218,23 +211,29 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `the keys written since the old files are in no old file`() {
+        assertTrue(newKeysAtDefaults.isNotEmpty())
+        assertTrue(newKeysAtDefaults.keys.none { key -> SettingsKeys.LEGACY_FILES.values.any { key in it } })
+    }
+
+    @Test
     fun `settings stored before the preset folder load unchanged and write back as they were`() {
         val loaded = SettingsCodec.decode(today)
 
         assertEquals(null, loaded.folders.presetFolder)
         assertEquals(today, SettingsCodec.encode(loaded).filterKeys { it in today })
-        assertEquals(newKeysAtDefaults.keys, SettingsCodec.encode(loaded).keys - today.keys)
+        assertEquals(newKeysAtDefaults, SettingsCodec.encode(loaded) - today.keys)
     }
 
     @Test
     fun `the preset folder is kept in its own key, apart from the preset mirror`() {
-        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets")
+        val stored = today + newKeysAtDefaults + ("preset_folder_uri" to "content://tree/geode-presets")
 
         val values = SettingsCodec.decode(stored)
 
         assertEquals(FolderUri("content://tree/geode-presets"), values.folders.presetFolder)
         assertEquals(FolderUri("content://tree/presets"), values.folders.presetMirror)
-        assertEquals(stored + (newKeysAtDefaults - "preset_folder_uri"), SettingsCodec.encode(values))
+        assertEquals(stored, SettingsCodec.encode(values))
     }
 
     @Test
@@ -278,6 +277,24 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `the video save folder is kept in its own key and read back unchanged`() {
+        val stored = today + newKeysAtDefaults + ("video_folder_uri" to "content://tree/geode-videos")
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(FolderUri("content://tree/geode-videos"), values.folders.videoFolder)
+        assertEquals(null, values.folders.presetFolder)
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `the video save folder is new, so it is read from no old file and starts unpicked`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "video_folder_uri" in it })
+        assertEquals(null, SettingsCodec.decode(today).folders.videoFolder)
+        assertEquals(null, SettingsCodec.decode(mapOf("video_folder_uri" to 7)).folders.videoFolder)
+    }
+
+    @Test
     fun `the defaults are written in today's formats too`() {
         val stored = SettingsCodec.encode(SettingsValues())
 
@@ -291,6 +308,7 @@ class SettingsCodecTest {
         assertTrue("gui_font_color" in stored && stored["gui_font_color"] == null)
         assertTrue("preset_mirror_uri" in stored && stored["preset_mirror_uri"] == null)
         assertTrue("preset_folder_uri" in stored && stored["preset_folder_uri"] == null)
+        assertTrue("video_folder_uri" in stored && stored["video_folder_uri"] == null)
         assertEquals(SettingsValues(), SettingsCodec.decode(stored))
     }
 

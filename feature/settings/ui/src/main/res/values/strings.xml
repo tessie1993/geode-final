@@ -111,6 +111,8 @@
     <string name="export_finished_alerts">Notify me, with Share and Open</string>
 
     <!-- Default paths -->
+    <string name="folders_group_video_folder">Video save folder</string>
+    <string name="folders_video_folder_none">Not chosen yet. Studio asks for it the first time it opens.</string>
     <string name="folders_group_preset_folder">Preset folder</string>
     <string name="folders_preset_folder_app">Saved presets and MilkDrop presets are kept in the app.</string>
     <string name="folders_preset_folder_reset">Keep them in the app</string>

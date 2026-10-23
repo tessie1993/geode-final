@@ -22,28 +22,23 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
   handlers' database tests.
 
+- **Studio as a feature: Projects and the library (#21, ADR-0003,
+  ADR-0005).** `:feature:studio:{api,core,handlers,ui}`. Users create, rename
+  and delete Projects, choose the default Project (there is no built-in
+  one), and move videos between Projects. Deleting a Project that still has
+  videos asks "Delete N videos too?": yes deletes them with their files, no
+  moves them to another Project; nothing is deleted silently. Every video is
+  saved to one folder picked with the system folder picker in Studio's own
+  first-run step and kept in Settings > Default paths as the new **Video
+  save folder** (`video_folder_uri`); Studio follows it through Settings'
+  interface. Projects, videos and the default Project live in Studio's own
+  Room database, which the render queue (#22) will share.
+  `StudioCommand.AddVideos` is how Renders, Recordings, Edits, Shorts and the
+  old `Movies/Geode` exports (imported once at the switch-over, #17) enter
+  the library: without a Project they go to the default one, and with no
+  default they are handed back to ask about. Built alongside the old Studio;
+  wired in at the switch-over (#17).
 
-- **Preferences: run in background, Visual quality, battery and heat, export
-  alerts (#28).** Built in the new Settings feature, alongside the old code until
-  the switch-over (#17).
-  - Application preferences gains three run-in-background switches: Music keeps
-    playing (on), Renders keep going (on) and Recording keeps going (off). It
-    also gains the CPU/GPU save mode switch (off). Save mode draws the Visual at
-    Saver quality and 30 fps, holds the floating assets still and slows Renders
-    down.
-  - A new CPU/GPU section sits between Default paths and Help. It has Visual
-    quality on screen (High, Balanced or Saver, a render scale ceiling of 1.0,
-    0.85 or 0.7; default High) and Visual frame rate (30, 60 or Screen max;
-    default Screen max). A note says that cooling down when hot is automatic.
-  - Export preferences gains the 480p and 1440p sizes (the default stays 1080p)
-    and an export-finished alerts switch (on).
-  - Each new setting has its own key, so existing installs keep their values.
-  - With Music keeps playing off, Playback pauses when you leave the app
-    (`MusicInBackground`).
-  - The engine takes the Visual quality as a ceiling under the thermal one
-    (`geode_viz_set_quality_ceiling`).
-  - The audio engine stays warm and never shuts down when idle, so there is no
-    setting for it.
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person
