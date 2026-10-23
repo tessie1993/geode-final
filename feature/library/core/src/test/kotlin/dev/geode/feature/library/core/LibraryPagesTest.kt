@@ -12,17 +12,24 @@ import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.Play
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
 import dev.geode.feature.library.api.SHORT_CLIP
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongRow
 import dev.geode.feature.library.api.Sort
 import dev.geode.feature.library.api.SortKey
 import dev.geode.feature.library.core.Fixtures.alpha
+import dev.geode.feature.library.core.Fixtures.annSongs
 import dev.geode.feature.library.core.Fixtures.beta
 import dev.geode.feature.library.core.Fixtures.evening
 import dev.geode.feature.library.core.Fixtures.gamma
 import dev.geode.feature.library.core.Fixtures.morning
+import dev.geode.feature.library.core.Fixtures.played
 import dev.geode.feature.library.core.Fixtures.ready
+import dev.geode.feature.library.core.Fixtures.smart
 import dev.geode.feature.library.core.Fixtures.voice
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -290,7 +297,7 @@ class LibraryPagesTest {
     @Test
     fun `songs are grouped by the tag each kind of group names`() {
         assertEquals(
-            listOf("First", "Ann", "Ann", "Rock", "Cole", "/music/rock", null),
+            listOf("First", "Ann", "Ann", "Rock", "Cole", "/music/rock", null, null),
             GroupKind.entries.map { LibraryPages.nameIn(alpha, it) },
         )
         assertEquals("Various", LibraryPages.nameIn(beta, GroupKind.ALBUM_ARTIST))
@@ -301,5 +308,79 @@ class LibraryPagesTest {
         assertEquals(listOf("flac", "m4a", "mp3"), ready.formats)
         assertEquals(listOf("/music/jazz", "/music/rock", "/music/rock/live", "/recordings"), ready.folders)
         assertEquals(emptyList<String>(), LibraryState().formats)
+    }
+
+    @Test
+    fun `smart playlists follow Playback's playlists, by name, with the songs their rules pick now`() {
+        assertEquals(
+            Page.Groups(
+                listOf(
+                    GroupRow(GroupKey(GroupKind.PLAYLIST, "7"), "Evening", detail = "", songCount = 2, artwork = null),
+                    GroupRow(GroupKey(GroupKind.PLAYLIST, "3"), "Morning", detail = "", songCount = 5, artwork = null),
+                    GroupRow(GroupKey(GroupKind.SMART_PLAYLIST, "Ann songs"), "Ann songs", detail = "", songCount = 2, artwork = null),
+                    GroupRow(GroupKey(GroupKind.SMART_PLAYLIST, "played"), "played", "", songCount = 2, artwork = "content://art/b"),
+                ),
+            ),
+            LibraryPages.pageOf(smart.copy(place = Place.Shelf(LibraryView.PLAYLISTS))),
+        )
+    }
+
+    @Test
+    fun `a smart playlist opens to its songs, sorted like any group`() {
+        val inPlayed = smart.copy(place = Place.Group(LibraryView.PLAYLISTS, GroupKey(GroupKind.SMART_PLAYLIST, "played")))
+
+        assertEquals(
+            Page.Songs(listOf(SongRow(alpha, favourite = true, plays = 1), SongRow(beta, favourite = false, plays = 2))),
+            LibraryPages.pageOf(inPlayed),
+        )
+        assertEquals(listOf(beta, alpha), songs(LibraryPages.pageOf(inPlayed.copy(sort = Sort(SortKey.PLAYS, descending = true)))))
+        // One that is gone shows nothing.
+        val gone = inPlayed.copy(place = Place.Group(LibraryView.PLAYLISTS, GroupKey(GroupKind.SMART_PLAYLIST, "Gone")))
+        assertEquals(Page.Songs(emptyList()), LibraryPages.pageOf(gone))
+    }
+
+    @Test
+    fun `a smart playlist's songs change as the Library does`() {
+        val key = GroupKey(GroupKind.SMART_PLAYLIST, "Ann songs")
+
+        assertEquals(listOf(alpha, gamma), LibraryPages.songsOf(smart, Pick.Group(key)))
+        val renamed = smart.copy(songs = listOf(alpha, beta.copy(artist = "Ann"), gamma, voice))
+        assertEquals(listOf(alpha, beta.copy(artist = "Ann"), gamma), LibraryPages.songsOf(renamed, Pick.Group(key)))
+        // Hidden songs are left out, as everywhere in the Library.
+        assertEquals(listOf(alpha), LibraryPages.songsOf(smart.copy(excludedFolders = setOf("/music/rock/live")), Pick.Group(key)))
+        assertEquals(listOf(gamma), LibraryPages.songsOf(smart.copy(filter = Filter(folder = "/music/rock/live")), Pick.Group(key)))
+        // Favourites and plays count as they are now.
+        val playedKey = GroupKey(GroupKind.SMART_PLAYLIST, "played")
+        assertEquals(
+            listOf(gamma),
+            LibraryPages.songsOf(smart.copy(favourites = setOf(gamma.id), plays = emptyList()), Pick.Group(playedKey)),
+        )
+    }
+
+    @Test
+    fun `a smart playlist's limit keeps the first songs by name, whatever the sort`() {
+        val firstTwo = SmartPlaylist("Two", limit = 2)
+        val state = ready.copy(smartPlaylists = listOf(firstTwo), sort = Sort(SortKey.LENGTH, descending = true))
+
+        // By length alone the longest two would be Gamma and Alpha.
+        assertEquals(listOf(alpha, beta), LibraryPages.songsOf(state, Pick.Group(GroupKey(GroupKind.SMART_PLAYLIST, "Two"))))
+    }
+
+    @Test
+    fun `a smart playlist counts days from the Library's clock`() {
+        val recent = SmartPlaylist("Recent", listOf(SmartRule(RuleField.ADDED_DAYS_AGO, RuleOp.AT_MOST, "1")))
+        val key = GroupKey(GroupKind.SMART_PLAYLIST, "Recent")
+        val state = ready.copy(smartPlaylists = listOf(recent))
+
+        assertEquals(emptyList<Song>(), LibraryPages.songsOf(state, Pick.Group(key)))
+        assertEquals(listOf(alpha, beta, gamma, voice), LibraryPages.songsOf(state.copy(now = Millis(5_000)), Pick.Group(key)))
+    }
+
+    @Test
+    fun `a search finds smart playlists among the playlists`() {
+        val found = LibraryPages.pageOf(smart.copy(query = "PLAY")) as Page.Found
+
+        assertEquals(listOf(GroupKey(GroupKind.SMART_PLAYLIST, "played")), found.playlists.map { it.key })
+        assertEquals(listOf(annSongs, played), smart.smartPlaylists)
     }
 }

@@ -14,15 +14,22 @@ import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.Play
 import dev.geode.feature.library.api.PlaylistRef
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 import dev.geode.feature.library.api.Sort
 import dev.geode.feature.library.api.SortKey
 import dev.geode.feature.library.core.Fixtures.alpha
+import dev.geode.feature.library.core.Fixtures.annSongs
 import dev.geode.feature.library.core.Fixtures.beta
 import dev.geode.feature.library.core.Fixtures.gamma
+import dev.geode.feature.library.core.Fixtures.played
 import dev.geode.feature.library.core.Fixtures.ready
 import dev.geode.feature.library.core.Fixtures.shown
+import dev.geode.feature.library.core.Fixtures.smart
 import dev.geode.feature.library.core.Fixtures.voice
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaylistId
@@ -50,6 +57,13 @@ class LibraryCommandsTest {
     private val trimmed = SongEdit("Beta 2", "Bo", "Second", artwork = null)
     private val m3u = "#EXTM3U\n/music/rock/alpha.mp3\n/elsewhere/missing.mp3\n"
     private val everything = tracks(alpha, beta, gamma, voice)
+    private val playedKey = GroupKey(GroupKind.SMART_PLAYLIST, "played")
+    private val annKey = GroupKey(GroupKind.SMART_PLAYLIST, "Ann songs")
+    private val inSmartShelf = shown(smart.copy(place = Place.Shelf(LibraryView.PLAYLISTS)))
+    private val inPlayed = shown(smart.copy(place = Place.Group(LibraryView.PLAYLISTS, playedKey)))
+    private val inAnn = shown(smart.copy(place = Place.Group(LibraryView.PLAYLISTS, annKey)))
+    private val long = SmartPlaylist("Long", listOf(SmartRule(RuleField.DURATION_MINUTES, RuleOp.AT_LEAST, "4")))
+    private val heard = played.copy(name = "Heard")
 
     private val table: List<Row> =
         listOf(
@@ -178,6 +192,75 @@ class LibraryCommandsTest {
             ),
             row(ready, LibraryCommand.ExportPlaylist(Pick.Songs(listOf(alpha.id)), " "), ready),
             row(ready, LibraryCommand.ExportPlaylist(Pick.Songs(emptyList()), "content://docs/out.m3u"), ready),
+            // Smart playlists are the Library's own, kept by name; a name is trimmed and taken once.
+            row(
+                smart,
+                LibraryCommand.SaveSmartPlaylist(long.copy(name = " Long ", limit = -2)),
+                smart.copy(smartPlaylists = listOf(annSongs, long, played)),
+                Perform(LibraryWork.SaveSmartPlaylist(long, replacing = null)),
+            ),
+            row(ready, LibraryCommand.SaveSmartPlaylist(long), ready.copy(smartPlaylists = listOf(long)), saveSmart(long, null)),
+            row(smart, LibraryCommand.SaveSmartPlaylist(long.copy(name = "  ")), smart),
+            row(smart, LibraryCommand.SaveSmartPlaylist(long.copy(name = "played")), smart),
+            row(
+                smart,
+                LibraryCommand.SaveSmartPlaylist(played.copy(limit = 1), replacing = "played"),
+                smart.copy(smartPlaylists = listOf(annSongs, played.copy(limit = 1))),
+                saveSmart(played.copy(limit = 1), "played"),
+            ),
+            // Renamed while it is shown, it keeps showing.
+            row(
+                inPlayed,
+                LibraryCommand.SaveSmartPlaylist(heard, replacing = "played"),
+                smart.copy(
+                    smartPlaylists = listOf(annSongs, heard),
+                    place = Place.Group(LibraryView.PLAYLISTS, playedKey.copy(name = "Heard")),
+                ),
+                saveSmart(heard, "played"),
+            ),
+            row(
+                inAnn,
+                LibraryCommand.SaveSmartPlaylist(heard, replacing = "played"),
+                inAnn.copy(smartPlaylists = listOf(annSongs, heard)),
+                saveSmart(heard, "played"),
+            ),
+            row(inPlayed, LibraryCommand.SaveSmartPlaylist(heard.copy(name = "Ann songs"), replacing = "played"), inPlayed),
+            row(
+                smart,
+                LibraryCommand.DeleteSmartPlaylist("played"),
+                smart.copy(smartPlaylists = listOf(annSongs)),
+                Perform(LibraryWork.DeleteSmartPlaylist("played")),
+            ),
+            // Deleted while it is shown, the Library goes back to its view.
+            row(
+                inPlayed,
+                LibraryCommand.DeleteSmartPlaylist("played"),
+                inSmartShelf.copy(smartPlaylists = listOf(annSongs)),
+                Perform(LibraryWork.DeleteSmartPlaylist("played")),
+            ),
+            row(
+                inAnn,
+                LibraryCommand.DeleteSmartPlaylist("played"),
+                inAnn.copy(smartPlaylists = listOf(annSongs)),
+                Perform(LibraryWork.DeleteSmartPlaylist("played")),
+            ),
+            row(smart, LibraryCommand.DeleteSmartPlaylist("Gone"), smart),
+            // A smart playlist opens to its songs, and plays, queues and saves them like any group.
+            row(inSmartShelf, LibraryCommand.Open(annKey), inAnn),
+            row(smart, LibraryCommand.Play(Pick.Group(annKey)), smart, tell(PlaybackCommand.Play(tracks(alpha, gamma), 0))),
+            row(
+                smart,
+                LibraryCommand.AddToQueue(Pick.Group(playedKey)),
+                smart,
+                tell(PlaybackCommand.AddToQueue(tracks(alpha, beta))),
+                Emit(LibraryFact.Queued(2, next = false)),
+            ),
+            row(
+                smart,
+                LibraryCommand.CreatePlaylist("Now", Pick.Group(annKey)),
+                smart,
+                tell(PlaybackCommand.CreatePlaylist("Now", tracks(alpha, gamma))),
+            ),
         ) +
             listOf(
                 // What the handlers report back.
@@ -239,6 +322,11 @@ class LibraryCommandsTest {
     private fun tracks(vararg songs: Song) = songs.map { it.toTrack() }
 
     private fun tell(command: PlaybackCommand): LibraryEffect = Perform(LibraryWork.Tell(command))
+
+    private fun saveSmart(
+        playlist: SmartPlaylist,
+        replacing: String?,
+    ): LibraryEffect = Perform(LibraryWork.SaveSmartPlaylist(playlist, replacing))
 
     private fun save(
         song: TrackId,

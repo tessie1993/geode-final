@@ -11,6 +11,7 @@ import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.SHORT_CLIP
+import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongRow
 import dev.geode.feature.library.api.Sort
@@ -43,7 +44,10 @@ internal object LibraryPages {
         }
     }
 
-    /** The songs [pick] means in [state], in order; none for a playlist, whose songs Playback keeps. */
+    /**
+     * The songs [pick] means in [state], in order; none for a playlist, whose songs Playback keeps. A
+     * smart playlist means the songs its rules pick now.
+     */
     fun songsOf(
         state: LibraryState,
         pick: Pick,
@@ -79,7 +83,7 @@ internal object LibraryPages {
             filter.folder.let { it == null || within(song.folder, it) } &&
             (!filter.hideShortClips || song.duration >= SHORT_CLIP)
 
-    /** The name [song] is grouped under for [kind]; null for playlists, which Playback keeps. */
+    /** The name [song] is grouped under for [kind]; null for playlists, which are not made from tags. */
     fun nameIn(
         song: Song,
         kind: GroupKind,
@@ -91,7 +95,7 @@ internal object LibraryPages {
             GroupKind.GENRE -> song.genre
             GroupKind.COMPOSER -> song.composer
             GroupKind.FOLDER -> song.folder
-            GroupKind.PLAYLIST -> null
+            GroupKind.PLAYLIST, GroupKind.SMART_PLAYLIST -> null
         }
 
     /** Whether [folder] is [parent] or beneath it. */
@@ -121,7 +125,7 @@ internal object LibraryPages {
                 LibraryView.GENRES -> Page.Groups(groups(GroupKind.GENRE))
                 LibraryView.COMPOSERS -> Page.Groups(groups(GroupKind.COMPOSER))
                 LibraryView.FOLDERS -> Page.Groups(groups(GroupKind.FOLDER))
-                // In Playback's order, the newest first.
+                // Playback's in its order, the newest first, then the smart playlists by name.
                 LibraryView.PLAYLISTS -> Page.Groups(playlists())
             }
 
@@ -137,7 +141,22 @@ internal object LibraryPages {
             )
         }
 
-        fun inGroup(key: GroupKey): List<Song> = visible.filter { nameIn(it, key.kind) == key.name }
+        fun inGroup(key: GroupKey): List<Song> =
+            if (key.kind == GroupKind.SMART_PLAYLIST) {
+                state.smartPlaylists
+                    .firstOrNull { it.name == key.name }
+                    ?.let(::smart)
+                    .orEmpty()
+            } else {
+                visible.filter { nameIn(it, key.kind) == key.name }
+            }
+
+        /**
+         * The songs [playlist] picks now, from the songs the Library may show. Its limit counts them in
+         * order of name, as the old smart playlists did; a page then sorts them as it sorts any group.
+         */
+        private fun smart(playlist: SmartPlaylist): List<Song> =
+            SmartPlaylists.resolve(playlist, visible.sortedWith(byTitle), { playCounts[it] ?: 0 }, state.favourites, state.now)
 
         fun sorted(songs: List<Song>): List<Song> {
             val order =
@@ -199,7 +218,17 @@ internal object LibraryPages {
                     songCount = it.trackCount,
                     artwork = null,
                 )
-            }
+            } +
+                state.smartPlaylists.map { playlist ->
+                    val songs = smart(playlist)
+                    GroupRow(
+                        key = GroupKey(GroupKind.SMART_PLAYLIST, playlist.name),
+                        title = playlist.name,
+                        detail = "",
+                        songCount = songs.size,
+                        artwork = songs.firstNotNullOfOrNull { it.artwork },
+                    )
+                }
     }
 
     private val byTitle: Comparator<Song> =

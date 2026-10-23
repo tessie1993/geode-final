@@ -80,4 +80,33 @@
     <string name="library_edit_cancel">Cancel</string>
     <string name="library_edit_file_art">From the file</string>
     <string name="library_edit_chosen_art">Chosen in Geode</string>
+
+    <string name="library_smart_new">New smart playlist</string>
+    <string name="library_smart_edit">Edit smart playlist</string>
+    <string name="library_smart_name">Name</string>
+    <string name="library_smart_name_taken">Another smart playlist has this name</string>
+    <string name="library_smart_match_all">Match all rules</string>
+    <string name="library_smart_match_any">Match any rule</string>
+    <string name="library_smart_no_rules">No rules: every song is in it.</string>
+    <string name="library_smart_add_rule">Add a rule</string>
+    <string name="library_smart_remove_rule">Remove this rule</string>
+    <string name="library_smart_value">Value</string>
+    <string name="library_smart_flag_hint">Needs no value</string>
+    <string name="library_smart_nothing_matches">No songs match the rules</string>
+    <string name="library_smart_limit">Limit (blank for all)</string>
+    <string name="library_smart_field_title">Title</string>
+    <string name="library_smart_field_artist">Artist</string>
+    <string name="library_smart_field_album">Album</string>
+    <string name="library_smart_field_folder">Folder</string>
+    <string name="library_smart_field_minutes">Minutes long</string>
+    <string name="library_smart_field_added_days">Days since added</string>
+    <string name="library_smart_field_plays">Play count</string>
+    <string name="library_smart_field_favourite">Favourite</string>
+    <string name="library_smart_op_contains">contains</string>
+    <string name="library_smart_op_is">is</string>
+    <string name="library_smart_op_is_not">is not</string>
+    <string name="library_smart_op_at_least">at least</string>
+    <string name="library_smart_op_at_most">at most</string>
+    <string name="library_action_edit_rules">Edit rules</string>
+    <string name="library_action_delete_smart">Delete smart playlist</string>
 </resources>

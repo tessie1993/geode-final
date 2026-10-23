@@ -11,6 +11,10 @@ import dev.geode.feature.library.api.LibraryView
 import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 import dev.geode.feature.library.api.Sort
@@ -33,6 +37,8 @@ data class LibraryModel(
     /** The folders songs are in, for the folder filter. */
     val folders: List<String>,
     val excludedFolders: Set<String>,
+    /** The smart playlists, for their editor. */
+    val smartPlaylists: List<SmartPlaylist> = emptyList(),
 ) {
     /** The view whose chip is selected. */
     val view: LibraryView
@@ -44,6 +50,12 @@ data class LibraryModel(
 
     /** Whether Back leaves a search or a group, rather than the Library. */
     val canGoBack: Boolean get() = query.isNotEmpty() || place is Place.Group
+
+    /** The smart playlist named [name], if there is one. */
+    fun smartPlaylist(name: String): SmartPlaylist? = smartPlaylists.firstOrNull { it.name == name }
+
+    /** The names a smart playlist may not take: every other one's. [editing] is the one being edited, if any. */
+    fun takenSmartNames(editing: SmartPlaylist?): Set<String> = smartPlaylists.map { it.name }.filterNot { it == editing?.name }.toSet()
 
     companion object {
         val EMPTY = LibraryState().toLibraryModel()
@@ -61,6 +73,7 @@ fun LibraryState.toLibraryModel(): LibraryModel =
         formats = formats,
         folders = folders,
         excludedFolders = excludedFolders,
+        smartPlaylists = smartPlaylists,
     )
 
 /**
@@ -80,6 +93,60 @@ data class SongEditorFields(
 
     companion object {
         fun of(song: Song): SongEditorFields = SongEditorFields(song.title, song.artist, song.album, song.artwork)
+    }
+}
+
+/**
+ * What the smart playlist editor holds while it is open: App UI state (ADR-0003). [limit] is the text
+ * typed, digits only; blank is no limit.
+ */
+data class SmartPlaylistFields(
+    val name: String,
+    val rules: List<SmartRule>,
+    val matchAll: Boolean,
+    val limit: String,
+) {
+    /** Whether another smart playlist has the name. */
+    fun nameTaken(taken: Set<String>): Boolean = name.trim() in taken
+
+    /** A smart playlist needs a name of its own. */
+    fun canSave(taken: Set<String>): Boolean = name.isNotBlank() && !nameTaken(taken)
+
+    fun toPlaylist(): SmartPlaylist = SmartPlaylist(name.trim(), rules, matchAll, limit.toIntOrNull() ?: 0)
+
+    /** With one more rule, on the artist, as the old editor added them. */
+    fun withNewRule(): SmartPlaylistFields = copy(rules = rules + SmartRule(RuleField.ARTIST, RuleOp.CONTAINS, ""))
+
+    fun withRule(
+        index: Int,
+        rule: SmartRule,
+    ): SmartPlaylistFields = copy(rules = rules.mapIndexed { i, old -> if (i == index) rule else old })
+
+    fun withoutRule(index: Int): SmartPlaylistFields = copy(rules = rules.filterIndexed { i, _ -> i != index })
+
+    /** With the limit typed as [text]; anything but digits is dropped. */
+    fun withLimit(text: String): SmartPlaylistFields = copy(limit = text.filter(Char::isDigit))
+
+    companion object {
+        /** The editor for [playlist], or for a new smart playlist when it is null. */
+        fun of(playlist: SmartPlaylist?): SmartPlaylistFields =
+            SmartPlaylistFields(
+                name = playlist?.name.orEmpty(),
+                rules = playlist?.rules.orEmpty(),
+                matchAll = playlist?.matchAll ?: true,
+                limit =
+                    playlist
+                        ?.limit
+                        ?.takeIf { it > 0 }
+                        ?.toString()
+                        .orEmpty(),
+            )
+
+        /** [rule] set to look at [field], with the comparison that field starts with. */
+        fun withField(
+            rule: SmartRule,
+            field: RuleField,
+        ): SmartRule = if (rule.field == field) rule else rule.copy(field = field, op = field.defaultOp)
     }
 }
 
