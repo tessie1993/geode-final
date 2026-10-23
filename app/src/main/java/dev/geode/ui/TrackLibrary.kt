@@ -34,26 +34,6 @@ class TrackLibrary(
 
     fun addAll(tracks: List<LibraryTrack>): List<LibraryTrack>? = mutate { current -> mergeAdds(current, tracks) }
 
-    fun updateAnalysis(
-        uri: TrackId,
-        title: String,
-        duration: Millis,
-        bpm: Float,
-        key: String = "",
-    ): List<LibraryTrack>? =
-        mutate { current ->
-            val map = current.associateBy { it.uri }.toMutableMap()
-            val base = map[uri] ?: LibraryTrack(uri = uri, title = title)
-            map[uri] =
-                base.copy(
-                    duration = if (duration > Millis.ZERO) duration else base.duration,
-                    bpm = bpm,
-                    key = key.ifBlank { base.key },
-                    analyzed = true,
-                )
-            map.values.sortedBy { it.title.lowercase() }
-        }
-
     fun updateMetadata(
         uri: TrackId,
         title: String,

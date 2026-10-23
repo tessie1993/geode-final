@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "acid_kaleid",
+  "label": "Kaleido Melt",
+  "family": "acid",
+  "parameters": {
+    "mode": 2,
+    "source": 0,
+    "zoom": 1.014,
+    "rotate": 0.002,
+    "hueRate": 0.05,
+    "feedback": 0.95,
+    "modulate": 0.5,
+    "liquid": 0.5,
+    "saturation": 1.1
+  }
+}

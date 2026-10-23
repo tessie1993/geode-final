@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "life_mitosis",
+  "label": "Mitosis",
+  "family": "life",
+  "parameters": {
+    "rule": 1,
+    "dt": 1.0,
+    "feed": 0.0367,
+    "kill": 0.0649,
+    "substeps": 4,
+    "look": 0,
+    "seedJitter": 11.0,
+    "hueOffset": 0.6
+  }
+}

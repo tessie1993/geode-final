@@ -30,6 +30,30 @@ class M3uTest {
     }
 
     @Test
+    fun `a PLS playlist is read in the order of its numbers`() {
+        val text = "[playlist]\nFile2=/music/jazz/beta.flac\nTitle2=Beta\nfile1 = file:///music/rock/alpha.mp3\nFile3=\nNumberOfEntries=2\n"
+
+        assertEquals(listOf("/music/rock/alpha.mp3", "/music/jazz/beta.flac"), M3u.read(text))
+    }
+
+    @Test
+    fun `an XSPF playlist is read by its locations, escapes undone`() {
+        val text =
+            "<?xml version=\"1.0\"?>\n<playlist version=\"1\" xmlns=\"http://xspf.org/ns/0/\"><trackList>" +
+                "<track><location>file:///music/rock/alpha.mp3</location><title>Alpha</title></track>" +
+                "<track><location>file:///music/My%20Jazz/b&amp;b+c.flac</location></track>" +
+                "<track><location> </location></track>" +
+                "<track><location>/music/&lt;1&gt; &quot;Q&apos;s&quot;.mp3</location></track>" +
+                "<track><location>/music/100%.mp3</location></track>" +
+                "</trackList></playlist>"
+
+        assertEquals(
+            listOf("/music/rock/alpha.mp3", "/music/My Jazz/b&b+c.flac", "/music/<1> \"Q's\".mp3", "/music/100%.mp3"),
+            M3u.read(text),
+        )
+    }
+
+    @Test
     fun `an entry names a song by its path, the end of its path, or its file name`() {
         val entries =
             listOf(

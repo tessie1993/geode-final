@@ -8,12 +8,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.audio.AudioFxController
-import dev.geode.audio.AudioFxPresets
 import dev.geode.audio.PcmRingBuffer
 import dev.geode.audio.TapRenderersFactory
 import dev.geode.audio.dsp.NativeDspProcessor
-import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.PlayerPrefsStore
 import dev.geode.engine.audio.AudioPresentationClock
 import dev.geode.engine.audio.PcmSink
 import dev.geode.engine.audio.SampleRing
@@ -28,7 +25,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(UnstableApi::class)
 class PlaybackSession internal constructor(
-    context: Context,
+    private val context: Context,
 ) {
     val ring = PcmRingBuffer()
 
@@ -65,16 +62,29 @@ class PlaybackSession internal constructor(
 
     internal val dsp = NativeDspProcessor()
 
-    private val prefsFiles = GeodePrefsFiles(context)
+    private var opened: Player? = null
 
-    /** Read once here: the engine choice is fixed for the life of the session. */
-    val nativeEngine: Boolean = PlayerPrefsStore(prefsFiles.player).load().nativeEngine
+    /**
+     * Opens the player, Geode's own when [nativeEngine] or ExoPlayer otherwise: a Settings choice (#17)
+     * that whoever drives the player passes once the stored settings are read. The first call decides,
+     * for the life of the session; a later one gets the same player whatever it asks for. Main thread.
+     */
+    fun openPlayer(nativeEngine: Boolean): Player =
+        opened ?: buildPlayer(nativeEngine).also { player ->
+            opened = player
+            player.addListener(replayGain)
+        }
+
+    /** The player, once [openPlayer] has opened it. */
+    val player: Player get() = checkNotNull(opened) { "the player is opened by openPlayer, once Settings say which" }
+
+    val exoPlayer: ExoPlayer? get() = opened as? ExoPlayer
 
     // WAKE_MODE_LOCAL takes a partial wake lock while playback is active, so the CPU
     // cannot doze mid-track with the screen off. Not the WIFI variant: nothing streams.
-    val exoPlayer: ExoPlayer? =
+    private fun buildPlayer(nativeEngine: Boolean): Player =
         if (nativeEngine) {
-            null
+            NativePlayer(context, NativeTapPump(tap, clockDriver), NativePlayerDsp(dsp))
         } else {
             ExoPlayer
                 .Builder(context, TapRenderersFactory(context, tap, clockDriver, dsp = listOf(dsp)))
@@ -99,22 +109,17 @@ class PlaybackSession internal constructor(
                 .build()
         }
 
-    val player: Player = exoPlayer ?: NativePlayer(context, NativeTapPump(tap, clockDriver), NativePlayerDsp(dsp))
-
-    val audioFx = AudioFxController(prefsFiles.audioFx, AudioFxPresets.all(context), dsp)
+    val audioFx = AudioFxController(dsp)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     val replayGain = ReplayGain(context.contentResolver, scope) { audioFx.setGainDb(it) }
-
-    val sleepTimer = SleepTimer(player, scope)
 
     val analysis = dev.geode.analysis.AnalysisEngine(sampleRing)
 
     private val interestHook: () -> Unit = { syncAnalysis() }
 
     init {
-        player.addListener(replayGain)
         dev.geode.audio.AudioBus.onInterestChanged = interestHook
         syncAnalysis()
         scope.launch {
@@ -129,12 +134,6 @@ class PlaybackSession internal constructor(
         if (dev.geode.audio.AudioBus.hasConsumers) analysis.start(scope) else analysis.stop()
     }
 
-    val playbackWanted: Boolean
-        get() =
-            player.playWhenReady &&
-                player.playbackState != Player.STATE_IDLE &&
-                player.playbackState != Player.STATE_ENDED
-
     internal fun release() {
         analysis.close()
         if (dev.geode.audio.AudioBus.onInterestChanged === interestHook) {
@@ -143,8 +142,11 @@ class PlaybackSession internal constructor(
         scope.cancel()
         onAudioFormat = null
         audioFx.release()
-        player.removeListener(replayGain)
-        player.release()
+        opened?.let {
+            it.removeListener(replayGain)
+            it.release()
+        }
+        opened = null
         dsp.release()
     }
 }

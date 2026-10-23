@@ -80,16 +80,8 @@ fun TrackInfoEditor(
     val context = LocalContext.current
 
     suspend fun commit(edit: PendingTrackEdit) {
-        viewModel.saveTrackInfo(
-            uri = edit.uri,
-            title = edit.title,
-            artist = edit.artist,
-            album = edit.album,
-            genre = edit.genre,
-            year = edit.year,
-            trackNo = edit.trackNo,
-            comment = edit.comment,
-        )
+        // The Library keeps the title, artist and album; the other fields live in the file's own tags.
+        viewModel.saveTrackInfo(uri = edit.uri, title = edit.title, artist = edit.artist, album = edit.album)
         onDismiss()
     }
 

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "mandel",
+  "label": "Mandel",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

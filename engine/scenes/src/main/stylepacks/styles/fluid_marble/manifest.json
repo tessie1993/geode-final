@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "fluid_marble",
+  "label": "Marble",
+  "family": "fluid",
+  "parameters": {
+    "look": 7,
+    "curl": 0.9,
+    "velocityDissipation": 1.4,
+    "densityDissipation": 0.3,
+    "splatRadius": 1.1,
+    "splatForce": 0.75,
+    "bloom": 0.5,
+    "hueOffset": 0.33
+  }
+}

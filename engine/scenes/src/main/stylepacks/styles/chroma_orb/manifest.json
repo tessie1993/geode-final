@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "chroma_orb",
+  "label": "Chroma Orb",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

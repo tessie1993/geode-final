@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "voronoi",
+  "label": "Voronoi",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

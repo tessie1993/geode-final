@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "myco_circuit",
+  "label": "Circuit Bloom",
+  "family": "mycelium",
+  "parameters": {
+    "agentRes": 176,
+    "sensorAngle": 0.6,
+    "jitter": 0.0,
+    "deposit": 0.12,
+    "decay": 0.87,
+    "snap": 0.7854,
+    "look": 3,
+    "exposure": 3.2,
+    "hueOffset": 0.35
+  }
+}

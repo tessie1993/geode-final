@@ -1,7 +1,10 @@
 package dev.geode.design
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +45,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import dev.geode.design.theme.LocalFontColor
+import dev.geode.design.theme.LocalReducedMotion
 import dev.geode.design.theme.StoneComponent
 import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
@@ -222,17 +226,23 @@ fun CrystalNavBar(
                 .selectableGroup(),
         ) {
             val selectedLabel = accentTextColor()
+            // With motion reduced the highlight snaps to the new tab instead of easing over.
+            val reduced = LocalReducedMotion.current
+            val colorSpec: AnimationSpec<Color> = if (reduced) snap() else spring()
+            val gemSpec: AnimationSpec<Float> = if (reduced) snap() else spring()
             items.forEachIndexed { i, item ->
                 val sel = i == selected
                 val tint by animateColorAsState(
                     if (sel) cs.primary else cs.onSurfaceVariant.copy(alpha = CrystalAlpha.UNSELECTED_CONTENT),
+                    animationSpec = colorSpec,
                     label = "crystalNavTint",
                 )
                 val labelTint by animateColorAsState(
                     if (sel) selectedLabel else cs.onSurfaceVariant.copy(alpha = CrystalAlpha.UNSELECTED_CONTENT),
+                    animationSpec = colorSpec,
                     label = "crystalNavLabel",
                 )
-                val gemAlpha by animateFloatAsState(if (sel) 1f else 0f, label = "crystalNavGem")
+                val gemAlpha by animateFloatAsState(if (sel) 1f else 0f, gemSpec, label = "crystalNavGem")
                 Column(
                     Modifier
                         .weight(1f)

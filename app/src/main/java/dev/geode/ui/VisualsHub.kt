@@ -64,7 +64,8 @@ import dev.geode.render.VisualizerView
 import dev.geode.render.scene.CustomizeTab
 import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
-import dev.geode.render.scene.VisualStyleCatalog
+import dev.geode.render.scene.SceneKind
+import dev.geode.render.scene.StylePacks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -152,8 +153,8 @@ internal fun presetReplaceTarget(
 
 internal fun builtInPresetSceneFamily(activeSceneId: SceneId): SceneId =
     when {
-        VisualStyleCatalog.isCymatics(activeSceneId) -> SceneIds.CYMATICS
-        VisualStyleCatalog.isFluid(activeSceneId) -> SceneIds.FLUID
+        SceneCapabilities.isCymatics(activeSceneId) -> SceneIds.CYMATICS
+        SceneCapabilities.isFluid(activeSceneId) -> SceneIds.FLUID
         else -> activeSceneId
     }
 
@@ -505,12 +506,12 @@ private fun StylesTab(
             onSelect = { sub = it },
         )
         when (sub) {
-            0 -> SceneList(VisualStyleCatalog.lifeIds, viz.sceneId, pickScene)
-            1 -> SceneList(VisualStyleCatalog.mycoIds, viz.sceneId, pickScene)
-            2 -> SceneList(VisualStyleCatalog.acidIds, viz.sceneId, pickScene)
-            3 -> SceneList(SceneCapabilities.SHADER_SCENES.keys.toList(), viz.sceneId, pickScene)
-            4 -> SceneList(VisualStyleCatalog.fluidIds + listOf(SceneIds.CURLFLOW, SceneIds.WATER), viz.sceneId, pickScene)
-            5 -> SceneList(VisualStyleCatalog.cymaticsIds, viz.sceneId, pickScene)
+            0 -> SceneList(StylePacks.idsOf(SceneKind.LIFE), viz.sceneId, pickScene)
+            1 -> SceneList(StylePacks.idsOf(SceneKind.MYCELIUM), viz.sceneId, pickScene)
+            2 -> SceneList(StylePacks.idsOf(SceneKind.ACID), viz.sceneId, pickScene)
+            3 -> SceneList(StylePacks.idsOf(SceneKind.SHADER), viz.sceneId, pickScene)
+            4 -> SceneList(StylePacks.idsOf(SceneKind.FLUID, SceneKind.CURL_FLOW, SceneKind.WATER), viz.sceneId, pickScene)
+            5 -> SceneList(StylePacks.idsOf(SceneKind.CYMATICS), viz.sceneId, pickScene)
             6 -> MilkDropTab(viewModel, visualizerView, onOpenTextures)
         }
     }
@@ -521,11 +522,7 @@ internal fun suggestedSceneToOffer(
     activeSceneId: SceneId,
 ): SceneId? = suggestedSceneId?.takeIf { it != activeSceneId }
 
-internal fun sceneDisplayLabel(id: SceneId): String {
-    val catalogued = VisualStyleCatalog.label(id)
-    if (catalogued != id.value) return catalogued
-    return id.value.split('_').joinToString(" ") { word -> word.replaceFirstChar { it.uppercase() } }
-}
+internal fun sceneDisplayLabel(id: SceneId): String = SceneCapabilities.label(id)
 
 @Composable
 private fun SceneList(

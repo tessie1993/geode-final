@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "acid_mosh",
+  "label": "Datamosh",
+  "family": "acid",
+  "parameters": {
+    "mode": 5,
+    "source": 2,
+    "zoom": 1.004,
+    "rotate": 0.0,
+    "hueRate": 0.06,
+    "feedback": 0.945,
+    "glitch": 1.0,
+    "overdrive": 0.5,
+    "hueOffset": 0.18
+  }
+}

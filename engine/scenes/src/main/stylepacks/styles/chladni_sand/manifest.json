@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "chladni_sand",
+  "label": "Chladni Sand",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 1,
+    "geometryOverride": 1,
+    "scale": 1.08,
+    "fill": 0.2,
+    "line": 1.28,
+    "glow": 0.58,
+    "iridescence": 0.18,
+    "caustic": 0.25,
+    "flow": 0.35,
+    "hueOffset": 0.06,
+    "hueSpan": 0.45
+  }
+}

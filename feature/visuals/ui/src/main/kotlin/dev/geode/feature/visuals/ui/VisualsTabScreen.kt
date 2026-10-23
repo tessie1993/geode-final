@@ -181,7 +181,7 @@ private fun SearchField(
 }
 
 @Composable
-private fun SectionTitle(title: String) {
+internal fun SectionTitle(title: String) {
     Text(
         title,
         modifier = Modifier.padding(top = ForestSpacing.Small, start = ForestSpacing.Small),
@@ -213,7 +213,7 @@ private fun FoldersTitle(
 }
 
 @Composable
-private fun Hint(
+internal fun Hint(
     @StringRes text: Int,
 ) {
     Text(
@@ -409,7 +409,7 @@ private fun NameDialog(
 
 /** Frosted glass over the live Visual, opaque enough to carry text (ForestGlass.TEXT_OPACITY_MIN). */
 @Composable
-private fun Modifier.glass(): Modifier =
+internal fun Modifier.glass(): Modifier =
     clip(ForestShapes.Card).background(MaterialTheme.colorScheme.surface.copy(alpha = ForestGlass.TEXT_OPACITY_MIN))
 
 /** The name a family is listed under. */

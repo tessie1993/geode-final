@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "nectar_flow",
+  "label": "Nectar Flow",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "detail": "march"
+}

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "life_gyre",
+  "label": "Gyre Garden",
+  "family": "life",
+  "parameters": {
+    "rule": 0,
+    "dt": 0.1,
+    "mu": 0.156,
+    "sigma": 0.0224,
+    "look": 3,
+    "hueOffset": 0.5
+  }
+}

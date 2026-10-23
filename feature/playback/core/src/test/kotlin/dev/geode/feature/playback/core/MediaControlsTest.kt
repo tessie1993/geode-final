@@ -137,22 +137,22 @@ class MediaControlsTest {
     }
 
     @Test
-    fun `a tap on a track in the session's queue plays it, or seeks within the current one`() {
+    fun `a tap on a track in the session's queue plays it from the place given, or seeks within the current one`() {
         val at = Millis(12_000)
         val table: List<Triple<PlayerState, MediaControl, PlaybackCommand?>> =
             listOf(
                 // Nothing queued: there is no track to tap.
                 Triple(idle, MediaControl.SkipTo(0, at), null),
-                Triple(loading, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0)),
+                Triple(loading, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0, at)),
                 Triple(loading, MediaControl.SkipTo(1, at), PlaybackCommand.SeekTo(at)),
-                Triple(buffering, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2)),
+                Triple(buffering, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2, at)),
                 Triple(playing, MediaControl.SkipTo(1, at), PlaybackCommand.SeekTo(at)),
                 Triple(playing, MediaControl.SkipTo(0, Millis.ZERO), PlaybackCommand.Play(atB.tracks, 0)),
-                Triple(paused, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2)),
+                Triple(paused, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2, at)),
                 Triple(paused, MediaControl.SkipTo(1, at), PlaybackCommand.SeekTo(at)),
-                Triple(ended, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atC.tracks, 0)),
+                Triple(ended, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atC.tracks, 0, at)),
                 Triple(ended, MediaControl.SkipTo(2, at), PlaybackCommand.SeekTo(at)),
-                Triple(error, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0)),
+                Triple(error, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0, at)),
                 // Outside the queue: asks for nothing.
                 Triple(playing, MediaControl.SkipTo(-1, at), null),
                 Triple(playing, MediaControl.SkipTo(3, at), null),

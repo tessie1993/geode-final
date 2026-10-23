@@ -74,6 +74,11 @@ class StudioViewModel
 
         val exportState: StateFlow<ExportUiState> get() = session.exportState
 
+        /** The song's tempo from the export's own analysis, for the export dialog (0 until known). */
+        val exportTempo: StateFlow<Float> get() = session.exportTempo
+
+        fun prepareExportTempo() = session.prepareExportTempo()
+
         fun cancelExport() = session.cancelExport()
 
         fun resetExportState() = session.resetExportState()

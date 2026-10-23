@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "kundt_tube",
+  "label": "Kundt Tube",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 10,
+    "geometryOverride": 1,
+    "scale": 0.7,
+    "fill": 0.68,
+    "line": 1.25,
+    "glow": 0.9,
+    "iridescence": 0.35,
+    "caustic": 0.55,
+    "flow": 1.1,
+    "hueOffset": 0.03,
+    "hueSpan": 0.6
+  }
+}

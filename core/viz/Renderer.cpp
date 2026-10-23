@@ -331,14 +331,9 @@ void Renderer::setFrameLoad(int frames, float p95Ms) {
     frameLoad_ = {frames, p95Ms};
 }
 
-float Renderer::styleScaleFor(const std::string& sceneId) {
-    for (const auto& entry : styleScales_) {
-        if (entry.first == sceneId) return entry.second;
-    }
-    const auto manifest = assets_.readAsset(scale::styleManifestPath(sceneId));
-    const float declared = manifest ? scale::manifestRenderScale(*manifest) : scale::kDefaultStyleRenderScale;
-    styleScales_.emplace_back(sceneId, declared);
-    return declared;
+float Renderer::styleScaleFor(const std::string& sceneId) const {
+    const packs::StylePack* pack = registry_.pack(sceneId);
+    return pack != nullptr ? pack->renderScale : scale::kDefaultStyleRenderScale;
 }
 
 scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {

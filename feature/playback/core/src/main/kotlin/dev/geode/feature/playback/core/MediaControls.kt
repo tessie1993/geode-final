@@ -167,7 +167,7 @@ object MediaControls {
         when {
             queue == null || control.index !in queue.tracks.indices -> null
             control.index == queue.index -> PlaybackCommand.SeekTo(control.position)
-            else -> PlaybackCommand.Play(queue.tracks, control.index)
+            else -> PlaybackCommand.Play(queue.tracks, control.index, control.position)
         }
 
     private fun queueOf(player: PlayerState): Queue? =

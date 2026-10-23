@@ -1,6 +1,8 @@
 package dev.geode.ui
 
 import android.app.Application
+import android.os.Handler
+import android.os.Looper
 import dev.geode.audio.MicCapture
 import dev.geode.engine.types.Hz
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +18,8 @@ internal class CaptureController(
     capture: dev.geode.engine.audio.PcmSink,
     private val host: Host,
 ) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     interface Host {
         fun pausePlayback()
 
@@ -29,7 +33,12 @@ internal class CaptureController(
         val micReactivePref: Boolean
     }
 
-    private val micCapture = MicCapture(application, capture)
+    private val micCapture =
+        MicCapture(application, capture).apply {
+            // A capture that ends by itself (a read failure, the input gone) is noticed when it
+            // happens, on the main thread, instead of by polling (#17).
+            onEnded = { mainHandler.post { refreshMicState() } }
+        }
 
     private val _micState = MutableStateFlow(MicState())
 

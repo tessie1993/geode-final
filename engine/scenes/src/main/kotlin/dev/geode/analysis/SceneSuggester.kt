@@ -1,6 +1,7 @@
 package dev.geode.analysis
 
 import dev.geode.engine.types.SceneId
+import dev.geode.render.scene.SceneCapabilities
 import dev.geode.render.scene.SceneIds
 
 enum class IntelligenceMode { MANUAL, SUGGEST }
@@ -9,11 +10,7 @@ object SceneSuggester {
     val SCENE_JULIA = SceneIds.JULIA
     val SCENE_TUNNEL = SceneIds.TUNNEL
 
-    val SCENE_MYCELIUM: SceneId =
-        requireNotNull(
-            dev.geode.render.scene.VisualStyleCatalog
-                .myco(SceneId("myco_polycephalum")),
-        ).id
+    val SCENE_MYCELIUM: SceneId = SceneId("myco_polycephalum")
 
     data class Affinity(
         val sceneId: SceneId,
@@ -111,5 +108,11 @@ object SceneSuggester {
         pulseConfidence: Float = 0f,
         chromaConfidence: Float = 0f,
         stereoWidth: Float = 0f,
-    ): SceneId = AFFINITIES.maxBy { score(it, bpm, energy, centroid, pulseConfidence, chromaConfidence, stereoWidth) }.sceneId
+    ): SceneId =
+        // Only Styles that still ship: a Style whose pack is removed drops out of the suggestions. The
+        // default Style always ships, so there is always one to suggest.
+        AFFINITIES
+            .filter { SceneCapabilities.isKnown(it.sceneId) }
+            .maxBy { score(it, bpm, energy, centroid, pulseConfidence, chromaConfidence, stereoWidth) }
+            .sceneId
 }

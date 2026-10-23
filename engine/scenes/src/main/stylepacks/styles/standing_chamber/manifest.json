@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "standing_chamber",
+  "label": "Standing Chamber",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 8,
+    "geometryOverride": 1,
+    "scale": 0.78,
+    "fill": 0.75,
+    "line": 0.92,
+    "glow": 1.18,
+    "iridescence": 0.5,
+    "caustic": 0.8,
+    "flow": 0.65,
+    "hueOffset": -0.3,
+    "hueSpan": 0.9,
+    "modeCap": 4
+  }
+}

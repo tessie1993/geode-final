@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "myco_polycephalum",
+  "label": "Polycephalum",
+  "family": "mycelium",
+  "parameters": {
+    "reaim": 0.15
+  }
+}

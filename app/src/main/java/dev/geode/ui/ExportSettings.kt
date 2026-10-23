@@ -17,13 +17,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.data.ExportDefaults
-import dev.geode.data.ExportPrefsStore
-import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.exportCodecLabel
 import dev.geode.data.exportQualityLabel
 import dev.geode.design.CrystalButton
@@ -38,13 +35,12 @@ internal fun ExportSettingsTab(
     exportOpen: Boolean,
     onOpenExport: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val store = remember { ExportPrefsStore(GeodePrefsFiles(context).general) }
-    var defaults by remember { mutableStateOf(store.load()) }
-    LaunchedEffect(exportOpen) { if (!exportOpen) defaults = store.load() }
+    val settingsViewModel: SettingsViewModel = geodeViewModel()
+    var defaults by remember { mutableStateOf(settingsViewModel.exportDefaults()) }
+    LaunchedEffect(exportOpen) { if (!exportOpen) defaults = settingsViewModel.exportDefaults() }
     val update: (ExportDefaults) -> Unit = {
         defaults = it
-        store.save(it)
+        settingsViewModel.saveExportDefaults(it)
     }
     SettingsTabColumn {
         item {

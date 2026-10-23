@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -32,20 +33,16 @@ float liveSupersample(int surfaceWidth, int surfaceHeight);
 
 // ---- per-Style render scale ----------------------------------------------------------------------
 
-// A Style may declare its own render scale in its manifest (`styles/<id>/manifest.json`, key
-// "renderScale"): below 1 for the heavy looks (long raymarches, deep fractal folds). A Style without a
-// manifest, or whose manifest says nothing usable, draws at kDefaultStyleRenderScale.
+// A Style may declare its own render scale in its pack manifest (`styles/<id>/manifest.json`, key
+// "renderScale", read by StylePacks): below 1 for the heavy looks (long raymarches, deep fractal folds).
+// A Style that declares none draws at kDefaultStyleRenderScale.
 constexpr float kDefaultStyleRenderScale = 1.0f;
 constexpr float kMinStyleRenderScale = 0.5f;
 constexpr float kMaxStyleRenderScale = 1.0f;
-inline constexpr std::string_view kStyleManifestKey = "renderScale";
 
-// The asset path of a Style's manifest.
-std::string styleManifestPath(std::string_view styleId);
-
-// The render scale a manifest declares, clamped to [kMinStyleRenderScale, kMaxStyleRenderScale];
-// kDefaultStyleRenderScale when the text is not JSON, has no "renderScale" or it is not a finite number.
-float manifestRenderScale(const std::string& manifestJson);
+// The render scale a Style draws at for what its manifest declares: clamped to
+// [kMinStyleRenderScale, kMaxStyleRenderScale]; kDefaultStyleRenderScale when nothing usable is declared.
+float styleRenderScale(std::optional<double> declared);
 
 // The floor under style x min(load, thermal), so no combination draws softer than this.
 constexpr float kMinQualityScale = 0.5f;

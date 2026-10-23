@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "metaballs",
+  "label": "Metaballs",
+  "family": "shader",
+  "shader": "shader.glsl"
+}
