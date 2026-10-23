@@ -1,7 +1,6 @@
 package dev.geode.ui
 
 import dev.geode.analysis.AnalysisEngine
-import dev.geode.analysis.LiveInputProfile
 import dev.geode.data.Preset
 import dev.geode.engine.types.SceneId
 import dev.geode.render.TransitionCatalog
@@ -108,17 +107,6 @@ internal class VisualSettingsController(
         host.milkPathFor(preset)?.let {
             _vizApply.tryEmit(VizApply(milkPath = it, sceneId = preset.sceneId))
         }
-    }
-
-    fun applyLiveInputProfile(profile: LiveInputProfile) {
-        host.setGuiPrefs(
-            host.guiPrefs.copy(
-                beatSensitivity = profile.beatSigma,
-                beatMinIntervalMs = profile.beatIntervalMs,
-            ),
-        )
-        setReactivity(profile.attack, profile.decay)
-        setSceneParams(profile.apply(state.value.params))
     }
 
     /**

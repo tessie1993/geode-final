@@ -7,32 +7,20 @@ import org.junit.Test
 
 class ForestPalettesTest {
     @Test
-    fun `each theme and mode has its own palette`() {
-        assertSame(ForestPalettes.DeepForestDark, ForestPalettes.of(ForestThemeId.DeepForest, ForestMode.Dark))
-        assertSame(ForestPalettes.DeepForestLight, ForestPalettes.of(ForestThemeId.DeepForest, ForestMode.Light))
-        assertSame(ForestPalettes.NightForestDark, ForestPalettes.of(ForestThemeId.NightForest, ForestMode.Dark))
-        assertSame(ForestPalettes.NightForestLight, ForestPalettes.of(ForestThemeId.NightForest, ForestMode.Light))
-        assertSame(ForestPalettes.EarthLichenDark, ForestPalettes.of(ForestThemeId.EarthLichen, ForestMode.Dark))
-        assertSame(ForestPalettes.EarthLichenLight, ForestPalettes.of(ForestThemeId.EarthLichen, ForestMode.Light))
-
-        val all = ForestThemeId.entries.flatMap { t -> ForestMode.entries.map { m -> ForestPalettes.of(t, m) } }
-        assertEquals(6, all.toSet().size)
+    fun `each mode has its own palette`() {
+        assertSame(ForestPalettes.DeepForestDark, ForestPalettes.of(ForestMode.Dark))
+        assertSame(ForestPalettes.DeepForestLight, ForestPalettes.of(ForestMode.Light))
     }
 
     @Test
-    fun `a fresh install starts on deep forest, dark`() {
-        assertEquals(ForestThemeId.DeepForest, ForestThemeId.Default)
+    fun `the forest theme starts dark`() {
         assertEquals(ForestMode.Dark, ForestMode.Default)
     }
 
     @Test
-    fun `dark palettes sit on a dark base and light ones on a light base`() {
-        for (theme in ForestThemeId.entries) {
-            val dark = ForestPalettes.of(theme, ForestMode.Dark)
-            val light = ForestPalettes.of(theme, ForestMode.Light)
-            assertTrue("$theme dark base", WcagContrast.relativeLuminance(dark.base) < DARK_BASE_MAX)
-            assertTrue("$theme light base", WcagContrast.relativeLuminance(light.base) > LIGHT_BASE_MIN)
-        }
+    fun `the dark palette sits on a dark base and the light one on a light base`() {
+        assertTrue(WcagContrast.relativeLuminance(ForestPalettes.of(ForestMode.Dark).base) < DARK_BASE_MAX)
+        assertTrue(WcagContrast.relativeLuminance(ForestPalettes.of(ForestMode.Light).base) > LIGHT_BASE_MIN)
     }
 
     private companion object {

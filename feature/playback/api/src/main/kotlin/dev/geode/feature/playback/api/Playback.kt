@@ -209,6 +209,8 @@ data class ListeningOptions(
     val crossfade: Millis = Millis.ZERO,
     val gapless: Boolean = true,
     val queueEnd: QueueEnd = QueueEnd.STOP,
+    // Whether a long track goes on from where it was left off; Settings' choice, which Playback follows.
+    val resumeLongTracks: Boolean = true,
 ) {
     /** Whether the next track is opened ahead of time, for a gapless join or a crossfade. */
     val joinsTracks: Boolean get() = gapless || crossfade > Millis.ZERO
@@ -380,6 +382,11 @@ sealed interface PlaybackCommand {
     ) : PlaybackCommand
 
     data class SetGapless(
+        val on: Boolean,
+    ) : PlaybackCommand
+
+    /** Whether long tracks go on from where they were left off. */
+    data class SetResumeLongTracks(
         val on: Boolean,
     ) : PlaybackCommand
 

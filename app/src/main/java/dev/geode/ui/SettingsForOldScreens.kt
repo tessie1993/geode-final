@@ -1,15 +1,11 @@
 package dev.geode.ui
 
 import android.app.Application
-import dev.geode.R
-import dev.geode.audio.AudioFxState
 import dev.geode.data.ExportDefaults
 import dev.geode.data.PlayerPrefs
 import dev.geode.data.PlayerPrefsRepository
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
-import dev.geode.feature.settings.api.EqualizerCommand
-import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
@@ -43,20 +39,12 @@ import dev.geode.feature.playback.api.RepeatMode as PlaybackRepeat
 class SettingsForOldScreens internal constructor(
     private val settings: Settings,
     private val playback: Playback,
-    private val presetNames: List<String>,
-    private val bandLabel: (Int) -> String,
     scope: CoroutineScope,
 ) : UserDataRepository,
     PlayerPrefsRepository {
     @Inject
     constructor(settings: Settings, playback: Playback, application: Application) :
-        this(
-            settings,
-            playback,
-            EQUALIZER_PRESETS.map { application.getString(it) },
-            OldScreenSettings::nativeBandLabel,
-            application.geodeContainer.appScope,
-        )
+        this(settings, playback, application.geodeContainer.appScope)
 
     /** Settings' values, or the defaults while the stored ones are being read. */
     private val values: StateFlow<SettingsValues> =
@@ -102,30 +90,6 @@ class SettingsForOldScreens internal constructor(
         if (after.repeatMode != before.repeatMode) playback.send(PlaybackCommand.SetRepeat(repeatOf(after.repeatMode)))
     }
 
-    /**
-     * The old equalizer panel's state, from Settings. Its bands are named by [bandLabel], which in the
-     * app asks the native chain, so tests on the plain JVM give their own.
-     */
-    val audioFx: StateFlow<AudioFxState> =
-        values
-            .map { OldScreenSettings.audioFxStateOf(it.equalizer, presetNames, bandLabel) }
-            .stateIn(scope, SharingStarted.Lazily, OldScreenSettings.audioFxStateOf(values.value.equalizer, presetNames, bandLabel))
-
-    fun setEqualizerEnabled(enabled: Boolean) = settings.send(EqualizerCommand.SetEnabled(enabled))
-
-    fun setEqualizerBand(
-        band: Int,
-        levelMb: Int,
-    ) = settings.send(OldScreenSettings.bandCommand(band, levelMb))
-
-    fun useEqualizerPreset(index: Int) {
-        OldScreenSettings.presetCommand(index)?.let(settings::send)
-    }
-
-    fun setBassBoost(strength: Int) = settings.send(EqualizerCommand.SetBassBoost(strength))
-
-    fun setLoudness(gainMb: Int) = settings.send(EqualizerCommand.SetLoudness(Millibels(gainMb)))
-
     /** What new renders start with. */
     fun exportDefaults(): ExportDefaults = OldScreenSettings.exportDefaultsOf(values.value.export)
 
@@ -134,17 +98,6 @@ class SettingsForOldScreens internal constructor(
     private fun sendAll(commands: List<SettingsCommand>) = commands.forEach(settings::send)
 
     private companion object {
-        /** The equalizer presets' names, in Settings' preset order. */
-        val EQUALIZER_PRESETS =
-            listOf(
-                R.string.eq_preset_flat,
-                R.string.eq_preset_bass,
-                R.string.eq_preset_treble,
-                R.string.eq_preset_vocal,
-                R.string.eq_preset_rock,
-                R.string.eq_preset_electronic,
-            )
-
         fun valuesOf(state: SettingsState): SettingsValues =
             when (state) {
                 is SettingsState.Loading -> SettingsValues()

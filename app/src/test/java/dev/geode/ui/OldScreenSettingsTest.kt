@@ -14,7 +14,6 @@ import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCommand
@@ -248,24 +247,6 @@ class OldScreenSettingsTest {
         val dsp = OldScreenSettings.dspOf(equalizer, current)
 
         assertEquals(DspSettings(true, EqualizerPreset.ROCK.levels.map { it.value }, 300, 200, gainDb = 2f, limiter = true), dsp)
-
-        val shown =
-            OldScreenSettings.audioFxStateOf(
-                equalizer,
-                listOf("Flat", "Bass", "Treble", "Vocal", "Rock", "Electronic"),
-            ) { "band $it" }
-        assertEquals(4, shown.presetIndex)
-        assertEquals("band 0", shown.bands.first().label)
-        assertEquals(450, shown.bands.first().levelMb)
-        assertEquals(300, shown.bassBoost)
-        assertEquals(200, shown.loudness)
-    }
-
-    @Test
-    fun `equalizer changes are Settings Commands`() {
-        assertEquals(EqualizerCommand.SetBand(3, Millibels(-200)), OldScreenSettings.bandCommand(3, -200))
-        assertEquals(EqualizerCommand.UsePreset(EqualizerPreset.VOCAL), OldScreenSettings.presetCommand(3))
-        assertEquals(null, OldScreenSettings.presetCommand(9))
     }
 
     @Test

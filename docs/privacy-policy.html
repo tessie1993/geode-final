@@ -85,9 +85,8 @@ information. Specifically, the app has:</p>
       <strong><code>READ_EXTERNAL_STORAGE</code></strong> (Android 12 and below):
       required to find and play the music already on your device. Nothing else is read.</li>
   <li><strong><code>RECORD_AUDIO</code></strong> (microphone): used by one optional
-      feature only — <em>Live input</em>, which listens to the microphone or a connected
-      USB or line-in audio source. It is requested at the moment you switch that feature
-      on, never at launch. What is captured is analysed in memory to drive the visuals and
+      feature only — <em>Live input</em>, which listens to the microphone. It is asked for once, on the permissions
+      step of first-run setup, and can be refused there or later. What is captured is analysed in memory to drive the visuals and
       is never written to disk or transmitted. If you never turn the feature on, the
       microphone is never accessed.</li>
   <li><strong><code>POST_NOTIFICATIONS</code></strong> (Android 13+): for the playback

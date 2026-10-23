@@ -19,6 +19,7 @@ import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.playback.ImportingPlaybackStorage
 import dev.geode.playback.PlaybackServiceLink
+import dev.geode.playback.ResumeFromSettings
 import dev.geode.playback.SleepFadeOut
 import dev.geode.playback.TransitionsFromSettings
 import javax.inject.Singleton
@@ -55,6 +56,8 @@ object PlaybackModule {
             PlaybackServiceLink(application, playback).start()
             // It joins tracks as Settings say (#17).
             TransitionsFromSettings.follow(settings, playback, application.geodeContainer.appScope)
+            // It plays on from where it was left off when Settings say so (#188).
+            ResumeFromSettings.follow(settings, playback, application.geodeContainer.appScope)
             // The sleep timer fades the music out over its last seconds, in the adapter's volume (#17).
             (audio as? NativeAudioAdapter)?.let { SleepFadeOut.follow(playback, it, application.geodeContainer.appScope) }
         }

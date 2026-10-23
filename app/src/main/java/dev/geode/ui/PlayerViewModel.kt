@@ -7,8 +7,6 @@ import androidx.media3.common.util.UnstableApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.IntelligenceMode
-import dev.geode.analysis.LiveInputProfile
-import dev.geode.audio.MicCapture
 import dev.geode.data.MilkPackImporter
 import dev.geode.data.Preset
 import dev.geode.di.PlayerSessionProvider
@@ -56,8 +54,6 @@ class PlayerViewModel
 
         val activeMilkPath: StateFlow<String?> get() = visualizer.activeMilkPath
 
-        val micState: StateFlow<MicState> get() = session.micState
-
         val historyTick: StateFlow<Int> get() = playback.historyTick
 
         val favourites: StateFlow<Set<TrackId>> get() = library.favourites
@@ -70,15 +66,11 @@ class PlayerViewModel
 
         val morphFade: SharedFlow<Float> get() = session.morphFade
 
-        fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = session.setMicEnabled(enabled)
-
         fun hasMicPermission(): Boolean = session.hasMicPermission()
 
         fun toggleShuffle() = playback.toggleShuffle()
 
         fun cycleRepeatMode() = playback.cycleRepeatMode()
-
-        fun applyLiveInputProfile(profile: LiveInputProfile) = session.applyLiveInputProfile(profile)
 
         fun latestPcm(): PcmChunk? = session.latestPcm()
 
@@ -138,8 +130,6 @@ class PlayerViewModel
         fun resumeLastPlayed() = playback.resumeLastPlayed()
 
         fun playNext(uri: TrackId) = playback.playNext(uri)
-
-        fun playFromSearch(query: String) = playback.playFromSearch(query)
 
         fun enqueue(uri: TrackId) = playback.enqueue(uri)
 

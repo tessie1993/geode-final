@@ -148,7 +148,6 @@ private fun CancelButton(send: (CaptureCommand) -> Unit) {
 private fun sourceName(source: CaptureSource): Int =
     when (source) {
         CaptureSource.MICROPHONE -> R.string.capture_source_microphone
-        CaptureSource.LINE_IN -> R.string.capture_source_line_in
     }
 
 @Composable
@@ -156,7 +155,6 @@ private fun inlineName(source: CaptureSource): String =
     stringResource(
         when (source) {
             CaptureSource.MICROPHONE -> R.string.capture_source_microphone_inline
-            CaptureSource.LINE_IN -> R.string.capture_source_line_in_inline
         },
     )
 
@@ -195,7 +193,7 @@ internal fun CaptureAwaitingPermissionPreview() =
 
 @Preview(showBackground = true)
 @Composable
-internal fun CaptureStartingPreview() = CapturePreviewFrame(CaptureState.Starting(CaptureSource.LINE_IN, MusicChoice.KEEP_PLAYING))
+internal fun CaptureStartingPreview() = CapturePreviewFrame(CaptureState.Starting(CaptureSource.MICROPHONE, MusicChoice.KEEP_PLAYING))
 
 @Preview(showBackground = true)
 @Composable
@@ -203,8 +201,8 @@ internal fun CaptureCapturingPreview() = CapturePreviewFrame(CaptureState.Captur
 
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-internal fun CaptureCapturingDarkPreview() = CapturePreviewFrame(CaptureState.Capturing(CaptureSource.LINE_IN, quiet = false), dark = true)
+internal fun CaptureCapturingDarkPreview() = CapturePreviewFrame(CaptureState.Capturing(CaptureSource.MICROPHONE, quiet = false), dark = true)
 
 @Preview(showBackground = true)
 @Composable
-internal fun CaptureFailedPreview() = CapturePreviewFrame(CaptureState.Failed(CaptureSource.LINE_IN, CaptureProblem.SOURCE_LOST))
+internal fun CaptureFailedPreview() = CapturePreviewFrame(CaptureState.Failed(CaptureSource.MICROPHONE, CaptureProblem.SOURCE_LOST))
