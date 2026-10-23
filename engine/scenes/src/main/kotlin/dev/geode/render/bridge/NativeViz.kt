@@ -17,6 +17,9 @@ import dev.geode.render.LfoConfig
 import dev.geode.render.LfoEngine
 import dev.geode.render.scene.SceneParams
 import java.io.File
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
 /**
  * Owns one `geode_viz` handle: the native renderer behind a GL surface or an offscreen target.
@@ -32,60 +35,81 @@ class NativeViz(
     private val cacheDir: String = context.cacheDir.absolutePath
     private val milkTextureDir: String = File(context.filesDir, "milk/textures").absolutePath
 
-    // Written on the GL thread (surfaceCreated) and read/written from composition-time call
-    // sites on the main thread (e.g. milkdropAvailable, loadMilkPreset); @Volatile keeps every
-    // thread's read of a just-published handle current, and create()/destroy() are synchronised
-    // so two threads racing on a 0L handle cannot both create (and leak) a renderer.
+    // Written on the GL thread (surfaceCreated) and read from the main and GL threads. Every call uses
+    // the handle under the read lock and create()/destroy() swap it under the write lock, so destroy()
+    // waits for a call in flight instead of freeing the renderer under it, and two threads racing on a
+    // 0L handle cannot both create (and leak) a renderer.
     @Volatile
     private var handle = 0L
+    private val lock = ReentrantReadWriteLock()
     private val paramFrame = FloatArray(SceneParamsCodec.FIELDS)
     private val featureFrame = FloatArray(FeatureFrameLayout.FLOATS)
     private var reportedError = ""
 
     val isCreated: Boolean get() = handle != 0L
 
-    @Synchronized
-    fun create(): Boolean {
-        if (handle == 0L) {
-            verifyLayouts()
-            handle = GeodeNative.vizCreate(assets, cacheDir)
-            if (handle != 0L) GeodeNative.vizSetMilkTextureDir(handle, milkTextureDir)
+    fun create(): Boolean =
+        lock.write {
+            if (handle == 0L) {
+                verifyLayouts()
+                val created = GeodeNative.vizCreate(assets, cacheDir)
+                if (created != 0L) GeodeNative.vizSetMilkTextureDir(created, milkTextureDir)
+                handle = created
+            }
+            handle != 0L
         }
-        return handle != 0L
-    }
 
-    @Synchronized
     fun destroy() {
-        if (handle == 0L) return
-        GeodeNative.vizDestroy(handle)
-        handle = 0L
+        lock.write {
+            if (handle == 0L) return
+            val gone = handle
+            handle = 0L
+            GeodeNative.vizDestroy(gone)
+        }
     }
 
-    fun knows(sceneId: SceneId): Boolean = handle != 0L && GeodeNative.vizKnows(handle, sceneId.value)
+    private inline fun live(block: (Long) -> Unit) {
+        lock.read {
+            val h = handle
+            if (h != 0L) block(h)
+        }
+    }
+
+    private inline fun <T> liveOr(
+        otherwise: T,
+        block: (Long) -> T,
+    ): T =
+        lock.read {
+            val h = handle
+            if (h == 0L) otherwise else block(h)
+        }
+
+    fun knows(sceneId: SceneId): Boolean = liveOr(false) { h -> GeodeNative.vizKnows(h, sceneId.value) }
 
     fun sceneIds(): List<SceneId> {
-        if (handle == 0L) return emptyList()
-        return GeodeNative
-            .vizSceneIds(handle)
+        val ids = liveOr("") { h -> GeodeNative.vizSceneIds(h) }
+        return ids
             .split('\n')
             .filter { it.isNotEmpty() }
             .map(::SceneId)
     }
 
     fun setParams(p: SceneParams) {
-        if (handle == 0L) return
-        SceneParamsCodec.pack(p, paramFrame)
-        GeodeNative.vizSetParams(handle, paramFrame)
+        live { h ->
+            SceneParamsCodec.pack(p, paramFrame)
+            GeodeNative.vizSetParams(h, paramFrame)
+        }
     }
 
     fun setFeatures(f: AudioFeatures) {
-        if (handle == 0L) return
-        FeatureFrameCodec.pack(f, featureFrame)
-        GeodeNative.vizSetFeatures(handle, featureFrame)
+        live { h ->
+            FeatureFrameCodec.pack(f, featureFrame)
+            GeodeNative.vizSetFeatures(h, featureFrame)
+        }
     }
 
     fun setReducedMotion(on: Boolean) {
-        if (handle != 0L) GeodeNative.vizSetReducedMotion(handle, on)
+        live { h -> GeodeNative.vizSetReducedMotion(h, on) }
     }
 
     fun setLayer(
@@ -93,25 +117,25 @@ class NativeViz(
         mix: Float,
         blend: BlendMode,
     ) {
-        if (handle != 0L) GeodeNative.vizSetLayer(handle, sceneId?.value ?: "", mix, blend.ordinal)
+        live { h -> GeodeNative.vizSetLayer(h, sceneId?.value ?: "", mix, blend.ordinal) }
     }
 
     fun setTransition(
         id: String,
         duration: Millis,
     ) {
-        if (handle != 0L) GeodeNative.vizSetTransition(handle, id, duration.value)
+        live { h -> GeodeNative.vizSetTransition(h, id, duration.value) }
     }
 
     fun beginParamMorph(seconds: Float) {
-        if (handle != 0L) GeodeNative.vizBeginParamMorph(handle, seconds)
+        live { h -> GeodeNative.vizBeginParamMorph(h, seconds) }
     }
 
     fun submitTouchPoints(
         xy: FloatArray,
         n: Int,
     ) {
-        if (handle != 0L) GeodeNative.vizSetTouch(handle, xy, n)
+        live { h -> GeodeNative.vizSetTouch(h, xy, n) }
     }
 
     fun queueTouchStroke(
@@ -122,35 +146,37 @@ class NativeViz(
         dt: Float,
         strength: Float,
     ) {
-        if (handle != 0L) GeodeNative.vizQueueTouchStroke(handle, nx, ny, ndx, ndy, dt, strength)
+        live { h -> GeodeNative.vizQueueTouchStroke(h, nx, ny, ndx, ndy, dt, strength) }
     }
 
     fun loadMilkPreset(path: String) {
-        if (handle != 0L) GeodeNative.vizLoadMilkPreset(handle, path)
+        live { h -> GeodeNative.vizLoadMilkPreset(h, path) }
     }
 
     fun reloadMilkPreset() {
-        if (handle != 0L) GeodeNative.vizReloadMilkPreset(handle)
+        live { h -> GeodeNative.vizReloadMilkPreset(h) }
     }
 
     /** The preset MilkDrop last compiled, handed out once; null until the next one. */
-    fun takeMilkPresetLoaded(): String? = if (handle == 0L) null else GeodeNative.vizTakeMilkPresetLoaded(handle)
+    fun takeMilkPresetLoaded(): String? = liveOr(null) { h -> GeodeNative.vizTakeMilkPresetLoaded(h) }
 
     fun pushPcm(
         mono: FloatArray,
         count: Int,
     ) {
-        if (handle != 0L && count > 0) GeodeNative.vizPushPcm(handle, mono, count)
+        if (count > 0) live { h -> GeodeNative.vizPushPcm(h, mono, count) }
     }
 
     fun setLfoConfigs(configs: List<LfoConfig>) {
-        if (handle == 0L) return
-        configs.take(LfoEngine.SLOTS).forEachIndexed { slot, c -> GeodeNative.vizSetLfo(handle, slot, ModConfigCodec.packLfo(c)) }
+        live { h ->
+            configs.take(LfoEngine.SLOTS).forEachIndexed { slot, c -> GeodeNative.vizSetLfo(h, slot, ModConfigCodec.packLfo(c)) }
+        }
     }
 
     fun setAdsrConfigs(configs: List<AdsrConfig>) {
-        if (handle == 0L) return
-        configs.take(AdsrEngine.COUNT).forEachIndexed { slot, c -> GeodeNative.vizSetAdsr(handle, slot, ModConfigCodec.packAdsr(c)) }
+        live { h ->
+            configs.take(AdsrEngine.COUNT).forEachIndexed { slot, c -> GeodeNative.vizSetAdsr(h, slot, ModConfigCodec.packAdsr(c)) }
+        }
     }
 
     /**
@@ -158,60 +184,59 @@ class NativeViz(
      * start of the frame; null detaches.
      */
     fun attachSnapshots(snapshots: NativeSnapshots?) {
-        if (handle == 0L) return
-        NativeFailures.check(GeodeNative.vizAttachSnapshots(handle, snapshots?.handle ?: 0L), "vizAttachSnapshots")
+        live { h -> NativeFailures.check(GeodeNative.vizAttachSnapshots(h, snapshots?.handle ?: 0L), "vizAttachSnapshots") }
     }
 
     fun setThermal(
         platformStatus: Int,
         headroom: Float,
     ) {
-        if (handle != 0L) GeodeNative.vizSetThermal(handle, platformStatus, headroom)
+        live { h -> GeodeNative.vizSetThermal(h, platformStatus, headroom) }
     }
 
     fun setPacedFps(fps: Float) {
-        if (handle != 0L) GeodeNative.vizSetPacedFps(handle, fps)
+        live { h -> GeodeNative.vizSetPacedFps(h, fps) }
     }
 
     /** The frame pacer's latest window, which the scene and trail buffers scale with. */
     fun setFrameLoad(stats: FrameStats) {
-        if (handle != 0L) GeodeNative.vizSetFrameLoad(handle, stats.frames, stats.p95Ms)
+        live { h -> GeodeNative.vizSetFrameLoad(h, stats.frames, stats.p95Ms) }
     }
 
     fun setOffscreen(on: Boolean) {
-        if (handle != 0L) GeodeNative.vizSetOffscreen(handle, on)
+        live { h -> GeodeNative.vizSetOffscreen(h, on) }
     }
 
     fun surfaceCreated() {
-        if (create()) GeodeNative.vizSurfaceCreated(handle)
+        if (create()) live { h -> GeodeNative.vizSurfaceCreated(h) }
     }
 
     fun surfaceChanged(
         width: Int,
         height: Int,
     ) {
-        if (handle != 0L) GeodeNative.vizSurfaceChanged(handle, width, height)
+        live { h -> GeodeNative.vizSurfaceChanged(h, width, height) }
     }
 
-    fun setScene(sceneId: SceneId): Boolean = handle != 0L && GeodeNative.vizSetScene(handle, sceneId.value)
+    fun setScene(sceneId: SceneId): Boolean = liveOr(false) { h -> GeodeNative.vizSetScene(h, sceneId.value) }
 
     fun warmTransition(id: String) {
-        if (handle != 0L) GeodeNative.vizWarmTransition(handle, id)
+        live { h -> GeodeNative.vizWarmTransition(h, id) }
     }
 
     fun cut() {
-        if (handle != 0L) GeodeNative.vizCut(handle)
+        live { h -> GeodeNative.vizCut(h) }
     }
 
     fun render(
         timeSeconds: Double,
         targetFbo: Int,
     ) {
-        if (handle != 0L) GeodeNative.vizRender(handle, timeSeconds, targetFbo)
+        live { h -> GeodeNative.vizRender(h, timeSeconds, targetFbo) }
     }
 
     fun releaseScenes() {
-        if (handle != 0L) GeodeNative.vizReleaseScenes(handle)
+        live { h -> GeodeNative.vizReleaseScenes(h) }
     }
 
     /** Full-frame RGBA8 overlay drawn last, premultiplied alpha; null clears. Any thread; latched for the next frame. */
@@ -220,7 +245,7 @@ class NativeViz(
         width: Int,
         height: Int,
     ) {
-        if (handle != 0L) GeodeNative.vizSetOverlay(handle, pixels, width, height)
+        live { h -> GeodeNative.vizSetOverlay(h, pixels, width, height) }
     }
 
     /**
@@ -234,13 +259,12 @@ class NativeViz(
         blend: Int,
         amount: Float,
     ) {
-        if (handle != 0L) GeodeNative.vizSetUnderlay(handle, pixels, width, height, blend, amount)
+        live { h -> GeodeNative.vizSetUnderlay(h, pixels, width, height, blend, amount) }
     }
 
     /** Reports the native error state once per change: a message, or null when it clears. */
     fun pollError(onChange: (String?) -> Unit) {
-        if (handle == 0L) return
-        val error = GeodeNative.vizLastError(handle)
+        val error = liveOr<String?>(null) { h -> GeodeNative.vizLastError(h) } ?: return
         if (error == reportedError) return
         reportedError = error
         onChange(error.ifEmpty { null })
