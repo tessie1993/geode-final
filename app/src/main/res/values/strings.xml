@@ -40,14 +40,6 @@
     <string name="first_run_done">Start listening</string>
 
     <!-- The intent setting. No longer asked at first run; it lives in Settings > Behaviour. -->
-    <string name="settings_intent_title">What do you use Geode for?</string>
-    <string name="settings_intent_body">Sets where the app opens and whether Studio appears in the navigation bar.</string>
-    <string name="settings_intent_listening">Listening</string>
-    <string name="settings_intent_listening_detail">Opens on the player. Studio stays out of the way.</string>
-    <string name="settings_intent_videos">Making videos</string>
-    <string name="settings_intent_videos_detail">Opens in Studio, with your projects and render queue to hand.</string>
-    <string name="settings_intent_both">Both</string>
-    <string name="settings_intent_both_detail">Opens on the player, with Studio one tap away.</string>
 
     <!-- Walkthrough. Each step navigates to the tab it describes, so the app underneath
          is the thing being pointed at rather than a picture of it. -->
@@ -120,6 +112,7 @@
     <string name="about_licenses_loading">Loading…</string>
 
     <!-- Bottom navigation. Short: these sit under an icon in a five-item bar. -->
+    <string name="nav_home">Home</string>
     <string name="nav_player">Player</string>
     <string name="nav_library">Library</string>
     <string name="nav_visuals">Visuals</string>
@@ -569,7 +562,6 @@
     <string name="behavior_smear_strength">"Smear strength  %1$d%%"</string>
     <string name="behavior_touch_transform">Pinch and twist the canvas</string>
     <string name="behavior_touch_transform_hint">Two fingers on the fullscreen visualizer: pinch moves the Zoom slider, twist moves Rotation. They are the same controls the Customize panel shows, so a gesture is saved into presets — and undone by dragging the slider back.</string>
-    <string name="behavior_group_intent">What you\'re here for</string>
     <string name="behavior_safety_title">Flashing and motion</string>
     <string name="behavior_flash_guidance">Nothing in Geode can flash more than three times a second. Published guidance (WCAG 2.3.1) puts the general limit there, and the clamp sits in the render path itself — it applies to every scene, every preset and every imported file, on screen and in exported video alike. It is not a setting, so there is nothing here to adjust.</string>
     <string name="behavior_slow_motion">Slow the motion down</string>

@@ -22,13 +22,13 @@ TEST(SharedEffects, EveryEffectStartsOffSoNothingChangesUntilSomeoneTurnsItUp) {
 
 TEST(SharedEffects, TheyAreReadFromTheEvaluatedSharedCore) {
     mod::CustomizationPlan plan = mod::CustomizationPlan::defaults();
-    plan.shared[static_cast<size_t>(mod::Shared::Trails)] = 0.9f;
-    plan.shared[static_cast<size_t>(mod::Shared::TrailZoom)] = -0.25f;
-    plan.shared[static_cast<size_t>(mod::Shared::SoftFocus)] = 0.4f;
-    plan.shared[static_cast<size_t>(mod::Shared::MotionBlur)] = 0.6f;
-    plan.shared[static_cast<size_t>(mod::Shared::Particles)] = 0.7f;
-    plan.shared[static_cast<size_t>(mod::Shared::ParticleKind)] = 3.0f;
-    plan.shared[static_cast<size_t>(mod::Shared::ParticleSize)] = 2.0f;
+    plan.shared[static_cast<size_t>(mod::Shared::Trails)] = mod::toUnit(mod::Shared::Trails, 0.9f);
+    plan.shared[static_cast<size_t>(mod::Shared::TrailZoom)] = mod::toUnit(mod::Shared::TrailZoom, -0.25f);
+    plan.shared[static_cast<size_t>(mod::Shared::SoftFocus)] = mod::toUnit(mod::Shared::SoftFocus, 0.4f);
+    plan.shared[static_cast<size_t>(mod::Shared::MotionBlur)] = mod::toUnit(mod::Shared::MotionBlur, 0.6f);
+    plan.shared[static_cast<size_t>(mod::Shared::Particles)] = mod::toUnit(mod::Shared::Particles, 0.7f);
+    plan.shared[static_cast<size_t>(mod::Shared::ParticleKind)] = mod::toUnit(mod::Shared::ParticleKind, 3.0f);
+    plan.shared[static_cast<size_t>(mod::Shared::ParticleSize)] = mod::toUnit(mod::Shared::ParticleSize, 2.0f);
     mod::ReactionGraph graph;
     const SharedEffects e = SharedEffects::from(graph.evaluate(plan, mod::SignalFrame{}, kFrameDt));
     EXPECT_NEAR(e.trails, 0.9f, kTolerance);

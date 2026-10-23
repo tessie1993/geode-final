@@ -3,7 +3,6 @@ package dev.geode.ui
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.analysis.AudioFeatures
@@ -33,20 +32,21 @@ class PlayerViewModel
     @Inject
     constructor(
         private val sessions: PlayerSessionProvider,
+        private val playback: OldScreenPlayback,
+        private val library: OldScreenLibrary,
     ) : ViewModel() {
         private val session: PlayerSession = sessions.get()
-        private val playback: PlaybackRepository = session.playbackRepository
         private val visualizer: VisualizerRepository = session.visualizerRepository
 
-        val player: Player get() = session.player
+        // Playback: every call goes to Playback's app-scoped store, and what is shown is its state (#17).
 
-        val uiState: StateFlow<PlayerUiState> get() = playback.state
+        val uiState: StateFlow<PlayerUiState> get() = playback.uiState
 
         val queue: StateFlow<QueueUiState> get() = playback.queue
 
         val abLoop: StateFlow<AbLoop?> get() = playback.abLoop
 
-        val playbackNotice: StateFlow<String?> get() = playback.notice
+        val playbackNotice: StateFlow<String?> get() = session.playbackNotice
 
         val vizState: StateFlow<VizUiState> get() = visualizer.viz
 
@@ -58,13 +58,13 @@ class PlayerViewModel
 
         val micState: StateFlow<MicState> get() = session.micState
 
-        val historyTick: StateFlow<Int> get() = session.historyTick
+        val historyTick: StateFlow<Int> get() = playback.historyTick
 
-        val favourites: StateFlow<Set<TrackId>> get() = session.favourites
+        val favourites: StateFlow<Set<TrackId>> get() = library.favourites
 
         val lyrics: StateFlow<Lyrics?> get() = session.lyrics
 
-        val sleepTimerRemaining: StateFlow<Millis?> get() = session.sleepTimerRemaining
+        val sleepTimerRemaining: StateFlow<Millis?> get() = playback.sleepTimerRemaining
 
         val vizApply: SharedFlow<VizApply> get() = session.vizApply
 
@@ -74,9 +74,9 @@ class PlayerViewModel
 
         fun hasMicPermission(): Boolean = session.hasMicPermission()
 
-        fun toggleShuffle() = session.toggleShuffle()
+        fun toggleShuffle() = playback.toggleShuffle()
 
-        fun cycleRepeatMode() = session.cycleRepeatMode()
+        fun cycleRepeatMode() = playback.cycleRepeatMode()
 
         fun applyLiveInputProfile(profile: LiveInputProfile) = session.applyLiveInputProfile(profile)
 
@@ -107,68 +107,62 @@ class PlayerViewModel
 
         fun setIntelligenceMode(mode: IntelligenceMode) = session.setIntelligenceMode(mode)
 
-        fun analyzeCurrentTrack() = session.analyzeCurrentTrack()
+        /** Remembers [minutes] as the timer's last length, as the old player did, and starts it. */
+        fun startSleepTimer(minutes: Int) {
+            val prefs = session.playerPrefs.value
+            if (minutes > 0) session.setPlayerPrefs(prefs.copy(sleepTimerMinutes = minutes))
+            playback.startSleepTimer(minutes, prefs.sleepFinishTrack)
+        }
 
-        fun startSleepTimer(minutes: Int) = session.startSleepTimer(minutes)
+        fun cancelSleepTimer() = playback.cancelSleepTimer()
 
-        fun cancelSleepTimer() = session.cancelSleepTimer()
-
-        fun recentlyPlayed() = session.recentlyPlayed()
+        fun recentlyPlayed(): List<QueueTrack> = playback.recentlyPlayed()
 
         fun currentTrackUri(): TrackId? = session.currentTrackUri()
 
-        fun toggleFavourite(uri: TrackId? = null) = session.toggleFavourite(uri)
+        fun toggleFavourite(uri: TrackId? = null) {
+            (uri ?: currentTrackUri())?.let(library::toggleFavourite)
+        }
 
-        fun cycleAbLoop() = session.cycleAbLoop()
+        fun cycleAbLoop() = playback.cycleAbLoop()
 
-        fun clearAbLoop() = session.clearAbLoop()
+        fun clearAbLoop() = playback.clearAbLoop()
 
-        fun removeQueueItem(index: Int) = session.removeQueueItem(index)
+        fun removeQueueItem(index: Int) = playback.removeQueueItem(index)
 
         fun moveQueueItem(
             from: Int,
             to: Int,
-        ) = session.moveQueueItem(from, to)
+        ) = playback.moveQueueItem(from, to)
 
-        fun togglePlayPauseFaded() = session.togglePlayPauseFaded()
+        fun resumeLastPlayed() = playback.resumeLastPlayed()
 
-        fun resumeLastPlayed() = session.resumeLastPlayed()
+        fun playNext(uri: TrackId) = playback.playNext(uri)
 
-        fun playNext(uri: TrackId) = session.playNext(uri)
+        fun playFromSearch(query: String) = playback.playFromSearch(query)
 
-        fun playFromSearch(query: String) = session.playFromSearch(query)
+        fun enqueue(uri: TrackId) = playback.enqueue(uri)
 
-        fun enqueue(uri: TrackId) = session.enqueue(uri)
-
-        fun shuffleAllHistory() = session.shuffleAllHistory()
-
-        fun playTrack(uri: TrackId) = session.playTrack(uri)
+        fun shuffleAllHistory() = playback.shuffleAllHistory()
 
         fun playFrom(
             tracks: List<QueueTrack>,
             startUri: TrackId,
-        ) = session.playFrom(tracks, startUri)
+        ) = playback.playFrom(tracks, startUri)
 
-        fun playAll(
-            tracks: List<QueueTrack>,
-            shuffled: Boolean = false,
-        ) = session.playAll(tracks, shuffled)
+        fun open(uris: List<Uri>) = playback.open(uris)
 
-        fun open(uris: List<Uri>) = session.open(uris)
+        fun playQueueIndex(index: Int) = playback.playQueueIndex(index)
 
-        fun queueTitles(): List<String> = session.queueTitles()
+        fun next() = playback.next()
 
-        fun playQueueIndex(index: Int) = session.playQueueIndex(index)
+        fun previous() = playback.previous()
 
-        fun next() = session.next()
+        fun togglePlayPause() = playback.togglePlayPause()
 
-        fun previous() = session.previous()
+        fun seekToMs(position: Millis) = playback.seekToMs(position)
 
-        fun togglePlayPause() = session.togglePlayPause()
-
-        fun seekToMs(position: Millis) = session.seekToMs(position)
-
-        fun seekTo(fraction: Float) = session.seekTo(fraction)
+        fun seekTo(fraction: Float) = playback.seekTo(fraction)
 
         fun clearPlaybackNotice() = session.clearPlaybackNotice()
 

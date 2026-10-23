@@ -179,7 +179,10 @@ class PlaybackStoreTest {
             playback.send(PlaybackCommand.SaveHistoryAsPlaylist("Was"))
 
             assertEquals(listOf(PlaybackFact.PlaylistSaved("Was")), facts)
-            assertEquals(listOf(PlaylistSummary(PlaylistId(1), "Was", trackCount = 2)), playback.state.value.playlists)
+            assertEquals(
+                listOf(PlaylistSummary(PlaylistId(1), "Was", trackCount = 2, tracks = listOf(a, b))),
+                playback.state.value.playlists,
+            )
             assertEquals(listOf(a, b), storage.tracksOf[PlaylistId(1)])
         }
 

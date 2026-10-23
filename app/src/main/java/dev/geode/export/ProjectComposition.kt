@@ -12,8 +12,6 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import dev.geode.R
 import dev.geode.data.ExportDefaults
-import dev.geode.data.ExportPrefsStore
-import dev.geode.data.GeodePrefsFiles
 import dev.geode.editor.AnimatableParams
 import dev.geode.editor.Clip
 import dev.geode.editor.ClipContent
@@ -69,12 +67,13 @@ object ProjectComposition {
     fun build(
         context: Context,
         project: EditorProject,
-    ): Outcome = buildWithReport(context, project).first
+        defaults: ExportDefaults,
+    ): Outcome = buildWithReport(context, project, defaults).first
 
     fun buildWithReport(
         context: Context,
         project: EditorProject,
-        defaults: ExportDefaults = ExportPrefsStore(GeodePrefsFiles(context).general).load(),
+        defaults: ExportDefaults,
     ): Pair<Outcome, Report> {
         val mediaLanes = project.timeline.lanes.filter { it.kind == LaneKind.Media && it.clips.any(Clip::enabled) }
         if (mediaLanes.isEmpty()) return Outcome.NoVideo to Report()

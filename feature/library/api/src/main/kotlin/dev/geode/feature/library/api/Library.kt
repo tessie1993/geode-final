@@ -94,6 +94,8 @@ data class LibraryPlaylist(
     val id: PlaylistRef,
     val name: String,
     val trackCount: Int,
+    /** The playlist's songs, in order; a song not in the Library is there too. */
+    val songs: List<TrackId> = emptyList(),
 )
 
 /** What a smart playlist rule looks at in a song (the fields of the old smart playlist editor, kept as they were). */
@@ -379,9 +381,33 @@ sealed interface LibraryCommand {
         val pick: Pick,
     ) : LibraryCommand
 
+    /** Saves [pick] as a playlist called [name]; with no songs, an empty one to fill later. */
     data class CreatePlaylist(
         val name: String,
         val pick: Pick,
+    ) : LibraryCommand
+
+    data class RenamePlaylist(
+        val id: PlaylistRef,
+        val name: String,
+    ) : LibraryCommand
+
+    /** Puts [pick] at the end of the playlist. */
+    data class AddToPlaylist(
+        val id: PlaylistRef,
+        val pick: Pick,
+    ) : LibraryCommand
+
+    /** Moves the playlist's song at [from] to [to]; indexes are positions in the playlist. */
+    data class MoveInPlaylist(
+        val id: PlaylistRef,
+        val from: Int,
+        val to: Int,
+    ) : LibraryCommand
+
+    data class RemoveFromPlaylist(
+        val id: PlaylistRef,
+        val index: Int,
     ) : LibraryCommand
 
     data class DeletePlaylist(
@@ -401,7 +427,10 @@ sealed interface LibraryCommand {
         val name: String,
     ) : LibraryCommand
 
-    /** Reads the M3U playlist in [file] (a content uri) and saves the songs it names as a playlist called [name]. */
+    /**
+     * Reads the M3U, PLS or XSPF playlist in [file] (a content uri) and saves the songs it names as a
+     * playlist called [name] (the file's name when blank).
+     */
     data class ImportPlaylist(
         val file: String,
         val name: String,

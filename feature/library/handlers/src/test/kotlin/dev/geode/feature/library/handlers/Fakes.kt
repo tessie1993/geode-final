@@ -84,6 +84,8 @@ class FakeLibraryStorage : LibraryStorage {
         Unit
     }
 
+    override suspend fun edits(): Map<TrackId, SongEdit> = guard { edits.toMap() }
+
     override suspend fun saveExcludedFolders(folders: Set<String>) =
         guard {
             excludedFolders.clear()

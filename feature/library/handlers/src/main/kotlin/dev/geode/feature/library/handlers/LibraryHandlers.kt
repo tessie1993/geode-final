@@ -142,8 +142,16 @@ class LibraryHandlers(
         coroutineScope {
             launch {
                 playback.state
-                    .map { state -> state.playlists.map { LibraryPlaylist(PlaylistRef(it.id.value), it.name, it.trackCount) } }
-                    .distinctUntilChanged()
+                    .map { state ->
+                        state.playlists.map { playlist ->
+                            LibraryPlaylist(
+                                PlaylistRef(playlist.id.value),
+                                playlist.name,
+                                playlist.trackCount,
+                                playlist.tracks.map { it.id },
+                            )
+                        }
+                    }.distinctUntilChanged()
                     .collect { results.report(LibraryEvent.PlaylistsChanged(it)) }
             }
             launch {

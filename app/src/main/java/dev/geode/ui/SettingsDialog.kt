@@ -31,8 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.data.ExportDefaults
-import dev.geode.data.ExportPrefsStore
-import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.exportCodecLabel
 import dev.geode.data.exportQualityLabel
 import dev.geode.engine.types.Millis
@@ -56,8 +54,8 @@ fun SettingsDialog(
 ) {
     val trackDurationMs = trackDuration.value
     val context = LocalContext.current
-    val exportPrefs = remember { ExportPrefsStore(GeodePrefsFiles(context).general) }
-    val defaults = remember { exportPrefs.load() }
+    val settingsViewModel: SettingsViewModel = geodeViewModel()
+    val defaults = remember { settingsViewModel.exportDefaults() }
     var quality by rememberSaveable { mutableStateOf(defaults.quality) }
     var ratio by rememberSaveable { mutableStateOf(defaults.ratio) }
     var fps by rememberSaveable { mutableStateOf(defaults.fps) }
@@ -66,13 +64,11 @@ fun SettingsDialog(
     // choice is carried as its id and resolved back through LoudnessTarget.byId.
     var loudnessTargetId by rememberSaveable { mutableStateOf(defaults.loudnessTargetId) }
     val loudnessTarget = LoudnessTarget.byId(loudnessTargetId)
-    var loopSafe by remember {
-        mutableStateOf(
-            defaults.loopSafe &&
-                dev.geode.analysis.BarTrim
-                    .barDurationUs(bpm) != null,
-        )
-    }
+    // The tempo arrives from the export analysis after the dialog opens, so the choice follows it.
+    val tempoKnown =
+        dev.geode.analysis.BarTrim
+            .barDurationUs(bpm) != null
+    var loopSafe by remember(tempoKnown) { mutableStateOf(defaults.loopSafe && tempoKnown) }
     var segment by rememberSaveable { mutableStateOf(false) }
     var rangeStart by remember { mutableFloatStateOf(0f) }
     var rangeEnd by remember { mutableFloatStateOf(1f) }
@@ -87,7 +83,7 @@ fun SettingsDialog(
             )
         }
 
-    fun persistDefaults() = exportPrefs.save(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
+    fun persistDefaults() = settingsViewModel.saveExportDefaults(ExportDefaults(quality, fps, ratio, loopSafe, codec, loudnessTargetId))
     val chooserTitle = stringResource(R.string.export_upload_share_to)
     AlertDialog(
         onDismissRequest = onDismiss,

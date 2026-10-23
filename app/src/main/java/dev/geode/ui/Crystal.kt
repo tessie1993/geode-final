@@ -4,10 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.geode.design.theme.CrystalTheme
+import dev.geode.design.theme.ProvideReducedMotion
 import dev.geode.design.theme.ThemePack
 import dev.geode.render.VisualizerView
 
-/** The App UI's theme (:design's [CrystalTheme]) as the person set it up in Look settings. */
+/**
+ * The App UI's theme (:design's [CrystalTheme]) as the person set it up in Look settings, with
+ * their "Reduce motion" (or Android's "remove animations") reaching every :design component.
+ */
 @Composable
 internal fun CrystalMaterialTheme(
     pack: ThemePack,
@@ -21,8 +25,9 @@ internal fun CrystalMaterialTheme(
         backgroundDim = gui.backgroundDim,
         fontColorArgb = gui.fontColorOverride,
         textScale = gui.textScale,
-        content = content,
-    )
+    ) {
+        ProvideReducedMotion(appPreference = gui.reducedMotion, content = content)
+    }
 }
 
 /** Hosts the Visual's view in the App UI. The Visual itself stays out of :design. */

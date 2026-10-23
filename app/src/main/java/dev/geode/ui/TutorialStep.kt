@@ -14,7 +14,7 @@ import dev.geode.R
  * not point at something that is not there.
  */
 enum class TutorialStep(
-    val destination: GeodeDestination,
+    val destination: GeodeRoute,
     @param:StringRes val titleRes: Int,
     @param:StringRes val bodyRes: Int,
     val requiresStudio: Boolean = false,
@@ -31,7 +31,7 @@ enum class TutorialStep(
      */
     TOUCH(GeodeDestination.VISUALS, R.string.tutorial_touch_title, R.string.tutorial_touch_body),
     STUDIO(GeodeDestination.STUDIO, R.string.tutorial_studio_title, R.string.tutorial_studio_body, requiresStudio = true),
-    SETTINGS(GeodeDestination.SETTINGS, R.string.tutorial_settings_title, R.string.tutorial_settings_body),
+    SETTINGS(SettingsRoute, R.string.tutorial_settings_title, R.string.tutorial_settings_body),
     ;
 
     companion object {

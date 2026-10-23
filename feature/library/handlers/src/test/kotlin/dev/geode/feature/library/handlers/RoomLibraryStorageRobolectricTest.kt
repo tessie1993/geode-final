@@ -60,6 +60,7 @@ class RoomLibraryStorageRobolectricTest {
             val edited = a.copy(title = "New", artist = "Artist", album = "Album", artwork = "content://art")
             assertEquals(listOf(edited), storage.read().songs)
             assertEquals(listOf(edited), storage.replaceSongs(listOf(a)))
+            assertEquals(mapOf(a.id to SongEdit("New", "Artist", "Album", "content://art")), storage.edits())
             // The tag reader works on the song as the file has it.
             assertEquals(listOf(a), storage.songsWithoutTags())
         }

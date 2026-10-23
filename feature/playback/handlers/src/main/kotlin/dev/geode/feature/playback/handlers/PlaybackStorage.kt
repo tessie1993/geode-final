@@ -34,6 +34,17 @@ interface PlaybackStorage {
 
     suspend fun deletePlaylist(id: PlaylistId)
 
+    suspend fun renamePlaylist(
+        id: PlaylistId,
+        name: String,
+    )
+
+    /** Makes [tracks] the whole of the playlist, in order. */
+    suspend fun replacePlaylistTracks(
+        id: PlaylistId,
+        tracks: List<Track>,
+    )
+
     /** Adds [track], played at [playedAt] (wall-clock time), keeping only the latest [HISTORY_LIMIT] plays. */
     suspend fun recordPlay(
         track: Track,

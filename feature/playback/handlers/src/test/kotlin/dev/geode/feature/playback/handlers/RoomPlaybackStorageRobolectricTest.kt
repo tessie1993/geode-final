@@ -45,13 +45,32 @@ class RoomPlaybackStorageRobolectricTest {
             val older = storage.createPlaylist("Morning", listOf(a), Millis(1))
             val newer = storage.createPlaylist("Evening", listOf(b, a), Millis(2))
 
-            assertEquals(listOf(PlaylistSummary(newer, "Evening", 2), PlaylistSummary(older, "Morning", 1)), storage.playlists.first())
+            assertEquals(
+                listOf(PlaylistSummary(newer, "Evening", 2, listOf(b, a)), PlaylistSummary(older, "Morning", 1, listOf(a))),
+                storage.playlists.first(),
+            )
             assertEquals(listOf(b, a), storage.playlistTracks(newer))
 
             storage.deletePlaylist(newer)
 
-            assertEquals(listOf(PlaylistSummary(older, "Morning", 1)), storage.playlists.first())
+            assertEquals(listOf(PlaylistSummary(older, "Morning", 1, listOf(a))), storage.playlists.first())
             assertEquals(emptyList<Track>(), storage.playlistTracks(newer))
+        }
+
+    @Test
+    fun `a playlist is renamed, and its tracks are replaced in their new order`() =
+        runBlocking {
+            val id = storage.createPlaylist("Morning", listOf(a), Millis(1))
+
+            storage.renamePlaylist(id, "Dawn")
+            storage.replacePlaylistTracks(id, listOf(b, a))
+
+            assertEquals(listOf(PlaylistSummary(id, "Dawn", 2, listOf(b, a))), storage.playlists.first())
+            assertEquals(listOf(b, a), storage.playlistTracks(id))
+
+            storage.replacePlaylistTracks(id, emptyList())
+
+            assertEquals(listOf(PlaylistSummary(id, "Dawn", 0)), storage.playlists.first())
         }
 
     @Test

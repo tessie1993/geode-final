@@ -21,6 +21,12 @@ sealed interface CustomizationEvent {
         val preset: Preset,
     ) : CustomizationEvent
 
+    /**
+     * The engine heard the moment Style switching waits for ([Automation.due] on its cadence, evaluated
+     * per frame). The reducer moves to the next Style; the engine crossfades into it.
+     */
+    data object StyleDue : CustomizationEvent
+
     /** A piece of work failed at the handlers' edge; the reducer reports it. */
     data class WorkFailed(
         val failure: WorkFailure,
@@ -34,9 +40,11 @@ enum class WorkFailure(
     PRESET_NOT_LOADED("could not load the preset"),
     PRESET_NOT_SAVED("could not save the preset"),
     ENGINE_REFUSED("the engine did not take the Customization"),
+    PRESET_NOT_MIRRORED("saved the preset, but could not copy it to the mirror folder"),
+    PRESETS_NOT_UPGRADED("could not upgrade the presets saved by an older Geode"),
 }
 
-/** The handlers' work, carried out by `:feature:customization:handlers` (a later ticket). */
+/** The handlers' work, carried out by `:feature:customization:handlers`. */
 sealed interface CustomizationWork {
     /** Hand [customization] to the engine as one snapshot (ADR-0002, ADR-0004). Nothing crosses per frame. */
     data class Publish(
@@ -52,6 +60,12 @@ sealed interface CustomizationWork {
     data class LoadPreset(
         val id: PresetId,
     ) : CustomizationWork
+
+    /**
+     * Convert every preset an older Geode saved (version 1) into the current format, once: each
+     * original is backed up before it is replaced, so a preset already converted is left alone.
+     */
+    data object UpgradePresets : CustomizationWork
 }
 
 typealias CustomizationEffect = Effect<CustomizationWork, CustomizationEvent, CustomizationFact>

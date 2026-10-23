@@ -8,9 +8,11 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import dev.geode.audio.MicCapture
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
@@ -18,7 +20,9 @@ import dev.geode.playback.NativePlayer
 import dev.geode.playback.PlaybackEngine
 import dev.geode.playback.PlaybackSession
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.onSubscription
@@ -38,16 +42,27 @@ import kotlinx.coroutines.withContext
  * nothing here polls. Capture is announced from the pump's callbacks and from the system's
  * device-removed callback, which is how an unplugged line input is noticed.
  *
- * The player and the analysis are main-thread objects, so everything runs on [main].
+ * The player and the analysis are main-thread objects, so everything runs on [main]. [nativeEngine]
+ * says which player to open, Geode's own or ExoPlayer, and is waited for before the engine opens.
  */
+@OptIn(UnstableApi::class)
 class NativeAudioAdapter(
     private val application: Application,
+    private val nativeEngine: suspend () -> Boolean,
     private val main: CoroutineDispatcher = Dispatchers.Main.immediate,
+    private val fadeLength: () -> Millis = { Millis.ZERO },
+    private val crossfadeCurve: () -> Int = { EQUAL_POWER_CURVE },
+    private val onOpened: (PlaybackSession) -> Unit = {},
 ) : AudioAdapter {
     private val announced = MutableSharedFlow<AudioAnnouncement>(extraBufferCapacity = BUFFER)
 
     // Touched on main only.
     private var pipeline: Pipeline? = null
+
+    // The crossfade and gapless choice Playback set last, kept so a new curve can be applied with them.
+    private var transitions: Pair<Millis, Boolean>? = null
+
+    private val fade = PlayPauseFade(CoroutineScope(SupervisorJob() + main))
 
     override val announcements: Flow<AudioAnnouncement> =
         announced.onSubscription {
@@ -82,28 +97,58 @@ class NativeAudioAdapter(
     ) {
         withContext(main) {
             val player = opened().player
+            fade.settle()
             player.setMediaItem(mediaItem(track), from.value)
             player.prepare()
         }
     }
 
+    /**
+     * Plays or pauses, fading over the player settings' fade length when there is one: in on play, out
+     * to silence before a pause (the old player's fades, #17). One fade at a time: a newer play or pause
+     * takes over from the one running, and does not wait for it.
+     */
     override suspend fun setPlaying(playing: Boolean) {
-        withContext(main) {
-            val player = opened().player
-            if (playing) player.play() else player.pause()
-        }
+        withContext(main) { fade.setPlaying(opened().faded, playing, fadeLength()) }
     }
 
     override suspend fun seekTo(position: Millis) {
-        withContext(main) { opened().player.seekTo(position.value) }
+        withContext(main) {
+            val player = opened().player
+            fade.settle()
+            player.seekTo(position.value)
+        }
     }
 
     override suspend fun setTransitions(
         crossfade: Millis,
         gapless: Boolean,
     ) {
-        // Only Geode's own player crossfades; ExoPlayer joins the tracks of its playlist without a gap.
-        withContext(main) { (opened().player as? NativePlayer)?.applyPrefs(crossfade.value.toInt(), EQUAL_POWER_CURVE, gapless) }
+        withContext(main) {
+            transitions = crossfade to gapless
+            applyTransitions(opened())
+        }
+    }
+
+    /** The sleep timer runs out in [length]: what plays fades out to silence by then, still playing. */
+    suspend fun fadeOutForSleep(length: Millis) {
+        withContext(main) { pipeline?.let { fade.fadeOut(it.faded, length) } }
+    }
+
+    /** The sleep timer was cancelled while it faded the music out: back to full volume. */
+    suspend fun endSleepFade() {
+        withContext(main) { pipeline?.let { fade.restore(it.faded) } }
+    }
+
+    /** The crossfade curve changed in Settings: the open player crossfades with the new one from now on. */
+    suspend fun crossfadeCurveChanged() {
+        withContext(main) { pipeline?.let(::applyTransitions) }
+    }
+
+    // Only Geode's own player crossfades; ExoPlayer joins the tracks of its playlist without a gap.
+    private fun applyTransitions(pipeline: Pipeline) {
+        val (crossfade, gapless) = transitions ?: return
+        (pipeline.player as? NativePlayer)?.applyPrefs(crossfade.value.toInt(), crossfadeCurve(), gapless)
     }
 
     override suspend fun prepareNext(track: TrackId?) {
@@ -122,7 +167,19 @@ class NativeAudioAdapter(
             .setUri(track.value)
             .build()
 
-    private fun opened(): Pipeline = pipeline ?: Pipeline(PlaybackEngine.acquireForUi(application)).also { pipeline = it }
+    /**
+     * The pipeline, opened on first use: only once [nativeEngine] has answered, so the player is the
+     * one Settings choose and never one picked before the stored settings were read (#17).
+     */
+    private suspend fun opened(): Pipeline {
+        pipeline?.let { return it }
+        val native = nativeEngine()
+        // Another call may have opened it while this one waited for Settings.
+        pipeline?.let { return it }
+        val session = PlaybackEngine.acquireForUi(application)
+        session.openPlayer(native)
+        return Pipeline(session).also { pipeline = it }.also { onOpened(session) }
+    }
 
     private fun announce(announcement: AudioAnnouncement) {
         announced.tryEmit(announcement)
@@ -138,6 +195,22 @@ class NativeAudioAdapter(
         private val session: PlaybackSession,
     ) {
         val player: Player get() = session.player
+
+        /** The player as the play/pause fade drives it. */
+        val faded: FadedPlayer =
+            object : FadedPlayer {
+                override var volume: Float
+                    get() = player.volume
+                    set(value) {
+                        player.volume = value
+                    }
+                override val playWhenReady: Boolean get() = player.playWhenReady
+                override val isPlaying: Boolean get() = player.isPlaying
+
+                override fun play() = player.play()
+
+                override fun pause() = player.pause()
+            }
 
         private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -165,6 +238,8 @@ class NativeAudioAdapter(
                     reason: Int,
                 ) {
                     if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
+                        // The analysis starts over at the new place, so the Visual does not react to a jump.
+                        session.analysis.reset()
                         announce(PlaybackAnnouncement.Seeked(mark()))
                     }
                 }
@@ -182,6 +257,10 @@ class NativeAudioAdapter(
 
                 override fun onPlayerError(error: PlaybackException) {
                     announce(PlaybackAnnouncement.Failed(error.errorCodeName))
+                }
+
+                override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                    session.audioFx.attach(audioSessionId)
                 }
             }
 
@@ -201,6 +280,7 @@ class NativeAudioAdapter(
                     if (!mic.active) session.analysis.sampleRateHz = rate
                 }
             player.addListener(playerListener)
+            session.exoPlayer?.let { session.audioFx.attach(it.audioSessionId) }
             application.getSystemService(AudioManager::class.java)?.registerAudioDeviceCallback(devices, mainHandler)
         }
 
@@ -263,7 +343,7 @@ class NativeAudioAdapter(
         const val BUFFER = 64
         const val FALLBACK_RATE_HZ = 44_100
 
-        /** The crossfade curve the old player settings start from: equal power. */
+        /** The crossfade curve Geode's player uses when nothing says otherwise: equal power. */
         const val EQUAL_POWER_CURVE = 1
 
         val LINE_IN_TYPES =

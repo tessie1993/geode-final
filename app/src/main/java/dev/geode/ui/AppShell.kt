@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,6 +57,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.geode.R
 import dev.geode.analysis.SearchMatcher
@@ -86,10 +89,17 @@ private const val CRASH_REPORT_MAX_BYTES = 64 * 1024
  * Built from [GeodeDestination.entries], so the bar and the rail cannot drift out of step with
  * the screens they switch between, and selection compares destinations rather than positions.
  */
-private data class NavEntry(
+internal data class GeodeNavEntry(
     val destination: GeodeDestination,
     val item: CrystalNavItem,
 )
+
+/** The bar's and the rail's entries, Home first. Studio is left out for someone who only listens. */
+@Composable
+internal fun geodeNavEntries(showsStudio: Boolean): List<GeodeNavEntry> =
+    GeodeDestination.entries
+        .filter { it != GeodeDestination.STUDIO || showsStudio }
+        .map { GeodeNavEntry(it, CrystalNavItem(stringResource(it.labelRes), it.icon)) }
 
 @Composable
 fun AppRoot() {
@@ -143,7 +153,6 @@ fun AppRoot() {
             }
     }
     VisualizerEngineBindings(viewModel, visualizerView)
-    androidx.activity.compose.BackHandler(enabled = !appState.onPlayer) { appState.resetToPlayer() }
     CrystalMaterialTheme(
         pack = dev.geode.design.theme.ThemePackCatalog.lapisLazuli,
         gui = gui,
@@ -171,9 +180,6 @@ fun AppRoot() {
                 onNext = viewModel::next,
             )
         }
-        // Someone who came here to listen does not get a render queue in their navigation bar.
-        // First run no longer asks, so everyone starts with everything and narrows it in Settings.
-        val showsStudio = gui.intent.showsStudio
         // Set by Settings > Help to replay the tour after it has already been seen; the automatic
         // first-run showing is a function of the stored prefs instead, so this stays false there.
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
@@ -185,13 +191,11 @@ fun AppRoot() {
         // out from under the person who was reading it — the checkbox is about the NEXT install,
         // not this minute.
         LaunchedEffect(offerTutorial) { if (offerTutorial) tutorialRunning = true }
-        val navEntries =
-            GeodeDestination.entries
-                .filter { it != GeodeDestination.STUDIO || showsStudio }
-                .map { NavEntry(it, CrystalNavItem(stringResource(it.labelRes), it.icon)) }
-        val destinationContent: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
-            PlaybackNoticeBanner(viewModel)
-            when (appState.dest) {
+        // The bar always shows every place (owner decision, #17): there is no listen-only app.
+        val navEntries = geodeNavEntries(showsStudio = true)
+        val routeContent: @Composable (route: GeodeRoute, twoPane: Boolean) -> Unit = { route, twoPane ->
+            when (route) {
+                GeodeDestination.HOME -> HomeScreen(onOpenSettings = appState::openSettings)
                 GeodeDestination.PLAYER ->
                     PlayerScreen(
                         viewModel,
@@ -231,8 +235,18 @@ fun AppRoot() {
                         liveBackdrop = gui.clearVisualsMenu && !appState.expanded,
                     )
                 GeodeDestination.STUDIO -> StudioRoute()
-                GeodeDestination.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
+                SettingsRoute -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
             }
+        }
+        val destinationContent: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
+            PlaybackNoticeBanner(viewModel)
+            // Back follows the stack: one step down to Home, and from Home out of the app. The
+            // sheets and the expanded player register their own predictive Back above this one.
+            NavDisplay(
+                backStack = appState.backStack,
+                onBack = appState::back,
+                entryProvider = { route -> NavEntry(route) { routeContent(route, twoPane) } },
+            )
         }
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             CrystalBackground(Modifier.fillMaxSize(), reducedMotion = gui.reducedMotion)
@@ -303,14 +317,14 @@ fun AppRoot() {
                 FirstRunGate(
                     onDone = {
                         settingsViewModel.setGuiPrefs(gui.copy(setupDone = true))
-                        appState.navigateTo(gui.intent.landingDestination)
+                        appState.navigateTo(GeodeDestination.PLAYER)
                     },
                 )
             } else if (tutorialRunning) {
                 // Offered once setup is out of the way, so the tour walks a real app with a real
                 // library rather than a set of empty tabs.
                 TutorialOverlay(
-                    steps = TutorialStep.forNav(showsStudio),
+                    steps = TutorialStep.forNav(showsStudio = true),
                     dontShowAgain = !gui.tutorialOnFirstRun,
                     onDontShowAgainChange = { settingsViewModel.setGuiPrefs(gui.copy(tutorialOnFirstRun = !it)) },
                     onNavigate = appState::navigateTo,
@@ -326,7 +340,7 @@ fun AppRoot() {
 
 @Composable
 private fun AppShellCompact(
-    navEntries: List<NavEntry>,
+    navEntries: List<GeodeNavEntry>,
     appState: GeodeAppState,
     gui: GuiPrefs,
     hasMedia: Boolean,
@@ -349,14 +363,7 @@ private fun AppShellCompact(
                         .height(1.dp)
                         .luminousHairline(MaterialTheme.colorScheme.primary),
                 )
-                CrystalNavBar(
-                    items = navEntries.map { it.item },
-                    // A destination can be hidden while still being the current one — reaching
-                    // Studio from a track menu, say. Fall back to the first tab rather than -1.
-                    selected = navEntries.indexOfFirst { it.destination == appState.dest }.coerceAtLeast(0),
-                    onSelect = { appState.navigateTo(navEntries[it].destination) },
-                    opacity = gui.barOpacity,
-                )
+                GeodeNavBar(navEntries, appState.tab, appState::navigateTo, gui.barOpacity)
             }
         },
     ) { pad ->
@@ -366,23 +373,14 @@ private fun AppShellCompact(
 
 @Composable
 private fun AppShellExpanded(
-    navEntries: List<NavEntry>,
+    navEntries: List<GeodeNavEntry>,
     appState: GeodeAppState,
     hasMedia: Boolean,
     miniPlayer: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
     Row(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        NavigationRail(containerColor = Color.Transparent) {
-            navEntries.forEach { (destination, item) ->
-                NavigationRailItem(
-                    selected = appState.dest == destination,
-                    onClick = { appState.navigateTo(destination) },
-                    icon = { StoneIconArt(item.icon, item.label) },
-                    label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
-                )
-            }
-        }
+        GeodeNavRail(navEntries, appState.tab, appState::navigateTo)
         Box(
             Modifier
                 .width(1.dp)
@@ -392,6 +390,67 @@ private fun AppShellExpanded(
         Column(Modifier.weight(1f)) {
             if (hasMedia && !appState.onPlayer) miniPlayer()
             Box(Modifier.weight(1f)) { content() }
+        }
+    }
+}
+
+@Composable
+internal fun GeodeNavBar(
+    navEntries: List<GeodeNavEntry>,
+    selected: GeodeDestination,
+    onSelect: (GeodeDestination) -> Unit,
+    opacity: Float,
+) {
+    CrystalNavBar(
+        items = navEntries.map { it.item },
+        // A destination can be hidden while still being the current one — reaching
+        // Studio from a track menu, say. Fall back to the first tab rather than -1.
+        selected = navEntries.indexOfFirst { it.destination == selected }.coerceAtLeast(0),
+        onSelect = { onSelect(navEntries[it].destination) },
+        opacity = opacity,
+    )
+}
+
+/** The wide-screen twin of [GeodeNavBar]: the same places, order and selection. */
+@Composable
+internal fun GeodeNavRail(
+    navEntries: List<GeodeNavEntry>,
+    selected: GeodeDestination,
+    onSelect: (GeodeDestination) -> Unit,
+) {
+    NavigationRail(containerColor = Color.Transparent) {
+        navEntries.forEach { (destination, item) ->
+            NavigationRailItem(
+                selected = selected == destination,
+                onClick = { onSelect(destination) },
+                icon = { StoneIconArt(item.icon, item.label) },
+                label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
+            )
+        }
+    }
+}
+
+/** The start place: a reserved slot for the Hero scene, and the way into Settings. */
+@Composable
+fun HomeScreen(onOpenSettings: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        CrystalOverline(stringResource(R.string.app_name))
+        GlowTitle(stringResource(R.string.nav_home))
+        // ponytail: an empty slot until the Hero scene lands (#102/#103).
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+        )
+        CrystalButton(onClick = onOpenSettings) {
+            StoneIconArt(StoneIcon.SETTINGS, null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.nav_settings))
         }
     }
 }
@@ -513,7 +572,7 @@ fun SearchScreen(
 
     val terms = remember(debounced) { SearchMatcher.terms(debounced) }
     val trackResults =
-        remember(terms, deviceTracks, library.tracks) {
+        remember(terms, deviceTracks) {
             val candidates =
                 deviceTracks.map { t ->
                     SearchTrackRow(
@@ -523,16 +582,7 @@ fun SearchScreen(
                         fields = listOf(t.title, t.artist, t.album, t.folder),
                         fromDevice = true,
                     )
-                } +
-                    library.tracks.map { t ->
-                        SearchTrackRow(
-                            uri = t.uri,
-                            title = t.title,
-                            subtitle = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · "),
-                            fields = listOf(t.title, t.artist, t.album, t.genre),
-                            fromDevice = false,
-                        )
-                    }
+                }
             SearchMatcher.filterTracks(
                 terms = terms,
                 items = candidates,
@@ -638,8 +688,8 @@ fun SearchScreen(
                                 Text(
                                     pluralStringResource(
                                         R.plurals.track_count,
-                                        pl.trackUris.size,
-                                        pl.trackUris.size,
+                                        pl.trackCount,
+                                        pl.trackCount,
                                     ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

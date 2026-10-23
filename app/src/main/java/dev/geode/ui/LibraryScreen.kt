@@ -43,7 +43,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,7 +60,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
-import dev.geode.data.MusicPlaylist
 import dev.geode.design.CrystalButton
 import dev.geode.design.CrystalOverline
 import dev.geode.design.CrystalSegmented
@@ -71,8 +69,8 @@ import dev.geode.design.theme.StoneIcon
 import dev.geode.design.theme.StoneIconArt
 import dev.geode.design.theme.accentTextColor
 import dev.geode.engine.types.TrackId
-import dev.geode.playback.toUri
-import kotlinx.coroutines.launch
+import dev.geode.feature.library.api.LibraryFact
+import dev.geode.feature.library.api.LibraryPlaylist
 import kotlin.math.roundToInt
 
 /** Playlists sit last and behave differently: hand-ordered, so search and sort do not apply. */
@@ -82,7 +80,6 @@ private const val DUPLICATES_TAB = 5
 @Composable
 fun LibraryScreen(onOpenSearch: () -> Unit) {
     val libraryViewModel: LibraryViewModel = geodeViewModel()
-    val playerViewModel: PlayerViewModel = geodeViewModel()
     val context = LocalContext.current
     val permission =
         if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -93,9 +90,9 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
     }
     val permLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    var reloadKey by remember { mutableStateOf(0) }
     val state by libraryViewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(granted, reloadKey) { if (granted) libraryViewModel.refreshDeviceTracks() }
+    // The Library watches the phone's music itself; once it may read it, it looks.
+    LaunchedEffect(granted) { if (granted) libraryViewModel.refreshDeviceTracks() }
     var tab by rememberSaveable { mutableStateOf(0) }
     val tabs =
         listOf(
@@ -167,12 +164,12 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
             )
         }
         when (tab) {
-            0 -> TrackList(shown, playerViewModel, state.isSearching)
-            1 -> GroupList(shown.groupBy { it.album }, playerViewModel)
-            2 -> GroupList(shown.groupBy { it.artist }, playerViewModel)
-            3 -> FoldersTab(shown.groupBy { it.folder }, playerViewModel)
+            0 -> TrackList(shown, libraryViewModel, state.isSearching)
+            1 -> GroupList(shown.groupBy { it.album }, libraryViewModel)
+            2 -> GroupList(shown.groupBy { it.artist }, libraryViewModel)
+            3 -> FoldersTab(shown.groupBy { it.folder }, libraryViewModel)
             PLAYLISTS_TAB -> PlaylistsTab(libraryViewModel)
-            DUPLICATES_TAB -> DuplicatesTab(state.tracks, playerViewModel, onDeleted = { reloadKey++ })
+            DUPLICATES_TAB -> DuplicatesTab(state.tracks, onPlay = { libraryViewModel.play(listOf(it)) })
         }
     }
 }
@@ -180,10 +177,10 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
 @Composable
 private fun TrackList(
     tracks: List<DeviceTrack>,
-    viewModel: PlayerViewModel,
+    viewModel: LibraryViewModel,
     searching: Boolean = false,
 ) {
-    val queue = remember(tracks) { tracks.map(PlaybackQueue::queueTrack) }
+    val queue = remember(tracks) { tracks.map { it.uri } }
     LazyColumn(Modifier.fillMaxSize()) {
         items(tracks, key = { it.uri.value }) { t -> TrackRow(t, viewModel, queue = queue) }
         if (tracks.isEmpty()) {
@@ -198,22 +195,13 @@ private fun TrackList(
 @Composable
 private fun TrackRow(
     t: DeviceTrack,
-    viewModel: PlayerViewModel,
+    viewModel: LibraryViewModel,
     subtitleOverride: String? = null,
-    queue: List<QueueTrack> = emptyList(),
+    queue: List<TrackId> = emptyList(),
 ) {
-    val libraryViewModel: LibraryViewModel = geodeViewModel()
-    val overrides by libraryViewModel.trackOverrides.collectAsStateWithLifecycle()
-    val stored = overrides[t.uri]
-    val title = stored?.title?.ifBlank { null } ?: t.title
-    // Title, artist, album, duration and artwork \u2014 and nothing else. No tempo, no key, no
-    // analysed badge: the library never waits on analysis, so it has nothing to report about it.
-    val subtitle =
-        subtitleOverride
-            ?: listOf(
-                stored?.artist?.ifBlank { null } ?: t.artist,
-                stored?.album?.ifBlank { null } ?: t.album,
-            ).filter { it.isNotBlank() }.joinToString(" \u00b7 ")
+    // Title, artist, album, duration and artwork, with the user's edits already in, and nothing
+    // else. No tempo, no key, no analysed badge: the library never waits on analysis.
+    val subtitle = subtitleOverride ?: listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · ")
     val duration = LibraryBrowse.formatDuration(t.duration)
     var menu by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
@@ -221,15 +209,14 @@ private fun TrackRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable {
-                if (queue.isEmpty()) viewModel.playTrack(t.uri) else viewModel.playFrom(queue, t.uri)
-            }.padding(horizontal = 16.dp, vertical = 8.dp),
+            .clickable { viewModel.play(queue.ifEmpty { listOf(t.uri) }, t.uri) }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TrackArtwork(t.uri, Modifier.size(44.dp), corner = 8.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(t.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle.isNotBlank()) {
                 Text(
                     subtitle,
@@ -262,10 +249,6 @@ private fun TrackRow(
                 addingToPlaylist = true
                 menu = false
             })
-            DropdownMenuItem(text = { Text(stringResource(R.string.action_add_to_library_list)) }, onClick = {
-                libraryViewModel.importTracks(listOf(t.uri.toUri()))
-                menu = false
-            })
             DropdownMenuItem(text = { Text(stringResource(R.string.action_edit_track_info)) }, onClick = {
                 editing = true
                 menu = false
@@ -273,13 +256,14 @@ private fun TrackRow(
         }
     }
     if (editing) {
-        TrackInfoEditor(uri = t.uri, viewModel = libraryViewModel, onDismiss = { editing = false })
+        TrackInfoEditor(uri = t.uri, viewModel = viewModel, onDismiss = { editing = false })
     }
     if (addingToPlaylist) {
-        AddToPlaylistDialog(uri = t.uri, viewModel = libraryViewModel, onDismiss = { addingToPlaylist = false })
+        AddToPlaylistDialog(uri = t.uri, viewModel = viewModel, onDismiss = { addingToPlaylist = false })
     }
 }
 
+/** Adds [uri] to a playlist already made, or to a new one. */
 @Composable
 private fun AddToPlaylistDialog(
     uri: TrackId,
@@ -293,10 +277,7 @@ private fun AddToPlaylistDialog(
             title = stringResource(R.string.playlist_new),
             confirmLabel = stringResource(R.string.action_create),
             taken = library.playlists.map { it.name }.toSet(),
-            onName = { name ->
-                viewModel.createMusicPlaylist(name)
-                viewModel.addTrackToPlaylist(name, uri)
-            },
+            onName = { name -> viewModel.createMusicPlaylist(name, listOf(uri)) },
             onDismiss = onDismiss,
         )
         return
@@ -334,7 +315,7 @@ private fun AddToPlaylistDialog(
 @Composable
 private fun GroupList(
     groups: Map<String, List<DeviceTrack>>,
-    viewModel: PlayerViewModel,
+    viewModel: LibraryViewModel,
 ) {
     var open by rememberSaveable { mutableStateOf<String?>(null) }
     val sel = open
@@ -349,11 +330,11 @@ private fun GroupList(
                 )
                 Text(sel, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            val queue = remember(sel, groups) { groups.getValue(sel).map(PlaybackQueue::queueTrack) }
+            val queue = remember(sel, groups) { groups.getValue(sel).map { it.uri } }
             Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(compact = true, onClick = { viewModel.playAll(queue) }) { Text(stringResource(R.string.library_play_all)) }
+                CrystalButton(compact = true, onClick = { viewModel.play(queue) }) { Text(stringResource(R.string.library_play_all)) }
                 CrystalButton(compact = true, filled = false, onClick = {
-                    viewModel.playAll(queue, shuffled = true)
+                    viewModel.shuffle(queue)
                 }) { Text(stringResource(R.string.action_shuffle)) }
             }
             LazyColumn(Modifier.fillMaxSize()) {
@@ -390,21 +371,21 @@ private fun GroupList(
     }
 }
 
+/** Playback's playlists, through the Library: play, make, import, rename, edit and delete them. */
 @Composable
 private fun PlaylistsTab(viewModel: LibraryViewModel) {
     val library by viewModel.library.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
+    val songs by viewModel.deviceTracks.collectAsStateWithLifecycle()
     var expanded by remember { mutableStateOf<String?>(null) }
     var renaming by remember { mutableStateOf<String?>(null) }
     var renameText by remember { mutableStateOf("") }
     var creating by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<String?>(null) }
-    var importResult by remember { mutableStateOf<PlaylistImportResult?>(null) }
+    var imported by remember { mutableStateOf<LibraryFact.PlaylistImported?>(null) }
+    LaunchedEffect(viewModel) { viewModel.playlistsImported.collect { imported = it } }
     val importPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) {
-                scope.launch { importResult = viewModel.importPlaylistFile(uri) }
-            }
+            if (uri != null) viewModel.importPlaylistFile(uri)
         }
     Column {
         Row(
@@ -420,7 +401,7 @@ private fun PlaylistsTab(viewModel: LibraryViewModel) {
         }
         LazyColumn(Modifier.fillMaxSize()) {
             item { SmartPlaylistsSection(viewModel) }
-            items(library.playlists, key = { it.name }) { pl ->
+            items(library.playlists, key = { it.id.value }) { pl ->
                 Column(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier
@@ -432,11 +413,7 @@ private fun PlaylistsTab(viewModel: LibraryViewModel) {
                         Column(Modifier.weight(1f)) {
                             Text(pl.name)
                             Text(
-                                pluralStringResource(
-                                    R.plurals.track_count,
-                                    pl.trackUris.size,
-                                    pl.trackUris.size,
-                                ),
+                                pluralStringResource(R.plurals.track_count, pl.trackCount, pl.trackCount),
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -452,7 +429,7 @@ private fun PlaylistsTab(viewModel: LibraryViewModel) {
                         }
                     }
                     if (expanded == pl.name) {
-                        PlaylistTracks(pl, library.tracks, viewModel)
+                        PlaylistTracks(pl, songs, viewModel)
                     }
                 }
             }
@@ -471,7 +448,7 @@ private fun PlaylistsTab(viewModel: LibraryViewModel) {
             title = stringResource(R.string.playlist_new),
             confirmLabel = stringResource(R.string.action_create),
             taken = library.playlists.map { it.name }.toSet(),
-            onName = viewModel::createMusicPlaylist,
+            onName = { name -> viewModel.createMusicPlaylist(name, emptyList()) },
             onDismiss = { creating = false },
         )
     }
@@ -525,38 +502,12 @@ private fun PlaylistsTab(viewModel: LibraryViewModel) {
             dismissButton = { TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.action_cancel)) } },
         )
     }
-    importResult?.let { result ->
+    imported?.let { result ->
         AlertDialog(
-            onDismissRequest = { importResult = null },
-            title = {
-                Text(
-                    stringResource(
-                        if (result is PlaylistImportResult.Imported) {
-                            R.string.playlist_import_done_title
-                        } else {
-                            R.string.playlist_import_failed_title
-                        },
-                    ),
-                )
-            },
-            text = {
-                Text(
-                    when (result) {
-                        is PlaylistImportResult.Imported ->
-                            stringResource(
-                                R.string.playlist_import_summary,
-                                result.name,
-                                result.addedCount,
-                                result.unresolvedCount,
-                                result.ambiguousCount,
-                            )
-                        // result.why is a diagnostic detail, not user-facing text; the dialog always
-                        // shows one generic, localized failure message instead.
-                        is PlaylistImportResult.Failed -> stringResource(R.string.playlist_import_failed_body)
-                    },
-                )
-            },
-            confirmButton = { TextButton(onClick = { importResult = null }) { Text(stringResource(R.string.action_ok)) } },
+            onDismissRequest = { imported = null },
+            title = { Text(stringResource(R.string.playlist_import_done_title)) },
+            text = { Text(stringResource(R.string.playlist_import_summary, result.name, result.found, result.missing, 0)) },
+            confirmButton = { TextButton(onClick = { imported = null }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 }
@@ -584,20 +535,21 @@ internal fun playlistRowShift(
         else -> 0
     }
 
+/** The playlist's songs, to reorder by dragging or by the arrows, and to take out. */
 @Composable
 private fun PlaylistTracks(
-    playlist: MusicPlaylist,
-    tracks: List<LibraryTrack>,
+    playlist: LibraryPlaylist,
+    songs: List<DeviceTrack>,
     viewModel: LibraryViewModel,
 ) {
-    val count = playlist.trackUris.size
+    val count = playlist.songs.size
+    val byId = remember(songs) { songs.associateBy { it.uri } }
     var dragFrom by remember(playlist.name) { mutableIntStateOf(-1) }
     var dragOffset by remember(playlist.name) { mutableFloatStateOf(0f) }
     var rowHeight by remember(playlist.name) { mutableIntStateOf(0) }
     val dropIndex = playlistDropIndex(dragFrom, dragOffset, rowHeight, count)
     val liftTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-    playlist.trackUris.forEachIndexed { i, uri ->
-        val t = tracks.firstOrNull { it.uri == uri }
+    playlist.songs.forEachIndexed { i, uri ->
         val dragging = i == dragFrom
         val shift by animateFloatAsState(
             if (dragFrom < 0) 0f else (playlistRowShift(i, dragFrom, dropIndex) * rowHeight).toFloat(),
@@ -640,7 +592,7 @@ private fun PlaylistTracks(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             )
             Text(
-                t?.title ?: stringResource(R.string.playlist_untitled_track, i + 1),
+                byId[uri]?.title ?: stringResource(R.string.playlist_untitled_track, i + 1),
                 Modifier.weight(1f).padding(start = 6.dp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -654,7 +606,7 @@ private fun PlaylistTracks(
                 onClick = { viewModel.moveMusicPlaylistTrack(playlist.name, i, i + 1) },
                 enabled = i < count - 1,
             ) { Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.action_down)) }
-            IconButton(onClick = { viewModel.removeTrackFromPlaylist(playlist.name, uri) }) {
+            IconButton(onClick = { viewModel.removeTrackFromPlaylist(playlist.name, i) }) {
                 StoneIconArt(StoneIcon.CLOSE, stringResource(R.string.action_remove_from_playlist), Modifier.size(18.dp))
             }
         }
@@ -664,58 +616,15 @@ private fun PlaylistTracks(
 @Composable
 private fun FoldersTab(
     folders: Map<String, List<DeviceTrack>>,
-    viewModel: PlayerViewModel,
+    viewModel: LibraryViewModel,
 ) {
-    val libraryViewModel: LibraryViewModel = geodeViewModel()
-    val roots by libraryViewModel.mediaRoots.collectAsStateWithLifecycle()
-    val scanning by libraryViewModel.libraryScanning.collectAsStateWithLifecycle()
-    val folderPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri != null) libraryViewModel.importFolder(uri)
-        }
     Column {
         Text(
             stringResource(R.string.folders_library),
             Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             style = MaterialTheme.typography.titleSmall,
         )
-        roots.sorted().forEach { root ->
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    java.net.URLDecoder
-                        .decode(root.substringAfterLast("%3A").substringAfterLast("/"), "UTF-8")
-                        .ifBlank { root },
-                    Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                IconButton(onClick = { libraryViewModel.removeMediaRoot(root) }) {
-                    StoneIconArt(StoneIcon.CLOSE, stringResource(R.string.folders_remove))
-                }
-            }
-        }
-        Row(
-            Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            CrystalButton(
-                compact = true,
-                filled = false,
-                onClick = { folderPicker.launch(null) },
-            ) { Text(stringResource(R.string.folders_add)) }
-            CrystalButton(
-                compact = true,
-                filled = false,
-                onClick = libraryViewModel::rescanMediaRoots,
-                enabled = roots.isNotEmpty() && !scanning,
-            ) {
-                Text(stringResource(if (scanning) R.string.folders_scanning else R.string.folders_rescan))
-            }
-        }
+        Column(Modifier.padding(horizontal = 16.dp)) { MusicFoldersEditor(viewModel) }
         Text(
             stringResource(R.string.folders_device),
             Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
