@@ -169,7 +169,7 @@ private fun problemText(problem: CaptureProblem): Int =
         CaptureProblem.DID_NOT_START -> R.string.capture_problem_did_not_start
     }
 
-/** A preview of [state] in the app's light or dark scheme; the screenshot tests render these. */
+/** A preview of [state] in the app's light or dark scheme (ADR-0003). */
 @Composable
 internal fun CapturePreviewFrame(
     state: CaptureState,

@@ -39,6 +39,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   verified playback bugs (Buffering forever, a pause overridden by an open in
   flight, a next-track decode error stopping the current track) are fixed by
   Playback's state machine and pinned by `PlaybackJourneyRobolectricTest`.
+
+- **No screenshot or golden-image tests (#184).** The owner dropped them to
+  save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
+  every `*ScreenshotTest`, their goldens and the `geode.screenshots`
+  convention plugin), and so do the Visual golden frames
+  (`tools/glslcheck/goldens` and `tools/ci/compare_frames.py`) and the
+  `[record-goldens]` mechanism. The shader job stays as "Shaders compile and
+  render": every Style still has to compile, draw a non-black frame and
+  survive a resize, and every Shared core effect has to draw. Previews stay
+  for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
+  handlers' database tests.
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person
