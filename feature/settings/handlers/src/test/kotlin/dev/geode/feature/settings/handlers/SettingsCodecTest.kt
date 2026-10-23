@@ -3,6 +3,7 @@ package dev.geode.feature.settings.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
@@ -21,12 +22,15 @@ import dev.geode.feature.settings.api.LookSettings
 import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Minutes
 import dev.geode.feature.settings.api.OnboardingSettings
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.VisualFrameRate
+import dev.geode.feature.settings.api.VisualQuality
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -172,6 +176,25 @@ class SettingsCodecTest {
                 ),
         )
 
+    /**
+     * The keys written since the old files, each at its default: whatever the codec writes beyond
+     * [today]. A new setting joins this by itself; its own tests pin its name and format.
+     */
+    private val newKeysAtDefaults: Map<String, Any?> = SettingsCodec.encode(SettingsValues()) - today.keys
+
+    /** #28's preferences, every one away from its default. */
+    private val preferences: Map<String, Any?> =
+        mapOf(
+            "export_quality" to "QHD1440",
+            "export_finished_alerts" to false,
+            "background_music" to false,
+            "background_renders" to false,
+            "background_recording" to true,
+            "visual_quality" to "BALANCED",
+            "visual_frame_rate" to "FPS30",
+            "cpu_gpu_save_mode" to true,
+        )
+
     @Test
     fun `nothing stored reads as the defaults`() {
         assertEquals(SettingsValues(), SettingsCodec.decode(emptyMap()))
@@ -184,7 +207,13 @@ class SettingsCodecTest {
 
     @Test
     fun `settings are written in today's keys and formats`() {
-        assertEquals(today + ("preset_folder_uri" to null) + ("video_folder_uri" to null), SettingsCodec.encode(todayValues))
+        assertEquals(today + newKeysAtDefaults, SettingsCodec.encode(todayValues))
+    }
+
+    @Test
+    fun `the keys written since the old files are in no old file`() {
+        assertTrue(newKeysAtDefaults.isNotEmpty())
+        assertTrue(newKeysAtDefaults.keys.none { key -> SettingsKeys.LEGACY_FILES.values.any { key in it } })
     }
 
     @Test
@@ -193,18 +222,52 @@ class SettingsCodecTest {
 
         assertEquals(null, loaded.folders.presetFolder)
         assertEquals(today, SettingsCodec.encode(loaded).filterKeys { it in today })
-        assertEquals(setOf("preset_folder_uri", "video_folder_uri"), SettingsCodec.encode(loaded).keys - today.keys)
+        assertEquals(newKeysAtDefaults, SettingsCodec.encode(loaded) - today.keys)
     }
 
     @Test
     fun `the preset folder is kept in its own key, apart from the preset mirror`() {
-        val stored = today + ("preset_folder_uri" to "content://tree/geode-presets") + ("video_folder_uri" to null)
+        val stored = today + newKeysAtDefaults + ("preset_folder_uri" to "content://tree/geode-presets")
 
         val values = SettingsCodec.decode(stored)
 
         assertEquals(FolderUri("content://tree/geode-presets"), values.folders.presetFolder)
         assertEquals(FolderUri("content://tree/presets"), values.folders.presetMirror)
         assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `the run in background, CPU GPU and export alert preferences are read and written in their own keys`() {
+        val stored = today + newKeysAtDefaults + preferences
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(BackgroundSettings(music = false, renders = false, recording = true), values.background)
+        assertEquals(PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS30, saveMode = true), values.performance)
+        assertFalse(values.export.finishedAlerts)
+        assertEquals(ExportQuality.QHD1440, values.export.quality)
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `every export size is stored by its name`() {
+        val names = ExportQuality.entries.map { idOf(it) }
+
+        assertEquals(listOf("SD480", "HD720", "FHD1080", "QHD1440", "UHD4K"), names)
+        assertEquals(ExportQuality.SD480, SettingsCodec.decode(mapOf("export_quality" to "SD480")).export.quality)
+    }
+
+    @Test
+    fun `the new preferences are in no old file, and odd values read as their defaults`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { keys -> keys.any { it in preferences.keys - "export_quality" } })
+
+        val odd =
+            SettingsCodec.decode(
+                mapOf("visual_quality" to "ULTRA", "visual_frame_rate" to 144, "cpu_gpu_save_mode" to "yes", "background_music" to 0),
+            )
+
+        assertEquals(PerformanceSettings(), odd.performance)
+        assertEquals(BackgroundSettings(), odd.background)
     }
 
     @Test
@@ -215,7 +278,7 @@ class SettingsCodecTest {
 
     @Test
     fun `the video save folder is kept in its own key and read back unchanged`() {
-        val stored = today + ("preset_folder_uri" to null) + ("video_folder_uri" to "content://tree/geode-videos")
+        val stored = today + newKeysAtDefaults + ("video_folder_uri" to "content://tree/geode-videos")
 
         val values = SettingsCodec.decode(stored)
 
@@ -357,6 +420,9 @@ class SettingsCodecTest {
         assertTrue(today.keys.all { it in all })
         assertEquals(setOf("geode-prefs", "geode-player", "geode-audiofx", "geode-library"), SettingsKeys.LEGACY_FILES.keys)
     }
+
+    private fun idOf(quality: ExportQuality): Any? =
+        SettingsCodec.encode(SettingsValues(export = ExportSettings(quality = quality)))["export_quality"]
 
     private fun idOf(loudness: ExportLoudness): Any? =
         SettingsCodec.encode(SettingsValues(export = ExportSettings(loudness = loudness)))["export_loudness_target"]

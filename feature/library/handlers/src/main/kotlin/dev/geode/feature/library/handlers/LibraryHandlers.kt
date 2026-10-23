@@ -42,13 +42,15 @@ class LibrarySources(
     val tags: TagReader,
     val storage: LibraryStorage,
     val files: PlaylistFiles,
+    /** Wall-clock time, for the smart playlist rules that count days. */
+    val clock: () -> Millis = { Millis(System.currentTimeMillis()) },
 )
 
 /**
  * Carries out the Library's work (ADR-0005): it scans the phone's music into the index, keeps the
- * favourites, edits and excluded folders, reads and writes playlist files, and talks to Playback
- * through its `:api` only, sending it Commands and reading its playlists and history. Every failure
- * is caught here and reported as a named event.
+ * favourites, edits, excluded folders and smart playlists, reads the clock, reads and writes playlist
+ * files, and talks to Playback through its `:api` only, sending it Commands and reading its playlists
+ * and history. Every failure is caught here and reported as a named event.
  */
 class LibraryHandlers(
     private val playback: Playback,
@@ -64,7 +66,7 @@ class LibraryHandlers(
             LibraryWork.Read ->
                 guarded(results, StorageFailure.READ_INDEX) {
                     val saved = storage.read()
-                    results.report(LibraryEvent.IndexRead(saved.songs, saved.favourites, saved.excludedFolders))
+                    results.report(LibraryEvent.IndexRead(saved.songs, saved.favourites, saved.excludedFolders, saved.smartPlaylists))
                 }
             LibraryWork.Scan -> scan(results)
             LibraryWork.WatchMedia -> watchMedia(results)
@@ -75,6 +77,11 @@ class LibraryHandlers(
             is LibraryWork.SaveEdit -> guarded(results, StorageFailure.SAVE_EDIT) { storage.saveEdit(work.song, work.edit) }
             is LibraryWork.SaveExcludedFolders ->
                 guarded(results, StorageFailure.SAVE_EXCLUDED_FOLDERS) { storage.saveExcludedFolders(work.folders) }
+            is LibraryWork.SaveSmartPlaylist ->
+                guarded(results, StorageFailure.SAVE_SMART_PLAYLIST) { storage.saveSmartPlaylist(work.playlist, work.replacing) }
+            is LibraryWork.DeleteSmartPlaylist ->
+                guarded(results, StorageFailure.DELETE_SMART_PLAYLIST) { storage.deleteSmartPlaylist(work.name) }
+            LibraryWork.ReadClock -> results.report(LibraryEvent.ClockRead(sources.clock()))
             is LibraryWork.ReadPlaylistFile ->
                 guarded(results, StorageFailure.READ_PLAYLIST_FILE) {
                     results.report(LibraryEvent.PlaylistFileRead(work.name, sources.files.read(work.file)))
@@ -177,7 +184,8 @@ class LibraryHandlers(
 
 /**
  * How `:app` builds the Library's one app-scoped store (#17): it reads the saved index (and then
- * scans), watches the phone's music for changes, and follows Playback's playlists and history.
+ * scans), watches the phone's music for changes, follows Playback's playlists and history, and reads
+ * the clock for the smart playlists.
  */
 fun libraryStore(
     playback: Playback,
@@ -191,5 +199,11 @@ fun libraryStore(
         toEvent = LibraryEvent::Command,
         runner = LibraryHandlers(playback, sources),
         runtime = runtime,
-        start = listOf(Perform(LibraryWork.Read), Perform(LibraryWork.WatchMedia), Perform(LibraryWork.FollowPlayback)),
+        start =
+            listOf(
+                Perform(LibraryWork.Read),
+                Perform(LibraryWork.WatchMedia),
+                Perform(LibraryWork.FollowPlayback),
+                Perform(LibraryWork.ReadClock),
+            ),
     )
