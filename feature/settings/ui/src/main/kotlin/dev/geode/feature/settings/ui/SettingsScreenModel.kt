@@ -14,7 +14,7 @@ enum class SettingsSection {
     AUDIO,
     EXPORT,
     DEFAULT_PATHS,
-    CPU_GPU,
+    BATTERY,
     HELP,
     ABOUT,
 }

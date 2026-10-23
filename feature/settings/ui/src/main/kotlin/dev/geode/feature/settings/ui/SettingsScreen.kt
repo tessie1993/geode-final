@@ -63,7 +63,7 @@ private fun LazyListScope.section(
         SettingsSection.AUDIO -> audioSection(values, change)
         SettingsSection.EXPORT -> exportSection(values.export, change)
         SettingsSection.DEFAULT_PATHS -> defaultPathsSection(values.folders, onAction)
-        SettingsSection.CPU_GPU -> cpuGpuSection(values.performance, change)
+        SettingsSection.BATTERY -> batterySection(values.performance, change)
         SettingsSection.HELP -> helpSection(values.onboarding, onAction)
         SettingsSection.ABOUT -> aboutSection(model.appVersion)
     }
@@ -88,7 +88,7 @@ private fun sectionName(section: SettingsSection): String =
             SettingsSection.AUDIO -> R.string.settings_section_audio
             SettingsSection.EXPORT -> R.string.settings_section_export
             SettingsSection.DEFAULT_PATHS -> R.string.settings_section_default_paths
-            SettingsSection.CPU_GPU -> R.string.settings_section_cpu_gpu
+            SettingsSection.BATTERY -> R.string.settings_section_battery
             SettingsSection.HELP -> R.string.settings_section_help
             SettingsSection.ABOUT -> R.string.settings_section_about
         },

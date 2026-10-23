@@ -7,7 +7,7 @@
     <string name="settings_section_audio">Audio</string>
     <string name="settings_section_export">Export preferences</string>
     <string name="settings_section_default_paths">Default paths</string>
-    <string name="settings_section_cpu_gpu">CPU/GPU</string>
+    <string name="settings_section_battery">Battery</string>
     <string name="settings_section_help">Help</string>
     <string name="settings_section_about">About</string>
 
@@ -140,7 +140,7 @@
     <string name="background_music">Music keeps playing</string>
     <string name="background_renders">Renders keep going</string>
     <string name="background_recording">Recording keeps going</string>
-    <string name="application_group_save_mode">Battery and heat</string>
+    <string name="battery_group_save_mode">Save mode</string>
     <string name="save_mode">CPU/GPU save mode</string>
     <string name="save_mode_note">Lowers Visual quality, draws at 30 fps, holds the floating assets still and slows renders down.</string>
 
@@ -153,7 +153,7 @@
     <string name="cpu_gpu_frame_rate">Visual frame rate</string>
     <string name="cpu_gpu_fps">%1$d fps</string>
     <string name="cpu_gpu_screen_max">Screen max</string>
-    <string name="cpu_gpu_save_mode_on">CPU/GPU save mode is on: the Visual is drawn at Saver quality and 30 fps until you turn it off in Application preferences.</string>
+    <string name="cpu_gpu_save_mode_on">CPU/GPU save mode is on: the Visual is drawn at Saver quality and 30 fps until you turn it off above.</string>
     <string name="cpu_gpu_group_heat">Cool down when hot</string>
     <string name="cpu_gpu_heat_note">Automatic: when the phone heats up, the Visual lowers its quality instead of stuttering.</string>
 

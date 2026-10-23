@@ -72,13 +72,13 @@ internal fun SettingsApplicationPreview() = SettingsPreview(SettingsSection.APPL
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsCpuGpuPreview() = SettingsPreview(SettingsSection.CPU_GPU)
+internal fun SettingsBatteryPreview() = SettingsPreview(SettingsSection.BATTERY)
 
-/** CPU/GPU while save mode is on: the chosen values stay, with a note that save mode overrides them. */
+/** Battery while save mode is on: the chosen values stay, with a note that save mode overrides them. */
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsCpuGpuSaveModePreview() =
-    SettingsPreview(SettingsSection.CPU_GPU, previewValues.copy(performance = PerformanceSettings(saveMode = true)))
+internal fun SettingsBatterySaveModePreview() =
+    SettingsPreview(SettingsSection.BATTERY, previewValues.copy(performance = PerformanceSettings(saveMode = true)))
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable

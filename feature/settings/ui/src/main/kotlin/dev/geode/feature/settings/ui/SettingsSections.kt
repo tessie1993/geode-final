@@ -274,13 +274,19 @@ internal fun LazyListScope.exportSection(
 }
 
 /**
- * CPU/GPU (#101, #28): how sharp and how often the Visual is drawn on screen. Save mode, in
- * Application preferences, overrides both while it is on; cooling down when hot is automatic.
+ * Battery (#28, owner 2026-10-23): the CPU/GPU save mode, and how sharp and how often the Visual is
+ * drawn on screen. Save mode overrides both while it is on; cooling down when hot is automatic.
  */
-internal fun LazyListScope.cpuGpuSection(
+internal fun LazyListScope.batterySection(
     performance: PerformanceSettings,
     change: (SettingsCommand) -> Unit,
 ) {
+    item {
+        SettingsGroup(stringResource(R.string.battery_group_save_mode)) {
+            SwitchRow(stringResource(R.string.save_mode), performance.saveMode) { change(PerformanceCommand.SetSaveMode(it)) }
+            Note(stringResource(R.string.save_mode_note))
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.cpu_gpu_group_visual)) {
             if (performance.saveMode) Note(stringResource(R.string.cpu_gpu_save_mode_on))
@@ -383,8 +389,8 @@ private fun FolderChoiceGroup(
 }
 
 /**
- * Application preferences (was Behavior): keeping the screen on, what runs in the background, the
- * CPU/GPU save mode (#28), touch, motion and the live wallpaper.
+ * Application preferences (was Behavior): keeping the screen on, what runs in the background (#28),
+ * touch, motion and the live wallpaper.
  */
 internal fun LazyListScope.applicationSection(
     values: SettingsValues,
@@ -408,12 +414,6 @@ internal fun LazyListScope.applicationSection(
             SwitchRow(stringResource(R.string.background_recording), values.background.recording) {
                 change(BackgroundCommand.SetRecording(it))
             }
-        }
-    }
-    item {
-        SettingsGroup(stringResource(R.string.application_group_save_mode)) {
-            SwitchRow(stringResource(R.string.save_mode), values.performance.saveMode) { change(PerformanceCommand.SetSaveMode(it)) }
-            Note(stringResource(R.string.save_mode_note))
         }
     }
     item {
