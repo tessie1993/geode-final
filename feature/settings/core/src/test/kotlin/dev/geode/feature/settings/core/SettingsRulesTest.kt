@@ -1,6 +1,7 @@
 package dev.geode.feature.settings.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
@@ -83,6 +84,8 @@ class SettingsRulesTest {
             Row(LookCommand.SetCornerStyle(CornerStyle.PILL), defaults.copy(look = look.copy(cornerStyle = CornerStyle.PILL))),
             Row(LookCommand.SetCompactPlayer(true), defaults.copy(look = look.copy(compactPlayer = true))),
             Row(LookCommand.SetClearVisualsMenu(true), defaults.copy(look = look.copy(clearVisualsMenu = true))),
+            Row(LookCommand.SetAmbientMode(AmbientMode.STILL), defaults.copy(look = look.copy(ambientMode = AmbientMode.STILL))),
+            Row(LookCommand.SetAmbientMode(AmbientMode.OFF), defaults.copy(look = look.copy(ambientMode = AmbientMode.OFF))),
         )
 
     private val playbackRows: List<Row> =

@@ -27,6 +27,9 @@ internal object SettingsKeys {
     const val COMPACT_PLAYER = "gui_compact_player"
     const val CLEAR_VISUALS_MENU = "gui_clear_visuals_menu"
 
+    /** Ambient (#100), new so in no old file. Stored by name. */
+    const val AMBIENT_MODE = "gui_ambient_mode"
+
     // Playback (geode-player).
     const val SPEED = "speed"
     const val PITCH = "pitch_semitones"

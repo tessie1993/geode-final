@@ -32,6 +32,11 @@
     <string name="look_corner_pill">Pill</string>
     <string name="look_compact_player">Compact player</string>
     <string name="look_clear_visuals_menu">Clear Visuals menu</string>
+    <string name="look_group_home">Home</string>
+    <string name="look_ambient_mode">Ambient</string>
+    <string name="look_ambient_drifting">Drifting</string>
+    <string name="look_ambient_still">Still</string>
+    <string name="look_ambient_off">Off</string>
 
     <!-- Audio -->
     <string name="audio_group_playback">Playback</string>

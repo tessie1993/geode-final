@@ -1,6 +1,7 @@
 package dev.geode.feature.settings.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.BackgroundSettings
@@ -293,6 +294,29 @@ class SettingsCodecTest {
         assertTrue(SettingsKeys.LEGACY_FILES.values.none { "video_folder_uri" in it })
         assertEquals(null, SettingsCodec.decode(today).folders.videoFolder)
         assertEquals(null, SettingsCodec.decode(mapOf("video_folder_uri" to 7)).folders.videoFolder)
+    }
+
+    @Test
+    fun `the ambient mode is kept by name and read back`() {
+        for (mode in AmbientMode.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(ambientMode = mode)))
+
+            assertEquals(mode.name, stored["gui_ambient_mode"])
+            assertEquals(mode, SettingsCodec.decode(stored).look.ambientMode)
+        }
+    }
+
+    @Test
+    fun `a missing or unknown ambient mode loads as Drifting`() {
+        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(today).look.ambientMode)
+        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to "Wobbling")).look.ambientMode)
+        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to 2)).look.ambientMode)
+        assertEquals("DRIFTING", SettingsCodec.encode(SettingsValues())["gui_ambient_mode"])
+    }
+
+    @Test
+    fun `the ambient mode is new, so it is read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_ambient_mode" in it })
     }
 
     @Test

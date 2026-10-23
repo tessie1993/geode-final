@@ -85,6 +85,7 @@ internal object SettingsCodec {
             cornerStyle = enum(K.CORNER_STYLE, default.cornerStyle),
             compactPlayer = boolean(K.COMPACT_PLAYER, default.compactPlayer),
             clearVisualsMenu = boolean(K.CLEAR_VISUALS_MENU, default.clearVisualsMenu),
+            ambientMode = enum(K.AMBIENT_MODE, default.ambientMode),
         )
     }
 
@@ -205,6 +206,7 @@ internal object SettingsCodec {
             K.CORNER_STYLE to look.cornerStyle.name,
             K.COMPACT_PLAYER to look.compactPlayer,
             K.CLEAR_VISUALS_MENU to look.clearVisualsMenu,
+            K.AMBIENT_MODE to look.ambientMode.name,
         )
 
     private fun playback(playback: PlaybackSettings): Map<String, Any?> =

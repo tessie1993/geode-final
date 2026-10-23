@@ -3,6 +3,7 @@ package dev.geode.feature.settings.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -53,6 +54,13 @@ internal fun SettingsPreview(
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
 internal fun SettingsThemePreview() = SettingsPreview(SettingsSection.THEME)
+
+/** The Theme section's Home group, below the fold of [SettingsThemePreview], with Still chosen. */
+@Preview(widthDp = PREVIEW_WIDTH_DP)
+@Composable
+internal fun SettingsThemeHomePreview() {
+    MaterialTheme { HomeGroup(AmbientMode.STILL, change = {}) }
+}
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable

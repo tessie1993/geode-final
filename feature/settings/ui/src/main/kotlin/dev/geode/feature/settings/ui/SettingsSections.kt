@@ -9,6 +9,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BackgroundCommand
@@ -109,6 +110,20 @@ internal fun LazyListScope.themeSection(
             SwitchRow(stringResource(R.string.look_clear_visuals_menu), look.clearVisualsMenu) {
                 change(LookCommand.SetClearVisualsMenu(it))
             }
+        }
+    }
+    item { HomeGroup(look.ambientMode, change) }
+}
+
+/** Ambient: how much Home's Hero scene moves by itself. Its own group, so its screenshot shows it whole. */
+@Composable
+internal fun HomeGroup(
+    ambientMode: AmbientMode,
+    change: (SettingsCommand) -> Unit,
+) {
+    SettingsGroup(stringResource(R.string.look_group_home)) {
+        ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, ambientMode, { ambientName(it) }) {
+            change(LookCommand.SetAmbientMode(it))
         }
     }
 }

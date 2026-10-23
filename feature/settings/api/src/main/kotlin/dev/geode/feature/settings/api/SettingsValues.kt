@@ -82,6 +82,17 @@ enum class CornerStyle {
     PILL,
 }
 
+/**
+ * Ambient: how much the Element's Hero scene and its floating assets move by themselves, never with
+ * the music. They show on Home only, whatever the mode. Drifting holds still under battery saver,
+ * reduced motion or CPU/GPU save mode; Off stays off.
+ */
+enum class AmbientMode {
+    DRIFTING,
+    STILL,
+    OFF,
+}
+
 /** The Theme section (was Look): accent, text and layout of the App UI. */
 data class LookSettings(
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
@@ -94,6 +105,7 @@ data class LookSettings(
     val cornerStyle: CornerStyle = CornerStyle.ROUNDED,
     val compactPlayer: Boolean = false,
     val clearVisualsMenu: Boolean = false,
+    val ambientMode: AmbientMode = AmbientMode.DRIFTING,
 ) {
     companion object {
         const val ACCENT_INTENSITY_DEFAULT = 1f

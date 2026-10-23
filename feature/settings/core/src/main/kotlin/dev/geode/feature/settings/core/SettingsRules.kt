@@ -80,6 +80,7 @@ object SettingsRules {
             is LookCommand.SetCornerStyle -> look.copy(cornerStyle = command.style)
             is LookCommand.SetCompactPlayer -> look.copy(compactPlayer = command.on)
             is LookCommand.SetClearVisualsMenu -> look.copy(clearVisualsMenu = command.on)
+            is LookCommand.SetAmbientMode -> look.copy(ambientMode = command.mode)
         }
 
     private fun playback(

@@ -46,6 +46,10 @@ sealed interface LookCommand : SettingsCommand {
     data class SetClearVisualsMenu(
         val on: Boolean,
     ) : LookCommand
+
+    data class SetAmbientMode(
+        val mode: AmbientMode,
+    ) : LookCommand
 }
 
 sealed interface PlaybackCommand : SettingsCommand {
