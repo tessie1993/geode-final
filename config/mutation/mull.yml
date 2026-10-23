@@ -12,4 +12,8 @@ excludePaths:
   - ".*/core/tests/.*"
   - ".*/third_party/.*"
   - ".*/_deps/.*"
+# The warmup runs the whole native suite once under Mull, single-threaded and instrumented; it
+# outgrew Mull's 3 s default (and later 30 s: the stress and feedback-loop tests take most of it),
+# and a timed-out warmup aborts the job before any mutant runs.
+timeout: 60000
 quiet: true
