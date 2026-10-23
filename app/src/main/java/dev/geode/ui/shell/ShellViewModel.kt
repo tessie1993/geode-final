@@ -4,8 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.geode.feature.diagnostics.api.Diagnostics
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.settings.api.Settings
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,6 +26,8 @@ class ShellViewModel
         val appUi: AppUi,
         val playback: Playback,
         val library: Library,
+        val settings: Settings,
+        val diagnostics: Diagnostics,
         saved: SavedStateHandle,
     ) : ViewModel() {
         init {

@@ -10,7 +10,6 @@ import dev.geode.analysis.FeatureTimeline
 import dev.geode.analysis.IntelligenceMode
 import dev.geode.analysis.LiveInputProfile
 import dev.geode.audio.AudioBus
-import dev.geode.audio.AudioFxState
 import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
 import dev.geode.data.ExportDefaults
@@ -184,24 +183,9 @@ class PlayerSession internal constructor(
 
     val playerPrefs: StateFlow<PlayerPrefs> get() = settings.playerPrefs
 
-    val audioFx: StateFlow<AudioFxState> get() = settings.audioFxState
-
     fun setGuiPrefs(prefs: GuiPrefs) = settings.setGuiPrefs(prefs)
 
     fun setPlayerPrefs(prefs: PlayerPrefs) = settings.setPlayerPrefs(prefs)
-
-    fun setAudioFxEnabled(enabled: Boolean) = settings.setAudioFxEnabled(enabled)
-
-    fun setAudioFxBand(
-        band: Int,
-        levelMb: Int,
-    ) = settings.setAudioFxBand(band, levelMb)
-
-    fun useAudioFxPreset(index: Int) = settings.useAudioFxPreset(index)
-
-    fun setAudioFxBassBoost(strength: Int) = settings.setAudioFxBassBoost(strength)
-
-    fun setAudioFxLoudness(gainMb: Int) = settings.setAudioFxLoudness(gainMb)
 
     fun applyLiveInputProfile(profile: LiveInputProfile) = visual.applyLiveInputProfile(profile)
 

@@ -232,6 +232,8 @@ dependencies {
     implementation(project(":feature:diagnostics:core"))
     implementation(project(":feature:diagnostics:handlers"))
     implementation(project(":feature:diagnostics:ui"))
+    // First-run setup's Save folder step is Studio's own setup step (#187).
+    implementation(project(":feature:studio:ui"))
     implementation(project(":feature:library:api"))
     implementation(project(":feature:library:handlers"))
     implementation(project(":feature:library:ui"))

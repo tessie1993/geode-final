@@ -169,17 +169,8 @@ fun AppRoot() {
                 MiniPlayerRoute(shell.playback, elapsedNow = ::elapsedNow, onExpand = { appUi.send(AppUiCommand.EnterFullScreen) })
             }
         }
-        // Set by Settings > Help to replay the tour after it has already been seen; the automatic
-        // first-run showing is a function of the stored prefs instead, so this stays false there.
+        // Set by Settings > Help to replay the intro tour; first-run setup shows it by itself (#187).
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
-        // Offered once, to someone who has finished setup and has not turned the offer off.
-        val offerTutorial = gui.setupDone && !gui.tutorialSeen && gui.tutorialOnFirstRun
-        // Latched the moment the tour is offered, so that from then on its visibility depends on
-        // `tutorialRunning` alone. Without this, ticking "don't show this next time" DURING the
-        // tour clears `tutorialOnFirstRun`, which clears `offerTutorial`, which closes the tour
-        // out from under the person who was reading it — the checkbox is about the NEXT install,
-        // not this minute.
-        LaunchedEffect(offerTutorial) { if (offerTutorial) tutorialRunning = true }
         val page: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             when (ui.place) {
                 Place.HOME -> HomeScreen(shell, loaded, onResume = viewModel::resumeLastPlayed)
@@ -206,7 +197,7 @@ fun AppRoot() {
                         liveBackdrop = gui.clearVisualsMenu && !ui.fullScreen,
                     )
                 Place.STUDIO -> StudioRoute()
-                Place.SETTINGS -> SettingsScreen(viewModel, visualizerView, onStartTutorial = { tutorialRunning = true })
+                Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
             }
         }
         val content: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
@@ -263,32 +254,14 @@ fun AppRoot() {
             ui.banner?.let { banner ->
                 FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
             }
-            if (!gui.safetyAcknowledged) {
-                SafetyConsent(
-                    onAcknowledge = { settingsViewModel.setGuiPrefs(gui.copy(safetyAcknowledged = true)) },
-                )
-            } else if (!gui.setupDone) {
-                // Setup runs only after the notice is acknowledged, and only until it is done.
-                FirstRunGate(
-                    onDone = {
-                        settingsViewModel.setGuiPrefs(gui.copy(setupDone = true))
-                        open(Place.MUSIC)
-                    },
-                )
-            } else if (tutorialRunning) {
-                // Offered once setup is out of the way, so the tour walks a real app with a real
-                // library rather than a set of empty tabs.
-                TutorialOverlay(
-                    steps = TutorialStep.entries,
-                    dontShowAgain = !gui.tutorialOnFirstRun,
-                    onDontShowAgainChange = { settingsViewModel.setGuiPrefs(gui.copy(tutorialOnFirstRun = !it)) },
-                    onNavigate = open,
-                    onDismiss = {
-                        tutorialRunning = false
-                        settingsViewModel.setGuiPrefs(gui.copy(tutorialSeen = true))
-                    },
-                )
-            }
+            DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
+            // First-run setup, and the Save folder step again whenever the folder is lost (#187).
+            FirstRunSetup(
+                shell.settings,
+                replayTour = tutorialRunning,
+                onReplayOver = { tutorialRunning = false },
+                onNavigate = open,
+            )
         }
     }
 }
@@ -522,30 +495,6 @@ private fun HomeScreen(
                 Text(stringResource(R.string.action_resume_last_played))
             }
         }
-    }
-}
-
-@Composable
-fun SettingsScreen(
-    viewModel: PlayerViewModel,
-    visualizerView: VisualizerView,
-    onStartTutorial: () -> Unit,
-) {
-    var showExport by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize()) {
-        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
-            CrystalOverline(stringResource(R.string.app_name))
-            GlowTitle(stringResource(R.string.nav_settings))
-        }
-        AppSettingsTab(
-            viewModel,
-            exportOpen = showExport,
-            onOpenExport = { showExport = true },
-            onStartTutorial = onStartTutorial,
-        )
-    }
-    if (showExport) {
-        ExportHost(viewModel, visualizerView) { showExport = false }
     }
 }
 
