@@ -13,7 +13,7 @@ Each place in the app (a tab, a sheet, full-screen visual mode) has one `XRoute(
 A feature is done when CI shows:
 - reducer tests written as transition tables, covering every state and event;
 - a Pitest mutation score of at least 80% on its `core`;
-- Roborazzi screenshots of its screens, taken from their `@Preview`s. These cover the App UI only; the Visual is checked by the shader golden-frame tests;
+- Roborazzi screenshots of its screens, taken from their `@Preview`s. These cover the App UI only; the Visual is checked by the shader golden-frame tests (dropped by #184: the project keeps no screenshot or golden-image tests; screens keep their `@Preview`s, and shaders are checked to compile and draw a non-black frame);
 - the Konsist architecture test passing: `core` imports no Android or Compose, `ui` imports no other feature's internals, and the feature graph has no cycles.
 
 Ids and units (`TrackId`, `StyleId`, `RenderId`, `Millis`, `Hz` …) become `@JvmInline value class`es in one PR, before the feature work.
