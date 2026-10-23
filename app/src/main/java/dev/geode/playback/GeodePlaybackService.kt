@@ -21,6 +21,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.Library
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.Track
 import dev.geode.feature.playback.handlers.PlaybackSessionService
@@ -38,7 +39,7 @@ import javax.inject.Inject
  * Bluetooth and headset buttons, watches and Android Auto all reach the one app-scoped [playback]
  * through it. It replaces the old player's service.
  *
- * Browsing walks the phone's music ([LibraryTree]); a song a car picks is handed to the session's
+ * Browsing walks the Library ([LibraryTree]); a song a car picks is handed to the session's
  * player, which sends it to Playback as a Command. The home-screen widget follows the session's player.
  */
 @OptIn(UnstableApi::class)
@@ -51,6 +52,10 @@ class GeodePlaybackService : PlaybackSessionService() {
     lateinit var store: @JvmSuppressWildcards Playback
 
     override val playback: Playback get() = store
+
+    // What a car browses: the Library's songs (#17).
+    @Inject
+    lateinit var library: Library
 
     private var widget: WidgetPublisher? = null
     private var artwork: SessionBitmapLoader? = null
@@ -70,7 +75,7 @@ class GeodePlaybackService : PlaybackSessionService() {
 
     override fun browsing(): MediaLibrarySession.Callback =
         Browsing(
-            LibraryTree(this) {
+            LibraryTree(this, { library.state.value }) {
                 playback.state.value.history
                     .map { it.track }
             },
@@ -135,8 +140,6 @@ class GeodePlaybackService : PlaybackSessionService() {
             browser: MediaSession.ControllerInfo,
             params: LibraryParams?,
         ): ListenableFuture<LibraryResult<MediaItem>> {
-            // A browser coming back to the root (a new car connection, a refresh) picks up library edits.
-            tree.invalidate()
             return Futures.immediateFuture(LibraryResult.ofItem(tree.root(), params))
         }
 

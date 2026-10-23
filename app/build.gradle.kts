@@ -220,6 +220,8 @@ dependencies {
     implementation(project(":feature:playback:ui"))
     implementation(project(":feature:settings:api"))
     implementation(project(":feature:settings:handlers"))
+    implementation(project(":feature:library:api"))
+    implementation(project(":feature:library:handlers"))
     // Settings' DataStore is built here, so its type is on :app's compile path too.
     implementation(libs.datastore.preferences)
     // The App UI's design tokens, theme and common components.

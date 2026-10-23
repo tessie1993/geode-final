@@ -22,7 +22,7 @@ class MemoryPlaybackStorage : PlaybackStorage {
     var listening: ListeningOptions? = null
     val plays = MutableStateFlow<List<PlayedTrack>>(emptyList())
     val points = MutableStateFlow<Map<TrackId, Millis>>(emptyMap())
-    private val lists = MutableStateFlow<List<Pair<PlaylistSummary, List<Track>>>>(emptyList())
+    private val lists = MutableStateFlow<List<Triple<PlaylistSummary, List<Track>, Millis>>>(emptyList())
     private val marks = MutableStateFlow<List<Bookmark>>(emptyList())
 
     override val playlists: Flow<List<PlaylistSummary>> = lists.map { all -> all.map { it.first } }
@@ -41,7 +41,8 @@ class MemoryPlaybackStorage : PlaybackStorage {
         createdAt: Millis,
     ): PlaylistId {
         val id = PlaylistId(lists.value.size + 1L)
-        lists.value = listOf(PlaylistSummary(id, name, tracks.size) to tracks) + lists.value
+        // The newest first, as Playback's database lists them.
+        lists.value = (lists.value + Triple(PlaylistSummary(id, name, tracks.size), tracks, createdAt)).sortedByDescending { it.third.value }
         return id
     }
 

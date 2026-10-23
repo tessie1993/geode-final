@@ -510,7 +510,7 @@ fun SearchScreen(
 
     val terms = remember(debounced) { SearchMatcher.terms(debounced) }
     val trackResults =
-        remember(terms, deviceTracks, library.tracks) {
+        remember(terms, deviceTracks) {
             val candidates =
                 deviceTracks.map { t ->
                     SearchTrackRow(
@@ -520,16 +520,7 @@ fun SearchScreen(
                         fields = listOf(t.title, t.artist, t.album, t.folder),
                         fromDevice = true,
                     )
-                } +
-                    library.tracks.map { t ->
-                        SearchTrackRow(
-                            uri = t.uri,
-                            title = t.title,
-                            subtitle = listOf(t.artist, t.album).filter { it.isNotBlank() }.joinToString(" · "),
-                            fields = listOf(t.title, t.artist, t.album, t.genre),
-                            fromDevice = false,
-                        )
-                    }
+                }
             SearchMatcher.filterTracks(
                 terms = terms,
                 items = candidates,
@@ -635,8 +626,8 @@ fun SearchScreen(
                                 Text(
                                     pluralStringResource(
                                         R.plurals.track_count,
-                                        pl.trackUris.size,
-                                        pl.trackUris.size,
+                                        pl.trackCount,
+                                        pl.trackCount,
                                     ),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -1,20 +1,27 @@
 package dev.geode.ui
 
+import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.data.MusicPlaylist
+import dev.geode.data.NativeTags
 import dev.geode.data.SmartPlaylist
 import dev.geode.data.TagWriteOutcome
-import dev.geode.di.PlayerSessionProvider
+import dev.geode.data.TrackTagEdit
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.LibraryFact
+import dev.geode.playback.toUri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 private const val KEY_QUERY = "library_query"
@@ -37,8 +44,6 @@ private val WhileUiSubscribed = SharingStarted.WhileSubscribed(5_000)
  */
 data class LibraryUiState(
     val tracks: List<DeviceTrack> = emptyList(),
-    val playlists: List<MusicPlaylist> = emptyList(),
-    val overrides: Map<TrackId, LibraryTrack> = emptyMap(),
     val query: String = "",
     val sort: LibrarySort = LibrarySort.TITLE,
     val isScanning: Boolean = false,
@@ -47,15 +52,15 @@ data class LibraryUiState(
     val isSearching: Boolean get() = query.isNotBlank()
 }
 
+/** The old Library screens over the one Library store (#17), through [OldScreenLibrary]. */
 @HiltViewModel
 class LibraryViewModel
     @Inject
     constructor(
-        private val sessions: PlayerSessionProvider,
+        private val old: OldScreenLibrary,
+        private val application: Application,
         private val savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val session: PlayerSession = sessions.get()
-
         // Search and sort survive process death with the rest of the screen's saved state, so
         // coming back to a filtered library does not silently reset it.
         private val queryFlow: StateFlow<String> = savedStateHandle.getStateFlow(KEY_QUERY, "")
@@ -64,21 +69,10 @@ class LibraryViewModel
                 .getStateFlow(KEY_SORT, LibrarySort.TITLE.name)
                 .map { stored -> LibrarySort.entries.firstOrNull { it.name == stored } ?: LibrarySort.TITLE }
 
-        private val browseFlow = combine(queryFlow, sortFlow) { query, sort -> query to sort }
-
         val uiState: StateFlow<LibraryUiState> =
-            combine(
-                session.deviceTracks,
-                session.library,
-                session.trackOverrides,
-                session.libraryScanning,
-                browseFlow,
-            ) { tracks, library, overrides, scanning, browse ->
-                val (query, sort) = browse
+            combine(old.deviceTracks, old.scanning, queryFlow, sortFlow) { tracks, scanning, query, sort ->
                 LibraryUiState(
                     tracks = LibraryBrowse.sort(LibraryBrowse.search(tracks, query), sort),
-                    playlists = library.playlists,
-                    overrides = overrides,
                     query = query,
                     sort = sort,
                     isScanning = scanning,
@@ -97,44 +91,49 @@ class LibraryViewModel
             savedStateHandle[KEY_SORT] = sort.name
         }
 
-        val mediaRoots: StateFlow<Set<String>> get() = session.mediaRoots
+        val mediaRoots: StateFlow<Set<String>> get() = old.musicFolders
 
-        // Migration debt. [uiState] is the canonical read surface; these are the raw session flows
-        // the other screens still collect directly, and each one should fold into the UiState of
-        // the screen that uses it rather than being read straight off the session here.
-        val library: StateFlow<LibraryState> get() = session.library
+        val library: StateFlow<LibraryLists> get() = old.lists
 
-        val deviceTracks: StateFlow<List<DeviceTrack>> get() = session.deviceTracks
+        val deviceTracks: StateFlow<List<DeviceTrack>> get() = old.deviceTracks
 
-        val libraryScanning: StateFlow<Boolean> get() = session.libraryScanning
+        val libraryScanning: StateFlow<Boolean> get() = old.scanning
 
-        val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> get() = session.trackOverrides
+        val playlistsImported: Flow<LibraryFact.PlaylistImported> get() = old.playlistsImported
 
-        fun refreshDeviceTracks() = session.refreshDeviceTracks()
+        fun refreshDeviceTracks() = old.refresh()
 
-        fun importTracks(uris: List<Uri>) = session.importTracks(uris)
+        fun play(
+            songs: List<TrackId>,
+            from: TrackId? = null,
+        ) = old.play(songs, from)
 
-        fun importFolder(treeUri: Uri) = session.importFolder(treeUri)
+        fun shuffle(songs: List<TrackId>) = old.shuffle(songs)
 
-        fun removeMediaRoot(uriStr: String) = session.removeMediaRoot(uriStr)
+        fun playNext(song: TrackId) = old.playNext(song)
 
-        fun rescanMediaRoots() = session.rescanMediaRoots()
+        fun enqueue(song: TrackId) = old.enqueue(song)
 
-        fun trackOverride(uri: TrackId): LibraryTrack? = session.trackOverride(uri)
+        /** A picked folder is remembered by Settings, and the Library looks through the phone's music again. */
+        fun importFolder(treeUri: Uri) {
+            runCatching { application.contentResolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            old.addMusicFolder(treeUri.toString())
+        }
 
-        suspend fun trackInfoFor(uri: TrackId): LibraryTrack = session.trackInfoFor(uri)
+        fun removeMediaRoot(uriStr: String) = old.removeMusicFolder(uriStr)
+
+        fun rescanMediaRoots() = old.rescan()
+
+        fun trackInfoFor(uri: TrackId): LibraryTrack = old.trackInfo(uri)
 
         fun saveTrackInfo(
             uri: TrackId,
             title: String,
             artist: String,
             album: String,
-            genre: String,
-            year: Int,
-            trackNo: Int,
-            comment: String,
-        ) = session.saveTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
+        ) = old.saveTrackInfo(uri, title, artist, album)
 
+        /** Writes the edit into the audio file itself, keeping its album artist; see [TagWriteOutcome] for the result. */
         suspend fun writeTrackInfo(
             uri: TrackId,
             title: String,
@@ -144,45 +143,41 @@ class LibraryViewModel
             year: Int,
             trackNo: Int,
             comment: String,
-        ): TagWriteOutcome = session.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
+        ): TagWriteOutcome =
+            withContext(Dispatchers.IO) {
+                val target = uri.toUri()
+                val resolver = application.contentResolver
+                val existing = NativeTags.read(resolver, target)
+                val edit =
+                    TrackTagEdit(
+                        title = title,
+                        artist = artist,
+                        album = album,
+                        albumArtist = existing?.albumArtist.orEmpty(),
+                        genre = genre,
+                        comment = comment,
+                        year = year,
+                        track = trackNo,
+                    )
+                NativeTags.write(resolver, target, edit)
+            }
 
-        fun createMusicPlaylist(name: String) = session.createMusicPlaylist(name)
-
-        suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult = session.importPlaylistFile(uri)
-
-        fun renameMusicPlaylist(
-            oldName: String,
-            newName: String,
-        ): Boolean = session.renameMusicPlaylist(oldName, newName)
-
-        fun moveMusicPlaylistTrack(
+        fun createMusicPlaylist(
             name: String,
-            from: Int,
-            to: Int,
-        ) = session.moveMusicPlaylistTrack(name, from, to)
+            songs: List<TrackId>,
+        ) = old.createPlaylist(name, songs)
 
-        fun deleteMusicPlaylist(name: String) = session.deleteMusicPlaylist(name)
+        fun importPlaylistFile(uri: Uri) = old.importPlaylist(uri.toString())
 
-        fun addTrackToPlaylist(
-            playlist: String,
-            uri: TrackId,
-        ) = session.addTrackToPlaylist(playlist, uri)
+        fun deleteMusicPlaylist(name: String) = old.deletePlaylist(name)
 
-        fun removeTrackFromPlaylist(
-            playlist: String,
-            uri: TrackId,
-        ) = session.removeTrackFromPlaylist(playlist, uri)
+        fun playPlaylist(playlist: String) = old.playPlaylist(playlist)
 
-        fun playPlaylist(
-            playlist: String,
-            startIndex: Int = 0,
-        ) = session.playPlaylist(playlist, startIndex)
+        fun saveSmartPlaylist(playlist: SmartPlaylist) = old.saveSmartPlaylist(playlist)
 
-        fun saveSmartPlaylist(playlist: SmartPlaylist) = session.saveSmartPlaylist(playlist)
+        fun deleteSmartPlaylist(name: String) = old.deleteSmartPlaylist(name)
 
-        fun deleteSmartPlaylist(name: String) = session.deleteSmartPlaylist(name)
+        fun resolveSmartPlaylist(playlist: SmartPlaylist): List<DeviceTrack> = old.resolveSmartPlaylist(playlist)
 
-        fun resolveSmartPlaylist(playlist: SmartPlaylist): List<DeviceTrack> = session.resolveSmartPlaylist(playlist)
-
-        fun playSmartPlaylist(playlist: SmartPlaylist) = session.playSmartPlaylist(playlist)
+        fun playSmartPlaylist(playlist: SmartPlaylist) = old.playSmartPlaylist(playlist)
     }

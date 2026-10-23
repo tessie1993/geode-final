@@ -33,6 +33,7 @@ class PlayerViewModel
     constructor(
         private val sessions: PlayerSessionProvider,
         private val playback: OldScreenPlayback,
+        private val library: OldScreenLibrary,
     ) : ViewModel() {
         private val session: PlayerSession = sessions.get()
         private val visualizer: VisualizerRepository = session.visualizerRepository
@@ -59,7 +60,7 @@ class PlayerViewModel
 
         val historyTick: StateFlow<Int> get() = playback.historyTick
 
-        val favourites: StateFlow<Set<TrackId>> get() = session.favourites
+        val favourites: StateFlow<Set<TrackId>> get() = library.favourites
 
         val lyrics: StateFlow<Lyrics?> get() = session.lyrics
 
@@ -119,7 +120,9 @@ class PlayerViewModel
 
         fun currentTrackUri(): TrackId? = session.currentTrackUri()
 
-        fun toggleFavourite(uri: TrackId? = null) = session.toggleFavourite(uri)
+        fun toggleFavourite(uri: TrackId? = null) {
+            (uri ?: currentTrackUri())?.let(library::toggleFavourite)
+        }
 
         fun cycleAbLoop() = playback.cycleAbLoop()
 
@@ -142,21 +145,10 @@ class PlayerViewModel
 
         fun shuffleAllHistory() = playback.shuffleAllHistory()
 
-        /** Plays [uri] within the list it was browsed in, or the phone's songs when there is none. */
-        fun playTrack(uri: TrackId) {
-            val context = PlaybackQueue.contextFor(uri, emptyList(), session.deviceTracks.value, session.library.value.tracks)
-            playback.playFrom(context, uri)
-        }
-
         fun playFrom(
             tracks: List<QueueTrack>,
             startUri: TrackId,
         ) = playback.playFrom(tracks, startUri)
-
-        fun playAll(
-            tracks: List<QueueTrack>,
-            shuffled: Boolean = false,
-        ) = playback.playAll(tracks, shuffled)
 
         fun open(uris: List<Uri>) = playback.open(uris)
 

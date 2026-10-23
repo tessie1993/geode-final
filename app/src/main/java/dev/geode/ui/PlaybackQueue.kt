@@ -22,19 +22,5 @@ object PlaybackQueue {
         return Window(tracks.subList(from, from + MAX_QUEUE), at - from)
     }
 
-    fun contextFor(
-        uri: TrackId,
-        browse: List<QueueTrack>,
-        deviceTracks: List<DeviceTrack>,
-        libraryTracks: List<LibraryTrack>,
-    ): List<QueueTrack> {
-        browse.takeIf { list -> list.any { it.uri == uri } }?.let { return it }
-        deviceTracks.takeIf { list -> list.any { it.uri == uri } }?.let { return it.map(::queueTrack) }
-        libraryTracks.takeIf { list -> list.any { it.uri == uri } }?.let { return it.map(::queueTrack) }
-        return listOf(QueueTrack(uri))
-    }
-
     fun queueTrack(track: DeviceTrack): QueueTrack = QueueTrack(track.uri, track.title, track.artist, track.duration)
-
-    fun queueTrack(track: LibraryTrack): QueueTrack = QueueTrack(track.uri, track.title, track.artist, track.duration)
 }

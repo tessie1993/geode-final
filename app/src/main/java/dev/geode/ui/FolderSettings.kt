@@ -145,7 +145,7 @@ internal fun MusicFoldersEditor(viewModel: LibraryViewModel) {
                 compact = true,
                 filled = false,
                 onClick = viewModel::rescanMediaRoots,
-                enabled = roots.isNotEmpty() && !scanning,
+                enabled = !scanning,
             ) {
                 Text(stringResource(if (scanning) R.string.folders_scanning else R.string.folders_rescan))
             }

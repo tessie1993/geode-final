@@ -14,7 +14,6 @@ import dev.geode.audio.AudioFxState
 import dev.geode.audio.MicCapture
 import dev.geode.data.EditorProjectStore
 import dev.geode.data.ExportDefaults
-import dev.geode.data.FavouritesRepository
 import dev.geode.data.FilePresetRepository
 import dev.geode.data.LfoStore
 import dev.geode.data.MilkPackImporter
@@ -24,10 +23,6 @@ import dev.geode.data.Preset
 import dev.geode.data.PresetFolders
 import dev.geode.data.PresetRepository
 import dev.geode.data.PresetStore
-import dev.geode.data.SharedPrefsFavouritesRepository
-import dev.geode.data.SmartPlaylist
-import dev.geode.data.SmartPlaylistMatcher
-import dev.geode.data.TagWriteOutcome
 import dev.geode.engine.types.Hz
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
@@ -72,7 +67,7 @@ import java.io.File
 
 /**
  * What is left of the old app's hub until the switch-over (#17) finishes: the Visual, the old
- * Customize and preset tools, the old Library index, Settings and Studio.
+ * Customize and preset tools, Settings and Studio. The Library is its own app-scoped store (#17).
  *
  * Playback is no longer here. The music, the queue and the history belong to the app-scoped
  * [Playback] store; this follows it for what the Visual and the old screens need (the current song
@@ -99,9 +94,6 @@ class PlayerSession internal constructor(
     private val container = application.geodeContainer
 
     private val prefsFiles = container.prefsFiles
-
-    private val favouritesRepository: FavouritesRepository =
-        SharedPrefsFavouritesRepository(prefsFiles.favourites, storeScope)
 
     private val presetRepository: PresetRepository = FilePresetRepository(PresetStore(application))
 
@@ -185,12 +177,6 @@ class PlayerSession internal constructor(
     }
 
     val exportState: StateFlow<ExportUiState> get() = exportController.exportState
-
-    private val musicLibrary = MusicLibraryController(application, prefsFiles.library, scope)
-
-    val library: StateFlow<LibraryState> get() = musicLibrary.library
-
-    val trackOverrides: StateFlow<Map<TrackId, LibraryTrack>> get() = musicLibrary.trackOverrides
 
     val userDataLoaded: StateFlow<Boolean> get() = oldSettings.loaded
 
@@ -336,8 +322,6 @@ class PlayerSession internal constructor(
     /** The song Playback has loaded, read from its state: Playback owns the queue (ADR-0004). */
     private val currentUri: Uri? get() = oldScreens.currentTrack()?.toUri()
 
-    val favourites: StateFlow<Set<TrackId>> get() = favouritesRepository.favourites
-
     private val analysis: TrackAnalysisController =
         TrackAnalysisController(
             application,
@@ -368,114 +352,7 @@ class PlayerSession internal constructor(
 
     val morphFade: SharedFlow<Float> get() = visual.morphFade
 
-    val deviceTracks: StateFlow<List<DeviceTrack>> get() = musicLibrary.deviceTracks
-
-    val mediaRoots: StateFlow<Set<String>> get() = musicLibrary.mediaRoots
-
-    val libraryScanning: StateFlow<Boolean> get() = musicLibrary.libraryScanning
-
-    fun refreshDeviceTracks() = musicLibrary.refreshDeviceTracks()
-
-    fun importTracks(uris: List<Uri>) = musicLibrary.importTracks(uris)
-
-    fun trackOverride(uri: TrackId): LibraryTrack? = musicLibrary.trackOverride(uri)
-
-    suspend fun trackInfoFor(uri: TrackId): LibraryTrack = musicLibrary.trackInfoFor(uri)
-
-    fun saveTrackInfo(
-        uri: TrackId,
-        title: String,
-        artist: String,
-        album: String,
-        genre: String,
-        year: Int,
-        trackNo: Int,
-        comment: String,
-    ) = musicLibrary.saveTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
-
-    suspend fun writeTrackInfo(
-        uri: TrackId,
-        title: String,
-        artist: String,
-        album: String,
-        genre: String,
-        year: Int,
-        trackNo: Int,
-        comment: String,
-    ): TagWriteOutcome = musicLibrary.writeTrackInfo(uri, title, artist, album, genre, year, trackNo, comment)
-
-    fun importFolder(treeUri: Uri) = musicLibrary.importFolder(treeUri)
-
-    fun removeMediaRoot(uriStr: String) = musicLibrary.removeMediaRoot(uriStr)
-
-    fun rescanMediaRoots() = musicLibrary.rescanMediaRoots()
-
-    fun createMusicPlaylist(name: String) = musicLibrary.createMusicPlaylist(name)
-
-    suspend fun importPlaylistFile(uri: Uri): PlaylistImportResult = musicLibrary.importPlaylistFile(uri)
-
-    fun renameMusicPlaylist(
-        oldName: String,
-        newName: String,
-    ): Boolean = musicLibrary.renameMusicPlaylist(oldName, newName)
-
-    fun moveMusicPlaylistTrack(
-        name: String,
-        from: Int,
-        to: Int,
-    ) = musicLibrary.moveMusicPlaylistTrack(name, from, to)
-
-    fun deleteMusicPlaylist(name: String) = musicLibrary.deleteMusicPlaylist(name)
-
-    fun addTrackToPlaylist(
-        playlist: String,
-        uri: TrackId,
-    ) = musicLibrary.addTrackToPlaylist(playlist, uri)
-
-    fun removeTrackFromPlaylist(
-        playlist: String,
-        uri: TrackId,
-    ) = musicLibrary.removeTrackFromPlaylist(playlist, uri)
-
-    fun playPlaylist(
-        playlist: String,
-        startIndex: Int = 0,
-    ) {
-        val uris =
-            library.value.playlists
-                .firstOrNull { it.name == playlist }
-                ?.trackUris
-                .orEmpty()
-        if (uris.isEmpty()) return
-        val byUri = library.value.tracks.associateBy { it.uri }
-        val tracks = uris.map { u -> byUri[u]?.let(PlaybackQueue::queueTrack) ?: QueueTrack(u) }
-        oldScreens.playFrom(tracks, uris[startIndex.coerceIn(0, uris.size - 1)])
-    }
-
-    fun saveSmartPlaylist(playlist: SmartPlaylist) = musicLibrary.saveSmartPlaylist(playlist)
-
-    fun deleteSmartPlaylist(name: String) = musicLibrary.deleteSmartPlaylist(name)
-
-    /** A smart playlist's songs; "play count" counts the plays in Playback's history (#146 replaces this). */
-    fun resolveSmartPlaylist(playlist: SmartPlaylist): List<DeviceTrack> {
-        val plays =
-            playback.state.value.history
-                .groupingBy { it.track.id }
-                .eachCount()
-        return SmartPlaylistMatcher.resolve(playlist, deviceTracks.value, { plays[it] ?: 0 }, favourites.value)
-    }
-
-    fun playSmartPlaylist(playlist: SmartPlaylist) {
-        val tracks = resolveSmartPlaylist(playlist).map(PlaybackQueue::queueTrack)
-        if (tracks.isNotEmpty()) oldScreens.playFrom(tracks, tracks.first().uri)
-    }
-
     fun currentTrackUri(): TrackId? = oldScreens.currentTrack()
-
-    fun toggleFavourite(uri: TrackId? = null) {
-        val track = uri ?: currentTrackUri() ?: return
-        storeScope.launch { favouritesRepository.toggle(track) }
-    }
 
     val presetFolders: StateFlow<PresetFolders> get() = presetLibrary.folders
 
@@ -748,9 +625,7 @@ class PlayerSession internal constructor(
             oldSettings.loaded()
             captureController.start()
         }
-        musicLibrary.refreshNumericTitles()
         presetLibrary.refreshInitial()
-        musicLibrary.refresh()
         textureController.refresh()
         followPlayback()
     }
