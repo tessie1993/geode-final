@@ -82,6 +82,44 @@ TEST(ThermalGovernor, RendersArePinnedToFull) {
     EXPECT_EQ(governor.tier(), ThermalTier::Reduced);
 }
 
+TEST(ThermalGovernor, VisualQualityIsACeilingUnderTheHeat) {
+    ThermalGovernor governor;
+    EXPECT_FLOAT_EQ(governor.qualityCeiling(), 1.0f);
+    governor.setQualityCeiling(0.85f);
+    EXPECT_FLOAT_EQ(governor.renderCeiling(), 0.85f);
+    // Hotter than the chosen quality: the heat wins.
+    governor.setPlatformStatus(kStatusModerate);
+    run(governor, 5.0f);
+    ASSERT_EQ(governor.tier(), ThermalTier::Reduced);
+    EXPECT_FLOAT_EQ(governor.renderCeiling(), thermalTierInfo(ThermalTier::Reduced).renderScale);
+}
+
+TEST(ThermalGovernor, VisualQualityLowersACoolPhone) {
+    ThermalGovernor governor;
+    governor.setQualityCeiling(0.7f);
+    EXPECT_EQ(governor.tier(), ThermalTier::Full);
+    EXPECT_FLOAT_EQ(governor.renderCeiling(), 0.7f);
+}
+
+TEST(ThermalGovernor, RendersIgnoreTheVisualQuality) {
+    ThermalGovernor governor;
+    governor.setQualityCeiling(0.7f);
+    governor.beginOffscreenRender();
+    EXPECT_FLOAT_EQ(governor.renderCeiling(), 1.0f);
+    governor.endOffscreenRender();
+    EXPECT_FLOAT_EQ(governor.renderCeiling(), 0.7f);
+}
+
+TEST(ThermalGovernor, VisualQualityIsKeptInRange) {
+    ThermalGovernor governor;
+    governor.setQualityCeiling(4.0f);
+    EXPECT_FLOAT_EQ(governor.qualityCeiling(), 1.0f);
+    governor.setQualityCeiling(0.1f);
+    EXPECT_FLOAT_EQ(governor.qualityCeiling(), thermalTierInfo(ThermalTier::Minimal).renderScale);
+    governor.setQualityCeiling(NAN);
+    EXPECT_FLOAT_EQ(governor.qualityCeiling(), 1.0f);
+}
+
 TEST(ThermalGovernor, SlowFramesAloneDoNotHeatIt) {
     // How busy the GPU is belongs to the load scale; the governor reads only the platform.
     ThermalGovernor governor;

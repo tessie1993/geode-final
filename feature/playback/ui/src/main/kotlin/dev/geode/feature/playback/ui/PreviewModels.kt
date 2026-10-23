@@ -23,4 +23,7 @@ internal object PreviewModels {
             failure = PlaybackFailure.ENGINE_NOT_RESPONDING,
         )
     val idle = PlayerModel.IDLE
+
+    /** Playing with the A-B loop set, shaded on the seek bar. */
+    val looping = playing.copy(loop = LoopSpan(Millis(40_000), Millis(90_000)))
 }
