@@ -22,19 +22,22 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
   handlers' database tests.
 
-- **Smart playlists in the Library feature (#146, ADR-0003, ADR-0005).**
-  `:feature:library` now keeps smart playlists: a name, rules on title,
-  artist, album, folder, minutes long, days since added, play count or
-  favourite, match all or any, and an optional limit, with the same rules
-  and evaluation as the old smart playlist editor. The rules are evaluated
-  purely in Library's `:core` over the songs the Library shows, so a smart
-  playlist's songs follow every scan, edit, favourite and play; the clock is
-  read hourly for the days-since-added rule. They are listed after Playback's
-  playlists, open to their songs, and play, queue, export or save as a
-  playlist like any group. Their rules are kept in the Library's Room
-  database, which moves to version 2 with a tested migration. The new
-  smart playlist editor is stateless with previews and screenshots. Built
-  alongside the old editor; wired in at the switch-over (#17).
+- **Studio as a feature: Projects and the library (#21, ADR-0003,
+  ADR-0005).** `:feature:studio:{api,core,handlers,ui}`. Users create, rename
+  and delete Projects, choose the default Project (there is no built-in
+  one), and move videos between Projects. Deleting a Project that still has
+  videos asks "Delete N videos too?": yes deletes them with their files, no
+  moves them to another Project; nothing is deleted silently. Every video is
+  saved to one folder picked with the system folder picker in Studio's own
+  first-run step and kept in Settings > Default paths as the new **Video
+  save folder** (`video_folder_uri`); Studio follows it through Settings'
+  interface. Projects, videos and the default Project live in Studio's own
+  Room database, which the render queue (#22) will share.
+  `StudioCommand.AddVideos` is how Renders, Recordings, Edits, Shorts and the
+  old `Movies/Geode` exports (imported once at the switch-over, #17) enter
+  the library: without a Project they go to the default one, and with no
+  default they are handed back to ask about. Built alongside the old Studio;
+  wired in at the switch-over (#17).
 
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the

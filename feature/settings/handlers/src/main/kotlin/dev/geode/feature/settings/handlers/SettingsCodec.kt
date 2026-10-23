@@ -155,6 +155,7 @@ internal object SettingsCodec {
 
     private fun Reader.folders(): FolderSettings =
         FolderSettings(
+            videoFolder = string(K.VIDEO_FOLDER)?.let(::FolderUri),
             presetMirror = string(K.PRESET_MIRROR)?.let(::FolderUri),
             musicFolders = strings(K.MUSIC_FOLDERS).map(::FolderUri).toSet(),
             presetFolder = string(K.PRESET_FOLDER)?.let(::FolderUri),
@@ -231,6 +232,7 @@ internal object SettingsCodec {
             K.PRESET_MIRROR to values.folders.presetMirror?.value,
             K.MUSIC_FOLDERS to values.folders.musicFolders.mapTo(mutableSetOf()) { it.value },
             K.PRESET_FOLDER to values.folders.presetFolder?.value,
+            K.VIDEO_FOLDER to values.folders.videoFolder?.value,
             K.SAFETY_ACKNOWLEDGED to onboarding.safetyAcknowledged,
             K.SETUP_DONE to onboarding.setupDone,
             K.TUTORIAL_SEEN to onboarding.tutorialSeen,
