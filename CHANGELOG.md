@@ -11,6 +11,34 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **No screenshot or golden-image tests (#184).** The owner dropped them to
+  save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
+  every `*ScreenshotTest`, their goldens and the `geode.screenshots`
+  convention plugin), and so do the Visual golden frames
+  (`tools/glslcheck/goldens` and `tools/ci/compare_frames.py`) and the
+  `[record-goldens]` mechanism. The shader job stays as "Shaders compile and
+  render": every Style still has to compile, draw a non-black frame and
+  survive a resize, and every Shared core effect has to draw. Previews stay
+  for the IDE; Robolectric stays for `:app`'s Robolectric tests and the
+  handlers' database tests.
+
+- **Studio as a feature: Projects and the library (#21, ADR-0003,
+  ADR-0005).** `:feature:studio:{api,core,handlers,ui}`. Users create, rename
+  and delete Projects, choose the default Project (there is no built-in
+  one), and move videos between Projects. Deleting a Project that still has
+  videos asks "Delete N videos too?": yes deletes them with their files, no
+  moves them to another Project; nothing is deleted silently. Every video is
+  saved to one folder picked with the system folder picker in Studio's own
+  first-run step and kept in Settings > Default paths as the new **Video
+  save folder** (`video_folder_uri`); Studio follows it through Settings'
+  interface. Projects, videos and the default Project live in Studio's own
+  Room database, which the render queue (#22) will share.
+  `StudioCommand.AddVideos` is how Renders, Recordings, Edits, Shorts and the
+  old `Movies/Geode` exports (imported once at the switch-over, #17) enter
+  the library: without a Project they go to the default one, and with no
+  default they are handed back to ask about. Built alongside the old Studio;
+  wired in at the switch-over (#17).
+
 - **The Visuals tab and full-screen visual mode as a feature (#43,
   ADR-0003, ADR-0005).** `:feature:visuals:{api,core,handlers,ui}` lists the
   Styles by family with Favourites, Recent, search and folders the person

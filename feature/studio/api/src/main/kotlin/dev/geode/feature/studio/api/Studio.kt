@@ -1,0 +1,198 @@
+package dev.geode.feature.studio.api
+
+import dev.geode.engine.types.Millis
+import dev.geode.kernel.Feature
+
+/**
+ * Studio as everything outside it sees it (ADR-0003, ADR-0005): the Projects, the videos inside them,
+ * the default Project and the save folder, and the Commands that change them (#21). Rendering,
+ * recording, editing and Shorts add to this feature (#22–#26).
+ */
+typealias Studio = Feature<StudioState, StudioCommand, StudioFact>
+
+@JvmInline
+value class ProjectId(
+    val value: Long,
+) {
+    override fun toString(): String = "project $value"
+}
+
+@JvmInline
+value class VideoId(
+    val value: Long,
+) {
+    override fun toString(): String = "video $value"
+}
+
+/**
+ * A Project the user created and named (`CONTEXT.md`). It groups videos; it has no folder of its own,
+ * because every video is saved to the one [SaveFolder] (owner decision on #21).
+ */
+data class Project(
+    val id: ProjectId,
+    val name: String,
+    val createdAt: Millis,
+)
+
+/** What a video is (`CONTEXT.md`). */
+enum class VideoKind {
+    RENDER,
+    RECORDING,
+    EDIT,
+    SHORT,
+}
+
+enum class Shape {
+    LANDSCAPE,
+    PORTRAIT,
+    SQUARE,
+}
+
+/** A video's shape from its size. */
+fun shapeOf(
+    width: Int,
+    height: Int,
+): Shape =
+    when {
+        width > height -> Shape.LANDSCAPE
+        width < height -> Shape.PORTRAIT
+        else -> Shape.SQUARE
+    }
+
+/**
+ * A finished video that is not in the library yet, as whatever made it hands it to Studio with
+ * [StudioCommand.AddVideos]: a Render (#22), a Recording (#23), an Edit or Short (#24, #25), or an old
+ * Studio export imported once at the switch-over (#17). Only the common fields (#21); re-render data
+ * comes with #22. [file] and [thumbnail] are content uris; [song] is the title of the song it was made
+ * to, blank when there was none or it is not known.
+ */
+data class NewVideo(
+    val kind: VideoKind,
+    val name: String,
+    val file: String,
+    val thumbnail: String?,
+    val length: Millis,
+    val width: Int,
+    val height: Int,
+    val song: String,
+)
+
+/** One video in the library, in exactly one [project]. The fields are [NewVideo]'s. */
+data class Video(
+    val id: VideoId,
+    val project: ProjectId,
+    val kind: VideoKind,
+    val name: String,
+    val file: String,
+    val thumbnail: String?,
+    val length: Millis,
+    val width: Int,
+    val height: Int,
+    val song: String,
+) {
+    val shape: Shape get() = shapeOf(width, height)
+}
+
+/**
+ * The one folder Studio saves every video to. It is a Settings value (Settings > Default paths,
+ * #101) that Studio follows through Settings' interface; it is picked in Studio's first-run step.
+ */
+sealed interface SaveFolder {
+    /** Settings are still being read. */
+    data object Unknown : SaveFolder
+
+    /** Nothing picked yet: Studio's first-run step is due. */
+    data object NotChosen : SaveFolder
+
+    /** [uri] is the persisted document-tree uri the system folder picker returned. */
+    data class Chosen(
+        val uri: String,
+    ) : SaveFolder
+}
+
+/**
+ * The library. [loading] until the saved library is read; Commands sent meanwhile wait in [pending]
+ * and are carried out, in order, once it is. [projects] are the newest first. [defaultProject] is the
+ * Project the user chose for videos that arrive without one; null when none is chosen.
+ */
+data class StudioState(
+    val loading: Boolean = true,
+    val projects: List<Project> = emptyList(),
+    val videos: List<Video> = emptyList(),
+    val defaultProject: ProjectId? = null,
+    val saveFolder: SaveFolder = SaveFolder.Unknown,
+    val pending: List<StudioCommand> = emptyList(),
+) {
+    fun videosIn(project: ProjectId): List<Video> = videos.filter { it.project == project }
+
+    /** Whether Studio's first-run step should be shown: Settings are read and no save folder is picked. */
+    val needsSetup: Boolean get() = saveFolder == SaveFolder.NotChosen
+}
+
+/** What deleting a Project does with the videos still in it. Nothing is ever deleted silently. */
+sealed interface VideosOnDelete {
+    /** "Delete N videos too?" Yes: the videos and their files go with the Project. */
+    data object Delete : VideosOnDelete
+
+    /** No: the videos move to [project] and their files stay. */
+    data class MoveTo(
+        val project: ProjectId,
+    ) : VideosOnDelete
+}
+
+sealed interface StudioCommand {
+    /** A new Project named [name]; [makeDefault] also makes it the default Project. */
+    data class CreateProject(
+        val name: String,
+        val makeDefault: Boolean,
+    ) : StudioCommand
+
+    data class RenameProject(
+        val project: ProjectId,
+        val name: String,
+    ) : StudioCommand
+
+    /** The user's choice of default Project. */
+    data class SetDefaultProject(
+        val project: ProjectId,
+    ) : StudioCommand
+
+    /** [videos] says what happens to the videos still in it; it is not looked at when there are none. */
+    data class DeleteProject(
+        val project: ProjectId,
+        val videos: VideosOnDelete,
+    ) : StudioCommand
+
+    data class MoveVideo(
+        val video: VideoId,
+        val to: ProjectId,
+    ) : StudioCommand
+
+    /**
+     * Puts finished videos into [project], or into the default Project when [project] is null or no
+     * longer exists. With neither, nothing is added and [StudioFact.ProjectNeeded] hands the videos
+     * back, so the caller asks the user which Project; nothing is dropped silently.
+     */
+    data class AddVideos(
+        val videos: List<NewVideo>,
+        val project: ProjectId? = null,
+    ) : StudioCommand
+}
+
+/** One-off facts Studio owns. */
+sealed interface StudioFact {
+    data class ProjectCreated(
+        val project: ProjectId,
+    ) : StudioFact
+
+    /** [videos] were saved into [project]. */
+    data class VideosAdded(
+        val project: ProjectId,
+        val videos: List<VideoId>,
+    ) : StudioFact
+
+    /** [videos] came without a Project while no default Project is chosen: ask the user where they go. */
+    data class ProjectNeeded(
+        val videos: List<NewVideo>,
+    ) : StudioFact
+}
