@@ -17,18 +17,26 @@ internal val POSITION_REFRESH = Millis(250)
 /**
  * The player's place (ADR-0003): the only part that touches Playback. It reads Playback's state,
  * works out the position from the clock between announcements (ADR-0004), and turns the screen's
- * actions into Commands. `:app` wires it at the switch-over (#17).
+ * actions into Commands. The actions that are not Playback's (opening the queue or the tools, the
+ * favourite heart) go to [onOther], for the App UI and Library; [favourite] is Library's to say.
  */
 @Composable
 fun PlayerRoute(
     playback: Playback,
     elapsedNow: () -> Millis,
     modifier: Modifier = Modifier,
+    favourite: Boolean? = null,
+    onOther: (PlayerAction) -> Unit = {},
 ) {
     val state by playback.state.collectAsStateWithLifecycle()
     val now by rememberNow(moving = state.player is PlayerState.Playing, elapsedNow)
     val model = state.toPlayerModel(now)
-    PlayerScreen(model, onAction = { action -> action.toCommand(model)?.let(playback::send) }, modifier)
+    PlayerScreen(
+        model,
+        onAction = { action -> action.toCommand(model)?.let(playback::send) ?: onOther(action) },
+        modifier,
+        favourite,
+    )
 }
 
 /** The mini-player's place: as [PlayerRoute], and [onExpand] opens the player. */

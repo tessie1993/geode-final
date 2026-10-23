@@ -16,11 +16,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,14 +50,17 @@ import dev.geode.engine.types.Millis
 import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
- * The full player (#34): what is playing, where it is, and the transport. Stateless (ADR-0003): it
- * draws [model] and sends every tap to [onAction].
+ * The full player (#34): what is playing, where it is, the transport, and the Player controls' options:
+ * shuffle, repeat, the favourite heart, the queue and the listening tools (#17). Stateless (ADR-0003):
+ * it draws [model] and sends every tap to [onAction]. [favourite] is whether the playing song is a
+ * favourite, Library's to say; the heart is hidden while it is null.
  */
 @Composable
 fun PlayerScreen(
     model: PlayerModel,
     onAction: (PlayerAction) -> Unit,
     modifier: Modifier = Modifier,
+    favourite: Boolean? = null,
 ) {
     Surface(modifier.fillMaxSize()) {
         Column(
@@ -65,6 +72,7 @@ fun PlayerScreen(
             Titles(model)
             Timeline(model, onAction)
             Transport(model, onAction)
+            Options(model, favourite, onAction)
             Status(model)
         }
     }
@@ -163,6 +171,37 @@ private fun Transport(
         }
         IconButton(onClick = { onAction(PlayerAction.Next) }, enabled = hasTrack && model.canGoNext) {
             Icon(Icons.Filled.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.sideIcon))
+        }
+    }
+}
+
+@Composable
+private fun Options(
+    model: PlayerModel,
+    favourite: Boolean?,
+    onAction: (PlayerAction) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ShuffleButton(model.shuffle) { onAction(PlayerAction.ToggleShuffle) }
+        RepeatButton(model.repeat) { onAction(PlayerAction.CycleRepeat) }
+        if (favourite != null) {
+            IconButton(onClick = { onAction(PlayerAction.ToggleFavourite) }, enabled = model.track != null) {
+                if (favourite) {
+                    Icon(
+                        Icons.Filled.Favorite,
+                        stringResource(R.string.playback_action_unfavourite),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    Icon(Icons.Filled.FavoriteBorder, stringResource(R.string.playback_action_favourite))
+                }
+            }
+        }
+        IconButton(onClick = { onAction(PlayerAction.OpenQueue) }) {
+            Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.playback_action_open_queue))
+        }
+        IconButton(onClick = { onAction(PlayerAction.OpenTools) }) {
+            Icon(Icons.Filled.Tune, stringResource(R.string.playback_action_open_tools))
         }
     }
 }

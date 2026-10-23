@@ -2,6 +2,7 @@ package dev.geode.feature.playback.ui
 
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.playback.api.ListeningOptions
 import dev.geode.feature.playback.api.LoadReason
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.PlaybackCommand
@@ -9,6 +10,7 @@ import dev.geode.feature.playback.api.PlaybackFailure
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
+import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -72,6 +74,39 @@ class PlayerModelTest {
         assertEquals(PlaybackCommand.Previous, PlayerAction.Previous.toCommand(playing))
         assertEquals(PlaybackCommand.SeekTo(Millis(3_000)), PlayerAction.SeekTo(Millis(3_000)).toCommand(playing))
         assertNull(PlayerAction.Expand.toCommand(playing))
+    }
+
+    @Test
+    fun `the Player controls show Playback's shuffle and repeat`() {
+        val options = ListeningOptions(shuffle = true, repeat = RepeatMode.ONE)
+
+        val model = PlaybackState(PlayerState.Playing(queue, moving), options = options).toPlayerModel(Millis.ZERO)
+
+        assertEquals(true, model.shuffle)
+        assertEquals(RepeatMode.ONE, model.repeat)
+        assertEquals(false, PlaybackState(PlayerState.Idle).toPlayerModel(Millis.ZERO).shuffle)
+    }
+
+    @Test
+    fun `shuffle flips and repeat goes off, the queue, this song, off`() {
+        val model = PlaybackState(PlayerState.Playing(queue, moving)).toPlayerModel(Millis.ZERO)
+
+        assertEquals(PlaybackCommand.SetShuffle(true), PlayerAction.ToggleShuffle.toCommand(model))
+        assertEquals(PlaybackCommand.SetShuffle(false), PlayerAction.ToggleShuffle.toCommand(model.copy(shuffle = true)))
+        assertEquals(
+            listOf(RepeatMode.ALL, RepeatMode.ONE, RepeatMode.OFF).map(PlaybackCommand::SetRepeat),
+            listOf(RepeatMode.OFF, RepeatMode.ALL, RepeatMode.ONE).map { PlayerAction.CycleRepeat.toCommand(model.copy(repeat = it)) },
+        )
+    }
+
+    @Test
+    fun `opening the queue or the tools, and the heart, are not Playback's`() {
+        val model = PlaybackState(PlayerState.Playing(queue, moving)).toPlayerModel(Millis.ZERO)
+
+        assertEquals(
+            listOf(null, null, null),
+            listOf(PlayerAction.OpenQueue, PlayerAction.OpenTools, PlayerAction.ToggleFavourite).map { it.toCommand(model) },
+        )
     }
 
     @Test
