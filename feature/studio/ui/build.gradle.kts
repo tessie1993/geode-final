@@ -1,5 +1,5 @@
 // Studio's stateless screens (ADR-0003, ADR-0005): the Project list, a Project's page and a video's
-// page (#21), with their previews and Roborazzi screenshots. Built alongside the old Studio screen and
+// page (#21), with their previews. Built alongside the old Studio screen and
 // wired into the app at the switch-over (#17).
 plugins {
     id("geode.feature-ui")
