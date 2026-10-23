@@ -107,7 +107,7 @@ jobs:
       - name: Provenance
         run: ./gradlew checkEngineProvenance --continue --stacktrace --no-daemon
       - name: Android lint (every Android module)
-        run: ./gradlew :app:lintDebug :design:lintDebug :engine:scenes:lintDebug :engine:audio-android:lintDebug :feature:capture:handlers:lintDebug :feature:capture:ui:lintDebug :feature:playback:handlers:lintDebug :feature:playback:ui:lintDebug :feature:settings:handlers:lintDebug :feature:settings:ui:lintDebug :feature:library:handlers:lintDebug :feature:library:ui:lintDebug :feature:diagnostics:handlers:lintDebug :feature:diagnostics:ui:lintDebug :feature:visuals:handlers:lintDebug :feature:visuals:ui:lintDebug :feature:studio:handlers:lintDebug :feature:studio:ui:lintDebug :feature:customization:ui:lintDebug --continue --stacktrace --no-daemon
+        run: ./gradlew lintDebug --continue --stacktrace --no-daemon
       - name: Show lint findings
         if: failure()
         run: |
@@ -179,6 +179,10 @@ jobs:
             task: ":design:pitestDebug"
             dir: design
             name: design
+          - module: ":design:elements:water"
+            task: ":design:elements:water:pitestDebug"
+            dir: design/elements/water
+            name: design-elements-water
           - module: ":arch:kernel"
             task: ":arch:kernel:pitest"
             dir: arch/kernel
