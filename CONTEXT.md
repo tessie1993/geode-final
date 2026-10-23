@@ -31,15 +31,15 @@ The small player above the Bar. Tapping it always opens the full-screen Visual, 
 _Avoid_: now-playing bar, player bar
 
 **Player controls**:
-Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual every other touch belongs to the Style's touch interaction, so the controls appear only on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets.
+Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual every other touch belongs to the Style's touch interaction, so the controls appear only on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets. Music also holds the queue. Geode shows no lyrics.
 _Avoid_: transport, media controls
 
 **Visuals off**:
-The battery-saving setting, in Settings > Battery beside Visual quality and the CPU/GPU save mode, that stops the Visual entirely: nothing draws it, so the player shows a still background, and no Render or Recording can be made. The Element and its Hero scene still run, and Studio still works with videos already saved.
+The battery-saving setting, in Settings > Battery beside Visual quality and the CPU/GPU save mode, that stops the Visual entirely: nothing draws it, so the player shows the Element's Hero scene as a still backdrop image, and no Render or Recording can be made. The Element and its Hero scene still run, and Studio still works with videos already saved.
 _Avoid_: low power mode, disable visualizer
 
 **Element**:
-One selectable skin for the App UI, named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
+One selectable skin for the App UI (Water first, and the one new users start in), named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
 _Avoid_: theme, style (a Style is a look for the Visual), skin pack, Theme pack
 
 **Hero scene**:
