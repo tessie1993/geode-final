@@ -26,6 +26,10 @@ Use the Graphify MCP tools (`mcp__graphify__*`, repository `tessie1993/geode-fin
 
 The graph reflects the last indexed commit (check `graph_stats` freshness). Confirm with the actual file before editing, and fall back to Grep/Read for files changed since indexing.
 
+## Web and Cloudflare tools
+
+Agents may use `WebFetch` and `WebSearch`, and the Cloudflare CLIs (`wrangler`, including via `npx wrangler`, and `cloudflared`). The environment's network already reaches the Cloudflare API and the npm registry; `wrangler` is not preinstalled, so run it with `npx --yes wrangler`. Cloudflare credentials come from the environment's secrets (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`), never from files in the repo.
+
 ## Builds and tests
 
 Never run Gradle, CMake or tests locally. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it. What each check gates and the mutation floors: `docs/ci.md`.
