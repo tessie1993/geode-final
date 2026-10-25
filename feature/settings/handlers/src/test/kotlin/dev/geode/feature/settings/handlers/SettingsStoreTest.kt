@@ -13,11 +13,13 @@ import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.core.SAVE_DELAY
+import dev.geode.kernel.ErrorChannel
 import dev.geode.kernel.FakeClock
 import dev.geode.kernel.FeatureFailure
-import dev.geode.kernel.inPlaceRuntime
+import dev.geode.kernel.FeatureRuntime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -32,10 +34,16 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.Executors
 
 /**
  * Settings end to end on a real DataStore file: migrated once from the old preferences, read when the
  * store starts, and saved once a burst of changes settles.
+ *
+ * DataStore hands its results back on its own thread, so the store runs on one worker thread here,
+ * as it does on the main thread in the app, and the test waits for that thread to [settle] before it
+ * looks or moves the clock. Run in place, the thread that finished the first read could still be
+ * applying the next commands, and arming their save timer, after the clock had already moved.
  */
 class SettingsStoreTest {
     @get:Rule
@@ -46,17 +54,23 @@ class SettingsStoreTest {
     private val scopes = mutableListOf<CoroutineScope>()
     private var legacyReads = 0
 
+    private val worker = Executors.newSingleThreadExecutor()
+    private val storeThread = worker.asCoroutineDispatcher()
+
     private val legacy: Map<String, Any?> =
         mapOf("gui_compact_player" to true, "gui_text_scale" to 1.2f, "gui_intent" to "WATCH", "shuffle" to true)
 
     private val file: File by lazy { File(folder.root, "geode-settings.preferences_pb") }
 
     @After
-    fun closeStores() = reopen()
+    fun closeStores() {
+        reopen()
+        worker.shutdownNow()
+    }
 
     @Test
     fun `the first start takes the old settings, unchanged`() {
-        val settings = settingsStore(dataStore(), inPlaceRuntime(clock, failures))
+        val settings = settingsStore(dataStore(), runtime())
 
         val values = settings.ready()
 
@@ -68,7 +82,7 @@ class SettingsStoreTest {
 
     @Test
     fun `the migration runs once and marks its version`() {
-        settingsStore(dataStore(), inPlaceRuntime(clock, failures)).ready()
+        settingsStore(dataStore(), runtime()).ready()
         reopen()
 
         val stored = runBlocking { dataStore().data.first() }
@@ -82,17 +96,18 @@ class SettingsStoreTest {
     @Test
     fun `a change is saved once the changes settle, and read back on the next start`() {
         val store = dataStore()
-        val settings = settingsStore(store, inPlaceRuntime(clock, failures))
+        val settings = settingsStore(store, runtime())
         settings.ready()
 
         settings.send(LookCommand.SetTextScale(1.1f))
         settings.send(LookCommand.SetTextScale(1.3f))
         settings.send(OnboardingCommand.FinishTutorial)
+        settle()
         clock.advanceBy(SAVE_DELAY)
         runBlocking { withTimeout(WAIT_MS) { store.data.first { it[floatPreferencesKey("gui_text_scale")] == 1.3f } } }
         reopen()
 
-        val again = settingsStore(dataStore(), inPlaceRuntime(clock, failures)).ready()
+        val again = settingsStore(dataStore(), runtime()).ready()
 
         assertEquals(1.3f, again.look.textScale)
         assertEquals(true, again.onboarding.tutorialSeen)
@@ -102,10 +117,11 @@ class SettingsStoreTest {
     @Test
     fun `nothing is written before the changes settle`() {
         val store = dataStore()
-        val settings = settingsStore(store, inPlaceRuntime(clock, failures))
+        val settings = settingsStore(store, runtime())
         settings.ready()
 
         settings.send(LookCommand.SetTextScale(1.1f))
+        settle()
 
         assertEquals(1.2f, runBlocking { store.data.first() }[floatPreferencesKey("gui_text_scale")])
         assertEquals(1, clock.pendingCount)
@@ -113,12 +129,17 @@ class SettingsStoreTest {
 
     @Test
     fun `a file that cannot be read starts from the defaults and says so`() {
-        val settings = settingsStore(Unreadable, inPlaceRuntime(clock, failures))
+        val settings = settingsStore(Unreadable, runtime())
 
         assertEquals(SettingsValues(), settings.ready())
         val reported = failures.map { "${it.feature}: ${it.message}" }
         assertEquals(listOf("settings: settings could not be read, using the defaults: disk gone"), reported)
     }
+
+    private fun runtime(): FeatureRuntime = FeatureRuntime(storeThread, storeThread, clock, ErrorChannel { failures += it })
+
+    /** Waits until the store's thread has run everything queued on it so far. */
+    private fun settle() = runBlocking(storeThread) {}
 
     private fun dataStore(): DataStore<Preferences> {
         val scope = CoroutineScope(SupervisorJob())
@@ -142,7 +163,7 @@ class SettingsStoreTest {
     private fun Settings.ready(): SettingsValues =
         runBlocking {
             withTimeout(WAIT_MS) { (state.first { it is SettingsState.Ready } as SettingsState.Ready).values }
-        }
+        }.also { settle() }
 
     private object Unreadable : DataStore<Preferences> {
         override val data: Flow<Preferences> = flow { throw IOException(GONE) }
