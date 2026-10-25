@@ -12,7 +12,8 @@ import dev.geode.design.forest.PebbleShape
  *
  * Water's colours and timings are the ones in its skin design (#105). Wood, Stone and Bioluminescence
  * carry placeholder values, taken from the forest themes they replace, until their own skin designs
- * land. No Element has art yet ([ElementArt.None]), so all of them draw in flat token colours.
+ * land. No Element has art yet ([ElementArt.None]), so all of them draw in flat token colours, except
+ * that Water's controls are painted as its sea-glass pebbles ([PartFinish.SEA_GLASS]).
  * `ElementContrastRulesTest` holds every set to WCAG AA.
  */
 object ElementSkins {
@@ -41,6 +42,7 @@ object ElementSkins {
             type = firstWaveType,
             shapes = pebbles(button = 22, chip = 16, card = 28, sheet = 36, uneven = 4),
             motion = ElementMotion(pressMillis = 90, releaseMillis = 220, focusMillis = 160, selectMillis = 400, pageMillis = 320),
+            finish = PartFinish.SEA_GLASS,
         )
 
     val Wood =
