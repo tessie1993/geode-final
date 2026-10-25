@@ -4,6 +4,7 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFact
@@ -112,6 +113,7 @@ class CustomizationReducerTest {
         )
     private val pickedSwitch = Edits.switchStyle(picksState.current, styles.manifestOf(JULIA), styles.manifestOf(picked.style))
     private val reset = Edits.setAutomations(zoomed, palettes)
+    private val keptA = CustomizationState(julia, compare = mapOf(CompareSlot.A to zoomed))
 
     private val rows: List<Row> =
         edits("set shared", CustomizationCommand.SetShared(SharedProperty.SPEED, 2f)) { Edits.setShared(it, SharedProperty.SPEED, 2f) } +
@@ -256,6 +258,38 @@ class CustomizationReducerTest {
                     fresh,
                     command(CustomizationCommand.LoadPreset(PresetId("Mine"))),
                     Next(fresh, listOf(Perform(CustomizationWork.LoadPreset(PresetId("Mine"))))),
+                ),
+                Row(
+                    "keep for A/B compare is not history",
+                    withUndo,
+                    command(CustomizationCommand.KeepForCompare(CompareSlot.A)),
+                    Next(withUndo.copy(compare = mapOf(CompareSlot.A to zoomed))),
+                ),
+                Row(
+                    "keep for A/B compare replaces what the slot kept",
+                    keptA,
+                    command(CustomizationCommand.KeepForCompare(CompareSlot.A)),
+                    Next(keptA.copy(compare = mapOf(CompareSlot.A to julia))),
+                ),
+                Row(
+                    "compare with a kept slot is an edit, the Automations kept",
+                    keptA.copy(current = Edits.setAutomations(julia, palettes)),
+                    command(CustomizationCommand.Compare(CompareSlot.A)),
+                    Next(
+                        CustomizationState(
+                            Edits.setAutomations(zoomed, palettes),
+                            undo = listOf(Edits.setAutomations(julia, palettes)),
+                            compare = keptA.compare,
+                        ),
+                        listOf(publish(Edits.setAutomations(zoomed, palettes))),
+                    ),
+                ),
+                Row("compare with an empty slot", keptA, command(CustomizationCommand.Compare(CompareSlot.B)), Next(keptA)),
+                Row(
+                    "compare with what is on screen already",
+                    CustomizationState(zoomed, compare = keptA.compare),
+                    command(CustomizationCommand.Compare(CompareSlot.A)),
+                    Next(CustomizationState(zoomed, compare = keptA.compare)),
                 ),
                 Row("apply a partial preset", fresh, command(CustomizationCommand.ApplyPreset(zoomPreset)), edited(fresh, zoomed)),
                 Row("a loaded partial preset", fresh, CustomizationEvent.PresetLoaded(zoomPreset), edited(fresh, zoomed)),

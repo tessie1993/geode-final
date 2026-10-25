@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <atomic>
 #include <memory>
 
 #include "geode/api/geode_api.h"
@@ -8,6 +9,9 @@ struct geode_dsp {
     geode_dsp(int sampleRate, int channels) : chain(sampleRate, channels) {}
 
     geode::audio::DspChain chain;
+    // A reset asked for from another thread (a seek or flush), carried out by the audio thread at the
+    // start of its next block, so it never clears filter state the audio thread is in the middle of.
+    std::atomic<bool> resetPending{false};
 };
 
 namespace {
@@ -70,11 +74,13 @@ void geode_dsp_set_limiter(geode_dsp* d, int enabled) {
 }
 
 void geode_dsp_reset(geode_dsp* d) {
-    if (d) d->chain.reset();
+    if (d) d->resetPending.store(true, std::memory_order_release);
 }
 
 void geode_dsp_process(geode_dsp* d, float* interleaved, size_t frames) {
-    if (d && interleaved && frames > 0) d->chain.process(interleaved, frames);
+    if (!d) return;
+    if (d->resetPending.exchange(false, std::memory_order_acq_rel)) d->chain.reset();
+    if (interleaved && frames > 0) d->chain.process(interleaved, frames);
 }
 
 void geode_dsp_set_sample_rate(geode_dsp* d, int sample_rate) {

@@ -51,6 +51,7 @@ class LibraryStoreTest {
     private val storage = FakeLibraryStorage()
     private val files = FakePlaylistFiles()
     private var tags = TagReader.NONE
+    private var writer = TagWriter.NONE
     private val failures = mutableListOf<FeatureFailure>()
     private val timers = FakeClock()
     private var wallClock = Millis(DAY)
@@ -58,7 +59,12 @@ class LibraryStoreTest {
     private fun store() =
         libraryStore(
             playback,
-            LibrarySources(scanner, { tags.read(it) }, storage, files, clock = { wallClock }),
+            LibrarySources(scanner, { tags.read(it) }, storage, files, clock = { wallClock }, tagWriter = {
+                song,
+                edit,
+                ->
+                writer.write(song, edit)
+            }),
             inPlaceRuntime(timers = timers, failures = failures),
         )
 
@@ -192,7 +198,10 @@ class LibraryStoreTest {
         library.send(LibraryCommand.ExcludeFolder("/ringtones"))
 
         assertEquals(setOf(alpha.id), storage.favourites)
-        assertEquals(mapOf(alpha.id to SongEdit("Alpha (live)", "Ann", "Live")), storage.edits)
+        assertEquals(
+            mapOf(alpha.id to SongEdit("Alpha (live)", "Ann", "Live", genre = alpha.genre, year = 0, trackNumber = 0, comment = "")),
+            storage.edits,
+        )
         assertEquals(setOf("/ringtones"), storage.excludedFolders)
 
         storage.failing = true
@@ -205,6 +214,55 @@ class LibraryStoreTest {
             failures.map { it.message },
         )
     }
+
+    @Test
+    fun `an edit written into the file is saved once the file is written, and only then`() =
+        runTest(UnconfinedTestDispatcher()) {
+            scanner.result = ScanResult.Found(listOf(alpha))
+            val written = mutableListOf<Pair<TrackId, SongEdit>>()
+            var outcome = TagWrite.WRITTEN
+            writer =
+                TagWriter { song, edit ->
+                    written += song to edit
+                    outcome
+                }
+            val library = store()
+            val facts = mutableListOf<LibraryFact>()
+            val collecting = launch { library.events.collect { facts += it } }
+            val tagged = SongEdit("Alpha", "Ann", "First", genre = "Soul", year = 1999, trackNumber = 3, comment = "live")
+
+            library.send(LibraryCommand.EditSong(alpha.id, tagged, writeToFile = true))
+
+            assertEquals(listOf(alpha.id to tagged), written)
+            assertEquals(mapOf(alpha.id to tagged), storage.edits)
+            assertEquals(
+                alpha.copy(genre = "Soul", year = 1999, trackNumber = 3, comment = "live"),
+                library.state.value.songs
+                    .single(),
+            )
+
+            outcome = TagWrite.NEEDS_CONSENT
+            library.send(LibraryCommand.EditSong(alpha.id, tagged.copy(title = "Alpha 2"), writeToFile = true))
+            outcome = TagWrite.FAILED
+            library.send(LibraryCommand.EditSong(alpha.id, tagged.copy(title = "Alpha 3"), writeToFile = true))
+            writer = TagWriter { _, _ -> error("no file") }
+            library.send(LibraryCommand.EditSong(alpha.id, tagged.copy(title = "Alpha 4"), writeToFile = true))
+
+            assertEquals(listOf(LibraryFact.TagsNeedConsent(alpha.id, tagged.copy(title = "Alpha 2"))), facts)
+            assertEquals(
+                listOf("Could not write the song info into the file", "Could not write the song info into the file"),
+                failures.map { it.message },
+            )
+            // Nothing that failed reached the Library.
+            assertEquals(mapOf(alpha.id to tagged), storage.edits)
+            assertEquals(
+                "Alpha",
+                library.state.value.songs
+                    .single()
+                    .title,
+            )
+            collecting.cancel()
+        }
 
     @Test
     fun `an M3U file becomes a playlist in Playback, and a list becomes an M3U file`() =

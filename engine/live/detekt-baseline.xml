@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>EmptyFunctionBlock:AiffExtractor.kt$AiffExtractor${}</ID>
+    <ID>LoopWithTooManyJumpStatements:AudioCapturePump.kt$AudioCapturePump$while</ID>
+    <ID>ReturnCount:AiffExtractor.kt$AiffExtractor$override fun read( input: ExtractorInput, seekPosition: PositionHolder, ): Int</ID>
+    <ID>ReturnCount:MicCapture.kt$MicCapture$@Synchronized fun start(onSampleRate: (Int) -&gt; Unit = {}): Failure?</ID>
+    <ID>ReturnCount:PcmRingBuffer.kt$PcmRingBuffer$private fun snapshotFrom( src: FloatArray, out: FloatArray, ): Boolean</ID>
+    <ID>ThrowsCount:AiffExtractor.kt$AiffExtractor$private fun parseHeaders(input: ExtractorInput)</ID>
+    <ID>UnusedParameter:AudioFxController.kt$AudioFxController$band: Int</ID>
+  </CurrentIssues>
+</SmellBaseline>

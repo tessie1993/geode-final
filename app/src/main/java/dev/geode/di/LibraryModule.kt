@@ -18,6 +18,7 @@ import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.handlers.PlaybackStorage
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.library.ImportingLibraryStorage
+import dev.geode.library.NativeTagWriter
 import javax.inject.Singleton
 
 /**
@@ -51,6 +52,7 @@ object LibraryModule {
                         marks = application.getSharedPreferences(IMPORT_MARKS, Context.MODE_PRIVATE),
                     ),
                 files = ContentPlaylistFiles(application.contentResolver),
+                tagWriter = NativeTagWriter(application.contentResolver),
             ),
             runtime,
         )

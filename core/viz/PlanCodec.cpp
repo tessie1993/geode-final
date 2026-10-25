@@ -9,6 +9,8 @@ namespace geode::viz::mod {
 
 namespace {
 constexpr float kSecondsPerMinute = 60.0f;
+// How sure the live tempo must be before beat-timed things use it: the analysis's own lock (BeatGrid).
+constexpr float kTempoHeardConfidence = 0.4f;
 constexpr size_t kTargetKinds = static_cast<size_t>(Target::Kind::Modulator) + 1;
 constexpr size_t kSourceKinds = static_cast<size_t>(Source::Kind::Modulator) + 1;
 
@@ -140,7 +142,9 @@ SignalFrame signalFrame(const GeodeFeatureFrame& f) {
     set(SoundSignal::StereoWidth, live::width(f));
     // Pan is -1 (left) .. 1 (right); as a Sound signal, 0.5 is the centre.
     set(SoundSignal::StereoPan, (live::pan(f) + 1.0f) * 0.5f);
-    s.beatSeconds = f.bpm > 0.0f && std::isfinite(f.bpm) ? kSecondsPerMinute / f.bpm : 0.0f;
+    // A beat length only from a tempo clearly heard: a guess is no tempo, and beat-timed things hold.
+    const bool heard = f.bpm > 0.0f && std::isfinite(f.bpm) && f.pulseConfidence >= kTempoHeardConfidence;
+    s.beatSeconds = heard ? kSecondsPerMinute / f.bpm : 0.0f;
     return s;
 }
 

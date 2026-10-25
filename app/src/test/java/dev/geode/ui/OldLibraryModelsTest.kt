@@ -11,7 +11,6 @@ import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.PlaylistRef
 import dev.geode.feature.library.api.Song
-import dev.geode.feature.library.api.SongEdit
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayedTrack
 import dev.geode.feature.playback.api.Track
@@ -121,19 +120,6 @@ class OldLibraryModelsTest {
             LibraryCommand.CreatePlaylist("Night", Pick.Songs(listOf(b.id))),
             OldLibraryModels.createPlaylist("  Night ", listOf(b.id)),
         )
-    }
-
-    @Test
-    fun `the song info editor starts from the Library's song and saves an edit that keeps its cover`() {
-        val info = OldLibraryModels.trackInfoOf(state, a.id)
-        assertEquals(LibraryTrack(uri = a.id, title = "A", artist = "Ann", duration = a.duration, album = "First", genre = "Jazz"), info)
-        assertEquals(
-            LibraryCommand.EditSong(a.id, SongEdit("New", "Bo", "Live", artwork = "content://art/a")),
-            OldLibraryModels.edit(state, a.id, "New", "Bo", "Live"),
-        )
-        val unknown = TrackId("content://docs/x")
-        assertNull(OldLibraryModels.trackInfoOf(state, unknown))
-        assertNull(OldLibraryModels.edit(state, unknown, "New", "Bo", "Live"))
     }
 
     @Test

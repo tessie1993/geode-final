@@ -140,6 +140,10 @@ const SHADER_VALUES = {
   uBassSmooth: 0.5, uMidSmooth: 0.4, uTrebleSmooth: 0.3, uEnergySmooth: 0.45, uSwell: 0.5, uSpike: 0.15,
   uMoveDir: [0.8, 0.6], uSpawnSeed: 0.37, uSpawnAge: 4.0, uFormPhase: 0.62, uFlowPhase: 12.5,
   uFlowStrength: 0,
+  uXScale: 1, uXCount: 1, uXSize: 1, uXThickness: 1, uXFlight: 1, uXSpin: 1, uXOrbit: 1, uXSwirl: 1, uXDrift: 1,
+  uXComplexity: 1, uXEdge: 1, uXFog: 1, uXDecay: 1, uXViscosity: 1, uXGrowth: 1, uXSpread: 1, uXForce: 1, uXReach: 1,
+  uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
+  uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
 };
 
 const SHADER_TEXTURES = { uAudioTex: 'audio', uPalLut: 'palette', uFlow: 'flow' };
@@ -190,6 +194,7 @@ const COMPOSITE_NEUTRAL = {
   uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
+  uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
 };
 const COMPOSITE_TEXTURES = { uTexA: 'scene', uTexB: 'scene', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white' };
 
@@ -214,6 +219,11 @@ const COMPOSITE_EFFECTS = {
   temperature: { uPostTemp: 0.8 },
   solarize: { uPostSolarize: 1 },
   invert: { uPostInvert: 1 },
+  camera_push_in: { uCamPush: 0.8 },
+  camera_orbit: { uCamTilt: [0.4, -0.3] },
+  camera_travel: { uCamDive: [0.4, 0] },
+  camera_endless_zoom: { uCamDive: [0, 0.7] },
+  camera_shake: { uCamShake: [0.02, -0.015, 0.02] },
 };
 
 const SHARED_FX_NEUTRAL = {

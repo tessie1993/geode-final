@@ -32,6 +32,7 @@ include(
     ":engine:audio-core",
     ":engine:scenes",
     ":engine:audio-android",
+    ":engine:live",
 )
 
 // The feature architecture (ADR-0005). Each feature adds :feature:<name>:api, :core, :handlers and
@@ -90,6 +91,13 @@ include(
     ":feature:diagnostics:core",
     ":feature:diagnostics:handlers",
     ":feature:diagnostics:ui",
+)
+
+// Home (#103): the Home tab, the App UI's places and the Element-styled bar. Screens only for now
+// (a placeholder until its Hero scene, #110), so just :api and :ui. Not yet wired into :app (ADR-0003).
+include(
+    ":feature:home:api",
+    ":feature:home:ui",
 )
 
 // Visuals (#43): the Visuals tab, where a Style is chosen, and full-screen visual mode, as routes over

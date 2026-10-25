@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.MacroLink
@@ -140,6 +141,8 @@ data class CustomizeModel(
     val sources: List<ReactionSource>,
     val targets: List<Target>,
     val automations: Automations,
+    /** The A/B compare slots that keep a Customization to switch to. */
+    val kept: Set<CompareSlot> = emptySet(),
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 }
@@ -204,5 +207,6 @@ fun CustomizationState.toCustomizeModel(
                     ModulatorParameter.entries.map { Target.ModulatorField(modulator.id, it) }
                 },
         automations = customization.automations,
+        kept = compare.keys,
     )
 }

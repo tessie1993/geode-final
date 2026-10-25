@@ -79,21 +79,55 @@ fun LibraryState.toLibraryModel(): LibraryModel =
 
 /**
  * What the song info editor holds while it is open: App UI state (ADR-0003). [artwork] is a content
- * uri the user picked, or null for the file's own art.
+ * uri the user picked, or null for the file's own art. [year] and [trackNumber] are the digits typed;
+ * blank is none. [writeToFile] writes the edit into the file's own tags too.
  */
 data class SongEditorFields(
     val title: String,
     val artist: String,
     val album: String,
     val artwork: String?,
+    val genre: String = "",
+    val year: String = "",
+    val trackNumber: String = "",
+    val comment: String = "",
+    val writeToFile: Boolean = false,
 ) {
     /** A song needs a title. */
     val canSave: Boolean get() = title.isNotBlank()
 
-    fun toEdit(): SongEdit = SongEdit(title, artist, album, artwork)
+    /**
+     * The edit to [song], which the fields started from. The genre, year, track number and comment the
+     * user left as they were stay null, so writing into the file keeps what the file has for them.
+     */
+    fun toEdit(song: Song): SongEdit {
+        val before = of(song)
+        return SongEdit(
+            title = title,
+            artist = artist,
+            album = album,
+            artwork = artwork,
+            genre = genre.takeIf { it != before.genre },
+            year = (year.toIntOrNull() ?: 0).takeIf { year != before.year },
+            trackNumber = (trackNumber.toIntOrNull() ?: 0).takeIf { trackNumber != before.trackNumber },
+            comment = comment.takeIf { it != before.comment },
+        )
+    }
 
     companion object {
-        fun of(song: Song): SongEditorFields = SongEditorFields(song.title, song.artist, song.album, song.artwork)
+        fun of(song: Song): SongEditorFields =
+            SongEditorFields(
+                title = song.title,
+                artist = song.artist,
+                album = song.album,
+                artwork = song.artwork,
+                genre = song.genre,
+                year = song.year.numberText(),
+                trackNumber = song.trackNumber.numberText(),
+                comment = song.comment,
+            )
+
+        private fun Int.numberText(): String = if (this > 0) toString() else ""
     }
 }
 

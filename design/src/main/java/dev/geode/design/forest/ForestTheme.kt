@@ -48,17 +48,16 @@ fun forestColorScheme(
     }
 
 /**
- * The water, forest and stone App UI theme: [theme]'s colours in [mode], set in Fraunces and Figtree.
- * Material's shape roles take only even corners, so surfaces take their pebble from [ForestShapes].
- * Not yet applied to any screen: the App UI switches over in one piece.
+ * The forest App UI theme: the Deep forest colours in [mode], set in Fraunces and Figtree. Material's
+ * shape roles take only even corners, so surfaces take their pebble from [ForestShapes]. Superseded by
+ * the Elements (`ElementTheme`), which also provide [LocalForestColors] to the screens built on it.
  */
 @Composable
 fun ForestTheme(
-    theme: ForestThemeId = ForestThemeId.Default,
     mode: ForestMode = ForestMode.Default,
     content: @Composable () -> Unit,
 ) {
-    val colors = ForestPalettes.of(theme, mode)
+    val colors = ForestPalettes.of(mode)
     CompositionLocalProvider(LocalForestColors provides colors) {
         MaterialTheme(
             colorScheme = forestColorScheme(colors, mode),

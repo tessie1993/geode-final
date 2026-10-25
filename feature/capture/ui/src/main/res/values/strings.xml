@@ -2,7 +2,6 @@
 <resources>
     <string name="capture_title">Live sound</string>
     <string name="capture_source_microphone">Microphone</string>
-    <string name="capture_source_line_in">USB / line-in</string>
     <string name="capture_off_body">Let the Visual react to the room or an instrument instead of the player.</string>
     <string name="capture_preparing">Getting ready…</string>
     <string name="capture_music_question">A song is playing. Pause it, or keep both playing?</string>
@@ -22,5 +21,4 @@
     <string name="capture_problem_lost">The %1$s went away, so live sound stopped.</string>
     <string name="capture_problem_did_not_start">The %1$s did not start.</string>
     <string name="capture_source_microphone_inline">microphone</string>
-    <string name="capture_source_line_in_inline">USB / line-in</string>
 </resources>

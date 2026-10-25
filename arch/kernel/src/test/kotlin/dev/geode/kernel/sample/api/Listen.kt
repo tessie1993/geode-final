@@ -12,7 +12,6 @@ typealias Listen = Feature<ListenState, ListenCommand, ListenFact>
 
 enum class ListenSource {
     MICROPHONE,
-    LINE_IN,
 }
 
 enum class ListenProblem {

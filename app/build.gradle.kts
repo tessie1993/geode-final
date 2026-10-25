@@ -212,6 +212,7 @@ dependencies {
     // What the removed :engine:runtime aggregator re-exported to :app via api(...).
     implementation(project(":engine:scenes"))
     implementation(project(":engine:audio-android"))
+    implementation(project(":engine:live"))
     // The feature architecture (ADR-0005). :app only wires: Hilt bindings and the real adapters.
     implementation(project(":arch:kernel"))
     implementation(project(":arch:audio"))
@@ -225,6 +226,24 @@ dependencies {
     implementation(project(":feature:playback:ui"))
     implementation(project(":feature:settings:api"))
     implementation(project(":feature:settings:handlers"))
+    implementation(project(":feature:settings:ui"))
+    implementation(project(":feature:diagnostics:api"))
+    // Diagnostics' ports (the log, the settings, the engine's stats) are wired here, so they are on
+    // :app's compile path too.
+    implementation(project(":feature:diagnostics:core"))
+    implementation(project(":feature:diagnostics:handlers"))
+    implementation(project(":feature:diagnostics:ui"))
+    // First-run setup's Save folder step is Studio's own setup step (#187).
+    implementation(project(":feature:studio:ui"))
+    // Studio and Capture (#17): their stores are built and wired here, so their :api, :core and
+    // :handlers (and Capture's screens) are on :app's compile path too.
+    implementation(project(":feature:studio:api"))
+    implementation(project(":feature:studio:core"))
+    implementation(project(":feature:studio:handlers"))
+    implementation(project(":feature:capture:api"))
+    implementation(project(":feature:capture:core"))
+    implementation(project(":feature:capture:handlers"))
+    implementation(project(":feature:capture:ui"))
     implementation(project(":feature:library:api"))
     implementation(project(":feature:library:handlers"))
     implementation(project(":feature:library:ui"))
@@ -267,19 +286,18 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     debugImplementation(libs.compose.ui.test.manifest)
-    // The Visuals journey test (#43) builds the real app-scoped feature stores the way :app will at
-    // the switch-over (#17), and moves between the real routes. Nothing here is wired yet. The routes
-    // are an implementation dependency only because a unit test sees the R classes of :app's main
-    // dependencies alone; as testImplementation, VisualsRoute failed with NoClassDefFoundError on
-    // dev.geode.feature.visuals.ui.R$string.
+    // Visuals and Customization (#17): their stores are built here, and the engine is handed each
+    // Customization through the plan (NativePlan, ADR-0002), so their cores are on :app's path too.
+    implementation(project(":feature:customization:api"))
+    implementation(project(":feature:customization:core"))
+    implementation(project(":feature:customization:handlers"))
+    implementation(project(":feature:customization:ui"))
+    implementation(project(":feature:visuals:api"))
+    implementation(project(":feature:visuals:core"))
+    implementation(project(":feature:visuals:handlers"))
     implementation(project(":feature:visuals:ui"))
     // The Playback journey test (#17) reads Playback's own timings.
     testImplementation(project(":feature:playback:core"))
-    testImplementation(project(":feature:customization:api"))
-    testImplementation(project(":feature:customization:core"))
-    testImplementation(project(":feature:visuals:api"))
-    testImplementation(project(":feature:visuals:core"))
-    testImplementation(project(":feature:visuals:handlers"))
     testImplementation(testFixtures(project(":arch:kernel")))
     testImplementation(testFixtures(project(":arch:audio")))
 

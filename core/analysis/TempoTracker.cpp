@@ -6,24 +6,15 @@
 
 namespace geode::analysis {
 
-namespace {
-const float kLn2 = std::log(2.0f);
-}
-
-TempoTracker::TempoTracker(float hopRateHz, float minBpm, float maxBpm, int resonatorCount, float preferredBpm,
-                           float preferenceOctaves, float halfLifeSeconds, float energyAverageSeconds)
+TempoTracker::TempoTracker(float hopRateHz, float minBpm, float maxBpm, int resonatorCount, float halfLifeSeconds,
+                           float energyAverageSeconds)
     : hopRateHz_(hopRateHz), minBpm_(minBpm), maxBpm_(maxBpm), periods_(buildPeriods(resonatorCount)) {
     const size_t n = periods_.size();
     delayLines_.resize(n);
     for (size_t i = 0; i < n; i++) delayLines_[i].assign(static_cast<size_t>(periods_[i]), 0.0f);
     delayIndex_.assign(n, 0);
     feedback_.resize(n);
-    preference_.resize(n);
-    for (size_t i = 0; i < n; i++) {
-        feedback_[i] = std::pow(0.5f, periods_[i] / (halfLifeSeconds * hopRateHz));
-        const float octaves = std::log(bpmOf(periods_[i]) / preferredBpm) / kLn2;
-        preference_[i] = static_cast<float>(std::exp(-0.5 * (octaves / preferenceOctaves) * (octaves / preferenceOctaves)));
-    }
+    for (size_t i = 0; i < n; i++) feedback_[i] = std::pow(0.5f, periods_[i] / (halfLifeSeconds * hopRateHz));
     energy_.assign(n, 0.0f);
     scores_.assign(n, 0.0f);
     scoreScratch_.assign(n, 0.0f);
@@ -42,7 +33,7 @@ void TempoTracker::step(float onset) {
         delayIndex_[i] = at + 1 == static_cast<int>(line.size()) ? 0 : at + 1;
 
         energy_[i] += (y * y - energy_[i]) * energyPole_;
-        const float score = energy_[i] * preference_[i];
+        const float score = energy_[i];
         scores_[i] = score;
         if (score > bestScore) {
             bestScore = score;

@@ -8,7 +8,6 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.playback.api.Track
-import dev.geode.ui.OldLibraryModels
 
 /**
  * The browse tree Android Auto and other browsers walk. Folder ids are fixed words or `<kind>/<name>`;
@@ -109,9 +108,13 @@ class LibraryTree(
         mediaType: Int,
     ): List<MediaItem> = names.distinct().sortedBy { it.lowercase() }.map { folder("$kind/$it", it, mediaType) }
 
-    /** The Library's songs, with the user's edits in. */
-    private fun tracks(): List<Row> =
-        OldLibraryModels.deviceTracks(library()).map { Row(it.uri, it.title, it.artist, it.album, it.duration) }
+    /** The Library's songs, with the user's edits in, outside the folders the user left out. */
+    private fun tracks(): List<Row> {
+        val state = library()
+        return state.songs
+            .filterNot { song -> state.excludedFolders.any { song.folder == it || song.folder.startsWith("$it/") } }
+            .map { Row(it.id, it.title, it.artist, it.album, it.duration) }
+    }
 
     private fun rowsFor(uris: List<TrackId>): List<Row> {
         val byUri = tracks().associateBy { it.uri }

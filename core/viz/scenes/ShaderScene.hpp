@@ -35,6 +35,9 @@ public:
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
+    void setCamera(const CameraPose& pose) override { camera_ = pose; }
+    void setExtras(const ExtraValues& extras) override { extras_ = extras; }
+    bool ownsCamera() const override { return ownsCamera_; }
 
 private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -108,6 +111,9 @@ private:
     void uploadParams();
     void uploadMotion();
     void uploadTouch();
+    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_scene_uniforms.glsl).
+    void uploadCamera();
+    void uploadExtras();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -175,6 +181,11 @@ private:
     const TouchField* touchField_ = nullptr;
     std::array<float, TouchField::kPointStride> touchAnchor_{};
     std::array<float, TouchField::kMaxPoints * TouchField::kPointStride> touchPoints_{};
+
+    CameraPose camera_;
+    ExtraValues extras_ = ExtraValues::neutral();
+    // The compiled Style reads uCamRot: it moves a camera of its own.
+    bool ownsCamera_ = false;
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;
