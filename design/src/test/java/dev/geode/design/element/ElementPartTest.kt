@@ -22,17 +22,24 @@ class ElementPartTest {
     @Test
     fun `labels keep AA body contrast on every lit pebble in every Element, through Water's glass too`() {
         for (element in ElementSkins.all) {
-            val colors = element.colors
             for (component in labelled) {
-                for (state in lit) {
-                    val text = partContent(colors, component, state)
-                    val fill = partFill(colors, component, state)
-                    for (core in listOf(0f, partCore(component, state))) {
-                        val face = partFace(colors, element.finish, component, fill, core)
-                        assertAa("${element.key} $component $state core $core", text, face, WcagContrast.AA_TEXT)
-                    }
-                }
+                lit.forEach { state -> assertLabelReads(element, component, state) }
             }
+        }
+    }
+
+    private fun assertLabelReads(
+        element: ElementTokens,
+        component: StoneComponent,
+        state: StoneState,
+    ) {
+        val colors = element.colors
+        val text = partContent(colors, component, state)
+        val fill = partFill(colors, component, state)
+        // The core is a radial glow, so the label sees everything from no core to the full core.
+        for (core in listOf(0f, partCore(component, state))) {
+            val face = partFace(colors, element.finish, component, fill, core)
+            assertAa("${element.key} $component $state core $core", text, face, WcagContrast.AA_TEXT)
         }
     }
 
