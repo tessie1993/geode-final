@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,10 +47,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -80,9 +75,9 @@ import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
+import dev.geode.ui.shell.AppFailureBanner
 import dev.geode.ui.shell.AppUiCommand
 import dev.geode.ui.shell.AppUiFact
-import dev.geode.ui.shell.Banner
 import dev.geode.ui.shell.GeodeTheme
 import dev.geode.ui.shell.Place
 import dev.geode.ui.shell.Sheet
@@ -90,7 +85,6 @@ import dev.geode.ui.shell.ShellViewModel
 import dev.geode.ui.shell.icon
 import dev.geode.ui.shell.label
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private const val CRASH_REPORT_MAX_BYTES = 64 * 1024
@@ -220,10 +214,7 @@ fun AppRoot() {
             }
         }
         val content: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
-            Column {
-                PlaybackNoticeBanner(viewModel)
-                page(twoPane)
-            }
+            page(twoPane)
         }
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
@@ -261,9 +252,6 @@ fun AppRoot() {
                 FullScreenVisual(shell, keepScreenOn, visual)
             }
             PlayerSheet(shell, ui.sheet)
-            ui.banner?.let { banner ->
-                FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
-            }
             DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
             // First-run setup, and the Save folder step again whenever the folder is lost (#187).
             FirstRunSetup(
@@ -272,6 +260,10 @@ fun AppRoot() {
                 onReplayOver = { tutorialRunning = false },
                 onNavigate = open,
             )
+            // The one failure banner (ADR-0004) is drawn last, so it is over every screen and sheet.
+            ui.banner?.let { banner ->
+                AppFailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
+            }
         }
     }
 }
@@ -386,45 +378,6 @@ private fun FullScreenVisual(
             onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
             modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp),
         ) { Text(stringResource(R.string.visuals_open_capture)) }
-    }
-}
-
-/** The App UI's banner (#182): one failure at a time, over everything, until it times out or is dismissed. */
-@Composable
-private fun FailureBanner(
-    banner: Banner,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val dismissDescription = stringResource(R.string.notice_dismiss_description)
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.errorContainer)
-                .semantics { liveRegion = LiveRegionMode.Polite }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = banner.message,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = stringResource(R.string.notice_dismiss),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier =
-                Modifier
-                    .clickable(onClick = onDismiss)
-                    .semantics { contentDescription = dismissDescription }
-                    .padding(8.dp),
-        )
     }
 }
 
@@ -556,49 +509,3 @@ private fun HomeScreen(
         }
     }
 }
-
-@Composable
-private fun PlaybackNoticeBanner(viewModel: PlayerViewModel) {
-    val notice by viewModel.playbackNotice.collectAsStateWithLifecycle()
-    val message = notice ?: return
-    val dismissDescription = stringResource(R.string.notice_dismiss_description)
-
-    LaunchedEffect(message) {
-        kotlinx.coroutines.delay(NOTICE_VISIBLE_MS)
-        viewModel.clearPlaybackNotice()
-    }
-
-    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .clickable { viewModel.clearPlaybackNotice() }
-                    .semantics { liveRegion = LiveRegionMode.Polite }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.notice_dismiss),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier =
-                    Modifier
-                        .clickable { viewModel.clearPlaybackNotice() }
-                        .semantics { contentDescription = dismissDescription }
-                        .padding(8.dp),
-            )
-        }
-    }
-}
-
-private const val NOTICE_VISIBLE_MS = 8_000L

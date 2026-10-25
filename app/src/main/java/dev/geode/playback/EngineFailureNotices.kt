@@ -10,41 +10,36 @@ import dev.geode.kernel.ErrorChannel
 import dev.geode.kernel.FeatureFailure
 
 /**
- * Puts every failure the native bridge reports on today's playback notice banner. [show] receives the
- * banner text and runs on the failing call's thread, so it hands the text on to the main thread
- * itself. Audio and the Visual keep running. The app-wide [ErrorChannel] hears the same failures
- * through [reportTo], which also writes them to the local log (ADR-0004).
+ * Reports every failure the native bridge catches to the app's one [ErrorChannel] (ADR-0004), which
+ * the App UI banner shows and the local log keeps. Audio and the Visual keep running. There is no
+ * second banner for engine failures: [reportTo] is the only path, for the life of the process.
  */
-class EngineFailureNotices(
-    private val show: (Int) -> Unit,
-    failures: FailureRelay = NativeFailures,
-) : AutoCloseable {
-    private val subscription = failures.listen { failure -> show(messageFor(failure)) }
+object EngineFailureNotices {
+    /** The feature every engine failure is filed under on the app-wide error channel. */
+    const val FEATURE = "engine"
 
-    override fun close() {
-        subscription.close()
-    }
+    /** [failure] as the app-wide error channel files it, in the caller's words. */
+    fun featureFailure(
+        failure: EngineFailure,
+        describe: (EngineFailure) -> String = { it.toString() },
+    ): FeatureFailure = FeatureFailure(FEATURE, describe(failure))
 
-    companion object {
-        /** The feature every engine failure is filed under on the app-wide error channel. */
-        const val FEATURE = "engine"
+    /**
+     * Reports every failure [failures] hears to [errors] until the result is closed. [describe] turns
+     * a failure into the banner text; the app passes localized text, tests may pass their own.
+     */
+    fun reportTo(
+        errors: ErrorChannel,
+        failures: FailureRelay = NativeFailures,
+        describe: (EngineFailure) -> String = { it.toString() },
+    ): AutoCloseable = failures.listen { errors.report(featureFailure(it, describe)) }
 
-        /** [failure] as the app-wide error channel files it. */
-        fun featureFailure(failure: EngineFailure): FeatureFailure = FeatureFailure(FEATURE, failure.toString())
-
-        /** Reports every failure [failures] hears to [errors] until the result is closed. */
-        fun reportTo(
-            errors: ErrorChannel,
-            failures: FailureRelay = NativeFailures,
-        ): AutoCloseable = failures.listen { errors.report(featureFailure(it)) }
-
-        /** The banner text for [failure], by the part of the engine that failed. */
-        @StringRes
-        fun messageFor(failure: EngineFailure): Int =
-            when (failure.subsystem) {
-                EngineSubsystem.AUDIO -> R.string.engine_failure_audio
-                EngineSubsystem.VISUAL -> R.string.engine_failure_visual
-                else -> R.string.engine_failure_other
-            }
-    }
+    /** The banner text for [failure], by the part of the engine that failed. */
+    @StringRes
+    fun messageFor(failure: EngineFailure): Int =
+        when (failure.subsystem) {
+            EngineSubsystem.AUDIO -> R.string.engine_failure_audio
+            EngineSubsystem.VISUAL -> R.string.engine_failure_visual
+            else -> R.string.engine_failure_other
+        }
 }

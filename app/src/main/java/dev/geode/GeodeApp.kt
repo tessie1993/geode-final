@@ -17,7 +17,7 @@ class GeodeApp : Application() {
     override fun onCreate() {
         super.onCreate()
         // Failures caught at the native bridge go to the app-wide error channel for the life of the process.
-        EngineFailureNotices.reportTo(errors)
+        EngineFailureNotices.reportTo(errors, describe = { getString(EngineFailureNotices.messageFor(it)) })
         if (BuildConfig.DEBUG) {
             // Logcat echo is a debug convenience; release keeps failures in the
             // ring buffer alone, where the crash report already includes them.

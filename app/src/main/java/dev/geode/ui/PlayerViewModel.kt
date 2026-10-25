@@ -10,10 +10,8 @@ import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
-import dev.geode.playback.EngineFailureNotices
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.SceneFactory
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -21,12 +19,12 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * The old player screens over Playback's store (#17), plus the App UI's hold on the engine, the
- * engine-failure banner, and the fresh start the live analysis and the export's analysis get on a new song.
+ * The old player screens over Playback's store (#17), plus the App UI's hold on the engine and the
+ * fresh start the live analysis and the export's analysis get on a new song.
  *
  * This ViewModel is created unconditionally by `AppRoot` and every Geode ViewModel shares the
- * Activity's store, so [onCleared] runs exactly once, when the whole UI is going away — the moment
- * the engine hold and the failure subscription are released.
+ * Activity's store, so [onCleared] runs exactly once, when the whole UI is going away - the moment
+ * the engine hold is released.
  */
 @HiltViewModel
 class PlayerViewModel
@@ -43,14 +41,6 @@ class PlayerViewModel
         private val engineSession = PlaybackEngine.acquireForUi(application)
 
         private val engine = engineSession.analysis
-
-        // Failures caught at the native bridge reach the same playback-notice banner (ADR-0004).
-        private val _playbackNotice = MutableStateFlow<String?>(null)
-
-        val playbackNotice: StateFlow<String?> = _playbackNotice
-
-        private val engineFailureNotices =
-            EngineFailureNotices(show = { message -> viewModelScope.launch { _playbackNotice.value = application.getString(message) } })
 
         init {
             followPlayback()
@@ -129,10 +119,6 @@ class PlayerViewModel
 
         fun seekTo(fraction: Float) = playback.seekTo(fraction)
 
-        fun clearPlaybackNotice() {
-            _playbackNotice.value = null
-        }
-
         fun startExport(
             aspect: ExportAspect,
             fps: Int,
@@ -171,7 +157,6 @@ class PlayerViewModel
         }
 
         override fun onCleared() {
-            engineFailureNotices.close()
             PlaybackEngine.releaseUi()
         }
     }
