@@ -5,6 +5,7 @@ import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
+import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
@@ -44,6 +45,13 @@ class VisualizerRenderer(
     @Volatile
     var sceneParams: SceneParams = SceneParams.DEFAULT
 
+    /**
+     * The Visual quality on screen (Settings' CPU/GPU section, #28) as a render scale ceiling, 1 for
+     * full quality. The automatic cooling when the phone is hot can only lower it further.
+     */
+    @Volatile
+    var qualityCeiling: Float = 1f
+
     /** Vestibular accessibility only; the flash clamp is unconditional inside the native safety pass. */
     @Volatile
     var reducedMotion: Boolean = false
@@ -70,12 +78,27 @@ class VisualizerRenderer(
     @Volatile
     var onShaderError: (String?) -> Unit = {}
 
-    // Assigned from Main (EnginePlumbing.kt) and read on the GL thread in onDrawFrame.
+    // Assigned from Main and read on the GL thread in onDrawFrame.
     @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
 
     @Volatile
     var pcmProvider: () -> PcmChunk? = { null }
+
+    /** The live sound's features, read on the GL thread every frame; [features] while it has none. */
+    @Volatile
+    var featureSource: () -> AudioFeatures? = { null }
+
+    /**
+     * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
+     * takes its parameters and Modulators from them, so [sceneParams] and the LFO and envelope
+     * configs are not sent.
+     */
+    @Volatile
+    var snapshots: NativeSnapshots? = null
+
+    // GL thread only: the snapshots the native renderer is attached to now.
+    private var attachedSnapshots: NativeSnapshots? = null
 
     // Config holders only: native ticks its own LfoEngine/AdsrEngine against the configs
     // syncNativeState forwards below (core/viz/RendererFrame.cpp).
@@ -146,6 +169,7 @@ class VisualizerRenderer(
     ) {
         ThermalGovernor.attach(appContext)
         nativeViz.surfaceCreated()
+        attachedSnapshots = null
         nativeParams = null
         nativeLfo = null
         nativeAdsr = null
@@ -169,6 +193,31 @@ class VisualizerRenderer(
     }
 
     private fun syncNativeState() {
+        val wanted = snapshots
+        if (wanted !== attachedSnapshots) {
+            nativeViz.attachSnapshots(wanted)
+            attachedSnapshots = wanted
+            nativeParams = null
+            nativeLfo = null
+            nativeAdsr = null
+        }
+        if (wanted == null) syncSceneParams()
+        nativeViz.setFeatures(displayEvents.frame(featureSource() ?: features))
+        nativeViz.setReducedMotion(reducedMotion)
+        nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
+        nativeViz.setTransition(transitionId, transitionDuration)
+        nativeViz.setPacedFps(ThermalGovernor.pacedFps)
+        nativeViz.setQualityCeiling(qualityCeiling)
+        val now = SystemClock.elapsedRealtime()
+        if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
+            nativeThermalSampleMs = now
+            nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
+            nativeViz.setFrameLoad(FramePacer.activeStats())
+        }
+        pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
+    }
+
+    private fun syncSceneParams() {
         val p = sceneParams
         if (p !== nativeParams) {
             nativeViz.setParams(p)
@@ -184,18 +233,6 @@ class VisualizerRenderer(
             nativeViz.setAdsrConfigs(adsr)
             nativeAdsr = adsr
         }
-        nativeViz.setFeatures(displayEvents.frame(features))
-        nativeViz.setReducedMotion(reducedMotion)
-        nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
-        nativeViz.setTransition(transitionId, transitionDuration)
-        nativeViz.setPacedFps(ThermalGovernor.pacedFps)
-        val now = SystemClock.elapsedRealtime()
-        if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
-            nativeThermalSampleMs = now
-            nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
-            nativeViz.setFrameLoad(FramePacer.activeStats())
-        }
-        pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
     fun exportSceneFactory(sceneId: SceneId): SceneFactory {

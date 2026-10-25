@@ -3,8 +3,7 @@ package dev.geode.ui
 import android.app.Application
 import android.net.Uri
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.data.ExportPrefsStore
-import dev.geode.data.GeodePrefsFiles
+import dev.geode.data.ExportDefaults
 import dev.geode.editor.AnimatableParams
 import dev.geode.editor.KeyframeSheet
 import dev.geode.export.ExportAspect
@@ -24,6 +23,7 @@ import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
 import dev.geode.render.SceneFactory
 import dev.geode.render.scene.SceneParams
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -60,6 +60,8 @@ internal class ExportController(
     private val application: Application,
     private val scope: CoroutineScope,
     private val host: Host,
+    // Where the dialog's tempo analysis runs; a test runs it in place.
+    private val analysisDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     interface Host {
         val exportUri: Uri?
@@ -73,6 +75,9 @@ internal class ExportController(
 
         val guiPrefs: GuiPrefs
 
+        /** What new renders start with, from Settings. */
+        val exportDefaults: ExportDefaults
+
         val sceneParams: SceneParams
 
         fun lfoConfigs(): List<dev.geode.render.LfoConfig>
@@ -81,11 +86,6 @@ internal class ExportController(
 
         /** The open editor project's tracks; programme-level scene tracks animate the export. */
         fun keyframes(): KeyframeSheet
-
-        fun publishTempo(
-            uri: Uri,
-            timeline: FeatureTimeline,
-        )
     }
 
     private val exporter = VideoExporter(application)
@@ -117,6 +117,30 @@ internal class ExportController(
     }
 
     private var studioJob: Job? = null
+
+    private var tempoJob: Job? = null
+
+    /**
+     * Makes sure the current song's export analysis (ADR-0001) is there, for the export dialog: its
+     * loop-safe choice needs the song's tempo, which only that analysis gives (the Visual reacts live and
+     * knows none). Uses the cached analysis when there is one; the tempo shows once it is known.
+     */
+    @Suppress("TooGenericExceptionCaught") // An analysis that fails leaves the tempo unknown, as before.
+    fun prepareTempo() {
+        val uri = host.exportUri ?: return
+        if (host.cachedTimeline != null || tempoJob?.isActive == true) return
+        tempoJob =
+            scope.launch(analysisDispatcher) {
+                try {
+                    val analysed = host.analyze(uri) {}
+                    if (host.exportUri == uri && host.cachedTimeline == null) host.cachedTimeline = analysed
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failed: Exception) {
+                    dev.geode.RingLog.note(TAG, "the export analysis for the tempo failed", failed)
+                }
+            }
+    }
 
     fun startExport(
         aspect: ExportAspect,
@@ -152,7 +176,6 @@ internal class ExportController(
                             gui.beatSensitivity,
                             gui.effectiveBeatMinIntervalMs,
                         )
-                    host.publishTempo(uri, t)
                     val name = "geode_${System.currentTimeMillis()}.mp4"
                     val sheet = host.keyframes()
                     val animated =
@@ -318,7 +341,7 @@ internal class ExportController(
         destination: Uri? = null,
     ) {
         if (_studio.value.phase.isBusy) return
-        val built = ProjectComposition.build(application, project)
+        val built = ProjectComposition.build(application, project, host.exportDefaults)
         if (built !is ProjectComposition.Outcome.Ready) {
             _studio.update { it.copy(phase = ExportPhase.Failed(application.getString(dev.geode.R.string.editor_export_no_video))) }
             return
@@ -337,16 +360,13 @@ internal class ExportController(
             }
     }
 
-    private fun defaultCodec(): ExportCodec = ExportPrefsStore(GeodePrefsFiles(application).general).load().codec
+    private fun defaultCodec(): ExportCodec = host.exportDefaults.codec
 
     // The main export's UI (SettingsDialog) has no path to this controller's public API for
     // per-render options that aren't already threaded through startExport's callers, so the
     // loudness target rides along as a persisted default instead, the same way defaultCodec()
     // above does for studio exports.
-    private fun defaultLoudnessTarget(): LoudnessTarget =
-        LoudnessTarget.byId(
-            ExportPrefsStore(GeodePrefsFiles(application).general).load().loudnessTargetId,
-        )
+    private fun defaultLoudnessTarget(): LoudnessTarget = LoudnessTarget.byId(host.exportDefaults.loudnessTargetId)
 
     fun cancelStudioExport() {
         studioExporter.cancel()
@@ -496,6 +516,8 @@ internal class ExportController(
     }
 
     private companion object {
+        const val TAG = "Export"
+
         // Analysing the track is quick against the render itself; extending mostly copies
         // already-encoded samples, so it gets less of the bar than the GPU render does.
         const val ANALYSIS_SPAN = 0.1f

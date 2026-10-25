@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "acid_smear",
+  "label": "Neon Smear",
+  "family": "acid",
+  "parameters": {
+    "mode": 9,
+    "source": 3,
+    "zoom": 1.005,
+    "rotate": 0.0005,
+    "hueRate": 0.045,
+    "feedback": 0.962,
+    "overdrive": 0.6,
+    "liquid": 0.3,
+    "hueOffset": 0.6
+  }
+}

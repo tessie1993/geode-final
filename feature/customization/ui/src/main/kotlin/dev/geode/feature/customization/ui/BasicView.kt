@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.geode.design.forest.ForestSpacing
 import dev.geode.design.forest.LocalForestColors
+import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.SharedProperty
 
@@ -61,7 +64,26 @@ internal fun BasicView(panel: PanelState) {
         }
     }
 
-    SectionTitle(stringResource(R.string.customize_presets))
+    // A/B compare: keep what is on screen in a slot, then switch between the two while deciding.
+    SectionTitle(stringResource(R.string.customize_compare))
+    ChipStrip {
+        CompareSlot.entries.forEach { slot ->
+            ChoiceChip(stringResource(R.string.customize_keep_slot, slot.name), selected = false) {
+                panel.send(CustomizationCommand.KeepForCompare(slot))
+            }
+            if (slot in model.kept) {
+                ChoiceChip(stringResource(R.string.customize_show_slot, slot.name), selected = false) {
+                    panel.send(CustomizationCommand.Compare(slot))
+                }
+            }
+        }
+    }
+
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        SectionTitle(stringResource(R.string.customize_presets), Modifier.weight(1f))
+        // The way into the Presets browser (#144): every built-in and saved preset, by folder.
+        TextButton(onClick = { panel.onAction(CustomizeAction.BrowsePresets) }) { Text(stringResource(R.string.customize_all_presets)) }
+    }
     if (model.presets.isEmpty()) {
         Text(
             stringResource(R.string.customize_no_presets),

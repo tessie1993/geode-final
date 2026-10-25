@@ -100,6 +100,16 @@ object MediaControls {
             is MediaControl.SkipTo -> skipTo(control, queueOf(player))
         }
 
+    /**
+     * What leaving the app or locking the phone asks of Playback while the player is [player] (#28):
+     * a Pause when the music is not to keep playing in the background ([musicKeepsPlaying], Settings'
+     * "Music keeps playing") and would play on without a screen, otherwise nothing.
+     */
+    fun commandOnLeavingApp(
+        player: PlayerState,
+        musicKeepsPlaying: Boolean,
+    ): PlaybackCommand? = PlaybackCommand.Pause.takeIf { !musicKeepsPlaying && sessionOf(player).playsInBackground }
+
     /** What the media session shows while the player is [player]. */
     fun sessionOf(player: PlayerState): SessionView =
         when (player) {
@@ -167,7 +177,7 @@ object MediaControls {
         when {
             queue == null || control.index !in queue.tracks.indices -> null
             control.index == queue.index -> PlaybackCommand.SeekTo(control.position)
-            else -> PlaybackCommand.Play(queue.tracks, control.index)
+            else -> PlaybackCommand.Play(queue.tracks, control.index, control.position)
         }
 
     private fun queueOf(player: PlayerState): Queue? =

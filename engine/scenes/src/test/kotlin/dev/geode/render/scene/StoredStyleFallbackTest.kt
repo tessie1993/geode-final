@@ -26,14 +26,7 @@ class StoredStyleFallbackTest {
             "silk_pendulum",
         ).map(::SceneId)
 
-    private val everyStyle: List<SceneId> =
-        SceneCapabilities.SHADER_SCENES.keys.toList() +
-            VisualStyleCatalog.lifeIds +
-            VisualStyleCatalog.mycoIds +
-            VisualStyleCatalog.acidIds +
-            VisualStyleCatalog.fluidIds +
-            VisualStyleCatalog.cymaticsIds +
-            listOf(SceneIds.MILKDROP, SceneIds.CURLFLOW, SceneIds.WATER)
+    private val everyStyle: List<SceneId> = StylePacks.ids
 
     @Test
     fun `a stored id naming a deleted Silk Style loads the default Style`() {
@@ -66,16 +59,10 @@ class StoredStyleFallbackTest {
     }
 
     @Test
-    fun `each Style family reports its own kind`() {
-        assertEquals(SceneKind.SHADER, SceneCapabilities.kindOf(SceneIds.JULIA))
-        assertEquals(SceneKind.MILKDROP, SceneCapabilities.kindOf(SceneIds.MILKDROP))
-        assertEquals(SceneKind.FLUID, SceneCapabilities.kindOf(SceneIds.FLUID))
-        assertEquals(SceneKind.CURL_FLOW, SceneCapabilities.kindOf(SceneIds.CURLFLOW))
-        assertEquals(SceneKind.WATER, SceneCapabilities.kindOf(SceneIds.WATER))
-        assertEquals(SceneKind.CYMATICS, SceneCapabilities.kindOf(SceneIds.CYMATICS))
-        assertEquals(SceneKind.LIFE, SceneCapabilities.kindOf(VisualStyleCatalog.lifeIds.first()))
-        assertEquals(SceneKind.MYCELIUM, SceneCapabilities.kindOf(VisualStyleCatalog.mycoIds.first()))
-        assertEquals(SceneKind.ACID, SceneCapabilities.kindOf(VisualStyleCatalog.acidIds.first()))
+    fun `each Style reports the kind its pack names`() {
+        StylePacks.registry.styles.forEach { pack ->
+            assertEquals(pack.id.value, pack.kind, SceneCapabilities.kindOf(pack.id))
+        }
     }
 
     @Test

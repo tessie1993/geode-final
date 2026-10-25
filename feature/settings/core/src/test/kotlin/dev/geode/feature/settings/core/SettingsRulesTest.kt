@@ -1,15 +1,19 @@
 package dev.geode.feature.settings.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.BackgroundCommand
+import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BeatTuning
 import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -28,6 +32,8 @@ import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Minutes
 import dev.geode.feature.settings.api.OnboardingCommand
 import dev.geode.feature.settings.api.OnboardingSettings
+import dev.geode.feature.settings.api.PerformanceCommand
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.PlaybackCommand
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.PlayerPosition
@@ -36,6 +42,8 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.VisualFrameRate
+import dev.geode.feature.settings.api.VisualQuality
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -49,6 +57,8 @@ class SettingsRulesTest {
     private val behavior = BehaviorSettings()
     private val folders = FolderSettings()
     private val onboarding = OnboardingSettings()
+    private val background = BackgroundSettings()
+    private val performance = PerformanceSettings()
     private val night = Argb(0xFFBFE2F2.toInt())
     private val music = FolderUri("content://tree/music")
     private val more = FolderUri("content://tree/more")
@@ -58,6 +68,8 @@ class SettingsRulesTest {
     private val lookRows: List<Row> =
         listOf(
             Row(LookCommand.SetAccentIntensity(1.2f), defaults.copy(look = look.copy(accentIntensity = 1.2f))),
+            Row(LookCommand.SetElement(Element.STONE), defaults.copy(look = look.copy(element = Element.STONE))),
+            Row(LookCommand.SetElement(Element.WATER), defaults),
             Row(LookCommand.SetAccentIntensity(0.1f), defaults.copy(look = look.copy(accentIntensity = 0.5f))),
             Row(LookCommand.SetAccentIntensity(9f), defaults.copy(look = look.copy(accentIntensity = 1.5f))),
             Row(LookCommand.SetBackgroundDim(0.3f), defaults.copy(look = look.copy(backgroundDim = 0.3f))),
@@ -75,6 +87,8 @@ class SettingsRulesTest {
             Row(LookCommand.SetCornerStyle(CornerStyle.PILL), defaults.copy(look = look.copy(cornerStyle = CornerStyle.PILL))),
             Row(LookCommand.SetCompactPlayer(true), defaults.copy(look = look.copy(compactPlayer = true))),
             Row(LookCommand.SetClearVisualsMenu(true), defaults.copy(look = look.copy(clearVisualsMenu = true))),
+            Row(LookCommand.SetAmbientMode(AmbientMode.STILL), defaults.copy(look = look.copy(ambientMode = AmbientMode.STILL))),
+            Row(LookCommand.SetAmbientMode(AmbientMode.OFF), defaults.copy(look = look.copy(ambientMode = AmbientMode.OFF))),
         )
 
     private val playbackRows: List<Row> =
@@ -187,6 +201,33 @@ class SettingsRulesTest {
                 ExportCommand.SetLoudness(ExportLoudness.YOUTUBE),
                 defaults.copy(export = defaults.export.copy(loudness = ExportLoudness.YOUTUBE)),
             ),
+            Row(ExportCommand.SetQuality(ExportQuality.SD480), defaults.copy(export = defaults.export.copy(quality = ExportQuality.SD480))),
+            Row(
+                ExportCommand.SetQuality(ExportQuality.QHD1440),
+                defaults.copy(export = defaults.export.copy(quality = ExportQuality.QHD1440)),
+            ),
+            Row(ExportCommand.SetFinishedAlerts(false), defaults.copy(export = defaults.export.copy(finishedAlerts = false))),
+        )
+
+    private val backgroundRows: List<Row> =
+        listOf(
+            Row(BackgroundCommand.SetMusic(false), defaults.copy(background = background.copy(music = false))),
+            Row(BackgroundCommand.SetRenders(false), defaults.copy(background = background.copy(renders = false))),
+            Row(BackgroundCommand.SetRecording(true), defaults.copy(background = background.copy(recording = true))),
+        )
+
+    private val performanceRows: List<Row> =
+        listOf(
+            Row(
+                PerformanceCommand.SetVisualQuality(VisualQuality.BALANCED),
+                defaults.copy(performance = performance.copy(visualQuality = VisualQuality.BALANCED)),
+            ),
+            Row(
+                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.FPS60),
+                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.FPS60)),
+            ),
+            Row(PerformanceCommand.SetSaveMode(true), defaults.copy(performance = performance.copy(saveMode = true))),
+            Row(PerformanceCommand.SetVisualsOff(true), defaults.copy(performance = performance.copy(visualsOff = true))),
         )
 
     private val folderRows: List<Row> =
@@ -210,7 +251,10 @@ class SettingsRulesTest {
 
     @Test
     fun `every command changes its own setting and keeps it in range`() {
-        for (row in lookRows + playbackRows + equalizerRows + analysisRows + behaviorRows + exportRows + folderRows + onboardingRows) {
+        val rows =
+            lookRows + playbackRows + equalizerRows + analysisRows + behaviorRows + exportRows + folderRows + onboardingRows +
+                backgroundRows + performanceRows
+        for (row in rows) {
             assertEquals("${row.command}", row.after, SettingsRules.apply(defaults, row.command))
         }
     }
@@ -247,6 +291,22 @@ class SettingsRulesTest {
         assertEquals(folders.copy(presetMirror = music, presetFolder = presets), both.folders)
         assertEquals(folders.copy(presetMirror = music), SettingsRules.apply(both, FolderCommand.SetPresetFolder(null)).folders)
         assertEquals(folders.copy(presetFolder = presets), SettingsRules.apply(both, FolderCommand.SetPresetMirror(null)).folders)
+    }
+
+    @Test
+    fun `save mode leaves the chosen quality and frame rate untouched`() {
+        val chosen =
+            listOf<SettingsCommand>(
+                PerformanceCommand.SetVisualQuality(VisualQuality.BALANCED),
+                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.FPS60),
+                PerformanceCommand.SetSaveMode(true),
+            ).fold(defaults, SettingsRules::apply)
+
+        assertEquals(PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS60, saveMode = true), chosen.performance)
+        assertEquals(
+            PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS60, saveMode = false),
+            SettingsRules.apply(chosen, PerformanceCommand.SetSaveMode(false)).performance,
+        )
     }
 
     @Test

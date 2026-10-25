@@ -139,7 +139,15 @@ class VisualsReducerTest {
     }
 
     @Test
-    fun `the store starts by following Customization and reading the library`() {
-        assertEquals(listOf(Perform(VisualsWork.FollowCurrentStyle), Perform(VisualsWork.LoadLibrary)), VisualsReducer.start)
+    fun `the store starts by following Customization, reading the library, listing the presets and listing MilkDrop`() {
+        assertEquals(
+            listOf(
+                Perform(VisualsWork.FollowCurrentStyle),
+                Perform(VisualsWork.LoadLibrary),
+                Perform(VisualsWork.LoadPresets),
+                Perform(VisualsWork.ListMilkdrop),
+            ),
+            VisualsReducer.start,
+        )
     }
 }

@@ -24,6 +24,7 @@
 #include "geode/render/ProgramBinaryCache.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/viz/SceneRegistry.hpp"
+#include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
 #include "geode/render/ShaderSource.hpp"
@@ -61,9 +62,11 @@ public:
     std::string takeMilkPresetLoaded();
     void setLfoConfigs(const std::array<LfoConfig, LfoEngine::kSlots>& configs);
     void setAdsrConfigs(const std::array<AdsrConfig, AdsrEngine::kCount>& configs);
-    // The Shared core effects drawn over every Style before the composite (SharedFxPass). All 0
-    // until the evaluated Customization reaches the renderer (#54); taken at the next frame.
-    void setSharedEffects(const SharedEffects& effects);
+    // This frame's evaluated Customization (geode_viz_render runs the ReactionGraph), or nullptr while
+    // no snapshot carries a plan; taken at the next frame. The renderer maps it into the active Style's
+    // ranges (its pack's Extras) and draws all of it: the Shared core onto every Style and the
+    // composite, the Camera (CameraRig), the Shared core effects (SharedFxPass) and the Style's Extras.
+    void setCustomization(const mod::Evaluated* evaluated);
     // W00: full-frame overlay/underlay layers, latched here and uploaded to GL textures at the
     // start of the next frame; see CompositePass.hpp for the pass itself. `pixels` is Android's
     // Bitmap.getPixels ARGB layout; null (or a non-positive size) clears the layer.
@@ -103,8 +106,8 @@ private:
     scale::ScaleInputs scaleInputs(const Scene* scene);
     // Moves every scene target to `size`, keeping the picture (Framebuffer::resizePreserving).
     void applyRenderSize(scale::RenderSize size);
-    // The render scale the Style's manifest declares; read once per Style.
-    float styleScaleFor(const std::string& sceneId);
+    // The render scale the Style's pack declares (its manifest's "renderScale").
+    float styleScaleFor(const std::string& sceneId) const;
     Scene* resolveActiveScene();
     SceneParams resolveParams(float dt);
     void resolveLayerScene();
@@ -115,6 +118,14 @@ private:
     // The active Style's picture with the Shared core effects drawn over it, or the scene target as
     // it is while every effect is 0.
     GLuint applySharedEffects(float dt);
+    // The evaluated Customization in the active Style's units, onto `p`, the Camera and the effects.
+    void applyCustomization(SceneParams& p, float dt, bool reducedMotion);
+    // The ranges a Style's Customization maps into: the Shared core's, and its pack's Extras.
+    const mod::FamilyRanges& rangesFor(const std::string& sceneId);
+    // A Style's Extras: its pack's defaults, or `frame`'s values for the ones it declares.
+    ExtraValues extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const;
+    // Hands a scene this frame's Camera and its Extras before it draws.
+    void prepareScene(Scene& scene, const ExtraValues& extras);
     void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
@@ -145,7 +156,6 @@ private:
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;
     scale::LoadScaleController loadScale_;
-    std::vector<std::pair<std::string, float>> styleScales_;
     LfoEngine lfo_;
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
@@ -153,16 +163,13 @@ private:
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
-    // What the renderer holds before the app's first setScene. The app requests its Style
-    // (SceneIds.DEFAULT, the one place the default Style is chosen) before every frame, so this
-    // only needs to name a Style that always builds.
-    static constexpr const char* kStartSceneId = "aurora";
-
     mutable std::mutex stateLock_;
     SceneParams requestedParams_;
-    SharedEffects requestedEffects_;
+    std::optional<mod::Evaluated> requestedCustomization_;
     GeodeFeatureFrame features_{};
-    std::string requestedSceneId_ = kStartSceneId;
+    // Empty until the app's first setScene: the app requests its Style (SceneIds.DEFAULT, the one place
+    // the default Style is chosen) before every frame, and until then the renderer draws black.
+    std::string requestedSceneId_;
     std::string layerSceneId_;
     float layerMix_ = 0.5f;
     int layerBlend_ = static_cast<int>(BlendMode::Screen);
@@ -222,6 +229,12 @@ private:
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
     SharedEffects frameEffects_;
+    std::optional<mod::Evaluated> frameCustomization_;
+    CameraRig camera_;
+    // The active Style's Extras this frame.
+    ExtraValues activeExtras_ = ExtraValues::neutral();
+    std::string rangesSceneId_;
+    mod::FamilyRanges ranges_ = mod::FamilyRanges::sharedCore();
     // Latched once per frame in beginFrame alongside frameFeatures_, so the
     // rest of the frame (composite(), drawSecondaryTargets(), ...) reads a
     // stable snapshot instead of racing setLayer()/setTransition() on

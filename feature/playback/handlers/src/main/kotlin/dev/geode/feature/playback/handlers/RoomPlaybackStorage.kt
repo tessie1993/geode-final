@@ -13,6 +13,7 @@ import dev.geode.feature.playback.api.QueueEnd
 import dev.geode.feature.playback.api.RepeatMode
 import dev.geode.feature.playback.api.Track
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /** [PlaybackStorage] in Playback's own Room database. */
@@ -20,7 +21,10 @@ class RoomPlaybackStorage(
     private val dao: PlaybackDao,
 ) : PlaybackStorage {
     override val playlists: Flow<List<PlaylistSummary>> =
-        dao.playlists().map { rows -> rows.map { PlaylistSummary(PlaylistId(it.id), it.name, it.trackCount) } }
+        combine(dao.playlists(), dao.allPlaylistTracks()) { rows, tracks ->
+            val byPlaylist = tracks.groupBy({ it.playlistId }, { it.track.toTrack() })
+            rows.map { PlaylistSummary(PlaylistId(it.id), it.name, it.trackCount, byPlaylist[it.id].orEmpty()) }
+        }
 
     override val history: Flow<List<PlayedTrack>> =
         dao.history(HISTORY_LIMIT).map { rows -> rows.map { PlayedTrack(it.track.toTrack(), Millis(it.playedAtMs)) } }
@@ -34,6 +38,16 @@ class RoomPlaybackStorage(
     ): PlaylistId = PlaylistId(dao.createPlaylist(PlaylistRow(name = name, createdAtMs = createdAt.value), tracks.map { it.toColumns() }))
 
     override suspend fun deletePlaylist(id: PlaylistId) = dao.deletePlaylist(id.value)
+
+    override suspend fun renamePlaylist(
+        id: PlaylistId,
+        name: String,
+    ) = dao.renamePlaylist(id.value, name)
+
+    override suspend fun replacePlaylistTracks(
+        id: PlaylistId,
+        tracks: List<Track>,
+    ) = dao.replacePlaylistTracks(id.value, tracks.map { it.toColumns() })
 
     override suspend fun recordPlay(
         track: Track,

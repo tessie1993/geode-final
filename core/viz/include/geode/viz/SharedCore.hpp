@@ -26,6 +26,15 @@ constexpr size_t kSharedCount = 58;
 
 // ExtraKind's size and MACRO_COUNT in :feature:customization:api.
 constexpr size_t kExtraCount = 23;
+
+// The Style-unique Extras, in ExtraKind's order (a manifest writes them in lower case: "scale",
+// "center_x"). One name is one control with one range on every Style that has it (style-packs.md):
+// center_x and center_y are offsets in -1..1, variant a whole number in 0..9, and every other Extra a
+// multiplier in 0..2 of the Style's own amount, so 1 draws the Style as its pack tunes it.
+enum class Extra : uint8_t {
+    Scale, Count, Size, Thickness, Flight, Spin, Orbit, Swirl, Drift, Complexity, Edge, Fog,
+    Decay, Viscosity, Growth, Spread, Force, Reach, Turn, Hold, Variant, CenterX, CenterY,
+};
 constexpr size_t kMacroCount = 6;
 constexpr float kMacroRest = 0.5f;
 

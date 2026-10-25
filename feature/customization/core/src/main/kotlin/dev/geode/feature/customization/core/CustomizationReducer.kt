@@ -19,6 +19,11 @@ import dev.geode.kernel.ReportFailure
  * - Undo and redo are unlimited for the session; reset to Style is an edit like any other.
  * - Playing or stopping a hand-started Modulator is live: it reaches the engine but not the history.
  * - Presets keep the ticked parts; a preset applied on another Style brings only the shared parts.
+ * - Setting the Automations is the person's edit; what the Automations do by themselves, Style
+ *   switching's moves ([CustomizationEvent.StyleDue]), is live and stays out of the history. They are
+ *   kept across a change of Style and a reset to Style, and never saved in a preset.
+ * - The Visualizer styles `:app` hands in are kept beside the history, not in it, as are A/B
+ *   compare's slots; switching to a slot is an edit.
  * - A change of Style is announced as [CustomizationFact.StyleChanged].
  *
  * [styles] are the manifests of the Styles this version knows.
@@ -34,7 +39,22 @@ class CustomizationReducer(
             is CustomizationEvent.Command -> command(state, event.command)
             is CustomizationEvent.PresetLoaded -> edit(state, PresetRules.apply(state.current, event.preset, styles))
             is CustomizationEvent.WorkFailed -> Next(state, listOf(ReportFailure(event.failure.message)))
+            CustomizationEvent.StyleDue -> autoSwitch(state)
         }
+
+    /**
+     * Style switching's move to its next Style ([Automation.nextStyle]): live, like a hand-started
+     * Modulator, so not in the history. It counts the switch, so the app's picks' shuffle moves on.
+     */
+    private fun autoSwitch(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
+        val current = state.current
+        val switching = current.automations.style ?: return Next(state)
+        val builtIns = styles.styles.map { it.id }
+        val pick =
+            Automation.nextStyle(switching, current.style, state.visualizerStyles, builtIns, state.styleSwitches) ?: return Next(state)
+        val switched = Edits.switchStyle(current, styles.manifestOf(current.style), styles.manifestOf(pick.style))
+        return Next(state.copy(current = switched, styleSwitches = pick.played), handOver(current, switched))
+    }
 
     private fun command(
         state: CustomizationState,
@@ -58,7 +78,12 @@ class CustomizationReducer(
             is CustomizationCommand.RemoveModulator -> edit(state, Edits.removeModulator(current, command.id))
             is CustomizationCommand.PlayModulator -> live(state, Edits.playModulator(current, command.id, command.playing))
             is CustomizationCommand.TrimSignal -> edit(state, Edits.trimSignal(current, command.signal, command.trim))
-            CustomizationCommand.ResetToStyle -> edit(state, Defaults.customization(styles.manifestOf(current.style)))
+            is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
+            is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
+            CustomizationCommand.ResetToStyle -> edit(state, Edits.resetToStyle(current, styles.manifestOf(current.style)))
+            is CustomizationCommand.KeepForCompare -> Next(state.copy(compare = state.compare + (command.slot to current)))
+            is CustomizationCommand.Compare ->
+                state.compare[command.slot]?.let { kept -> edit(state, kept.copy(automations = current.automations)) } ?: Next(state)
             CustomizationCommand.Undo -> undo(state)
             CustomizationCommand.Redo -> redo(state)
             is CustomizationCommand.SavePreset ->
@@ -89,7 +114,7 @@ class CustomizationReducer(
         if (next == state.current) {
             Next(state)
         } else {
-            Next(CustomizationState(next, state.undo + state.current, emptyList()), handOver(state.current, next))
+            Next(state.copy(current = next, undo = state.undo + state.current, redo = emptyList()), handOver(state.current, next))
         }
 
     /** A live change: handed to the engine, kept out of the history. */
@@ -101,12 +126,18 @@ class CustomizationReducer(
 
     private fun undo(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
         val previous = state.undo.lastOrNull() ?: return Next(state)
-        return Next(CustomizationState(previous, state.undo.dropLast(1), state.redo + state.current), handOver(state.current, previous))
+        return Next(
+            state.copy(current = previous, undo = state.undo.dropLast(1), redo = state.redo + state.current),
+            handOver(state.current, previous),
+        )
     }
 
     private fun redo(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
         val following = state.redo.lastOrNull() ?: return Next(state)
-        return Next(CustomizationState(following, state.undo + state.current, state.redo.dropLast(1)), handOver(state.current, following))
+        return Next(
+            state.copy(current = following, undo = state.undo + state.current, redo = state.redo.dropLast(1)),
+            handOver(state.current, following),
+        )
     }
 
     private fun handOver(
@@ -115,5 +146,14 @@ class CustomizationReducer(
     ): List<CustomizationEffect> {
         val publish = Perform(CustomizationWork.Publish(to))
         return if (from.style == to.style) listOf(publish) else listOf(publish, Emit(CustomizationFact.StyleChanged(to.style)))
+    }
+
+    companion object {
+        /**
+         * What the store does once, when it is built from [initial]: convert the presets an older Geode
+         * saved, and hand the starting Customization to the engine, which has none until then.
+         */
+        fun start(initial: CustomizationState): List<CustomizationEffect> =
+            listOf(Perform(CustomizationWork.UpgradePresets), Perform(CustomizationWork.Publish(initial.current)))
     }
 }

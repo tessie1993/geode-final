@@ -5,24 +5,35 @@ import android.opengl.GLSurfaceView
 import android.service.wallpaper.WallpaperService
 import android.view.MotionEvent
 import android.view.SurfaceHolder
+import dagger.hilt.android.AndroidEntryPoint
+import dev.geode.analysis.AudioFeatures
 import dev.geode.audio.AudioBus
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.PresetStore
+import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.settings.api.SettingsState
 import dev.geode.render.FramePacer
 import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
 import dev.geode.ui.ThemeStore
 import dev.geode.util.bestEffort
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class VisualizerWallpaperService : WallpaperService() {
+    /** The app's settings (#17): the wallpaper follows reduced motion as the app does. */
+    @Inject
+    lateinit var settings: Settings
+
     override fun onCreateEngine(): Engine = VisualizerEngine()
 
     private inner class VisualizerEngine : Engine() {
         private var glView: WallpaperGlSurfaceView? = null
         private var renderer: VisualizerRenderer? = null
-        private val idle = IdleFeatures()
-        private var lastFrameMs = 0L
+
+        // Nothing playing is silence: the wallpaper moves on the Style's own time, never on made-up sound.
+        private val silence = AudioFeatures.empty()
         private var feeder: Thread? = null
 
         /**
@@ -105,7 +116,10 @@ class VisualizerWallpaperService : WallpaperService() {
             prefs.getString("milk_path", null)?.let { path ->
                 if (java.io.File(path).isFile) engine.loadMilkPreset(path)
             }
-            engine.reducedMotion = ThemeStore(prefsFiles.general).loadGui().reducedMotion
+            // Settings, once read; before then, what the old settings file said.
+            engine.reducedMotion =
+                (settings.state.value as? SettingsState.Ready)?.values?.behavior?.reducedMotion
+                    ?: ThemeStore(prefsFiles.general).loadGui().reducedMotion
         }
 
         private fun startFeeding(engine: VisualizerRenderer) {
@@ -113,14 +127,10 @@ class VisualizerWallpaperService : WallpaperService() {
             AudioBus.addConsumer()
             val generation = ++feedGeneration
             running = true
-            lastFrameMs = android.os.SystemClock.elapsedRealtime()
             feeder =
                 Thread {
                     while (running && feedGeneration == generation) {
-                        val now = android.os.SystemClock.elapsedRealtime()
-                        val dt = ((now - lastFrameMs).coerceIn(1, 100)) / 1000f
-                        lastFrameMs = now
-                        engine.features = AudioBus.features() ?: idle.tick(dt)
+                        engine.features = AudioBus.features() ?: silence
                         Thread.sleep(FEED_INTERVAL_MS)
                     }
                 }.apply {

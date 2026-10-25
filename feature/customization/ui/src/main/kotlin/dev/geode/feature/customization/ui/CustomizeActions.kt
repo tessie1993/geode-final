@@ -35,6 +35,9 @@ sealed interface CustomizeAction {
 
     /** The panel was swiped away: the Visual is shown alone. */
     data object Hide : CustomizeAction
+
+    /** Open the Presets browser (#144), beside this Style's preset chips. */
+    data object BrowsePresets : CustomizeAction
 }
 
 /** Surprise me keeps every Macro within this range, clear of both ends (#12). */

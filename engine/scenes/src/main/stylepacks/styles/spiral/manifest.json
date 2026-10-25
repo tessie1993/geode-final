@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "spiral",
+  "label": "Spiral",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

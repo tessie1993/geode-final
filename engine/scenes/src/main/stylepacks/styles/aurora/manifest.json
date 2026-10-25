@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "aurora",
+  "label": "Aurora",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

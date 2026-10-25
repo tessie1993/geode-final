@@ -127,6 +127,19 @@ sealed interface PlayerState {
     ) : PlayerState
 }
 
+/** The queue [this] state plays from, or null while nothing is loaded. */
+val PlayerState.currentQueue: Queue?
+    get() =
+        when (this) {
+            PlayerState.Idle -> null
+            is PlayerState.Loading -> queue
+            is PlayerState.Buffering -> queue
+            is PlayerState.Playing -> queue
+            is PlayerState.Paused -> queue
+            is PlayerState.Ended -> queue
+            is PlayerState.Error -> queue
+        }
+
 /** A playlist Playback keeps. */
 @JvmInline
 value class PlaylistId(
@@ -139,6 +152,8 @@ data class PlaylistSummary(
     val id: PlaylistId,
     val name: String,
     val trackCount: Int,
+    /** The playlist's tracks, in order. */
+    val tracks: List<Track> = emptyList(),
 )
 
 /** One entry of the play history: [track] started playing at [playedAt], wall-clock time. */
@@ -194,6 +209,8 @@ data class ListeningOptions(
     val crossfade: Millis = Millis.ZERO,
     val gapless: Boolean = true,
     val queueEnd: QueueEnd = QueueEnd.STOP,
+    // Whether a long track goes on from where it was left off; Settings' choice, which Playback follows.
+    val resumeLongTracks: Boolean = true,
 ) {
     /** Whether the next track is opened ahead of time, for a gapless join or a crossfade. */
     val joinsTracks: Boolean get() = gapless || crossfade > Millis.ZERO
@@ -258,10 +275,14 @@ data class ShuffleOrder(
 )
 
 sealed interface PlaybackCommand {
-    /** Replaces the queue with [tracks] and plays from [startAt]. */
+    /**
+     * Replaces the queue with [tracks] and plays the one at [startAt], from [from] in it: the place a
+     * car or the system's "resume" hands over with the songs (#17).
+     */
     data class Play(
         val tracks: List<Track>,
         val startAt: Int = 0,
+        val from: Millis = Millis.ZERO,
     ) : PlaybackCommand
 
     data object Resume : PlaybackCommand
@@ -281,9 +302,33 @@ sealed interface PlaybackCommand {
         val id: PlaylistId,
     ) : PlaybackCommand
 
+    /** Saves [tracks] as a playlist named [name]; it may start empty and be filled later. */
     data class CreatePlaylist(
         val name: String,
         val tracks: List<Track>,
+    ) : PlaybackCommand
+
+    data class RenamePlaylist(
+        val id: PlaylistId,
+        val name: String,
+    ) : PlaybackCommand
+
+    /** Puts [tracks] at the end of the playlist. */
+    data class AddToPlaylist(
+        val id: PlaylistId,
+        val tracks: List<Track>,
+    ) : PlaybackCommand
+
+    /** Moves the playlist's track at [from] to [to]; indexes are positions in the playlist. */
+    data class MoveInPlaylist(
+        val id: PlaylistId,
+        val from: Int,
+        val to: Int,
+    ) : PlaybackCommand
+
+    data class RemoveFromPlaylist(
+        val id: PlaylistId,
+        val index: Int,
     ) : PlaybackCommand
 
     /** Saves the play history, each track once, most recent first, as a playlist named [name]. */
@@ -337,6 +382,11 @@ sealed interface PlaybackCommand {
     ) : PlaybackCommand
 
     data class SetGapless(
+        val on: Boolean,
+    ) : PlaybackCommand
+
+    /** Whether long tracks go on from where they were left off. */
+    data class SetResumeLongTracks(
         val on: Boolean,
     ) : PlaybackCommand
 

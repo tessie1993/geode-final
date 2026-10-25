@@ -37,9 +37,73 @@
     <string name="visuals_group_cymatics">Cymatics</string>
     <string name="visuals_group_milkdrop">MilkDrop</string>
 
+    <!-- The Presets browser (#144). -->
+    <string name="presets_title">Presets</string>
+    <string name="presets_loading">Finding your presets…</string>
+    <string name="presets_paste_link">Paste a shared preset</string>
+    <string name="presets_open_file">Open a preset file</string>
+    <string name="presets_top">All presets</string>
+    <string name="presets_folders">Your folders</string>
+    <string name="presets_saved">Your presets</string>
+    <string name="presets_built_in">Built-in presets</string>
+    <string name="presets_for">Built-in for %1$s</string>
+    <string name="presets_built_in_about">Built-in · %1$s</string>
+    <string name="presets_made_on">Made on %1$s</string>
+    <string name="presets_none_saved">Presets you save in Customize, or import, show up here</string>
+    <string name="presets_folder_empty">Nothing in this folder yet</string>
+    <string name="presets_rename">Rename</string>
+    <string name="presets_name">Preset name</string>
+    <string name="presets_name_taken">A preset is already called that</string>
+    <string name="presets_move">Move to a folder</string>
+    <string name="presets_move_title">Move \"%1$s\"</string>
+    <string name="presets_share">Share</string>
+    <string name="presets_delete">Delete</string>
+    <string name="presets_delete_title">Delete \"%1$s\"?</string>
+    <string name="presets_delete_body">This removes the preset and its file for good; there is no undo. Share it first if you might want it back.</string>
+    <string name="presets_imported">Imported \"%1$s\"</string>
+    <string name="presets_no_link">The clipboard holds no Geode preset link</string>
+    <string name="presets_not_a_preset">That is not a Geode preset</string>
+    <string name="presets_clipboard_empty">The clipboard is empty</string>
+    <string name="presets_dismiss">Dismiss</string>
+
     <!-- Full-screen visual mode. -->
     <string name="visuals_exit_full_screen">Leave full screen</string>
     <string name="visuals_previous_style">Previous Style</string>
     <string name="visuals_next_style">Next Style</string>
     <string name="visuals_show_controls">Show or hide the controls</string>
+
+    <!-- MilkDrop presets and textures, and importing them (#145). -->
+    <string name="milkdrop_title">MilkDrop</string>
+    <string name="milkdrop_subtitle">Presets for the MilkDrop Style, and the images they use</string>
+    <string name="milkdrop_import_presets">Import presets</string>
+    <string name="milkdrop_import_textures">Import textures</string>
+    <string name="milkdrop_loading">Finding your MilkDrop presets…</string>
+    <string name="milkdrop_importing">Importing…</string>
+    <string name="milkdrop_presets">Presets</string>
+    <string name="milkdrop_textures">Textures</string>
+    <string name="milkdrop_by">by %1$s</string>
+    <string name="milkdrop_yours">Yours</string>
+    <string name="milkdrop_no_textures">No textures yet. Import the images a preset asks for.</string>
+    <plurals name="milkdrop_imported_presets">
+        <item quantity="one">Imported %1$d preset</item>
+        <item quantity="other">Imported %1$d presets</item>
+    </plurals>
+    <plurals name="milkdrop_imported_textures">
+        <item quantity="one">Imported %1$d texture</item>
+        <item quantity="other">Imported %1$d textures</item>
+    </plurals>
+    <string name="milkdrop_nothing_imported">Nothing was imported</string>
+    <plurals name="milkdrop_broken">
+        <item quantity="one">%1$d file was left out. Everything else is as it was.</item>
+        <item quantity="other">%1$d files were left out. Everything else is as it was.</item>
+    </plurals>
+    <string name="milkdrop_dismiss">OK</string>
+    <string name="milkdrop_problem_not_a_preset">Not a MilkDrop preset</string>
+    <string name="milkdrop_problem_not_an_image">Not the image its name says</string>
+    <string name="milkdrop_problem_wrong_type">Use PNG, JPEG, BMP, TGA or DDS</string>
+    <string name="milkdrop_problem_too_large">Too large</string>
+    <string name="milkdrop_problem_empty">Empty</string>
+    <string name="milkdrop_problem_unreadable">Could not be read</string>
+    <string name="milkdrop_problem_already_there">One by this name is already here</string>
+    <string name="milkdrop_problem_not_saved">Could not be saved</string>
 </resources>

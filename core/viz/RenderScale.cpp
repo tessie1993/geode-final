@@ -3,15 +3,11 @@
 #include <algorithm>
 #include <cmath>
 
-#include "geode/util/Json.hpp"
-
 namespace geode::viz::scale {
 
 namespace {
 constexpr float kPixelsPerMegapixel = 1.0e6f;
 constexpr float kMsPerSecond = 1000.0f;
-constexpr const char* kStyleDir = "styles/";
-constexpr const char* kManifestFile = "/manifest.json";
 }  // namespace
 
 // ---- supersampling -------------------------------------------------------------------------------
@@ -25,21 +21,9 @@ float liveSupersample(int surfaceWidth, int surfaceHeight) {
 
 // ---- per-Style render scale ----------------------------------------------------------------------
 
-std::string styleManifestPath(std::string_view styleId) {
-    std::string path(kStyleDir);
-    path.append(styleId);
-    path.append(kManifestFile);
-    return path;
-}
-
-float manifestRenderScale(const std::string& manifestJson) {
-    const auto doc = json::parse(manifestJson);
-    if (!doc || doc->kind() != json::Value::Kind::Object) return kDefaultStyleRenderScale;
-    const json::Value* value = doc->get(std::string(kStyleManifestKey));
-    if (value == nullptr || value->kind() != json::Value::Kind::Number) return kDefaultStyleRenderScale;
-    const float declared = static_cast<float>(value->number());
-    if (!std::isfinite(declared)) return kDefaultStyleRenderScale;
-    return std::clamp(declared, kMinStyleRenderScale, kMaxStyleRenderScale);
+float styleRenderScale(std::optional<double> declared) {
+    if (!declared || !std::isfinite(*declared)) return kDefaultStyleRenderScale;
+    return std::clamp(static_cast<float>(*declared), kMinStyleRenderScale, kMaxStyleRenderScale);
 }
 
 // ---- load scale ----------------------------------------------------------------------------------

@@ -1,8 +1,10 @@
 package dev.geode.feature.library.handlers
 
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
+import dev.geode.feature.library.core.edited
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
@@ -43,8 +45,10 @@ class FakeLibraryStorage : LibraryStorage {
     val edits = mutableMapOf<TrackId, SongEdit>()
     val favourites = mutableSetOf<TrackId>()
     val excludedFolders = mutableSetOf<String>()
+    val smartPlaylists = mutableListOf<SmartPlaylist>()
 
-    override suspend fun read(): SavedLibrary = guard { SavedLibrary(songs.map(::edited), favourites.toSet(), excludedFolders.toSet()) }
+    override suspend fun read(): SavedLibrary =
+        guard { SavedLibrary(songs.map(::edited), favourites.toSet(), excludedFolders.toSet(), smartPlaylists.toList()) }
 
     override suspend fun replaceSongs(found: List<Song>): List<Song> =
         guard {
@@ -81,6 +85,8 @@ class FakeLibraryStorage : LibraryStorage {
         Unit
     }
 
+    override suspend fun edits(): Map<TrackId, SongEdit> = guard { edits.toMap() }
+
     override suspend fun saveExcludedFolders(folders: Set<String>) =
         guard {
             excludedFolders.clear()
@@ -88,10 +94,24 @@ class FakeLibraryStorage : LibraryStorage {
             Unit
         }
 
+    override suspend fun saveSmartPlaylist(
+        playlist: SmartPlaylist,
+        replacing: String?,
+    ) = guard {
+        smartPlaylists.removeAll { it.name == replacing || it.name == playlist.name }
+        smartPlaylists += playlist
+        Unit
+    }
+
+    override suspend fun deleteSmartPlaylist(name: String) =
+        guard {
+            smartPlaylists.removeAll { it.name == name }
+            Unit
+        }
+
     private fun Song.keptTags(old: Song) = filledFrom(FileTags(old.albumArtist, old.composer, old.genre))
 
-    private fun edited(song: Song): Song =
-        edits[song.id]?.let { song.copy(title = it.title, artist = it.artist, album = it.album, artwork = it.artwork) } ?: song
+    private fun edited(song: Song): Song = edits[song.id]?.let { song.edited(it) } ?: song
 
     private fun <T> guard(block: () -> T): T = if (failing) error("the database is gone") else block()
 }

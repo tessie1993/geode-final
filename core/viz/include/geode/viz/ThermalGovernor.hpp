@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -60,8 +61,19 @@ private:
 class ThermalGovernor {
 public:
     ThermalTier tier() const { return offscreen() ? ThermalTier::Full : settled_.load(); }
-    // The ceiling the tier puts on the load scale.
-    float renderCeiling() const { return thermalTierInfo(tier()).renderScale; }
+    // The ceiling on the load scale: the tier's, or the person's Visual quality when that is lower.
+    // A Render ignores both and draws at its exact export size.
+    float renderCeiling() const {
+        const float heat = thermalTierInfo(tier()).renderScale;
+        return offscreen() ? heat : std::min(heat, qualityCeiling_.load());
+    }
+    // The person's Visual quality on screen (Settings, #28) as a render scale ceiling. The automatic
+    // cooling can only lower it further. Kept between the coolest tier's scale and 1; NaN means 1.
+    void setQualityCeiling(float ceiling) {
+        qualityCeiling_.store(std::isnan(ceiling) ? kMaxQualityCeiling
+                                                  : std::clamp(ceiling, kMinQualityCeiling, kMaxQualityCeiling));
+    }
+    float qualityCeiling() const { return qualityCeiling_.load(); }
     bool offscreen() const { return offscreenDepth_.load() > 0; }
     void setPacedFps(float fps) { pacedFps_.store(fps); }
     float pacedFps() const { return pacedFps_.load(); }
@@ -85,6 +97,8 @@ private:
     static constexpr float kHeadroomEased = 0.75f;
     static constexpr float kHeadroomReduced = 0.85f;
     static constexpr float kHeadroomMinimal = 0.95f;
+    static constexpr float kMinQualityCeiling = kTierMinimal.renderScale;
+    static constexpr float kMaxQualityCeiling = 1.0f;
 
     ThermalTier observe() const;
     void settle(ThermalTier observed);
@@ -96,6 +110,7 @@ private:
     std::atomic<float> headroom_{NAN};
     std::atomic<int> offscreenDepth_{0};
     std::atomic<float> pacedFps_{0.0f};
+    std::atomic<float> qualityCeiling_{kMaxQualityCeiling};
     float sampleClock_ = 0.0f;
     float hotDwellSeconds_ = 0.0f;
     float coolDwellSeconds_ = 0.0f;

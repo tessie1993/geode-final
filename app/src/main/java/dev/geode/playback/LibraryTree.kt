@@ -4,43 +4,31 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import dev.geode.R
-import dev.geode.data.FavouritesStore
-import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.HistoryStore
-import dev.geode.data.MusicPlaylistStore
+import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
-import dev.geode.ui.DeviceTrack
-import dev.geode.ui.DeviceTrackQuery
-import dev.geode.ui.TrackLibrary
+import dev.geode.feature.library.api.LibraryState
+import dev.geode.feature.playback.api.Track
 
 /**
  * The browse tree Android Auto and other browsers walk. Folder ids are fixed words or `<kind>/<name>`;
  * a playable id is `<parentId>|<uri>` so the parent list can be rebuilt when one of its rows is tapped.
+ * The songs and favourites are the Library's state, [library]; [recent] is Playback's play history, the
+ * most recent first (#17). A playlist is named by its id, which keeps across renames.
  */
 class LibraryTree(
     private val context: Context,
+    private val library: () -> LibraryState,
+    private val recent: () -> List<Track>,
 ) {
     private data class Row(
         val uri: TrackId,
         val title: String,
         val artist: String,
         val album: String,
+        val duration: Millis = Millis.ZERO,
     )
 
-    // tracks() used to re-run TrackLibrary + DeviceTrackQuery on every call, and children()/rowsFor()/
-    // queueFor() each call it independently, so a single browse of e.g. an album folder scanned the
-    // MediaStore several times over. Cache the merged row list per instance (this tree is built once in
-    // PlaybackService.onCreate) and invalidate it from onGetLibraryRoot, the one place Media3 re-enters
-    // browsing from the top.
-    @Volatile
-    private var cachedTracks: List<Row>? = null
-
     fun root(): MediaItem = folder(ROOT, context.getString(R.string.app_name), MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
-
-    /** Coarse cache invalidation: called when a browser re-enters at the root. */
-    fun invalidate() {
-        cachedTracks = null
-    }
 
     fun item(mediaId: String): MediaItem? =
         when {
@@ -57,10 +45,14 @@ class LibraryTree(
             ALBUMS -> groups(ALBUMS, tracks().map { it.album }, MediaMetadata.MEDIA_TYPE_ALBUM)
             ARTISTS -> groups(ARTISTS, tracks().map { it.artist }, MediaMetadata.MEDIA_TYPE_ARTIST)
             PLAYLISTS ->
-                MusicPlaylistStore(context).list().map { folder("$PLAYLISTS/${it.name}", it.name, MediaMetadata.MEDIA_TYPE_PLAYLIST) }
-            FAVOURITES -> rowsFor(FavouritesStore(GeodePrefsFiles(context).favourites).all()).map { playable(parentId, it) }
+                library().playlists.map { folder("$PLAYLISTS/${it.id.value}", it.name, MediaMetadata.MEDIA_TYPE_PLAYLIST) }
+            FAVOURITES -> tracks().filter { it.uri in library().favourites }.map { playable(parentId, it) }
             RECENT ->
-                HistoryStore(context).recentlyPlayed(RECENT_LIMIT).map { playable(parentId, Row(it.uri, it.title, it.artist, "")) }
+                recent()
+                    .distinctBy { it.id }
+                    .take(
+                        RECENT_LIMIT,
+                    ).map { playable(parentId, Row(it.id, it.title, it.artist, "", it.duration)) }
             else -> groupChildren(parentId)
         }
 
@@ -99,10 +91,10 @@ class LibraryTree(
                 ALBUMS -> tracks().filter { it.album == name }
                 ARTISTS -> tracks().filter { it.artist == name }
                 PLAYLISTS ->
-                    MusicPlaylistStore(context)
-                        .list()
-                        .firstOrNull { it.name == name }
-                        ?.trackUris
+                    library()
+                        .playlists
+                        .firstOrNull { it.id.value.toString() == name }
+                        ?.songs
                         ?.let(::rowsFor)
                         .orEmpty()
                 else -> emptyList()
@@ -116,34 +108,17 @@ class LibraryTree(
         mediaType: Int,
     ): List<MediaItem> = names.distinct().sortedBy { it.lowercase() }.map { folder("$kind/$it", it, mediaType) }
 
-    /** Memoised merge of device tracks and imported documents; Media3 calls its callbacks on its own executor. */
-    private fun tracks(): List<Row> =
-        cachedTracks ?: synchronized(this) {
-            cachedTracks ?: buildTracks().also { cachedTracks = it }
-        }
-
-    /** Device tracks first, then imported documents the MediaStore does not index; app-side title edits win. */
-    private fun buildTracks(): List<Row> {
-        val overrides = TrackLibrary(context).list().associateBy { it.uri }
-        val device = DeviceTrackQuery.query(context).map { it.row(overrides) }
-        val seen = device.mapTo(HashSet()) { it.uri }
-        val imported = overrides.values.filter { it.uri !in seen }.map { Row(it.uri, it.title, it.artist, it.album) }
-        return device + imported
+    /** The Library's songs, with the user's edits in, outside the folders the user left out. */
+    private fun tracks(): List<Row> {
+        val state = library()
+        return state.songs
+            .filterNot { song -> state.excludedFolders.any { song.folder == it || song.folder.startsWith("$it/") } }
+            .map { Row(it.id, it.title, it.artist, it.album, it.duration) }
     }
 
     private fun rowsFor(uris: List<TrackId>): List<Row> {
         val byUri = tracks().associateBy { it.uri }
         return uris.mapNotNull { uri -> byUri[uri] }
-    }
-
-    private fun DeviceTrack.row(overrides: Map<TrackId, dev.geode.ui.LibraryTrack>): Row {
-        val stored = overrides[uri]
-        return Row(
-            uri,
-            stored?.title?.ifBlank { null } ?: title,
-            stored?.artist?.ifBlank { null } ?: artist,
-            stored?.album?.ifBlank { null } ?: album,
-        )
     }
 
     private fun playable(
@@ -160,6 +135,7 @@ class LibraryTree(
                     .setTitle(row.title)
                     .setArtist(row.artist.ifBlank { null })
                     .setAlbumTitle(row.album.ifBlank { null })
+                    .apply { if (row.duration > Millis.ZERO) setDurationMs(row.duration.value) }
                     .setIsBrowsable(false)
                     .setIsPlayable(true)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)

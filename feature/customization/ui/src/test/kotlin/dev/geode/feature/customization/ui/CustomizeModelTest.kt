@@ -3,6 +3,7 @@ package dev.geode.feature.customization.ui
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
@@ -181,5 +182,12 @@ class CustomizeModelTest {
         assertEquals(presets, shown.presets)
         assertFalse(shown.isCurrent(looks[0]))
         assertTrue(shown.isCurrent(looks[1]))
+    }
+
+    @Test
+    fun `the A and B compare slots that keep something are offered`() {
+        val state = CustomizationState(customization, compare = mapOf(CompareSlot.B to customization))
+        assertEquals(setOf(CompareSlot.B), state.toCustomizeModel().kept)
+        assertEquals(emptySet<CompareSlot>(), CustomizationState(customization).toCustomizeModel().kept)
     }
 }

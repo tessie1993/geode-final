@@ -77,7 +77,6 @@ public final class dev/geode/feature/capture/api/CaptureProblem : java/lang/Enum
 }
 
 public final class dev/geode/feature/capture/api/CaptureSource : java/lang/Enum {
-	public static final field LINE_IN Ldev/geode/feature/capture/api/CaptureSource;
 	public static final field MICROPHONE Ldev/geode/feature/capture/api/CaptureSource;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/capture/api/CaptureSource;

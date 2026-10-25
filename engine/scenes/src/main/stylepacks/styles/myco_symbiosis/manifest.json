@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "id": "myco_symbiosis",
+  "label": "Symbiosis",
+  "family": "mycelium",
+  "parameters": {
+    "sensorDist": 8.0,
+    "sensorAngle": 0.45,
+    "speciesMix": 0.5,
+    "crossAb": 0.35,
+    "crossBa": 0.35,
+    "reaim": 0.15,
+    "hueOffset": 0.1
+  }
+}

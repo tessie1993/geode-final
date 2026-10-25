@@ -1,5 +1,6 @@
 package dev.geode.feature.visuals.api
 
+import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
 import dev.geode.kernel.Feature
 
@@ -8,11 +9,13 @@ import dev.geode.kernel.Feature
  * where a Style is chosen for the Visual, and full-screen visual mode.
  *
  * It owns only how the person finds Styles: the Style list grouped by family, their Favourites, the
- * Styles they used most recently, and folders they make, which can nest. Which Style the Visual
+ * Styles they used most recently, and folders they make, which can nest; and the MilkDrop presets and
+ * textures, built-in and the ones the person imports through the system picker. Which Style the Visual
  * shows belongs to Customization; choosing one here asks Customization for it, and [VisualsState.current]
- * follows what Customization says. The music belongs to Playback, which this feature never touches,
- * so moving between the Visuals tab, full-screen visual mode and any other place never restarts the
- * music or the Visual.
+ * follows what Customization says. It also keeps the Presets browser (#144): the built-in and saved
+ * presets by folder, applied through Customization, and shared as links or files. The music belongs to
+ * Playback, which this feature never touches, so moving between the Visuals tab, full-screen visual mode
+ * and any other place never restarts the music or the Visual.
  */
 typealias Visuals = Feature<VisualsState, VisualsCommand, VisualsFact>
 
@@ -78,13 +81,17 @@ data class StyleLibrary(
 
 /**
  * Everything Visuals lets the outside read: the [styles] this version draws, in the order they are
- * listed, the Style the Visual shows now ([current], null until Customization has said), and the
- * person's [library], null until it has been read back from the phone.
+ * listed, the Style the Visual shows now ([current], null until Customization has said), the
+ * person's [library], null until it has been read back from the phone, the [presets], null until
+ * they have been listed, and the MilkDrop presets and textures, built-in and imported ([milkdrop],
+ * null until the MilkDrop folder has been listed).
  */
 data class VisualsState(
     val styles: List<StyleEntry> = emptyList(),
     val current: SceneId? = null,
     val library: StyleLibrary? = null,
+    val presets: PresetShelf? = null,
+    val milkdrop: MilkdropShelf? = null,
 )
 
 /**
@@ -136,6 +143,76 @@ sealed interface VisualsCommand {
         val folder: FolderId,
         val style: SceneId,
     ) : VisualsCommand
+
+    /**
+     * Imports [files] (content uris from the system picker) as MilkDrop presets or textures, each on
+     * its own: a broken one is reported in [MilkdropShelf.lastImport] and the rest still come in. Does
+     * nothing while another import runs or before the MilkDrop folder has been listed.
+     */
+    data class ImportMilkdrop(
+        val kind: MilkdropKind,
+        val files: List<String>,
+    ) : VisualsCommand
+
+    /** Forgets [MilkdropShelf.lastImport], once the person has read it. */
+    data object DismissImportReport : VisualsCommand
+
+    /** Lists the presets again, to pick up ones saved elsewhere (Customize, or the preset folder). */
+    data object ReloadPresets : VisualsCommand
+
+    /** Applies the saved or built-in preset [id] to the Visual, through Customization. */
+    data class ApplyPreset(
+        val id: PresetId,
+    ) : VisualsCommand
+
+    /** Renames the saved preset; a blank name, or the name of another saved preset, changes nothing. */
+    data class RenamePreset(
+        val id: PresetId,
+        val name: String,
+    ) : VisualsCommand
+
+    /** Moves the saved preset into [folder], which must exist. */
+    data class MovePreset(
+        val id: PresetId,
+        val folder: PresetFolderPath,
+    ) : VisualsCommand
+
+    /** Deletes the saved preset and its file, for good. Built-in presets cannot be deleted. */
+    data class DeletePreset(
+        val id: PresetId,
+    ) : VisualsCommand
+
+    /** Makes a folder of presets named [name] inside [parent]. A blank name makes nothing. */
+    data class CreatePresetFolder(
+        val name: String,
+        val parent: PresetFolderPath = PresetFolderPath.TOP,
+    ) : VisualsCommand
+
+    /** Renames the folder of presets; what is in it goes with it. */
+    data class RenamePresetFolder(
+        val folder: PresetFolderPath,
+        val name: String,
+    ) : VisualsCommand
+
+    /** Deletes the folder of presets when it is empty; a folder that holds anything stays. */
+    data class DeletePresetFolder(
+        val folder: PresetFolderPath,
+    ) : VisualsCommand
+
+    /** Makes the saved preset ready to share, as a link or as its file; answered with [VisualsFact.PresetShareReady]. */
+    data class SharePreset(
+        val id: PresetId,
+    ) : VisualsCommand
+
+    /** Imports the preset link found in [text] (pasted, or from a share); answered with an import fact. */
+    data class ImportPresetLink(
+        val text: String,
+    ) : VisualsCommand
+
+    /** Imports the preset file at [uri] (a document the person picked); answered with an import fact. */
+    data class ImportPresetFile(
+        val uri: String,
+    ) : VisualsCommand
 }
 
 /** One-off facts Visuals announces. */
@@ -143,5 +220,20 @@ sealed interface VisualsFact {
     /** The folder [id] was made, so the screen can open it. */
     data class FolderCreated(
         val id: FolderId,
+    ) : VisualsFact
+
+    /** The preset is ready to hand to the share sheet. */
+    data class PresetShareReady(
+        val share: PresetShare,
+    ) : VisualsFact
+
+    /** A shared preset was saved as [id] (renamed when its name was taken). */
+    data class PresetImported(
+        val id: PresetId,
+    ) : VisualsFact
+
+    /** A shared preset could not be imported, for [problem]. */
+    data class PresetNotImported(
+        val problem: ImportProblem,
     ) : VisualsFact
 }

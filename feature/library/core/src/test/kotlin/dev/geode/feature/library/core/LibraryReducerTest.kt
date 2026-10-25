@@ -1,15 +1,19 @@
 package dev.geode.feature.library.core
 
+import dev.geode.engine.types.Millis
 import dev.geode.feature.library.api.IndexStatus
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.library.core.Fixtures.alpha
+import dev.geode.feature.library.core.Fixtures.annSongs
 import dev.geode.feature.library.core.Fixtures.beta
+import dev.geode.feature.library.core.Fixtures.played
 import dev.geode.feature.library.core.Fixtures.ready
 import dev.geode.feature.library.core.Fixtures.shown
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.ReportFailure
+import dev.geode.kernel.StartTimer
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -23,13 +27,20 @@ class LibraryReducerTest {
     private val needsPermission = ready.copy(index = IndexStatus.NeedsPermission)
     private val states = listOf(loading, scanning, ready, needsPermission)
 
-    private val indexRead = LibraryEvent.IndexRead(listOf(alpha), favourites = setOf(beta.id), excludedFolders = setOf("/recordings"))
+    private val indexRead =
+        LibraryEvent.IndexRead(
+            listOf(alpha),
+            favourites = setOf(beta.id),
+            excludedFolders = setOf("/recordings"),
+            smartPlaylists = listOf(played, annSongs),
+        )
     private val songsFound = LibraryEvent.SongsFound(listOf(beta))
     private val noPermission = LibraryEvent.ScanFailed(ScanFailure.NO_PERMISSION)
     private val mediaIndexFailed = LibraryEvent.ScanFailed(ScanFailure.MEDIA_INDEX)
     private val rescan = LibraryEvent.Command(LibraryCommand.Rescan)
     private val readFailed = LibraryEvent.StorageFailed(StorageFailure.READ_INDEX)
     private val saveFailed = LibraryEvent.StorageFailed(StorageFailure.SAVE_INDEX)
+    private val clockRead = LibraryEvent.ClockRead(Millis(86_400_000))
 
     private val events: List<LibraryEvent> =
         listOf(
@@ -42,14 +53,22 @@ class LibraryReducerTest {
             rescan,
             readFailed,
             saveFailed,
+            clockRead,
+            LibraryEvent.ClockDue,
         )
 
     private val scan = Perform(LibraryWork.Scan)
     private val reportRead = ReportFailure("Could not read the saved library")
     private val reportSave = ReportFailure("Could not save the library")
     private val reportScan = ReportFailure("Could not look through the music on this phone")
+    private val tick = StartTimer(ClockTick, CLOCK_TICK, LibraryEvent.ClockDue)
+    private val readClock = Perform(LibraryWork.ReadClock)
 
-    private fun read(state: LibraryState) = state.copy(favourites = setOf(beta.id), excludedFolders = setOf("/recordings"))
+    // The smart playlists are kept by name.
+    private fun read(state: LibraryState) =
+        state.copy(favourites = setOf(beta.id), excludedFolders = setOf("/recordings"), smartPlaylists = listOf(annSongs, played))
+
+    private fun clocked(state: LibraryState) = state.copy(now = Millis(86_400_000))
 
     private val table: List<Row> =
         listOf(
@@ -93,6 +112,15 @@ class LibraryReducerTest {
             row(scanning, saveFailed, scanning, reportSave),
             row(ready, saveFailed, ready, reportSave),
             row(needsPermission, saveFailed, needsPermission, reportSave),
+            // The clock is read every hour, whatever the index is doing.
+            row(loading, clockRead, clocked(loading), tick),
+            row(scanning, clockRead, clocked(scanning), tick),
+            row(ready, clockRead, clocked(ready), tick),
+            row(needsPermission, clockRead, clocked(needsPermission), tick),
+            row(loading, LibraryEvent.ClockDue, loading, readClock),
+            row(scanning, LibraryEvent.ClockDue, scanning, readClock),
+            row(ready, LibraryEvent.ClockDue, ready, readClock),
+            row(needsPermission, LibraryEvent.ClockDue, needsPermission, readClock),
         )
 
     @Test
@@ -116,6 +144,11 @@ class LibraryReducerTest {
     }
 
     @Test
+    fun `the clock is read again every hour`() {
+        assertEquals(Millis(3_600_000), CLOCK_TICK)
+    }
+
+    @Test
     fun `every failure is reported in words`() {
         assertEquals(
             listOf(
@@ -126,6 +159,9 @@ class LibraryReducerTest {
                 "Could not save the excluded folders",
                 "Could not read the playlist file",
                 "Could not write the playlist file",
+                "Could not save the smart playlist",
+                "Could not delete the smart playlist",
+                "Could not write the song info into the file",
             ),
             StorageFailure.entries.map(::describe),
         )

@@ -67,15 +67,6 @@ data class GuiPrefs(
      * side effect of an answer.
      */
     val setupDone: Boolean = false,
-    /**
-     * What the person came here to do: which tab the app opens on, and whether Studio appears
-     * in the navigation at all.
-     *
-     * No longer asked at first run. Everyone starts on [UserIntent.BOTH], which shows
-     * everything, and anyone who wants a narrower app says so in Settings once they know what
-     * they would be narrowing.
-     */
-    val intent: UserIntent = UserIntent.BOTH,
     /** Whether the walkthrough has been finished or skipped at least once. */
     val tutorialSeen: Boolean = false,
     /**
@@ -96,10 +87,9 @@ data class GuiPrefs(
     val fontColorOverride: Int?
         get() = fontColorArgb ?: FontColorChoice.WHITE_ARGB.takeIf { whiteFont }
 
+    // The gap the person chose: the No-flash rule is the engine's, on every frame, not a beat throttle.
     val effectiveBeatMinIntervalMs: Float
-        get() =
-            dev.geode.render.VisualSafety
-                .beatMinIntervalMs(beatMinIntervalMs)
+        get() = beatMinIntervalMs
 
     companion object {
         const val TEXT_SCALE_MIN = TextScale.MIN
@@ -155,11 +145,6 @@ class ThemeStore(
                     .coerceIn(GuiPrefs.TEXT_SCALE_MIN, GuiPrefs.TEXT_SCALE_MAX),
             safetyAcknowledged = loadSafetyAcknowledged(),
             setupDone = loadSetupDone(),
-            intent =
-                prefs
-                    .getString(KEY_INTENT, null)
-                    ?.let { stored -> UserIntent.entries.firstOrNull { it.name == stored } }
-                    ?: UserIntent.BOTH,
             tutorialSeen = prefs.getBoolean(KEY_TUTORIAL_SEEN, false),
             tutorialOnFirstRun = prefs.getBoolean(KEY_TUTORIAL_ON_FIRST_RUN, true),
             reducedMotion = loadReducedMotion(),
@@ -212,7 +197,6 @@ class ThemeStore(
             putFloat(KEY_TEXT_SCALE, gui.textScale)
             putBoolean(KEY_SAFETY_ACKNOWLEDGED, gui.safetyAcknowledged)
             putBoolean(KEY_SETUP_DONE, gui.setupDone)
-            putString(KEY_INTENT, gui.intent.name)
             putBoolean(KEY_TUTORIAL_SEEN, gui.tutorialSeen)
             putBoolean(KEY_TUTORIAL_ON_FIRST_RUN, gui.tutorialOnFirstRun)
             putBoolean(KEY_REDUCED_MOTION, gui.reducedMotion)

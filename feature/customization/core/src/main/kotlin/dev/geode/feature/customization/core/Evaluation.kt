@@ -9,12 +9,13 @@ import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.ResponseCurve
 import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.Target
 import kotlin.math.sqrt
 
 /**
  * The reference meaning of the per-frame stages the engine runs in C++ (ADR-0002): the normaliser,
- * a Reaction's shape, a Macro link, and which Modulators run. Kotlin never runs these per frame; they
- * pin down what the snapshot means, and the native side is held to the same numbers.
+ * a Reaction's shape, a Macro's drift, a Macro link, and which Modulators run. Kotlin never runs these
+ * per frame; they pin down what the snapshot means, and the native side is held to the same numbers.
  */
 object Evaluation {
     /** The normaliser stage: [raw] scaled by the trim's gain, below its floor 0, and clamped to 0..1. */
@@ -55,6 +56,25 @@ object Evaluation {
         val moved = if (reaction.invert) base - push else base + push
         return moved.coerceIn(reaction.low, reaction.high)
     }
+
+    /**
+     * Where [reaction], a Modulator linked to a Macro, puts the Macro whose value the person set by hand
+     * is [base] (#41: a Macro drifts by itself only this way; there is no separate autopilot). The
+     * Modulator moves it around that value, not only above it: the curved input's distance from the
+     * middle, times the amount, is added (taken away when inverted), kept in the range.
+     */
+    fun drift(
+        base: Float,
+        input: Float,
+        reaction: Reaction,
+    ): Float {
+        val swing = (curve(input, reaction.curve) - MACRO_REST) * reaction.amount
+        val moved = if (reaction.invert) base - swing else base + swing
+        return moved.coerceIn(reaction.low, reaction.high)
+    }
+
+    /** Whether [reaction] makes a Macro drift ([drift]): a Modulator linked to a Macro. */
+    fun drifts(reaction: Reaction): Boolean = reaction.source is ReactionSource.Generated && reaction.target is Target.MacroSlot
 
     /** Where a Macro at [value] puts [link]'s target whose own value is [base] (all fractions 0..1). */
     fun macro(

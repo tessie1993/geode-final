@@ -3,27 +3,15 @@ package dev.geode.ui
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.analysis.AudioFeatures
-import dev.geode.analysis.IntelligenceMode
-import dev.geode.analysis.LiveInputProfile
-import dev.geode.audio.MicCapture
-import dev.geode.data.MilkPackImporter
-import dev.geode.data.Preset
 import dev.geode.di.PlayerSessionProvider
 import dev.geode.engine.types.Millis
-import dev.geode.engine.types.SceneId
 import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
 import dev.geode.render.SceneFactory
-import dev.geode.render.TransitionStyle
-import dev.geode.render.scene.PcmChunk
-import dev.geode.render.scene.SceneParams
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
@@ -33,170 +21,89 @@ class PlayerViewModel
     @Inject
     constructor(
         private val sessions: PlayerSessionProvider,
+        private val playback: OldScreenPlayback,
+        private val library: OldScreenLibrary,
     ) : ViewModel() {
         private val session: PlayerSession = sessions.get()
-        private val playback: PlaybackRepository = session.playbackRepository
-        private val visualizer: VisualizerRepository = session.visualizerRepository
 
-        val player: Player get() = session.player
+        // Playback: every call goes to Playback's app-scoped store, and what is shown is its state (#17).
 
-        val uiState: StateFlow<PlayerUiState> get() = playback.state
+        val uiState: StateFlow<PlayerUiState> get() = playback.uiState
 
         val queue: StateFlow<QueueUiState> get() = playback.queue
 
         val abLoop: StateFlow<AbLoop?> get() = playback.abLoop
 
-        val playbackNotice: StateFlow<String?> get() = playback.notice
+        val playbackNotice: StateFlow<String?> get() = session.playbackNotice
 
-        val vizState: StateFlow<VizUiState> get() = visualizer.viz
+        val historyTick: StateFlow<Int> get() = playback.historyTick
 
-        val features: StateFlow<AudioFeatures> get() = visualizer.features
-
-        val waveform: StateFlow<FloatArray?> get() = visualizer.waveform
-
-        val activeMilkPath: StateFlow<String?> get() = visualizer.activeMilkPath
-
-        val micState: StateFlow<MicState> get() = session.micState
-
-        val historyTick: StateFlow<Int> get() = session.historyTick
-
-        val favourites: StateFlow<Set<TrackId>> get() = session.favourites
+        val favourites: StateFlow<Set<TrackId>> get() = library.favourites
 
         val lyrics: StateFlow<Lyrics?> get() = session.lyrics
 
-        val sleepTimerRemaining: StateFlow<Millis?> get() = session.sleepTimerRemaining
+        val sleepTimerRemaining: StateFlow<Millis?> get() = playback.sleepTimerRemaining
 
-        val vizApply: SharedFlow<VizApply> get() = session.vizApply
+        fun toggleShuffle() = playback.toggleShuffle()
 
-        val morphFade: SharedFlow<Float> get() = session.morphFade
+        fun cycleRepeatMode() = playback.cycleRepeatMode()
 
-        fun setMicEnabled(enabled: Boolean): MicCapture.Failure? = session.setMicEnabled(enabled)
+        /** Remembers [minutes] as the timer's last length, as the old player did, and starts it. */
+        fun startSleepTimer(minutes: Int) {
+            val prefs = session.playerPrefs.value
+            if (minutes > 0) session.setPlayerPrefs(prefs.copy(sleepTimerMinutes = minutes))
+            playback.startSleepTimer(minutes, prefs.sleepFinishTrack)
+        }
 
-        fun hasMicPermission(): Boolean = session.hasMicPermission()
+        fun cancelSleepTimer() = playback.cancelSleepTimer()
 
-        fun toggleShuffle() = session.toggleShuffle()
-
-        fun cycleRepeatMode() = session.cycleRepeatMode()
-
-        fun applyLiveInputProfile(profile: LiveInputProfile) = session.applyLiveInputProfile(profile)
-
-        fun latestPcm(): PcmChunk? = session.latestPcm()
-
-        fun milkPresetFilesAsync(onDone: (List<MilkFile>) -> Unit) = session.milkPresetFilesAsync(onDone)
-
-        fun importMilkPresetAsync(
-            uri: Uri,
-            onDone: (String?) -> Unit,
-        ) = session.importMilkPresetAsync(uri, onDone)
-
-        internal fun importMilkPresetBlocking(uri: Uri): String? = session.importMilkPresetBlocking(uri)
-
-        fun milkTextureLinksFor(path: String) = session.milkTextureLinksFor(path)
-
-        fun assignMilkTextureAsync(
-            path: String,
-            expected: String,
-            texture: String?,
-            onDone: (List<dev.geode.data.MilkTextureLink>) -> Unit,
-        ) = session.assignMilkTextureAsync(path, expected, texture, onDone)
-
-        fun importMilkFolderAsync(
-            treeUri: Uri,
-            onDone: (MilkPackImporter.Report) -> Unit,
-        ) = session.importMilkFolderAsync(treeUri, onDone)
-
-        fun setIntelligenceMode(mode: IntelligenceMode) = session.setIntelligenceMode(mode)
-
-        fun analyzeCurrentTrack() = session.analyzeCurrentTrack()
-
-        fun startSleepTimer(minutes: Int) = session.startSleepTimer(minutes)
-
-        fun cancelSleepTimer() = session.cancelSleepTimer()
-
-        fun recentlyPlayed() = session.recentlyPlayed()
+        fun recentlyPlayed(): List<QueueTrack> = playback.recentlyPlayed()
 
         fun currentTrackUri(): TrackId? = session.currentTrackUri()
 
-        fun toggleFavourite(uri: TrackId? = null) = session.toggleFavourite(uri)
+        fun toggleFavourite(uri: TrackId? = null) {
+            (uri ?: currentTrackUri())?.let(library::toggleFavourite)
+        }
 
-        fun cycleAbLoop() = session.cycleAbLoop()
+        fun cycleAbLoop() = playback.cycleAbLoop()
 
-        fun clearAbLoop() = session.clearAbLoop()
+        fun clearAbLoop() = playback.clearAbLoop()
 
-        fun removeQueueItem(index: Int) = session.removeQueueItem(index)
+        fun removeQueueItem(index: Int) = playback.removeQueueItem(index)
 
         fun moveQueueItem(
             from: Int,
             to: Int,
-        ) = session.moveQueueItem(from, to)
+        ) = playback.moveQueueItem(from, to)
 
-        fun togglePlayPauseFaded() = session.togglePlayPauseFaded()
+        fun resumeLastPlayed() = playback.resumeLastPlayed()
 
-        fun resumeLastPlayed() = session.resumeLastPlayed()
+        fun playNext(uri: TrackId) = playback.playNext(uri)
 
-        fun playNext(uri: TrackId) = session.playNext(uri)
+        fun enqueue(uri: TrackId) = playback.enqueue(uri)
 
-        fun playFromSearch(query: String) = session.playFromSearch(query)
-
-        fun enqueue(uri: TrackId) = session.enqueue(uri)
-
-        fun shuffleAllHistory() = session.shuffleAllHistory()
-
-        fun playTrack(uri: TrackId) = session.playTrack(uri)
+        fun shuffleAllHistory() = playback.shuffleAllHistory()
 
         fun playFrom(
             tracks: List<QueueTrack>,
             startUri: TrackId,
-        ) = session.playFrom(tracks, startUri)
+        ) = playback.playFrom(tracks, startUri)
 
-        fun playAll(
-            tracks: List<QueueTrack>,
-            shuffled: Boolean = false,
-        ) = session.playAll(tracks, shuffled)
+        fun open(uris: List<Uri>) = playback.open(uris)
 
-        fun open(uris: List<Uri>) = session.open(uris)
+        fun playQueueIndex(index: Int) = playback.playQueueIndex(index)
 
-        fun queueTitles(): List<String> = session.queueTitles()
+        fun next() = playback.next()
 
-        fun playQueueIndex(index: Int) = session.playQueueIndex(index)
+        fun previous() = playback.previous()
 
-        fun next() = session.next()
+        fun togglePlayPause() = playback.togglePlayPause()
 
-        fun previous() = session.previous()
+        fun seekToMs(position: Millis) = playback.seekToMs(position)
 
-        fun togglePlayPause() = session.togglePlayPause()
-
-        fun seekToMs(position: Millis) = session.seekToMs(position)
-
-        fun seekTo(fraction: Float) = session.seekTo(fraction)
+        fun seekTo(fraction: Float) = playback.seekTo(fraction)
 
         fun clearPlaybackNotice() = session.clearPlaybackNotice()
-
-        fun selectScene(sceneId: SceneId) = session.selectScene(sceneId)
-
-        fun setReactivity(
-            attack: Float,
-            decay: Float,
-        ) = session.setReactivity(attack, decay)
-
-        fun setSceneParams(params: SceneParams) = session.setSceneParams(params)
-
-        fun resetSceneParams() = session.resetSceneParams()
-
-        fun nudgeTransform(
-            zoomFactor: Float,
-            rotationDegrees: Float,
-        ) = session.nudgeTransform(zoomFactor, rotationDegrees)
-
-        fun reportShaderError(error: String?) = session.reportShaderError(error)
-
-        fun setTransitionStyle(style: TransitionStyle) = session.setTransitionStyle(style)
-
-        fun setTransitionId(id: String) = session.setTransitionId(id)
-
-        fun setTransitionDuration(seconds: Float) = session.setTransitionDuration(seconds)
-
-        fun applyPreset(preset: Preset) = session.applyPreset(preset)
 
         fun startExport(
             aspect: ExportAspect,

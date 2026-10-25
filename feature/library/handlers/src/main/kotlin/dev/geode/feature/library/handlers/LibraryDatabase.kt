@@ -12,18 +12,27 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * The Library's own database (ADR-0004): the library index with the tags Geode's reader filled in,
- * the user's edits to song info, the favourites and the excluded folders. The playlists and the play
- * history are Playback's (ADR-0005), in Playback's database.
+ * the user's edits to song info, the favourites, the excluded folders and, since version 2, the smart
+ * playlists (#146). Version 3 adds the genre, year, track number and comment to the edits (#17). The playlists and the play history are Playback's (ADR-0005), in Playback's
+ * database.
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`, which the
  * migration test opens at the current version to prove that nothing is lost.
  */
 @Database(
-    entities = [SongEntity::class, EditEntity::class, FavouriteEntity::class, ExcludedFolderEntity::class],
+    entities = [
+        SongEntity::class,
+        EditEntity::class,
+        FavouriteEntity::class,
+        ExcludedFolderEntity::class,
+        SmartPlaylistEntity::class,
+        SmartRuleEntity::class,
+    ],
     version = LibraryDatabase.VERSION,
     exportSchema = false,
 )
@@ -31,11 +40,11 @@ abstract class LibraryDatabase : RoomDatabase() {
     abstract fun dao(): LibraryDao
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 3
         const val NAME = "library.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(AddSmartPlaylists, AddEditTags)
 
         fun open(
             context: Context,
@@ -68,7 +77,10 @@ data class SongEntity(
     val tagsRead: Boolean,
 )
 
-/** The user's edit to one song's info. */
+/**
+ * The user's edit to one song's info. Since version 3 (#17) it holds the genre, year, track number and
+ * comment too; null where an older edit left them as they were.
+ */
 @Entity(tableName = "edits")
 data class EditEntity(
     @PrimaryKey val trackId: String,
@@ -76,7 +88,21 @@ data class EditEntity(
     val artist: String,
     val album: String,
     val artwork: String?,
+    val genre: String? = null,
+    val year: Int? = null,
+    val trackNumber: Int? = null,
+    val comment: String? = null,
 )
+
+/** Version 3 (#17): the genre, year, track number and comment of an edit. */
+object AddEditTags : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `genre` TEXT")
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `year` INTEGER")
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `trackNumber` INTEGER")
+        db.execSQL("ALTER TABLE `edits` ADD COLUMN `comment` TEXT")
+    }
+}
 
 @Entity(tableName = "favourites")
 data class FavouriteEntity(
@@ -86,6 +112,41 @@ data class FavouriteEntity(
 @Entity(tableName = "excluded_folders")
 data class ExcludedFolderEntity(
     @PrimaryKey val path: String,
+)
+
+/** Version 2 (#146): the smart playlists and their rules. */
+object AddSmartPlaylists : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `smart_playlists` (`name` TEXT NOT NULL, `matchAll` INTEGER NOT NULL, " +
+                "`songLimit` INTEGER NOT NULL, PRIMARY KEY(`name`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `smart_rules` (`playlist` TEXT NOT NULL, `position` INTEGER NOT NULL, " +
+                "`field` TEXT NOT NULL, `op` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`playlist`, `position`))",
+        )
+    }
+}
+
+/**
+ * One smart playlist: its name, whether a song must match all its rules, and how many songs it holds
+ * at most (0 for all). Its rules are [SmartRuleEntity] rows.
+ */
+@Entity(tableName = "smart_playlists")
+data class SmartPlaylistEntity(
+    @PrimaryKey val name: String,
+    val matchAll: Boolean,
+    val songLimit: Int,
+)
+
+/** The rule at [position] of the smart playlist named [playlist]. [field] and [op] are the enum names. */
+@Entity(tableName = "smart_rules", primaryKeys = ["playlist", "position"])
+data class SmartRuleEntity(
+    val playlist: String,
+    val position: Int,
+    val field: String,
+    val op: String,
+    val value: String,
 )
 
 @Dao
@@ -126,6 +187,43 @@ abstract class LibraryDao {
         clearExcludedFolders()
         insertExcludedFolders(rows)
     }
+
+    @Query("SELECT * FROM smart_playlists")
+    abstract suspend fun smartPlaylists(): List<SmartPlaylistEntity>
+
+    @Query("SELECT * FROM smart_rules")
+    abstract suspend fun smartRules(): List<SmartRuleEntity>
+
+    /** Saves [playlist] with [rules], in place of the smart playlist named [replacing] when there is one. */
+    @Transaction
+    open suspend fun replaceSmartPlaylist(
+        replacing: String?,
+        playlist: SmartPlaylistEntity,
+        rules: List<SmartRuleEntity>,
+    ) {
+        if (replacing != null) deleteSmartPlaylist(replacing)
+        deleteSmartPlaylist(playlist.name)
+        insertSmartPlaylist(playlist)
+        insertSmartRules(rules)
+    }
+
+    @Transaction
+    open suspend fun deleteSmartPlaylist(name: String) {
+        deleteSmartPlaylistRow(name)
+        deleteSmartRules(name)
+    }
+
+    @Query("DELETE FROM smart_playlists WHERE name = :name")
+    protected abstract suspend fun deleteSmartPlaylistRow(name: String)
+
+    @Query("DELETE FROM smart_rules WHERE playlist = :name")
+    protected abstract suspend fun deleteSmartRules(name: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract suspend fun insertSmartPlaylist(row: SmartPlaylistEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract suspend fun insertSmartRules(rows: List<SmartRuleEntity>)
 
     @Query("DELETE FROM songs")
     protected abstract suspend fun clearSongs()

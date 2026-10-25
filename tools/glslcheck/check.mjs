@@ -45,7 +45,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
 const SHADERS = path.join(ROOT, 'app', 'src', 'main', 'assets', 'shaders');
 const SHADER_SOURCE_CPP = path.join(ROOT, 'core', 'render', 'ShaderSource.cpp');
-const SCENE_REGISTRY_CPP = path.join(ROOT, 'core', 'viz', 'SceneRegistry.cpp');
+// The Style packs (docs/style-packs.md): styles/index.json lists them, each styles/<id>/manifest.json
+// names its family and, for a shader Style, its shader file.
+const STYLES = path.join(ROOT, 'engine', 'scenes', 'src', 'main', 'stylepacks', 'styles');
 const FLUID_LOOK_HPP = path.join(ROOT, 'core', 'viz', 'fluid', 'FluidLook.hpp');
 
 // One load step down and then some: the renderer's scale moves in 0.05 steps, a Style's own scale
@@ -81,11 +83,15 @@ function resolveIncludes(source, registry) {
   return out.join('\n');
 }
 
-function shaderIds() {
-  const src = fs.readFileSync(SCENE_REGISTRY_CPP, 'utf8');
-  const m = src.match(/kShaderIds\s*=\s*\{([\s\S]*?)\};/);
-  if (!m) throw new Error(`could not find kShaderIds in ${SCENE_REGISTRY_CPP}`);
-  return [...m[1].matchAll(/"([A-Za-z0-9_]+)"/g)].map((x) => x[1]);
+// id -> shader file of every shader Style, in the packs' index order.
+function shaderStyles() {
+  const index = JSON.parse(fs.readFileSync(path.join(STYLES, 'index.json'), 'utf8'));
+  const out = new Map();
+  for (const id of index.styles) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(STYLES, id, 'manifest.json'), 'utf8'));
+    if (manifest.family === 'shader') out.set(id, path.join(STYLES, id, manifest.shader));
+  }
+  return out;
 }
 
 function fluidLookCount() {
@@ -134,6 +140,10 @@ const SHADER_VALUES = {
   uBassSmooth: 0.5, uMidSmooth: 0.4, uTrebleSmooth: 0.3, uEnergySmooth: 0.45, uSwell: 0.5, uSpike: 0.15,
   uMoveDir: [0.8, 0.6], uSpawnSeed: 0.37, uSpawnAge: 4.0, uFormPhase: 0.62, uFlowPhase: 12.5,
   uFlowStrength: 0,
+  uXScale: 1, uXCount: 1, uXSize: 1, uXThickness: 1, uXFlight: 1, uXSpin: 1, uXOrbit: 1, uXSwirl: 1, uXDrift: 1,
+  uXComplexity: 1, uXEdge: 1, uXFog: 1, uXDecay: 1, uXViscosity: 1, uXGrowth: 1, uXSpread: 1, uXForce: 1, uXReach: 1,
+  uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
+  uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
 };
 
 const SHADER_TEXTURES = { uAudioTex: 'audio', uPalLut: 'palette', uFlow: 'flow' };
@@ -184,6 +194,7 @@ const COMPOSITE_NEUTRAL = {
   uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
+  uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
 };
 const COMPOSITE_TEXTURES = { uTexA: 'scene', uTexB: 'scene', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white' };
 
@@ -208,6 +219,11 @@ const COMPOSITE_EFFECTS = {
   temperature: { uPostTemp: 0.8 },
   solarize: { uPostSolarize: 1 },
   invert: { uPostInvert: 1 },
+  camera_push_in: { uCamPush: 0.8 },
+  camera_orbit: { uCamTilt: [0.4, -0.3] },
+  camera_travel: { uCamDive: [0.4, 0] },
+  camera_endless_zoom: { uCamDive: [0, 0.7] },
+  camera_shake: { uCamShake: [0.02, -0.015, 0.02] },
 };
 
 const SHARED_FX_NEUTRAL = {
@@ -284,7 +300,8 @@ function report(name, r) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const registry = parseIncludeRegistry();
-  const ids = shaderIds();
+  const styles = shaderStyles();
+  const ids = [...styles.keys()];
   if (args.list) {
     console.log(ids.join('\n'));
     return;
@@ -293,8 +310,8 @@ async function main() {
   const quadVert = fs.readFileSync(path.join(SHADERS, 'quad_vert.glsl'), 'utf8');
   const targets = args.all ? ids : args.shaders;
   for (const id of targets) {
-    const file = path.join(SHADERS, `${id}_frag.glsl`);
-    if (!fs.existsSync(file)) throw new Error(`no such fragment style: ${id}`);
+    const file = styles.get(id);
+    if (!file || !fs.existsSync(file)) throw new Error(`no such fragment style: ${id}`);
     const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;

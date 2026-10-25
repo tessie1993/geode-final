@@ -54,4 +54,36 @@ class LibraryApiTest {
         assertEquals(Sort(SortKey.NAME, descending = false), state.sort)
         assertEquals("playlist 4", PlaylistRef(4).toString())
     }
+
+    @Test
+    fun `smart playlist rules compare words, numbers and yes-or-no fields with the comparisons each allows`() {
+        val words = listOf(RuleField.TITLE, RuleField.ARTIST, RuleField.ALBUM, RuleField.FOLDER)
+        val numbers = listOf(RuleField.DURATION_MINUTES, RuleField.ADDED_DAYS_AGO, RuleField.PLAY_COUNT)
+
+        assertEquals(words, RuleField.entries.filter { it.isText })
+        assertEquals(listOf(RuleField.FAVOURITE), RuleField.entries.filter { it.isFlag })
+        for (field in words) {
+            assertEquals(listOf(RuleOp.CONTAINS, RuleOp.IS, RuleOp.IS_NOT), field.ops)
+            assertEquals(RuleOp.CONTAINS, field.defaultOp)
+        }
+        for (field in numbers) {
+            assertEquals(listOf(RuleOp.IS, RuleOp.AT_LEAST, RuleOp.AT_MOST), field.ops)
+            assertEquals(RuleOp.AT_LEAST, field.defaultOp)
+        }
+        assertEquals(listOf(RuleOp.IS, RuleOp.IS_NOT), RuleField.FAVOURITE.ops)
+        assertEquals(RuleOp.IS, RuleField.FAVOURITE.defaultOp)
+        assertEquals(listOf(RuleOp.CONTAINS, RuleOp.IS, RuleOp.IS_NOT), RuleOp.entries.filter { it.forText })
+        assertEquals(listOf(RuleOp.IS, RuleOp.AT_LEAST, RuleOp.AT_MOST), RuleOp.entries.filter { it.forNumber })
+    }
+
+    @Test
+    fun `a new smart playlist matches every rule, with no limit, and the Library has none until it reads them`() {
+        val playlist = SmartPlaylist("Long ones")
+
+        assertEquals(emptyList<SmartRule>(), playlist.rules)
+        assertTrue(playlist.matchAll)
+        assertEquals(0, playlist.limit)
+        assertEquals(emptyList<SmartPlaylist>(), LibraryState().smartPlaylists)
+        assertEquals(null, LibraryState().now)
+    }
 }

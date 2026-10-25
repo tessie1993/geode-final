@@ -4,6 +4,7 @@ import dev.geode.engine.audio.AnalysisHop
 import dev.geode.engine.audio.ReactiveAnalyzer
 import dev.geode.engine.audio.SampleCursor
 import dev.geode.engine.audio.SampleRing
+import dev.geode.engine.bridge.NativeSnapshots
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -190,6 +191,14 @@ class AnalysisEngine(
                     }
                 }
         }
+    }
+
+    /**
+     * From the next hop on, the analysis picks up the Sound-signal tuning of each Customization
+     * [snapshots] receives; null detaches. Detach before the snapshots are closed.
+     */
+    fun attachSnapshots(snapshots: NativeSnapshots?) {
+        synchronized(nativeLock) { if (!closed) analyzer.attachSnapshots(snapshots) }
     }
 
     fun stop() {

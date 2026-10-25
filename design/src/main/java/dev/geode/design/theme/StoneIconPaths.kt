@@ -10,6 +10,7 @@ enum class StoneIcon {
     FILE,
     FOLDER,
     FULLSCREEN,
+    HOME,
     LIBRARY,
     LYRICS,
     MICROPHONE,
@@ -99,6 +100,13 @@ internal val StoneIconGeometry: Map<StoneIcon, StoneIconGlyph> =
                         "M20 40 V20 H40 M64 20 H84 V40 M84 64 V84 H64 M40 84 H20 V64",
                     ),
             ),
+        StoneIcon.HOME to
+            StoneIconGlyph(
+                stroked =
+                    listOf(
+                        "M20 50 L52 22 L84 50 M30 42 V82 H74 V42 M45 82 V62 H59 V82",
+                    ),
+            ),
         StoneIcon.LIBRARY to
             StoneIconGlyph(
                 stroked =
@@ -170,6 +178,15 @@ internal val StoneIconGeometry: Map<StoneIcon, StoneIconGlyph> =
                     listOf(
                         "M62 62 L82 82",
                         "M24 45a22 22 0 1 0 44 0a22 22 0 1 0 -44 0Z",
+                    ),
+            ),
+        StoneIcon.HOME to
+            StoneIconGlyph(
+                stroked =
+                    listOf(
+                        "M20 50 L52 22 L84 50",
+                        "M30 42 V82 H74 V42",
+                        "M45 82 V62 H59 V82",
                     ),
             ),
         StoneIcon.SETTINGS to

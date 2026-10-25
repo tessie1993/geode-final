@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "merkaba_grid",
+  "label": "Merkaba Grid",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

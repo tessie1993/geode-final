@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "blacklight_bloom",
+  "label": "Blacklight Bloom",
+  "family": "shader",
+  "shader": "shader.glsl"
+}

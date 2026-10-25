@@ -2,37 +2,22 @@ package dev.geode.ui
 
 import android.app.Application
 import android.net.Uri
-import dev.geode.RingLog
 import dev.geode.analysis.AnalysisCache
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.analysis.IntelligenceMode
 import dev.geode.analysis.OfflineAnalyzer
-import dev.geode.analysis.SceneSuggester
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
+/**
+ * A song's whole-file analysis for what exports and renders need (ADR-0001), cached per song, and the
+ * waveform drawn from it. Playing a song never analyses it: only an export asks, through [analyzeCached].
+ */
 internal class TrackAnalysisController(
     private val application: Application,
-    private val scope: CoroutineScope,
     private val host: Host,
 ) {
     interface Host {
-        val currentUri: Uri?
         val guiPrefs: GuiPrefs
-        val vizState: MutableStateFlow<VizUiState>
-
-        fun noteAnalysis(
-            uri: Uri,
-            timeline: FeatureTimeline,
-        )
     }
 
     private val offlineAnalyzer = OfflineAnalyzer(application)
@@ -42,31 +27,21 @@ internal class TrackAnalysisController(
 
     private var timelineBacking: FeatureTimeline? = null
 
+    private val _tempo = MutableStateFlow(0f)
+
+    /**
+     * The current song's tempo from its whole-song export analysis (ADR-0001), 0 until that is known.
+     * What the export's loop-safe choice and bar trim go by; never the live Visual's.
+     */
+    val tempo: StateFlow<Float> = _tempo
+
     var timeline: FeatureTimeline?
         get() = timelineBacking
         set(value) {
             timelineBacking = value
             _waveform.value = value?.let(::waveformOf)
+            _tempo.value = value?.bpm ?: 0f
         }
-
-    private var analyzingUri: Uri? = null
-    private var beatRedecideJob: Job? = null
-
-    fun redecideCachedBeats(prefs: GuiPrefs) {
-        val base = timeline ?: return
-        val uri = host.currentUri
-        beatRedecideJob?.cancel()
-        beatRedecideJob =
-            scope.launch(Dispatchers.Default) {
-                delay(REDECIDE_DEBOUNCE_MS)
-                val updated = base.withBeatSensitivity(prefs.beatSensitivity, prefs.effectiveBeatMinIntervalMs)
-                val now = host.guiPrefs
-                val stillCurrent =
-                    now.beatSensitivity == prefs.beatSensitivity &&
-                        now.effectiveBeatMinIntervalMs == prefs.effectiveBeatMinIntervalMs
-                if (stillCurrent && host.currentUri == uri) timeline = updated
-            }
-    }
 
     suspend fun analyzeCached(
         uri: Uri,
@@ -82,71 +57,6 @@ internal class TrackAnalysisController(
         return offlineAnalyzer
             .analyze(uri, gui.beatSensitivity, gui.effectiveBeatMinIntervalMs, onProgress)
             .also { AnalysisCache.save(application, uri, it) }
-    }
-
-    fun loadCachedForManualMode() {
-        val uri = host.currentUri ?: return
-        val gui = host.guiPrefs
-        scope.launch(Dispatchers.IO) {
-            AnalysisCache
-                .load(application, uri, gui.beatSensitivity, gui.effectiveBeatMinIntervalMs)
-                ?.let { t ->
-                    if (host.currentUri == uri) {
-                        timeline = t
-                        host.vizState.update { it.copy(bpm = t.bpm) }
-                    }
-                }
-        }
-    }
-
-    fun setIntelligenceMode(mode: IntelligenceMode) {
-        host.vizState.update { it.copy(intelligenceMode = mode) }
-        if (mode != IntelligenceMode.MANUAL && timeline == null) analyzeCurrentTrack()
-    }
-
-    @Suppress("TooGenericExceptionCaught")
-    fun analyzeCurrentTrack() {
-        val uri = host.currentUri ?: return
-        if (analyzingUri == uri) return
-        analyzingUri = uri
-        host.vizState.update { it.copy(analysis = AnalysisState.Running(0f)) }
-        scope.launch(Dispatchers.Default) {
-            try {
-                val t =
-                    analyzeCached(uri) { p ->
-                        host.vizState.update { it.copy(analysis = AnalysisState.Running(p)) }
-                    }
-                host.noteAnalysis(uri, t)
-                if (host.currentUri == uri) {
-                    timeline = t
-                    val suggestion = SceneSuggester.suggestForTrack(t)
-                    host.vizState.update {
-                        it.copy(
-                            analysis = AnalysisState.Idle,
-                            bpm = t.bpm,
-                            suggestedSceneId = suggestion,
-                        )
-                    }
-                    if (analyzingUri == uri) analyzingUri = null
-                } else {
-                    if (analyzingUri == uri) {
-                        analyzingUri = null
-                        host.vizState.update { it.copy(analysis = AnalysisState.Idle) }
-                        if (host.vizState.value.intelligenceMode != IntelligenceMode.MANUAL) {
-                            withContext(Dispatchers.Main) { analyzeCurrentTrack() }
-                        }
-                    }
-                }
-            } catch (c: CancellationException) {
-                throw c
-            } catch (t: Throwable) {
-                RingLog.note("Analysis", "track analysis failed", t)
-                if (analyzingUri == uri) {
-                    analyzingUri = null
-                    host.vizState.update { it.copy(analysis = AnalysisState.Idle) }
-                }
-            }
-        }
     }
 
     @Suppress("ReturnCount")
@@ -173,6 +83,5 @@ internal class TrackAnalysisController(
 
     private companion object {
         const val WAVEFORM_BUCKETS = 240
-        const val REDECIDE_DEBOUNCE_MS = 120L
     }
 }

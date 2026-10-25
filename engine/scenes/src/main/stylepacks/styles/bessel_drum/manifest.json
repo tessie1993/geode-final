@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "bessel_drum",
+  "label": "Drumhead",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 2,
+    "geometryOverride": 0,
+    "scale": 0.92,
+    "fill": 1.15,
+    "line": 0.88,
+    "glow": 0.85,
+    "iridescence": 0.45,
+    "caustic": 0.9,
+    "hueOffset": -0.04,
+    "hueSpan": 0.7,
+    "modeCap": 2
+  }
+}

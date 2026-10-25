@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "harmonograph",
+  "label": "Harmonograph",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 3,
+    "geometryOverride": -1,
+    "scale": 0.82,
+    "fill": 0.42,
+    "line": 1.3,
+    "glow": 1.25,
+    "iridescence": 0.8,
+    "caustic": 0.35,
+    "flow": 1.35,
+    "swirl": 1.4,
+    "hueOffset": 0.18,
+    "hueSpan": 1.6
+  }
+}

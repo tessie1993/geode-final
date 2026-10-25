@@ -66,6 +66,12 @@ internal fun PlayerErrorPreview() = PlayerPreview(PreviewModels.error)
 @Composable
 internal fun PlayerIdlePreview() = PlayerPreview(PreviewModels.idle)
 
+// The A-B loop on the seek bar (#147).
+
+@Preview(name = "A-B loop")
+@Composable
+internal fun PlayerLoopingPreview() = PlayerPreview(PreviewModels.looping)
+
 @Preview(name = "Mini-player, playing")
 @Composable
 internal fun MiniPlayerPlayingPreview() = MiniPlayerPreview(PreviewModels.playing)

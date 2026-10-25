@@ -1,3 +1,18 @@
+public final class dev/geode/feature/library/api/DuplicateGroup {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;)Ldev/geode/feature/library/api/DuplicateGroup;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/DuplicateGroup;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/library/api/DuplicateGroup;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getArtist ()Ljava/lang/String;
+	public final fun getRows ()Ljava/util/List;
+	public final fun getTitle ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/Filter {
 	public fun <init> ()V
 	public fun <init> (Ljava/util/Set;Ljava/lang/String;Z)V
@@ -36,6 +51,7 @@ public final class dev/geode/feature/library/api/GroupKind : java/lang/Enum {
 	public static final field FOLDER Ldev/geode/feature/library/api/GroupKind;
 	public static final field GENRE Ldev/geode/feature/library/api/GroupKind;
 	public static final field PLAYLIST Ldev/geode/feature/library/api/GroupKind;
+	public static final field SMART_PLAYLIST Ldev/geode/feature/library/api/GroupKind;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/library/api/GroupKind;
 	public static fun values ()[Ldev/geode/feature/library/api/GroupKind;
@@ -94,6 +110,19 @@ public final class dev/geode/feature/library/api/IndexStatus$Scanning : dev/geod
 public abstract interface class dev/geode/feature/library/api/LibraryCommand {
 }
 
+public final class dev/geode/feature/library/api/LibraryCommand$AddToPlaylist : dev/geode/feature/library/api/LibraryCommand {
+	public synthetic fun <init> (JLdev/geode/feature/library/api/Pick;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-kycszzA ()J
+	public final fun component2 ()Ldev/geode/feature/library/api/Pick;
+	public final fun copy--663gCY (JLdev/geode/feature/library/api/Pick;)Ldev/geode/feature/library/api/LibraryCommand$AddToPlaylist;
+	public static synthetic fun copy--663gCY$default (Ldev/geode/feature/library/api/LibraryCommand$AddToPlaylist;JLdev/geode/feature/library/api/Pick;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$AddToPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-kycszzA ()J
+	public final fun getPick ()Ldev/geode/feature/library/api/Pick;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/LibraryCommand$AddToQueue : dev/geode/feature/library/api/LibraryCommand {
 	public fun <init> (Ldev/geode/feature/library/api/Pick;)V
 	public final fun component1 ()Ldev/geode/feature/library/api/Pick;
@@ -136,15 +165,29 @@ public final class dev/geode/feature/library/api/LibraryCommand$DeletePlaylist :
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/library/api/LibraryCommand$DeleteSmartPlaylist : dev/geode/feature/library/api/LibraryCommand {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/geode/feature/library/api/LibraryCommand$DeleteSmartPlaylist;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/LibraryCommand$DeleteSmartPlaylist;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$DeleteSmartPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/LibraryCommand$EditSong : dev/geode/feature/library/api/LibraryCommand {
-	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-dcKIlnY ()Ljava/lang/String;
 	public final fun component2 ()Ldev/geode/feature/library/api/SongEdit;
-	public final fun copy-OoSKFGM (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;)Ldev/geode/feature/library/api/LibraryCommand$EditSong;
-	public static synthetic fun copy-OoSKFGM$default (Ldev/geode/feature/library/api/LibraryCommand$EditSong;Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$EditSong;
+	public final fun component3 ()Z
+	public final fun copy-sJ9yTrw (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;Z)Ldev/geode/feature/library/api/LibraryCommand$EditSong;
+	public static synthetic fun copy-sJ9yTrw$default (Ldev/geode/feature/library/api/LibraryCommand$EditSong;Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;ZILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$EditSong;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getEdit ()Ldev/geode/feature/library/api/SongEdit;
 	public final fun getSong-dcKIlnY ()Ljava/lang/String;
+	public final fun getWriteToFile ()Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -208,6 +251,21 @@ public final class dev/geode/feature/library/api/LibraryCommand$IncludeFolder : 
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/library/api/LibraryCommand$MoveInPlaylist : dev/geode/feature/library/api/LibraryCommand {
+	public synthetic fun <init> (JIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-kycszzA ()J
+	public final fun component2 ()I
+	public final fun component3 ()I
+	public final fun copy-HbCm8Rg (JII)Ldev/geode/feature/library/api/LibraryCommand$MoveInPlaylist;
+	public static synthetic fun copy-HbCm8Rg$default (Ldev/geode/feature/library/api/LibraryCommand$MoveInPlaylist;JIIILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$MoveInPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFrom ()I
+	public final fun getId-kycszzA ()J
+	public final fun getTo ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/LibraryCommand$Open : dev/geode/feature/library/api/LibraryCommand {
 	public fun <init> (Ldev/geode/feature/library/api/GroupKey;)V
 	public final fun component1 ()Ldev/geode/feature/library/api/GroupKey;
@@ -244,9 +302,49 @@ public final class dev/geode/feature/library/api/LibraryCommand$PlayNext : dev/g
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/library/api/LibraryCommand$RemoveFromPlaylist : dev/geode/feature/library/api/LibraryCommand {
+	public synthetic fun <init> (JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-kycszzA ()J
+	public final fun component2 ()I
+	public final fun copy--663gCY (JI)Ldev/geode/feature/library/api/LibraryCommand$RemoveFromPlaylist;
+	public static synthetic fun copy--663gCY$default (Ldev/geode/feature/library/api/LibraryCommand$RemoveFromPlaylist;JIILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$RemoveFromPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-kycszzA ()J
+	public final fun getIndex ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/library/api/LibraryCommand$RenamePlaylist : dev/geode/feature/library/api/LibraryCommand {
+	public synthetic fun <init> (JLjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-kycszzA ()J
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy--663gCY (JLjava/lang/String;)Ldev/geode/feature/library/api/LibraryCommand$RenamePlaylist;
+	public static synthetic fun copy--663gCY$default (Ldev/geode/feature/library/api/LibraryCommand$RenamePlaylist;JLjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$RenamePlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId-kycszzA ()J
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/LibraryCommand$Rescan : dev/geode/feature/library/api/LibraryCommand {
 	public static final field INSTANCE Ldev/geode/feature/library/api/LibraryCommand$Rescan;
 	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/library/api/LibraryCommand$SaveSmartPlaylist : dev/geode/feature/library/api/LibraryCommand {
+	public fun <init> (Ldev/geode/feature/library/api/SmartPlaylist;Ljava/lang/String;)V
+	public synthetic fun <init> (Ldev/geode/feature/library/api/SmartPlaylist;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/library/api/SmartPlaylist;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ldev/geode/feature/library/api/SmartPlaylist;Ljava/lang/String;)Ldev/geode/feature/library/api/LibraryCommand$SaveSmartPlaylist;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/LibraryCommand$SaveSmartPlaylist;Ldev/geode/feature/library/api/SmartPlaylist;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$SaveSmartPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPlaylist ()Ldev/geode/feature/library/api/SmartPlaylist;
+	public final fun getReplacing ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -269,6 +367,17 @@ public final class dev/geode/feature/library/api/LibraryCommand$Show : dev/geode
 	public static synthetic fun copy$default (Ldev/geode/feature/library/api/LibraryCommand$Show;Ldev/geode/feature/library/api/LibraryView;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$Show;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getView ()Ldev/geode/feature/library/api/LibraryView;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/library/api/LibraryCommand$Shuffle : dev/geode/feature/library/api/LibraryCommand {
+	public fun <init> (Ldev/geode/feature/library/api/Pick;)V
+	public final fun component1 ()Ldev/geode/feature/library/api/Pick;
+	public final fun copy (Ldev/geode/feature/library/api/Pick;)Ldev/geode/feature/library/api/LibraryCommand$Shuffle;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/LibraryCommand$Shuffle;Ldev/geode/feature/library/api/Pick;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryCommand$Shuffle;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPick ()Ldev/geode/feature/library/api/Pick;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -339,32 +448,50 @@ public final class dev/geode/feature/library/api/LibraryFact$Queued : dev/geode/
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/library/api/LibraryFact$TagsNeedConsent : dev/geode/feature/library/api/LibraryFact {
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-dcKIlnY ()Ljava/lang/String;
+	public final fun component2 ()Ldev/geode/feature/library/api/SongEdit;
+	public final fun copy-OoSKFGM (Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;)Ldev/geode/feature/library/api/LibraryFact$TagsNeedConsent;
+	public static synthetic fun copy-OoSKFGM$default (Ldev/geode/feature/library/api/LibraryFact$TagsNeedConsent;Ljava/lang/String;Ldev/geode/feature/library/api/SongEdit;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryFact$TagsNeedConsent;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEdit ()Ldev/geode/feature/library/api/SongEdit;
+	public final fun getSong-dcKIlnY ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/LibraryKt {
+	public static final fun getDUPLICATE_LENGTH_SLACK ()J
 	public static final fun getSHORT_CLIP ()J
 }
 
 public final class dev/geode/feature/library/api/LibraryPlaylist {
-	public synthetic fun <init> (JLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JLjava/lang/String;ILjava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JLjava/lang/String;ILjava/util/List;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-kycszzA ()J
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()I
-	public final fun copy-HbCm8Rg (JLjava/lang/String;I)Ldev/geode/feature/library/api/LibraryPlaylist;
-	public static synthetic fun copy-HbCm8Rg$default (Ldev/geode/feature/library/api/LibraryPlaylist;JLjava/lang/String;IILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryPlaylist;
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy-cQBWaIk (JLjava/lang/String;ILjava/util/List;)Ldev/geode/feature/library/api/LibraryPlaylist;
+	public static synthetic fun copy-cQBWaIk$default (Ldev/geode/feature/library/api/LibraryPlaylist;JLjava/lang/String;ILjava/util/List;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryPlaylist;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getId-kycszzA ()J
 	public final fun getName ()Ljava/lang/String;
+	public final fun getSongs ()Ljava/util/List;
 	public final fun getTrackCount ()I
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
 
 public final class dev/geode/feature/library/api/LibraryState {
-	public fun <init> ()V
-	public fun <init> (Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/library/api/Page;)V
-	public synthetic fun <init> (Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/library/api/Page;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ldev/geode/engine/types/Millis;Ldev/geode/feature/library/api/Page;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ldev/geode/engine/types/Millis;Ldev/geode/feature/library/api/Page;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ldev/geode/feature/library/api/IndexStatus;
 	public final fun component10 ()Ljava/util/List;
-	public final fun component11 ()Ldev/geode/feature/library/api/Page;
+	public final fun component11 ()Ljava/util/List;
+	public final fun component12-CzFC90E ()Ldev/geode/engine/types/Millis;
+	public final fun component13 ()Ldev/geode/feature/library/api/Page;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ldev/geode/feature/library/api/Place;
 	public final fun component4 ()Ljava/lang/String;
@@ -373,8 +500,8 @@ public final class dev/geode/feature/library/api/LibraryState {
 	public final fun component7 ()Ljava/util/Set;
 	public final fun component8 ()Ljava/util/Set;
 	public final fun component9 ()Ljava/util/List;
-	public final fun copy (Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/library/api/Page;)Ldev/geode/feature/library/api/LibraryState;
-	public static synthetic fun copy$default (Ldev/geode/feature/library/api/LibraryState;Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/library/api/Page;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryState;
+	public final fun copy-phcbivg (Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ldev/geode/engine/types/Millis;Ldev/geode/feature/library/api/Page;)Ldev/geode/feature/library/api/LibraryState;
+	public static synthetic fun copy-phcbivg$default (Ldev/geode/feature/library/api/LibraryState;Ldev/geode/feature/library/api/IndexStatus;Ljava/util/List;Ldev/geode/feature/library/api/Place;Ljava/lang/String;Ldev/geode/feature/library/api/Sort;Ldev/geode/feature/library/api/Filter;Ljava/util/Set;Ljava/util/Set;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ldev/geode/engine/types/Millis;Ldev/geode/feature/library/api/Page;ILjava/lang/Object;)Ldev/geode/feature/library/api/LibraryState;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getExcludedFolders ()Ljava/util/Set;
 	public final fun getFavourites ()Ljava/util/Set;
@@ -382,11 +509,13 @@ public final class dev/geode/feature/library/api/LibraryState {
 	public final fun getFolders ()Ljava/util/List;
 	public final fun getFormats ()Ljava/util/List;
 	public final fun getIndex ()Ldev/geode/feature/library/api/IndexStatus;
+	public final fun getNow-CzFC90E ()Ldev/geode/engine/types/Millis;
 	public final fun getPage ()Ldev/geode/feature/library/api/Page;
 	public final fun getPlace ()Ldev/geode/feature/library/api/Place;
 	public final fun getPlaylists ()Ljava/util/List;
 	public final fun getPlays ()Ljava/util/List;
 	public final fun getQuery ()Ljava/lang/String;
+	public final fun getSmartPlaylists ()Ljava/util/List;
 	public final fun getSongs ()Ljava/util/List;
 	public final fun getSort ()Ldev/geode/feature/library/api/Sort;
 	public fun hashCode ()I
@@ -398,6 +527,7 @@ public final class dev/geode/feature/library/api/LibraryView : java/lang/Enum {
 	public static final field ALBUM_ARTISTS Ldev/geode/feature/library/api/LibraryView;
 	public static final field ARTISTS Ldev/geode/feature/library/api/LibraryView;
 	public static final field COMPOSERS Ldev/geode/feature/library/api/LibraryView;
+	public static final field DUPLICATES Ldev/geode/feature/library/api/LibraryView;
 	public static final field FAVOURITES Ldev/geode/feature/library/api/LibraryView;
 	public static final field FOLDERS Ldev/geode/feature/library/api/LibraryView;
 	public static final field GENRES Ldev/geode/feature/library/api/LibraryView;
@@ -412,6 +542,17 @@ public final class dev/geode/feature/library/api/LibraryView : java/lang/Enum {
 }
 
 public abstract interface class dev/geode/feature/library/api/Page {
+}
+
+public final class dev/geode/feature/library/api/Page$Duplicates : dev/geode/feature/library/api/Page {
+	public fun <init> (Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;)Ldev/geode/feature/library/api/Page$Duplicates;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/Page$Duplicates;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/library/api/Page$Duplicates;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGroups ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class dev/geode/feature/library/api/Page$Found : dev/geode/feature/library/api/Page {
@@ -544,13 +685,80 @@ public final class dev/geode/feature/library/api/PlaylistRef {
 	public final synthetic fun unbox-impl ()J
 }
 
+public final class dev/geode/feature/library/api/RuleField : java/lang/Enum {
+	public static final field ADDED_DAYS_AGO Ldev/geode/feature/library/api/RuleField;
+	public static final field ALBUM Ldev/geode/feature/library/api/RuleField;
+	public static final field ARTIST Ldev/geode/feature/library/api/RuleField;
+	public static final field DURATION_MINUTES Ldev/geode/feature/library/api/RuleField;
+	public static final field FAVOURITE Ldev/geode/feature/library/api/RuleField;
+	public static final field FOLDER Ldev/geode/feature/library/api/RuleField;
+	public static final field PLAY_COUNT Ldev/geode/feature/library/api/RuleField;
+	public static final field TITLE Ldev/geode/feature/library/api/RuleField;
+	public final fun getDefaultOp ()Ldev/geode/feature/library/api/RuleOp;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getOps ()Ljava/util/List;
+	public final fun isFlag ()Z
+	public final fun isText ()Z
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/library/api/RuleField;
+	public static fun values ()[Ldev/geode/feature/library/api/RuleField;
+}
+
+public final class dev/geode/feature/library/api/RuleOp : java/lang/Enum {
+	public static final field AT_LEAST Ldev/geode/feature/library/api/RuleOp;
+	public static final field AT_MOST Ldev/geode/feature/library/api/RuleOp;
+	public static final field CONTAINS Ldev/geode/feature/library/api/RuleOp;
+	public static final field IS Ldev/geode/feature/library/api/RuleOp;
+	public static final field IS_NOT Ldev/geode/feature/library/api/RuleOp;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getForNumber ()Z
+	public final fun getForText ()Z
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/library/api/RuleOp;
+	public static fun values ()[Ldev/geode/feature/library/api/RuleOp;
+}
+
+public final class dev/geode/feature/library/api/SmartPlaylist {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;ZI)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/List;ZIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Z
+	public final fun component4 ()I
+	public final fun copy (Ljava/lang/String;Ljava/util/List;ZI)Ldev/geode/feature/library/api/SmartPlaylist;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/SmartPlaylist;Ljava/lang/String;Ljava/util/List;ZIILjava/lang/Object;)Ldev/geode/feature/library/api/SmartPlaylist;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLimit ()I
+	public final fun getMatchAll ()Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun getRules ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/library/api/SmartRule {
+	public fun <init> (Ldev/geode/feature/library/api/RuleField;Ldev/geode/feature/library/api/RuleOp;Ljava/lang/String;)V
+	public final fun component1 ()Ldev/geode/feature/library/api/RuleField;
+	public final fun component2 ()Ldev/geode/feature/library/api/RuleOp;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (Ldev/geode/feature/library/api/RuleField;Ldev/geode/feature/library/api/RuleOp;Ljava/lang/String;)Ldev/geode/feature/library/api/SmartRule;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/SmartRule;Ldev/geode/feature/library/api/RuleField;Ldev/geode/feature/library/api/RuleOp;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/SmartRule;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getField ()Ldev/geode/feature/library/api/RuleField;
+	public final fun getOp ()Ldev/geode/feature/library/api/RuleOp;
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/library/api/Song {
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;IILjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;IILjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-dcKIlnY ()Ljava/lang/String;
 	public final fun component10-CmsKos8 ()J
 	public final fun component11-CmsKos8 ()J
 	public final fun component12 ()Ljava/lang/String;
+	public final fun component13 ()I
+	public final fun component14 ()I
+	public final fun component15 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/lang/String;
 	public final fun component4 ()Ljava/lang/String;
@@ -559,14 +767,15 @@ public final class dev/geode/feature/library/api/Song {
 	public final fun component7 ()Ljava/lang/String;
 	public final fun component8 ()Ljava/lang/String;
 	public final fun component9 ()Ljava/lang/String;
-	public final fun copy-R3XF1rw (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;)Ldev/geode/feature/library/api/Song;
-	public static synthetic fun copy-R3XF1rw$default (Ldev/geode/feature/library/api/Song;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/Song;
+	public final fun copy-3yjmF5o (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;IILjava/lang/String;)Ldev/geode/feature/library/api/Song;
+	public static synthetic fun copy-3yjmF5o$default (Ldev/geode/feature/library/api/Song;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JJLjava/lang/String;IILjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/Song;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAddedAt-CmsKos8 ()J
 	public final fun getAlbum ()Ljava/lang/String;
 	public final fun getAlbumArtist ()Ljava/lang/String;
 	public final fun getArtist ()Ljava/lang/String;
 	public final fun getArtwork ()Ljava/lang/String;
+	public final fun getComment ()Ljava/lang/String;
 	public final fun getComposer ()Ljava/lang/String;
 	public final fun getDuration-CmsKos8 ()J
 	public final fun getFolder ()Ljava/lang/String;
@@ -576,24 +785,34 @@ public final class dev/geode/feature/library/api/Song {
 	public final fun getPath ()Ljava/lang/String;
 	public final fun getShownAlbumArtist ()Ljava/lang/String;
 	public final fun getTitle ()Ljava/lang/String;
+	public final fun getTrackNumber ()I
+	public final fun getYear ()I
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
 
 public final class dev/geode/feature/library/api/SongEdit {
-	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
-	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/lang/String;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/lang/String;
 	public final fun component4 ()Ljava/lang/String;
-	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ldev/geode/feature/library/api/SongEdit;
-	public static synthetic fun copy$default (Ldev/geode/feature/library/api/SongEdit;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/SongEdit;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/Integer;
+	public final fun component7 ()Ljava/lang/Integer;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;)Ldev/geode/feature/library/api/SongEdit;
+	public static synthetic fun copy$default (Ldev/geode/feature/library/api/SongEdit;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/library/api/SongEdit;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getAlbum ()Ljava/lang/String;
 	public final fun getArtist ()Ljava/lang/String;
 	public final fun getArtwork ()Ljava/lang/String;
+	public final fun getComment ()Ljava/lang/String;
+	public final fun getGenre ()Ljava/lang/String;
 	public final fun getTitle ()Ljava/lang/String;
+	public final fun getTrackNumber ()Ljava/lang/Integer;
+	public final fun getYear ()Ljava/lang/Integer;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

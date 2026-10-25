@@ -65,6 +65,8 @@ geode_core_library(geode_viz viz
     viz/TouchField.cpp
     viz/Transition.cpp
     viz/CompositeGrade.cpp
+    viz/SharedCamera.cpp
+    viz/SharedParams.cpp
     viz/CompositePass.cpp
     viz/TrailPass.cpp
     viz/SharedFxPass.cpp
@@ -83,7 +85,6 @@ geode_core_library(geode_viz viz
     viz/fluid/FluidLook.cpp
     viz/fluid/RippleSim.cpp
     viz/fluid/FlowField.cpp
-    viz/scenes/StyleCatalog.cpp
     viz/scenes/CymaticsScene.cpp
     viz/scenes/LifeScene.cpp
     viz/scenes/MycoScene.cpp

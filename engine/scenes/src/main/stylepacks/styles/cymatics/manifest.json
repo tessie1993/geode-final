@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "cymatics",
+  "label": "Original · Resonant Field",
+  "family": "cymatics",
+  "parameters": {
+    "shaderStyle": 0,
+    "geometryOverride": -1
+  }
+}

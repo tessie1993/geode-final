@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/Normaliser.hpp"
+#include "geode/viz/PlanCodec.hpp"
 #include "geode/viz/Renderer.hpp"
 #include "SnapshotHandle.hpp"
 
@@ -21,6 +23,14 @@ struct geode_viz {
     std::array<geode::viz::AdsrConfig, geode::viz::AdsrEngine::kCount> adsr{};
     // The Customization snapshots this renderer reads at the start of each frame; null when none.
     std::atomic<geode_snapshots*> snapshots{nullptr};
+    // The last feature frame, under configLock, for the Customization's evaluation.
+    GeodeFeatureFrame features{};
+    // The Customization the last snapshot carried and its per-frame evaluation (ADR-0002), both
+    // touched on the drawing thread only.
+    geode::viz::mod::CustomizationPlan plan;
+    bool hasPlan = false;
+    geode::viz::mod::ReactionGraph graph;
+    double lastFrameSeconds = -1.0;
 };
 
 namespace {
@@ -33,6 +43,7 @@ static_assert(AdsrEngine::kCount == GEODE_ADSR_SLOTS);
 static_assert(geode::bridge::kSnapshotParamsCount == static_cast<size_t>(SceneParams::kFieldCount));
 static_assert(geode::bridge::kSnapshotLfoCount == static_cast<size_t>(GEODE_LFO_SLOTS * GEODE_LFO_CONFIG_FLOATS));
 static_assert(geode::bridge::kSnapshotAdsrCount == static_cast<size_t>(GEODE_ADSR_SLOTS * GEODE_ADSR_CONFIG_FLOATS));
+static_assert(geode::bridge::kSnapshotPlanCount == geode::viz::mod::kPlanFloats);
 
 constexpr int kModSourceCount = static_cast<int>(ModSource::StereoPan) + 1;
 constexpr int kLfoTargetCount = static_cast<int>(LfoTarget::Lfo3Depth) + 1;
@@ -85,7 +96,10 @@ int geode_viz_set_param(geode_viz* v, const char* name, float value) {
 }
 
 void geode_viz_set_features(geode_viz* v, const GeodeFeatureFrame* frame) {
-    if (v && frame) v->renderer.setFeatures(*frame);
+    if (!v || !frame) return;
+    v->renderer.setFeatures(*frame);
+    std::lock_guard<std::mutex> lock(v->configLock);
+    v->features = *frame;
 }
 
 void geode_viz_set_reduced_motion(geode_viz* v, int on) {
@@ -187,6 +201,10 @@ void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
 
+void geode_viz_set_quality_ceiling(geode_viz* v, float ceiling) {
+    if (v) v->renderer.thermal().setQualityCeiling(ceiling);
+}
+
 void geode_viz_set_frame_load(geode_viz* v, int frames, float p95_ms) {
     if (v) v->renderer.setFrameLoad(frames, p95_ms);
 }
@@ -274,11 +292,32 @@ static void applySnapshot(geode_viz* v) {
     for (int slot = 0; slot < GEODE_ADSR_SLOTS; ++slot) {
         geode_viz_set_adsr(v, slot, snapshot.adsr.data() + slot * GEODE_ADSR_CONFIG_FLOATS, GEODE_ADSR_CONFIG_FLOATS);
     }
+    v->hasPlan = geode::viz::mod::decodePlan(snapshot.plan.data(), snapshot.plan.size(), v->plan);
+    if (!v->hasPlan) {
+        v->graph.reset();
+        v->renderer.setCustomization(nullptr);
+    }
+}
+
+// The Customization's Reactions, Modulators, Macro links and Automations for this frame, handed to
+// the renderer before it draws: it maps them into the active Style's ranges and draws all of them.
+static void evaluateCustomization(geode_viz* v, double timeSeconds) {
+    const auto dt = v->lastFrameSeconds < 0.0 ? 0.0f : static_cast<float>(timeSeconds - v->lastFrameSeconds);
+    v->lastFrameSeconds = timeSeconds;
+    if (!v->hasPlan) return;
+    GeodeFeatureFrame features;
+    {
+        std::lock_guard<std::mutex> lock(v->configLock);
+        features = v->features;
+    }
+    const geode::viz::mod::Evaluated& evaluated = v->graph.evaluate(v->plan, geode::viz::mod::signalFrame(features), dt);
+    v->renderer.setCustomization(&evaluated);
 }
 
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {
     if (!v) return;
     applySnapshot(v);
+    evaluateCustomization(v, time_seconds);
     v->renderer.render(time_seconds, target_fbo);
 }
 

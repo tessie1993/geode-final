@@ -3,7 +3,10 @@ package dev.geode.feature.visuals.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.visuals.api.FolderId
+import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
@@ -45,6 +49,8 @@ fun VisualsRoute(
         visuals.events.collect { fact ->
             when (fact) {
                 is VisualsFact.FolderCreated -> open = fact.id.value
+                // The Presets browser's facts are its own route's.
+                is VisualsFact.PresetShareReady, is VisualsFact.PresetImported, is VisualsFact.PresetNotImported -> Unit
             }
         }
     }
@@ -94,6 +100,51 @@ fun FullScreenVisualRoute(
         modifier,
     )
 }
+
+/**
+ * The MilkDrop presets and textures' place (#145, ADR-0003): it reads the Visuals store and owns the two
+ * system pickers. Whatever the person picks goes to the store as one import, by content uri; the store
+ * reads, checks and copies each file, and its report comes back in the state. `:app` wires it at the
+ * switch-over (#17), reached from the Visuals tab.
+ */
+@Composable
+fun MilkdropRoute(
+    visuals: Visuals,
+    modifier: Modifier = Modifier,
+) {
+    val state by visuals.state.collectAsStateWithLifecycle()
+
+    fun importPicked(
+        kind: MilkdropKind,
+        picked: List<Uri>,
+    ) {
+        if (picked.isNotEmpty()) visuals.send(VisualsCommand.ImportMilkdrop(kind, picked.map(Uri::toString)))
+    }
+    val presetPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { importPicked(MilkdropKind.PRESETS, it) }
+    val texturePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { importPicked(MilkdropKind.TEXTURES, it) }
+    MilkdropScreen(
+        state.toMilkdropModel(),
+        onAction = { action ->
+            when (action) {
+                is MilkdropAction.Pick ->
+                    when (action.kind) {
+                        MilkdropKind.PRESETS -> presetPicker.launch(PRESET_TYPES)
+                        MilkdropKind.TEXTURES -> texturePicker.launch(TEXTURE_TYPES)
+                    }
+                MilkdropAction.DismissReport -> action.toCommand()?.let(visuals::send)
+            }
+        },
+        modifier,
+    )
+}
+
+/** A `.milk` file has no type of its own, so the preset picker offers every file; the store checks each one. */
+private val PRESET_TYPES = arrayOf("*/*")
+
+/** Images, and files a provider cannot type: TGA and DDS often come as plain binary. */
+private val TEXTURE_TYPES = arrayOf("image/*", "application/octet-stream")
 
 /** Hides the status and navigation bars while this is composed; a swipe shows them for a moment. */
 @Composable

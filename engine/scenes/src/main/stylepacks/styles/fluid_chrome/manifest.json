@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "fluid_chrome",
+  "label": "Liquid Chrome",
+  "family": "fluid",
+  "parameters": {
+    "look": 4,
+    "curl": 0.8,
+    "velocityDissipation": 1.2,
+    "densityDissipation": 0.45,
+    "splatRadius": 1.4,
+    "splatForce": 0.8,
+    "bloom": 0.6,
+    "hueOffset": 0.5
+  }
+}

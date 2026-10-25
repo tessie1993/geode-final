@@ -21,6 +21,7 @@ import dev.geode.feature.playback.core.SessionStatus.ENDED
 import dev.geode.feature.playback.core.SessionStatus.IDLE
 import dev.geode.feature.playback.core.SessionStatus.READY
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -137,22 +138,22 @@ class MediaControlsTest {
     }
 
     @Test
-    fun `a tap on a track in the session's queue plays it, or seeks within the current one`() {
+    fun `a tap on a track in the session's queue plays it from the place given, or seeks within the current one`() {
         val at = Millis(12_000)
         val table: List<Triple<PlayerState, MediaControl, PlaybackCommand?>> =
             listOf(
                 // Nothing queued: there is no track to tap.
                 Triple(idle, MediaControl.SkipTo(0, at), null),
-                Triple(loading, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0)),
+                Triple(loading, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0, at)),
                 Triple(loading, MediaControl.SkipTo(1, at), PlaybackCommand.SeekTo(at)),
-                Triple(buffering, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2)),
+                Triple(buffering, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2, at)),
                 Triple(playing, MediaControl.SkipTo(1, at), PlaybackCommand.SeekTo(at)),
                 Triple(playing, MediaControl.SkipTo(0, Millis.ZERO), PlaybackCommand.Play(atB.tracks, 0)),
-                Triple(paused, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2)),
+                Triple(paused, MediaControl.SkipTo(2, at), PlaybackCommand.Play(atB.tracks, 2, at)),
                 Triple(paused, MediaControl.SkipTo(1, at), PlaybackCommand.SeekTo(at)),
-                Triple(ended, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atC.tracks, 0)),
+                Triple(ended, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atC.tracks, 0, at)),
                 Triple(ended, MediaControl.SkipTo(2, at), PlaybackCommand.SeekTo(at)),
-                Triple(error, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0)),
+                Triple(error, MediaControl.SkipTo(0, at), PlaybackCommand.Play(atB.tracks, 0, at)),
                 // Outside the queue: asks for nothing.
                 Triple(playing, MediaControl.SkipTo(-1, at), null),
                 Triple(playing, MediaControl.SkipTo(3, at), null),
@@ -174,4 +175,24 @@ class MediaControlsTest {
         prev: Boolean,
         failed: Boolean = false,
     ) = SessionView(status, plays, queue, mark, if (failed) ENGINE_NOT_RESPONDING else null, seek, next, prev)
+
+    @Test
+    fun `leaving the app pauses music that is meant to play, when it is not to keep playing in the background`() {
+        val pauses = listOf(loading, loadingFirst, buffering, playing)
+        val nothingToPause = listOf(Idle, loadingPaused, paused, ended, error)
+
+        for (player in pauses) {
+            assertEquals("$player", PlaybackCommand.Pause, MediaControls.commandOnLeavingApp(player, musicKeepsPlaying = false))
+        }
+        for (player in nothingToPause) {
+            assertNull("$player", MediaControls.commandOnLeavingApp(player, musicKeepsPlaying = false))
+        }
+    }
+
+    @Test
+    fun `leaving the app asks nothing while music keeps playing in the background`() {
+        for (player in listOf(Idle, loading, buffering, playing, paused, ended, error)) {
+            assertNull("$player", MediaControls.commandOnLeavingApp(player, musicKeepsPlaying = true))
+        }
+    }
 }

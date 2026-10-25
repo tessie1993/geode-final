@@ -36,7 +36,7 @@ import androidx.glance.unit.ColorProvider
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import dev.geode.R
-import dev.geode.playback.PlaybackService
+import dev.geode.playback.GeodePlaybackService
 import dev.geode.ui.MainActivity
 
 /** Artwork, title, artist and transport, redrawn whenever the playback service publishes a change. */
@@ -122,7 +122,7 @@ class WidgetTransportAction : ActionCallback {
         parameters: ActionParameters,
     ) {
         val command = parameters[COMMAND] ?: return
-        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val token = SessionToken(context, ComponentName(context, GeodePlaybackService::class.java))
         val future = MediaController.Builder(context, token).buildAsync()
         future.addListener(
             {

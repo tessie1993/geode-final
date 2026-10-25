@@ -93,7 +93,7 @@ enum class ParamScope {
         // MARCH_DETAIL is the one scope a SceneKind cannot answer: the marched styles are a
         // subset of one kind, so the id is the only thing that separates them.
         if (this == MARCH_DETAIL) {
-            sceneId in SceneCapabilities.MARCHED_SCENES
+            SceneCapabilities.isMarched(sceneId)
         } else {
             appliesTo(SceneCapabilities.kindOf(sceneId))
         }

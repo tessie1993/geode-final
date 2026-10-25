@@ -3,9 +3,11 @@ package dev.geode.feature.settings.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportFrameRate
@@ -17,6 +19,7 @@ import dev.geode.feature.settings.api.LookSettings
 import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Minutes
 import dev.geode.feature.settings.api.OnboardingSettings
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
@@ -42,6 +45,14 @@ internal object SettingsCodec {
 
     private val WHITE = Argb(0xFFFFFFFF.toInt())
 
+    /** The forest theme ids the Elements replaced (#103), and the Element each one became. */
+    private val FOREST_THEME_IDS =
+        mapOf(
+            "DeepForest" to Element.WOOD,
+            "NightForest" to Element.BIOLUMINESCENCE,
+            "EarthLichen" to Element.STONE,
+        )
+
     private val LOUDNESS_IDS =
         mapOf(
             ExportLoudness.YOUTUBE to "youtube",
@@ -61,16 +72,21 @@ internal object SettingsCodec {
                 export = read.export(),
                 folders = read.folders(),
                 onboarding = read.onboarding(),
+                background = read.background(),
+                performance = read.performance(),
             ),
         )
     }
 
     /** Every setting by key; a null value means the key is removed. */
-    fun encode(values: SettingsValues): Map<String, Any?> = look(values.look) + playback(values.playback) + rest(values)
+    fun encode(values: SettingsValues): Map<String, Any?> =
+        look(values.look) + playback(values.playback) + rest(values) + preferences(values)
 
     private fun Reader.look(): LookSettings {
         val default = LookSettings()
+        val element = string(K.ELEMENT)
         return LookSettings(
+            element = Element.entries.firstOrNull { it.name == element } ?: FOREST_THEME_IDS[element] ?: Element.Default,
             accentIntensity = float(K.ACCENT_INTENSITY, default.accentIntensity),
             backgroundDim = float(K.BACKGROUND_DIM, default.backgroundDim),
             fontColor = int(K.FONT_COLOR)?.let(::Argb) ?: WHITE.takeIf { boolean(K.LEGACY_WHITE_FONT, false) },
@@ -80,6 +96,7 @@ internal object SettingsCodec {
             cornerStyle = enum(K.CORNER_STYLE, default.cornerStyle),
             compactPlayer = boolean(K.COMPACT_PLAYER, default.compactPlayer),
             clearVisualsMenu = boolean(K.CLEAR_VISUALS_MENU, default.clearVisualsMenu),
+            ambientMode = enum(K.AMBIENT_MODE, default.ambientMode),
         )
     }
 
@@ -150,6 +167,26 @@ internal object SettingsCodec {
             loopSafe = boolean(K.EXPORT_LOOP_SAFE, default.loopSafe),
             codec = enum(K.EXPORT_CODEC, default.codec),
             loudness = LOUDNESS_IDS.entries.firstOrNull { it.value == loudness }?.key ?: default.loudness,
+            finishedAlerts = boolean(K.EXPORT_FINISHED_ALERTS, default.finishedAlerts),
+        )
+    }
+
+    private fun Reader.background(): BackgroundSettings {
+        val default = BackgroundSettings()
+        return BackgroundSettings(
+            music = boolean(K.BACKGROUND_MUSIC, default.music),
+            renders = boolean(K.BACKGROUND_RENDERS, default.renders),
+            recording = boolean(K.BACKGROUND_RECORDING, default.recording),
+        )
+    }
+
+    private fun Reader.performance(): PerformanceSettings {
+        val default = PerformanceSettings()
+        return PerformanceSettings(
+            visualQuality = enum(K.VISUAL_QUALITY, default.visualQuality),
+            visualFrameRate = enum(K.VISUAL_FRAME_RATE, default.visualFrameRate),
+            saveMode = boolean(K.SAVE_MODE, default.saveMode),
+            visualsOff = boolean(K.VISUALS_OFF, default.visualsOff),
         )
     }
 
@@ -171,6 +208,7 @@ internal object SettingsCodec {
 
     private fun look(look: LookSettings): Map<String, Any?> =
         mapOf(
+            K.ELEMENT to look.element.name,
             K.ACCENT_INTENSITY to look.accentIntensity,
             K.BACKGROUND_DIM to look.backgroundDim,
             K.FONT_COLOR to look.fontColor?.value,
@@ -180,6 +218,7 @@ internal object SettingsCodec {
             K.CORNER_STYLE to look.cornerStyle.name,
             K.COMPACT_PLAYER to look.compactPlayer,
             K.CLEAR_VISUALS_MENU to look.clearVisualsMenu,
+            K.AMBIENT_MODE to look.ambientMode.name,
         )
 
     private fun playback(playback: PlaybackSettings): Map<String, Any?> =
@@ -239,6 +278,19 @@ internal object SettingsCodec {
             K.TUTORIAL_ON_FIRST_RUN to onboarding.tutorialOnFirstRun,
         )
     }
+
+    /** #28's preferences, each in a key of its own that no old file has. */
+    private fun preferences(values: SettingsValues): Map<String, Any?> =
+        mapOf(
+            K.EXPORT_FINISHED_ALERTS to values.export.finishedAlerts,
+            K.BACKGROUND_MUSIC to values.background.music,
+            K.BACKGROUND_RENDERS to values.background.renders,
+            K.BACKGROUND_RECORDING to values.background.recording,
+            K.VISUAL_QUALITY to values.performance.visualQuality.name,
+            K.VISUAL_FRAME_RATE to values.performance.visualFrameRate.name,
+            K.SAVE_MODE to values.performance.saveMode,
+            K.VISUALS_OFF to values.performance.visualsOff,
+        )
 
     /** Typed reads from a stored map; a value of the wrong type reads as absent. */
     private class Reader(

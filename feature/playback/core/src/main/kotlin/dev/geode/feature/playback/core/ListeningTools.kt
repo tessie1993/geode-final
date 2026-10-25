@@ -52,10 +52,11 @@ internal object Listening {
         state: PlaybackState,
         tracks: List<Track>,
         startAt: Int,
+        from: Millis = Millis.ZERO,
     ): Change {
-        if (!state.options.shuffle || tracks.isEmpty()) return core.player(state, core.play(state.player, tracks, startAt))
+        if (!state.options.shuffle || tracks.isEmpty()) return core.player(state, core.play(state.player, tracks, startAt, from))
         val (order, seed) = shuffled(tracks, startAt.coerceIn(tracks.indices), state.shuffle.seed)
-        return core.player(state.copy(shuffle = ShuffleOrder(seed, tracks)), core.play(state.player, order, startAt = 0))
+        return core.player(state.copy(shuffle = ShuffleOrder(seed, tracks)), core.play(state.player, order, startAt = 0, from))
     }
 
     /** Puts [tracks] after the current track ([next]) or at the end of the queue. */
@@ -231,7 +232,7 @@ internal object Listening {
         at: Millis,
     ): Change {
         val track = settled(state.player)?.first?.current ?: return Next(state)
-        val position = at.coerceIn(Millis.ZERO, track.duration)
+        val position = core.within(track, at)
         val loop = state.loop
         val marked =
             when {
@@ -312,6 +313,7 @@ internal object Listening {
         event: PlaybackEvent,
         next: Change,
     ): List<PlaybackEffect> {
+        if (!next.state.options.resumeLongTracks) return emptyList()
         val saves =
             next.effects
                 .mapNotNull { (it as? Perform<*>)?.work as? PlaybackWork.SaveSession }
@@ -329,6 +331,7 @@ internal object Listening {
         state: PlaybackState,
     ): List<PlaybackEffect> {
         if (before !is Loading || before.reason != LoadReason.PLAY || before.from.position != Millis.ZERO) return emptyList()
+        if (!state.options.resumeLongTracks) return emptyList()
         val queue = settled(state.player)?.first ?: return emptyList()
         val point = state.resumePoints[queue.current.id] ?: return emptyList()
         return listOf(core.drive(Seek(point)))
