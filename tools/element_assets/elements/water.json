@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "element": "water",
+  "ticket": 105,
+  "styleAnchor": "old-growth forest river at blue hour flowing calmly into a still lake, deep teal-green water, soft mist, gentle caustic light, cool moonlit key light from the top-left with a faint warm amber rim, photoreal high-end 3D render, cinematic, refined, calm",
+  "project": "e72b39cc-e97a-4c46-a49c-bad967ea8e0a",
+  "anchor": {
+    "slot": "H0",
+    "mediaId": "5d5ac8d1-c01a-4760-8204-86f107a50080",
+    "project": "50eea1b3-07de-4062-924d-1689fef41aff",
+    "prompt": "Wide view of a calm forest river widening into a mirror-still lake, giant mossy cedars on both banks, mist on the water, moon glow behind thin clouds. Old-growth forest river at blue hour flowing calmly into a still lake, deep teal-green water, soft mist, gentle caustic light, cool moonlit key light from the top-left with a faint warm amber rim, photoreal high-end 3D render, cinematic, refined, calm. Full-frame scene, no text, no people, no logos. Leave calm open space in the upper and lower thirds for interface elements.",
+    "approval": "https://github.com/tessie1993/geode-final/issues/105#issuecomment-6332318714"
+  },
+  "slots": {
+    "H0": {
+      "subject": "a wide view of a calm forest river widening into a mirror-still lake, giant mossy cedars on both banks, mist on the water, moon glow behind thin clouds",
+      "backdrop": "full-bleed",
+      "aspect": "9:16",
+      "extra": "leave calm open space in the upper and lower thirds for interface elements",
+      "note": "The approved anchor, variant #2 (the caustic river). Native 768x1376: upscale to 2k before it is adopted."
+    },
+    "H1": {"subject": "a distant misty cedar treeline silhouette in soft fog", "backdrop": "isolated-white", "aspect": "9:16"},
+    "H2": {"subject": "a moss-covered riverbank with ferns and an old leaning cedar", "backdrop": "isolated-white", "aspect": "9:16"},
+    "H3": {"subject": "a foreground cluster of wet river reeds and fern fronds beaded with dew", "backdrop": "isolated-white", "aspect": "9:16"},
+    "N1": {"subject": "a large clear water bubble with a soft glowing core of light", "backdrop": "isolated-white", "aspect": "1:1"},
+    "N2": {"subject": "a cluster of three clear water bubbles of different sizes", "backdrop": "isolated-white", "aspect": "1:1"},
+    "N3": {"subject": "a clear bubble with swirling iridescent colour inside", "backdrop": "isolated-white", "aspect": "1:1"},
+    "N4": {"subject": "a clear bubble holding a tiny reflected moon", "backdrop": "isolated-white", "aspect": "1:1"},
+    "N5": {"subject": "a small, flat, smooth river stone with water beads on it", "backdrop": "isolated-white", "aspect": "1:1"},
+    "I1": {
+      "subject": "a small, simple water emblem of a single drop with an engraved feel, flat lighting and high contrast so it reads at 24 dp",
+      "backdrop": "isolated-white",
+      "aspect": "1:1",
+      "note": "Vector tracing comes afterwards."
+    },
+    "I2": {
+      "subject": "a small, simple water emblem of a ripple ring with an engraved feel, flat lighting and high contrast so it reads at 24 dp",
+      "backdrop": "isolated-white",
+      "aspect": "1:1",
+      "note": "Vector tracing comes afterwards."
+    },
+    "I3": {
+      "subject": "a small, simple water emblem of a stack of droplets with an engraved feel, flat lighting and high contrast so it reads at 24 dp",
+      "backdrop": "isolated-white",
+      "aspect": "1:1",
+      "note": "Vector tracing comes afterwards."
+    },
+    "I4": {
+      "subject": "a small, simple water emblem of a wave crest with an engraved feel, flat lighting and high contrast so it reads at 24 dp",
+      "backdrop": "isolated-white",
+      "aspect": "1:1",
+      "note": "Vector tracing comes afterwards."
+    },
+    "I5": {
+      "subject": "a small, simple water emblem of a lily pad with an engraved feel, flat lighting and high contrast so it reads at 24 dp",
+      "backdrop": "isolated-white",
+      "aspect": "1:1",
+      "note": "Vector tracing comes afterwards."
+    },
+    "L1": {
+      "subject": "a single perfectly clear water bubble with a thin iridescent rim and a caustic highlight, empty and see-through in the centre",
+      "backdrop": "isolated-black",
+      "aspect": "1:1",
+      "note": "Hand matting is needed to keep the translucency."
+    },
+    "L2": {"subject": "a top-down view of a calm dark forest river surface with gentle current lines and a few floating cedar needles", "backdrop": "tile", "aspect": "9:16"},
+    "B1": {"subject": "a close-up of a calm dark teal water surface with very subtle ripples", "backdrop": "tile", "aspect": "16:9"},
+    "S1": {"subject": "smooth, matte, wet slate in very dark teal-grey, very low contrast", "backdrop": "tile", "aspect": "1:1"},
+    "T1": {"subject": "a single soft ring of teal light spreading on dark water, seen from above", "backdrop": "isolated-black", "aspect": "1:1"},
+    "F1": {"subject": "a tiny soft-focus dew droplet", "backdrop": "isolated-white", "aspect": "1:1", "name": "dew_droplet"},
+    "F2": {"subject": "a drifting pollen mote", "backdrop": "isolated-black", "aspect": "1:1", "name": "pollen_mote"},
+    "F3": {"subject": "a small round air bubble", "backdrop": "isolated-black", "aspect": "1:1", "name": "air_bubble"},
+    "F4": {"subject": "a single cedar needle sprig", "backdrop": "isolated-white", "aspect": "1:1", "name": "cedar_sprig"},
+    "F5": {"subject": "a small clear water droplet", "backdrop": "isolated-white", "aspect": "1:1", "name": "water_droplet"},
+    "F6": {"subject": "a tiny alder leaf", "backdrop": "isolated-white", "aspect": "1:1", "name": "alder_leaf"},
+    "F7": {"subject": "a large maple leaf with water beads", "backdrop": "isolated-white", "aspect": "1:1", "name": "maple_leaf"},
+    "F8": {"subject": "a big clear bubble", "backdrop": "isolated-black", "aspect": "1:1", "name": "big_bubble"},
+    "F9": {"subject": "a fern frond tip", "backdrop": "isolated-white", "aspect": "1:1", "name": "fern_tip"},
+    "A1": {"sound": "a single soft water droplet touching still water, close and intimate", "duration": 4, "note": "The grilled W-A1 (tap)."},
+    "A2": {"sound": "a short gentle swirl of water flowing past, rising and settling", "duration": 4, "note": "The grilled W-A4 (page transition)."},
+    "A3": {"sound": "a small, soft, round bubble pop", "duration": 4},
+    "A4": {"sound": "a quiet forest river flowing at dusk, with distant soft birdsong, calm and steady", "duration": 8, "note": "The Home ambient loop: 8 s, crossfaded so it repeats without a seam."},
+    "A5": {"sound": "a small smooth pebble set gently onto wet stone, a soft muted click with a tiny splash", "duration": 4, "note": "The grilled W-A3 (toggle)."},
+    "V1": {"prompt": "Slow caustic river flow with drifting mist, static camera, seamless loop.", "method": "i2v", "from": "H0", "note": "The grilled W-V1 (Home hero loop)."},
+    "V2": {"prompt": "A very slow push-in towards the lake, with moonlight shimmering on the water.", "method": "i2v", "from": "H0"},
+    "V3": {"prompt": "Fireflies of reflected light glide across the water, and a breeze moves the reeds.", "method": "i2v", "from": "H0"},
+    "V4": {"prompt": "A fingertip touches dark teal water from above, and a soft glowing ripple spreads and fades.", "method": "t2v"},
+    "V5": {"prompt": "The camera glides from the lake surface down into clear water and rises into a new calm scene.", "method": "t2v"},
+    "V6": {"prompt": "Clear bubbles holding album covers drift downstream past the camera.", "method": "i2v", "from": "H0"}
+  }
+}
