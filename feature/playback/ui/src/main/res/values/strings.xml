@@ -11,6 +11,10 @@
     <string name="playback_action_next">Next</string>
     <string name="playback_action_previous">Previous</string>
     <string name="playback_action_seek">Position in the song</string>
+    <string name="playback_action_open_queue">Queue</string>
+    <string name="playback_action_open_tools">Listening tools</string>
+    <string name="playback_action_favourite">Add to favourites</string>
+    <string name="playback_action_unfavourite">Remove from favourites</string>
     <string name="playback_action_open_player">Open the player</string>
     <!-- The queue and the listening tools (#35). -->
     <string name="playback_queue_title">Queue</string>

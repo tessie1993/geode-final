@@ -63,14 +63,7 @@ fun QueueAction.toCommand(model: QueueModel): PlaybackCommand =
         is QueueAction.MoveUp -> PlaybackCommand.MoveInQueue(index, index - 1)
         is QueueAction.MoveDown -> PlaybackCommand.MoveInQueue(index, index + 1)
         QueueAction.ToggleShuffle -> PlaybackCommand.SetShuffle(!model.shuffle)
-        QueueAction.CycleRepeat ->
-            PlaybackCommand.SetRepeat(
-                when (model.repeat) {
-                    RepeatMode.OFF -> RepeatMode.ALL
-                    RepeatMode.ALL -> RepeatMode.ONE
-                    RepeatMode.ONE -> RepeatMode.OFF
-                },
-            )
+        QueueAction.CycleRepeat -> PlaybackCommand.SetRepeat(model.repeat.next())
     }
 
 /**

@@ -1,18 +1,24 @@
 package dev.geode.feature.library.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.library.api.LibraryCommand
+import dev.geode.feature.library.api.LibraryFact
 import dev.geode.feature.library.api.Pick
 
 /** The file types offered when importing a playlist. */
@@ -32,7 +38,8 @@ private const val DEFAULT_FILE_NAME = "playlist"
 
 /**
  * The Library's place (ADR-0003): the only part that touches the Library store, the permission to read
- * the phone's music, and the file pickers for playlists and cover art. It reads the Library's state
+ * the phone's music, the file pickers for playlists and cover art, and the phone's question before tags
+ * are written into a file. It reads the Library's state
  * and turns the screen's actions into Commands. `:app` wires it at the switch-over (#17); until then
  * the old Library screen stays in use.
  *
@@ -64,6 +71,36 @@ fun LibraryRoute(
             exporting.value = null
             if (uri != null && pick != null) library.send(LibraryCommand.ExportPlaylist(pick, uri.toString()))
         }
+    // The phone asks the person before a file is deleted; once it is, the Library looks again.
+    val deleter =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) library.send(LibraryCommand.Rescan)
+        }
+    // The phone asks the person before Geode writes tags into a file; once it has, the edit is sent again, once.
+    val consenting = remember { mutableStateOf<LibraryFact.TagsNeedConsent?>(null) }
+    val asked = remember { mutableStateOf<TrackId?>(null) }
+    val writeConsent =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            val pending = consenting.value
+            consenting.value = null
+            if (result.resultCode == Activity.RESULT_OK && pending != null) {
+                asked.value = pending.song
+                library.send(LibraryCommand.EditSong(pending.song, pending.edit, writeToFile = true))
+            }
+        }
+    LaunchedEffect(library) {
+        library.events.collect { fact ->
+            if (fact !is LibraryFact.TagsNeedConsent) return@collect
+            // Asked already: the person said yes and the file still cannot be written, so it is not asked again.
+            if (asked.value == fact.song) {
+                asked.value = null
+                return@collect
+            }
+            consenting.value = fact
+            val request = MediaStore.createWriteRequest(resolver, listOf(Uri.parse(fact.song.value)))
+            writeConsent.launch(IntentSenderRequest.Builder(request.intentSender).build())
+        }
+    }
     val artwork =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             val onPicked = artworkPicked.value
@@ -85,6 +122,10 @@ fun LibraryRoute(
                 is LibraryAction.ExportPlaylist -> {
                     exporting.value = action.pick
                     exporter.launch(action.name.ifBlank { DEFAULT_FILE_NAME } + M3U_EXTENSION)
+                }
+                is LibraryAction.DeleteFile -> {
+                    val request = MediaStore.createDeleteRequest(resolver, listOf(Uri.parse(action.song.value)))
+                    deleter.launch(IntentSenderRequest.Builder(request.intentSender).build())
                 }
                 is LibraryAction.PickArtwork -> {
                     artworkPicked.value = action.onPicked

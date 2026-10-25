@@ -4,7 +4,6 @@ import dev.geode.feature.capture.api.CaptureCommand
 import dev.geode.feature.capture.api.CaptureFact
 import dev.geode.feature.capture.api.CaptureProblem
 import dev.geode.feature.capture.api.CaptureSource
-import dev.geode.feature.capture.api.CaptureSource.LINE_IN
 import dev.geode.feature.capture.api.CaptureSource.MICROPHONE
 import dev.geode.feature.capture.api.CaptureState
 import dev.geode.feature.capture.api.CaptureState.AskingAboutMusic
@@ -39,14 +38,13 @@ class CaptureReducerTest {
     private val starting = Starting(MICROPHONE, PAUSE)
     private val startingKeep = Starting(MICROPHONE, KEEP_PLAYING)
     private val capturing = Capturing(MICROPHONE, quiet = false)
-    private val failed = Failed(LINE_IN, CaptureProblem.SOURCE_LOST)
+    private val failed = Failed(MICROPHONE, CaptureProblem.SOURCE_LOST)
 
     private val states: List<CaptureState> = listOf(off, preparing, asking, awaiting, starting, startingKeep, capturing, failed)
 
-    private val startLineIn = command(CaptureCommand.Start(LINE_IN))
     private val startMic = command(CaptureCommand.Start(MICROPHONE))
     private val stop = command(CaptureCommand.Stop)
-    private val toggle = command(CaptureCommand.Toggle(LINE_IN))
+    private val toggle = command(CaptureCommand.Toggle(MICROPHONE))
     private val choosePause = command(CaptureCommand.ChooseMusic(PAUSE))
     private val chooseKeep = command(CaptureCommand.ChooseMusic(KEEP_PLAYING))
     private val granted = command(CaptureCommand.PermissionAnswered(granted = true))
@@ -54,18 +52,15 @@ class CaptureReducerTest {
     private val musicPlaying = CaptureEvent.MusicChecked(playing = true)
     private val musicSilent = CaptureEvent.MusicChecked(playing = false)
     private val runningMic = CaptureEvent.Running(MICROPHONE)
-    private val runningLineIn = CaptureEvent.Running(LINE_IN)
     private val refusedPermission = CaptureEvent.Refused(StartRefusal.PERMISSION)
     private val refusedUnavailable = CaptureEvent.Refused(StartRefusal.UNAVAILABLE)
     private val quiet = CaptureEvent.QuietChanged(quiet = true)
     private val lostMic = CaptureEvent.Lost(MICROPHONE)
-    private val lostLineIn = CaptureEvent.Lost(LINE_IN)
     private val timedOut = CaptureEvent.StartTimedOut
     private val workFailed = CaptureEvent.WorkFailed(WorkFailure.NOT_STOPPED)
 
     private val events: List<CaptureEvent> =
         listOf(
-            startLineIn,
             startMic,
             stop,
             toggle,
@@ -76,12 +71,10 @@ class CaptureReducerTest {
             musicPlaying,
             musicSilent,
             runningMic,
-            runningLineIn,
             refusedPermission,
             refusedUnavailable,
             quiet,
             lostMic,
-            lostLineIn,
             timedOut,
             workFailed,
         )
@@ -107,11 +100,9 @@ class CaptureReducerTest {
     private val changes: Map<Pair<CaptureState, CaptureEvent>, Next<CaptureState, CaptureEffect>> =
         mapOf(
             // Off: a start or a tap on the tile asks Playback first; a start that lands late is undone.
-            (off to startLineIn) to prepare(LINE_IN),
             (off to startMic) to prepare(MICROPHONE),
-            (off to toggle) to prepare(LINE_IN),
+            (off to toggle) to prepare(MICROPHONE),
             (off to runningMic) to Next(off, listOf(end)),
-            (off to runningLineIn) to Next(off, listOf(end)),
             (off to workFailed) to Next(off, listOf(reportWork)),
             // Preparing: a song playing is asked about; none means start at once.
             (preparing to stop) to Next(Off),
@@ -119,7 +110,6 @@ class CaptureReducerTest {
             (preparing to musicPlaying) to Next(asking),
             (preparing to musicSilent) to begin(MICROPHONE, KEEP_PLAYING),
             (preparing to runningMic) to Next(preparing, listOf(end)),
-            (preparing to runningLineIn) to Next(preparing, listOf(end)),
             (preparing to workFailed) to Next(preparing, listOf(reportWork)),
             // Asking about the song: the answer starts the capture.
             (asking to stop) to Next(Off),
@@ -127,7 +117,6 @@ class CaptureReducerTest {
             (asking to choosePause) to begin(MICROPHONE, PAUSE),
             (asking to chooseKeep) to begin(MICROPHONE, KEEP_PLAYING),
             (asking to runningMic) to Next(asking, listOf(end)),
-            (asking to runningLineIn) to Next(asking, listOf(end)),
             (asking to workFailed) to Next(asking, listOf(reportWork)),
             // Awaiting the permission: granted tries again, keeping the song choice; refused explains and stops.
             (awaiting to stop) to Next(Off),
@@ -135,7 +124,6 @@ class CaptureReducerTest {
             (awaiting to granted) to begin(MICROPHONE, PAUSE),
             (awaiting to denied) to Next(Failed(MICROPHONE, CaptureProblem.PERMISSION_DENIED)),
             (awaiting to runningMic) to Next(awaiting, listOf(end)),
-            (awaiting to runningLineIn) to Next(awaiting, listOf(end)),
             (awaiting to workFailed) to Next(awaiting, listOf(reportWork)),
             // Starting: leaving it, any way, cancels the start timeout. The song pauses once capture runs.
             (starting to stop) to Next(Off, listOf(cancel, end)),
@@ -155,20 +143,17 @@ class CaptureReducerTest {
             (startingKeep to timedOut) to
                 Next(Failed(MICROPHONE, CaptureProblem.DID_NOT_START), listOf(timedOutReport, end)),
             (startingKeep to workFailed) to Next(startingKeep, listOf(reportWork)),
-            // Capturing: follows the source until stopped, switched or lost.
+            // Capturing: follows the source until stopped or lost.
             (capturing to stop) to Next(Off, listOf(end)),
             (capturing to toggle) to Next(Off, listOf(end)),
-            (capturing to startLineIn) to begin(LINE_IN, KEEP_PLAYING),
             (capturing to quiet) to Next(Capturing(MICROPHONE, quiet = true)),
             (capturing to lostMic) to Next(Failed(MICROPHONE, CaptureProblem.SOURCE_LOST), listOf(Emit(CaptureFact.Lost(MICROPHONE)))),
             (capturing to workFailed) to Next(capturing, listOf(reportWork)),
             // Failed: shown until dismissed; a start tries again from the beginning.
-            (failed to startLineIn) to prepare(LINE_IN),
             (failed to startMic) to prepare(MICROPHONE),
-            (failed to toggle) to prepare(LINE_IN),
+            (failed to toggle) to prepare(MICROPHONE),
             (failed to stop) to Next(Off),
             (failed to runningMic) to Next(failed, listOf(end)),
-            (failed to runningLineIn) to Next(failed, listOf(end)),
             (failed to workFailed) to Next(failed, listOf(reportWork)),
         )
 
@@ -190,9 +175,9 @@ class CaptureReducerTest {
 
     @Test
     fun `quiet ends when the capture hears something again`() {
-        val next = CaptureReducer.reduce(Capturing(LINE_IN, quiet = true), CaptureEvent.QuietChanged(quiet = false))
+        val next = CaptureReducer.reduce(Capturing(MICROPHONE, quiet = true), CaptureEvent.QuietChanged(quiet = false))
 
-        assertEquals(Next<CaptureState, CaptureEffect>(Capturing(LINE_IN, quiet = false)), next)
+        assertEquals(Next<CaptureState, CaptureEffect>(Capturing(MICROPHONE, quiet = false)), next)
     }
 
     @Test

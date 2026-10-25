@@ -202,6 +202,7 @@ TEST(SignalFrame, MapsTheFeatureFrameOntoTheSoundSignals) {
     f.beat = 1.0f;
     f.macroEnergy = kNaN;
     f.bpm = 120.0f;
+    f.pulseConfidence = 1.0f;
     const SignalFrame s = signalFrame(f);
     EXPECT_EQ(s[SoundSignal::Level], 0.3f);
     EXPECT_EQ(s[SoundSignal::Bass], 1.0f);

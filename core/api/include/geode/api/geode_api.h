@@ -159,6 +159,7 @@ GEODE_API void        geode_viz_set_lfo(geode_viz*, int slot, const float* confi
 GEODE_API void        geode_viz_set_adsr(geode_viz*, int slot, const float* config, int count);
 GEODE_API void        geode_viz_set_thermal(geode_viz*, int platform_status, float headroom); /* status < 0 = unknown */
 GEODE_API void        geode_viz_set_paced_fps(geode_viz*, float fps);
+GEODE_API void        geode_viz_set_quality_ceiling(geode_viz*, float ceiling); /* Visual quality: 0.6..1 */
 /* The frame pacer's latest window: how many frames it holds and the 95th percentile of the intervals
  * between drawn frames, in ms. The scene and trail buffers scale with it; sample about once a second. */
 GEODE_API void        geode_viz_set_frame_load(geode_viz*, int frames, float p95_ms);

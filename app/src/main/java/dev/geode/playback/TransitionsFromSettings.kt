@@ -19,7 +19,8 @@ import kotlinx.coroutines.launch
  * The crossfade and gapless choices belong to Settings (owner decision, #17, #28): Playback follows
  * them and keeps no copy of its own. Whenever what Playback joins tracks with differs from what
  * Settings hold (Settings changed, or Playback restored its listening options), Playback is told.
- * The crossfade's curve goes from Settings to the audio adapter directly.
+ * Resuming long tracks follows Settings the same way. The crossfade's curve goes from Settings to the
+ * audio adapter directly.
  */
 object TransitionsFromSettings {
     /** Follows Settings for as long as [scope] lives. */
@@ -51,10 +52,17 @@ object TransitionsFromSettings {
         return listOfNotNull(
             PlaybackCommand.SetCrossfade(crossfade).takeIf { crossfade != options.crossfade },
             PlaybackCommand.SetGapless(settings.gapless).takeIf { settings.gapless != options.gapless },
+            PlaybackCommand
+                .SetResumeLongTracks(settings.resumeLongTracks)
+                .takeIf { settings.resumeLongTracks != options.resumeLongTracks },
         )
     }
 
     /** [options] as Playback's storage keeps them: without the crossfade and gapless, which Settings keep. */
     fun withoutTransitions(options: ListeningOptions): ListeningOptions =
-        options.copy(crossfade = ListeningOptions().crossfade, gapless = ListeningOptions().gapless)
+        options.copy(
+            crossfade = ListeningOptions().crossfade,
+            gapless = ListeningOptions().gapless,
+            resumeLongTracks = ListeningOptions().resumeLongTracks,
+        )
 }

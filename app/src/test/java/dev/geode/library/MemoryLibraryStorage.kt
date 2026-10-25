@@ -1,6 +1,7 @@
 package dev.geode.library
 
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 import dev.geode.feature.library.handlers.LibraryStorage
@@ -12,8 +13,15 @@ class MemoryLibraryStorage : LibraryStorage {
     val edits = mutableMapOf<TrackId, SongEdit>()
     val favourites = mutableSetOf<TrackId>()
     var excludedFolders: Set<String> = emptySet()
+    val smartPlaylists = mutableListOf<SmartPlaylist>()
 
-    override suspend fun read(): SavedLibrary = SavedLibrary(songs.map(::edited), favourites.toSet(), excludedFolders)
+    override suspend fun read(): SavedLibrary =
+        SavedLibrary(
+            songs.map(::edited),
+            favourites.toSet(),
+            excludedFolders,
+            smartPlaylists.toList(),
+        )
 
     override suspend fun replaceSongs(found: List<Song>): List<Song> {
         songs.clear()
@@ -43,6 +51,18 @@ class MemoryLibraryStorage : LibraryStorage {
 
     override suspend fun saveExcludedFolders(folders: Set<String>) {
         excludedFolders = folders
+    }
+
+    override suspend fun saveSmartPlaylist(
+        playlist: SmartPlaylist,
+        replacing: String?,
+    ) {
+        smartPlaylists.removeAll { it.name == replacing || it.name == playlist.name }
+        smartPlaylists += playlist
+    }
+
+    override suspend fun deleteSmartPlaylist(name: String) {
+        smartPlaylists.removeAll { it.name == name }
     }
 
     private fun edited(song: Song): Song =

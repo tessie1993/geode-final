@@ -1,6 +1,8 @@
 package dev.geode.feature.library.core
 
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.DUPLICATE_LENGTH_SLACK
+import dev.geode.feature.library.api.DuplicateGroup
 import dev.geode.feature.library.api.Filter
 import dev.geode.feature.library.api.GroupKey
 import dev.geode.feature.library.api.GroupKind
@@ -11,6 +13,7 @@ import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.SHORT_CLIP
+import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongRow
 import dev.geode.feature.library.api.Sort
@@ -43,7 +46,10 @@ internal object LibraryPages {
         }
     }
 
-    /** The songs [pick] means in [state], in order; none for a playlist, whose songs Playback keeps. */
+    /**
+     * The songs [pick] means in [state], in order; none for a playlist, whose songs Playback keeps. A
+     * smart playlist means the songs its rules pick now.
+     */
     fun songsOf(
         state: LibraryState,
         pick: Pick,
@@ -60,6 +66,7 @@ internal object LibraryPages {
                     is Page.Songs -> page.rows.map { it.song }
                     is Page.Found -> page.songs.map { it.song }
                     is Page.Groups -> shelf.sorted(shelf.visible)
+                    is Page.Duplicates -> page.groups.flatMap { group -> group.rows.map { it.song } }
                 }
         }
     }
@@ -79,7 +86,7 @@ internal object LibraryPages {
             filter.folder.let { it == null || within(song.folder, it) } &&
             (!filter.hideShortClips || song.duration >= SHORT_CLIP)
 
-    /** The name [song] is grouped under for [kind]; null for playlists, which Playback keeps. */
+    /** The name [song] is grouped under for [kind]; null for playlists, which are not made from tags. */
     fun nameIn(
         song: Song,
         kind: GroupKind,
@@ -91,7 +98,7 @@ internal object LibraryPages {
             GroupKind.GENRE -> song.genre
             GroupKind.COMPOSER -> song.composer
             GroupKind.FOLDER -> song.folder
-            GroupKind.PLAYLIST -> null
+            GroupKind.PLAYLIST, GroupKind.SMART_PLAYLIST -> null
         }
 
     /** Whether [folder] is [parent] or beneath it. */
@@ -121,8 +128,9 @@ internal object LibraryPages {
                 LibraryView.GENRES -> Page.Groups(groups(GroupKind.GENRE))
                 LibraryView.COMPOSERS -> Page.Groups(groups(GroupKind.COMPOSER))
                 LibraryView.FOLDERS -> Page.Groups(groups(GroupKind.FOLDER))
-                // In Playback's order, the newest first.
+                // Playback's in its order, the newest first, then the smart playlists by name.
                 LibraryView.PLAYLISTS -> Page.Groups(playlists())
+                LibraryView.DUPLICATES -> Page.Duplicates(duplicates())
             }
 
         fun found(query: String): Page.Found {
@@ -137,7 +145,22 @@ internal object LibraryPages {
             )
         }
 
-        fun inGroup(key: GroupKey): List<Song> = visible.filter { nameIn(it, key.kind) == key.name }
+        fun inGroup(key: GroupKey): List<Song> =
+            if (key.kind == GroupKind.SMART_PLAYLIST) {
+                state.smartPlaylists
+                    .firstOrNull { it.name == key.name }
+                    ?.let(::smart)
+                    .orEmpty()
+            } else {
+                visible.filter { nameIn(it, key.kind) == key.name }
+            }
+
+        /**
+         * The songs [playlist] picks now, from the songs the Library may show. Its limit counts them in
+         * order of name, as the old smart playlists did; a page then sorts them as it sorts any group.
+         */
+        private fun smart(playlist: SmartPlaylist): List<Song> =
+            SmartPlaylists.resolve(playlist, visible.sortedWith(byTitle), { playCounts[it] ?: 0 }, state.favourites, state.now)
 
         fun sorted(songs: List<Song>): List<Song> {
             val order =
@@ -148,6 +171,33 @@ internal object LibraryPages {
                     SortKey.PLAYS -> compareBy<Song> { plays(it) }.then(byTitle)
                 }
             return songs.sortedWith(order.directed(state.sort))
+        }
+
+        /**
+         * Tracks that look like the same recording: the same title and artist once normalised, then
+         * split wherever two lengths lie more than [DUPLICATE_LENGTH_SLACK] apart. Each group lists its
+         * copies by folder, and the groups go by title.
+         */
+        fun duplicates(): List<DuplicateGroup> =
+            visible
+                .groupBy { normalised(it.title) to normalised(it.artist) }
+                .values
+                .flatMap { same -> byLength(same.sortedBy { it.duration.value }) }
+                .filter { it.size > 1 }
+                .map { copies -> DuplicateGroup(copies.first().title, copies.first().artist, rows(copies.sortedBy { it.folder })) }
+                .sortedBy { it.title.lowercase() }
+
+        private fun byLength(sorted: List<Song>): List<List<Song>> {
+            val runs = mutableListOf<MutableList<Song>>()
+            for (song in sorted) {
+                val run = runs.lastOrNull()
+                if (run != null && song.duration.value - run.last().duration.value <= DUPLICATE_LENGTH_SLACK.value) {
+                    run += song
+                } else {
+                    runs += mutableListOf(song)
+                }
+            }
+            return runs
         }
 
         fun rows(songs: List<Song>): List<SongRow> = songs.map { SongRow(it, it.id in state.favourites, plays(it)) }
@@ -199,7 +249,17 @@ internal object LibraryPages {
                     songCount = it.trackCount,
                     artwork = null,
                 )
-            }
+            } +
+                state.smartPlaylists.map { playlist ->
+                    val songs = smart(playlist)
+                    GroupRow(
+                        key = GroupKey(GroupKind.SMART_PLAYLIST, playlist.name),
+                        title = playlist.name,
+                        detail = "",
+                        songCount = songs.size,
+                        artwork = songs.firstNotNullOfOrNull { it.artwork },
+                    )
+                }
     }
 
     private val byTitle: Comparator<Song> =
@@ -209,3 +269,14 @@ internal object LibraryPages {
 
     private fun <T> Comparator<T>.directed(sort: Sort): Comparator<T> = if (sort.descending) reversed() else this
 }
+
+/** [text] with case, punctuation and bracketed notes ("(Remastered)", "[Live]") set aside. */
+internal fun normalised(text: String): String =
+    text
+        .lowercase()
+        .replace(NOISE, " ")
+        .replace(SPACES, " ")
+        .trim()
+
+private val NOISE = Regex("""[\[(].*?[\])]|[^\p{L}\p{N}\s]""")
+private val SPACES = Regex("""\s+""")

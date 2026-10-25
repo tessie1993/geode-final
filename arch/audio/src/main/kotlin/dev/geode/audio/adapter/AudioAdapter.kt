@@ -24,7 +24,7 @@ interface AudioAdapter {
      */
     val announcements: Flow<AudioAnnouncement>
 
-    /** The capture sources usable right now, for example [CaptureSource.LINE_IN] only while one is plugged in. */
+    /** The capture sources usable right now: the microphone, on a phone that has one. */
     suspend fun captureSources(): Set<CaptureSource>
 
     /**
@@ -68,11 +68,8 @@ interface AudioAdapter {
 
 /** Where live audio is captured from. */
 enum class CaptureSource {
-    /** The device's own microphone. */
+    /** The device's own microphone, the only Live input (owner decision: line-in is removed). */
     MICROPHONE,
-
-    /** A USB audio interface or an analogue or digital line input. */
-    LINE_IN,
 }
 
 /** Why a capture could not start. */

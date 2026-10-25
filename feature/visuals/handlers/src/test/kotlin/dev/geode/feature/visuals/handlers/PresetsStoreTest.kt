@@ -59,7 +59,17 @@ class PresetsStoreTest {
         )
     private val failures = mutableListOf<FeatureFailure>()
 
-    private fun store(): Visuals = visualsStore(customization, FakeVisualsStorage(), files, manifests, inPlaceRuntime(failures = failures))
+    private fun store(): Visuals =
+        visualsStore(
+            customization,
+            FakeVisualsStorage(),
+            files,
+            manifests,
+            FakeMilkdropFolder(),
+            FakePickedFiles(emptyMap()),
+            emptyList(),
+            inPlaceRuntime(failures = failures),
+        )
 
     private fun failure(failure: WorkFailure) = FeatureFailure(VISUALS_FEATURE, failure.message)
 

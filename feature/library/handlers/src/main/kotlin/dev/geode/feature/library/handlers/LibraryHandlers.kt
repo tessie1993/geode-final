@@ -34,7 +34,7 @@ const val LIBRARY = "library"
 val MEDIA_CHANGE_QUIET = Millis(2_000)
 
 /**
- * Where the Library's handlers read and write: the phone's media index, Geode's tag reader, the
+ * Where the Library's handlers read and write: the phone's media index, Geode's tag reader and writer, the
  * Library's own database, and the playlist files the user picks.
  */
 class LibrarySources(
@@ -42,13 +42,16 @@ class LibrarySources(
     val tags: TagReader,
     val storage: LibraryStorage,
     val files: PlaylistFiles,
+    /** Wall-clock time, for the smart playlist rules that count days. */
+    val clock: () -> Millis = { Millis(System.currentTimeMillis()) },
+    val tagWriter: TagWriter = TagWriter.NONE,
 )
 
 /**
  * Carries out the Library's work (ADR-0005): it scans the phone's music into the index, keeps the
- * favourites, edits and excluded folders, reads and writes playlist files, and talks to Playback
- * through its `:api` only, sending it Commands and reading its playlists and history. Every failure
- * is caught here and reported as a named event.
+ * favourites, edits, excluded folders and smart playlists, reads the clock, reads and writes playlist
+ * files, and talks to Playback through its `:api` only, sending it Commands and reading its playlists
+ * and history. Every failure is caught here and reported as a named event.
  */
 class LibraryHandlers(
     private val playback: Playback,
@@ -64,7 +67,7 @@ class LibraryHandlers(
             LibraryWork.Read ->
                 guarded(results, StorageFailure.READ_INDEX) {
                     val saved = storage.read()
-                    results.report(LibraryEvent.IndexRead(saved.songs, saved.favourites, saved.excludedFolders))
+                    results.report(LibraryEvent.IndexRead(saved.songs, saved.favourites, saved.excludedFolders, saved.smartPlaylists))
                 }
             LibraryWork.Scan -> scan(results)
             LibraryWork.WatchMedia -> watchMedia(results)
@@ -73,8 +76,14 @@ class LibraryHandlers(
             is LibraryWork.SaveFavourite ->
                 guarded(results, StorageFailure.SAVE_FAVOURITE) { storage.setFavourite(work.song, work.favourite) }
             is LibraryWork.SaveEdit -> guarded(results, StorageFailure.SAVE_EDIT) { storage.saveEdit(work.song, work.edit) }
+            is LibraryWork.WriteTags -> writeTags(work, results)
             is LibraryWork.SaveExcludedFolders ->
                 guarded(results, StorageFailure.SAVE_EXCLUDED_FOLDERS) { storage.saveExcludedFolders(work.folders) }
+            is LibraryWork.SaveSmartPlaylist ->
+                guarded(results, StorageFailure.SAVE_SMART_PLAYLIST) { storage.saveSmartPlaylist(work.playlist, work.replacing) }
+            is LibraryWork.DeleteSmartPlaylist ->
+                guarded(results, StorageFailure.DELETE_SMART_PLAYLIST) { storage.deleteSmartPlaylist(work.name) }
+            LibraryWork.ReadClock -> results.report(LibraryEvent.ClockRead(sources.clock()))
             is LibraryWork.ReadPlaylistFile ->
                 guarded(results, StorageFailure.READ_PLAYLIST_FILE) {
                     results.report(LibraryEvent.PlaylistFileRead(work.name, sources.files.read(work.file)))
@@ -124,6 +133,18 @@ class LibraryHandlers(
         }
         if (changed) attempt { storage.read() }?.let { results.report(LibraryEvent.SongsFound(it.songs)) }
     }
+
+    /** Writes the edit into the file, off the main thread as every effect is, and says how it went. */
+    private suspend fun writeTags(
+        work: LibraryWork.WriteTags,
+        results: Results<LibraryEvent>,
+    ) = results.report(
+        when (attempt { sources.tagWriter.write(work.song, work.edit) }) {
+            TagWrite.WRITTEN -> LibraryEvent.TagsWritten(work.song, work.edit)
+            TagWrite.NEEDS_CONSENT -> LibraryEvent.TagsNeedConsent(work.song, work.edit)
+            TagWrite.FAILED, null -> LibraryEvent.StorageFailed(StorageFailure.WRITE_TAGS)
+        },
+    )
 
     @OptIn(FlowPreview::class)
     private suspend fun watchMedia(results: Results<LibraryEvent>) =
@@ -177,7 +198,8 @@ class LibraryHandlers(
 
 /**
  * How `:app` builds the Library's one app-scoped store (#17): it reads the saved index (and then
- * scans), watches the phone's music for changes, and follows Playback's playlists and history.
+ * scans), watches the phone's music for changes, follows Playback's playlists and history, and reads
+ * the clock for the smart playlists.
  */
 fun libraryStore(
     playback: Playback,
@@ -191,5 +213,11 @@ fun libraryStore(
         toEvent = LibraryEvent::Command,
         runner = LibraryHandlers(playback, sources),
         runtime = runtime,
-        start = listOf(Perform(LibraryWork.Read), Perform(LibraryWork.WatchMedia), Perform(LibraryWork.FollowPlayback)),
+        start =
+            listOf(
+                Perform(LibraryWork.Read),
+                Perform(LibraryWork.WatchMedia),
+                Perform(LibraryWork.FollowPlayback),
+                Perform(LibraryWork.ReadClock),
+            ),
     )

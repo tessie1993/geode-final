@@ -36,7 +36,6 @@ class ExportTempoRobolectricTest {
             application,
             object : TrackAnalysisController.Host {
                 override val guiPrefs = GuiPrefs()
-                override val vizState = kotlinx.coroutines.flow.MutableStateFlow(VizUiState())
             },
         )
     private var analyses = 0

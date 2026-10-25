@@ -1,8 +1,5 @@
 package dev.geode.ui
 
-import dev.geode.audio.AudioFxBand
-import dev.geode.audio.AudioFxFormat
-import dev.geode.audio.AudioFxState
 import dev.geode.audio.dsp.DspSettings
 import dev.geode.audio.dsp.NativeDspProcessor
 import dev.geode.data.ExportDefaults
@@ -15,8 +12,6 @@ import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.EqualizerCommand
-import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCommand
 import dev.geode.feature.settings.api.ExportFrameRate
@@ -25,7 +20,6 @@ import dev.geode.feature.settings.api.ExportSettings
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.LookCommand
-import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Minutes
 import dev.geode.feature.settings.api.OnboardingCommand
 import dev.geode.feature.settings.api.PlaybackSettings
@@ -198,46 +192,6 @@ internal object OldScreenSettings {
             bassBoost = equalizer.bassBoost,
             loudnessMb = equalizer.loudness.value,
         )
-
-    /** A band's name on the old equalizer panel: its centre, which only the native chain knows. */
-    fun nativeBandLabel(band: Int): String = AudioFxFormat.freqLabel(NativeDspProcessor.bandCenterMilliHz(band))
-
-    /**
-     * The old equalizer panel's state. [presetNames] are the presets' names, in [EqualizerPreset] order;
-     * [bandLabel] names each band ([nativeBandLabel] in the app).
-     */
-    fun audioFxStateOf(
-        equalizer: EqualizerSettings,
-        presetNames: List<String>,
-        bandLabel: (Int) -> String,
-    ): AudioFxState =
-        AudioFxState(
-            available = true,
-            attached = true,
-            bassAvailable = true,
-            loudnessAvailable = true,
-            enabled = equalizer.enabled,
-            bands =
-                equalizer.bands.mapIndexed { band, level ->
-                    AudioFxBand(
-                        bandLabel(band),
-                        level.value,
-                        EqualizerSettings.BAND_LEVEL.start.value,
-                        EqualizerSettings.BAND_LEVEL.endInclusive.value,
-                    )
-                },
-            presets = presetNames,
-            presetIndex = equalizer.preset?.ordinal ?: -1,
-            bassBoost = equalizer.bassBoost,
-            loudness = equalizer.loudness.value,
-        )
-
-    fun bandCommand(
-        band: Int,
-        levelMb: Int,
-    ): SettingsCommand = EqualizerCommand.SetBand(band, Millibels(levelMb))
-
-    fun presetCommand(index: Int): SettingsCommand? = EqualizerPreset.entries.getOrNull(index)?.let(EqualizerCommand::UsePreset)
 
     // Export defaults.
 

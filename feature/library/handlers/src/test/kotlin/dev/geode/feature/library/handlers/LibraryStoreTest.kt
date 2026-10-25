@@ -2,21 +2,32 @@ package dev.geode.feature.library.handlers
 
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.GroupKey
+import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.IndexStatus
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.LibraryFact
 import dev.geode.feature.library.api.LibraryPlaylist
+import dev.geode.feature.library.api.LibraryView
+import dev.geode.feature.library.api.Page
 import dev.geode.feature.library.api.Pick
+import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.Play
 import dev.geode.feature.library.api.PlaylistRef
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
+import dev.geode.feature.library.core.CLOCK_TICK
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackState
 import dev.geode.feature.playback.api.PlayedTrack
 import dev.geode.feature.playback.api.PlaylistId
 import dev.geode.feature.playback.api.PlaylistSummary
 import dev.geode.feature.playback.api.Track
+import dev.geode.kernel.FakeClock
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,10 +51,22 @@ class LibraryStoreTest {
     private val storage = FakeLibraryStorage()
     private val files = FakePlaylistFiles()
     private var tags = TagReader.NONE
+    private var writer = TagWriter.NONE
     private val failures = mutableListOf<FeatureFailure>()
+    private val timers = FakeClock()
+    private var wallClock = Millis(DAY)
 
     private fun store() =
-        libraryStore(playback, LibrarySources(scanner, { tags.read(it) }, storage, files), inPlaceRuntime(failures = failures))
+        libraryStore(
+            playback,
+            LibrarySources(scanner, { tags.read(it) }, storage, files, clock = { wallClock }, tagWriter = {
+                song,
+                edit,
+                ->
+                writer.write(song, edit)
+            }),
+            inPlaceRuntime(timers = timers, failures = failures),
+        )
 
     @Test
     fun `the saved index shows, then what the scan finds`() {
@@ -175,7 +198,10 @@ class LibraryStoreTest {
         library.send(LibraryCommand.ExcludeFolder("/ringtones"))
 
         assertEquals(setOf(alpha.id), storage.favourites)
-        assertEquals(mapOf(alpha.id to SongEdit("Alpha (live)", "Ann", "Live")), storage.edits)
+        assertEquals(
+            mapOf(alpha.id to SongEdit("Alpha (live)", "Ann", "Live", genre = alpha.genre, year = 0, trackNumber = 0, comment = "")),
+            storage.edits,
+        )
         assertEquals(setOf("/ringtones"), storage.excludedFolders)
 
         storage.failing = true
@@ -188,6 +214,55 @@ class LibraryStoreTest {
             failures.map { it.message },
         )
     }
+
+    @Test
+    fun `an edit written into the file is saved once the file is written, and only then`() =
+        runTest(UnconfinedTestDispatcher()) {
+            scanner.result = ScanResult.Found(listOf(alpha))
+            val written = mutableListOf<Pair<TrackId, SongEdit>>()
+            var outcome = TagWrite.WRITTEN
+            writer =
+                TagWriter { song, edit ->
+                    written += song to edit
+                    outcome
+                }
+            val library = store()
+            val facts = mutableListOf<LibraryFact>()
+            val collecting = launch { library.events.collect { facts += it } }
+            val tagged = SongEdit("Alpha", "Ann", "First", genre = "Soul", year = 1999, trackNumber = 3, comment = "live")
+
+            library.send(LibraryCommand.EditSong(alpha.id, tagged, writeToFile = true))
+
+            assertEquals(listOf(alpha.id to tagged), written)
+            assertEquals(mapOf(alpha.id to tagged), storage.edits)
+            assertEquals(
+                alpha.copy(genre = "Soul", year = 1999, trackNumber = 3, comment = "live"),
+                library.state.value.songs
+                    .single(),
+            )
+
+            outcome = TagWrite.NEEDS_CONSENT
+            library.send(LibraryCommand.EditSong(alpha.id, tagged.copy(title = "Alpha 2"), writeToFile = true))
+            outcome = TagWrite.FAILED
+            library.send(LibraryCommand.EditSong(alpha.id, tagged.copy(title = "Alpha 3"), writeToFile = true))
+            writer = TagWriter { _, _ -> error("no file") }
+            library.send(LibraryCommand.EditSong(alpha.id, tagged.copy(title = "Alpha 4"), writeToFile = true))
+
+            assertEquals(listOf(LibraryFact.TagsNeedConsent(alpha.id, tagged.copy(title = "Alpha 2"))), facts)
+            assertEquals(
+                listOf("Could not write the song info into the file", "Could not write the song info into the file"),
+                failures.map { it.message },
+            )
+            // Nothing that failed reached the Library.
+            assertEquals(mapOf(alpha.id to tagged), storage.edits)
+            assertEquals(
+                "Alpha",
+                library.state.value.songs
+                    .single()
+                    .title,
+            )
+            collecting.cancel()
+        }
 
     @Test
     fun `an M3U file becomes a playlist in Playback, and a list becomes an M3U file`() =
@@ -225,6 +300,63 @@ class LibraryStoreTest {
     }
 
     @Test
+    fun `smart playlists are read, saved, renamed and deleted`() {
+        val long = SmartPlaylist("Long", listOf(SmartRule(RuleField.DURATION_MINUTES, RuleOp.AT_LEAST, "3")))
+        storage.smartPlaylists += long
+        scanner.result = ScanResult.Found(listOf(alpha, beta))
+        val library = store()
+        assertEquals(listOf(long), library.state.value.smartPlaylists)
+
+        val betas = SmartPlaylist("Betas", listOf(SmartRule(RuleField.TITLE, RuleOp.CONTAINS, "bet")))
+        library.send(LibraryCommand.SaveSmartPlaylist(betas))
+        library.send(LibraryCommand.SaveSmartPlaylist(long.copy(name = "Longer"), replacing = "Long"))
+        assertEquals(listOf(betas, long.copy(name = "Longer")), storage.smartPlaylists)
+
+        library.send(LibraryCommand.Show(LibraryView.PLAYLISTS))
+        library.send(LibraryCommand.Open(GroupKey(GroupKind.SMART_PLAYLIST, "Betas")))
+        assertEquals(listOf(beta), (library.state.value.page as Page.Songs).rows.map { it.song })
+
+        library.send(LibraryCommand.DeleteSmartPlaylist("Betas"))
+        assertEquals(listOf(long.copy(name = "Longer")), storage.smartPlaylists)
+        assertEquals(Place.Shelf(LibraryView.PLAYLISTS), library.state.value.place)
+
+        storage.failing = true
+        library.send(LibraryCommand.SaveSmartPlaylist(betas))
+        library.send(LibraryCommand.DeleteSmartPlaylist("Longer"))
+        assertEquals(listOf("Could not save the smart playlist", "Could not delete the smart playlist"), failures.map { it.message })
+    }
+
+    @Test
+    fun `a smart playlist plays the songs its rules pick when it is played`() {
+        scanner.result = ScanResult.Found(listOf(alpha, beta))
+        val library = store()
+        val played = GroupKey(GroupKind.SMART_PLAYLIST, "Played")
+        library.send(
+            LibraryCommand.SaveSmartPlaylist(SmartPlaylist("Played", listOf(SmartRule(RuleField.PLAY_COUNT, RuleOp.AT_LEAST, "1")))),
+        )
+
+        library.send(LibraryCommand.Play(Pick.Group(played)))
+        playback.state.value = PlaybackState(history = listOf(PlayedTrack(track(beta), Millis(500))))
+        library.send(LibraryCommand.Play(Pick.Group(played)))
+
+        assertEquals(listOf(PlaybackCommand.Play(listOf(track(beta)), startAt = 0)), playback.sent)
+    }
+
+    @Test
+    fun `the clock is read at the start and every hour after, for the rules that count days`() {
+        scanner.result = ScanResult.Found(listOf(alpha))
+        val library = store()
+        assertEquals(Millis(DAY), library.state.value.now)
+
+        wallClock = Millis(DAY * 2)
+        timers.advanceBy(Millis(CLOCK_TICK.value - 1))
+        assertEquals(Millis(DAY), library.state.value.now)
+        timers.advanceBy(Millis(1))
+        assertEquals(Millis(DAY * 2), library.state.value.now)
+        assertEquals(1, timers.pendingCount)
+    }
+
+    @Test
     fun `missing tags are filled in from the file's own`() {
         val bare = alpha.copy(albumArtist = "", composer = "", genre = "")
 
@@ -235,6 +367,10 @@ class LibraryStoreTest {
     }
 
     private fun track(song: Song) = Track(song.id, song.title, song.artist, song.duration)
+
+    private companion object {
+        const val DAY = 86_400_000L
+    }
 
     private fun song(
         id: String,

@@ -30,9 +30,6 @@ struct geode_viz {
     geode::viz::mod::CustomizationPlan plan;
     bool hasPlan = false;
     geode::viz::mod::ReactionGraph graph;
-    // The ranges the evaluated fractions map into (the Normaliser): the Shared core's own until the
-    // Style packs (#59) declare each family's.
-    geode::viz::mod::FamilyRanges ranges = geode::viz::mod::FamilyRanges::sharedCore();
     double lastFrameSeconds = -1.0;
 };
 
@@ -204,6 +201,10 @@ void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
 
+void geode_viz_set_quality_ceiling(geode_viz* v, float ceiling) {
+    if (v) v->renderer.thermal().setQualityCeiling(ceiling);
+}
+
 void geode_viz_set_frame_load(geode_viz* v, int frames, float p95_ms) {
     if (v) v->renderer.setFrameLoad(frames, p95_ms);
 }
@@ -294,12 +295,12 @@ static void applySnapshot(geode_viz* v) {
     v->hasPlan = geode::viz::mod::decodePlan(snapshot.plan.data(), snapshot.plan.size(), v->plan);
     if (!v->hasPlan) {
         v->graph.reset();
-        v->renderer.setSharedEffects(SharedEffects{});
+        v->renderer.setCustomization(nullptr);
     }
 }
 
-// The Customization's Reactions, Modulators, Macro links and Automations for this frame, and the
-// Shared core effects they give, handed to the renderer before it draws.
+// The Customization's Reactions, Modulators, Macro links and Automations for this frame, handed to
+// the renderer before it draws: it maps them into the active Style's ranges and draws all of them.
 static void evaluateCustomization(geode_viz* v, double timeSeconds) {
     const auto dt = v->lastFrameSeconds < 0.0 ? 0.0f : static_cast<float>(timeSeconds - v->lastFrameSeconds);
     v->lastFrameSeconds = timeSeconds;
@@ -310,8 +311,7 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
         features = v->features;
     }
     const geode::viz::mod::Evaluated& evaluated = v->graph.evaluate(v->plan, geode::viz::mod::signalFrame(features), dt);
-    // Normalised to the Style family's own ranges before the uniforms are set; the clamp runs last.
-    v->renderer.setSharedEffects(SharedEffects::from(geode::viz::mod::toNative(v->ranges, evaluated)));
+    v->renderer.setCustomization(&evaluated);
 }
 
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {

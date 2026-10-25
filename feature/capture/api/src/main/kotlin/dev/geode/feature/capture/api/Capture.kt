@@ -3,8 +3,8 @@ package dev.geode.feature.capture.api
 import dev.geode.kernel.Feature
 
 /**
- * Capture's public interface (ADR-0003, ADR-0005): live sound from the microphone or a USB / line
- * input becomes what the Visual reacts to, in place of the player. Other features, the screens and the
+ * Capture's public interface (ADR-0003, ADR-0005): live sound from the microphone (the Live input;
+ * line-in is removed, owner decision) becomes what the Visual reacts to, in place of the player. Other features, the screens and the
  * Quick Settings tile reach Capture only through this: its read-only [Feature.state], [Feature.send]
  * and its [Feature.events].
  *
@@ -14,11 +14,8 @@ typealias Capture = Feature<CaptureState, CaptureCommand, CaptureFact>
 
 /** Where live sound is captured from. */
 enum class CaptureSource {
-    /** The phone's own microphone. */
+    /** The phone's own microphone, the only Live input. */
     MICROPHONE,
-
-    /** A USB audio interface, or an analogue or digital line input. */
-    LINE_IN,
 }
 
 /** Whether a song that is playing when capture starts keeps playing; the person is asked each time (ADR-0004). */
@@ -32,10 +29,10 @@ enum class CaptureProblem {
     /** The microphone permission was refused. */
     PERMISSION_DENIED,
 
-    /** The source is not there, for example no USB interface is plugged in. */
+    /** The source is not there, for example the phone has no microphone, or the system would not open it. */
     SOURCE_UNAVAILABLE,
 
-    /** The source went away while capturing, for example the USB interface was unplugged. */
+    /** The source went away while capturing, for example another app took the microphone. */
     SOURCE_LOST,
 
     /** The source accepted the start but never began capturing. */

@@ -21,6 +21,7 @@ import dev.geode.feature.playback.core.SessionStatus.ENDED
 import dev.geode.feature.playback.core.SessionStatus.IDLE
 import dev.geode.feature.playback.core.SessionStatus.READY
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -174,4 +175,24 @@ class MediaControlsTest {
         prev: Boolean,
         failed: Boolean = false,
     ) = SessionView(status, plays, queue, mark, if (failed) ENGINE_NOT_RESPONDING else null, seek, next, prev)
+
+    @Test
+    fun `leaving the app pauses music that is meant to play, when it is not to keep playing in the background`() {
+        val pauses = listOf(loading, loadingFirst, buffering, playing)
+        val nothingToPause = listOf(Idle, loadingPaused, paused, ended, error)
+
+        for (player in pauses) {
+            assertEquals("$player", PlaybackCommand.Pause, MediaControls.commandOnLeavingApp(player, musicKeepsPlaying = false))
+        }
+        for (player in nothingToPause) {
+            assertNull("$player", MediaControls.commandOnLeavingApp(player, musicKeepsPlaying = false))
+        }
+    }
+
+    @Test
+    fun `leaving the app asks nothing while music keeps playing in the background`() {
+        for (player in listOf(Idle, loading, buffering, playing, paused, ended, error)) {
+            assertNull("$player", MediaControls.commandOnLeavingApp(player, musicKeepsPlaying = true))
+        }
+    }
 }

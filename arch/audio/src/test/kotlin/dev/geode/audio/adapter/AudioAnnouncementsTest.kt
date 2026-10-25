@@ -48,7 +48,7 @@ class AudioAnnouncementsTest {
             audio.announce(PlaybackAnnouncement.Ended)
             audio.announce(PlaybackAnnouncement.Failed("ERROR_CODE_IO_FILE_NOT_FOUND"))
             audio.announce(CaptureAnnouncement.QuietChanged(quiet = true))
-            audio.announce(CaptureAnnouncement.Lost(CaptureSource.LINE_IN))
+            audio.announce(CaptureAnnouncement.Lost(CaptureSource.MICROPHONE))
 
             assertEquals(
                 listOf(
@@ -59,7 +59,7 @@ class AudioAnnouncementsTest {
                     "ended",
                     "failed: ERROR_CODE_IO_FILE_NOT_FOUND",
                     "quiet true",
-                    "lost LINE_IN",
+                    "lost MICROPHONE",
                 ),
                 heard,
             )
@@ -77,11 +77,11 @@ class AudioAnnouncementsTest {
             audio.refuseNextStart = CaptureFailure.PERMISSION
             assertEquals(CaptureFailure.PERMISSION, audio.startCapture(CaptureSource.MICROPHONE))
             assertEquals(null, audio.startCapture(CaptureSource.MICROPHONE))
-            audio.sources = setOf(CaptureSource.MICROPHONE)
-            assertEquals(CaptureFailure.UNAVAILABLE, audio.startCapture(CaptureSource.LINE_IN))
+            audio.sources = emptySet()
+            assertEquals(CaptureFailure.UNAVAILABLE, audio.startCapture(CaptureSource.MICROPHONE))
 
             assertEquals(listOf("running MICROPHONE"), heard)
-            assertEquals(setOf(CaptureSource.MICROPHONE), audio.captureSources())
+            assertEquals(emptySet<CaptureSource>(), audio.captureSources())
         }
 
     private fun describe(announcement: AudioAnnouncement): String =

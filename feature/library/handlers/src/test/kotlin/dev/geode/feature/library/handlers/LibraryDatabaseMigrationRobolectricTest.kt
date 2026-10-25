@@ -5,7 +5,12 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.core.app.ApplicationProvider
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.library.api.RuleField
+import dev.geode.feature.library.api.RuleOp
+import dev.geode.feature.library.api.SmartPlaylist
+import dev.geode.feature.library.api.SmartRule
 import dev.geode.feature.library.api.Song
+import dev.geode.feature.library.api.SongEdit
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -55,7 +60,7 @@ class LibraryDatabaseMigrationRobolectricTest {
         )
 
     @Test
-    fun `a version 1 database keeps its index, edits, favourites and excluded folders`() =
+    fun `a version 1 database keeps its index, edits, favourites and excluded folders, and gains smart playlists`() =
         runBlocking {
             val name = "library-v1-sample.db"
             writeSample(name, version = 1, script = "db/library-v1.sql")
@@ -69,6 +74,41 @@ class LibraryDatabaseMigrationRobolectricTest {
                 assertEquals(setOf("/storage/emulated/0/Ringtones"), saved.excludedFolders)
                 // The tags of the second song were never read, and are still to be.
                 assertEquals(listOf(tide.id), storage.songsWithoutTags().map { it.id })
+                // Version 2 adds the smart playlists: none yet, and room for them.
+                assertEquals(emptyList<SmartPlaylist>(), saved.smartPlaylists)
+                val nightly = SmartPlaylist("Night", listOf(SmartRule(RuleField.TITLE, RuleOp.CONTAINS, "night")))
+                storage.saveSmartPlaylist(nightly, replacing = null)
+                assertEquals(listOf(nightly), storage.read().smartPlaylists)
+            } finally {
+                database.close()
+            }
+        }
+
+    @Test
+    fun `a version 2 database keeps its smart playlists and edits, and its edits gain genre, year, track number and comment`() =
+        runBlocking {
+            val name = "library-v2-sample.db"
+            writeSample(name, version = 2, script = "db/library-v2.sql")
+
+            val database = LibraryDatabase.open(context, name)
+            val storage = RoomLibraryStorage(database.dao())
+            try {
+                val saved = storage.read()
+                // The older edit names no genre, so the index's genre stays.
+                assertEquals(setOf(night, tide), saved.songs.toSet())
+                assertEquals(
+                    listOf(SmartPlaylist("Night", listOf(SmartRule(RuleField.TITLE, RuleOp.CONTAINS, "night")), limit = 25)),
+                    saved.smartPlaylists,
+                )
+                assertEquals(SongEdit("Night Drive", "Ann", "Roads"), storage.edits()[night.id])
+
+                val tagged = SongEdit("Night Drive", "Ann", "Roads", genre = "Outrun", year = 1986, trackNumber = 4, comment = "B-side")
+                storage.saveEdit(night.id, tagged)
+                assertEquals(tagged, storage.edits()[night.id])
+                assertEquals(
+                    night.copy(genre = "Outrun", year = 1986, trackNumber = 4, comment = "B-side"),
+                    storage.read().songs.first { it.id == night.id },
+                )
             } finally {
                 database.close()
             }

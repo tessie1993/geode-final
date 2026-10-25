@@ -13,6 +13,10 @@
     <string name="library_view_recently_added">Recently added</string>
     <string name="library_view_recently_played">Recently played</string>
     <string name="library_view_most_played">Most played</string>
+    <string name="library_view_duplicates">Duplicates</string>
+    <string name="library_duplicates_none">No duplicates</string>
+    <string name="library_action_delete_file">Delete file</string>
+    <string name="library_action_shuffle">Shuffle</string>
 
     <string name="library_unknown_album">Unknown album</string>
     <string name="library_unknown_artist">Unknown artist</string>
@@ -50,6 +54,10 @@
     <string name="library_found_folders">Folders</string>
     <string name="library_found_playlists">Playlists</string>
 
+    <plurals name="library_duplicates_group">
+        <item quantity="one">%1$s · %2$s: %3$d copy</item>
+        <item quantity="other">%1$s · %2$s: %3$d copies</item>
+    </plurals>
     <plurals name="library_song_count">
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
@@ -80,4 +88,39 @@
     <string name="library_edit_cancel">Cancel</string>
     <string name="library_edit_file_art">From the file</string>
     <string name="library_edit_chosen_art">Chosen in Geode</string>
+    <string name="library_edit_genre">Genre</string>
+    <string name="library_edit_year">Year</string>
+    <string name="library_edit_track_number">Track #</string>
+    <string name="library_edit_comment">Comment / info</string>
+    <string name="library_edit_write_file">Write tags into the audio file</string>
+    <string name="library_edit_write_note">Edits are stored in the app; the audio file itself changes only with the switch on.</string>
+
+    <string name="library_smart_new">New smart playlist</string>
+    <string name="library_smart_edit">Edit smart playlist</string>
+    <string name="library_smart_name">Name</string>
+    <string name="library_smart_name_taken">Another smart playlist has this name</string>
+    <string name="library_smart_match_all">Match all rules</string>
+    <string name="library_smart_match_any">Match any rule</string>
+    <string name="library_smart_no_rules">No rules: every song is in it.</string>
+    <string name="library_smart_add_rule">Add a rule</string>
+    <string name="library_smart_remove_rule">Remove this rule</string>
+    <string name="library_smart_value">Value</string>
+    <string name="library_smart_flag_hint">Needs no value</string>
+    <string name="library_smart_nothing_matches">No songs match the rules</string>
+    <string name="library_smart_limit">Limit (blank for all)</string>
+    <string name="library_smart_field_title">Title</string>
+    <string name="library_smart_field_artist">Artist</string>
+    <string name="library_smart_field_album">Album</string>
+    <string name="library_smart_field_folder">Folder</string>
+    <string name="library_smart_field_minutes">Minutes long</string>
+    <string name="library_smart_field_added_days">Days since added</string>
+    <string name="library_smart_field_plays">Play count</string>
+    <string name="library_smart_field_favourite">Favourite</string>
+    <string name="library_smart_op_contains">contains</string>
+    <string name="library_smart_op_is">is</string>
+    <string name="library_smart_op_is_not">is not</string>
+    <string name="library_smart_op_at_least">at least</string>
+    <string name="library_smart_op_at_most">at most</string>
+    <string name="library_action_edit_rules">Edit rules</string>
+    <string name="library_action_delete_smart">Delete smart playlist</string>
 </resources>

@@ -2,6 +2,8 @@ package dev.geode.feature.settings.core
 
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
+import dev.geode.feature.settings.api.BackgroundCommand
+import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.EqualizerCommand
@@ -16,6 +18,8 @@ import dev.geode.feature.settings.api.Millibels
 import dev.geode.feature.settings.api.Minutes
 import dev.geode.feature.settings.api.OnboardingCommand
 import dev.geode.feature.settings.api.OnboardingSettings
+import dev.geode.feature.settings.api.PerformanceCommand
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.PlaybackCommand
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.SettingsCommand
@@ -58,6 +62,8 @@ object SettingsRules {
             is ExportCommand -> values.copy(export = export(values.export, command))
             is FolderCommand -> values.copy(folders = folders(values.folders, command))
             is OnboardingCommand -> values.copy(onboarding = onboarding(values.onboarding, command))
+            is BackgroundCommand -> values.copy(background = background(values.background, command))
+            is PerformanceCommand -> values.copy(performance = performance(values.performance, command))
         }
 
     private fun look(
@@ -65,6 +71,7 @@ object SettingsRules {
         command: LookCommand,
     ): LookSettings =
         when (command) {
+            is LookCommand.SetElement -> look.copy(element = command.element)
             is LookCommand.SetAccentIntensity -> look.copy(accentIntensity = command.intensity)
             is LookCommand.SetBackgroundDim -> look.copy(backgroundDim = command.dim)
             is LookCommand.SetFontColor -> look.copy(fontColor = command.color)
@@ -74,6 +81,7 @@ object SettingsRules {
             is LookCommand.SetCornerStyle -> look.copy(cornerStyle = command.style)
             is LookCommand.SetCompactPlayer -> look.copy(compactPlayer = command.on)
             is LookCommand.SetClearVisualsMenu -> look.copy(clearVisualsMenu = command.on)
+            is LookCommand.SetAmbientMode -> look.copy(ambientMode = command.mode)
         }
 
     private fun playback(
@@ -157,6 +165,7 @@ object SettingsRules {
             is ExportCommand.SetLoopSafe -> export.copy(loopSafe = command.on)
             is ExportCommand.SetCodec -> export.copy(codec = command.codec)
             is ExportCommand.SetLoudness -> export.copy(loudness = command.loudness)
+            is ExportCommand.SetFinishedAlerts -> export.copy(finishedAlerts = command.on)
         }
 
     private fun folders(
@@ -180,6 +189,27 @@ object SettingsRules {
             OnboardingCommand.FinishSetup -> onboarding.copy(setupDone = true)
             OnboardingCommand.FinishTutorial -> onboarding.copy(tutorialSeen = true)
             is OnboardingCommand.SetTutorialOnFirstRun -> onboarding.copy(tutorialOnFirstRun = command.on)
+        }
+
+    private fun background(
+        background: BackgroundSettings,
+        command: BackgroundCommand,
+    ): BackgroundSettings =
+        when (command) {
+            is BackgroundCommand.SetMusic -> background.copy(music = command.on)
+            is BackgroundCommand.SetRenders -> background.copy(renders = command.on)
+            is BackgroundCommand.SetRecording -> background.copy(recording = command.on)
+        }
+
+    private fun performance(
+        performance: PerformanceSettings,
+        command: PerformanceCommand,
+    ): PerformanceSettings =
+        when (command) {
+            is PerformanceCommand.SetVisualQuality -> performance.copy(visualQuality = command.quality)
+            is PerformanceCommand.SetVisualFrameRate -> performance.copy(visualFrameRate = command.frameRate)
+            is PerformanceCommand.SetSaveMode -> performance.copy(saveMode = command.on)
+            is PerformanceCommand.SetVisualsOff -> performance.copy(visualsOff = command.on)
         }
 
     private fun LookSettings.inRange(): LookSettings =

@@ -63,8 +63,8 @@ The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit
 _Avoid_: View params, motion params
 
 **Sound signal**:
-A value measured live from the audio that is playing, such as level, a band, a drum hit, the beat or rising energy. It is purely reactive: it never assumes anything about the song beyond what has already been heard.
-_Avoid_: Feature, analysis, song structure
+A value measured live from the audio that is playing, such as level, a band, a drum hit, the beat or rising energy. It is purely reactive: it never assumes anything about the track beyond what has already been heard.
+_Avoid_: Feature, analysis, track structure
 
 **Macro**:
 One large control in the basic Customize view. It is a single value: changing it changes every property linked to it. Each Style has 6, shipped as suggestions that the user can clear, rebuild, rename or remap.
@@ -98,6 +98,16 @@ _Avoid_: Auto visuals, scripts, autopilot
 The Visual never flashes. An engine-wide limit on how fast overall brightness may change bounds every Style, Reaction, Modulator and Automation, live and in every Render and Recording. It has no switch.
 _Avoid_: Strobe safety, epilepsy mode
 
+### Music
+
+**Track**:
+One piece of music on the device, as the Library lists it and the player plays it.
+_Avoid_: song, file
+
+**Live input**:
+The microphone as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording. There is no line or USB input.
+_Avoid_: capture, mic mode
+
 ### Studio
 
 **Studio**:
@@ -117,12 +127,16 @@ The one folder on the device where every Project lives, chosen by the user durin
 _Avoid_: export path, output directory
 
 **Render**:
-A video file made offline from a song or playlist with a Customization. It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
+A video file made offline from a Track or playlist with a Customization. It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
 _Avoid_: Export, take, clip
 
 **Recording**:
-A video file captured in real time from the live player, holding the Visual (never the App UI) and the sound that was playing.
+A video file captured in real time from the live player, holding the Visual (never the App UI) and the sound that was playing. Making one is Capture.
 _Avoid_: Take, screen capture
+
+**Capture**:
+Recording the Visual and the sound together, in real time, as a video: what makes a Recording. Nothing else is called capture.
+_Avoid_: screen grab, record (for the microphone)
 
 **Edit**:
 A video made by cutting, looping and adding effects to one or more Renders or Recordings.
@@ -167,9 +181,9 @@ The one app-wide channel every feature reports its failures to, shown in one App
 _Avoid_: event bus, crash reporter
 
 **Audio adapter**:
-The one interface features use to reach the shared native audio pipeline (`:arch:audio`): the player, live capture from the microphone or a USB or line input, and the analysis that feeds the Visual. It announces what happens rather than being polled. It sits beneath Playback and Capture and is not a feature.
+The one interface features use to reach the shared native audio pipeline (`:arch:audio`): the player, Live input from the microphone, and the analysis that feeds the Visual. It announces what happens rather than being polled. It sits beneath Playback and is not a feature.
 _Avoid_: audio service, player session
 
 **Announcement**:
-A change the audio adapter reports as it happens, such as playback started, paused, seeked, track changed, ended or failed, or a capture running, gone quiet or lost.
+A change the audio adapter reports as it happens, such as playback started, paused, seeked, track changed, ended or failed, or Live input running, gone quiet or lost.
 _Avoid_: callback, status poll
