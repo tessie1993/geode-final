@@ -180,8 +180,10 @@ fun AppRoot() {
     val element = settingsValues?.look?.element ?: Element.Default
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
-    val visual: @Composable () -> Unit = {
-        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
+    // Full-screen mode hands the host the tap that shows and hides its controls; the Visuals tab,
+    // where the tab UI is the thing being touched, passes none.
+    val visual: @Composable (onTap: (() -> Unit)?) -> Unit = { onTap ->
+        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onTap)
     }
     GeodeTheme(element, gui) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }
@@ -213,7 +215,7 @@ fun AppRoot() {
                 Place.VISUALS ->
                     // Full-screen mode hosts the Visual itself, so it is never in two places at once.
                     VisualsPlace(shell, onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) }) {
-                        if (!ui.fullScreen) visual()
+                        if (!ui.fullScreen) visual(null)
                     }
                 Place.STUDIO -> StudioPlace(shell)
                 Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
@@ -373,11 +375,21 @@ private fun PlayerSheet(
 private fun FullScreenVisual(
     shell: ShellViewModel,
     keepScreenOn: Boolean,
-    visual: @Composable () -> Unit,
+    visual: @Composable (onTap: (() -> Unit)?) -> Unit,
 ) {
+    // Whether the overlay's controls show is App-UI-only state, and it outlives a rotation. The tap
+    // that toggles them is the host's own, so a drag draws in the Visual instead of toggling.
+    var controlsShown by rememberSaveable { mutableStateOf(true) }
+    val toggleControls = { controlsShown = !controlsShown }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        visual()
-        FullScreenVisualRoute(shell.visuals, keepScreenOn = keepScreenOn, onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) })
+        visual(toggleControls)
+        FullScreenVisualRoute(
+            shell.visuals,
+            controlsShown = controlsShown,
+            keepScreenOn = keepScreenOn,
+            onToggleControls = toggleControls,
+            onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) },
+        )
         TextButton(
             onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
             modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),

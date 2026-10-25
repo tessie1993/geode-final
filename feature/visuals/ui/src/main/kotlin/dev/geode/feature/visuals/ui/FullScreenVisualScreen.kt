@@ -1,8 +1,6 @@
 package dev.geode.feature.visuals.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,19 +13,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.forest.ForestShapes
 import dev.geode.design.forest.ForestSpacing
@@ -35,8 +32,9 @@ import dev.geode.engine.types.SceneId
 
 /**
  * Full-screen visual mode (#43): the one live Visual fills the screen, and this is the App UI over it.
- * It has no background, so the Visual the app keeps running behind it shows through. A tap shows or
- * hides the controls: the Style's name, the Styles either side of it, and the way back. Stateless
+ * It has no background, so the Visual the app keeps running behind it shows through. The host turns a
+ * tap on the picture into [FullScreenAction.ToggleControls]; this screen's always-visible button does
+ * the same, so the controls stay reachable whatever the gesture pipeline is doing. Stateless
  * (ADR-0003): it draws [model] and sends every tap to [onAction].
  */
 @Composable
@@ -45,16 +43,23 @@ fun FullScreenVisualScreen(
     onAction: (FullScreenAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val toggle = stringResource(R.string.visuals_show_controls)
-    Box(
-        modifier
-            .fillMaxSize()
-            .semantics { contentDescription = toggle }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                onAction(FullScreenAction.ToggleControls)
-            },
-    ) {
+    Box(modifier.fillMaxSize()) {
         if (model.controlsShown) Controls(model, onAction)
+        // The discoverable way back to the controls once a tap has hidden them.
+        FilledTonalIconButton(
+            onClick = { onAction(FullScreenAction.ToggleControls) },
+            shape = ForestShapes.Button,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .safeDrawingPadding()
+                    .padding(ForestSpacing.Medium),
+        ) {
+            Icon(
+                if (model.controlsShown) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                contentDescription = stringResource(R.string.visuals_show_controls),
+            )
+        }
     }
 }
 

@@ -11,9 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -71,20 +68,22 @@ fun VisualsRoute(
 
 /**
  * Full-screen visual mode's place (ADR-0003). It reads the Visuals store for the Style shown and asks
- * it for the next or previous one; whether the controls are shown is App-UI-only state. While it is on
- * screen the system bars are hidden (a swipe brings them back for a moment), and the screen stays awake
- * when the person's Keep screen on setting ([keepScreenOn], read from Settings by `:app`) asks for it.
- * Back, or the leave button, is [onExit].
+ * it for the next or previous one. Whether the controls are shown is App-UI-only state, owned by
+ * `:app` and passed in as [controlsShown]; the overlay's own toggle button reports [onToggleControls].
+ * While it is on screen the system bars are hidden (a swipe brings them back for a moment), and the
+ * screen stays awake when the person's Keep screen on setting ([keepScreenOn], read from Settings by
+ * `:app`) asks for it. Back, or the leave button, is [onExit].
  */
 @Composable
 fun FullScreenVisualRoute(
     visuals: Visuals,
+    controlsShown: Boolean,
     keepScreenOn: Boolean,
+    onToggleControls: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by visuals.state.collectAsStateWithLifecycle()
-    var controlsShown by rememberSaveable { mutableStateOf(true) }
     BackHandler(onBack = onExit)
     SystemBarsHidden()
     ScreenAwake(keepScreenOn)
@@ -92,7 +91,7 @@ fun FullScreenVisualRoute(
         state.toFullScreenModel(controlsShown),
         onAction = { action ->
             when (action) {
-                FullScreenAction.ToggleControls -> controlsShown = !controlsShown
+                FullScreenAction.ToggleControls -> onToggleControls()
                 is FullScreenAction.Choose -> visuals.send(VisualsCommand.Choose(action.style))
                 FullScreenAction.Exit -> onExit()
             }

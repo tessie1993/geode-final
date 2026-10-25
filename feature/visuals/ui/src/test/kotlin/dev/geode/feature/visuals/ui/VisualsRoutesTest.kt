@@ -5,6 +5,10 @@ import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -35,7 +39,7 @@ import org.robolectric.annotation.Config
 
 /**
  * The routes over a recording Visuals: each tap that changes something is one Command, and the
- * App-UI-only state (search, the open folder, whether the controls show) stays in the route.
+ * App-UI-only state (search, the open folder) stays in the route.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
@@ -91,7 +95,16 @@ class VisualsRoutesTest {
     @Test
     fun `full-screen mode steps through the Styles, hides its controls and leaves`() {
         var exits = 0
-        compose.setContent { FullScreenVisualRoute(visuals, keepScreenOn = true, onExit = { exits++ }) }
+        compose.setContent {
+            var controlsShown by remember { mutableStateOf(true) }
+            FullScreenVisualRoute(
+                visuals,
+                controlsShown = controlsShown,
+                keepScreenOn = true,
+                onToggleControls = { controlsShown = !controlsShown },
+                onExit = { exits++ },
+            )
+        }
 
         compose.onNodeWithContentDescription("Next Style").performClick()
         compose.onNodeWithContentDescription("Previous Style").performClick()
