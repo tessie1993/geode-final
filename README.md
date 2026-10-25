@@ -38,7 +38,7 @@ ABIs arm64-v8a and x86_64. The full version history is in
   device has no HEVC encoder.
 - **Live wallpaper** — the visualizer as a home-screen wallpaper, with an idle
   drive so it keeps moving without audio.
-- **Live input** — the microphone, or a USB or line-in source in its place,
+- **Live input** — the microphone, in place of a track from the library,
   feeds the same PCM ring buffer as the player's tap, so every scene reacts to
   the room unchanged.
 

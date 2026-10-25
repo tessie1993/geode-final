@@ -10,7 +10,6 @@ import dev.geode.feature.library.api.LibraryPlaylist
 import dev.geode.feature.library.api.LibraryState
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Song
-import dev.geode.feature.library.api.SongEdit
 import dev.geode.feature.playback.api.PlaybackState
 
 /** The old Library screens' lists besides the songs: Playback's playlists, and the old smart playlists (#146). */
@@ -86,31 +85,8 @@ internal object OldLibraryModels {
         index: Int,
     ): LibraryCommand? = playlistNamed(state, name)?.let { LibraryCommand.RemoveFromPlaylist(it.id, index) }
 
-    /** The old editor's title, artist and album; its other fields are only written into the file itself. */
-    fun edit(
-        state: LibraryState,
-        song: TrackId,
-        title: String,
-        artist: String,
-        album: String,
-    ): LibraryCommand? = songOf(state, song)?.let { LibraryCommand.EditSong(song, SongEdit(title, artist, album, it.artwork)) }
-
-    /** What the old song info editor starts from, or null for a song the Library does not have. */
-    fun trackInfoOf(
-        state: LibraryState,
-        song: TrackId,
-    ): LibraryTrack? =
-        songOf(state, song)?.let {
-            LibraryTrack(uri = it.id, title = it.title, artist = it.artist, duration = it.duration, album = it.album, genre = it.genre)
-        }
-
     /** How often each song was played, from Playback's history, for the old smart playlists. */
     fun playsOf(playback: PlaybackState): Map<TrackId, Int> = playback.history.groupingBy { it.track.id }.eachCount()
-
-    private fun songOf(
-        state: LibraryState,
-        song: TrackId,
-    ): Song? = state.songs.firstOrNull { it.id == song }
 
     private fun playlistNamed(
         state: LibraryState,

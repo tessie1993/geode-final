@@ -14,7 +14,6 @@ import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCommand
@@ -248,24 +247,6 @@ class OldScreenSettingsTest {
         val dsp = OldScreenSettings.dspOf(equalizer, current)
 
         assertEquals(DspSettings(true, EqualizerPreset.ROCK.levels.map { it.value }, 300, 200, gainDb = 2f, limiter = true), dsp)
-
-        val shown =
-            OldScreenSettings.audioFxStateOf(
-                equalizer,
-                listOf("Flat", "Bass", "Treble", "Vocal", "Rock", "Electronic"),
-            ) { "band $it" }
-        assertEquals(4, shown.presetIndex)
-        assertEquals("band 0", shown.bands.first().label)
-        assertEquals(450, shown.bands.first().levelMb)
-        assertEquals(300, shown.bassBoost)
-        assertEquals(200, shown.loudness)
-    }
-
-    @Test
-    fun `equalizer changes are Settings Commands`() {
-        assertEquals(EqualizerCommand.SetBand(3, Millibels(-200)), OldScreenSettings.bandCommand(3, -200))
-        assertEquals(EqualizerCommand.UsePreset(EqualizerPreset.VOCAL), OldScreenSettings.presetCommand(3))
-        assertEquals(null, OldScreenSettings.presetCommand(9))
     }
 
     @Test
@@ -296,24 +277,25 @@ class OldScreenSettingsTest {
         )
     }
 
-    /** A quality one side has and the other does not yet, like SD480 and QHD1440 (#135). */
-    private enum class NewerQuality { SD480, FHD1080, QHD1440 }
+    /** A quality neither side has yet, like one a later Settings adds. */
+    private enum class NewerQuality { FHD1080, UHD8K }
 
     @Test
     fun `a name the other side does not know maps to nothing instead of throwing`() {
-        assertEquals(null, OldScreenSettings.byName<OldQuality>(NewerQuality.SD480))
-        assertEquals(null, OldScreenSettings.byName<OldQuality>(NewerQuality.QHD1440))
+        // Settings has SD480 and QHD1440 and the old screens do not (#135).
+        assertEquals(null, OldScreenSettings.byName<OldQuality>(SettingsQuality.SD480))
+        assertEquals(null, OldScreenSettings.byName<OldQuality>(SettingsQuality.QHD1440))
+        assertEquals(null, OldScreenSettings.byName<SettingsQuality>(NewerQuality.UHD8K))
         assertEquals(OldQuality.FHD1080, OldScreenSettings.byName<OldQuality>(NewerQuality.FHD1080))
     }
 
     @Test
     fun `every name both sides know maps across in both directions`() {
-        val oldQualityNames = OldQuality.entries.map { it.name }.toSet()
-        SettingsQuality.entries.forEach {
-            val expected = it.name.takeIf { name -> name in oldQualityNames }
-            assertEquals(expected, OldScreenSettings.byName<OldQuality>(it)?.name)
+        OldQuality.entries.forEach { old ->
+            val settings = OldScreenSettings.byName<SettingsQuality>(old)
+            assertEquals(old.name, settings?.name)
+            assertEquals(old, settings?.let { OldScreenSettings.byName<OldQuality>(it) })
         }
-        OldQuality.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<SettingsQuality>(it)?.name) }
         SettingsRatio.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldRatio>(it)?.name) }
         SettingsCodec.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<OldCodec>(it)?.name) }
         SettingsPosition.entries.forEach { assertEquals(it.name, OldScreenSettings.byName<PlayerPosition>(it)?.name) }

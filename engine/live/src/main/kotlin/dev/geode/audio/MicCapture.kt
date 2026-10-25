@@ -3,7 +3,6 @@ package dev.geode.audio
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -36,19 +35,12 @@ class MicCapture(
     fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-    /**
-     * Starts capturing. [device] routes the recording to one input, such as a USB interface or a
-     * line input; null keeps the system's choice, which is the built-in microphone.
-     */
+    /** Starts capturing from the built-in microphone, the only Live input (line-in is removed). */
     @Synchronized
-    fun start(
-        device: AudioDeviceInfo? = null,
-        onSampleRate: (Int) -> Unit = {},
-    ): Failure? {
+    fun start(onSampleRate: (Int) -> Unit = {}): Failure? {
         if (active) return null
         if (!hasPermission()) return Failure.PERMISSION
         val rec = openRecord() ?: return Failure.UNAVAILABLE
-        if (device != null) rec.setPreferredDevice(device)
         if (!startPump(rec, 1, onSampleRate)) return Failure.UNAVAILABLE
         return null
     }

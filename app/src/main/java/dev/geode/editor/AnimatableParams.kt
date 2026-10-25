@@ -141,7 +141,7 @@ object AnimatableParams {
             ) { e, v -> e.copy(rotationDegrees = v) },
         )
 
-    // Ranges follow the sliders in CustomizeTabs so an animated value never leaves what the panel offers.
+    // Ranges follow the old Customize sliders, so an animated value never leaves what they offered.
     private fun sceneTable(): List<AnimatableParam> =
         listOf(
             scalar("speed", ParamKeys.SPEED, 0.05f, 4f, { it.speed }) { p, v -> p.copy(speed = v) },

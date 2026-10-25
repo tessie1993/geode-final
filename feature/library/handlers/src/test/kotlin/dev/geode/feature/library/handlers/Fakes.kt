@@ -4,6 +4,7 @@ import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.SmartPlaylist
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
+import dev.geode.feature.library.core.edited
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlaybackFact
@@ -110,8 +111,7 @@ class FakeLibraryStorage : LibraryStorage {
 
     private fun Song.keptTags(old: Song) = filledFrom(FileTags(old.albumArtist, old.composer, old.genre))
 
-    private fun edited(song: Song): Song =
-        edits[song.id]?.let { song.copy(title = it.title, artist = it.artist, album = it.album, artwork = it.artwork) } ?: song
+    private fun edited(song: Song): Song = edits[song.id]?.let { song.edited(it) } ?: song
 
     private fun <T> guard(block: () -> T): T = if (failing) error("the database is gone") else block()
 }

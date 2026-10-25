@@ -16,7 +16,12 @@ class MemoryLibraryStorage : LibraryStorage {
     val smartPlaylists = mutableListOf<SmartPlaylist>()
 
     override suspend fun read(): SavedLibrary =
-        SavedLibrary(songs.map(::edited), favourites.toSet(), excludedFolders, smartPlaylists.toList())
+        SavedLibrary(
+            songs.map(::edited),
+            favourites.toSet(),
+            excludedFolders,
+            smartPlaylists.toList(),
+        )
 
     override suspend fun replaceSongs(found: List<Song>): List<Song> {
         songs.clear()

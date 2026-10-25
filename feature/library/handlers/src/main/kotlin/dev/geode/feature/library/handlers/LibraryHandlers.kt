@@ -34,7 +34,7 @@ const val LIBRARY = "library"
 val MEDIA_CHANGE_QUIET = Millis(2_000)
 
 /**
- * Where the Library's handlers read and write: the phone's media index, Geode's tag reader, the
+ * Where the Library's handlers read and write: the phone's media index, Geode's tag reader and writer, the
  * Library's own database, and the playlist files the user picks.
  */
 class LibrarySources(
@@ -44,6 +44,7 @@ class LibrarySources(
     val files: PlaylistFiles,
     /** Wall-clock time, for the smart playlist rules that count days. */
     val clock: () -> Millis = { Millis(System.currentTimeMillis()) },
+    val tagWriter: TagWriter = TagWriter.NONE,
 )
 
 /**
@@ -75,6 +76,7 @@ class LibraryHandlers(
             is LibraryWork.SaveFavourite ->
                 guarded(results, StorageFailure.SAVE_FAVOURITE) { storage.setFavourite(work.song, work.favourite) }
             is LibraryWork.SaveEdit -> guarded(results, StorageFailure.SAVE_EDIT) { storage.saveEdit(work.song, work.edit) }
+            is LibraryWork.WriteTags -> writeTags(work, results)
             is LibraryWork.SaveExcludedFolders ->
                 guarded(results, StorageFailure.SAVE_EXCLUDED_FOLDERS) { storage.saveExcludedFolders(work.folders) }
             is LibraryWork.SaveSmartPlaylist ->
@@ -131,6 +133,18 @@ class LibraryHandlers(
         }
         if (changed) attempt { storage.read() }?.let { results.report(LibraryEvent.SongsFound(it.songs)) }
     }
+
+    /** Writes the edit into the file, off the main thread as every effect is, and says how it went. */
+    private suspend fun writeTags(
+        work: LibraryWork.WriteTags,
+        results: Results<LibraryEvent>,
+    ) = results.report(
+        when (attempt { sources.tagWriter.write(work.song, work.edit) }) {
+            TagWrite.WRITTEN -> LibraryEvent.TagsWritten(work.song, work.edit)
+            TagWrite.NEEDS_CONSENT -> LibraryEvent.TagsNeedConsent(work.song, work.edit)
+            TagWrite.FAILED, null -> LibraryEvent.StorageFailed(StorageFailure.WRITE_TAGS)
+        },
+    )
 
     @OptIn(FlowPreview::class)
     private suspend fun watchMedia(results: Results<LibraryEvent>) =

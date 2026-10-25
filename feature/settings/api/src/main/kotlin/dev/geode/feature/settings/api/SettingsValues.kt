@@ -82,8 +82,38 @@ enum class CornerStyle {
     PILL,
 }
 
-/** The Theme section (was Look): accent, text and layout of the App UI. */
+/**
+ * Ambient: how much the Element's Hero scene and its floating assets move by themselves, never with
+ * the music. They show on Home only, whatever the mode. Drifting holds still under battery saver,
+ * reduced motion or CPU/GPU save mode; Off stays off.
+ */
+enum class AmbientMode {
+    DRIFTING,
+    STILL,
+    OFF,
+}
+
+/**
+ * One selectable skin for the App UI (see CONTEXT.md): its material, palette, type, shapes and
+ * motion. It never changes navigation, layout or what a control does. The first wave is these four,
+ * dark only; the look of each belongs to :design.
+ */
+enum class Element {
+    WATER,
+    WOOD,
+    STONE,
+    BIOLUMINESCENCE,
+    ;
+
+    companion object {
+        /** The Element a fresh install starts on, and what an unknown stored value falls back to. */
+        val Default = WATER
+    }
+}
+
+/** The Theme section (was Look): the Element, accent, text and layout of the App UI. */
 data class LookSettings(
+    val element: Element = Element.Default,
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
     val backgroundDim: Float = BACKGROUND_DIM_DEFAULT,
     /** The text colour chosen over the theme's own, or null for the theme's. */
@@ -94,6 +124,7 @@ data class LookSettings(
     val cornerStyle: CornerStyle = CornerStyle.ROUNDED,
     val compactPlayer: Boolean = false,
     val clearVisualsMenu: Boolean = false,
+    val ambientMode: AmbientMode = AmbientMode.DRIFTING,
 ) {
     companion object {
         const val ACCENT_INTENSITY_DEFAULT = 1f
@@ -346,6 +377,11 @@ data class PerformanceSettings(
     val visualFrameRate: VisualFrameRate = VisualFrameRate.SCREEN_MAX,
     /** Saves battery and heat: lower Visual quality, 30 fps, still floating assets, slower renders. */
     val saveMode: Boolean = false,
+    /**
+     * Visuals off (#196): nothing draws or analyses for the Visual, and no Render or Recording can be
+     * made. The Element and its Hero scene still run. Visuals and Studio read it here.
+     */
+    val visualsOff: Boolean = false,
 ) {
     /** The Visual quality to draw at: [VisualQuality.SAVER] in save mode, else the chosen one. */
     val visual: VisualQuality get() = if (saveMode) VisualQuality.SAVER else visualQuality

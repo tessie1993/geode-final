@@ -29,6 +29,12 @@ data class Song(
     val addedAt: Millis,
     /** Cover art the user chose in the app, as a content uri; null for the file's own. */
     val artwork: String? = null,
+    /** The year the user gave it in the app; 0 for none. */
+    val year: Int = 0,
+    /** The track number the user gave it in the app; 0 for none. */
+    val trackNumber: Int = 0,
+    /** The comment the user gave it in the app. */
+    val comment: String = "",
 ) {
     /** The folder the file is in. */
     val folder: String get() = path.substringBeforeLast('/', "")
@@ -37,12 +43,19 @@ data class Song(
     val shownAlbumArtist: String get() = albumArtist.ifBlank { artist }
 }
 
-/** The song info a user can edit in the app (#37). [artwork] is a content uri, or null to keep the file's own. */
+/**
+ * The song info a user can edit in the app (#37). [artwork] is a content uri, or null to keep the file's own.
+ * [genre], [year], [trackNumber] and [comment] are null when left as they were; a year or track number of 0 is none.
+ */
 data class SongEdit(
     val title: String,
     val artist: String,
     val album: String,
     val artwork: String? = null,
+    val genre: String? = null,
+    val year: Int? = null,
+    val trackNumber: Int? = null,
+    val comment: String? = null,
 )
 
 /** The Library's views (owner decisions on #37). */
@@ -374,10 +387,14 @@ sealed interface LibraryCommand {
         val song: TrackId,
     ) : LibraryCommand
 
-    /** Changes a song's info in the Library. The file itself is left as it is. */
+    /**
+     * Changes a song's info in the Library. With [writeToFile] the edit is written into the file's own
+     * tags first, and the Library changes only once it is; otherwise the file is left as it is.
+     */
     data class EditSong(
         val song: TrackId,
         val edit: SongEdit,
+        val writeToFile: Boolean = false,
     ) : LibraryCommand
 
     data class ExcludeFolder(
@@ -487,5 +504,11 @@ sealed interface LibraryFact {
     data class PlaylistExported(
         val file: String,
         val songs: Int,
+    ) : LibraryFact
+
+    /** The phone must ask the person before [song]'s file may be changed; once it has, [edit] may be sent again. */
+    data class TagsNeedConsent(
+        val song: TrackId,
+        val edit: SongEdit,
     ) : LibraryFact
 }

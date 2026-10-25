@@ -66,21 +66,23 @@ public final class dev/geode/feature/playback/api/BookmarkId {
 }
 
 public final class dev/geode/feature/playback/api/ListeningOptions {
-	public synthetic fun <init> (ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Z
 	public final fun component2 ()Ldev/geode/feature/playback/api/RepeatMode;
 	public final fun component3-CmsKos8 ()J
 	public final fun component4 ()Z
 	public final fun component5 ()Ldev/geode/feature/playback/api/QueueEnd;
-	public final fun copy-LPhUD6o (ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;)Ldev/geode/feature/playback/api/ListeningOptions;
-	public static synthetic fun copy-LPhUD6o$default (Ldev/geode/feature/playback/api/ListeningOptions;ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;ILjava/lang/Object;)Ldev/geode/feature/playback/api/ListeningOptions;
+	public final fun component6 ()Z
+	public final fun copy-Wn0S0cc (ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;Z)Ldev/geode/feature/playback/api/ListeningOptions;
+	public static synthetic fun copy-Wn0S0cc$default (Ldev/geode/feature/playback/api/ListeningOptions;ZLdev/geode/feature/playback/api/RepeatMode;JZLdev/geode/feature/playback/api/QueueEnd;ZILjava/lang/Object;)Ldev/geode/feature/playback/api/ListeningOptions;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCrossfade-CmsKos8 ()J
 	public final fun getGapless ()Z
 	public final fun getJoinsTracks ()Z
 	public final fun getQueueEnd ()Ldev/geode/feature/playback/api/QueueEnd;
 	public final fun getRepeat ()Ldev/geode/feature/playback/api/RepeatMode;
+	public final fun getResumeLongTracks ()Z
 	public final fun getShuffle ()Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
@@ -425,6 +427,17 @@ public final class dev/geode/feature/playback/api/PlaybackCommand$SetRepeat : de
 	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$SetRepeat;Ldev/geode/feature/playback/api/RepeatMode;ILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$SetRepeat;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getMode ()Ldev/geode/feature/playback/api/RepeatMode;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/playback/api/PlaybackCommand$SetResumeLongTracks : dev/geode/feature/playback/api/PlaybackCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/playback/api/PlaybackCommand$SetResumeLongTracks;
+	public static synthetic fun copy$default (Ldev/geode/feature/playback/api/PlaybackCommand$SetResumeLongTracks;ZILjava/lang/Object;)Ldev/geode/feature/playback/api/PlaybackCommand$SetResumeLongTracks;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOn ()Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
