@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Water's sea-glass controls, on the Element system (#105).** The Crystal
+  controls now draw their bodies in the Element chosen in Settings
+  (`ElementPart`) instead of the Lapis Lazuli art: pebbles, slabs and recesses
+  in the Element's colours, outlines and timings, with an inner light that
+  brightens on press and focus and fills on selection, a selection rim, a
+  focus ring, and a press sink. Water's controls are painted as translucent,
+  inner-lit sea glass on wet stone (`PartFinish.SEA_GLASS`), opaque and
+  sampling nothing; the other Elements stay flat until their art lands.
+  Labels take the dark or light colour their pebble needs, and
+  `ElementPartTest` holds them to WCAG AA in every Element. Supersedes PR
+  #139.
+
 - **No screenshot or golden-image tests (#184).** The owner dropped them to
   save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,
   every `*ScreenshotTest`, their goldens and the `geode.screenshots`

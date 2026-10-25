@@ -23,6 +23,8 @@ data class ElementTokens(
     val shapes: ElementShapes,
     val motion: ElementMotion,
     val art: ElementArt = ElementArt.None,
+    /** How the control bodies are drawn until the Element's art lands ([ElementPart]). */
+    val finish: PartFinish = PartFinish.FLAT,
 )
 
 /**
