@@ -11,7 +11,6 @@
     <ID>ComplexCondition:VisualizerRenderer.kt$VisualizerRenderer$ff == null || !ff.available || fluidActive || target !is EmergenceScene</ID>
     <ID>ComplexCondition:VisualizerRenderer.kt$VisualizerRenderer$target is EmergenceScene &amp;&amp; (p.flowAdvectParticles || targetNeedsFlow) &amp;&amp; ff.available</ID>
     <ID>InstanceOfCheckForException:ExportController.kt$ExportController$t is kotlinx.coroutines.CancellationException</ID>
-    <ID>InstanceOfCheckForException:PlayerViewModel.kt$PlayerViewModel$t is kotlinx.coroutines.CancellationException</ID>
     <ID>LoopWithTooManyJumpStatements:Adsr.kt$AdsrEngine.Companion$for</ID>
     <ID>LoopWithTooManyJumpStatements:AudioTranscoder.kt$AudioTranscoder$while</ID>
     <ID>LoopWithTooManyJumpStatements:CompositeGradeTest.kt$CompositeGradeTest$for</ID>
@@ -60,7 +59,6 @@
     <ID>ReturnCount:PerformanceMonitor.kt$PerformanceMonitor$fun onFrame(dtSeconds: Float): Int</ID>
     <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun contextFor( uri: TrackId, browse: List&lt;QueueTrack&gt;, deviceTracks: List&lt;DeviceTrack&gt;, libraryTracks: List&lt;LibraryTrack&gt;, ): List&lt;QueueTrack&gt;</ID>
     <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun window( tracks: List&lt;QueueTrack&gt;, startUri: TrackId, ): Window</ID>
-    <ID>ReturnCount:PlayerViewModel.kt$PlayerViewModel$private fun waveformOf(timeline: FeatureTimeline): FloatArray?</ID>
     <ID>ReturnCount:PresetLibraryController.kt$PresetLibraryController$fun importPresetLink(text: String): PresetId?</ID>
     <ID>ReturnCount:PresetLink.kt$PresetLink$fun decode(text: String): String?</ID>
     <ID>ReturnCount:PresetStore.kt$PresetStore$fun removeFolder(name: String): Boolean</ID>
@@ -79,7 +77,6 @@
     <ID>ThrowsCount:AudioTranscoder.kt$AudioTranscoder$private fun transcodeAiff( aiff: dev.geode.audio.AiffPcm, maxDurationMs: Long, startMs: Long, isCancelled: () -&gt; Boolean, onProgress: (Float) -&gt; Unit, ): Result</ID>
     <ID>TooGenericExceptionCaught:AudioTranscoder.kt$AudioTranscoder$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:ExportController.kt$ExportController$t: Throwable</ID>
-    <ID>TooGenericExceptionCaught:PlayerViewModel.kt$PlayerViewModel$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:VideoExporter.kt$VideoExporter$e: Exception</ID>
     <ID>UnusedPrivateProperty:OfflineAnalyzer.kt$OfflineAnalyzer.StreamingPipeline$c</ID>
     <ID>UseCheckOrError:AudioTranscoder.kt$AudioTranscoder$throw IllegalStateException("Audio transcode stalled (codec made no progress)")</ID>
