@@ -124,6 +124,14 @@ class AppUiReducerTest {
     }
 
     @Test
+    fun `the banner stays over every page, sheet and the full-screen Visual`() {
+        val showing = music.copy(banner = Banner(1, "Library", "scan failed"), shown = 1)
+        assertEquals(next(showing.copy(place = Place.STUDIO)), reduce(showing, Open(Place.STUDIO)))
+        assertEquals(next(showing.copy(fullScreen = true)), reduce(showing, EnterFullScreen))
+        assertEquals(next(showing.copy(sheet = Sheet.QUEUE)), reduce(showing, OpenSheet(Sheet.QUEUE)))
+    }
+
+    @Test
     fun `the banner's timer clears only the showing it was started for`() {
         val showing = music.copy(banner = Banner(2, "Playback", "decode error"), shown = 2)
         assertEquals(next(music.copy(shown = 2)), AppUiReducer.reduce(showing, BannerExpired(2)))

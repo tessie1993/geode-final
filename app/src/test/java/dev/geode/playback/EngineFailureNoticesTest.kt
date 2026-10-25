@@ -20,16 +20,6 @@ class EngineFailureNoticesTest {
     }
 
     @Test
-    fun `each failure reaches the banner until the notices close`() {
-        val shown = mutableListOf<Int>()
-        val notices = EngineFailureNotices(show = { shown += it }, failures = relay)
-        relay.caught(NativeStatus.ENGINE_FAILURE.code, "playerPlay")
-        notices.close()
-        relay.caught(NativeStatus.ENGINE_FAILURE.code, "vizRender")
-        assertEquals(listOf(R.string.engine_failure_audio), shown)
-    }
-
-    @Test
     fun `failures reach the app-wide error channel as the engine feature`() {
         val logged = mutableListOf<FeatureFailure>()
         val errors = ErrorChannel { logged += it }
@@ -40,5 +30,15 @@ class EngineFailureNoticesTest {
         val expected = EngineFailure.OutOfMemory("dspProcess")
         assertEquals(listOf(FeatureFailure("engine", expected.toString())), logged)
         assertEquals(FeatureFailure(EngineFailureNotices.FEATURE, expected.toString()), EngineFailureNotices.featureFailure(expected))
+    }
+
+    @Test
+    fun `the app names a failure on the banner in the words it chooses`() {
+        val logged = mutableListOf<FeatureFailure>()
+        val errors = ErrorChannel { logged += it }
+        val reporting = EngineFailureNotices.reportTo(errors, relay, describe = { "engine: ${it.subsystem}" })
+        relay.caught(NativeStatus.ENGINE_FAILURE.code, "playerPlay")
+        reporting.close()
+        assertEquals(listOf(FeatureFailure("engine", "engine: AUDIO")), logged)
     }
 }
