@@ -182,6 +182,10 @@ jobs:
             task: ":design:pitestDebug"
             dir: design
             name: design
+          - module: ":design:elements:water"
+            task: ":design:elements:water:pitestDebug"
+            dir: design/elements/water
+            name: design-elements-water
           - module: ":arch:kernel"
             task: ":arch:kernel:pitest"
             dir: arch/kernel

@@ -27,9 +27,15 @@ class FeatureArchitectureKonsistTest {
     }
 
     private val pureSources: List<SourceFile> by lazy {
+        sourcesOf { it.startsWith(":arch:") || it.startsWith(":feature:") }
+    }
+
+    private val elementSources: List<SourceFile> by lazy { sourcesOf { it.startsWith(":design:elements:") } }
+
+    private fun sourcesOf(wanted: (String) -> Boolean): List<SourceFile> =
         modules
             .map { it.path }
-            .filter { it.startsWith(":arch:") || it.startsWith(":feature:") }
+            .filter(wanted)
             .flatMap { module ->
                 val main = File(directoryOf(module), "src/main")
                 if (!main.isDirectory) return@flatMap emptyList()
@@ -38,13 +44,18 @@ class FeatureArchitectureKonsistTest {
                     .files
                     .map { SourceFile(module, it.path, it.imports.map { imported -> imported.name }.toSet() + referencesIn(it.text)) }
             }
-    }
 
     @Test
     fun `the scan reaches the architecture modules`() {
         assertTrue("the kernel module was not found", modules.any { it.path == ":arch:kernel" })
         assertTrue("the design module was not found", modules.any { it.path == ":design" })
         assertTrue("no kernel source was read", pureSources.any { it.module == ":arch:kernel" })
+        assertTrue("no Water Element source was read", elementSources.any { it.module == ":design:elements:water" })
+    }
+
+    @Test
+    fun `Element modules draw only, with no feature, engine or audio`() {
+        assertEquals(emptyList<String>(), FeatureRules.elementModulesStayDrawOnly(elementSources))
     }
 
     @Test

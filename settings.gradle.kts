@@ -28,6 +28,10 @@ include(":app")
 // The App UI's design tokens, theme and common components (ADR-0005), never anything of the Visual.
 include(":design")
 
+// Each Element's own component library (#180, decision 3): its touch, motion and fluids, drawn from
+// plain inputs. Depends on :design only.
+include(":design:elements:water")
+
 include(
     ":engine:audio-core",
     ":engine:scenes",
