@@ -56,7 +56,7 @@ data class LoopUiState(
 )
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal class ExportController(
+class ExportController internal constructor(
     private val application: Application,
     private val scope: CoroutineScope,
     private val host: Host,

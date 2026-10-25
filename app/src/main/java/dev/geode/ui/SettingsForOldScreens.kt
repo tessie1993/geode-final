@@ -40,8 +40,7 @@ class SettingsForOldScreens internal constructor(
     private val settings: Settings,
     private val playback: Playback,
     scope: CoroutineScope,
-) : UserDataRepository,
-    PlayerPrefsRepository {
+) : PlayerPrefsRepository {
     @Inject
     constructor(settings: Settings, playback: Playback, application: Application) :
         this(settings, playback, application.geodeContainer.appScope)
@@ -53,19 +52,19 @@ class SettingsForOldScreens internal constructor(
                 ::valuesOf,
             ).stateIn(scope, SharingStarted.Eagerly, valuesOf(settings.state.value))
 
-    override val guiPrefs: StateFlow<GuiPrefs> =
+    val guiPrefs: StateFlow<GuiPrefs> =
         values
             .map(
                 OldScreenSettings::guiPrefsOf,
             ).stateIn(scope, SharingStarted.Eagerly, OldScreenSettings.guiPrefsOf(values.value))
 
-    override val loaded: StateFlow<Boolean> =
+    val loaded: StateFlow<Boolean> =
         settings.state
             .map {
                 it is SettingsState.Ready
             }.stateIn(scope, SharingStarted.Eagerly, settings.state.value is SettingsState.Ready)
 
-    override suspend fun setGuiPrefs(prefs: GuiPrefs) = sendAll(OldScreenSettings.commandsFor(guiPrefs.value, prefs))
+    suspend fun setGuiPrefs(prefs: GuiPrefs) = sendAll(OldScreenSettings.commandsFor(guiPrefs.value, prefs))
 
     override val prefs: StateFlow<PlayerPrefs> =
         combine(values, playback.state) { v, p -> OldScreenSettings.playerPrefsOf(v.playback, p.options) }

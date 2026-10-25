@@ -28,7 +28,7 @@ data class EditorUiState(
  * Owns the open project: every edit goes through [edit] so it lands on the undo stack and on disk.
  * Edits run on the main thread; the store is touched only on [storeScope], one write at a time.
  */
-internal class EditorController(
+class EditorController internal constructor(
     private val store: EditorProjectStore,
     private val scope: CoroutineScope,
     private val storeScope: CoroutineScope,
