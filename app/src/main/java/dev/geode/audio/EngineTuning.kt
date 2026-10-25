@@ -5,12 +5,14 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.analysis.PlaybackMath
+import dev.geode.audio.dsp.DspSettings
+import dev.geode.audio.dsp.NativeDspProcessor
 import dev.geode.feature.settings.api.AnalysisSettings
+import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.playback.PlaybackSession
-import dev.geode.ui.OldScreenSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
@@ -35,7 +37,7 @@ class EngineTuning(
         scope.launch { ready.map { it.playback }.distinctUntilChanged().collect(::applyPlayback) }
         scope.launch {
             ready.map { it.equalizer }.distinctUntilChanged().collect { equalizer ->
-                session.audioFx.apply(OldScreenSettings.dspOf(equalizer, session.audioFx.current()))
+                session.audioFx.apply(dspOf(equalizer, session.audioFx.current()))
             }
         }
         scope.launch { ready.map { it.analysis }.distinctUntilChanged().collect(::applyAnalysis) }
@@ -55,5 +57,22 @@ class EngineTuning(
         session.analysis.beatSensitivity = analysis.beatSensitivity
         // The beats the person heard, at the gap they chose; the No-flash rule is the engine's, every frame.
         session.analysis.beatMinIntervalMs = analysis.beatMinIntervalMs
+    }
+
+    internal companion object {
+        /**
+         * What the equalizer runs: Settings' bands, boost and loudness over the processor's other
+         * stages, which Settings does not own (ReplayGain's gain, crossfeed and the limiter).
+         */
+        fun dspOf(
+            equalizer: EqualizerSettings,
+            current: DspSettings,
+        ): DspSettings =
+            current.copy(
+                enabled = equalizer.enabled,
+                bandsMb = List(NativeDspProcessor.BANDS) { band -> equalizer.bands.getOrNull(band)?.value ?: 0 },
+                bassBoost = equalizer.bassBoost,
+                loudnessMb = equalizer.loudness.value,
+            )
     }
 }
