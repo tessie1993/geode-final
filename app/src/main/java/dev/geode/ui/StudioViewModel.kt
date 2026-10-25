@@ -1,9 +1,9 @@
 package dev.geode.ui
 
 import android.net.Uri
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.di.PlayerSessionProvider
 import dev.geode.editor.ClipId
 import dev.geode.editor.EditResult
 import dev.geode.editor.EditorProject
@@ -13,107 +13,136 @@ import dev.geode.editor.SubtitleCue
 import dev.geode.editor.Subtitles
 import dev.geode.editor.TransientEnvelope
 import dev.geode.editor.TransientSource
+import dev.geode.engine.types.Millis
 import dev.geode.export.ClipEdit
 import dev.geode.export.StudioClip
+import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.playback.api.Playback
 import dev.geode.render.scene.SceneParams
 import dev.geode.ui.studio.EditorActions
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
+/**
+ * The old Studio export sheet and timeline editor, over the export, editor, analysis and lyrics layer
+ * now provided as app-scoped DI singletons (#17). The Studio feature's own store is separate
+ * (ADR-0005); this keeps the old export pipeline reachable exactly as it was until Studio's own export
+ * lands.
+ */
 @HiltViewModel
+// Playback's and Customization's Command and Fact are in/out, so Kotlin gives these constructor
+// parameters Java wildcards the provided stores lack; without this Dagger finds no binding for them.
+@JvmSuppressWildcards
 class StudioViewModel
     @Inject
     constructor(
-        private val sessions: PlayerSessionProvider,
+        private val exportController: ExportController,
+        private val editorController: EditorController,
+        private val analysis: TrackAnalysisController,
+        private val lyrics: LyricsController,
+        private val playback: Playback,
+        private val customization: CustomizationFeature,
     ) : ViewModel(),
         EditorActions {
-        private val session: PlayerSession = sessions.get()
-        val studio: StateFlow<StudioUiState> get() = session.studio
+        val studio: StateFlow<StudioUiState> get() = exportController.studio
 
-        val editor: StateFlow<EditorUiState> get() = session.editor.state
+        val editor: StateFlow<EditorUiState> get() = editorController.state
 
-        override fun edit(transform: (EditorProject) -> EditorProject) = session.editor.edit(transform)
+        override fun edit(transform: (EditorProject) -> EditorProject) = editorController.edit(transform)
 
-        override fun apply(result: EditResult) = session.editor.apply(result)
+        override fun apply(result: EditResult) = editorController.apply(result)
 
-        override fun undo() = session.editor.undo()
+        override fun undo() = editorController.undo()
 
-        override fun redo() = session.editor.redo()
+        override fun redo() = editorController.redo()
 
-        override fun setPlayhead(ms: Long) = session.editor.setPlayhead(ms)
+        override fun setPlayhead(ms: Long) = editorController.setPlayhead(ms)
 
-        override fun newClipId(): ClipId = session.editor.newClipId()
+        override fun newClipId(): ClipId = editorController.newClipId()
 
-        override fun newMarkerId(): MarkerId = session.editor.newMarkerId()
+        override fun newMarkerId(): MarkerId = editorController.newMarkerId()
 
-        override fun newKeyframeId(): KeyframeId = session.editor.newKeyframeId()
+        override fun newKeyframeId(): KeyframeId = editorController.newKeyframeId()
 
         override fun transientEnvelope(source: TransientSource): TransientEnvelope? =
-            session.analysisTimeline()?.let { TransientEnvelope.from(it, source) }
+            analysis.timeline?.let { TransientEnvelope.from(it, source) }
 
-        override fun currentSceneId(): String = session.currentSceneId()
+        override fun currentSceneId(): String = customization.state.value.current.style.value
 
-        override fun currentSceneParams(): SceneParams = session.currentSceneParams()
+        override fun currentSceneParams(): SceneParams = SceneParams.DEFAULT
 
-        override fun playbackPositionMs(): Long? = session.playbackPositionMs()
+        override fun playbackPositionMs(): Long? {
+            val player = playback.state.value.player
+            if (!OldScreenModels.meantToPlay(player)) return null
+            return OldScreenModels.positionAt(player, Millis(SystemClock.elapsedRealtime())).value
+        }
 
         override fun describeMedia(
             uri: Uri,
             onReady: (StudioClip) -> Unit,
-        ) = session.describeStudioClip(uri, onReady)
+        ) = exportController.describeStudioClip(uri, onReady)
 
-        override fun exportProject(destination: Uri?) = session.startProjectExport(destination)
+        override fun exportProject(destination: Uri?) =
+            exportController.startProjectExport(editorController.state.value.project, destination)
 
-        override fun cancelProjectExport() = session.cancelStudioExport()
+        override fun cancelProjectExport() = exportController.cancelStudioExport()
 
         override fun lyricCues(): List<SubtitleCue>? =
-            session.lyrics.value
+            lyrics.lyrics.value
                 ?.takeIf { it.synced }
-                ?.let { Subtitles.fromLyrics(it.lines, session.trackDurationMs()) }
+                ?.let { Subtitles.fromLyrics(it.lines, trackDurationMs()) }
                 ?.takeIf { it.isNotEmpty() }
 
-        val exportState: StateFlow<ExportUiState> get() = session.exportState
+        val exportState: StateFlow<ExportUiState> get() = exportController.exportState
 
         /** The song's tempo from the export's own analysis, for the export dialog (0 until known). */
-        val exportTempo: StateFlow<Float> get() = session.exportTempo
+        val exportTempo: StateFlow<Float> get() = analysis.tempo
 
-        fun prepareExportTempo() = session.prepareExportTempo()
+        fun prepareExportTempo() = exportController.prepareTempo()
 
-        fun cancelExport() = session.cancelExport()
+        fun cancelExport() = exportController.cancelExport()
 
-        fun resetExportState() = session.resetExportState()
+        fun resetExportState() = exportController.resetExportState()
 
-        fun refreshStudioClips() = session.refreshStudioClips()
+        fun refreshStudioClips() = exportController.refreshStudioClips()
 
         fun describeStudioClip(
             uri: Uri,
             onReady: (StudioClip) -> Unit,
-        ) = session.describeStudioClip(uri, onReady)
+        ) = exportController.describeStudioClip(uri, onReady)
 
         fun renameStudioClip(
             uri: String,
             name: String,
             onResult: (Boolean) -> Unit,
-        ) = session.renameStudioClip(uri, name, onResult)
+        ) = exportController.renameStudioClip(uri, name, onResult)
 
         fun deleteStudioClip(
             uri: String,
             onResult: (Boolean) -> Unit,
-        ) = session.deleteStudioClip(uri, onResult)
+        ) = exportController.deleteStudioClip(uri, onResult)
 
         fun startStudioExport(
             clip: StudioClip,
             edit: ClipEdit,
             destination: Uri? = null,
-        ) = session.startStudioExport(clip, edit, destination)
+        ) = exportController.startStudioExport(clip, edit, destination)
 
-        fun cancelStudioExport() = session.cancelStudioExport()
+        fun cancelStudioExport() = exportController.cancelStudioExport()
 
-        fun clearStudioResult() = session.clearStudioResult()
+        fun clearStudioResult() = exportController.clearStudioResult()
 
-        val loopState: StateFlow<LoopUiState> get() = session.loopState
+        val loopState: StateFlow<LoopUiState> get() = exportController.loopState
 
-        fun cancelLoopRender() = session.cancelLoopRender()
+        fun cancelLoopRender() = exportController.cancelLoopRender()
 
-        fun clearLoopResult() = session.clearLoopResult()
+        fun clearLoopResult() = exportController.clearLoopResult()
+
+        /** The playing track's length, for placing lyric captions along it. */
+        private fun trackDurationMs(): Long =
+            OldScreenModels
+                .queueOf(playback.state.value.player)
+                ?.current
+                ?.duration
+                ?.value ?: 0L
     }

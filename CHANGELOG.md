@@ -11,6 +11,7 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings
   (`ElementPart`) instead of the Lapis Lazuli art: pebbles, slabs and recesses
@@ -22,6 +23,16 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   Labels take the dark or light colour their pebble needs, and
   `ElementPartTest` holds them to WCAG AA in every Element. Supersedes PR
   #139.
+
+- **Element asset pipeline (#104).** `tools/element_assets/element_assets.py`
+  turns an Element's prompt manifest (`tools/element_assets/elements/`) into
+  finished assets: gflow runs, matting with a backdrop check, WebP at every
+  density, sound FX cut to OGG with a seamless ambient loop, a contact sheet,
+  and an approval gate. Only approved entries reach `design/src/main/res` and
+  `design/element-assets.json`, which starts empty. The Water manifest is
+  written from #105. A new CI job, "Element asset pipeline", checks the
+  manifests and runs the pipeline's unit tests.
+
 
 - **No screenshot or golden-image tests (#184).** The owner dropped them to
   save tokens. The Roborazzi App UI screenshots go (the `screenshots` CI job,

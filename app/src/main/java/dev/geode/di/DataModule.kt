@@ -9,8 +9,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.geodeContainer
-import dev.geode.ui.SettingsForOldScreens
-import dev.geode.ui.UserDataRepository
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
@@ -31,9 +29,4 @@ object DataModule {
     @Singleton
     @GeneralPrefs
     fun provideGeneralPrefs(prefsFiles: GeodePrefsFiles): SharedPreferences = prefsFiles.general
-
-    /** The App UI's settings as the old screens read them, from the Settings store (#17). */
-    @Provides
-    @Singleton
-    fun provideUserDataRepository(settings: SettingsForOldScreens): UserDataRepository = settings
 }

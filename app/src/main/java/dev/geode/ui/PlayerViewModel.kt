@@ -1,30 +1,60 @@
 package dev.geode.ui
 
+import android.app.Application
 import android.net.Uri
-import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
-import androidx.media3.common.util.UnstableApi
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.di.PlayerSessionProvider
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
+import dev.geode.playback.EngineFailureNotices
+import dev.geode.playback.PlaybackEngine
 import dev.geode.render.SceneFactory
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@OptIn(UnstableApi::class)
+/**
+ * The old player screens over Playback's store (#17), plus the App UI's hold on the engine, the
+ * engine-failure banner, and the fresh start the live analysis and the export's analysis get on a new song.
+ *
+ * This ViewModel is created unconditionally by `AppRoot` and every Geode ViewModel shares the
+ * Activity's store, so [onCleared] runs exactly once, when the whole UI is going away — the moment
+ * the engine hold and the failure subscription are released.
+ */
 @HiltViewModel
 class PlayerViewModel
     @Inject
     constructor(
-        private val sessions: PlayerSessionProvider,
+        private val application: Application,
         private val playback: OldScreenPlayback,
         private val library: OldScreenLibrary,
+        private val settings: SettingsForOldScreens,
+        private val export: ExportController,
+        private val analysis: TrackAnalysisController,
     ) : ViewModel() {
-        private val session: PlayerSession = sessions.get()
+        // The engine's UI hold, kept for the App UI's lifetime; the live Visual holds it per bind too.
+        private val engineSession = PlaybackEngine.acquireForUi(application)
+
+        private val engine = engineSession.analysis
+
+        // Failures caught at the native bridge reach the same playback-notice banner (ADR-0004).
+        private val _playbackNotice = MutableStateFlow<String?>(null)
+
+        val playbackNotice: StateFlow<String?> = _playbackNotice
+
+        private val engineFailureNotices =
+            EngineFailureNotices(show = { message -> viewModelScope.launch { _playbackNotice.value = application.getString(message) } })
+
+        init {
+            followPlayback()
+        }
 
         // Playback: every call goes to Playback's app-scoped store, and what is shown is its state (#17).
 
@@ -34,13 +64,9 @@ class PlayerViewModel
 
         val abLoop: StateFlow<AbLoop?> get() = playback.abLoop
 
-        val playbackNotice: StateFlow<String?> get() = session.playbackNotice
-
         val historyTick: StateFlow<Int> get() = playback.historyTick
 
         val favourites: StateFlow<Set<TrackId>> get() = library.favourites
-
-        val lyrics: StateFlow<Lyrics?> get() = session.lyrics
 
         val sleepTimerRemaining: StateFlow<Millis?> get() = playback.sleepTimerRemaining
 
@@ -50,8 +76,8 @@ class PlayerViewModel
 
         /** Remembers [minutes] as the timer's last length, as the old player did, and starts it. */
         fun startSleepTimer(minutes: Int) {
-            val prefs = session.playerPrefs.value
-            if (minutes > 0) session.setPlayerPrefs(prefs.copy(sleepTimerMinutes = minutes))
+            val prefs = settings.prefs.value
+            if (minutes > 0) settings.setPlayerPrefs(prefs.copy(sleepTimerMinutes = minutes))
             playback.startSleepTimer(minutes, prefs.sleepFinishTrack)
         }
 
@@ -59,7 +85,7 @@ class PlayerViewModel
 
         fun recentlyPlayed(): List<QueueTrack> = playback.recentlyPlayed()
 
-        fun currentTrackUri(): TrackId? = session.currentTrackUri()
+        fun currentTrackUri(): TrackId? = playback.currentTrack()
 
         fun toggleFavourite(uri: TrackId? = null) {
             (uri ?: currentTrackUri())?.let(library::toggleFavourite)
@@ -103,7 +129,9 @@ class PlayerViewModel
 
         fun seekTo(fraction: Float) = playback.seekTo(fraction)
 
-        fun clearPlaybackNotice() = session.clearPlaybackNotice()
+        fun clearPlaybackNotice() {
+            _playbackNotice.value = null
+        }
 
         fun startExport(
             aspect: ExportAspect,
@@ -113,7 +141,7 @@ class PlayerViewModel
             loopSafe: Boolean = false,
             range: ExportRange? = null,
             codec: ExportCodec = ExportCodec.H264,
-        ) = session.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, codec)
+        ) = export.startExport(aspect, fps, sceneFactory, destination, loopSafe, range, codec)
 
         fun startLoopRender(
             aspect: ExportAspect,
@@ -125,14 +153,25 @@ class PlayerViewModel
             drift: dev.geode.export.TimeOfDayDrift,
             audioClips: List<Uri>,
             destination: Uri? = null,
-        ) = session.startLoopRender(aspect, codec, fps, sceneFactory, loopMs, crossfadeMs, drift, audioClips, destination)
+        ) = export.startLoopRender(aspect, codec, fps, sceneFactory, loopMs, crossfadeMs, drift, audioClips, destination)
 
-        /**
-         * This ViewModel owns the session's teardown. `AppRoot` creates it unconditionally and
-         * every Geode ViewModel shares the Activity's store, so this runs exactly once, when the
-         * whole UI is going away — see [dev.geode.di.PlayerSessionProvider].
-         */
+        /** A new song: the live analysis starts afresh and the export's cached analysis is dropped. */
+        private fun followPlayback() {
+            viewModelScope.launch {
+                playback.state
+                    .map { OldScreenModels.queueOf(it.player)?.current?.id }
+                    .distinctUntilChanged()
+                    .collect { onTrackChanged() }
+            }
+        }
+
+        private fun onTrackChanged() {
+            engine.reset()
+            analysis.timeline = null
+        }
+
         override fun onCleared() {
-            sessions.shutdown()
+            engineFailureNotices.close()
+            PlaybackEngine.releaseUi()
         }
     }
