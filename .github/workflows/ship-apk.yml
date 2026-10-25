@@ -21,13 +21,23 @@ on:
   push:
     branches:
       - main
+    # Every merged PR that changes shipped code ships a release. The native
+    # engine, the design system and the feature modules are as much of the app
+    # as `app/` is, so leaving them out silently shipped nothing for a merge
+    # that changed what users see and hear.
     paths:
       - "app/**"
+      - "core/**"
+      - "design/**"
       - "engine/**"
+      - "feature/**"
+      - "tools/**"
+      - "config/**"
       - "build-logic/**"
       - "gradle/**"
       - "*.gradle.kts"
       - "gradle.properties"
+      - "CMakeLists.txt"
       - ".github/workflows/ship-apk.yml"
 
 permissions:
