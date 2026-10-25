@@ -44,6 +44,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import dev.geode.design.element.LocalElementTokens
+import dev.geode.design.element.partContent
 import dev.geode.design.theme.LocalFontColor
 import dev.geode.design.theme.LocalReducedMotion
 import dev.geode.design.theme.StoneComponent
@@ -65,7 +67,6 @@ fun CrystalButton(
     compact: Boolean = false,
     content: @Composable RowScope.() -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
     val interaction = rememberStoneInteraction()
     val state = rememberStoneState(interaction, enabled = enabled)
     val component =
@@ -91,7 +92,8 @@ fun CrystalButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            val label = (LocalFontColor.current ?: cs.onSurface).copy(alpha = if (enabled) 1f else CrystalAlpha.DISABLED_CONTENT)
+            val onPart = LocalFontColor.current ?: partContent(LocalElementTokens.current.colors, component, state)
+            val label = onPart.copy(alpha = if (enabled) 1f else CrystalAlpha.DISABLED_CONTENT)
             CompositionLocalProvider(LocalContentColor provides label) {
                 ProvideTextStyle(MaterialTheme.typography.labelLarge.copy(letterSpacing = CrystalLetterSpacing.Button)) {
                     content()
@@ -320,7 +322,6 @@ fun CrystalSegmented(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cs = MaterialTheme.colorScheme
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(CrystalSpacing.SegmentGap)) {
         options.forEachIndexed { i, label ->
             val sel = i == selected
@@ -347,9 +348,9 @@ fun CrystalSegmented(
                     style = MaterialTheme.typography.labelMedium,
                     textAlign = TextAlign.Center,
                     fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
-                    color =
-                        (LocalFontColor.current ?: cs.onSurface)
-                            .copy(alpha = if (sel) 1f else CrystalAlpha.UNSELECTED_CONTENT),
+                    // Full strength on the pebble: dimming dark text on a lit chip would cost it AA, and the
+                    // chip's own colour and the weight already mark the selection.
+                    color = LocalFontColor.current ?: partContent(LocalElementTokens.current.colors, StoneComponent.CHIP, state),
                 )
             }
         }
