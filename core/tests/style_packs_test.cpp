@@ -304,6 +304,96 @@ TEST(ShippedStylePacks, EveryFeedbackStyleNamesAWarpStageThatShips) {
     EXPECT_GE(looped, 1);
 }
 
+TEST(StyleManifest, ReadsTheImagesItShips) {
+    std::vector<packs::PackProblem> problems;
+    const auto pack = manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [
+        {"name": "paper", "file": "paper.png", "wrap": "mirror", "filter": "mipmap"},
+        {"name": "fold_ramp", "file": "ramp.png", "wrap": "clamp", "filter": "nearest"},
+        {"name": "grain2", "file": "grain.png"},
+        {"name": "dust", "file": "dust.png", "wrap": "repeat", "filter": "linear"}]})", problems);
+    ASSERT_TRUE(pack.has_value()) << (problems.empty() ? "" : problems.front().detail);
+    ASSERT_EQ(pack->textures.size(), 4u);
+    const packs::TextureSpec& paper = pack->textures[0];
+    EXPECT_EQ(paper.name, "paper");
+    EXPECT_EQ(paper.path, "styles/x/paper.png");
+    EXPECT_EQ(paper.wrap, packs::TextureWrap::Mirror);
+    EXPECT_EQ(paper.filter, packs::TextureFilter::Mipmap);
+    EXPECT_EQ(pack->textures[1].path, "styles/x/ramp.png");
+    EXPECT_EQ(pack->textures[1].wrap, packs::TextureWrap::Clamp);
+    EXPECT_EQ(pack->textures[1].filter, packs::TextureFilter::Nearest);
+    // Repeat and linear when the pack does not say.
+    EXPECT_EQ(pack->textures[2].wrap, packs::TextureWrap::Repeat);
+    EXPECT_EQ(pack->textures[2].filter, packs::TextureFilter::Linear);
+    EXPECT_EQ(pack->textures[3].wrap, packs::TextureWrap::Repeat);
+    EXPECT_EQ(pack->textures[3].filter, packs::TextureFilter::Linear);
+    const auto none = manifest("y", R"({"version": 1, "id": "y", "label": "Y", "family": "shader"})", problems);
+    ASSERT_TRUE(none.has_value());
+    EXPECT_TRUE(none->textures.empty());
+    const auto empty = manifest("z", R"({"version": 1, "id": "z", "label": "Z", "family": "shader", "textures": []})", problems);
+    ASSERT_TRUE(empty.has_value());
+    EXPECT_TRUE(empty->textures.empty());
+    EXPECT_TRUE(problems.empty());
+}
+
+TEST(StyleManifest, RejectsBadImages) {
+    const char* bad[] = {
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": {"name": "a", "file": "a.png"}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "plate", "parameters": {"mode": 1}, "textures": []})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png"},
+            {"name": "b", "file": "b.png"}, {"name": "c", "file": "c.png"}, {"name": "d", "file": "d.png"}, {"name": "e", "file": "e.png"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "Paper", "file": "a.png"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "2d", "file": "a.png"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a-b", "file": "a.png"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "../y/a.png"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png", "wrap": "tile"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png", "wrap": 1}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png", "filter": "cubic"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png", "filter": true}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png"},
+            {"name": "a", "file": "b.png"}]})",
+    };
+    for (const char* text : bad) {
+        std::vector<packs::PackProblem> problems;
+        EXPECT_FALSE(manifest("x", text, problems)) << text;
+        EXPECT_EQ(onlyError(problems), packs::PackError::BadValue) << text;
+    }
+    const char* incomplete[] = {
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"file": "a.png"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": ""}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": ["a.png"]})",
+    };
+    for (const char* text : incomplete) {
+        std::vector<packs::PackProblem> problems;
+        EXPECT_FALSE(manifest("x", text, problems)) << text;
+        EXPECT_EQ(onlyError(problems), packs::PackError::MissingField) << text;
+    }
+}
+
+TEST(StylePackPaths, AnImageIsSampledByItsNameInPascalCase) {
+    EXPECT_EQ(packs::textureUniform("paper"), "uImagePaper");
+    EXPECT_EQ(packs::textureUniform("fold_ramp"), "uImageFoldRamp");
+    EXPECT_EQ(packs::textureUniform("grain2"), "uImageGrain2");
+    EXPECT_EQ(packs::textureUniform("a_2b"), "uImageA2b");
+    EXPECT_EQ(packs::textureUniform("z"), "uImageZ");
+}
+
+TEST(ShippedStylePacks, EveryImageAStyleNamesShipsAsAPng) {
+    const auto registry = shipped();
+    int images = 0;
+    for (const packs::StylePack& pack : registry.styles()) {
+        for (const packs::TextureSpec& texture : pack.textures) {
+            ++images;
+            EXPECT_EQ(pack.family, std::string(styles::family::kShader)) << pack.id;
+            const auto bytes = readShipped(texture.path);
+            ASSERT_TRUE(bytes.has_value()) << texture.path;
+            EXPECT_EQ(bytes->substr(0, 8), std::string("\x89PNG\r\n\x1a\n", 8)) << texture.path;
+        }
+    }
+    // At least one shipping Style samples its own image, so the path runs on every device.
+    EXPECT_GE(images, 1);
+}
+
 // ---- families and the index ----------------------------------------------------------------------
 
 TEST(StyleFamilies, ReadsTypesRangesAndDefaults) {

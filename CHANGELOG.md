@@ -11,6 +11,20 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Style packs ship their own images (#391).** A shader Style may declare
+  up to four PNGs in its folder under `textures`, each with a wrap
+  (`repeat`, `mirror`, `clamp`) and a filter (`linear`, `nearest`,
+  `mipmap`), and sample them as `uImage<Name>` with no code outside its
+  shader. The engine decodes them with the platform's image decoder; the
+  pack check and the render check hold them to the format. Origami Peaks
+  is now folded from paper drawn by `tools/style_textures/generate.py`.
+
+- **Renders keep time with the sound (#302).** The levels a Render draws
+  are the analysis hop nearest each frame, no longer half a window early;
+  the tempo a Render reports is the one the track settled on, not its last
+  hop's; and an analysis read back from the cache draws exactly what the
+  fresh one did.
+
 - **Reload the MilkDrop preset that is playing (#382).** On the MilkDrop
   screen, the preset the Visual shows has a reload button that loads it
   again from its file, so a fix made to an imported preset can be checked
