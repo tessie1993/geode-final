@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "mandala_cavern",
+  "label": "Mandala Cavern",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "detail": "march",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactions": [
+    { "signal": "bass", "target": "travel", "amount": 0.3, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "hit", "target": "edge", "amount": 0.25, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "mid", "target": "swirl", "amount": 0.15, "riseMs": 30, "fallMs": 250, "curve": "linear" }
+  ],
+  "effects": ["streaks", "caps"],
+  "tiers": {
+    "eased": { "steps": 0.85 },
+    "reduced": { "steps": 0.7, "off": ["streaks"] },
+    "minimal": { "steps": 0.55, "off": ["streaks", "caps"] }
+  }
+}

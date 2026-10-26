@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "geode/viz/SharedEffects.hpp"
+
 namespace geode::viz {
 
 bool TrailPass::create(const ShaderSource& assets, ProgramBinaryCache* cache, const std::string& fadeVert, std::string* error) {
@@ -60,8 +62,9 @@ void TrailPass::drawTrailWarp(const SceneParams& p, float retention, float timeS
     glBindTexture(GL_TEXTURE_2D, trail_.tex());
     glUniform1i(trailUniforms_.loc("uPrev"), 0);
     glUniform1f(trailUniforms_.loc("uDecay"), warpDecay(retention, dt));
-    glUniform1f(trailUniforms_.loc("uZoom"), p.trailZoom);
-    glUniform1f(trailUniforms_.loc("uWarp"), p.trailWarp);
+    // Zoom and warp are tuned per 60 fps frame; this frame moves by its share of them.
+    glUniform1f(trailUniforms_.loc("uZoom"), sharedfx::echoZoom(p.trailZoom, dt));
+    glUniform1f(trailUniforms_.loc("uWarp"), sharedfx::echoWarp(p.trailWarp, dt));
     glUniform1f(trailUniforms_.loc("uTime"), timeSeconds);
     glBindVertexArray(quadVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);

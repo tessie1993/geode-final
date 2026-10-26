@@ -1,7 +1,8 @@
 package dev.geode.feature.settings.handlers
 
 import dev.geode.engine.types.Millis
-import dev.geode.feature.settings.api.AmbientMode
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.BackgroundSettings
@@ -9,7 +10,6 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCodec
@@ -31,8 +31,12 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.ThemeMode
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -214,6 +218,18 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `tilt is kept by name in its own key, Subtle when nothing is stored`() {
+        assertEquals("SUBTLE", newKeysAtDefaults["gui_tilt"])
+        for (amount in TiltAmount.entries) {
+            val values = SettingsValues(behavior = BehaviorSettings(tilt = amount))
+            val stored = SettingsCodec.encode(values)
+            assertEquals(amount.name, stored["gui_tilt"])
+            assertEquals(amount, SettingsCodec.decode(stored).behavior.tilt)
+        }
+        assertEquals(TiltAmount.SUBTLE, SettingsCodec.decode(mapOf("gui_tilt" to "SIDEWAYS")).behavior.tilt)
+    }
+
+    @Test
     fun `the keys written since the old files are in no old file`() {
         assertTrue(newKeysAtDefaults.isNotEmpty())
         assertTrue(newKeysAtDefaults.keys.none { key -> SettingsKeys.LEGACY_FILES.values.any { key in it } })
@@ -253,6 +269,73 @@ class SettingsCodecTest {
         assertFalse(values.export.finishedAlerts)
         assertEquals(ExportQuality.QHD1440, values.export.quality)
         assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `a surface's own quality and frame rate are kept by name in keys of their own`() {
+        val stored =
+            today + newKeysAtDefaults +
+                mapOf(
+                    "visual_quality_wallpaper" to "SAVER",
+                    "visual_frame_rate_wallpaper" to "FPS30",
+                    "visual_quality_pip" to "BALANCED",
+                    "visual_frame_rate_screen_saver" to "FPS60",
+                    "visual_quality_visual" to "HIGH",
+                    "visual_frame_rate_visual" to "SCREEN_MAX",
+                )
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(
+            mapOf(
+                VisualSurface.WALLPAPER to VisualQuality.SAVER,
+                VisualSurface.PICTURE_IN_PICTURE to VisualQuality.BALANCED,
+                VisualSurface.VISUAL to VisualQuality.HIGH,
+            ),
+            values.performance.surfaceQuality,
+        )
+        assertEquals(
+            mapOf(
+                VisualSurface.WALLPAPER to VisualFrameRate.FPS30,
+                VisualSurface.SCREEN_SAVER to VisualFrameRate.FPS60,
+                VisualSurface.VISUAL to VisualFrameRate.SCREEN_MAX,
+            ),
+            values.performance.surfaceFrameRate,
+        )
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `a surface that follows the shared setting has no key, and odd values follow it too`() {
+        val stored = SettingsCodec.encode(SettingsValues())
+        val surfaceKeys =
+            listOf(
+                "visual_quality_visual",
+                "visual_quality_wallpaper",
+                "visual_quality_pip",
+                "visual_quality_screen_saver",
+                "visual_frame_rate_visual",
+                "visual_frame_rate_wallpaper",
+                "visual_frame_rate_pip",
+                "visual_frame_rate_screen_saver",
+            )
+
+        for (key in surfaceKeys) assertTrue(key, key in stored && stored[key] == null)
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { keys -> keys.any { it in surfaceKeys } })
+        val odd = SettingsCodec.decode(mapOf("visual_quality_wallpaper" to "ULTRA", "visual_frame_rate_pip" to 30))
+        assertEquals(PerformanceSettings(), odd.performance)
+    }
+
+    @Test
+    fun `the frame rate starts at 60, and a stored Screen max is still the screen's maximum`() {
+        assertEquals("FPS60", SettingsCodec.encode(SettingsValues())["visual_frame_rate"])
+        assertEquals(VisualFrameRate.FPS60, SettingsCodec.decode(emptyMap()).performance.visualFrameRate)
+
+        val screenMax = SettingsCodec.decode(mapOf("visual_frame_rate" to "SCREEN_MAX"))
+
+        assertEquals(VisualFrameRate.SCREEN_MAX, screenMax.performance.visualFrameRate)
+        assertEquals(VisualFrameRate.SCREEN_MAX, screenMax.performance.frameRateFor(VisualSurface.WALLPAPER))
+        assertEquals("SCREEN_MAX", SettingsCodec.encode(screenMax)["visual_frame_rate"])
     }
 
     @Test
@@ -301,57 +384,42 @@ class SettingsCodecTest {
     }
 
     @Test
-    fun `the ambient mode is kept by name and read back`() {
-        for (mode in AmbientMode.entries) {
-            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(ambientMode = mode)))
+    fun `the theme mode is kept by name and read back`() {
+        for (mode in ThemeMode.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(themeMode = mode)))
 
-            assertEquals(mode.name, stored["gui_ambient_mode"])
-            assertEquals(mode, SettingsCodec.decode(stored).look.ambientMode)
+            assertEquals(mode.name, stored["gui_theme_mode"])
+            assertEquals(mode, SettingsCodec.decode(stored).look.themeMode)
         }
     }
 
     @Test
-    fun `the Element is kept by name and read back`() {
-        for (element in Element.entries) {
-            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(element = element)))
-
-            assertEquals(element.name, stored["gui_element"])
-            assertEquals(element, SettingsCodec.decode(stored).look.element)
-        }
+    fun `a missing or unknown theme mode follows the phone`() {
+        assertEquals(ThemeMode.SYSTEM, SettingsCodec.decode(today).look.themeMode)
+        assertEquals(ThemeMode.SYSTEM, SettingsCodec.decode(mapOf("gui_theme_mode" to "SEPIA")).look.themeMode)
+        assertEquals(ThemeMode.SYSTEM, SettingsCodec.decode(mapOf("gui_theme_mode" to 2)).look.themeMode)
     }
 
     @Test
-    fun `a missing or unknown ambient mode loads as Drifting`() {
-        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(today).look.ambientMode)
-        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to "Wobbling")).look.ambientMode)
-        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to 2)).look.ambientMode)
-        assertEquals("DRIFTING", SettingsCodec.encode(SettingsValues())["gui_ambient_mode"])
+    fun `reduce transparency is kept and read back, off by default`() {
+        val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(reduceTransparency = true)))
+
+        assertEquals(true, stored["gui_reduce_transparency"])
+        assertTrue(SettingsCodec.decode(stored).look.reduceTransparency)
+        assertFalse(SettingsCodec.decode(today).look.reduceTransparency)
     }
 
     @Test
-    fun `the ambient mode is new, so it is read from no old file`() {
-        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_ambient_mode" in it })
+    fun `the theme mode and reduce transparency are new, so they are read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_theme_mode" in it || "gui_reduce_transparency" in it })
     }
 
     @Test
-    fun `a forest theme id loads as the Element that replaced it`() {
-        fun loaded(id: String) = SettingsCodec.decode(mapOf("gui_element" to id)).look.element
+    fun `the retired Element and Ambient are removed when settings are written`() {
+        val stored = SettingsCodec.encode(SettingsCodec.decode(mapOf("gui_element" to "WATER", "gui_ambient_mode" to "STILL")))
 
-        assertEquals(Element.WOOD, loaded("DeepForest"))
-        assertEquals(Element.BIOLUMINESCENCE, loaded("NightForest"))
-        assertEquals(Element.STONE, loaded("EarthLichen"))
-    }
-
-    @Test
-    fun `a missing or unknown Element loads as Water`() {
-        assertEquals(Element.WATER, SettingsCodec.decode(today).look.element)
-        assertEquals(Element.WATER, SettingsCodec.decode(mapOf("gui_element" to "Lapis")).look.element)
-        assertEquals(Element.WATER, SettingsCodec.decode(mapOf("gui_element" to 2)).look.element)
-    }
-
-    @Test
-    fun `the Element is new, so it is read from no old file`() {
-        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_element" in it })
+        assertTrue(stored.containsKey("gui_element") && stored["gui_element"] == null)
+        assertTrue(stored.containsKey("gui_ambient_mode") && stored["gui_ambient_mode"] == null)
     }
 
     @Test
@@ -480,6 +548,26 @@ class SettingsCodecTest {
         assertEquals(all.size, all.toSet().size)
         assertTrue(today.keys.all { it in all })
         assertEquals(setOf("geode-prefs", "geode-player", "geode-audiofx", "geode-library"), SettingsKeys.LEGACY_FILES.keys)
+    }
+
+    @Test
+    fun `the start look is kept in its own new key, and anything odd starts on the last look`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "start_look" in it })
+        val looks =
+            mapOf(
+                "style:cymatics" to StartLook.Style(SceneId("cymatics")),
+                "preset:Party: wall" to StartLook.Preset(PresetId("Party: wall")),
+            )
+        for ((stored, look) in looks) {
+            val values = SettingsCodec.decode(mapOf("start_look" to stored))
+            assertEquals(look, values.behavior.startLook)
+            assertEquals(stored, SettingsCodec.encode(values)["start_look"])
+        }
+        assertEquals(null, SettingsCodec.encode(SettingsValues())["start_look"])
+        assertTrue("start_look" in SettingsCodec.encode(SettingsValues()))
+        for (odd in listOf<Any>("random", "style:", "preset: ", 7)) {
+            assertEquals(StartLook.Last, SettingsCodec.decode(mapOf("start_look" to odd)).behavior.startLook)
+        }
     }
 
     private fun idOf(quality: ExportQuality): Any? =

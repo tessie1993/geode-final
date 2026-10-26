@@ -6,10 +6,11 @@ import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.analysis.TimelineFrame
 import dev.geode.data.ExportDefaults
-import dev.geode.editor.KeyframeSheet
-import dev.geode.render.AdsrConfig
-import dev.geode.render.LfoConfig
-import dev.geode.render.scene.SceneParams
+import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.export.DriftStop
+import dev.geode.feature.customization.core.BuiltInStyles
+import dev.geode.feature.customization.core.Defaults
+import dev.geode.visuals.EngineSnapshots
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -59,13 +60,9 @@ class ExportTempoRobolectricTest {
 
             override val guiPrefs = GuiPrefs()
             override val exportDefaults = ExportDefaults()
-            override val sceneParams = SceneParams()
 
-            override fun lfoConfigs(): List<LfoConfig> = emptyList()
-
-            override fun adsrConfigs(): List<AdsrConfig> = emptyList()
-
-            override fun keyframes() = KeyframeSheet()
+            override fun look(drift: DriftStop): CustomizationSnapshot =
+                EngineSnapshots.forRender(Defaults.customization(BuiltInStyles.catalogue.manifestOf(BuiltInStyles.all[0].id)), null)
         }
 
     private val export =

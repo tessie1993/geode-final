@@ -4,6 +4,7 @@
 
 #include <array>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -14,8 +15,11 @@
 #include "geode/viz/Adsr.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
+#include "geode/viz/GravityField.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
+#include "geode/viz/Layers.hpp"
+#include "geode/viz/HdrPass.hpp"
 #include "geode/viz/Lfo.hpp"
 #include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
@@ -28,7 +32,11 @@
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
 #include "geode/render/ShaderSource.hpp"
+#ifdef GEODE_STYLE_HOT_RELOAD
+#include "geode/viz/StyleLab.hpp"
+#endif
 #include "geode/viz/ThermalGovernor.hpp"
+#include "geode/viz/TileFrame.hpp"
 #include "geode/viz/TouchField.hpp"
 #include "geode/viz/TrailPass.hpp"
 #include "geode/viz/VisualSafety.hpp"
@@ -36,10 +44,12 @@
 
 namespace geode::viz {
 
-// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> target.
+// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> bloom and tonemap ->
+// No-flash limiter -> target. Everything before the tonemap is HDR (ToneMap.hpp).
 class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
+    static constexpr int kPcmWindowFrames = 576;
 
     Renderer(AAssetManager* assets, std::string cacheDir);
     ~Renderer();
@@ -49,12 +59,15 @@ public:
     bool setParam(const std::string& key, float value);
     void setFeatures(const GeodeFeatureFrame& features);
     void setReducedMotion(bool on) { reducedMotion_.store(on, std::memory_order_relaxed); }
-    void setLayer(const std::string& sceneId, float mix, int blendOrdinal);
     void setTransition(const std::string& id, int64_t durationMs);
     void beginParamMorph(float seconds);
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
-    void pushPcm(const float* samples, int count);
+    // The phone's down in screen space, latest-wins (GravityField); 0, 0, 0 says there is none.
+    void submitGravity(float x, float y, float z) { gravityField_.submit(x, y, z); }
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
+    // The person's "smear the Visual with a finger" (Settings): whether a Style that does not draw the
+    // strokes itself gets them as the shared ripple smear, and how strongly. Off until set.
+    void setTouchSmear(bool on, float strength);
     void loadMilkPreset(const std::string& path);
     void reloadMilkPreset();
     void setMilkTextureDir(const std::string& dir);
@@ -65,7 +78,8 @@ public:
     // This frame's evaluated Customization (geode_viz_render runs the ReactionGraph), or nullptr while
     // no snapshot carries a plan; taken at the next frame. The renderer maps it into the active Style's
     // ranges (its pack's Extras) and draws all of it: the Shared core onto every Style and the
-    // composite, the Camera (CameraRig), the Shared core effects (SharedFxPass) and the Style's Extras.
+    // composite, the Camera (CameraRig), the Shared core effects (SharedFxPass), the Style's Extras and
+    // Layer 2 (Layers.hpp), which every Render gets the same way as the live Visual.
     void setCustomization(const mod::Evaluated* evaluated);
     // W00: full-frame overlay/underlay layers, latched here and uploaded to GL textures at the
     // start of the next frame; see CompositePass.hpp for the pass itself. `pixels` is Android's
@@ -80,8 +94,17 @@ public:
     std::string lastError() const;
     bool knows(const std::string& sceneId) const { return registry_.knows(sceneId); }
     std::vector<std::string> availableSceneIds() const { return registry_.availableIds(); }
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Any thread, debug builds only (RendererStyleLab.cpp): the Style lab folder to watch, `<dir>/<id>/`
+    // per Style; "" stops watching.
+    void setStyleLab(const std::string& dir);
+#endif
 
     // GL thread.
+    // The next frame's audio window, interleaved stereo (at most kPcmWindowFrames): handed to every scene
+    // that frame and then dropped, so no window is ever drawn twice. Without one, the scenes fall back to
+    // the features' waveform.
+    void setFramePcm(const float* stereo, int frames);
     void onSurfaceCreated();
     void surfaceChanged(int width, int height);
     bool setScene(const std::string& sceneId);
@@ -110,10 +133,22 @@ private:
     float styleScaleFor(const std::string& sceneId) const;
     Scene* resolveActiveScene();
     SceneParams resolveParams(float dt);
-    void resolveLayerScene();
+    // Layer 2 this frame: what the Customization asks for, through the mixer's fades, and the scene
+    // that draws it (nullptr while there is none).
+    void resolveLayer(float dt);
+    // The id of the Style the plan names `name` (layer::styleHash), or "" for none this build draws.
+    const std::string& layerStyleId(uint32_t name);
+    // Whether Style `id` can be Layer 2 over `activeId`: a Style this build draws, not the active one,
+    // and not MilkDrop, whose one projectM engine is the MilkDrop preset the person picked.
+    bool canBeLayer(const std::string& id, const std::string& activeId) const;
     bool ensureTargets();
     float drawSecondaryTargets(const SceneParams& p, float dt);
-    void bindSecondaryTarget();
+    // Draws Layer 2 into its own target, unless its scene is already drawn as Layer 1 or the outgoing
+    // picture of a transition; its picture is then that target's (layerTexture()).
+    void drawLayerTarget(const SceneParams& p, float dt);
+    GLuint layerTexture() const;
+    // Binds and clears the Layer's or the outgoing Style's target, which the composite then reads.
+    void bindSecondaryTarget(const Framebuffer& target);
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
     // The active Style's picture with the Shared core effects drawn over it, or the scene target as
     // it is while every effect is 0.
@@ -126,8 +161,11 @@ private:
     ExtraValues extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const;
     // Hands a scene this frame's Camera and its Extras before it draws.
     void prepareScene(Scene& scene, const ExtraValues& extras);
+    // What the settled thermal tier lets the Style spend, as its pack declares (#286).
+    quality::Budget qualityFor(const std::string& sceneId) const;
     void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
+    void latchFramePcm();
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
     void wireFlow(Scene& target, const SceneParams& p);
     void applyMilkRequests();
@@ -135,6 +173,13 @@ private:
     void notePresetLoaded(const std::string& path);
     static double monotonicSeconds();
     void fail(const std::string& message);
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // GL thread, from beginFrame: reloads each Style whose lab folder changed.
+    void pollStyleLab();
+    void reloadStyle(const std::string& id, const std::string& folder, const std::string& shaderFile);
+    // Frees a built scene so the next frame builds it again from its pack.
+    void dropScene(const std::string& id);
+#endif
 
     ShaderSource assets_;
     std::string cacheDir_;
@@ -148,10 +193,13 @@ private:
     std::string quadVert_;
 
     TouchField touchField_;
+    GravityField gravityField_;
     TrailPass trailPass_;
     SharedFxPass sharedFx_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
+    // HDR: the composite's target, the bloom and the tonemap (highlight roll-off) into the No-flash candidate.
+    HdrPass hdrPass_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;
@@ -160,6 +208,12 @@ private:
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
     Framebuffer fboB_{"sceneB"};
+    // The outgoing Style's half-size target during a transition (tile::outgoingSize).
+    Framebuffer fboOut_{"sceneOutgoing"};
+    // What the composite reads as its second picture this frame: fboB_ or fboOut_.
+    GLuint secondaryTex_ = 0;
+    // Layer 2's picture, allocated while Layer 2 draws.
+    Framebuffer fboL_{"sceneL"};
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
@@ -170,20 +224,21 @@ private:
     // Empty until the app's first setScene: the app requests its Style (SceneIds.DEFAULT, the one place
     // the default Style is chosen) before every frame, and until then the renderer draws black.
     std::string requestedSceneId_;
-    std::string layerSceneId_;
-    float layerMix_ = 0.5f;
-    int layerBlend_ = static_cast<int>(BlendMode::Screen);
     std::string transitionId_ = "fade";
     int64_t transitionDurationMs_ = 1200;
     std::atomic<bool> reducedMotion_{false};
+    std::atomic<float> touchSmear_{0.0f};
     scale::FrameLoad frameLoad_;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
-    std::vector<float> pcm_;
-    // Never cleared, by design: the scenes keep drawing the last waveform
-    // between pushes.
-    int pcmCount_ = 0;
-    std::vector<float> pcmDeliverScratch_;
+    // The audio window setFramePcm handed over for the next frame, and the one this frame draws: latched in
+    // beginFrame, so every scene of a frame gets the same window and the next frame gets none unless a new
+    // one comes.
+    std::array<float, kPcmWindowFrames * 2> pendingPcm_{};
+    int pendingPcmFrames_ = 0;
+    std::array<float, kPcmWindowFrames * 2> framePcm_{};
+    std::array<float, kPcmWindowFrames> framePcmMono_{};
+    int framePcmFrames_ = 0;
     // W00: overlay/underlay layers. Retained (not just "pending") so a surface recreation can
     // re-arm the dirty flag and re-upload; see onSurfaceCreated() and applyOverlayUploads().
     // Empty = cleared.
@@ -217,6 +272,13 @@ private:
     Scene* activeScene_ = nullptr;
     Scene* outgoingScene_ = nullptr;
     Scene* layerScene_ = nullptr;
+    // The scene Layer 2's target last held, so a new one starts from a clear target, not the old picture.
+    Scene* layerDrawn_ = nullptr;
+    layer::Mixer layerMixer_;
+    layer::Mix frameLayer_;
+    // Layer 2's own parameters this frame: its Style's, without Layer 1's Customization.
+    SceneParams layerParams_;
+    std::map<uint32_t, std::string> layerIds_;
     std::optional<SceneParams> outgoingParams_;
     double transitionStartS_ = 0.0;
     bool sceneJustSwitched_ = false;
@@ -229,6 +291,8 @@ private:
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
     SharedEffects frameEffects_;
+    // The red/blue anaglyph's faded mix (sharedfx::anaglyphMix), stepped once per composite.
+    float anaglyphMix_ = 0.0f;
     std::optional<mod::Evaluated> frameCustomization_;
     CameraRig camera_;
     // The active Style's Extras this frame.
@@ -237,13 +301,17 @@ private:
     mod::FamilyRanges ranges_ = mod::FamilyRanges::sharedCore();
     // Latched once per frame in beginFrame alongside frameFeatures_, so the
     // rest of the frame (composite(), drawSecondaryTargets(), ...) reads a
-    // stable snapshot instead of racing setLayer()/setTransition() on
-    // stateLock_.
-    float frameLayerMix_ = 0.5f;
-    int frameLayerBlend_ = static_cast<int>(BlendMode::Screen);
+    // stable snapshot instead of racing setTransition() on stateLock_.
     std::string frameTransitionId_ = "fade";
     int64_t frameTransitionDurationMs_ = 1200;
     std::string lastError_;
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Under stateLock_.
+    std::string styleLabDir_;
+    // GL thread only.
+    lab::ReloadWatch styleLab_;
+    bool styleLabFailed_ = false;
+#endif
 };
 
 }  // namespace geode::viz

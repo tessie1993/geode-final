@@ -147,7 +147,10 @@ class CustomizeModelTest {
 
     @Test
     fun `zoom, speed and the other multiplicative controls move by ratios, their defaults near the middle`() {
-        val rows = model.shared.values.flatten().associateBy { (it.target as Target.Shared).property }
+        val rows =
+            model.shared.values
+                .flatten()
+                .associateBy { (it.target as Target.Shared).property }
         assertEquals(RATIO_PROPERTIES, rows.filterValues { it.ratio }.keys)
         for (property in RATIO_PROPERTIES) {
             val row = rows.getValue(property)
@@ -234,5 +237,30 @@ class CustomizeModelTest {
         assertTrue(walked.styleHeld)
         assertTrue(walked.canGoBack)
         assertTrue(walked.canGoForward)
+    }
+
+    @Test
+    fun `the controls the Style ignores are greyed out, and only those`() {
+        val ignored = setOf(Target.Shared(SharedProperty.SPEED), Target.Shared(SharedProperty.KALEIDOSCOPE), Target.MacroSlot(0))
+        val shown = CustomizationState(customization).toCustomizeModel(ignored = ignored)
+
+        val speed = shown.shared.getValue(SharedGroup.SPEED_AND_ENERGY).single { it.target == Target.Shared(SharedProperty.SPEED) }
+        assertTrue(speed.ignored)
+        assertFalse(
+            shown.shared.values
+                .flatten()
+                .single { it.target == Target.Shared(SharedProperty.ZOOM) }
+                .ignored,
+        )
+        assertTrue(shown.effects.single { it.property == SharedProperty.KALEIDOSCOPE }.ignored)
+        assertFalse(shown.effects.single { it.property == SharedProperty.MIRROR }.ignored)
+        assertEquals(listOf(true, false, false, false, false, false), shown.macros.map { it.ignored })
+        assertFalse(
+            model.shared.values
+                .flatten()
+                .any { it.ignored } ||
+                model.effects.any { it.ignored } ||
+                model.macros.any { it.ignored },
+        )
     }
 }

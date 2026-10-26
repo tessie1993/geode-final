@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -67,11 +68,13 @@ out vec4 fragColor;
 //
 // `bend` is how far each fold rotates the space before the next one; it is
 // what decides whether the result reads as crystalline or as coral.
+float gFolds;
 float skeleton(vec3 p, float bend, float squash) {
     float trap = 1e9;
     float w = 1.0;
     mat3 turn = rotY(bend) * rotX(bend * 0.62);
-    for (int i = 0; i < NF_FOLDS; i++) {
+    for (int i = 0; i < NF_FOLDS * 2; i++) {
+        if (float(i) >= gFolds) break;
         p = abs(p) - 0.55;
         p = turn * p;
         p *= squash;
@@ -104,6 +107,7 @@ void main() {
     // A spike moves the fold's bend to a new plateau: the structure changes
     // species - crystalline, coral, lattice - and holds there.
     float bend = 0.35 + 0.55 * uFormPhase;
+    gFolds = max(1.0, floor(float(NF_FOLDS) * uXComplexity + 0.5));
     // Kept inside 1.22..1.42. Below it the iteration barely folds and the
     // volume is fog; above it the trap outruns its own scale correction and
     // the structure turns to noise.
@@ -149,7 +153,7 @@ void main() {
             vec3 emit = pal(fract(0.12 + depth * 0.42 + uFormPhase * 0.25 + d * 0.30));
             // The filament highlight: the top of the density range only.
             emit += vec3(1.0) * smoothstep(0.72, 0.98, d) * (0.25 + 0.7 * treb);
-            float sigma = d * (2.6 + 2.2 * swell);
+            float sigma = d * (2.6 + 2.2 * swell) * uXFog;
             // Emission-absorption: the standard front-to-back accumulation, so
             // near dye correctly hides far dye instead of summing with it.
             float a = 1.0 - exp(-sigma * dt);

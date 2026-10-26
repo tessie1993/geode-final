@@ -5,11 +5,12 @@ import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
+import dev.geode.analysis.SignalHold
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
-import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import javax.microedition.khronos.egl.EGLConfig
@@ -59,14 +60,23 @@ class VisualizerRenderer(
     @Volatile
     var reducedMotion: Boolean = false
 
+    /**
+     * Settings' "smear the Visual with a finger": whether a Style that does not draw the finger's
+     * strokes itself (Water does) shows them as the shared ripple smear. Off by default, as in Settings.
+     */
     @Volatile
-    var layerSceneId: SceneId? = null
+    var touchSmear: Boolean = false
 
+    /** How strongly the smear answers a stroke; Settings' smear strength. */
     @Volatile
-    var layerMix: Float = 0.5f
+    var touchSmearStrength: Float = 1f
 
+    /**
+     * Freeze reactions (#366): the Sound signals hold steady while the picture's own motion goes on.
+     * Live only; the MilkDrop preset gets no new samples meanwhile, so it holds too.
+     */
     @Volatile
-    var layerBlend: BlendMode = BlendMode.SCREEN
+    var reactionsHeld: Boolean = false
 
     /** The built-in style behind [transitionId], kept for the settings model; the renderer reads the id. */
     @Volatile
@@ -96,12 +106,16 @@ class VisualizerRenderer(
     @Volatile
     var onStyleDue: () -> Unit = {}
 
+    /**
+     * The live sound: while set, the native renderer reads the features heard now and the stereo
+     * window for the scenes straight from this feed at the start of each frame, on the GL thread, and
+     * [features] is not sent. Null draws [features].
+     */
     @Volatile
-    var pcmProvider: () -> PcmChunk? = { null }
+    var feed: VisualFeed? = null
 
-    /** The live sound's features, read on the GL thread every frame; [features] while it has none. */
-    @Volatile
-    var featureSource: () -> AudioFeatures? = { null }
+    // GL thread only: the feed the native renderer is attached to now.
+    private var attachedFeed: VisualFeed? = null
 
     /**
      * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
@@ -127,11 +141,17 @@ class VisualizerRenderer(
     private var nativeAdsr: List<AdsrConfig>? = null
     private var nativeThermalSampleMs = 0L
 
+    // GL thread only: the performance-hint session that reports each frame's work (#286).
+    private val frameHint = FrameWorkHint(context)
+
     // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
     private val displayEvents = DisplayEvents()
 
     // GL thread only: the engine's count of due Style switches after the last frame.
     private var stylesDue = 0
+
+    // GL thread only: after displayEvents, so the events that fire during a hold are never replayed.
+    private val signalHold = SignalHold()
 
     @Volatile
     private var lastMilkPreset: String? = null
@@ -148,7 +168,10 @@ class VisualizerRenderer(
     }
 
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
-    fun releaseScenes() = nativeViz.destroy()
+    fun releaseScenes() {
+        frameHint.close()
+        nativeViz.destroy()
+    }
 
     fun loadMilkPreset(path: String) {
         lastMilkPreset = path
@@ -175,6 +198,16 @@ class VisualizerRenderer(
         n: Int,
     ) = nativeViz.submitTouchPoints(xy, n)
 
+    /**
+     * The phone's down in screen space (x right, y up, z out of the screen), any length, latest-wins;
+     * `0, 0, 0` says there is no reading. [GravitySource] calls it; the engine smooths it.
+     */
+    fun submitGravity(
+        x: Float,
+        y: Float,
+        z: Float,
+    ) = nativeViz.submitGravity(x, y, z)
+
     fun beginParamMorph(seconds: Float) {
         if (seconds <= 0f) return
         nativeViz.beginParamMorph(seconds)
@@ -185,8 +218,11 @@ class VisualizerRenderer(
         config: EGLConfig?,
     ) {
         ThermalGovernor.attach(appContext)
+        frameHint.open(pacedFps())
         nativeViz.surfaceCreated()
+        styleLab?.attach(appContext, nativeViz)
         attachedSnapshots = null
+        attachedFeed = null
         nativeParams = null
         nativeLfo = null
         nativeAdsr = null
@@ -199,6 +235,7 @@ class VisualizerRenderer(
     ) = nativeViz.surfaceChanged(width, height)
 
     override fun onDrawFrame(gl: GL10?) {
+        val workStart = System.nanoTime()
         nativeViz.setScene(requestedSceneId)
         syncNativeState()
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
@@ -211,7 +248,11 @@ class VisualizerRenderer(
         val due = nativeViz.stylesDue()
         if (due > stylesDue) onStyleDue()
         stylesDue = due
+        frameHint.report(System.nanoTime() - workStart)
     }
+
+    /** The rate the pacer actually draws at: its own cap held to the thermal frame cap. */
+    private fun pacedFps(): Float = FrameCap.effectiveFps(ThermalGovernor.pacedFps, ThermalGovernor.frameCapFps)
 
     private fun syncNativeState() {
         val wanted = snapshots
@@ -223,19 +264,35 @@ class VisualizerRenderer(
             nativeAdsr = null
         }
         if (wanted == null) syncSceneParams()
-        nativeViz.setFeatures(displayEvents.frame(featureSource() ?: features))
+        val live = feed
+        if (live !== attachedFeed) {
+            nativeViz.attachFeed(live)
+            attachedFeed = live
+        }
+        val held = reactionsHeld
+        signalHold.held = held
+        if (live == null) {
+            nativeViz.setFeatures(signalHold.frame(displayEvents.frame(features)))
+        } else {
+            // The feed's frames are held natively, with the audio window MilkDrop is fed, so it holds too.
+            nativeViz.setReactionsHeld(held)
+        }
         nativeViz.setReducedMotion(reducedMotion)
-        nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
+        nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
         nativeViz.setTransition(transitionId, transitionDuration)
-        nativeViz.setPacedFps(ThermalGovernor.pacedFps)
+        // The rate the pacer actually draws at, the thermal frame cap included, so the load scale and
+        // the hint session judge each frame against the time it really has.
+        val paced = pacedFps()
+        nativeViz.setPacedFps(paced)
+        frameHint.retarget(paced)
         nativeViz.setQualityCeiling(qualityCeiling)
         val now = SystemClock.elapsedRealtime()
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
             nativeThermalSampleMs = now
             nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
             nativeViz.setFrameLoad(FramePacer.activeStats())
+            ThermalGovernor.frameCapFps = nativeViz.frameCapFps()
         }
-        pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
     private fun syncSceneParams() {

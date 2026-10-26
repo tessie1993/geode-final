@@ -12,6 +12,7 @@ import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.playback.NativePlayer
 import dev.geode.playback.PlaybackSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -50,6 +51,8 @@ class EngineTuning(
             it.skipSilenceEnabled = playback.skipSilence
             it.setHandleAudioBecomingNoisy(playback.pauseWhenUnplugged)
         }
+        // Geode's own player handles unplugging itself, as ExoPlayer does (#281).
+        (player as? NativePlayer)?.setHandleAudioBecomingNoisy(playback.pauseWhenUnplugged)
         session.replayGain.configure(playback.replayGain.ordinal, playback.replayGainPreamp.value, playback.replayGainClipGuard)
     }
 

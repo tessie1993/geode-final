@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -98,7 +99,7 @@ void main() {
     float treb = clamp(uTrebleSmooth, 0.0, 1.5);
     float swell = clamp(uSwell, 0.0, 1.5);
     // A spike steps the web between 5, 6 and 7 subdivisions and holds it there.
-    float density = 5.0 + floor(uFormPhase * 3.0);
+    float density = xcount(5.0) + floor(uFormPhase * 3.0);
 
     // ---- the field ---------------------------------------------------------
     //

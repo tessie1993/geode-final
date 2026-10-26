@@ -128,6 +128,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -162,13 +163,13 @@ vec4 hexCoords(vec2 uv) {
     return vec4(gv, uv - gv);
 }
 void main() {
-    vec2 uv = view() * (5.0 + uMorph * 6.0);
-    vec4 hc = hexCoords(uv + vec2(0.0, uTime * 0.4));
+    vec2 uv = view() * 5.0 * xm(uXScale);
+    vec4 hc = hexCoords(uv + vec2(0.0, uXFlightTime * 0.4));
     float band = fract(sin(dot(hc.zw, vec2(12.9898, 78.233))) * 43758.5453);
     float e = aband(band) * (0.5 + uEnergy);
     float d = hexDist(hc.xy);
     float cell = smoothstep(0.5, 0.46, d);
-    float edge = smoothstep(0.035, 0.0, abs(d - 0.45));
+    float edge = smoothstep(0.035 / xm(uXEdge), 0.0, abs(d - 0.45));
     vec3 col = pal(band) * (cell * e + edge * (0.25 + uTreble + uBeat * uBeatResponse * 0.3));
     fragColor = vec4(grade(col), 1.0);
 }

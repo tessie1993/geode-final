@@ -1,6 +1,7 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -9,6 +10,14 @@ import dev.geode.feature.customization.api.CameraMoveKind
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.Lane
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LayerLoop
+import dev.geode.feature.customization.api.LoopPreset
+import dev.geode.feature.customization.api.LoopRate
+import dev.geode.feature.customization.api.LoopShape
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.MACRO_REST
 import dev.geode.feature.customization.api.Macro
@@ -53,6 +62,7 @@ class NativePlanTest {
     private val modulatorsAt = reactionsAt + MAX_REACTIONS * REACTION_FLOATS
     private val linksAt = modulatorsAt + MAX_MODULATORS * MODULATOR_FLOATS
     private val automationsAt = linksAt + MAX_MACRO_LINKS * MACRO_LINK_FLOATS
+    private val layerAt = automationsAt + NativePlan.MAX_AUTOMATIONS * NativePlan.AUTOMATION_FLOATS
 
     /** An Automation slot's floats before its steps. */
     private val automationHead = AUTOMATION_FLOATS - MAX_STEPS
@@ -125,13 +135,13 @@ class NativePlanTest {
     @Test
     fun `is exactly the engine's size`() {
         assertEquals(NativePlan.floatCount, plan.size)
-        assertEquals(3900, NativePlan.floatCount)
+        assertEquals(3907, NativePlan.floatCount)
     }
 
     @Test
     fun `starts with the carried mark and the counts, and no Automation when there is none`() {
         assertEquals(listOf(1f, 4f, 4f, 2f, 0f), at(0, NativePlan.HEADER_FLOATS))
-        assertEquals(List(NativePlan.MAX_AUTOMATIONS * NativePlan.AUTOMATION_FLOATS) { 0f }, plan.subList(automationsAt, plan.size))
+        assertEquals(List(NativePlan.MAX_AUTOMATIONS * NativePlan.AUTOMATION_FLOATS) { 0f }, plan.subList(automationsAt, layerAt))
     }
 
     @Test
@@ -330,5 +340,94 @@ class NativePlanTest {
         assertEquals(listOf(1f, MAX_REACTIONS.toFloat(), MAX_MODULATORS.toFloat(), MAX_MACRO_LINKS.toFloat(), 0f), full.subList(0, 5))
         assertEquals(1f, full[linksAt + (MAX_MACRO_LINKS - 1) * MACRO_LINK_FLOATS])
         assertEquals(15f, full[linksAt - 1])
+    }
+
+    @Test
+    fun `ends with Layer 2's Style, blend and influence`() {
+        assertEquals(NativePlan.floatCount, layerAt + NativePlan.LAYER_FLOATS)
+        assertEquals(listOf(0f, LayerBlend.SCREEN.ordinal.toFloat(), 0f), plan.subList(layerAt, plan.size))
+        val layered =
+            NativePlan.encode(customization.copy(layer = Layer(Fixtures.TUNNEL, LayerBlend.DIFFERENCE, LayerInfluence.TINT)))
+        assertEquals(listOf(StyleHash.of(Fixtures.TUNNEL).toFloat(), 7f, 4f), layered.subList(layerAt, layered.size))
+    }
+
+    @Test
+    fun `names a Style the way the engine does`() {
+        assertEquals(3997830, StyleHash.of(SceneId("julia")))
+        assertEquals(15643514, StyleHash.of(SceneId("plasma")))
+        assertEquals(1875268, StyleHash.of(SceneId("")))
+    }
+
+    @Test
+    fun `runs Layer 2's loop as one more Modulator and its Reactions`() {
+        val looped =
+            NativePlan.encode(customization.copy(layer = Layer(Fixtures.TUNNEL, loop = LoopPreset.BREATHE.loop)))
+        assertEquals(listOf(1f, 5f, 5f, 2f, 0f), looped.subList(0, NativePlan.HEADER_FLOATS))
+        val m = modulatorsAt + 4 * MODULATOR_FLOATS
+        assertEquals(listOf(0f, Wave.SINE.ordinal.toFloat(), 0.5f, 1f), looped.subList(m, m + 4))
+        assertEquals(listOf(0f, 0f, 0f, 0.25f, 1f, 8f), looped.subList(m + 10 + MAX_STEPS, m + MODULATOR_FLOATS))
+        val r = reactionsAt + 4 * REACTION_FLOATS
+        assertEquals(
+            listOf(
+                NativePlan.SOURCE_MODULATOR,
+                4f,
+                NativePlan.TARGET_SHARED,
+                SharedProperty.LAYER_OPACITY.ordinal.toFloat(),
+                0f,
+                0.6f,
+                1f,
+                0f,
+                1f,
+                ResponseCurve.LINEAR.ordinal.toFloat(),
+                0.15f,
+                0f,
+            ),
+            looped.subList(r, r + REACTION_FLOATS),
+        )
+    }
+
+    @Test
+    fun `a loop with Layer 2 off runs nothing`() {
+        val off = NativePlan.encode(customization.copy(layer = Layer(loop = LoopPreset.BREATHE.loop)))
+        assertEquals(plan, off)
+    }
+
+    @Test
+    fun `the loop's shapes and rates reach the Modulator`() {
+        val id = ModulatorId(9)
+        val steps = LayerLoops.modulator(LayerLoop(LoopShape.BEAT_STEPS, LoopRate.TWO_BEATS), id)
+        assertEquals(ModulatorShape.StepSequencer(LayerLoops.STEPS, LayerLoops.BEAT_FALLBACK, beatSync = true), steps.shape)
+        assertEquals(0.5f, steps.rate)
+        val slow = LayerLoops.modulator(LayerLoop(LoopShape.PING_PONG, LoopRate.EIGHT_SECONDS), id)
+        assertEquals(ModulatorShape.Lfo(Wave.TRIANGLE, Millis(8000), beatSync = false), slow.shape)
+        assertEquals(Modulator.DEFAULT_RATE, slow.rate)
+        val triangle = LayerLoops.modulator(LayerLoop(LoopShape.TRIANGLE, LoopRate.FOUR_SECONDS), id)
+        assertEquals(ModulatorShape.Lfo(Wave.TRIANGLE, Millis(4000), beatSync = false), triangle.shape)
+        val all = setOf(LoopTarget.SWAP, LoopTarget.OPACITY, LoopTarget.INFLUENCE)
+        val eased = LayerLoops.reactions(LayerLoop(LoopShape.PING_PONG, LoopRate.ONE_BAR, 0.4f, all), id)
+        assertEquals(LoopTarget.entries.map { Target.Shared(it.property) }, eased.map { it.target })
+        assertEquals(listOf(true, true, false), eased.map { it.invert })
+        assertEquals(setOf(ResponseCurve.S_CURVE), eased.map { it.curve }.toSet())
+        assertEquals(setOf(0.4f), eased.map { it.amount }.toSet())
+        assertEquals(setOf(Millis.ZERO), eased.map { it.fall }.toSet())
+        val glided = LayerLoops.reactions(LayerLoop(LoopShape.BEAT_STEPS, LoopRate.ONE_BAR, 1f, setOf(LoopTarget.SWAP)), id)
+        assertEquals(LayerLoops.GLIDE, glided.single().rise)
+        assertEquals(LayerLoops.GLIDE, glided.single().fall)
+        assertEquals(ReactionSource.Generated(id), glided.single().source)
+    }
+
+    @Test
+    fun `a full plan makes room for the loop`() {
+        val crowded =
+            customization.copy(
+                reactions = List(MAX_REACTIONS) { reactions[0].copy(id = ReactionId(it)) },
+                modulators = List(MAX_MODULATORS) { modulators[3].copy(id = ModulatorId(it)) },
+                layer = Layer(Fixtures.TUNNEL, loop = LayerLoop(targets = setOf(LoopTarget.OPACITY, LoopTarget.SWAP))),
+            )
+        val full = NativePlan.encode(crowded)
+        assertEquals(listOf(MAX_REACTIONS.toFloat(), MAX_MODULATORS.toFloat()), full.subList(1, 3))
+        val lastReaction = reactionsAt + (MAX_REACTIONS - 1) * REACTION_FLOATS
+        assertEquals(SharedProperty.LAYER_SWAP.ordinal.toFloat(), full[lastReaction + 3])
+        assertEquals((MAX_MODULATORS - 1).toFloat(), full[lastReaction + 1])
     }
 }

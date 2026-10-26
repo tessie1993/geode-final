@@ -7,8 +7,8 @@ precision highp float;
 in vec2 vUv;
 uniform highp sampler2D uPrev;
 uniform float uDecay;   // 0..1 kept energy per frame
-uniform float uZoom;    // +in / -out per frame (small, e.g. 0.01)
-uniform float uWarp;    // sine warp amplitude 0..1
+uniform float uZoom;    // +in / -out this frame (sharedfx::echoZoom: the 60 fps amount, scaled by dt)
+uniform float uWarp;    // sine warp amplitude this frame (sharedfx::echoWarp, scaled by dt)
 uniform float uTime;
 out vec4 fragColor;
 void main() {
@@ -22,5 +22,8 @@ void main() {
         ) * uWarp * 0.004;
     }
     vec3 prev = texture(uPrev, clamp(uv, vec2(0.001), vec2(0.999))).rgb;
+    // The scene target is HDR (RGBA16F) where the device allows: a stray NaN or runaway value
+    // must not live on in the feedback, so it is bounded as ToneMap.hpp's kHdrCeiling says.
+    prev = any(isnan(prev)) ? vec3(0.0) : clamp(prev, 0.0, 64.0);
     fragColor = vec4(prev * uDecay, 1.0);
 }

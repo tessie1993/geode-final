@@ -5,5 +5,12 @@
   "family": "mycelium",
   "parameters": {
     "reaim": 0.15
-  }
+  },
+  "extras": [
+    { "name": "reach", "min": 0, "max": 2, "default": 1 },
+    { "name": "turn", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ]
 }

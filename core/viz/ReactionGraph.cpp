@@ -325,6 +325,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
     }
     for (size_t e = 0; e < kExtraCount; ++e) out_.extras[e] = unit(extras[e]);
     for (size_t k = 0; k < kMacroCount; ++k) out_.macros[k] = unit(macros[k]);
+    out_.layer = plan.layer;
     for (int m = 0; m < modulatorCount; ++m) {
         const auto i = static_cast<size_t>(m);
         if (!listened[i]) continue;

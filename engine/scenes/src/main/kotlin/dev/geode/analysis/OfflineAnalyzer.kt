@@ -209,7 +209,9 @@ class OfflineAnalyzer(
 
         private fun drain() {
             while (analyzer.pull()) {
-                val timeMs = absSample * 1000L / sampleRate
+                // Stamped at the middle of the window it was measured over, the moment it describes,
+                // not at its start (#302): a Render then draws each hop where it is heard.
+                val timeMs = (absSample + AnalysisEngine.DEFAULT_FFT_SIZE / 2) * 1000L / sampleRate
                 frames.add(TimelineFrame(timeMs, snapshot()))
                 absSample += hopSamples
             }

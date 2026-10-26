@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,12 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.SharedGroup
+import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.roundToInt
 
 /**
@@ -51,8 +51,8 @@ internal fun AdvancedView(
     page: CustomizePage.Advanced,
 ) {
     Row(
-        Modifier.horizontalScroll(rememberScrollState()).padding(vertical = ForestSpacing.ExtraSmall),
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
+        Modifier.horizontalScroll(rememberScrollState()).padding(vertical = GlassSpacing.ExtraSmall),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
     ) {
         AdvancedSection.entries.forEach { section ->
             ChoiceChip(sectionName(section), section == page.section) { panel.open(CustomizePage.Advanced(section)) }
@@ -62,7 +62,7 @@ internal fun AdvancedView(
         AdvancedSection.REACTIONS -> ReactionsSection(panel, page)
         AdvancedSection.CAMERA -> SliderGroup(panel, panel.model.shared.getValue(SharedGroup.CAMERA))
         AdvancedSection.EFFECTS ->
-            panel.model.shared.filterKeys { it != SharedGroup.CAMERA }.forEach { (group, rows) ->
+            panel.model.shared.filterKeys { it != SharedGroup.CAMERA && it != SharedGroup.LAYERS }.forEach { (group, rows) ->
                 SectionTitle(groupName(group))
                 SliderGroup(panel, rows)
             }
@@ -73,8 +73,9 @@ internal fun AdvancedView(
                 SliderGroup(panel, panel.model.extras)
             }
         AdvancedSection.MACROS -> MacrosSection(panel, page.macro)
+        AdvancedSection.LAYERS -> LayersSection(panel)
     }
-    TextButton(onClick = { panel.send(CustomizationCommand.ResetToStyle) }, modifier = Modifier.padding(top = ForestSpacing.Large)) {
+    TextButton(onClick = { panel.send(CustomizationCommand.ResetToStyle) }, modifier = Modifier.padding(top = GlassSpacing.Large)) {
         Text(stringResource(R.string.customize_reset))
     }
 }
@@ -88,6 +89,7 @@ internal fun sectionName(section: AdvancedSection): String =
             AdvancedSection.EFFECTS -> R.string.customize_section_effects
             AdvancedSection.EXTRAS -> R.string.customize_section_extras
             AdvancedSection.MACROS -> R.string.customize_section_macros
+            AdvancedSection.LAYERS -> R.string.customize_section_layers
         },
     )
 
@@ -96,14 +98,14 @@ internal fun QuietText(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = LocalForestColors.current.textSecondary,
-        modifier = Modifier.padding(vertical = ForestSpacing.Small),
+        color = LocalGlassStyle.current.colors.textSecondary,
+        modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
 }
 
 /** Sliders that set their value, link in Learn mode, and offer "React to…" on a long-press. */
 @Composable
-private fun SliderGroup(
+internal fun SliderGroup(
     panel: PanelState,
     rows: List<SliderRow>,
 ) {
@@ -115,6 +117,7 @@ private fun SliderGroup(
             onPreview = { panel.preview(row.target, it) },
             onReset = { panel.send(CustomizationCommand.ResetValue(row.target)) },
             onReactTo = { panel.open(CustomizePage.ChooseSource(target = row.target)) },
+            help = targetHelp(row.target),
         )
     }
 }
@@ -130,7 +133,7 @@ private fun ReactionsSection(
 ) {
     val board = page.board
     val model = panel.model
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
         ChoiceChip(stringResource(R.string.customize_links_list), !board) { panel.open(page.copy(board = false)) }
         ChoiceChip(stringResource(R.string.customize_links_board), board) { panel.open(page.copy(board = true)) }
         Spacer(Modifier.weight(1f))
@@ -138,7 +141,7 @@ private fun ReactionsSection(
             Text(stringResource(R.string.customize_learn))
         }
         IconButton(onClick = { panel.open(CustomizePage.ChooseSource()) }) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.customize_new_link))
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.customize_new_link))
         }
     }
     when {
@@ -164,13 +167,13 @@ private fun LinkItem(
             Modifier
                 .fillMaxWidth()
                 .clickable { panel.open(CustomizePage.EditReaction(reaction, isNew = false)) }
-                .padding(vertical = ForestSpacing.ExtraSmall),
+                .padding(vertical = GlassSpacing.ExtraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
                 Row {
                     Text(sourceName(reaction.source, panel.model), style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(ForestSpacing.Small))
+                    Spacer(Modifier.width(GlassSpacing.Small))
                     Text(
                         if (reaction.invert) {
                             stringResource(R.string.customize_link_inverted)
@@ -178,19 +181,23 @@ private fun LinkItem(
                             stringResource(R.string.customize_percent, percentOf(reaction.amount))
                         },
                         style = MaterialTheme.typography.labelMedium,
-                        color = LocalForestColors.current.textSecondary,
+                        color = LocalGlassStyle.current.colors.textSecondary,
                     )
                 }
-                Meter(link.live ?: reaction.amount, Modifier.padding(top = ForestSpacing.ExtraSmall))
+                Meter(link.live ?: reaction.amount, Modifier.padding(top = GlassSpacing.ExtraSmall))
             }
             IconButton(onClick = remove) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.customize_remove_link))
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.customize_remove_link))
             }
         }
     }
 }
 
-/** A labelled slider that follows the finger and sets its value when let go: one drag, one undo step. */
+/**
+ * A labelled slider that follows the finger and sets its value when let go: one drag, one undo step.
+ * Its − and + take fine steps, and coarse ones on a long-press (#392). A tap on its name shows its
+ * one-line [help] (#393).
+ */
 @Composable
 internal fun HeldSlider(
     label: String,
@@ -198,12 +205,28 @@ internal fun HeldSlider(
     range: ClosedFloatingPointRange<Float>,
     text: @Composable (Float) -> String,
     onSet: (Float) -> Unit,
+    help: String? = null,
 ) {
     var held by remember(value) { mutableFloatStateOf(value) }
+    var explained by remember { mutableStateOf(false) }
+    val explain = stringResource(R.string.customize_explain)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(text(held), style = MaterialTheme.typography.labelMedium, color = LocalForestColors.current.textSecondary)
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f).clickable(enabled = help != null, onClickLabel = explain) { explained = !explained },
+        )
+        NudgeButton(up = false) { coarse ->
+            held = nudged(held, range.start, range.endInclusive, ValueKind.CONTINUOUS, up = false, coarse = coarse)
+            onSet(held)
+        }
+        Text(text(held), style = MaterialTheme.typography.labelMedium, color = LocalGlassStyle.current.colors.textSecondary)
+        NudgeButton(up = true) { coarse ->
+            held = nudged(held, range.start, range.endInclusive, ValueKind.CONTINUOUS, up = true, coarse = coarse)
+            onSet(held)
+        }
     }
+    if (explained && help != null) HelpLine(help)
     Slider(value = held, onValueChange = { held = it }, valueRange = range, onValueChangeFinished = { onSet(held) })
 }
 
@@ -245,7 +268,7 @@ private fun MacroCard(
                 onClick = { panel.send(CustomizationCommand.RenameMacro(knob.index, name.trim())) },
                 enabled = name.isNotBlank() && name.trim() != knob.name,
             ) {
-                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.customize_rename))
+                Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.customize_rename))
             }
         }
         HeldSlider(
@@ -254,6 +277,7 @@ private fun MacroCard(
             range = 0f..1f,
             text = { stringResource(R.string.customize_percent, percentOf(it)) },
             onSet = { panel.send(CustomizationCommand.SetMacro(knob.index, it)) },
+            help = stringResource(R.string.customize_help_macro_value),
         )
         knob.drivers.forEach { driver ->
             QuietText(stringResource(R.string.customize_macro_driven_by, sourceName(driver, model)))
@@ -286,10 +310,10 @@ private fun MacroLinkItem(
         Text(
             stringResource(R.string.customize_range_value, percentOf(link.low), percentOf(link.high)),
             style = MaterialTheme.typography.labelMedium,
-            color = LocalForestColors.current.textSecondary,
+            color = LocalGlassStyle.current.colors.textSecondary,
         )
         IconButton(onClick = { panel.send(CustomizationCommand.UnlinkMacro(index, link.target)) }) {
-            Icon(Icons.Filled.LinkOff, contentDescription = stringResource(R.string.customize_macro_unlink, name))
+            Icon(Icons.Rounded.LinkOff, contentDescription = stringResource(R.string.customize_macro_unlink, name))
         }
     }
     RangeSlider(
@@ -309,11 +333,13 @@ private fun MacroLinkItem(
 @Composable
 internal fun InsetCard(content: @Composable () -> Unit) {
     Surface(
-        shape = ForestShapes.Card,
-        color = LocalForestColors.current.base.copy(alpha = QUIET_ALPHA),
-        modifier = Modifier.fillMaxWidth().padding(vertical = ForestSpacing.Small),
+        shape = MaterialTheme.shapes.large,
+        color =
+            LocalGlassStyle.current.colors.base
+                .copy(alpha = QUIET_ALPHA),
+        modifier = Modifier.fillMaxWidth().padding(vertical = GlassSpacing.Small),
     ) {
-        Column(Modifier.padding(ForestSpacing.Medium)) { content() }
+        Column(Modifier.padding(GlassSpacing.Medium)) { content() }
     }
 }
 

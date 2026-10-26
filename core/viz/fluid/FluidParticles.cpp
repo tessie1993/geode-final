@@ -97,6 +97,7 @@ void Particles::step(float dt, GLuint velocityTex, float aspect, float flowScale
     glUniform1f(update_.loc("uAspect"), aspect);
     glUniform1f(update_.loc("uDt"), dt);
     glUniform1f(update_.loc("uDrag"), std::clamp(drag, 0.02f, 1.0f));
+    glUniform2f(update_.loc("uFall"), fallX, fallY);
     glUniform1f(update_.loc("uFlowScale"), flowScale);
     glUniform1f(update_.loc("uTime"), std::fmod(timeSeconds, 256.0f));
     glUniform1f(update_.loc("uLife"), std::clamp(life, 1.0f, 30.0f));

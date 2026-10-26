@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -160,11 +161,12 @@ vec3 grade(vec3 col) {
 void main() {
     vec2 uv = view();
     float x = clamp(uv.x * 0.5 + 0.5, 0.0, 1.0);
-    float seg = floor(x * 48.0) / 48.0;
+    float bars = xcount(48.0);
+    float seg = floor(x * bars) / bars;
     float h = aband(seg) * (0.6 + uBass * uBeatResponse * 0.5);
     float y = abs(uv.y);
-    float bar = step(y, h) * step(fract(x * 48.0), 0.8);
-    float glow = exp(-max(y - h, 0.0) * 9.0) * 0.5;
+    float bar = step(y, h) * step(fract(x * bars), min(0.8 * uXThickness, 1.0));
+    float glow = exp(-max(y - h, 0.0) * 9.0 * xm(uXEdge)) * 0.5;
     float cells = step(fract(y * 24.0), 0.8);
     vec3 col = pal(seg) * (bar * cells * (0.4 + h) + glow * h);
     fragColor = vec4(grade(col), 1.0);

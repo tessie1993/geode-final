@@ -291,12 +291,13 @@ class FramePacer(
         if (vsyncSamples < VSYNC_SETTLE_FRAMES) vsyncSamples++
     }
 
+    /**
+     * The policy's rate held to [ThermalGovernor.frameCapFps], so a phone at its hottest tiers draws
+     * every second (or fourth) vsync whatever the policy asked for (#286). With no cap a Native
+     * policy still draws every vsync: [cappedDivisor] answers 1 for a rate of 0.
+     */
     private fun recomputeDivisor() {
-        divisor =
-            when (val current = policy) {
-                FrameRatePolicy.Native -> 1
-                is FrameRatePolicy.Capped -> cappedDivisor(current.fps)
-            }
+        divisor = cappedDivisor(FrameCap.effectiveFps(requestedFps(), ThermalGovernor.frameCapFps))
     }
 
     private fun cappedDivisor(fps: Float): Int {

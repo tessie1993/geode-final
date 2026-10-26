@@ -35,7 +35,9 @@ public:
     void stepFlow(const GeodeFeatureFrame& features, float dt, const SceneParams& p);
     bool rippleOverlayActive(const SceneParams& p, bool smearingNow, bool waterActive) const;
     void stepRippleOverlay(const GeodeFeatureFrame& features, const SceneParams& p, float dt);
-    void drainTouchStrokes(Scene& scene);
+    // A Style that owns the strokes takes every one; otherwise they become the shared ripple smear at
+    // `smearStrength` times their own, and none at all while it is 0 (the person's smear is off).
+    void drainTouchStrokes(Scene& scene, float smearStrength);
 
 private:
     static constexpr float kTouchRadius = 0.11f;

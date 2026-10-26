@@ -13,6 +13,8 @@ constexpr float kSecondsPerMinute = 60.0f;
 constexpr float kTempoHeardConfidence = 0.4f;
 constexpr size_t kTargetKinds = static_cast<size_t>(Target::Kind::Modulator) + 1;
 constexpr size_t kSourceKinds = static_cast<size_t>(Source::Kind::Modulator) + 1;
+// The largest 24-bit Style name (layer::styleHash).
+constexpr float kMaxStyleName = 16777215.0f;
 
 // Reads the floats in order.
 class Cursor {
@@ -117,6 +119,12 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         a.stepCount = in.count(kMaxSteps);
         in.steps(a.steps);
     }
+    // The Style's 24-bit name is a whole float; anything else names no Style.
+    const float style = in.next();
+    const bool named = std::isfinite(style) && style >= 1.0f && style <= kMaxStyleName && style == std::floor(style);
+    plan.layer.style = named ? static_cast<uint32_t>(style) : layer::kNoStyle;
+    plan.layer.blend = layer::blendAt(in.next());
+    plan.layer.influence = layer::influenceAt(in.next());
     out = plan;
     return true;
 }

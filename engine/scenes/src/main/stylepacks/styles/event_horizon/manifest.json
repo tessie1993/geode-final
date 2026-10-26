@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "event_horizon",
+  "label": "Event Horizon",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march"
+}

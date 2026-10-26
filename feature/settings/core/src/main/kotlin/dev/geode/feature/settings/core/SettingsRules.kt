@@ -24,6 +24,8 @@ import dev.geode.feature.settings.api.PlaybackCommand
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.VisualSurface
 
 /**
  * What each command does to the settings, and the ranges every value is kept in. Pure: the reducer
@@ -71,7 +73,8 @@ object SettingsRules {
         command: LookCommand,
     ): LookSettings =
         when (command) {
-            is LookCommand.SetElement -> look.copy(element = command.element)
+            is LookCommand.SetThemeMode -> look.copy(themeMode = command.mode)
+            is LookCommand.SetReduceTransparency -> look.copy(reduceTransparency = command.on)
             is LookCommand.SetAccentIntensity -> look.copy(accentIntensity = command.intensity)
             is LookCommand.SetBackgroundDim -> look.copy(backgroundDim = command.dim)
             is LookCommand.SetFontColor -> look.copy(fontColor = command.color)
@@ -81,7 +84,6 @@ object SettingsRules {
             is LookCommand.SetCornerStyle -> look.copy(cornerStyle = command.style)
             is LookCommand.SetCompactPlayer -> look.copy(compactPlayer = command.on)
             is LookCommand.SetClearVisualsMenu -> look.copy(clearVisualsMenu = command.on)
-            is LookCommand.SetAmbientMode -> look.copy(ambientMode = command.mode)
         }
 
     private fun playback(
@@ -152,6 +154,8 @@ object SettingsRules {
             is BehaviorCommand.SetTouchSmearStrength -> behavior.copy(touchSmearStrength = command.strength)
             is BehaviorCommand.SetTouchTransform -> behavior.copy(touchTransform = command.on)
             is BehaviorCommand.SetReducedMotion -> behavior.copy(reducedMotion = command.on)
+            is BehaviorCommand.SetTilt -> behavior.copy(tilt = command.amount)
+            is BehaviorCommand.SetStartLook -> behavior.copy(startLook = command.look)
         }
 
     private fun export(
@@ -210,7 +214,17 @@ object SettingsRules {
             is PerformanceCommand.SetVisualFrameRate -> performance.copy(visualFrameRate = command.frameRate)
             is PerformanceCommand.SetSaveMode -> performance.copy(saveMode = command.on)
             is PerformanceCommand.SetVisualsOff -> performance.copy(visualsOff = command.on)
+            is PerformanceCommand.SetSurfaceQuality ->
+                performance.copy(surfaceQuality = performance.surfaceQuality.picked(command.surface, command.quality))
+            is PerformanceCommand.SetSurfaceFrameRate ->
+                performance.copy(surfaceFrameRate = performance.surfaceFrameRate.picked(command.surface, command.frameRate))
         }
+
+    /** These picks with [surface]'s set to [choice], or taken out when it is null so the surface follows the shared one. */
+    private fun <T> Map<VisualSurface, T>.picked(
+        surface: VisualSurface,
+        choice: T?,
+    ): Map<VisualSurface, T> = if (choice == null) this - surface else this + (surface to choice)
 
     private fun LookSettings.inRange(): LookSettings =
         copy(
@@ -247,7 +261,18 @@ object SettingsRules {
         )
 
     private fun BehaviorSettings.inRange(): BehaviorSettings =
-        copy(touchSmearStrength = touchSmearStrength.coerceIn(BehaviorSettings.TOUCH_SMEAR_STRENGTH))
+        copy(
+            touchSmearStrength = touchSmearStrength.coerceIn(BehaviorSettings.TOUCH_SMEAR_STRENGTH),
+            startLook = startLook.inRange(),
+        )
+
+    /** A Style or preset with no id names nothing to start on, so it starts on the last look. */
+    private fun StartLook.inRange(): StartLook =
+        when (this) {
+            StartLook.Last -> this
+            is StartLook.Style -> if (style.value.isBlank()) StartLook.Last else this
+            is StartLook.Preset -> if (preset.value.isBlank()) StartLook.Last else this
+        }
 
     private val NO_SLEEP_TIMER = Minutes(0)
     private val FLAT = Millibels(0)

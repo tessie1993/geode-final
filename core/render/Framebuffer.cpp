@@ -6,14 +6,18 @@ namespace {
 constexpr GLenum kColorAttachments[2] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
 }
 
-bool Framebuffer::allocate(int w, int h, GLuint* tex, GLuint* fbo) {
+bool Framebuffer::allocate(int w, int h, Format format, GLuint* tex, GLuint* fbo) {
     glGenTextures(1, tex);
     glBindTexture(GL_TEXTURE_2D, *tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    if (format == Format::Rgba16F) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_HALF_FLOAT, nullptr);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    }
     glGenFramebuffers(1, fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, *fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *tex, 0);
@@ -29,7 +33,13 @@ bool Framebuffer::allocate(int w, int h, GLuint* tex, GLuint* fbo) {
 bool Framebuffer::ensure(int w, int h) {
     if (w <= 0 || h <= 0 || alreadyAt(w, h)) return ok();
     release();
-    if (!allocate(w, h, &tex_, &fbo_)) {
+    if (allocate(w, h, format_, &tex_, &fbo_)) {
+        allocated_ = format_;
+    } else if (format_ != Format::Rgba8 && allocate(w, h, Format::Rgba8, &tex_, &fbo_)) {
+        // Not colour-renderable here after all: RGBA8 from now on, so a resize keeps the picture.
+        format_ = Format::Rgba8;
+        allocated_ = Format::Rgba8;
+    } else {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return false;
     }
@@ -43,10 +53,11 @@ bool Framebuffer::ensure(int w, int h) {
 
 bool Framebuffer::resizePreserving(int w, int h) {
     if (w <= 0 || h <= 0 || alreadyAt(w, h)) return ok();
-    if (!ok()) return ensure(w, h);
+    // A new format cannot be blitted into from the old one, so it starts afresh.
+    if (!ok() || allocated_ != format_) return ensure(w, h);
     GLuint tex = 0;
     GLuint fbo = 0;
-    if (!allocate(w, h, &tex, &fbo)) {
+    if (!allocate(w, h, allocated_, &tex, &fbo)) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return true;  // the old target, and its picture, stay
     }
@@ -82,6 +93,12 @@ void Framebuffer::discardContents(GLenum bindTarget) const {
 
 void Framebuffer::discardColorAttachments(GLenum bindTarget, int count) {
     glInvalidateFramebuffer(bindTarget, count, kColorAttachments);
+}
+
+void Framebuffer::discardBound(GLuint fbo) {
+    // The window names its colour buffer GL_COLOR; a framebuffer object names its attachment.
+    const GLenum attachment = fbo == 0 ? GL_COLOR : GL_COLOR_ATTACHMENT0;
+    glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
 }
 
 }  // namespace geode::viz

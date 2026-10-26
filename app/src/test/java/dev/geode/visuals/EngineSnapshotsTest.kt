@@ -10,6 +10,7 @@ import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.render.VisualSafety
+import dev.geode.render.bridge.SceneParamsCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -53,5 +54,20 @@ class EngineSnapshotsTest {
         assertFalse(snapshot.reducedMotion)
         assertTrue(snapshot.soundRefractoryMs >= VisualSafety.beatMinIntervalMs(0f))
         assertEquals(0, snapshot.revision)
+    }
+
+    @Test
+    fun `a Render's engine gets the same plan and Settings as live, with the Fluid quality pinned`() {
+        val zoomed = Edits.setShared(customization, SharedProperty.ZOOM, SharedProperty.ZOOM.max)
+        val settings = SettingsValues(behavior = BehaviorSettings(reducedMotion = true))
+        val live = EngineSnapshots.of(zoomed, settings)
+        val render = EngineSnapshots.forRender(zoomed, settings)
+        assertEquals(live.plan, render.plan)
+        assertEquals(live.reducedMotion, render.reducedMotion)
+        assertEquals(live.soundSensitivity, render.soundSensitivity)
+        assertEquals(live.soundRefractoryMs, render.soundRefractoryMs)
+        val autoQuality = SceneParamsCodec.NAMES.indexOf("fluidAutoQuality")
+        assertEquals(1f, live.params[autoQuality])
+        assertEquals(0f, render.params[autoQuality])
     }
 }

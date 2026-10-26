@@ -20,6 +20,14 @@ object ThermalGovernor {
     @Volatile
     var pacedFps: Float = 0f
 
+    /**
+     * The frame rate the native governor asks for once the phone has stayed at its hottest tiers, or
+     * 0 for no cap (#286). Written by the renderer at its thermal sample; every [FramePacer] holds its
+     * cadence to it, so a hot phone draws half the frames instead of only smaller ones.
+     */
+    @Volatile
+    var frameCapFps: Float = 0f
+
     /** Written on the main executor by the platform listener, read on the render thread. */
     @Volatile
     private var osStatus: Int = STATUS_NONE

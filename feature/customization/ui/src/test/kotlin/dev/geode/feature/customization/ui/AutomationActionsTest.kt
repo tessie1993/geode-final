@@ -152,8 +152,22 @@ class AutomationActionsTest {
         val pair = StyleSwitching(pool = StylePool.PAIR)
         assertEquals(listOf(a), pair.pairToggled(a).pair)
         assertEquals(listOf(a, b), pair.pairToggled(a).pairToggled(b).pair)
-        assertEquals(listOf(b, c), pair.pairToggled(a).pairToggled(b).pairToggled(c).pair)
-        assertEquals(listOf(b), pair.pairToggled(a).pairToggled(b).pairToggled(a).pair)
+        assertEquals(
+            listOf(b, c),
+            pair
+                .pairToggled(a)
+                .pairToggled(b)
+                .pairToggled(c)
+                .pair,
+        )
+        assertEquals(
+            listOf(b),
+            pair
+                .pairToggled(a)
+                .pairToggled(b)
+                .pairToggled(a)
+                .pair,
+        )
         assertEquals(listOf(a, b), StyleSwitching(chosen = listOf(a, b, c)).pair)
         assertEquals(listOf(b), StyleSwitching(chosen = listOf(a, b, c)).pairToggled(a).chosen)
         assertTrue(StylePool.PAIR in POOL_CHOICES)

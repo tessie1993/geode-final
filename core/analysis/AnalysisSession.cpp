@@ -72,8 +72,7 @@ void AnalysisSession::analyze(const float* mid, const float* side, size_t frames
 void AnalysisSession::push(const float* interleaved, size_t frames, int channels) {
     if (channels <= 0 || frames == 0) return;
     // Bound how far this can grow: a producer that pushes without ever pulling must not grow the buffer
-    // without bound. Cap at a few FFT windows and drop the oldest samples once at the cap, mirroring
-    // Renderer::pushPcm's fixed-capacity ring (core/viz/Renderer.cpp).
+    // without bound. Cap at a few FFT windows and drop the oldest samples once at the cap.
     const size_t cap = static_cast<size_t>(fftSize_) * kMaxBufferedWindows;
     if (buffer_.size() < cap && buffered_ + frames > buffer_.size()) {
         const size_t grown = std::min(std::max(buffered_ + frames, buffer_.size() * 2), cap);

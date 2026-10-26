@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,11 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestGlass
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -55,18 +57,19 @@ fun ModulatorsAutomationScreen(
     modifier: Modifier = Modifier,
 ) {
     val send = { command: CustomizationCommand -> onAction(CustomizeAction.Send(command)) }
-    val colors = LocalForestColors.current
+    // Over the live Visual: matte glass until the engine frosts it (#349).
+    val shape = MaterialTheme.shapes.extraLarge
     Surface(
-        shape = ForestShapes.Sheet,
-        color = ForestGlass.textGlass(colors),
-        contentColor = colors.textPrimary,
-        modifier = modifier.fillMaxSize(),
+        shape = shape,
+        color = Color.Transparent,
+        contentColor = LocalGlassStyle.current.colors.textPrimary,
+        modifier = modifier.fillMaxSize().glassSurface(GlassKind.SHEET, shape, GlassBackdrop.Visual),
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = ForestSpacing.Large, vertical = ForestSpacing.Medium),
+                .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Medium),
         ) {
             Text(stringResource(R.string.modulators_automation_title), style = MaterialTheme.typography.headlineMedium)
             SectionTitle(stringResource(R.string.customize_section_modulators))
@@ -88,8 +91,8 @@ private fun ModulatorsSection(
             AssistChip(
                 onClick = { send(CustomizationCommand.AddModulator(newModulator(kind))) },
                 label = { Text(kindName(kind)) },
-                leadingIcon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.customize_add_modulator)) },
-                shape = ForestShapes.Chip,
+                leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.customize_add_modulator)) },
+                shape = MaterialTheme.shapes.small,
             )
         }
     }
@@ -111,18 +114,18 @@ private fun ModulatorCard(
             if (modulator.start == StartMode.ByHand) {
                 IconButton(onClick = { send(togglePlay(modulator)) }) {
                     if (modulator.playing) {
-                        Icon(Icons.Filled.Stop, contentDescription = stringResource(R.string.customize_stop))
+                        Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.customize_stop))
                     } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.customize_play))
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.customize_play))
                     }
                 }
             }
             IconButton(onClick = { send(CustomizationCommand.RemoveModulator(modulator.id)) }) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
             }
         }
         if (!row.linked) QuietText(stringResource(R.string.customize_modulator_idle))
-        ModulatorPicture(modulator.shape, Modifier.padding(vertical = ForestSpacing.Small))
+        ModulatorPicture(modulator.shape, Modifier.padding(vertical = GlassSpacing.Small))
         val shape = modulator.shape
         when (shape) {
             is ModulatorShape.Lfo -> {
@@ -159,6 +162,7 @@ private fun ModulatorCard(
             range = Modulator.MIN_RATE..Modulator.MAX_RATE,
             text = { stringResource(R.string.customize_rate_value, it) },
             onSet = { update(modulator.copy(rate = it)) },
+            help = stringResource(R.string.customize_help_rate),
         )
         HeldSlider(
             label = stringResource(R.string.customize_depth),
@@ -166,6 +170,7 @@ private fun ModulatorCard(
             range = 0f..1f,
             text = { stringResource(R.string.customize_percent, percentOf(it)) },
             onSet = { update(modulator.copy(depth = it)) },
+            help = stringResource(R.string.customize_help_depth),
         )
     }
 }
@@ -246,13 +251,13 @@ private fun StylesSeen(
             onClick = { send(CustomizationCommand.StyleBack) },
             label = { Text(stringResource(R.string.automation_style_back)) },
             enabled = model.canGoBack,
-            shape = ForestShapes.Chip,
+            shape = MaterialTheme.shapes.small,
         )
         AssistChip(
             onClick = { send(CustomizationCommand.StyleForward) },
             label = { Text(stringResource(R.string.automation_style_forward)) },
             enabled = model.canGoForward,
-            shape = ForestShapes.Chip,
+            shape = MaterialTheme.shapes.small,
         )
     }
 }
@@ -348,7 +353,7 @@ private fun Lanes(
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionTitle(stringResource(R.string.automation_lane, index + 1), Modifier.weight(1f))
             IconButton(onClick = { set(automations.withoutLane(index)) }) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.automation_remove_lane))
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.automation_remove_lane))
             }
         }
         ChipFlow {

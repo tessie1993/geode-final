@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,21 +20,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.Clear
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.glass.GlassMessage
 import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.GroupRow
 import dev.geode.feature.library.api.IndexStatus
@@ -147,7 +149,7 @@ private fun TopBar(
     ) {
         if (model.canGoBack) {
             IconButton(onClick = { send(LibraryCommand.Back) }) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.library_back))
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.library_back))
             }
         }
         Text(
@@ -178,11 +180,11 @@ private fun SearchField(
         modifier = Modifier.fillMaxWidth().padding(horizontal = LibraryDimens.gutter),
         singleLine = true,
         placeholder = { Text(stringResource(R.string.library_search), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { send(LibraryCommand.Search("")) }) {
-                    Icon(Icons.Filled.Clear, contentDescription = stringResource(R.string.library_search_clear))
+                    Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.library_search_clear))
                 }
             }
         },
@@ -265,7 +267,7 @@ private fun Content(
         if (place is Place.Group && smart) {
             GroupHeader(place, songCount = 0, onAction, onEditSmart)
         }
-        Empty(page, model.index, smart)
+        Empty(page, model.index, smart, onAction)
         return
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LibraryDimens.gutter)) {
@@ -304,34 +306,25 @@ private fun Empty(
     page: Page,
     index: IndexStatus,
     smart: Boolean,
+    onAction: (LibraryAction) -> Unit,
 ) {
     if (index == IndexStatus.Loading) return
-    Column(
-        Modifier.fillMaxSize().padding(LibraryDimens.gutter),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(LibraryDimens.small, Alignment.CenterVertically),
-    ) {
-        Icon(
-            Icons.Filled.LibraryMusic,
-            contentDescription = null,
-            modifier = Modifier.size(LibraryDimens.headerIcon),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (page is Page.Found) {
-            Text(stringResource(R.string.library_nothing_found, page.query), style = MaterialTheme.typography.titleMedium)
-        } else if (smart) {
-            Text(stringResource(R.string.library_smart_nothing_matches), style = MaterialTheme.typography.titleMedium)
-        } else if (page is Page.Duplicates) {
-            Text(stringResource(R.string.library_duplicates_none), style = MaterialTheme.typography.titleMedium)
-        } else {
-            Text(stringResource(R.string.library_empty), style = MaterialTheme.typography.titleMedium)
-            Text(
-                stringResource(R.string.library_empty_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    // The plain empty Library offers one thing to do: look again.
+    val plain = page !is Page.Found && !smart && page !is Page.Duplicates
+    GlassMessage(
+        title =
+            when {
+                page is Page.Found -> stringResource(R.string.library_nothing_found, page.query)
+                smart -> stringResource(R.string.library_smart_nothing_matches)
+                page is Page.Duplicates -> stringResource(R.string.library_duplicates_none)
+                else -> stringResource(R.string.library_empty)
+            },
+        modifier = Modifier.fillMaxSize().wrapContentHeight(),
+        body = if (plain) stringResource(R.string.library_empty_hint) else null,
+        icon = Icons.Rounded.LibraryMusic,
+        actionLabel = if (plain && index == IndexStatus.Ready) stringResource(R.string.library_action_rescan) else null,
+        onAction = { onAction(LibraryAction.Send(LibraryCommand.Rescan)) },
+    )
 }
 
 private fun LazyListScope.songs(
@@ -412,7 +405,7 @@ private fun ShuffleShown(send: (LibraryCommand) -> Unit) {
         onClick = { send(LibraryCommand.Shuffle(Pick.Shown)) },
         modifier = Modifier.padding(horizontal = LibraryDimens.gutter),
     ) {
-        Icon(Icons.Filled.Shuffle, contentDescription = null)
+        Icon(Icons.Rounded.Shuffle, contentDescription = null)
         Text(stringResource(R.string.library_action_shuffle), Modifier.padding(start = LibraryDimens.small))
     }
 }
@@ -452,7 +445,7 @@ private fun SongItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LibraryDimens.gap),
     ) {
-        Artwork(Icons.Filled.MusicNote)
+        Artwork(Icons.Rounded.MusicNote)
         Column(Modifier.weight(1f)) {
             Text(song.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
@@ -468,7 +461,7 @@ private fun SongItem(
         Text(formatLength(song.duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         IconButton(onClick = { send(LibraryCommand.ToggleFavourite(song.id)) }) {
             Icon(
-                if (row.favourite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                if (row.favourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                 contentDescription =
                     stringResource(if (row.favourite) R.string.library_action_unfavourite else R.string.library_action_favourite),
                 tint = if (row.favourite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -476,7 +469,7 @@ private fun SongItem(
         }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_action_more))
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.library_action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 val pick = Pick.Songs(listOf(song.id))
@@ -539,7 +532,7 @@ private fun GroupItem(
         }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.library_action_more))
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.library_action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 val pick = Pick.Group(row.key)
@@ -625,12 +618,12 @@ private fun GroupHeader(
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
             OutlinedButton(onClick = { onAction(LibraryAction.ExportPlaylist(pick, name)) }) {
-                Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
+                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
                 Text(stringResource(R.string.library_action_export), Modifier.padding(start = LibraryDimens.small))
             }
             if (place.key.kind == GroupKind.SMART_PLAYLIST) {
                 OutlinedButton(onClick = { onEditSmart(place.key.name) }) {
-                    Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
                     Text(stringResource(R.string.library_action_edit_rules), Modifier.padding(start = LibraryDimens.small))
                 }
             }
@@ -652,11 +645,11 @@ private fun PlaylistsHeader(
         horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small),
     ) {
         OutlinedButton(onClick = { onAction(LibraryAction.ImportPlaylist) }) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null)
+            Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
             Text(stringResource(R.string.library_action_import), Modifier.padding(start = LibraryDimens.small))
         }
         OutlinedButton(onClick = onNewSmart) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = null)
+            Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
             Text(stringResource(R.string.library_smart_new), Modifier.padding(start = LibraryDimens.small))
         }
     }
@@ -690,12 +683,12 @@ private fun Artwork(icon: ImageVector) {
 
 private fun iconOf(kind: GroupKind): ImageVector =
     when (kind) {
-        GroupKind.ALBUM -> Icons.Filled.Album
-        GroupKind.ARTIST, GroupKind.ALBUM_ARTIST, GroupKind.COMPOSER -> Icons.Filled.Person
-        GroupKind.GENRE -> Icons.Filled.Category
-        GroupKind.FOLDER -> Icons.Filled.Folder
-        GroupKind.PLAYLIST -> Icons.AutoMirrored.Filled.QueueMusic
-        GroupKind.SMART_PLAYLIST -> Icons.Filled.AutoAwesome
+        GroupKind.ALBUM -> Icons.Rounded.Album
+        GroupKind.ARTIST, GroupKind.ALBUM_ARTIST, GroupKind.COMPOSER -> Icons.Rounded.Person
+        GroupKind.GENRE -> Icons.Rounded.Category
+        GroupKind.FOLDER -> Icons.Rounded.Folder
+        GroupKind.PLAYLIST -> Icons.AutoMirrored.Rounded.QueueMusic
+        GroupKind.SMART_PLAYLIST -> Icons.Rounded.AutoAwesome
     }
 
 /** A group's name as shown: its own, or "Unknown …" when the tags name none. */

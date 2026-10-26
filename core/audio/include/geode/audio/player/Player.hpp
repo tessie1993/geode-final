@@ -13,11 +13,14 @@
 #include "geode/audio/player/Deck.hpp"
 #include "geode/audio/player/Mixer.hpp"
 #include "geode/audio/player/Output.hpp"
+#include "geode/audio/player/OutputRetry.hpp"
 #include "geode/audio/player/Resampler.hpp"
 
 namespace geode::audio::player {
 
 enum class PlayerState : int { Idle = 0, Buffering, Ready, Ended, Error };
+// What an Error state is about: a track that cannot be read or decoded, or an output that cannot be opened.
+enum class PlayerError : int { None = 0, Decode, Output };
 
 // The engine thread owns the decoders, the decks and the stream; the public calls queue commands for it
 // and read atomics it publishes every loop, so nothing here waits on the audio thread.
@@ -37,6 +40,8 @@ public:
     void setCrossfade(int durationMs, int curve);
     void setDsp(geode_dsp* dsp) { mixer_.setDsp(dsp, output_.running()); }
     void setVolume(float volume) { mixer_.setVolume(volume); }
+    // The Visual's audio feed the mix goes to, before volume and DSP; null stops it. Any thread.
+    void setFeed(feed::FeedRing* ring);
 
     PlayerState state() const { return state_.load(std::memory_order_acquire); }
     bool playWhenReady() const { return playWhenReady_.load(std::memory_order_acquire); }
@@ -47,7 +52,7 @@ public:
     // The self-tuned output buffer size in frames, for diagnostics (0 while untuned). Safe from any thread.
     int32_t outputBufferFrames() const { return output_.bufferSizeFrames(); }
     std::string lastError() const;
-    size_t readTap(float* stereo, size_t frames) { return mixer_.readTap(stereo, frames); }
+    PlayerError errorKind() const { return errorKind_.load(std::memory_order_acquire); }
 
 private:
     struct Command {
@@ -82,7 +87,12 @@ private:
     void postCommand(DeckCommand command);
     void updateState();
     void noteError(const std::string& message);
-    void fail(const std::string& message);
+    void fail(const std::string& message, PlayerError kind = PlayerError::Decode);
+    // Start and pause the output, telling the Visual's feed whether the mix is heard.
+    void startOutput();
+    void pauseOutput();
+    // Every so often, how far the mix runs ahead of the speaker, for the Visual's feed.
+    void reportLatency();
     int64_t crossfadeFrames() const;
 
     Mixer mixer_;
@@ -102,6 +112,9 @@ private:
     std::atomic<int64_t> durationUs_{0};
     std::atomic<int64_t> token_{-1};
     std::atomic<int> outRate_{0};
+    std::atomic<PlayerError> errorKind_{PlayerError::None};
+    OutputRetry retry_;
+    int latencyTicks_ = 0;
     mutable std::mutex errorLock_;
     std::string lastError_;
     std::thread thread_;

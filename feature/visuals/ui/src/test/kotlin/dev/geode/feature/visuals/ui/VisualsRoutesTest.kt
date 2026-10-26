@@ -5,6 +5,11 @@ import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
@@ -14,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.Visuals
@@ -35,7 +41,8 @@ import org.robolectric.annotation.Config
 
 /**
  * The routes over a recording Visuals: each tap that changes something is one Command, and the
- * App-UI-only state (search, the open folder, whether the controls show) stays in the route.
+ * App-UI-only state (search, the open folder) stays in the route. Whether full-screen mode's controls
+ * show is App-UI state too, owned by `:app` because the double tap that toggles it lands on the Visual.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
@@ -91,13 +98,23 @@ class VisualsRoutesTest {
     @Test
     fun `full-screen mode steps through the Styles, hides its controls and leaves`() {
         var exits = 0
-        compose.setContent { FullScreenVisualRoute(visuals, keepScreenOn = true, onExit = { exits++ }) }
+        compose.setContent {
+            var controlsShown by remember { mutableStateOf(true) }
+            FullScreenVisualRoute(
+                visuals,
+                controlsShown = controlsShown,
+                keepScreenOn = true,
+                onToggleControls = { controlsShown = !controlsShown },
+                onExit = { exits++ },
+            )
+        }
 
         compose.onNodeWithContentDescription("Next Style").performClick()
         compose.onNodeWithContentDescription("Previous Style").performClick()
         compose.onNodeWithText("Fluid Ink").assertExists()
         compose.onNodeWithContentDescription("Leave full screen").performClick()
-        compose.onNodeWithContentDescription("Show or hide the controls").performClick()
+        // The overlay takes no touches (they belong to the Style), so the toggle is its accessibility action.
+        compose.onNodeWithContentDescription("Show or hide the controls").performSemanticsAction(SemanticsActions.OnClick)
         compose.onNodeWithText("Fluid Ink").assertDoesNotExist()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
 

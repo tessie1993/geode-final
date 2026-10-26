@@ -7,6 +7,7 @@
     },
     {
       "name": "life",
+      "ignores": ["TURBULENCE", "MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": [
         {
           "key": "rule",
@@ -143,6 +144,7 @@
     },
     {
       "name": "mycelium",
+      "ignores": ["MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": [
         {
           "key": "agentRes",
@@ -288,6 +290,7 @@
     },
     {
       "name": "acid",
+      "ignores": ["MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": [
         {
           "key": "mode",
@@ -396,10 +399,12 @@
     },
     {
       "name": "milkdrop",
+      "ignores": ["SPEED", "AUDIO_DRIVE", "TURBULENCE", "MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": []
     },
     {
       "name": "fluid",
+      "ignores": ["TURBULENCE", "MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": [
         {
           "key": "look",
@@ -461,14 +466,17 @@
     },
     {
       "name": "curl_flow",
+      "ignores": ["MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": []
     },
     {
       "name": "water",
+      "ignores": ["TURBULENCE", "MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": []
     },
     {
       "name": "cymatics",
+      "ignores": ["TURBULENCE", "MORPH", "LUT", "PALETTE_2", "PALETTE_MIX", "DUOTONE"],
       "parameters": [
         {
           "key": "shaderStyle",

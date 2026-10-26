@@ -32,6 +32,9 @@ import dev.geode.feature.customization.api.Trigger
  * the beats and big moments the live analysis reports ([Automation] gives their meaning) and counts
  * Style switching's due moves for the reducer ([CustomizationEvent.StyleDue]). Style switching's slot
  * is marked held while the person holds it or Customize is open (#282).
+ *
+ * Layer 2 goes last: its Style, blend and influence. Its loop ([LayerLoops]) goes as one more Modulator
+ * and its Reactions, after the person's own, which give up the last slots if the plan is full.
  */
 object NativePlan {
     const val MAX_REACTIONS: Int = 128
@@ -44,6 +47,9 @@ object NativePlan {
     const val MODULATOR_FLOATS: Int = 16 + MAX_STEPS
     const val MACRO_LINK_FLOATS: Int = 6
     const val AUTOMATION_FLOATS: Int = 13 + MAX_STEPS
+
+    /** Layer 2: its Style ([StyleHash], 0 when off), blend and influence. */
+    const val LAYER_FLOATS: Int = 3
 
     /** An index no array has: the engine ignores a link through it. */
     const val NO_INDEX: Float = 255f
@@ -74,7 +80,7 @@ object NativePlan {
     val floatCount: Int =
         HEADER_FLOATS + SharedProperty.entries.size + ExtraKind.entries.size + MACRO_COUNT + 2 * SoundSignal.entries.size +
             MAX_REACTIONS * REACTION_FLOATS + MAX_MODULATORS * MODULATOR_FLOATS + MAX_MACRO_LINKS * MACRO_LINK_FLOATS +
-            MAX_AUTOMATIONS * AUTOMATION_FLOATS
+            MAX_AUTOMATIONS * AUTOMATION_FLOATS + LAYER_FLOATS
 
     private const val MILLIS_PER_SECOND = 1000f
 
@@ -160,8 +166,17 @@ object NativePlan {
         switchingHeld: Boolean = false,
     ): List<Float> {
         val w = Writer(floatCount)
-        val reactions = customization.reactions.take(MAX_REACTIONS)
-        val modulators = customization.modulators.take(MAX_MODULATORS)
+        val layer = customization.layer
+        val loop = layer.loop?.takeIf { layer.on && it.targets.isNotEmpty() }
+        val loopId = ModulatorId((customization.modulators.maxOfOrNull { it.id.value } ?: 0) + 1)
+        val loopReactions = loop?.let { LayerLoops.reactions(it, loopId) }.orEmpty()
+        val reactions = customization.reactions.take(MAX_REACTIONS - loopReactions.size) + loopReactions
+        val modulators =
+            if (loop == null) {
+                customization.modulators.take(MAX_MODULATORS)
+            } else {
+                customization.modulators.take(MAX_MODULATORS - 1) + LayerLoops.modulator(loop, loopId)
+            }
         val links =
             customization.macros
                 .take(MACRO_COUNT)
@@ -303,6 +318,11 @@ object NativePlan {
             w.put(steps.size.toFloat())
             steps.forEach(w::put)
         }
+
+        w.skipTo(linksAt + MAX_MACRO_LINKS * MACRO_LINK_FLOATS + MAX_AUTOMATIONS * AUTOMATION_FLOATS)
+        w.put(layer.style?.let { StyleHash.of(it).toFloat() } ?: 0f)
+        w.put(layer.blend.ordinal.toFloat())
+        w.put(layer.influence.ordinal.toFloat())
         return w.out.asList()
     }
 }

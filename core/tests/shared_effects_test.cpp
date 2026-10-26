@@ -38,6 +38,32 @@ TEST(SharedEffects, TheyAreReadFromTheEvaluatedSharedCore) {
     EXPECT_NEAR(e.particles, 0.7f, kTolerance);
     EXPECT_EQ(e.particleKind, 3);
     EXPECT_NEAR(e.particleSize, 2.0f, kTolerance);
+    EXPECT_EQ(e.anaglyph, 0.0f);
+}
+
+TEST(SharedEffects, TheAnaglyphIsASwitchTheCompositeDrawsSoTheSharedPassStaysOff) {
+    mod::CustomizationPlan plan = mod::CustomizationPlan::defaults();
+    plan.shared[static_cast<size_t>(mod::Shared::Anaglyph)] = 1.0f;
+    mod::ReactionGraph graph;
+    const SharedEffects on = SharedEffects::from(graph.evaluate(plan, mod::SignalFrame{}, kFrameDt));
+    EXPECT_EQ(on.anaglyph, 1.0f);
+    EXPECT_FALSE(on.active());
+    EXPECT_TRUE(mod::spec(mod::Shared::Anaglyph).luminous);
+    EXPECT_EQ(mod::spec(mod::Shared::Anaglyph).kind, mod::ValueKind::Switch);
+}
+
+TEST(SharedEffects, TheAnaglyphFadesInAndOutRatherThanCuttingOver) {
+    // Half a second from off to on, the same at any frame rate, and never past either end.
+    EXPECT_NEAR(sharedfx::anaglyphMix(0.0f, 1.0f, kFrameDt), kFrameDt / sharedfx::kAnaglyphFadeSeconds, kTolerance);
+    EXPECT_NEAR(sharedfx::anaglyphMix(0.0f, 1.0f, 0.25f), 0.5f, kTolerance);
+    EXPECT_NEAR(sharedfx::anaglyphMix(0.5f, 0.0f, 0.125f), 0.25f, kTolerance);
+    EXPECT_EQ(sharedfx::anaglyphMix(0.9f, 1.0f, 1.0f), 1.0f);
+    EXPECT_EQ(sharedfx::anaglyphMix(0.1f, 0.0f, 1.0f), 0.0f);
+    EXPECT_EQ(sharedfx::anaglyphMix(1.0f, 1.0f, kFrameDt), 1.0f);
+    // A stalled or broken frame holds the mix where it is.
+    EXPECT_EQ(sharedfx::anaglyphMix(0.4f, 1.0f, 0.0f), 0.4f);
+    EXPECT_EQ(sharedfx::anaglyphMix(0.4f, 0.0f, std::numeric_limits<float>::quiet_NaN()), 0.4f);
+    EXPECT_EQ(sharedfx::anaglyphMix(0.4f, 1.0f, std::numeric_limits<float>::infinity()), 0.4f);
 }
 
 TEST(SharedEffects, TrailsKeepTheSameShareOfThePictureEverySecondAtAnyFrameRate) {

@@ -12,8 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -94,7 +94,7 @@ fun SongEditor(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    if (fields.artwork == null) Icons.Filled.MusicNote else Icons.Filled.Image,
+                    if (fields.artwork == null) Icons.Rounded.MusicNote else Icons.Rounded.Image,
                     contentDescription = stringResource(R.string.library_edit_artwork),
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 )

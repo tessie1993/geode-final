@@ -10,8 +10,12 @@ import dev.geode.engine.types.Millis
 sealed interface SettingsCommand
 
 sealed interface LookCommand : SettingsCommand {
-    data class SetElement(
-        val element: Element,
+    data class SetThemeMode(
+        val mode: ThemeMode,
+    ) : LookCommand
+
+    data class SetReduceTransparency(
+        val on: Boolean,
     ) : LookCommand
 
     data class SetAccentIntensity(
@@ -49,10 +53,6 @@ sealed interface LookCommand : SettingsCommand {
 
     data class SetClearVisualsMenu(
         val on: Boolean,
-    ) : LookCommand
-
-    data class SetAmbientMode(
-        val mode: AmbientMode,
     ) : LookCommand
 }
 
@@ -189,6 +189,15 @@ sealed interface BehaviorCommand : SettingsCommand {
     data class SetReducedMotion(
         val on: Boolean,
     ) : BehaviorCommand
+
+    data class SetTilt(
+        val amount: TiltAmount,
+    ) : BehaviorCommand
+
+    /** The look Geode opens on (#383); a Style or preset with a blank id means [StartLook.Last]. */
+    data class SetStartLook(
+        val look: StartLook,
+    ) : BehaviorCommand
 }
 
 sealed interface ExportCommand : SettingsCommand {
@@ -269,6 +278,18 @@ sealed interface PerformanceCommand : SettingsCommand {
 
     data class SetVisualFrameRate(
         val frameRate: VisualFrameRate,
+    ) : PerformanceCommand
+
+    /** The quality [surface] draws at (#394); null makes it follow [SetVisualQuality] again. */
+    data class SetSurfaceQuality(
+        val surface: VisualSurface,
+        val quality: VisualQuality?,
+    ) : PerformanceCommand
+
+    /** The frame rate [surface] draws at (#394); null makes it follow [SetVisualFrameRate] again. */
+    data class SetSurfaceFrameRate(
+        val surface: VisualSurface,
+        val frameRate: VisualFrameRate?,
     ) : PerformanceCommand
 
     data class SetSaveMode(

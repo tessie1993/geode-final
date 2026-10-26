@@ -14,6 +14,9 @@
 namespace geode::viz {
 
 // Port of FluidSceneBase.kt: the shared clock, idle synthesis, quality ladder and GL state guard.
+// The guard asks the driver nothing once the renderer hands over its target (Scene::setDrawTarget):
+// it returns to that framebuffer and viewport, and leaves blending off, as every pass of the
+// renderer expects to find it and sets its own (#311).
 class FluidSceneBase : public Scene {
 public:
     FluidSceneBase(std::string id, float timeWrapSeconds, ProgramLoader loader, SceneHost host)
@@ -24,6 +27,9 @@ public:
     void setParams(const SceneParams& params) override { params_ = params; }
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void update(const GeodeFeatureFrame& features, float dt) override;
+    void setExtras(const ExtraValues& values) override { extras_ = values; }
+    void setDrawTarget(GLuint fbo, int width, int height) override;
+    void setGravityField(const GravityField* field) override { gravity_ = field; }
 
 protected:
     float tickPcm(float dt) { return pcmPulse_.tick(dt); }
@@ -45,6 +51,9 @@ protected:
     int savedViewportWidth() const { return prevViewport_[2]; }
     int savedViewportHeight() const { return prevViewport_[3]; }
     float viewportDpiScale() const { return particle_look::dpiScale(savedViewportHeight()); }
+    // The in-plane down a fluid pushes along (gravity::inPlaneDown): faded out near flat, scaled by the
+    // tilt weight, and exactly {0, 0} with tilt off.
+    std::array<float, 2> inPlaneDown() const;
 
     std::string id_;
     float timeWrapSeconds_;
@@ -54,6 +63,8 @@ protected:
     PerformanceMonitor monitor_;
     float pcmStrike_ = 0.0f;
     SceneParams params_;
+    // The Style's Extras this frame, mapped onto the family's own parameters where they are drawn.
+    ExtraValues extras_ = ExtraValues::neutral();
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
     bool hasPending_ = false;
@@ -64,9 +75,11 @@ protected:
     int autoDowngrade_ = 0;
     int lastUserQuality_ = -1;
     int appliedTier_ = -1;
+    const GravityField* gravity_ = nullptr;
 
 private:
     PcmPulse pcmPulse_;
+    bool targetHanded_ = false;
     GLint prevFbo_ = 0;
     std::array<GLint, 4> prevViewport_{};
     std::array<GLint, 4> prevBlendFunc_{};

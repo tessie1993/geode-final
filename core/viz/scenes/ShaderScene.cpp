@@ -32,6 +32,10 @@ constexpr std::array<const char*, mod::kExtraCount> kExtraUniforms = {
     "uXForce", "uXReach",      "uXTurn", "uXHold",      "uXVariant", "uXCenterX",   "uXCenterY",
 };
 
+// The rate Extras and their clocks (lib_style.glsl): uTime's own step, run at the rate each one sets.
+constexpr std::array<mod::Extra, 3> kRateExtras = {mod::Extra::Flight, mod::Extra::Spin, mod::Extra::Drift};
+constexpr std::array<const char*, 3> kRateUniforms = {"uXFlightTime", "uXSpinTime", "uXDriftTime"};
+
 // Shortest signed distance from `from` to `to` on a unit-period circle.
 float wrappedDelta(float from, float to, float period) {
     const float half = period * 0.5f;
@@ -145,6 +149,11 @@ void ShaderScene::stepMotion(float hit, float dt) {
 void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     const SceneParams& p = params_;
     shaderTime_ = std::fmod(shaderTime_ + p.speed * dt, kTimeWrapSeconds);
+    // Integrated like shaderTime_, so moving a rate Extra changes the pace and never jumps the
+    // picture; at the neutral 1 each clock is shaderTime_ exactly.
+    for (size_t r = 0; r < kRateExtras.size(); ++r) {
+        rateClocks_[r] = std::fmod(rateClocks_[r] + p.speed * dt * extras_.multiplier(kRateExtras[r], 0.0f), kTimeWrapSeconds);
+    }
     rotationAngle_ = std::fmod(rotationAngle_ + p.rotation * dt, kTwoPi);
     zoomPhase_ = p.endlessZoom ? std::fmod(zoomPhase_ + p.endlessZoomSpeed * dt, 1.0f) : 0.0f;
     if (p.colorCycle) cyclePhase_ = std::fmod(cyclePhase_ + p.cycleSpeed * dt, 1.0f);
@@ -160,6 +169,11 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     swell_ = slew(swell_, energy_, dt, kSwellRiseHz, kSwellFallHz);
     const float hit = live::hit(features);
     stepMotion(hit, dt);
+    energyPhase_ = framerate::advancePhase(energyPhase_, p.speed * smoothEnergy_, dt, kTimeWrapSeconds);
+    const float flowRate = kFlowBaseHz + kFlowEnergyHz * smoothEnergy_;
+    // Its uTime share runs at the FLIGHT Extra's rate, as uXFlightTime does (neutral 1: unchanged).
+    const float flightTimeRate = kFlightTimeRate * p.speed * extras_.multiplier(mod::Extra::Flight, 0.0f);
+    flight_ = framerate::advancePhase(flight_, flightTimeRate + kFlightFlowRate * flowRate, dt, kFlightWrap);
     beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
@@ -207,9 +221,12 @@ void ShaderScene::draw(float timeSeconds) {
     }
     set1f("uPalLutMix", flag(lutSelected));
     set1f("uPalLutRow", paletteRowCoordinate(std::max(p.paletteLut, 0)));
-    set1f("uSteps", marchSteps(p.marchDetail));
+    // The Detail budget, cut to the share the thermal tier allows, and the effects it switches off.
+    set1f("uSteps", static_cast<float>(quality::marchSteps(static_cast<int>(marchSteps(p.marchDetail)), quality_.stepScale)));
+    glUniform1i(uniforms_.loc("uFxOff"), static_cast<GLint>(quality_.effectsOff));
     uploadMotion();
     uploadTouch();
+    uploadGravity();
     uploadCamera();
     uploadExtras();
     glBindVertexArray(vao_);
@@ -280,6 +297,8 @@ void ShaderScene::uploadMotion() {
     set1f("uSpawnAge", spawnAge_);
     set1f("uFormPhase", formPhase_);
     set1f("uFlowPhase", flowPhase_);
+    set1f("uEnergyPhase", energyPhase_);
+    set1f("uFlight", flight_);
     glUniform2f(uniforms_.loc("uMoveDir"), std::cos(dirAngle_), std::sin(dirAngle_));
 }
 
@@ -300,6 +319,13 @@ void ShaderScene::uploadTouch() {
     set1f("uTouchSpin", touchField_ ? touchField_->spin() : 0.0f);
 }
 
+void ShaderScene::uploadGravity() {
+    const GravityField* g = gravityField_;
+    glUniform3f(uniforms_.loc("uGravity"), g ? g->x() : 0.0f, g ? g->y() : 0.0f, g ? g->z() : 0.0f);
+    glUniform2f(uniforms_.loc("uTilt"), g ? g->tiltX() : 0.0f, g ? g->tiltY() : 0.0f);
+    set1f("uTiltWeight", g ? g->weight() : 0.0f);
+}
+
 void ShaderScene::uploadCamera() {
     glUniformMatrix3fv(uniforms_.loc("uCamRot"), 1, GL_FALSE, camera_.rotation.data());
     set1f("uCamPush", camera_.push);
@@ -309,6 +335,7 @@ void ShaderScene::uploadCamera() {
 
 void ShaderScene::uploadExtras() {
     for (size_t e = 0; e < mod::kExtraCount; ++e) set1f(kExtraUniforms[e], extras_.value[e]);
+    for (size_t r = 0; r < kRateUniforms.size(); ++r) set1f(kRateUniforms[r], rateClocks_[r]);
 }
 
 void ShaderScene::set1f(const char* name, float value) {
@@ -344,6 +371,13 @@ void ShaderScene::compilePendingIfAny() {
     currentFragment_ = *pending;
     host_.onShaderError("");
 }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+void ShaderScene::replaceFragment(std::string fragment) {
+    std::lock_guard<std::mutex> lock(pendingLock_);
+    pendingFragment_ = std::move(fragment);
+}
+#endif
 
 void ShaderScene::release() {
     if (program_ != 0) glDeleteProgram(program_);

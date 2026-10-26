@@ -9,7 +9,6 @@ import dev.geode.data.MilkCatalog
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
-import dev.geode.feature.customization.api.StyleMark as SwitchingMark
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.handlers.CustomizationHandlers
 import dev.geode.feature.customization.handlers.EnginePublisher
@@ -18,6 +17,7 @@ import dev.geode.feature.customization.handlers.StyleCues
 import dev.geode.feature.customization.handlers.customizationStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.Visuals
@@ -37,10 +37,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Singleton
+import dev.geode.feature.customization.api.StyleMark as SwitchingMark
 
 /**
  * Customization's and Visuals' app-scoped stores (ADR-0003, ADR-0004, #17). Customization reaches the
@@ -92,6 +94,15 @@ object VisualsModule {
                         engine.publish(state.current, state.switchingHeld)
                     }
             }
+            // The look Geode starts on (#383): once, as soon as the stored settings are read.
+            application.geodeContainer.appScope.launch {
+                val start =
+                    settings.state
+                        .filterIsInstance<SettingsState.Ready>()
+                        .first()
+                        .values.behavior.startLook
+                startCommand(start)?.let(customization::send)
+            }
         }
     }
 
@@ -122,7 +133,8 @@ object VisualsModule {
             runtime = runtime,
         ).also { visuals ->
             // Style switching's Visualizer styles are the Styles Visuals lists, in its order (#282).
-            customization.send(CustomizationCommand.UseVisualizerStyles(visuals.state.value.styles.map { it.id }))
+            val listed = visuals.state.value.styles
+            customization.send(CustomizationCommand.UseVisualizerStyles(listed.map { it.id }))
             // It draws by the person's marks and Favourites, which live in the Visuals library (#308).
             application.geodeContainer.appScope.launch(Dispatchers.Default) {
                 visuals.state
@@ -145,3 +157,11 @@ object VisualsModule {
     /** The app's own preset folder, where Customization saves presets until the person picks another. */
     private const val PRESET_FOLDER = "presets"
 }
+
+/** What Customization is sent to open on [look] (#383); nothing for the last look, which it keeps. */
+internal fun startCommand(look: StartLook): CustomizationCommand? =
+    when (look) {
+        StartLook.Last -> null
+        is StartLook.Style -> CustomizationCommand.ChooseStyle(look.style)
+        is StartLook.Preset -> CustomizationCommand.LoadPreset(look.preset)
+    }

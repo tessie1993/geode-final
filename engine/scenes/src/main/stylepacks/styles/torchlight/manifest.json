@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "torchlight",
+  "label": "Torchlight",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march"
+}

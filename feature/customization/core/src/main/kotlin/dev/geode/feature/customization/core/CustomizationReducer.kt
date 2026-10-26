@@ -35,6 +35,8 @@ import dev.geode.kernel.ReportFailure
  *   Automations kept.
  * - The Visualizer styles and the Style library's marks and Favourites `:app` hands in are kept
  *   beside the history, not in it, as are A/B compare's slots; switching to a slot is an edit.
+ * - Layer 2 is edited like everything else and carries over to the next Style; it turns off when the
+ *   Style it shows becomes the Style itself.
  * - A change of Style is announced as [CustomizationFact.StyleChanged].
  *
  * [styles] are the manifests of the Styles this version knows.
@@ -158,6 +160,10 @@ class CustomizationReducer(
             is CustomizationCommand.PlayModulator -> live(state, Edits.playModulator(current, command.id, command.playing))
             is CustomizationCommand.TrimSignal -> edit(state, Edits.trimSignal(current, command.signal, command.trim))
             is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
+            is CustomizationCommand.ChooseLayerStyle -> edit(state, Edits.chooseLayerStyle(current, command.style, styles))
+            is CustomizationCommand.SetLayerBlend -> edit(state, Edits.setLayerBlend(current, command.blend))
+            is CustomizationCommand.SetLayerInfluence -> edit(state, Edits.setLayerInfluence(current, command.influence))
+            is CustomizationCommand.SetLayerLoop -> edit(state, Edits.setLayerLoop(current, command.loop))
             is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
             is CustomizationCommand.UseStyleLibrary -> Next(state.copy(styleMarks = command.marks, favouriteStyles = command.favourites))
             is CustomizationCommand.HoldStyle -> holding(state, state.copy(styleHeld = command.held))

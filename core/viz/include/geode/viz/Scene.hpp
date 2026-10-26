@@ -7,7 +7,9 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
+#include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/TouchField.hpp"
 
@@ -28,13 +30,25 @@ public:
     virtual void draw(float timeSeconds) = 0;
     virtual void release() = 0;
 
+    // This frame's audio window, as mono and as interleaved stereo; both come every frame the Visual has
+    // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
+    virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
+    // Which way is down (GravityField), stepped once per frame before any scene draws.
+    virtual void setGravityField(const GravityField* field) { (void) field; }
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
+    virtual void setQuality(const quality::Budget& budget) { (void) budget; }
+    // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just
+    // before draw(). A Style that draws through targets of its own comes back to this one from here
+    // rather than asking the driver: a glGet makes a threaded driver wait for its queue (#311). The
+    // viewport may be smaller than resize() said: the outgoing Style of a transition draws at half size.
+    virtual void setDrawTarget(GLuint fbo, int width, int height) { (void) fbo; (void) width; (void) height; }
     // True when the Style moves a camera of its own from the Camera (a raymarched world reading
     // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
     virtual bool ownsCamera() const { return false; }
@@ -44,6 +58,9 @@ public:
     // The fluid scene runs its own flow field; the water scene owns the ripples and the touch smears.
     virtual bool isFluid() const { return false; }
     virtual bool isWater() const { return false; }
+    // True when the Style draws the finger's strokes itself (Water's ripples); every other Style gets
+    // them as the shared ripple smear, and only while the person has that smear on.
+    virtual bool ownsTouchStrokes() const { return isWater(); }
     virtual void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
         (void) nx; (void) ny; (void) ndx; (void) ndy; (void) dt; (void) strength;
     }

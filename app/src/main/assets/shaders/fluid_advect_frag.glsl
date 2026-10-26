@@ -15,6 +15,8 @@ uniform vec2 uVelInvRes;   // texel size of the VELOCITY grid (back-trace scale)
 uniform float uDt;
 uniform float uRdx;        // 1/cellSize
 uniform vec3 uDecay;       // per-channel (1 + dissipation*dt); velocity uses .xxx
+uniform sampler2D uWeight; // velocity pass with tilt only: the dye, whose ink is heavier than water
+uniform vec2 uBuoyancy;    // velocity gained per second per unit of ink, toward down; 0 = no tilt
 out vec4 fragColor;
 
 vec4 bilerp(sampler2D t, vec2 uv, vec2 inv) {
@@ -39,6 +41,11 @@ void main() {
     vec2 traced = vUv - uDt * uRdx * vel * uVelInvRes;
     vec4 s = bilerp(uSource, traced, uSrcInvRes);
     s.rgb /= uDecay;
+    // Tilt (#315): ink sinks toward down. Skipped outright with no tilt, so the pass is unchanged.
+    if (uBuoyancy.x != 0.0 || uBuoyancy.y != 0.0) {
+        vec3 ink = texture(uWeight, vUv).rgb;
+        s.xy += uBuoyancy * uDt * min(dot(ink, vec3(0.3333)), 1.0);
+    }
     bvec4 nan = isnan(s);
     bvec4 inf = isinf(s);
     if (any(nan) || any(inf)) s = vec4(0.0);

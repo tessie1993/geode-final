@@ -78,14 +78,20 @@ class AndroidVideoFiles(
     }
 }
 
-/** Studio's sources on the phone, for `:app` to wire (#17): the save folder comes from [settings]. */
+/**
+ * Studio's sources on the phone, for `:app` to wire (#17): the save folder and the Renders' settings
+ * come from [settings]; `:app` fills the [looks] and the [engine] Renders are made with (#338, #316).
+ */
 fun androidStudioSources(
     context: Context,
     settings: Settings,
+    looks: RenderLooks,
+    engine: RenderEngine,
 ): StudioSources =
     StudioSources(
         storage = RoomStudioStorage(StudioDatabase.open(context).dao()),
         saveFolder = saveFolderOf(settings),
         files = AndroidVideoFiles(context),
         now = { Millis(System.currentTimeMillis()) },
+        renders = RenderSources(renderSettingsOf(settings), looks, engine),
     )

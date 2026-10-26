@@ -1,5 +1,7 @@
 # Element UI effects in Compose: research (Water first)
 
+> **Superseded (#265, #333):** the Elements are retired and the App UI is frosted glass (`app-ui-design-system.md`). The "no glass, no live blur" rule below no longer holds. Kept as research history.
+
 How to build the App UI effects and components for the Element skins in Jetpack Compose, starting with Water. The App UI never reacts to audio (`docs/design/app-ui-design-system.md`, line 3). The owner's #102 rule applies everywhere: **no glass, no live blur, no glassmorphism** (PR #117).
 
 Researched on 2026-10-22 against `main` at `3dbd3c8` (Graphify index `ec9c6d1`), PR #139 (`claude/water-element`) and PR #117 (`no-glass-check`). Sources are numbered **[S#]** and listed at the end. Repository paths are relative to the repo root.

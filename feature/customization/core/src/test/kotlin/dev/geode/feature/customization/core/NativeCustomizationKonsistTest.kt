@@ -1,6 +1,8 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.SharedProperty
@@ -118,7 +120,28 @@ class NativeCustomizationKonsistTest {
         assertEquals("${NativePlan.MODULATOR_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kModulatorFloats"))
         assertEquals(NativePlan.MACRO_LINK_FLOATS.toString(), constant(codec, "kMacroLinkFloats"))
         assertEquals("${NativePlan.AUTOMATION_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kAutomationFloats"))
+        assertEquals(NativePlan.LAYER_FLOATS.toString(), constant(codec, "kLayerFloats"))
         assertEquals(NativePlan.floatCount.toString(), constant(codec, "kPlanFloats"))
+    }
+
+    private fun nativeEnum(
+        source: String,
+        name: String,
+    ): List<String> {
+        val match = Regex("""enum class $name : uint8_t \{([^}]*)\}""").find(source) ?: error("no $name enum")
+        return match.groupValues[1]
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    @Test
+    fun `the engine's Layer 2 modes are the model's, in the same order`() {
+        val header = read("core/viz/include/geode/viz/Layers.hpp")
+        assertEquals(LayerBlend.entries.map { camel(it.name) }, nativeEnum(header, "Blend"))
+        assertEquals(LayerInfluence.entries.map { camel(it.name) }, nativeEnum(header, "Influence"))
+        assertEquals(LayerBlend.entries.size.toString(), constant(header, "kBlendCount"))
+        assertEquals(LayerInfluence.entries.size.toString(), constant(header, "kInfluenceCount"))
     }
 
     @Test

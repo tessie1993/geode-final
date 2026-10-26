@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "rain_glass",
+  "label": "Rain Glass",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75
+}

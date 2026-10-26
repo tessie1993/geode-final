@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "geode/viz/VisualSafety.hpp"
+
 namespace geode::viz {
 
 namespace {
@@ -40,7 +42,9 @@ void applySharedCore(SceneParams& p, const mod::NativeFrame& f) {
     p.audioDrive = f[Shared::AudioDrive];
     p.turbulence = f[Shared::Turbulence];
     p.marchDetail = f[Shared::Detail];
-    p.bloom = f[Shared::Glow];
+    // GLOW's whole range is live: it spans what the safety clamp lets bloom reach, so its top is the
+    // cap rather than three quarters of the slider doing nothing past it.
+    p.bloom = f[Shared::Glow] * safety::kMaxFlashDepth;
 
     p.kaleidoscope = on(f[Shared::Kaleidoscope]);
     p.symmetry = whole(f[Shared::Symmetry]);

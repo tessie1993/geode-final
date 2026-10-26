@@ -3,5 +3,8 @@
   "id": "fractal_temple",
   "label": "Fractal Temple",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 }
+  ]
 }

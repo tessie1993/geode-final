@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,8 +21,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.design.CrystalButton
-import dev.geode.design.CrystalSlider
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassSheet
+import dev.geode.design.glass.GlassSlider
 import dev.geode.editor.AutoCut
 import dev.geode.editor.AutoCutMiss
 import dev.geode.editor.AutoCutResult
@@ -53,7 +53,7 @@ fun AutoCutSheet(
         result = found?.let { AutoCut.detect(it, settings) }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    GlassSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.autocut_title), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.autocut_source), style = MaterialTheme.typography.labelMedium)
@@ -70,15 +70,15 @@ fun AutoCutSheet(
                 stringResource(R.string.autocut_sensitivity, (settings.sensitivity * 100).toInt()),
                 style = MaterialTheme.typography.labelMedium,
             )
-            CrystalSlider(value = settings.sensitivity, onValueChange = { settings = settings.copy(sensitivity = it) })
+            GlassSlider(value = settings.sensitivity, onValueChange = { settings = settings.copy(sensitivity = it) })
             Text(stringResource(R.string.autocut_spacing, settings.minSpacingMs), style = MaterialTheme.typography.labelMedium)
-            CrystalSlider(
+            GlassSlider(
                 value = settings.minSpacingMs.toFloat(),
                 onValueChange = { settings = settings.copy(minSpacingMs = (it / 10f).toLong() * 10L) },
                 valueRange = 60f..2000f,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(onClick = ::detect) { Text(stringResource(R.string.autocut_detect)) }
+                GlassButton(onClick = ::detect) { Text(stringResource(R.string.autocut_detect)) }
             }
             when (val r = result) {
                 null -> if (missingAnalysis) ResultText(stringResource(R.string.autocut_no_analysis), error = true)
@@ -86,8 +86,8 @@ fun AutoCutSheet(
                 is AutoCutResult.Suggested -> {
                     ResultText(pluralStringResource(R.plurals.autocut_found, r.hits.size, r.hits.size), error = false)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CrystalButton(onClick = { onMarkers(r.hits) }) { Text(stringResource(R.string.autocut_as_markers)) }
-                        CrystalButton(filled = false, onClick = { onClips(r.hits, envelope?.durationMs ?: 0L) }) {
+                        GlassButton(onClick = { onMarkers(r.hits) }) { Text(stringResource(R.string.autocut_as_markers)) }
+                        GlassButton(filled = false, onClick = { onClips(r.hits, envelope?.durationMs ?: 0L) }) {
                             Text(stringResource(R.string.autocut_as_clips))
                         }
                     }

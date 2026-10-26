@@ -13,8 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.SharedProperty
@@ -23,8 +23,8 @@ import dev.geode.feature.customization.api.SharedProperty
 private const val KNOBS_PER_ROW = 3
 
 /**
- * The basic view (#12): the 6 Macro knobs, the effect toggles, the palette chips, this Style's
- * presets and the look picker strip.
+ * The basic view (#12): the 6 Macro knobs, the effect toggles, the way into Layer 2, the palette chips,
+ * this Style's presets and the look picker strip.
  */
 @Composable
 internal fun BasicView(panel: PanelState) {
@@ -32,7 +32,7 @@ internal fun BasicView(panel: PanelState) {
     SectionTitle(stringResource(R.string.customize_macros))
     model.macros.chunked(KNOBS_PER_ROW).forEach { row ->
         Row(
-            Modifier.fillMaxWidth().padding(vertical = ForestSpacing.ExtraSmall),
+            Modifier.fillMaxWidth().padding(vertical = GlassSpacing.ExtraSmall),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             row.forEach { knob ->
@@ -51,9 +51,11 @@ internal fun BasicView(panel: PanelState) {
     SectionTitle(stringResource(R.string.customize_effects))
     ChipFlow {
         model.effects.forEach { effect ->
-            ChoiceChip(propertyName(effect.property), effect.on) { panel.send(effect.toggled()) }
+            ChoiceChip(propertyName(effect.property), effect.on, enabled = !effect.ignored) { panel.send(effect.toggled()) }
         }
     }
+
+    LayersEntry(panel)
 
     SectionTitle(stringResource(R.string.customize_palettes))
     ChipStrip {
@@ -89,7 +91,7 @@ internal fun BasicView(panel: PanelState) {
         Text(
             stringResource(R.string.customize_no_presets),
             style = MaterialTheme.typography.bodySmall,
-            color = LocalForestColors.current.textSecondary,
+            color = LocalGlassStyle.current.colors.textSecondary,
         )
     } else {
         ChipStrip {
@@ -114,7 +116,7 @@ internal fun BasicView(panel: PanelState) {
 private fun ChipStrip(content: @Composable () -> Unit) {
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
     ) { content() }
 }
 

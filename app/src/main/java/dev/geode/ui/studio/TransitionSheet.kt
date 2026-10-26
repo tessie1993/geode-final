@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,7 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.design.CrystalButton
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassSheet
 import dev.geode.editor.ClipTransition
 import dev.geode.render.TransitionCatalog
 
@@ -39,12 +39,12 @@ fun TransitionSheet(
     val context = LocalContext.current
     val library = remember { TransitionCatalog.library(context) }
     var durationMs by remember { mutableStateOf(current?.boundedDurationMs ?: ClipTransition.DEFAULT_TRANSITION_MS) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    GlassSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.editor_transition), style = MaterialTheme.typography.titleMedium)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ClipTransition.DURATION_CHOICES_MS.forEach { choice ->
-                    CrystalButton(compact = true, filled = choice == durationMs, onClick = { durationMs = choice }) {
+                    GlassButton(compact = true, filled = choice == durationMs, onClick = { durationMs = choice }) {
                         Text(stringResource(R.string.editor_transition_seconds, choice / 1000f))
                     }
                 }

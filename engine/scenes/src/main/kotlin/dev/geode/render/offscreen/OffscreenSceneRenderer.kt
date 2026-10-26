@@ -2,21 +2,22 @@ package dev.geode.render.offscreen
 
 import android.content.Context
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
-import dev.geode.render.AdsrConfig
-import dev.geode.render.LfoConfig
 import dev.geode.render.SceneFactory
 import dev.geode.render.TransitionStyle
 import dev.geode.render.bridge.NativeViz
-import dev.geode.render.scene.SceneParams
 import dev.geode.util.bestEffort
 
 /**
- * Everything needed to render one offscreen sequence: the frame grid and the parameter
- * automation that drives it.
+ * Everything needed to render one offscreen sequence: the frame grid, and the look it is drawn with.
  *
- * [paramsAt] supplies the keyframed parameters for a timeline position, measured from the start
- * of the exported range; when it is null every frame uses [baseParams].
+ * [look] is the Render's frozen Customization as the engine reads it: the same snapshot the live
+ * Visual is handed for that Customization (ADR-0002, ADR-0004). The engine evaluates its plan exactly
+ * as it does live, so a Render draws the Style's defaults, the Shared core, the Camera, the Extras,
+ * the Macros, the Reactions, the Modulators and the Automations, and whatever the shared renderer
+ * learns to draw reaches Renders with it (#337).
  */
 data class OffscreenRenderSpec(
     val width: Int,
@@ -24,19 +25,17 @@ data class OffscreenRenderSpec(
     val fps: Int,
     val totalFrames: Int,
     val rangeStartMs: Long,
-    val baseParams: SceneParams,
-    val lfoConfigs: List<LfoConfig> = emptyList(),
-    val adsrConfigs: List<AdsrConfig> = emptyList(),
-    val reducedMotion: Boolean = false,
-    val paramsAt: ((Long) -> SceneParams)? = null,
+    val look: CustomizationSnapshot,
 )
 
 /**
  * Draws an analysed track to a GL target, one frame at a time, through its own native renderer.
  *
  * Callers own the EGL context, the surface and whatever they do with the rendered frames; the
- * scene, its simulations and the modulation engines live inside `libgeode.so`. Not thread-safe,
- * and every call must happen on the thread holding the GL context.
+ * scene, its simulations and the Customization's evaluation live inside `libgeode.so`. The renderer
+ * has its own snapshot exchange, separate from the live Visual's (ADR-0004: a Render is its own
+ * engine instance), and hands it the Render's look once. Not thread-safe, and every call must happen
+ * on the thread holding the GL context.
  */
 class OffscreenSceneRenderer(
     private val context: Context,
@@ -45,24 +44,29 @@ class OffscreenSceneRenderer(
     private val spec: OffscreenRenderSpec,
 ) {
     private var native: NativeViz? = null
+    private var snapshots: NativeSnapshots? = null
 
-    /** Builds the native renderer and its scene; must run with the target GL context current. */
+    /** Builds the native renderer, its scene and its look; must run with the target GL context current. */
     fun prepare() {
         val viz = NativeViz(context)
         check(viz.create()) { "native renderer could not be created" }
         // Owned from here on, so release() frees it even if a check below throws.
         native = viz
         // Pinned to the full tier: an export renders as fast as the encoder takes frames, so its
-        // wall-clock frame time says nothing about the device.
+        // wall-clock frame time says nothing about the device. MilkDrop runs on the render clock with
+        // the Render seed in this mode, so the same Render gives the same frames.
         viz.setOffscreen(true)
         viz.surfaceCreated()
         viz.surfaceChanged(spec.width, spec.height)
         check(viz.setScene(sceneFactory.sceneId)) { "native renderer cannot draw \"${sceneFactory.sceneId}\"" }
         sceneFactory.milkPresetPath?.let { viz.loadMilkPreset(it) }
         viz.setTransition(TransitionStyle.CUT.name.lowercase(), Millis.ZERO)
-        viz.setReducedMotion(spec.reducedMotion)
-        if (spec.lfoConfigs.isNotEmpty()) viz.setLfoConfigs(spec.lfoConfigs)
-        if (spec.adsrConfigs.isNotEmpty()) viz.setAdsrConfigs(spec.adsrConfigs)
+        val exchange = NativeSnapshots().also { snapshots = it }
+        check(exchange.handle != 0L) { "the engine could not make a Customization exchange for the Render" }
+        val refused = exchange.offer(spec.look)
+        check(refused == null) { "the engine refused the Render's Customization: $refused" }
+        // The first frame picks the look up before it draws, as the live Visual's frames do.
+        viz.attachSnapshots(exchange)
     }
 
     /**
@@ -76,24 +80,34 @@ class OffscreenSceneRenderer(
         targetFbo: Int = 0,
     ) {
         val viz = checkNotNull(native) { "renderFrame() before prepare()" }
-        val fps = spec.fps
-        val timeMs = frame * 1000L / fps
-        val nextTimeMs = (frame + 1) * 1000L / fps
-        val features = timeline.featuresAt(spec.rangeStartMs + timeMs, nextTimeMs - timeMs)
-        // Quality never adapts downward in an export; the thermal half is the offscreen pin above.
-        val p = (spec.paramsAt?.invoke(timeMs) ?: spec.baseParams).copy(fluidAutoQuality = false)
-        viz.setParams(p)
+        // Each frame shows the events heard within half a frame of it (#302): the windows of
+        // consecutive frames share their edges, so every event reaches exactly one frame.
+        val start = spec.rangeStartMs
+        val features =
+            timeline.featuresAround(start + frameStartMs(frame), start + halfwayBeforeMs(frame), start + halfwayBeforeMs(frame + 1))
         viz.setFeatures(features)
-        viz.render(timeMs / 1000.0, targetFbo)
+        // The render clock is exact: frame k is drawn k / fps seconds in, so every step is one frame
+        // long, where whole milliseconds would alternate 16 and 17 ms at 60 fps.
+        viz.render(frame.toDouble() / spec.fps, targetFbo)
     }
 
-    /** Frees the native renderer. Safe to call more than once. */
+    /** Frees the native renderer and its exchange. Safe to call more than once. */
     fun release() {
+        // Detached before the exchange closes, as NativeSnapshots asks.
+        bestEffort(TAG, "native.attachSnapshots(null)") { native?.attachSnapshots(null) }
         bestEffort(TAG, "native.destroy()") { native?.destroy() }
         native = null
+        bestEffort(TAG, "snapshots.close()") { snapshots?.close() }
+        snapshots = null
     }
+
+    private fun frameStartMs(frame: Int): Long = frame * MILLIS_PER_SECOND / spec.fps
+
+    /** The moment half a frame before frame [frame]: (2k − 1) / (2 fps) seconds. */
+    private fun halfwayBeforeMs(frame: Int): Long = Math.floorDiv((2L * frame - 1) * MILLIS_PER_SECOND, 2L * spec.fps)
 
     private companion object {
         const val TAG = "OffscreenSceneRenderer"
+        const val MILLIS_PER_SECOND = 1_000L
     }
 }

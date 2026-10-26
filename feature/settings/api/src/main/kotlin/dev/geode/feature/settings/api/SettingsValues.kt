@@ -1,6 +1,8 @@
 package dev.geode.feature.settings.api
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 
 /**
  * Every setting the app has, grouped as today's Settings tabs group them (#38). Immutable: a change
@@ -82,38 +84,18 @@ enum class CornerStyle {
     PILL,
 }
 
-/**
- * Ambient: how much the Element's Hero scene and its floating assets move by themselves, never with
- * the music. They show on Home only, whatever the mode. Drifting holds still under battery saver,
- * reduced motion or CPU/GPU save mode; Off stays off.
- */
-enum class AmbientMode {
-    DRIFTING,
-    STILL,
-    OFF,
+/** Whether the App UI's glass is dark or light, or follows the phone's own dark theme. */
+enum class ThemeMode {
+    SYSTEM,
+    DARK,
+    LIGHT,
 }
 
-/**
- * One selectable skin for the App UI (see CONTEXT.md): its material, palette, type, shapes and
- * motion. It never changes navigation, layout or what a control does. The first wave is these four,
- * dark only; the look of each belongs to :design.
- */
-enum class Element {
-    WATER,
-    WOOD,
-    STONE,
-    BIOLUMINESCENCE,
-    ;
-
-    companion object {
-        /** The Element a fresh install starts on, and what an unknown stored value falls back to. */
-        val Default = WATER
-    }
-}
-
-/** The Theme section (was Look): the Element, accent, text and layout of the App UI. */
+/** The Theme section (was Look): light or dark, transparency, accent, text and layout of the App UI. */
 data class LookSettings(
-    val element: Element = Element.Default,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** Turns the glass matte: no blur and no see-through panels (Android has no such setting for apps). */
+    val reduceTransparency: Boolean = false,
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
     val backgroundDim: Float = BACKGROUND_DIM_DEFAULT,
     /** The text colour chosen over the theme's own, or null for the theme's. */
@@ -124,7 +106,6 @@ data class LookSettings(
     val cornerStyle: CornerStyle = CornerStyle.ROUNDED,
     val compactPlayer: Boolean = false,
     val clearVisualsMenu: Boolean = false,
-    val ambientMode: AmbientMode = AmbientMode.DRIFTING,
 ) {
     companion object {
         const val ACCENT_INTENSITY_DEFAULT = 1f
@@ -242,17 +223,44 @@ data class AnalysisSettings(
     }
 }
 
-/** Application preferences (was Behavior): touch and motion. */
+/**
+ * The look Geode opens on (#383), so kiosk, party and wall-display setups start on a known one: the
+ * look it was left on ([Last], the default), a chosen Style, or a saved preset. Customization is sent
+ * the chosen one once, when the app starts.
+ */
+sealed interface StartLook {
+    data object Last : StartLook
+
+    data class Style(
+        val style: SceneId,
+    ) : StartLook
+
+    data class Preset(
+        val preset: PresetId,
+    ) : StartLook
+}
+
+/** Application preferences (was Behavior): touch, motion and the look Geode starts on. */
 data class BehaviorSettings(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = TOUCH_SMEAR_STRENGTH_DEFAULT,
     val touchTransform: Boolean = true,
     val reducedMotion: Boolean = false,
+    /** How much tilting the phone moves the live Visual (#315). Reduce motion stills it whatever this says. */
+    val tilt: TiltAmount = TiltAmount.SUBTLE,
+    val startLook: StartLook = StartLook.Last,
 ) {
     companion object {
         const val TOUCH_SMEAR_STRENGTH_DEFAULT = 1f
         val TOUCH_SMEAR_STRENGTH: ClosedFloatingPointRange<Float> = 0.2f..2f
     }
+}
+
+/** How much tilting the phone moves the live Visual: not at all, a little (the default), or fully. */
+enum class TiltAmount {
+    OFF,
+    SUBTLE,
+    FULL,
 }
 
 /** The export sizes (#22), smallest first. Stored by name, so adding a size never moves another. */
@@ -365,23 +373,46 @@ enum class VisualFrameRate(
 }
 
 /**
+ * Where the live Visual is drawn (#394), each with its own quality and frame rate when the person
+ * picks one. Renders are not here: they draw offline at their own export settings.
+ */
+enum class VisualSurface {
+    /** The Visual in the app: on its page, full screen and behind the player. */
+    VISUAL,
+
+    /** The live wallpaper on the home and lock screens. */
+    WALLPAPER,
+
+    /** The full-screen Visual shrunk into a picture-in-picture window (#287). */
+    PICTURE_IN_PICTURE,
+
+    /** The screen saver, once there is one. */
+    SCREEN_SAVER,
+}
+
+/**
  * The CPU/GPU section (#101) and the CPU/GPU save mode switch, which sits in Application preferences.
  * Cooling down when the phone is hot is automatic and has no setting.
  *
- * Readers take the effective values ([visual], [frameRate], [floatingAssetsHeldStill],
+ * Readers take the effective values ([visual], [frameRate], [visualFor], [frameRateFor],
  * [rendersSlowed]), which already apply [saveMode]; the chosen ones stay as they were, so turning save
  * mode off brings them back.
  */
 data class PerformanceSettings(
     val visualQuality: VisualQuality = VisualQuality.HIGH,
-    val visualFrameRate: VisualFrameRate = VisualFrameRate.SCREEN_MAX,
-    /** Saves battery and heat: lower Visual quality, 30 fps, still floating assets, slower renders. */
+    /** 60 out of the box, the rate the Visual always drew at; the screen's maximum is a choice. */
+    val visualFrameRate: VisualFrameRate = VisualFrameRate.FPS60,
+    /** Saves battery and heat: lower Visual quality, 30 fps, slower renders. */
     val saveMode: Boolean = false,
     /**
      * Visuals off (#196): nothing draws or analyses for the Visual, and no Render or Recording can be
-     * made. The Element and its Hero scene still run. Visuals and Studio read it here.
+     * made. The App UI still runs, on matte glass. Visuals and Studio read it here.
      */
     val visualsOff: Boolean = false,
+    /** The quality picked for a surface of its own (#394); a surface not here follows [visualQuality]. */
+    val surfaceQuality: Map<VisualSurface, VisualQuality> = emptyMap(),
+    /** The frame rate picked for a surface of its own (#394); a surface not here follows [visualFrameRate]. */
+    val surfaceFrameRate: Map<VisualSurface, VisualFrameRate> = emptyMap(),
 ) {
     /** The Visual quality to draw at: [VisualQuality.SAVER] in save mode, else the chosen one. */
     val visual: VisualQuality get() = if (saveMode) VisualQuality.SAVER else visualQuality
@@ -389,8 +420,12 @@ data class PerformanceSettings(
     /** The frame rate to draw at: 30 in save mode, else the chosen one. */
     val frameRate: VisualFrameRate get() = if (saveMode) VisualFrameRate.FPS30 else visualFrameRate
 
-    /** The floating assets hold still (Drifting acts as Still), as with battery saver (#100). */
-    val floatingAssetsHeldStill: Boolean get() = saveMode
+    /** The quality [surface] draws at: [VisualQuality.SAVER] in save mode, else its own pick, else [visualQuality]. */
+    fun visualFor(surface: VisualSurface): VisualQuality = if (saveMode) VisualQuality.SAVER else surfaceQuality[surface] ?: visualQuality
+
+    /** The frame rate [surface] draws at: 30 in save mode, else its own pick, else [visualFrameRate]. */
+    fun frameRateFor(surface: VisualSurface): VisualFrameRate =
+        if (saveMode) VisualFrameRate.FPS30 else surfaceFrameRate[surface] ?: visualFrameRate
 
     /** Renders run slower, on fewer threads, so the phone stays cool. */
     val rendersSlowed: Boolean get() = saveMode

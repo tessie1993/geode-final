@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -69,7 +70,7 @@ void main() {
     float treb = clamp(uTrebleSmooth, 0.0, 1.5);
     float swell = clamp(uSwell, 0.0, 1.5);
     // A spike steps the dome between three tessellation densities and holds it.
-    float tess = 9.0 + 4.0 * floor(uFormPhase * 3.0);
+    float tess = (9.0 + 4.0 * floor(uFormPhase * 3.0)) * xm(uXScale);
     // The horizon. The whole scene is split on it: dome above, ground below.
     float horizon = -0.12;
 

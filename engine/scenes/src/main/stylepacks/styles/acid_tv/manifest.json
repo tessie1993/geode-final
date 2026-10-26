@@ -12,5 +12,14 @@
     "scanline": 0.25,
     "curve": 0.3,
     "saturation": 1.15
-  }
+  },
+  "extras": [
+    { "name": "variant", "min": 0, "max": 9, "default": 0 },
+    { "name": "flight", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 },
+    { "name": "viscosity", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 }
+  ]
 }

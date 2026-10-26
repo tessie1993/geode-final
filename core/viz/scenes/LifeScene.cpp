@@ -37,6 +37,7 @@ void LifeScene::init() {
     glGenVertexArrays(1, &vao_);
     programOk_ = true;
     seedRemain_ = kSeedSeconds;
+    ticks_.reset();
 }
 
 void LifeScene::resize(int width, int height) {
@@ -128,7 +129,7 @@ void LifeScene::draw(float timeSeconds) {
     beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
     kick_ = std::max(kick_ - dt * 5.0f, 0.0f);
     if (hit * p.beatResponse > kBeatThreshold) {
-        kick_ = (0.4f + 0.6f * std::clamp(hit, 0.0f, 1.5f)) * drive;
+        kick_ = (0.4f + 0.6f * std::clamp(hit, 0.0f, 1.5f)) * drive * force_;
         kickAngle_ += kGoldenAngle;
         kickX_ = 0.5f + 0.32f * std::cos(kickAngle_);
         kickY_ = 0.5f + 0.32f * std::sin(kickAngle_);
@@ -141,6 +142,7 @@ void LifeScene::draw(float timeSeconds) {
     }
 
     const int substeps = std::clamp(static_cast<int>(std::lround(style_.substeps * speed)), 1, 8);
+    const int ticks = ticks_.advance(dt);
 
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
@@ -164,22 +166,23 @@ void LifeScene::draw(float timeSeconds) {
     glUniform1f(stepLocs_.loc("uAniso"), style_.aniso);
     glUniform1f(stepLocs_.loc("uSeedJitter"), style_.seedJitter);
     glUniform1f(stepLocs_.loc("uTime"), time_);
-    for (int pass = 0; pass < substeps; ++pass) {
+    for (int pass = 0; pass < ticks * substeps; ++pass) {
         glBindFramebuffer(GL_FRAMEBUFFER, field->write().fbo());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, field->read().tex());
         glUniform1i(stepLocs_.loc("uPrev"), 0);
-        const bool first = pass == 0;
+        // Seeds, sprinkles and touches land once per tick, as they did once per 60 fps frame.
+        const bool first = pass % substeps == 0;
         glUniform1f(stepLocs_.loc("uSeed"), first ? seedRemain_ / kSeedSeconds : 0.0f);
-        glUniform1f(stepLocs_.loc("uKick"), first ? kick_ : 0.0f);
+        glUniform1f(stepLocs_.loc("uKick"), pass == 0 ? kick_ : 0.0f);
         glUniform2f(stepLocs_.loc("uKickPos"), kickX_, kickY_);
         glUniform1f(stepLocs_.loc("uSprinkle"), first ? (envTreble_ + pcmStrike_ * 0.5f) * drive : 0.0f);
-        // Injections land once per frame, not once per substep.
         uploadSceneTouch(stepLocs_, touch_, first);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         field->swap();
     }
-    kick_ = 0.0f;
+    // A beat on a frame that ran no tick (every other frame at 120 Hz) kicks the next one instead.
+    if (ticks > 0) kick_ = 0.0f;
 
     glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prevFbo));
     glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);

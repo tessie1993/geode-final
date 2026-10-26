@@ -7,6 +7,10 @@
     <string name="export_channel_description">Shown while Geode is rendering a video, so the render is not interrupted.</string>
     <string name="export_notification_title">Rendering video</string>
     <string name="export_notification_text">Geode is rendering your visuals.</string>
+    <plurals name="export_notification_waiting">
+        <item quantity="one">%d more waiting</item>
+        <item quantity="other">%d more waiting</item>
+    </plurals>
 
     <!-- First-run photosensitivity notice. Safety copy: translate carefully,
          the flash rate is factual and must survive translation. This is an
@@ -97,6 +101,14 @@
     <string name="action_favourite_add">Add to favourites</string>
     <string name="action_favourite_remove">Remove from favourites</string>
     <string name="action_resume_last_played">Resume last played</string>
+    <string name="home_now_playing">Now playing</string>
+    <string name="home_nothing_playing">Nothing playing yet</string>
+    <string name="home_nothing_playing_hint">Pick up where you left off, or choose a song in Music.</string>
+    <string name="home_shortcut_visuals">Choose a look</string>
+    <string name="home_shortcut_visuals_hint">Styles for the Visual</string>
+    <string name="home_shortcut_studio">Make a video</string>
+    <string name="home_shortcut_studio_hint">Renders and recordings</string>
+    <string name="player_close">Close the player</string>
 
     <!-- A–B loop: one control, three states, named so colour is not the only cue. -->
     <string name="ab_loop_idle">A–B</string>
@@ -485,6 +497,8 @@
     <string name="visuals_milkdrop">MilkDrop presets and textures</string>
     <string name="visuals_open_customize">Customize</string>
     <string name="visuals_open_capture">Live sound</string>
+    <string name="visuals_reactions_freeze">Freeze reactions</string>
+    <string name="visuals_reactions_unfreeze">Let it react</string>
     <string name="preset_shared_name">Shared look</string>
     <string name="preset_share_subject">Geode preset: %1$s</string>
     <string name="preset_share_title">Share preset</string>

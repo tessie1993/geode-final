@@ -66,6 +66,14 @@ void MilkdropScene::acceptPcm(const float* samples, int count) {
     pcmCount_ += n;
 }
 
+void MilkdropScene::acceptStereoPcm(const float* interleaved, int frames) {
+    const int n = std::min(frames, kEnginePcmSamples);
+    if (!interleaved || n <= 0) return;
+    // The newest frames of the window, replacing the last one: a window is added to projectM once.
+    std::copy(interleaved + static_cast<size_t>(frames - n) * 2, interleaved + static_cast<size_t>(frames) * 2, stereo_.begin());
+    stereoFrames_ = n;
+}
+
 void MilkdropScene::queueMilkPreset(const std::string& path) {
     std::lock_guard<std::mutex> lock(presetLock_);
     pendingPresetPath_ = path;
@@ -97,6 +105,7 @@ void MilkdropScene::init() {
     }
     diagFrames_ = 0;
     diagDone_ = false;
+    errorChecksLeft_ = kErrorCheckFrames;
     std::string error;
     postProgram_ = loader_.build("fade_vert.glsl", "pm_post_frag.glsl", &error);
     if (postProgram_ == 0) {
@@ -111,6 +120,13 @@ void MilkdropScene::init() {
 void MilkdropScene::resize(int width, int height) {
     width_ = width;
     height_ = height;
+}
+
+void MilkdropScene::setDrawTarget(GLuint fbo, int width, int height) {
+    drawTargetHanded_ = true;
+    drawFbo_ = fbo;
+    drawWidth_ = width;
+    drawHeight_ = height;
 }
 
 void MilkdropScene::setWindowSize(int width, int height) {
@@ -151,6 +167,7 @@ void MilkdropScene::ensureEngine(double now) {
             return;
         }
         reportedCreateFailure_ = false;
+        errorChecksLeft_ = kErrorCheckFrames;
         if (rendering_) {
             // Before the texture paths and the first preset, which draw from the seed.
             projectm_set_random_seed(engine_.get(), milkdrop::kRenderSeed);
@@ -225,7 +242,11 @@ void MilkdropScene::update(const GeodeFeatureFrame& features, float dt) {
         adapter_.onFrame(dt, host_.pacedFps ? host_.pacedFps() : 0.0f);
     }
     if (!engine_) return;
-    if (pcmCount_ > 0) {
+    if (stereoFrames_ > 0) {
+        projectm_pcm_add_float(engine_.get(), stereo_.data(), static_cast<unsigned int>(stereoFrames_), PROJECTM_STEREO);
+        stereoFrames_ = 0;
+        pcmCount_ = 0;
+    } else if (pcmCount_ > 0) {
         const int n = std::min(pcmCount_, kEnginePcmSamples);
         if (n < pcmCount_) std::copy(pcm_.begin() + (pcmCount_ - n), pcm_.begin() + pcmCount_, pcm_.begin());
         pcmCount_ = 0;
@@ -264,6 +285,7 @@ void MilkdropScene::loadPendingPreset(double now) {
     if (adapter_.onPresetChange()) applyEngineSize();
     const bool blend = params_.milkdropBlendPresets && !(rendering_ && !presetSinceCreate_);
     projectm_load_preset_file(engine_.get(), path.c_str(), blend);
+    errorChecksLeft_ = kErrorCheckFrames;
     projectm_set_preset_locked(engine_.get(), true);
     const auto error = takeError();
     host_.onShaderError(error.value_or(""));
@@ -286,8 +308,8 @@ void MilkdropScene::loadPendingPreset(double now) {
 void MilkdropScene::draw(float timeSeconds) {
     (void) timeSeconds;
     if (!postProgramOk_) return;
-    GLint prevFbo = 0;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo);
+    GLint prevFbo = static_cast<GLint>(drawFbo_);
+    if (!drawTargetHanded_) glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo);
     // Reset before the engine as well as after: projectM assumes default GL state and restores little.
     resetFrameState();
     const double now = nowSeconds();
@@ -309,7 +331,7 @@ void MilkdropScene::draw(float timeSeconds) {
 
     resetFrameState();
     glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prevFbo));
-    glViewport(0, 0, width_, height_);
+    glViewport(0, 0, drawTargetHanded_ ? drawWidth_ : width_, drawTargetHanded_ ? drawHeight_ : height_);
 
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
@@ -367,8 +389,11 @@ void MilkdropScene::diagnoseBlackFrame() {
 
 // projectM leaves whatever GL errors its preset pipeline raised in the queue. Clear them so the
 // renderer's own probes stay attributable, but report the first one: a silent drain is how the
-// previous copy-from-window failure went unnoticed.
+// previous copy-from-window failure went unnoticed. Read only in the first frames of an engine or a
+// preset (kErrorCheckFrames); an error raised later stays queued, and the probes drain the queue first.
 void MilkdropScene::drainEngineErrors() {
+    if (errorChecksLeft_ <= 0) return;
+    errorChecksLeft_--;
     GLenum first = GL_NO_ERROR;
     for (int drained = 0; drained < 8; ++drained) {
         const GLenum err = glGetError();

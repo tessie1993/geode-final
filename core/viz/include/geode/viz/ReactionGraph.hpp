@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "geode/viz/Layers.hpp"
 #include "geode/viz/Modulators.hpp"
 #include "geode/viz/Reactions.hpp"
 #include "geode/viz/SharedCore.hpp"
@@ -174,6 +175,8 @@ struct CustomizationPlan {
     int macroLinkCount = 0;
     std::array<AutomationSpec, kMaxAutomations> automations{};
     int automationCount = 0;
+    // Layer 2's Style, blend and influence; its opacity, influence amount and swap are in `shared`.
+    viz::layer::Spec layer;
 
     // Every property at its starting value, Macros at rest, neutral trims, no links.
     static CustomizationPlan defaults();
@@ -199,6 +202,8 @@ struct Evaluated {
     // How many times Style switching has been due since the last reset; the host raises StyleDue
     // each time it goes up.
     uint32_t stylesDue = 0;
+    // Layer 2 as the plan asks for it, handed on as it is; the renderer fades and mixes it.
+    viz::layer::Spec layer;
 
     float operator[](Shared p) const { return shared[static_cast<size_t>(p)]; }
 };

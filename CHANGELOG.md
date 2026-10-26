@@ -11,6 +11,21 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
+  feed, Freeze reactions is held in the engine: every Style, MilkDrop
+  included, keeps the Sound signals and audio window of the first held frame
+  while the picture's own motion runs on, and beats that fire during the hold
+  are dropped rather than replayed when it ends.
+
+- **Fast Style authoring loop (#284).** Shaders are assembled with `#line`
+  directives, so a compile error names the Style's file and line
+  (`styles/kifs/shader.glsl:12`) on the phone, in the render check and in
+  glslang. Debug builds reload a Style's shader and manifest pushed with adb
+  to their Style lab folder within about a second, keeping the last good
+  shader when a new one fails; release builds compile no hot-reload path.
+  CI checks every Style with glslang (GLSL ES 3.00, CI only), and
+  `tools/glslcheck/check.mjs --watch --push` re-checks and pushes on every
+  save. See docs/style-packs.md, "Authoring loop".
 
 - **projectM v4.1.8 (#275).** The `third_party/projectm` submodule moves
   from the v4.1.7 tag to v4.1.8: long MilkDrop shaders no longer cost
@@ -23,6 +38,43 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   plasma transition stops overflowing at mediump on phones. No Geode code
   changed: `MilkdropScene` already feeds projectM 576 samples a frame, the
   size `projectm_pcm_get_max_samples()` now reports.
+
+- **One native audio feed for the Visual (#276).** Every source writes into one
+  native stereo ring (`core/audio/feed/FeedRing`, `core/api/Feed`): the native
+  player from its audio callback, before volume and DSP; ExoPlayer's tap; and
+  Live input, with exactly one source listened to at a time (starting the
+  microphone replaces the player, stopping it gives the player back). The
+  analysis runs natively off the ring on its own thread, and each Visual frame
+  reads, on the drawing thread, the features and a 576-frame stereo window at
+  the audio being heard: ExoPlayer's half-second AudioTrack lead is taken off
+  (`FeedClockSink`), a pause is silent within a frame, audio that stops coming
+  expires to silence, and no window is ever drawn twice. MilkDrop gets both
+  channels. `AudioBus`, the Kotlin PCM rings, the tap pump and the main-thread
+  feature hop are gone; the live wallpaper reads the same feed.
+
+- **The native player handles calls, unplugging and output errors (#281).**
+  Audio focus works as it does for ExoPlayer: a call pauses the music until it
+  ends, another player taking over pauses it, a ducking request lowers it.
+  Unplugging wired or Bluetooth headphones pauses it when the Settings say so.
+  An output that disconnects is reopened with backoff, and after its retries
+  it reports an output error rather than "decoding failed".
+
+- **Frosted glass App UI (#324), and the Elements retired (#333).** The App UI
+  is one classic look of frosted, translucent, matte glass, light or dark (or
+  as the phone is), in `dev.geode.design.glass`: the #270 tokens (blur
+  24/32/40 dp, backdrop clamp 0.35, tint 0.60/0.65, 4% grain, 1 dp edge, matte
+  0.94), Material roles mapped onto glass, Inter, and familiar Material
+  controls with 48 dp touch targets. The playing song's art, blurred and
+  clamped, sits behind Home and the plain player; a calm backdrop behind the
+  other pages. The Bar frosts the page live through Haze 2.0.1; glass over the
+  live Visual is matte until the engine frosts it (#349). Settings > Theme
+  adds Match phone / Dark / Light and Reduce transparency; battery saver,
+  heat, contrast settings and Visuals off calm the glass on their own. Empty,
+  loading and error states say what is going on in one line with one thing to
+  do. `GlassContrastRulesTest` holds every text role to WCAG AA over the worst
+  backdrop in both modes. The Element picker, skins, the Water module, the Home
+  placeholder, the Crystal, stone and forest components, their art, sounds and
+  fonts, and the Element asset pipeline and its CI check are gone.
 
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings

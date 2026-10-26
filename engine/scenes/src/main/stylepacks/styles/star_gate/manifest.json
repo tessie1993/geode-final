@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "star_gate",
+  "label": "Star Gate",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "extras": [
+    {
+      "name": "size",
+      "min": 0,
+      "max": 2,
+      "default": 1
+    },
+    {
+      "name": "fog",
+      "min": 0,
+      "max": 2,
+      "default": 1
+    }
+  ]
+}
