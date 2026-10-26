@@ -308,6 +308,7 @@ object BuiltInStyles {
             shader("dew_macro", true, emptyList()),
             shader("monolith_plain", true, emptyList()),
             shader("spiral_descent", true, emptyList()),
+            shader("glass_vines", true, emptyList()),
         )
 
     private fun life(
