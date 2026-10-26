@@ -17,6 +17,8 @@ ReactiveAnalyzer::ReactiveAnalyzer(int bandCount, int fftSize, int sampleRateHz,
       bandPower_(static_cast<size_t>(bandCount)),
       bandDb_(static_cast<size_t>(bandCount)),
       bandNormalized_(static_cast<size_t>(bandCount)),
+      drumLevels_(static_cast<size_t>(bandCount)),
+      floorPower_(static_cast<size_t>(bandCount)),
       whitened_(static_cast<size_t>(bandCount)),
       range_(bandCount),
       whitening_(bandCount),
@@ -44,7 +46,12 @@ void ReactiveAnalyzer::setSensitivity(float value) {
 }
 
 void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
-    rms_ = rmsOf(samples);
+    // The window's own mean is taken out first: a DC offset (a microphone's, say) is not sound, and through
+    // the window's main lobe it would otherwise read as the lowest bass band.
+    double sum = 0.0;
+    for (int i = 0; i < fftSize_; i++) sum += samples[i];
+    const float mean = static_cast<float>(sum / fftSize_);
+    rms_ = rmsOf(samples, mean);
     if (rms_ < kSilenceRms) {
         lastFrameSilent_ = true;
         silentSeconds_ += dtSeconds;
@@ -59,21 +66,32 @@ void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
     lastFrameSilent_ = false;
     silentSeconds_ = 0.0f;
     window_.applyInto(samples, fftSize_, 0, windowed_.data());
+    for (int i = 0; i < fftSize_; i++) windowed_[i] -= mean * window_.coefficient(i);
     spectrum_.compute(windowed_.data());
 
     logBands_.energy(spectrum_.magnitudes().data(), bandPower_.data());
     toDb(bandPower_.data(), bandDb_.data());
-    range_.normalize(bandDb_.data(), dtSeconds, bandNormalized_.data());
-    smooth(bandNormalized_.data(), dtSeconds);
+    range_.normalize(bandDb_.data(), dtSeconds, bandNormalized_.data(), drumLevels_.data());
+    smooth(bandNormalized_.data(), smoothingState_.data(), bands_.data(), bandCount_, dtSeconds);
 
-    bass_ = mean(bands_, 0, bandCount_ / 8);
-    mid_ = mean(bands_, bandCount_ / 8, bandCount_ / 2);
-    treble_ = mean(bands_, bandCount_ / 2, bandCount_);
+    // Bass, mid and treble are each their bands' power together, on the same shared scale as the bands.
+    groups_[0] = range_.scaledMean(bandPower_.data(), 0, bandCount_ / 8);
+    groups_[1] = range_.scaledMean(bandPower_.data(), bandCount_ / 8, bandCount_ / 2);
+    groups_[2] = range_.scaledMean(bandPower_.data(), bandCount_ / 2, bandCount_);
+    std::array<float, 3> smoothed{};
+    smooth(groups_.data(), groupState_.data(), smoothed.data(), 3, dtSeconds);
+    bass_ = smoothed[0];
+    mid_ = smoothed[1];
+    treble_ = smoothed[2];
     centroid_ = normalizedCentroid();
     macroEnergy_ = macroEnergyOf(rms_, dtSeconds);
 
-    whitening_.whiten(bandPower_.data(), dtSeconds, whitened_.data());
-    fluxValue_ = flux_.next(whitened_.data());
+    // Onsets: whitened bands, never lifted from under the noise floor, and nothing at all while the hop as a
+    // whole does not stand above the floor (a quiet room, hiss, the tail of a fade).
+    for (int b = 0; b < bandCount_; b++) floorPower_[b] = range_.floorPower(b);
+    whitening_.whiten(bandPower_.data(), floorPower_.data(), dtSeconds, whitened_.data());
+    const float rise = flux_.next(whitened_.data());
+    fluxValue_ = range_.heard(bandPower_.data()) ? rise : 0.0f;
     const bool isOnset = picker_.accept(fluxValue_);
     onset_ = std::clamp(fluxValue_ / std::max(picker_.threshold() * kOnsetHeadroom, 1e-9f), 0.0f, 1.0f);
     transient_ = picker_.strength();
@@ -126,6 +144,7 @@ void ReactiveAnalyzer::reset() {
     drums_->reset();
     std::fill(smoothingState_.begin(), smoothingState_.end(), 0.0f);
     std::fill(bands_.begin(), bands_.end(), 0.0f);
+    groupState_.fill(0.0f);
     levelPeak_ = 0.0f;
     silentSeconds_ = 0.0f;
     // Matches the member's default initializer: spectrumInto() branches on this before the first analyze()
@@ -176,6 +195,7 @@ void ReactiveAnalyzer::spectrumInto(float* out) const {
 void ReactiveAnalyzer::silenceOutputs() {
     std::fill(bands_.begin(), bands_.end(), 0.0f);
     std::fill(smoothingState_.begin(), smoothingState_.end(), 0.0f);
+    groupState_.fill(0.0f);
     bass_ = 0.0f;
     mid_ = 0.0f;
     treble_ = 0.0f;
@@ -202,25 +222,25 @@ void ReactiveAnalyzer::toDb(const float* power, float* out) const {
     }
 }
 
-void ReactiveAnalyzer::smooth(const float* source, float dtSeconds) {
+void ReactiveAnalyzer::smooth(const float* source, float* state, float* out, int count, float dtSeconds) const {
     if (dtSeconds <= 0.0f) {
-        std::copy(source, source + bandCount_, bands_.begin());
+        std::copy(source, source + count, out);
         return;
     }
     const float attack = attackSeconds_ <= 0.0f ? 1.0f : std::clamp(1.0f - std::exp(-dtSeconds / attackSeconds_), 0.0f, 1.0f);
     const float release = releaseSeconds_ <= 0.0f ? 1.0f : std::clamp(1.0f - std::exp(-dtSeconds / releaseSeconds_), 0.0f, 1.0f);
-    for (int b = 0; b < bandCount_; b++) {
-        const float target = source[b];
-        const float k = target > smoothingState_[b] ? attack : release;
-        smoothingState_[b] += (target - smoothingState_[b]) * k;
-        bands_[b] = smoothingState_[b];
+    for (int i = 0; i < count; i++) {
+        const float target = source[i];
+        const float k = target > state[i] ? attack : release;
+        state[i] += (target - state[i]) * k;
+        out[i] = state[i];
     }
 }
 
-float ReactiveAnalyzer::rmsOf(const float* samples) const {
+float ReactiveAnalyzer::rmsOf(const float* samples, float mean) const {
     double acc = 0.0;
     for (int i = 0; i < fftSize_; i++) {
-        const double v = samples[i];
+        const double v = static_cast<double>(samples[i]) - mean;
         acc += v * v;
     }
     return std::clamp(static_cast<float>(std::sqrt(acc / fftSize_)), 0.0f, 1.0f);
@@ -240,12 +260,6 @@ float ReactiveAnalyzer::macroEnergyOf(float level, float dtSeconds) {
     const float decay = dtSeconds <= 0.0f ? 1.0f : std::exp(-dtSeconds / kMacroPeakSeconds);
     levelPeak_ = std::max(level, levelPeak_ * decay);
     return levelPeak_ <= 1e-6f ? 0.0f : std::clamp(level / levelPeak_, 0.0f, 1.0f);
-}
-
-float ReactiveAnalyzer::mean(const std::vector<float>& values, int from, int to) const {
-    float acc = 0.0f;
-    for (int i = from; i < to; i++) acc += values[i];
-    return acc / (to - from);
 }
 
 }  // namespace geode::analysis

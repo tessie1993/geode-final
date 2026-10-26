@@ -28,10 +28,10 @@ bool OnsetPeakPicker::accept(float onset) {
 
     const float med = median();
     const float spread = std::max(std::max(deviation(med), med * kSpreadFloorFraction), kMinSpread);
-    threshold_ = med + sensitivity_ * spread;
+    threshold_ = std::max(med + sensitivity_ * spread, med * kMedianFloor);
 
     const int refractoryFrames = std::max(static_cast<int>(std::lround(hopRateHz_ * refractorySeconds_)), 1);
-    const bool isOnset = onset > threshold_ && onset > kNumericFloor && onset > preceding && framesSinceOnset_ > refractoryFrames;
+    const bool isOnset = onset > threshold_ && onset > kMinOnset && onset > preceding && framesSinceOnset_ > refractoryFrames;
 
     const float decayedPeak = peakEnvelope_ * peakDecayPerFrame_;
     strength_ = isOnset ? std::clamp(onset / std::max(decayedPeak, kNumericFloor), 0.0f, 1.0f) : 0.0f;
