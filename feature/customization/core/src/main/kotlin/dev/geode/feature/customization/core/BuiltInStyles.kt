@@ -309,6 +309,7 @@ object BuiltInStyles {
             shader("ringed_giant", true, listOf(generic(SIZE))),
             shader("crystal_shaft", true, listOf(generic(FOG))),
             shader("night_drive", true, listOf(generic(FOG))),
+            shader("reef_glide", true, listOf(generic(FOG))),
         )
 
     private fun life(
