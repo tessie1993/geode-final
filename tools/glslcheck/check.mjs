@@ -394,7 +394,7 @@ function layerEffects() {
 
 const SHARED_FX_NEUTRAL = {
   uTexel: [0, 0], uAspect: 1, uTime: 12.5, uSoftFocus: 0, uParticles: 0, uParticleKind: 0, uParticleSize: 1,
-  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0,
+  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0, uEchoCopy: 0, uEchoCopyZoom: 1, uEchoCopyFlip: [1, 1],
 };
 const SHARED_FX_TEXTURES = { uScene: 'scene', uHistory: 'history' };
 
@@ -404,6 +404,9 @@ const SHARED_FX_EFFECTS = {
   motion_blur: { uMotionKeep: 0.6 },
   trails: { uEchoKeep: 0.9 },
   echo: { uEchoKeep: 0.9, uEchoZoom: 0.5, uEchoWarp: 1 },
+  echo_copy_mirror: { uEchoCopy: 0.5, uEchoCopyFlip: [-1, 1] },
+  echo_copy_flip_both_zoomed: { uEchoCopy: 0.5, uEchoCopyZoom: 1.6, uEchoCopyFlip: [-1, -1] },
+  echo_copy_tiled: { uEchoCopy: 0.4, uEchoCopyZoom: 0.5, uEchoCopyFlip: [1, -1] },
   particles_motes: { uParticles: 0.8, uParticleKind: 0 },
   particles_sparks: { uParticles: 0.8, uParticleKind: 1 },
   particles_dust: { uParticles: 0.8, uParticleKind: 2 },

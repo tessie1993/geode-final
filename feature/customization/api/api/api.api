@@ -1141,6 +1141,9 @@ public final class dev/geode/feature/customization/api/SharedProperty : java/lan
 	public static final field DRIFT_X Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field DRIFT_Y Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field DUOTONE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ECHO_COPY Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ECHO_COPY_FLIP Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ECHO_COPY_ZOOM Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field ENDLESS_ZOOM Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field FISHEYE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field GAMMA Ldev/geode/feature/customization/api/SharedProperty;

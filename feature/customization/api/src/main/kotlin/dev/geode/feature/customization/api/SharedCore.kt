@@ -104,6 +104,19 @@ enum class SharedProperty(
     TRAIL_ZOOM(SharedGroup.TRAILS_AND_ECHO, -0.5f, 0.5f, 0f),
     TRAIL_WARP(SharedGroup.TRAILS_AND_ECHO, 0f, 1f, 0f),
 
+    /**
+     * A copy of the picture, zoomed by [ECHO_COPY_ZOOM] and flipped by [ECHO_COPY_FLIP], mixed over it for
+     * cheap symmetry and depth (#385); 1 is an even blend and 0 is off. The copy keeps the picture's
+     * overall brightness, and a change of flip fades the copy out and back in, so it never flashes.
+     */
+    ECHO_COPY(SharedGroup.TRAILS_AND_ECHO, 0f, 1f, 0f, luminous = true),
+
+    /** How much larger the echo copy is than the picture, about its centre; below 1 it is smaller and tiles. */
+    ECHO_COPY_ZOOM(SharedGroup.TRAILS_AND_ECHO, 0.5f, 2f, 1f),
+
+    /** 0 the echo copy is not flipped, 1 flipped left to right (where it starts: a mirror), 2 top to bottom, 3 both. */
+    ECHO_COPY_FLIP(SharedGroup.TRAILS_AND_ECHO, 0f, 3f, 1f, ValueKind.STEPPED),
+
     GRAIN(SharedGroup.LENS, 0f, 1f, 0f),
     VIGNETTE(SharedGroup.LENS, 0f, 1f, 0f),
     CHROMATIC(SharedGroup.LENS, 0f, 1f, 0f),

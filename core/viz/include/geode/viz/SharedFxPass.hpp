@@ -40,6 +40,8 @@ private:
     GLuint program_ = 0;
     UniformCache uniforms_;
     bool historyValid_ = false;
+    // The echo copy's flip and fade (sharedfx::stepEchoCopy), stepped once per apply().
+    sharedfx::EchoCopyFade echoCopy_;
 };
 
 }  // namespace geode::viz

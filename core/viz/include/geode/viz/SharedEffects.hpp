@@ -1,12 +1,14 @@
 #pragma once
 
+#include <array>
+
 #include "geode/viz/Normaliser.hpp"
 #include "geode/viz/ReactionGraph.hpp"
 
 namespace geode::viz {
 
 // The Shared core effects that work on every Style's finished picture before the composite pass
-// (#11): Trails and echo, the two blurs (soft focus and motion blur) and the one particle layer.
+// (#11): Trails and echo (with the echo copy, #385), the two blurs (soft focus and motion blur) and the one particle layer.
 // The rest of the Shared core (kaleidoscope and mirror, the lens effects, warp and ripple, glitch
 // and pixelate, colour grading) is drawn by composite_frag.glsl. Every value starts at 0, so a
 // Style looks as it did until someone turns an effect up. SharedFxPass draws them.
@@ -14,6 +16,11 @@ struct SharedEffects {
     float trails = 0.0f;
     float trailZoom = 0.0f;
     float trailWarp = 0.0f;
+    // The echo copy (#385): how much of it is mixed in (0 off, 1 an even blend), its zoom and its flip
+    // (0 none, 1 left to right, 2 top to bottom, 3 both).
+    float echoCopy = 0.0f;
+    float echoCopyZoom = 1.0f;
+    int echoCopyFlip = 0;
     float softFocus = 0.0f;
     float motionBlur = 0.0f;
     float particles = 0.0f;
@@ -23,7 +30,7 @@ struct SharedEffects {
     // part of active(): SharedFxPass has nothing to do for it.
     float anaglyph = 0.0f;
 
-    bool active() const { return trails > 0.0f || softFocus > 0.0f || motionBlur > 0.0f || particles > 0.0f; }
+    bool active() const { return trails > 0.0f || echoCopy > 0.0f || softFocus > 0.0f || motionBlur > 0.0f || particles > 0.0f; }
     // Read in the Shared core's own ranges.
     static SharedEffects from(const mod::Evaluated& evaluated);
     // Read from a frame the Normaliser mapped into the Style family's ranges (what the renderer gets).
@@ -54,6 +61,35 @@ float motionKeep(float motionBlur, float dt);
 constexpr float kEchoZoomScale = 0.06f;
 float echoZoom(float zoom, float dt);
 float echoWarp(float warp, float dt);
+
+// The echo copy (#385): a second copy of this frame's picture, zoomed about its centre and flipped,
+// mixed over it for display (shared_fx_frag's uEchoCopy, uEchoCopyZoom and uEchoCopyFlip). A flip of
+// the picture keeps its overall brightness, and the mix is at most an even blend, so the copy moves no
+// more light than it shows. A change of flip never cuts over: the copy fades out over
+// kEchoCopyFadeSeconds, turns while it is gone, and fades back in.
+constexpr float kEchoCopyFadeSeconds = 0.25f;
+constexpr float kEchoCopyMaxMix = 0.5f;
+constexpr float kMinEchoCopyZoom = 0.5f;
+constexpr float kMaxEchoCopyZoom = 2.0f;
+constexpr int kEchoCopyFlips = 4;
+
+// The flip the copy shows and how far it has faded in (0..1).
+struct EchoCopyFade {
+    int flip = 0;
+    float presence = 0.0f;
+
+    bool operator==(const EchoCopyFade&) const = default;
+};
+
+// One frame of `dt`: toward full presence while the copy shows `targetFlip` (held to 0..3), else
+// toward none, taking `targetFlip` once it is gone. A stalled or broken frame holds the fade.
+EchoCopyFade stepEchoCopy(const EchoCopyFade& fade, int targetFlip, float dt);
+// The share of the copy mixed over the picture: `amount` (0..1) of the even blend, faded by `presence`.
+float echoCopyMix(float amount, float presence);
+// The copy's zoom held to its range; 1 when broken.
+float echoCopyZoom(float zoom);
+// What the copy's offset from the centre is multiplied by on x and y for `flip`: -1 where it is flipped.
+std::array<float, 2> echoCopyFlipScale(int flip);
 
 // How long the anaglyph takes to fade fully in or out: switching it never cuts the picture over.
 constexpr float kAnaglyphFadeSeconds = 0.5f;
