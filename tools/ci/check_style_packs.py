@@ -1304,8 +1304,7 @@ def self_test() -> int:
         "buffer pass without lib_buffers": lambda f, i, m, s: s.update(
             {"pools": pools(b=POOLS_B.replace("//#include lib_buffers\n", ""))}),
         "image pass reading no buffer": lambda f, i, m, s: s.update(
-            {"pools": pools(image="//#include lib_buffers\nvoid main() { fragColor = vec4(uEnergy, uBufFrame, 0.0, 1.0); }\n"
-                            "float b() { return texture(uBufB, vUv).r; }\n".replace("float b() { return texture(uBufB, vUv).r; }\n", ""))}),
+            {"pools": pools(image="//#include lib_buffers\nvoid main() { fragColor = vec4(uEnergy, uBufFrame, 0.0, 1.0); }\n")}),
         "pass reading a buffer that is not declared": lambda f, i, m, s: s.update(
             {"pools": pools(image=POOLS_IMAGE.replace("* uEnergy", "* uEnergy + texture(uBufC, vUv)"))}),
         "buffer no pass reads": lambda f, i, m, s: s.update(
