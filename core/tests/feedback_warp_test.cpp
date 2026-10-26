@@ -426,6 +426,176 @@ TEST(FeedbackMotion, TheSwirlClockRunsOnAndStartsOverWithAVisit) {
     EXPECT_NEAR(motion.step(spec, feedback::Drive{}, 1.0f).keep[0], feedback::kMaxDecay, 1e-5f);
 }
 
+// ---- what the loop paints (#363) ------------------------------------------------------------------
+
+TEST(FeedbackPaint, AnAlphaASecondComesToTheSameOverAnyFrames) {
+    // What is left unpainted over a second is 1 - alpha at every frame rate.
+    for (const int fps : {30, 60, 120}) {
+        const float cover = feedback::paintPerFrame(0.6f, 1.0f / static_cast<float>(fps));
+        EXPECT_NEAR(std::pow(1.0f - cover, static_cast<float>(fps)), 0.4f, 1e-4f) << fps;
+    }
+    EXPECT_NEAR(feedback::paintPerFrame(0.75f, 0.5f), 0.5f, 1e-6f);
+    EXPECT_NEAR(feedback::paintPerFrame(0.6f, 1.0f), 0.6f, 1e-6f);
+    // Full alpha paints the whole colour every frame; none, or a stalled or broken frame, paints nothing.
+    EXPECT_EQ(feedback::paintPerFrame(1.0f, 1.0f / 60.0f), 1.0f);
+    EXPECT_EQ(feedback::paintPerFrame(3.0f, 1.0f / 60.0f), 1.0f);
+    EXPECT_EQ(feedback::paintPerFrame(0.0f, 1.0f / 60.0f), 0.0f);
+    EXPECT_EQ(feedback::paintPerFrame(-1.0f, 1.0f / 60.0f), 0.0f);
+    EXPECT_EQ(feedback::paintPerFrame(kNan, 1.0f / 60.0f), 0.0f);
+    EXPECT_EQ(feedback::paintPerFrame(0.5f, 0.0f), 0.0f);
+    EXPECT_EQ(feedback::paintPerFrame(0.5f, -1.0f), 0.0f);
+    EXPECT_EQ(feedback::paintPerFrame(0.5f, kNan), 0.0f);
+}
+
+TEST(FeedbackPaint, EasesInOverTheVisitsFirstSecond) {
+    EXPECT_EQ(feedback::paintFade(0.0f), 0.0f);
+    EXPECT_NEAR(feedback::paintFade(0.25f * feedback::kPaintFadeSeconds), 0.15625f, 1e-6f);
+    EXPECT_NEAR(feedback::paintFade(0.5f * feedback::kPaintFadeSeconds), 0.5f, 1e-6f);
+    EXPECT_NEAR(feedback::paintFade(0.75f * feedback::kPaintFadeSeconds), 0.84375f, 1e-6f);
+    EXPECT_EQ(feedback::paintFade(feedback::kPaintFadeSeconds), 1.0f);
+    EXPECT_EQ(feedback::paintFade(5.0f), 1.0f);
+    EXPECT_EQ(feedback::paintFade(-1.0f), 0.0f);
+    EXPECT_EQ(feedback::paintFade(kNan), 0.0f);
+}
+
+TEST(FeedbackPaint, ABorderPaintsOnlyWhenItHasAWidthAndAnAlpha) {
+    feedback::Border border;
+    border.size = 0.04f;
+    border.color = {1.0f, 0.5f, 0.25f};
+    border.alpha = 0.75f;
+    const feedback::Paint full = feedback::borderPaint(border, 0.5f, feedback::kPaintFadeSeconds);
+    EXPECT_NEAR(full.cover, 0.5f, 1e-6f);
+    EXPECT_FLOAT_EQ(full.size, 0.04f);
+    EXPECT_FLOAT_EQ(full.color[0], 1.0f);
+    EXPECT_FLOAT_EQ(full.color[1], 0.5f);
+    EXPECT_FLOAT_EQ(full.color[2], 0.25f);
+    // Halfway into the ease, half of it.
+    EXPECT_NEAR(feedback::borderPaint(border, 0.5f, 0.5f * feedback::kPaintFadeSeconds).cover, 0.25f, 1e-6f);
+    EXPECT_EQ(feedback::borderPaint(border, 0.5f, 0.0f).cover, 0.0f);
+    border.size = 0.0f;
+    EXPECT_EQ(feedback::borderPaint(border, 0.5f, feedback::kPaintFadeSeconds).cover, 0.0f);
+    border.size = 0.04f;
+    border.alpha = 0.0f;
+    EXPECT_EQ(feedback::borderPaint(border, 0.5f, feedback::kPaintFadeSeconds).cover, 0.0f);
+}
+
+TEST(FeedbackPaint, TheBordersAreHeldToTheirRanges) {
+    feedback::WarpSpec wild;
+    wild.outer.size = 0.5f;
+    wild.outer.color = {-1.0f, 0.5f, 2.0f};
+    wild.outer.alpha = 3.0f;
+    wild.inner.size = -0.1f;
+    wild.inner.color = {kNan, kNan, kNan};
+    wild.inner.alpha = kNan;
+    const feedback::WarpSpec held = feedback::sanitized(wild);
+    EXPECT_FLOAT_EQ(held.outer.size, feedback::kMaxBorderSize);
+    EXPECT_FLOAT_EQ(held.outer.color[0], 0.0f);
+    EXPECT_FLOAT_EQ(held.outer.color[1], 0.5f);
+    EXPECT_FLOAT_EQ(held.outer.color[2], 1.0f);
+    EXPECT_FLOAT_EQ(held.outer.alpha, 1.0f);
+    EXPECT_FLOAT_EQ(held.inner.size, 0.0f);
+    EXPECT_FLOAT_EQ(held.inner.color[0], 1.0f);
+    EXPECT_FLOAT_EQ(held.inner.color[2], 1.0f);
+    EXPECT_FLOAT_EQ(held.inner.alpha, 0.0f);
+    wild.outer.size = kNan;
+    EXPECT_FLOAT_EQ(feedback::sanitized(wild).outer.size, 0.0f);
+    // The paint is held too, whatever it is handed.
+    EXPECT_FLOAT_EQ(feedback::borderPaint(wild.inner, 0.5f, 1.0f).color[1], 1.0f);
+    EXPECT_FLOAT_EQ(feedback::borderPaint(wild.outer, 0.5f, 1.0f).size, 0.0f);
+}
+
+TEST(FeedbackPaint, TheMotionEasesTheBordersInWithEachVisit) {
+    feedback::WarpSpec spec;
+    spec.outer.size = 0.02f;
+    spec.outer.alpha = 0.6f;
+    spec.inner.size = 0.03f;
+    spec.inner.color = {0.2f, 0.4f, 0.6f};
+    spec.inner.alpha = 1.0f;
+    feedback::Motion motion;
+    const float dt = 1.0f / 60.0f;
+    const feedback::Step first = motion.step(spec, feedback::Drive{}, dt);
+    EXPECT_NEAR(motion.age(), dt, 1e-7f);
+    EXPECT_NEAR(first.outer.cover, feedback::paintPerFrame(0.6f, dt) * feedback::paintFade(dt), 1e-7f);
+    EXPECT_NEAR(first.inner.cover, feedback::paintFade(dt), 1e-7f);
+    EXPECT_LT(first.inner.cover, 0.01f);
+    EXPECT_FLOAT_EQ(first.inner.size, 0.03f);
+    EXPECT_FLOAT_EQ(first.inner.color[1], 0.4f);
+    feedback::Step later = first;
+    for (int i = 0; i < 120; ++i) later = motion.step(spec, feedback::Drive{}, dt);
+    // Eased in after a second, and the clock holds there.
+    EXPECT_EQ(motion.age(), feedback::kPaintFadeSeconds);
+    EXPECT_NEAR(later.outer.cover, feedback::paintPerFrame(0.6f, dt), 1e-7f);
+    EXPECT_EQ(later.inner.cover, 1.0f);
+    // A stalled frame paints nothing.
+    EXPECT_EQ(motion.step(spec, feedback::Drive{}, 0.0f).outer.cover, 0.0f);
+    // A new visit eases them in again.
+    motion.reset();
+    EXPECT_EQ(motion.age(), 0.0f);
+    EXPECT_NEAR(motion.step(spec, feedback::Drive{}, dt).inner.cover, feedback::paintFade(dt), 1e-7f);
+    // A loop with no borders paints none.
+    EXPECT_EQ(feedback::Motion{}.step(feedback::WarpSpec{}, feedback::Drive{}, dt).outer.cover, 0.0f);
+}
+
+// ---- the streaks along the motion field (#386) ----------------------------------------------------
+
+TEST(FeedbackStreaks, PaintOnlyWithAnAmountOnTheirGrid) {
+    feedback::Streaks streaks;
+    streaks.amount = 0.75f;
+    streaks.color = {0.2f, 0.4f, 0.8f};
+    streaks.cells = 20;
+    const feedback::Paint full = feedback::streakPaint(streaks, 0.5f, feedback::kPaintFadeSeconds);
+    EXPECT_NEAR(full.cover, 0.5f, 1e-6f);
+    EXPECT_FLOAT_EQ(full.size, 0.05f);
+    EXPECT_FLOAT_EQ(full.color[0], 0.2f);
+    EXPECT_FLOAT_EQ(full.color[1], 0.4f);
+    EXPECT_FLOAT_EQ(full.color[2], 0.8f);
+    EXPECT_NEAR(feedback::streakPaint(streaks, 0.5f, 0.5f * feedback::kPaintFadeSeconds).cover, 0.25f, 1e-6f);
+    EXPECT_EQ(feedback::streakPaint(streaks, 0.0f, feedback::kPaintFadeSeconds).cover, 0.0f);
+    streaks.amount = 0.0f;
+    EXPECT_EQ(feedback::streakPaint(streaks, 0.5f, feedback::kPaintFadeSeconds).cover, 0.0f);
+    // Off by default, on the default grid.
+    const feedback::Paint none = feedback::streakPaint(feedback::Streaks{}, 0.5f, feedback::kPaintFadeSeconds);
+    EXPECT_EQ(none.cover, 0.0f);
+    EXPECT_FLOAT_EQ(none.size, 1.0f / static_cast<float>(feedback::kDefaultStreakCells));
+}
+
+TEST(FeedbackStreaks, AreHeldToTheirRanges) {
+    feedback::WarpSpec wild;
+    wild.streaks.amount = 2.0f;
+    wild.streaks.color = {-1.0f, kNan, 3.0f};
+    wild.streaks.cells = 500;
+    feedback::WarpSpec held = feedback::sanitized(wild);
+    EXPECT_FLOAT_EQ(held.streaks.amount, 1.0f);
+    EXPECT_FLOAT_EQ(held.streaks.color[0], 0.0f);
+    EXPECT_FLOAT_EQ(held.streaks.color[1], 1.0f);
+    EXPECT_FLOAT_EQ(held.streaks.color[2], 1.0f);
+    EXPECT_EQ(held.streaks.cells, feedback::kMaxStreakCells);
+    wild.streaks.amount = kNan;
+    wild.streaks.cells = 1;
+    held = feedback::sanitized(wild);
+    EXPECT_FLOAT_EQ(held.streaks.amount, 0.0f);
+    EXPECT_EQ(held.streaks.cells, feedback::kMinStreakCells);
+    // The paint is held too: the coarsest grid at most, the finest at least.
+    EXPECT_FLOAT_EQ(feedback::streakPaint(wild.streaks, 0.5f, 1.0f).size, 1.0f / static_cast<float>(feedback::kMinStreakCells));
+    wild.streaks.cells = 99;
+    EXPECT_FLOAT_EQ(feedback::streakPaint(wild.streaks, 0.5f, 1.0f).size, 1.0f / static_cast<float>(feedback::kMaxStreakCells));
+}
+
+TEST(FeedbackStreaks, TheMotionEasesThemInWithEachVisit) {
+    feedback::WarpSpec spec;
+    spec.streaks.amount = 0.6f;
+    spec.streaks.cells = 10;
+    feedback::Motion motion;
+    const float dt = 1.0f / 60.0f;
+    const feedback::Step first = motion.step(spec, feedback::Drive{}, dt);
+    EXPECT_NEAR(first.streaks.cover, feedback::paintPerFrame(0.6f, dt) * feedback::paintFade(dt), 1e-7f);
+    EXPECT_FLOAT_EQ(first.streaks.size, 0.1f);
+    feedback::Step later = first;
+    for (int i = 0; i < 120; ++i) later = motion.step(spec, feedback::Drive{}, dt);
+    EXPECT_NEAR(later.streaks.cover, feedback::paintPerFrame(0.6f, dt), 1e-7f);
+    EXPECT_EQ(feedback::Motion{}.step(feedback::WarpSpec{}, feedback::Drive{}, dt).streaks.cover, 0.0f);
+}
+
 // ---- the store -------------------------------------------------------------------------------------
 
 TEST(FeedbackStore, KnowsEachFormatsSpacing) {

@@ -108,6 +108,9 @@ internal fun propertyName(property: SharedProperty): String =
             SharedProperty.TRAILS -> R.string.customize_property_trails
             SharedProperty.TRAIL_ZOOM -> R.string.customize_property_trail_zoom
             SharedProperty.TRAIL_WARP -> R.string.customize_property_trail_warp
+            SharedProperty.ECHO_COPY -> R.string.customize_property_echo_copy
+            SharedProperty.ECHO_COPY_ZOOM -> R.string.customize_property_echo_copy_zoom
+            SharedProperty.ECHO_COPY_FLIP -> R.string.customize_property_echo_copy_flip
             SharedProperty.GRAIN -> R.string.customize_property_grain
             SharedProperty.VIGNETTE -> R.string.customize_property_vignette
             SharedProperty.CHROMATIC -> R.string.customize_property_chromatic

@@ -23,6 +23,10 @@ SharedEffects effectsOf(const Frame& e) {
     fx.trails = e[mod::Shared::Trails];
     fx.trailZoom = e[mod::Shared::TrailZoom];
     fx.trailWarp = e[mod::Shared::TrailWarp];
+    fx.echoCopy = e[mod::Shared::EchoCopy];
+    fx.echoCopyZoom = e[mod::Shared::EchoCopyZoom];
+    const float flip = e[mod::Shared::EchoCopyFlip];
+    fx.echoCopyFlip = std::isfinite(flip) ? static_cast<int>(std::lround(std::clamp(flip, 0.0f, 3.0f))) : 0;
     fx.softFocus = e[mod::Shared::SoftFocus];
     fx.motionBlur = e[mod::Shared::MotionBlur];
     fx.particles = e[mod::Shared::Particles];
@@ -53,6 +57,29 @@ float echoZoom(float zoom, float dt) {
 }
 
 float echoWarp(float warp, float dt) { return std::isfinite(warp) ? warp * framerate::referenceFrames(dt) : 0.0f; }
+
+EchoCopyFade stepEchoCopy(const EchoCopyFade& fade, int targetFlip, float dt) {
+    EchoCopyFade out{std::clamp(fade.flip, 0, kEchoCopyFlips - 1), mod::unit(fade.presence)};
+    if (!(dt > 0.0f) || !std::isfinite(dt)) return out;
+    const int target = std::clamp(targetFlip, 0, kEchoCopyFlips - 1);
+    const float step = dt / kEchoCopyFadeSeconds;
+    if (out.flip == target) {
+        out.presence = std::min(out.presence + step, 1.0f);
+        return out;
+    }
+    out.presence = std::max(out.presence - step, 0.0f);
+    if (out.presence == 0.0f) out.flip = target;
+    return out;
+}
+
+float echoCopyMix(float amount, float presence) { return kEchoCopyMaxMix * mod::unit(amount) * mod::unit(presence); }
+
+float echoCopyZoom(float zoom) { return std::isfinite(zoom) ? std::clamp(zoom, kMinEchoCopyZoom, kMaxEchoCopyZoom) : 1.0f; }
+
+std::array<float, 2> echoCopyFlipScale(int flip) {
+    const int f = std::clamp(flip, 0, kEchoCopyFlips - 1);
+    return {(f & 1) != 0 ? -1.0f : 1.0f, (f & 2) != 0 ? -1.0f : 1.0f};
+}
 
 float anaglyphMix(float current, float target, float dt) {
     const float from = mod::unit(current);

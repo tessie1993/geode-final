@@ -285,6 +285,7 @@ const FEEDBACK_VALUES = {
   uFbGrid: [32, 24], uFbMap: [0.995, -0.002, 0.002, 0.995], uFbShift: [0, 0], uFbStretch: [1, 1], uFbCenter: [0.5, 0.5],
   uFbAspect: 1, uFbWarp: 0.0025, uFbPhase: 3.7, uFbTexel: [0, 0], uFbDt: 1 / 60, uFbKeep: [0.987, 0.985, 0.983],
   uFbFloor: 1 / 256 / 60, uFbHalf: 0, uFbStep: 1 / 255, uFbSeed: 2220,
+  uFbOuter: [1, 1, 1, 0], uFbOuterSize: 0, uFbInner: [1, 1, 1, 0], uFbInnerSize: 0, uFbStreak: [1, 1, 1, 0], uFbStreakCell: 1 / 16,
 };
 const FEEDBACK_TEXTURES = { uFbPrev: 'history' };
 
@@ -402,7 +403,7 @@ function layerEffects() {
 
 const SHARED_FX_NEUTRAL = {
   uTexel: [0, 0], uAspect: 1, uTime: 12.5, uSoftFocus: 0, uParticles: 0, uParticleKind: 0, uParticleSize: 1,
-  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0,
+  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0, uEchoCopy: 0, uEchoCopyZoom: 1, uEchoCopyFlip: [1, 1],
 };
 const SHARED_FX_TEXTURES = { uScene: 'scene', uHistory: 'history' };
 
@@ -412,6 +413,9 @@ const SHARED_FX_EFFECTS = {
   motion_blur: { uMotionKeep: 0.6 },
   trails: { uEchoKeep: 0.9 },
   echo: { uEchoKeep: 0.9, uEchoZoom: 0.5, uEchoWarp: 1 },
+  echo_copy_mirror: { uEchoCopy: 0.5, uEchoCopyFlip: [-1, 1] },
+  echo_copy_flip_both_zoomed: { uEchoCopy: 0.5, uEchoCopyZoom: 1.6, uEchoCopyFlip: [-1, -1] },
+  echo_copy_tiled: { uEchoCopy: 0.4, uEchoCopyZoom: 0.5, uEchoCopyFlip: [1, -1] },
   particles_motes: { uParticles: 0.8, uParticleKind: 0 },
   particles_sparks: { uParticles: 0.8, uParticleKind: 1 },
   particles_dust: { uParticles: 0.8, uParticleKind: 2 },
@@ -430,11 +434,11 @@ function layerJobs(registry, size) {
   }));
 }
 // One frame of a warp stage: the motion grid (feedback_warp_vert.glsl) and `file`'s fragment.
-function warpJob(name, file, registry, size) {
+function warpJob(name, file, registry, size, extra = {}) {
   const vert = fs.readFileSync(path.join(SHADERS, 'feedback_warp_vert.glsl'), 'utf8');
   const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, sourceName(file));
   const [columns, rows] = feedbackGrid();
-  const values = { ...FEEDBACK_VALUES, uFbGrid: [columns, rows], uFbTexel: [1 / size, 1 / size] };
+  const values = { ...FEEDBACK_VALUES, uFbGrid: [columns, rows], uFbTexel: [1 / size, 1 / size], ...extra };
   const uniforms = plan([...parseUniforms(vert), ...parseUniforms(frag)], values, FEEDBACK_TEXTURES, size, size);
   return { name, vert, frag, uniforms, vertices: columns * rows * 6 };
 }
@@ -565,6 +569,14 @@ function effectJobs(registry, size) {
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
   jobs.push(warpJob('feedback_warp_shared', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size));
+  // What the warp paints into the loop (lib_feedback's fbPaint): the borders (#363), and the streaks
+  // along a motion field that grows and turns fast enough to show them everywhere but the centre (#386).
+  jobs.push(warpJob('feedback_warp_borders', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size, {
+    uFbOuter: [1, 0.8, 0.5, 0.6], uFbOuterSize: 0.03, uFbInner: [0.3, 0.6, 1, 0.4], uFbInnerSize: 0.02,
+  }));
+  jobs.push(warpJob('feedback_warp_streaks', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size, {
+    uFbMap: [0.99, -0.008, 0.008, 0.99], uFbStreak: [0.6, 0.9, 1, 1], uFbStreakCell: 1 / 12,
+  }));
   jobs.push(...settleJobs(registry));
   return jobs;
 }

@@ -44,7 +44,13 @@ ModulatorSpec saw(float periodSeconds) {
 }
 
 TEST(SharedCore, TheTableFollowsTheKotlinModel) {
-    EXPECT_EQ(kSharedCount, 62u);
+    EXPECT_EQ(kSharedCount, 65u);
+    EXPECT_STREQ(spec(Shared::EchoCopy).name, "ECHO_COPY");
+    EXPECT_STREQ(spec(Shared::EchoCopyFlip).name, "ECHO_COPY_FLIP");
+    EXPECT_TRUE(spec(Shared::EchoCopy).luminous);
+    EXPECT_EQ(spec(Shared::EchoCopyZoom).initial, 1.0f);
+    EXPECT_EQ(spec(Shared::EchoCopyFlip).initial, 1.0f);
+    EXPECT_EQ(spec(Shared::EchoCopyFlip).kind, ValueKind::Stepped);
     EXPECT_STREQ(spec(Shared::Anaglyph).name, "ANAGLYPH");
     EXPECT_STREQ(spec(Shared::LayerSwap).name, "LAYER_SWAP");
     EXPECT_TRUE(spec(Shared::LayerOpacity).luminous);
