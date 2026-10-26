@@ -54,6 +54,13 @@ data class LookChip(
     val canBeLayer: Boolean = true,
 )
 
+/** One folder of Styles Style switching can switch within (#308), as the place that opens the screen names it. */
+@Immutable
+data class StyleFolderChip(
+    val name: String,
+    val styles: List<SceneId>,
+)
+
 /** One saved preset the preset row offers for this Style. */
 @Immutable
 data class PresetChip(
@@ -193,6 +200,13 @@ data class CustomizeModel(
     val automations: Automations,
     /** The A/B compare slots that keep a Customization to switch to. */
     val kept: Set<CompareSlot> = emptySet(),
+    /** Whether the person holds the Style, so Style switching waits (#282). */
+    val styleHeld: Boolean = false,
+    /** Whether there is a Style seen before this one to go back to, and one to go forward to again. */
+    val canGoBack: Boolean = false,
+    val canGoForward: Boolean = false,
+    /** The folders Style switching can switch within. */
+    val styleFolders: List<StyleFolderChip> = emptyList(),
     /** Layer 2, a second Style laid over this one; its opacity, influence and swap are in [shared]. */
     val layer: Layer = Layer.OFF,
 ) {
@@ -213,15 +227,16 @@ data class CustomizeModel(
 
 /**
  * Customize's model of this state. [looks] and [presets] are offered by the place that opens
- * Customize; [live] carries the engine's live values when there are any; [ignored] are the controls
- * the current Style leaves alone, greyed out (#365), which the opening place works out from the
- * Style's family.
+ * Customize, as are the [styleFolders] Style switching may switch within; [live] carries the
+ * engine's live values when there are any; [ignored] are the controls the current Style leaves alone,
+ * greyed out (#365), which the opening place works out from the Style's family.
  */
 fun CustomizationState.toCustomizeModel(
     looks: List<LookChip> = emptyList(),
     presets: List<PresetChip> = emptyList(),
     live: LiveMeters = LiveMeters.NONE,
     ignored: Set<Target> = emptySet(),
+    styleFolders: List<StyleFolderChip> = emptyList(),
 ): CustomizeModel {
     val customization = current
     val reactions = customization.reactions
@@ -285,6 +300,10 @@ fun CustomizationState.toCustomizeModel(
                 },
         automations = customization.automations,
         kept = compare.keys,
+        styleHeld = styleHeld,
+        canGoBack = stylesBack.isNotEmpty(),
+        canGoForward = stylesForward.isNotEmpty(),
+        styleFolders = styleFolders,
         layer = customization.layer,
     )
 }

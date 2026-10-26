@@ -30,7 +30,8 @@ import dev.geode.feature.customization.api.Trigger
  * The Automations (#41, #336) take one slot each, in this order: Style switching, palette changes,
  * one per property of each Camera move, and one per target of each lane. The engine evaluates them on
  * the beats and big moments the live analysis reports ([Automation] gives their meaning) and counts
- * Style switching's due moves for the reducer ([CustomizationEvent.StyleDue]).
+ * Style switching's due moves for the reducer ([CustomizationEvent.StyleDue]). Style switching's slot
+ * is marked held while the person holds it or Customize is open (#282).
  *
  * Layer 2 goes last: its Style, blend and influence. Its loop ([LayerLoops]) goes as one more Modulator
  * and its Reactions, after the person's own, which give up the last slots if the plan is full.
@@ -45,7 +46,7 @@ object NativePlan {
     const val REACTION_FLOATS: Int = 12
     const val MODULATOR_FLOATS: Int = 16 + MAX_STEPS
     const val MACRO_LINK_FLOATS: Int = 6
-    const val AUTOMATION_FLOATS: Int = 12 + MAX_STEPS
+    const val AUTOMATION_FLOATS: Int = 13 + MAX_STEPS
 
     /** Layer 2: its Style ([StyleHash], 0 when off), blend and influence. */
     const val LAYER_FLOATS: Int = 3
@@ -104,12 +105,20 @@ object NativePlan {
         val cadence: Cadence? = null,
         val fade: Millis = Millis.ZERO,
         val alternate: Boolean = false,
+        val held: Boolean = false,
         val steps: List<Float> = emptyList(),
     )
 
-    /** [automations] as the engine's slots, in the order the class comment gives; past its room the rest is left out. */
-    private fun slots(automations: Automations): List<Slot> {
-        val style = automations.style?.let { Slot(AUTOMATION_STYLE_SWITCH, cadence = it.cadence, fade = it.transition) }
+    /**
+     * [automations] as the engine's slots, in the order the class comment gives, Style switching held
+     * when [switchingHeld]; past its room the rest is left out.
+     */
+    private fun slots(
+        automations: Automations,
+        switchingHeld: Boolean,
+    ): List<Slot> {
+        val style =
+            automations.style?.let { Slot(AUTOMATION_STYLE_SWITCH, cadence = it.cadence, fade = it.transition, held = switchingHeld) }
         val palette = automations.palette?.let { Slot(AUTOMATION_PALETTE, cadence = it.cadence, fade = it.fade) }
         val camera =
             automations.camera.flatMap { move ->
@@ -151,8 +160,11 @@ object NativePlan {
         }
     }
 
-    /** [customization] as the snapshot's `plan` floats. */
-    fun encode(customization: Customization): List<Float> {
+    /** [customization] as the snapshot's `plan` floats, its Style switching held when [switchingHeld]. */
+    fun encode(
+        customization: Customization,
+        switchingHeld: Boolean = false,
+    ): List<Float> {
         val w = Writer(floatCount)
         val layer = customization.layer
         val loop = layer.loop?.takeIf { layer.on && it.targets.isNotEmpty() }
@@ -171,7 +183,7 @@ object NativePlan {
                 .withIndex()
                 .flatMap { (index, macro) -> macro.links.map { index to it } }
                 .take(MAX_MACRO_LINKS)
-        val automations = slots(customization.automations)
+        val automations = slots(customization.automations, switchingHeld)
         val indexOf: Map<ModulatorId, Int> = modulators.withIndex().associate { (index, m) -> m.id to index }
 
         fun modulator(id: ModulatorId): Float = indexOf[id]?.toFloat() ?: NO_INDEX
@@ -301,6 +313,7 @@ object NativePlan {
             w.put(slot.cadence?.spacing ?: Millis.ZERO)
             w.put(slot.fade)
             w.put(slot.alternate)
+            w.put(slot.held)
             val steps = slot.steps.take(MAX_STEPS)
             w.put(steps.size.toFloat())
             steps.forEach(w::put)

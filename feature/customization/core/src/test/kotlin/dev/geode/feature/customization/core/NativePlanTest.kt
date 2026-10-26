@@ -247,7 +247,10 @@ class NativePlanTest {
 
     private fun steps(index: Int): List<Float> = automatedPlan.subList(slotAt(index) + automationHead, slotAt(index + 1))
 
-    /** A slot as written: its kind, its target's three floats, then amount, every, trigger, threshold, spacing, fade, alternate, count. */
+    /**
+     * A slot as written: its kind, its target's three floats, then amount, every, trigger, threshold,
+     * spacing, fade, alternate, held, count.
+     */
     private fun expected(
         kind: Float,
         target: List<Float>,
@@ -267,29 +270,42 @@ class NativePlanTest {
     @Test
     fun `carries Style switching on big moments, so the engine counts its due moves`() {
         assertEquals(
-            expected(NativePlan.AUTOMATION_STYLE_SWITCH, none, 0f, 1f, NativePlan.TRIGGER_BIG_MOMENTS, 0.7f, 8f, 4f, 0f, 0f),
+            expected(NativePlan.AUTOMATION_STYLE_SWITCH, none, 0f, 1f, NativePlan.TRIGGER_BIG_MOMENTS, 0.7f, 8f, 4f, 0f, 0f, 0f),
             slot(0),
         )
         assertEquals(List(MAX_STEPS) { 0f }, steps(0))
     }
 
     @Test
+    fun `marks Style switching held, and only Style switching`() {
+        val held = NativePlan.encode(automated, switchingHeld = true)
+        val heldAt = automationHead - 2
+        assertEquals(1f, held[slotAt(0) + heldAt])
+        assertEquals(0f, held[slotAt(1) + heldAt])
+        assertEquals(automatedPlan.subList(0, slotAt(0)), held.subList(0, slotAt(0)))
+        assertEquals(automatedPlan.subList(slotAt(1), automatedPlan.size), held.subList(slotAt(1), held.size))
+    }
+
+    @Test
     fun `carries palette changes every few bars, in beats`() {
-        assertEquals(expected(NativePlan.AUTOMATION_PALETTE, none, 0f, 32f, NativePlan.TRIGGER_EVERY_BEATS, 0f, 10f, 2f, 0f, 0f), slot(1))
+        assertEquals(
+            expected(NativePlan.AUTOMATION_PALETTE, none, 0f, 32f, NativePlan.TRIGGER_EVERY_BEATS, 0f, 10f, 2f, 0f, 0f, 0f),
+            slot(1),
+        )
     }
 
     @Test
     fun `carries each Camera move as one slot per property, the alternating ones marked`() {
         val camera = NativePlan.AUTOMATION_CAMERA
-        assertEquals(expected(camera, shared(SharedProperty.DRIFT_X), 0.5f, 4f, 0f, 0f, 0f, 0f, 1f, 0f), slot(2))
-        assertEquals(expected(camera, shared(SharedProperty.TRAVEL), 0.5f, 4f, 0f, 0f, 0f, 0f, 0f, 0f), slot(3))
-        assertEquals(expected(camera, shared(SharedProperty.ZOOM), -0.25f, 2f, 0f, 0f, 0f, 0f, 0f, 0f), slot(4))
+        assertEquals(expected(camera, shared(SharedProperty.DRIFT_X), 0.5f, 4f, 0f, 0f, 0f, 0f, 1f, 0f, 0f), slot(2))
+        assertEquals(expected(camera, shared(SharedProperty.TRAVEL), 0.5f, 4f, 0f, 0f, 0f, 0f, 0f, 0f, 0f), slot(3))
+        assertEquals(expected(camera, shared(SharedProperty.ZOOM), -0.25f, 2f, 0f, 0f, 0f, 0f, 0f, 0f, 0f), slot(4))
     }
 
     @Test
     fun `carries a lane as one slot per target, each with its own steps`() {
         val lane = NativePlan.AUTOMATION_LANE
-        assertEquals(expected(lane, shared(SharedProperty.GLOW), 0f, 1f, 0f, 0f, 0f, 0f, 0f, 2f), slot(5))
+        assertEquals(expected(lane, shared(SharedProperty.GLOW), 0f, 1f, 0f, 0f, 0f, 0f, 0f, 0f, 2f), slot(5))
         assertEquals(listOf(0.1f, 0.4f) + List(MAX_STEPS - 2) { 0f }, steps(5))
         assertEquals(listOf(lane, NativePlan.TARGET_MODULATOR, 1f, ModulatorParameter.DEPTH.ordinal.toFloat()), slot(6).subList(0, 4))
         assertEquals(listOf(0.2f, 0.5f), steps(6).subList(0, 2))

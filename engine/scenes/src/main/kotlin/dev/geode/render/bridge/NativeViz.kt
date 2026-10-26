@@ -263,6 +263,9 @@ class NativeViz(
         live { h -> GeodeNative.vizReleaseScenes(h) }
     }
 
+    /** How many times the Customization's Style switching has been due since its evaluation started over. */
+    fun stylesDue(): Int = liveOr(0) { h -> GeodeNative.vizStylesDue(h) }
+
     /** Full-frame RGBA8 overlay drawn last, premultiplied alpha; null clears. Any thread; latched for the next frame. */
     fun setOverlay(
         pixels: IntArray?,

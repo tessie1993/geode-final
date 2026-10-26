@@ -33,6 +33,8 @@ struct geode_viz {
     bool hasPlan = false;
     geode::viz::mod::ReactionGraph graph;
     double lastFrameSeconds = -1.0;
+    // The graph's stylesDue after the last frame, for geode_viz_styles_due on any thread.
+    std::atomic<uint32_t> stylesDue{0};
     // The live sound this Visual reads at the start of each frame; null when it is handed features instead.
     // Drawing thread only, as are the frame's window and the edge detection on the feed's events.
     std::shared_ptr<geode::api::Feed> feed;
@@ -316,6 +318,7 @@ static void applySnapshot(geode_viz* v) {
     v->hasPlan = geode::viz::mod::decodePlan(snapshot.plan.data(), snapshot.plan.size(), v->plan);
     if (!v->hasPlan) {
         v->graph.reset();
+        v->stylesDue.store(0, std::memory_order_relaxed);
         v->renderer.setCustomization(nullptr);
     }
 }
@@ -332,6 +335,7 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
         features = v->features;
     }
     const geode::viz::mod::Evaluated& evaluated = v->graph.evaluate(v->plan, geode::viz::mod::signalFrame(features), dt);
+    v->stylesDue.store(evaluated.stylesDue, std::memory_order_relaxed);
     v->renderer.setCustomization(&evaluated);
 }
 
@@ -380,6 +384,10 @@ GeodeStatus geode_viz_attach_snapshots(geode_viz* v, geode_snapshots* snapshots)
 
 void geode_viz_release_scenes(geode_viz* v) {
     if (v) v->renderer.releaseScenes();
+}
+
+uint32_t geode_viz_styles_due(geode_viz* v) {
+    return v ? v->stylesDue.load(std::memory_order_relaxed) : 0u;
 }
 
 }

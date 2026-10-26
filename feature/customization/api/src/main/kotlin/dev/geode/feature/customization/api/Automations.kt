@@ -1,6 +1,7 @@
 package dev.geode.feature.customization.api
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 
 /**
  * What starts an Automation's move, read only from what the live analysis has already heard (#41,
@@ -41,7 +42,10 @@ data class Cadence(
     }
 }
 
-/** Where Style switching picks the next Style from (a setting). */
+/**
+ * Where Style switching picks the next Style from (a setting). Every shuffle is seeded and weighted by
+ * the person's marks ([StyleMark]); a Style marked Never is never picked, from any pool.
+ */
 enum class StylePool {
     /** The Visualizer styles: the Styles of the Visuals feature, handed in by `:app`, in their order. */
     VISUALIZER,
@@ -51,17 +55,45 @@ enum class StylePool {
 
     /** The Visualizer styles first, then the app's picks of the rest. */
     BOTH,
+
+    /** The person's Favourites, handed in by `:app`, in a seeded shuffle (#308). */
+    FAVOURITES,
+
+    /** The Styles [StyleSwitching.chosen] names, such as one folder's, in a seeded shuffle (#308). */
+    CHOSEN,
+
+    /**
+     * Back and forth between the first two Styles [StyleSwitching.chosen] names, like a DJ's call and
+     * response (#384), on the switching's own cadence: every so many bars, or on big moments.
+     */
+    PAIR,
+}
+
+/**
+ * How the person marked a Style (#308): Love comes round [weight] times as often as Normal in Style
+ * switching's shuffle, and Never is never picked. Marks live in the Style library, never in a preset
+ * file, so a shared preset stays as it was written.
+ */
+enum class StyleMark(
+    val weight: Int,
+) {
+    LOVE(3),
+    NORMAL(1),
+    NEVER(0),
 }
 
 /**
  * Switches Style by itself at its [cadence], from its [pool], through a smooth crossfade of
  * [transition] that keeps the No-flash rule. [seed] fixes the app's picks' shuffle, so a Render repeats.
+ * [chosen] are the Styles the [StylePool.CHOSEN] pool switches within; [StylePool.PAIR] goes back and
+ * forth between the first two.
  */
 data class StyleSwitching(
     val cadence: Cadence = Cadence(),
     val pool: StylePool = StylePool.BOTH,
     val seed: Long = 0L,
     val transition: Millis = DEFAULT_TRANSITION,
+    val chosen: List<SceneId> = emptyList(),
 ) {
     companion object {
         val MIN_TRANSITION: Millis = Millis(1_000)

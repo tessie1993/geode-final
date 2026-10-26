@@ -115,6 +115,7 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         a.spacingSeconds = in.next();
         a.fadeSeconds = in.next();
         a.alternate = in.flag();
+        a.held = in.flag();
         a.stepCount = in.count(kMaxSteps);
         in.steps(a.steps);
     }

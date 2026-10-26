@@ -30,6 +30,12 @@ class EngineSnapshotsTest {
     }
 
     @Test
+    fun `a held Style switching is held in the plan`() {
+        val held = EngineSnapshots.of(customization, null, switchingHeld = true)
+        assertEquals(NativePlan.encode(customization, switchingHeld = true), held.plan)
+    }
+
+    @Test
     fun `reduce motion and the beat detection come from Settings`() {
         val settings =
             SettingsValues(

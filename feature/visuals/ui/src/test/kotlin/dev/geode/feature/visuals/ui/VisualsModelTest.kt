@@ -6,6 +6,7 @@ import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsState
 import org.junit.Assert.assertEquals
@@ -77,6 +78,13 @@ class VisualsModelTest {
     }
 
     @Test
+    fun `each Style shows how it is marked`() {
+        val marked = state.copy(library = state.library?.copy(marks = mapOf(bars.id to StyleMark.LOVE)))
+        val model = marked.toTabModel(query = "", openFolder = null)
+        assertEquals(listOf(item(tunnel), item(bars).copy(mark = StyleMark.LOVE)), model.recent)
+    }
+
+    @Test
     fun `a folder that is gone opens the top level`() {
         assertEquals(state.toTabModel("", null), state.toTabModel("", FolderId(9)))
     }
@@ -104,6 +112,7 @@ class VisualsModelTest {
     fun `actions on the library become Commands, and a new folder goes in the open one`() {
         assertEquals(VisualsCommand.Choose(ink.id), VisualsAction.Choose(ink.id).toCommand(openFolder = null))
         assertEquals(VisualsCommand.SetFavourite(ink.id, true), VisualsAction.SetFavourite(ink.id, true).toCommand(null))
+        assertEquals(VisualsCommand.SetMark(ink.id, StyleMark.NEVER), VisualsAction.SetMark(ink.id, StyleMark.NEVER).toCommand(null))
         assertEquals(VisualsCommand.CreateFolder("New", calm.id), VisualsAction.CreateFolder("New").toCommand(calm.id))
         assertEquals(VisualsCommand.CreateFolder("New", null), VisualsAction.CreateFolder("New").toCommand(null))
         assertEquals(VisualsCommand.RenameFolder(calm.id, "Still"), VisualsAction.RenameFolder(calm.id, "Still").toCommand(null))

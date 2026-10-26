@@ -203,7 +203,7 @@ fun AppRoot() {
             }
     }
     val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings, surface)
+    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.styleCues, shell.settings, surface)
     // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
     var reactionsHeld by remember { mutableStateOf(false) }
     LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }

@@ -45,6 +45,25 @@ constexpr int kMaxMacroLinks = 64;
 constexpr int kMaxAutomations = 48;
 // The longest frame the graph steps over: a stall does not jump every Modulator ahead at once.
 constexpr float kMaxFrameSeconds = 0.1f;
+// The Level (0..1, as heard, before the trims) under which Style switching takes the music for silence
+// (#361), and how long silence lasts before switching's spacing starts again when sound returns. The
+// one place to retarget silence: to the analysis' measured noise floor once it reports one (#278).
+// Automation.SILENCE_LEVEL and SILENCE_SECONDS in :feature:customization:core mirror them.
+constexpr float kSilenceLevel = 0.02f;
+constexpr float kSilenceSeconds = 2.5f;
+
+// Whether Style switching takes a frame whose Level is `level` for silence.
+bool silent(float level);
+
+// How far Style switching's big-moment threshold rises after a switch, as a fraction of the room left
+// above it, and the half-life it relaxes back over, in seconds played (#362). Automation.THRESHOLD_RISE
+// and THRESHOLD_HALF_LIFE in :feature:customization:core mirror them.
+constexpr float kThresholdRise = 0.5f;
+constexpr float kThresholdHalfLifeSeconds = 15.0f;
+
+// Style switching's big-moment threshold `sinceSeconds` (played) after its last switch: `threshold`
+// raised kThresholdRise of the way to 1, the raise halving every kThresholdHalfLifeSeconds.
+float raisedThreshold(float threshold, float sinceSeconds);
 
 enum class ModulatorField : uint8_t { Rate, Depth, Pattern };
 constexpr size_t kModulatorFieldCount = 3;
@@ -99,6 +118,14 @@ float macroLink(float base, float low, float high, float value);
 // (played time) after its last move:
 //   EveryBeats   on each beat past 0 that is a multiple of `everyBeats` (EveryBars: bars * 4);
 //   BigMoments   when the louder of Surge and Change rises past `threshold`, once each time.
+// A `held` cadence never moves, and its spacing starts again from the moment it is released: the
+// person's Hold, or Customize being open (#282), so a switch never lands straight after either.
+// Style switching also waits during silence (#361): never while the Level heard (before the trims) is
+// under kSilenceLevel, and once that has lasted kSilenceSeconds of play, its spacing starts again when
+// sound returns. A pause, the gap between tracks or a quiet intro never switches.
+// On big moments, Style switching's threshold rises after each switch and relaxes back with a half-life
+// (#362, raisedThreshold), so a loud, busy master does not switch on every chorus, yet keeps its variety
+// without a longer fixed spacing.
 //
 //   StyleSwitch  no target: counts each move into Evaluated::stylesDue, from which the reducer moves
 //                to the next Style (CustomizationEvent.StyleDue) and the engine crossfades;
@@ -123,6 +150,7 @@ struct AutomationSpec {
     float spacingSeconds = 0.0f;
     float fadeSeconds = 2.0f;
     bool alternate = false;
+    bool held = false;
     std::array<float, kMaxSteps> steps{};
     int stepCount = 0;
 };
@@ -196,13 +224,17 @@ private:
     // Each Shared property's fraction last frame, from which a luminous one may only rise so fast.
     std::array<float, kSharedCount> lastShared_{};
     // The Automations' clocks: beats reported, and seconds played. Per Automation: the beat block it
-    // last saw, how often it moved, whether a big moment may fire, and when it last moved.
+    // last saw, how often it moved, whether a big moment may fire, when it last moved, and when its
+    // spacing started (its last move, or the moment a hold let go).
     double beats_ = 0.0;
     double seconds_ = 0.0;
+    // How long the music has been silent, in seconds played (#361).
+    double quietSeconds_ = 0.0;
     std::array<int64_t, kMaxAutomations> lastBlock_{};
     std::array<uint32_t, kMaxAutomations> due_{};
     std::array<bool, kMaxAutomations> armed_{};
     std::array<double, kMaxAutomations> lastMove_{};
+    std::array<double, kMaxAutomations> spacedFrom_{};
     bool primed_ = false;
     Evaluated out_;
 };
