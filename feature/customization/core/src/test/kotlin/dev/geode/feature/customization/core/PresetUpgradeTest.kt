@@ -105,6 +105,13 @@ class PresetUpgradeTest {
     }
 
     @Test
+    fun `the chosen MilkDrop preset is kept`() {
+        val chosen = LegacyPreset("Old", JULIA, emptyMap(), emptyMap(), milkPreset = "Geiss - Cosmic Dust.milk")
+        assertEquals("Geiss - Cosmic Dust.milk", upgrade(chosen).preset.milkdrop)
+        assertEquals(null, upgrade(legacy()).preset.milkdrop)
+    }
+
+    @Test
     fun `removed and unknown fields are dropped and named`() {
         val result =
             upgrade(

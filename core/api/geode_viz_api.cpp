@@ -139,6 +139,12 @@ void geode_viz_set_milk_texture_dir(geode_viz* v, const char* dir) {
     if (v && dir) v->renderer.setMilkTextureDir(dir);
 }
 
+#ifdef GEODE_STYLE_HOT_RELOAD
+void geode_viz_set_style_lab(geode_viz* v, const char* dir) {
+    if (v && dir) v->renderer.setStyleLab(dir);
+}
+#endif
+
 size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacity) {
     if (!v) return 0;
     const std::string path = v->renderer.takeMilkPresetLoaded();
@@ -200,6 +206,8 @@ void geode_viz_set_thermal(geode_viz* v, int platform_status, float headroom) {
 void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
+
+float geode_viz_frame_cap_fps(geode_viz* v) { return v ? v->renderer.thermal().frameCapFps() : 0.0f; }
 
 void geode_viz_set_quality_ceiling(geode_viz* v, float ceiling) {
     if (v) v->renderer.thermal().setQualityCeiling(ceiling);

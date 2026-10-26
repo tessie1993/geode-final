@@ -5,6 +5,7 @@ import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
+import dev.geode.analysis.SignalHold
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
@@ -55,6 +56,13 @@ class VisualizerRenderer(
     /** Vestibular accessibility only; the flash clamp is unconditional inside the native safety pass. */
     @Volatile
     var reducedMotion: Boolean = false
+
+    /**
+     * Freeze reactions (#366): the Sound signals hold steady while the picture's own motion goes on.
+     * Live only; the MilkDrop preset gets no new samples meanwhile, so it holds too.
+     */
+    @Volatile
+    var reactionsHeld: Boolean = false
 
     @Volatile
     var layerSceneId: SceneId? = null
@@ -113,8 +121,14 @@ class VisualizerRenderer(
     private var nativeAdsr: List<AdsrConfig>? = null
     private var nativeThermalSampleMs = 0L
 
+    // GL thread only: the performance-hint session that reports each frame's work (#286).
+    private val frameHint = FrameWorkHint(context)
+
     // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
     private val displayEvents = DisplayEvents()
+
+    // GL thread only: after displayEvents, so the events that fire during a hold are never replayed.
+    private val signalHold = SignalHold()
 
     @Volatile
     private var lastMilkPreset: String? = null
@@ -131,7 +145,10 @@ class VisualizerRenderer(
     }
 
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
-    fun releaseScenes() = nativeViz.destroy()
+    fun releaseScenes() {
+        frameHint.close()
+        nativeViz.destroy()
+    }
 
     fun loadMilkPreset(path: String) {
         lastMilkPreset = path
@@ -168,7 +185,9 @@ class VisualizerRenderer(
         config: EGLConfig?,
     ) {
         ThermalGovernor.attach(appContext)
+        frameHint.open(pacedFps())
         nativeViz.surfaceCreated()
+        styleLab?.attach(appContext, nativeViz)
         attachedSnapshots = null
         nativeParams = null
         nativeLfo = null
@@ -182,6 +201,7 @@ class VisualizerRenderer(
     ) = nativeViz.surfaceChanged(width, height)
 
     override fun onDrawFrame(gl: GL10?) {
+        val workStart = System.nanoTime()
         nativeViz.setScene(requestedSceneId)
         syncNativeState()
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
@@ -190,7 +210,11 @@ class VisualizerRenderer(
             lastMilkPreset = path
             onMilkPresetLoaded(path)
         }
+        frameHint.report(System.nanoTime() - workStart)
     }
+
+    /** The rate the pacer actually draws at: its own cap held to the thermal frame cap. */
+    private fun pacedFps(): Float = FrameCap.effectiveFps(ThermalGovernor.pacedFps, ThermalGovernor.frameCapFps)
 
     private fun syncNativeState() {
         val wanted = snapshots
@@ -202,19 +226,27 @@ class VisualizerRenderer(
             nativeAdsr = null
         }
         if (wanted == null) syncSceneParams()
-        nativeViz.setFeatures(displayEvents.frame(featureSource() ?: features))
+        val held = reactionsHeld
+        signalHold.held = held
+        nativeViz.setFeatures(signalHold.frame(displayEvents.frame(featureSource() ?: features)))
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
-        nativeViz.setPacedFps(ThermalGovernor.pacedFps)
+        // The rate the pacer actually draws at, the thermal frame cap included, so the load scale and
+        // the hint session judge each frame against the time it really has.
+        val paced = pacedFps()
+        nativeViz.setPacedFps(paced)
+        frameHint.retarget(paced)
         nativeViz.setQualityCeiling(qualityCeiling)
         val now = SystemClock.elapsedRealtime()
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
             nativeThermalSampleMs = now
             nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
             nativeViz.setFrameLoad(FramePacer.activeStats())
+            ThermalGovernor.frameCapFps = nativeViz.frameCapFps()
         }
-        pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
+        // Read even while held, so the samples of the hold are skipped rather than queued for after it.
+        pcmProvider()?.let { chunk -> if (!held) nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
     private fun syncSceneParams() {

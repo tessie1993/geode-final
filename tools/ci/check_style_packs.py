@@ -36,7 +36,13 @@ PACK_EXTRAS_KT = (
 FORMAT_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
-MANIFEST_KEYS = {"version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions"}
+# A family's "ignores" names Shared core properties as presets do: SPEED, AUDIO_DRIVE. The Kotlin
+# Customization tests check each one is a real property.
+SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
+MANIFEST_KEYS = {
+    "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
+    "effects", "tiers",
+}
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
 DETAIL_USES = {"none", "march"}
@@ -57,7 +63,15 @@ EXTRA_NAMES = [
 OFFSET_EXTRAS = {"center_x": (-1, 1, 0), "center_y": (-1, 1, 0), "variant": (0, 9, 0)}
 MULTIPLIER_EXTRA = (0, 2, 1)
 STYLE_HELPERS = {"count": "xcount", "variant": "xvariant"}
+# lib_dmt's flight path clock, which ShaderScene runs at the FLIGHT Extra's rate as it runs uXFlightTime.
+ENGINE_CLOCKS = {"flight": "uFlight"}
 STYLE_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_style[ \t]*$", re.MULTILINE)
+# The thermal tiers a Style may budget (geode/viz/QualityTiers.hpp); "full" is always the whole budget.
+TIER_NAMES = ("eased", "reduced", "minimal")
+TIER_KEYS = {"steps", "off"}
+MAX_EFFECTS = 8
+MIN_TIER_STEPS = 0.25
+MAX_TIER_STEPS = 1.0
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -97,6 +111,25 @@ def load_json(path: Path, report: Report) -> dict | None:
     return doc
 
 
+def check_ignores(entry: dict, name: str, report: Report) -> None:
+    """A family's optional "ignores": the Shared core properties its renderer never reads."""
+    if "ignores" not in entry:
+        return
+    where = f"{FAMILIES_FILE} {name}"
+    ignores = entry["ignores"]
+    if not isinstance(ignores, list):
+        report.error(where, '"ignores" must be an array')
+        return
+    seen: set[str] = set()
+    for ignored in ignores:
+        if not isinstance(ignored, str) or not SHARED_NAME_PATTERN.match(ignored):
+            report.error(where, f'"ignores" entry {ignored!r} is not a Shared core property name')
+        elif ignored in seen:
+            report.error(where, f'"ignores" names "{ignored}" twice')
+        else:
+            seen.add(ignored)
+
+
 def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
     families: dict[str, dict[str, dict]] = {}
     entries = doc.get("families")
@@ -111,6 +144,7 @@ def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
         if name in families:
             report.error(FAMILIES_FILE, f'family "{name}" is declared twice')
             continue
+        check_ignores(entry, name, report)
         specs: dict[str, dict] = {}
         for spec in entry["parameters"]:
             where = f"{FAMILIES_FILE} {name}"
@@ -205,10 +239,15 @@ def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report)
         report.error(where, "a shader Style with Extras includes lib_style (//#include lib_style)")
     code = strip_comments(source)
     for name in names:
-        # A rate Extra (flight, spin, drift) may be read through its clock, uX<Name>Time, and the count and
-        # the variant through lib_style's xcount() and xvariant().
+        # A rate Extra (flight, spin, drift) may be read through its clock, uX<Name>Time (flight also through
+        # lib_dmt's uFlight), and the count and the variant through lib_style's xcount() and xvariant().
         helper = STYLE_HELPERS.get(name)
-        if not re.search(rf"\b{extra_uniform(name)}(Time)?\b", code) and not (helper and re.search(rf"\b{helper}\s*\(", code)):
+        clock = ENGINE_CLOCKS.get(name)
+        if (
+            not re.search(rf"\b{extra_uniform(name)}(Time)?\b", code)
+            and not (helper and re.search(rf"\b{helper}\s*\(", code))
+            and not (clock and re.search(rf"\b{clock}\b", code))
+        ):
             report.error(where, f'extra "{name}" is declared but the shader never reads {extra_uniform(name)}')
 
 
@@ -321,6 +360,37 @@ def check_manifest(
     check_extras(manifest, where, report, extra_ranges)
     check_macros(manifest, where, report)
     check_reactions(manifest, where, report)
+    check_tiers(manifest, where, report)
+
+
+def check_tiers(manifest: dict, where: str, report: Report) -> None:
+    effects = manifest.get("effects", [])
+    if not isinstance(effects, list) or len(effects) > MAX_EFFECTS or not all(isinstance(e, str) and NAME_PATTERN.match(e) for e in effects):
+        report.error(where, f'"effects" must be a list of at most {MAX_EFFECTS} lower-case names')
+        return
+    if len(set(effects)) != len(effects):
+        report.error(where, '"effects" names an effect twice')
+    tiers = manifest.get("tiers", {})
+    if not isinstance(tiers, dict):
+        report.error(where, '"tiers" must be an object')
+        return
+    for name, tier in tiers.items():
+        if name not in TIER_NAMES:
+            report.error(where, f'"tiers" may declare only {list(TIER_NAMES)}, not {name!r}')
+            continue
+        if not isinstance(tier, dict) or set(tier) - TIER_KEYS:
+            report.error(where, f'tier "{name}" may hold only {sorted(TIER_KEYS)}')
+            continue
+        if "steps" in tier and (not is_number(tier["steps"]) or not MIN_TIER_STEPS <= tier["steps"] <= MAX_TIER_STEPS):
+            report.error(where, f'tier "{name}" "steps" must be a number in [{MIN_TIER_STEPS}, {MAX_TIER_STEPS}]')
+        off = tier.get("off", [])
+        if not isinstance(off, list) or any(e not in effects for e in off):
+            report.error(where, f'tier "{name}" "off" must list effects named in "effects"')
+    # A hotter tier is never richer than a cooler one: the engine enforces it, the pack should say it.
+    steps = [tiers.get(n, {}).get("steps") if isinstance(tiers.get(n), dict) else None for n in TIER_NAMES]
+    declared = [s for s in steps if is_number(s)]
+    if declared != sorted(declared, reverse=True):
+        report.error(where, '"tiers" "steps" must not rise from "eased" to "minimal"')
 
 
 def check(styles: Path) -> list[str]:
@@ -408,13 +478,14 @@ GOOD_FAMILIES = {
     "version": 1,
     "families": [
         {"name": "shader", "parameters": []},
-        {"name": "plate", "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
+        {"name": "plate", "ignores": ["SPEED"], "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
     ],
 }
 GOOD_MANIFESTS = {
     "orb": {
         "version": 1, "id": "orb", "label": "Orb", "family": "shader", "shader": "shader.glsl", "renderScale": 0.75,
         "detail": "march", "extras": [{"name": "scale", "min": 0, "max": 2, "default": 1}],
+        "effects": ["halo"], "tiers": {"reduced": {"steps": 0.7, "off": ["halo"]}, "minimal": {"steps": 0.5}},
         "macros": [{"name": "energy", "links": [{"target": "scale", "amount": 0.5}]}],
         "reactions": [{"signal": "bass", "target": "scale", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
     },
@@ -482,6 +553,13 @@ def self_test() -> int:
         "shader on a non-shader family": setter(["drum", "shader"], "shader.glsl"),
         "render scale out of range": setter(["orb", "renderScale"], 0.2),
         "bad detail": setter(["orb", "detail"], "max"),
+        "tier that is not a tier": setter(["orb", "tiers", "full"], {"steps": 1}),
+        "tier steps out of range": setter(["orb", "tiers", "reduced", "steps"], 0.1),
+        "tier switching off an undeclared effect": setter(["orb", "tiers", "reduced", "off"], ["glow"]),
+        "tier with an unknown key": setter(["orb", "tiers", "minimal", "fps"], 30),
+        "tier steps rising with heat": setter(["orb", "tiers", "minimal", "steps"], 0.9),
+        "effect named twice": setter(["orb", "effects"], ["halo", "halo"]),
+        "too many effects": setter(["orb", "effects"], [f"fx{n}" for n in range(MAX_EFFECTS + 1)]),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),
@@ -499,6 +577,9 @@ def self_test() -> int:
         "Reaction with unknown curve": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": 0, "fallMs": 0, "curve": "zigzag"}]),
         "family default outside range": lambda f, i, m, s: f["families"][1]["parameters"][1].update({"default": 7}),
         "family parameter with unknown type": lambda f, i, m, s: f["families"][1]["parameters"][0].update({"type": "bool"}),
+        "ignores not an array": lambda f, i, m, s: f["families"][1].update({"ignores": "SPEED"}),
+        "ignores with a bad name": lambda f, i, m, s: f["families"][1].update({"ignores": ["speed"]}),
+        "ignores naming a property twice": lambda f, i, m, s: f["families"][1].update({"ignores": ["SPEED", "SPEED"]}),
     }
     failed = [name for name, mutate in cases.items() if not run_case(mutate)]
     if failed:

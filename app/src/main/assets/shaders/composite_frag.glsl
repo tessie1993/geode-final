@@ -81,6 +81,8 @@ uniform float uPostSway;
 uniform float uPostShake;
 uniform float uPostTemp;
 uniform float uPostSolarize;
+// Red/blue anaglyph (#388): its mix 0..1, faded in and out on the CPU (sharedfx::anaglyphMix). 0 skips it.
+uniform float uPostAnaglyph;
 // Universal grading + zoom/rotation for scenes that grade NOTHING themselves
 // (the fluid family: Fluid, Curl Flow, Water). Shader scenes grade in
 // view()/grade(), particle scenes in particle_vert/particle_frag and milkdrop
@@ -254,6 +256,21 @@ vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
     return p;
 }
 
+// Red/blue anaglyph for red/cyan glasses (#388): the left eye sees the red channel, the right eye green
+// and blue. Each eye's picture is the finished one with the detail of the scene shifted sideways by a
+// depth read from its brightness (brighter is nearer), so the shift only moves detail and both eyes keep
+// the finished picture's brightness: turning it on changes colour, never overall brightness.
+vec3 anaglyph(sampler2D tex, vec2 p, vec3 col) {
+    const vec3 w = vec3(0.299, 0.587, 0.114);
+    float here = dot(texture(tex, clamp(p, 0.0, 1.0)).rgb, w);
+    vec2 shift = vec2(0.002 + 0.008 * clamp(here, 0.0, 1.0), 0.0);
+    float left = dot(texture(tex, clamp(p + shift, 0.0, 1.0)).rgb, w) - here;
+    float right = dot(texture(tex, clamp(p - shift, 0.0, 1.0)).rgb, w) - here;
+    float lum = dot(col, w);
+    vec3 stereo = max(vec3(lum + left, lum + right, lum + right), 0.0);
+    return mix(col, stereo, clamp(uPostAnaglyph, 0.0, 1.0));
+}
+
 // Screen-space FX chain applied to the final composited frame, so it works
 // identically for shader, particle and milkdrop scenes and during
 // transitions. Order: geometry -> distortion (fisheye, glitch) -> sample
@@ -357,6 +374,7 @@ vec3 postFxAt(sampler2D tex, vec2 uv, vec4 gate, bool cam, float scale) {
     }
     if (gradeOn) col *= uPostBright;
     if (invertOn && uPostInvert > 0.5) col = max(vec3(1.0) - col, 0.0);
+    if (uPostAnaglyph > 0.001) col = anaglyph(tex, p, col);
     return col;
 }
 
@@ -523,7 +541,8 @@ void main() {
     // smooth ramp in the app - plasma, aurora, solar, glow falloffs, the fluid
     // pressure field - banded visibly on an OLED panel in a dark room without
     // it. uDither is 0 when the mask could not be loaded, making this an exact
-    // no-op rather than a failure.
+    // no-op rather than a failure, and 0 whenever the composite draws into the
+    // HDR target: the final tonemap pass (tonemap_frag) dithers there instead.
     col += (texture(uNoise, gl_FragCoord.xy / 64.0).r - 0.5) * uDither;
     fragColor = vec4(col, 1.0);
 }

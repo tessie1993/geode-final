@@ -138,6 +138,9 @@
 
     <!-- Application preferences -->
     <string name="application_group_screen">Screen</string>
+    <string name="start_look_group">Start on</string>
+    <string name="start_look_last">Last look</string>
+    <string name="start_look_note">The look the Visual opens on when Geode starts: the Style on screen now, a Favourite or a saved preset.</string>
     <string name="behavior_group_touch">Touch</string>
     <string name="behavior_touch_smear">Smear the Visual with a finger</string>
     <string name="behavior_smear_strength">Smear strength  %1$d%%</string>
@@ -168,6 +171,12 @@
     <string name="cpu_gpu_fps">%1$d fps</string>
     <string name="cpu_gpu_screen_max">Screen max</string>
     <string name="cpu_gpu_save_mode_on">CPU/GPU save mode is on: the Visual is drawn at Saver quality and 30 fps until you turn it off above.</string>
+    <string name="cpu_gpu_surface_visual">In the app</string>
+    <string name="cpu_gpu_surface_wallpaper">Live wallpaper</string>
+    <string name="cpu_gpu_surface_pip">Picture-in-picture</string>
+    <string name="cpu_gpu_surface_screen_saver">Screen saver</string>
+    <string name="cpu_gpu_surface_note">Follows Visual on screen until you pick its own.</string>
+    <string name="cpu_gpu_same_as_visual">Same as Visual</string>
     <string name="cpu_gpu_group_heat">Cool down when hot</string>
     <string name="cpu_gpu_heat_note">Automatic: when the phone heats up, the Visual lowers its quality instead of stuttering.</string>
 

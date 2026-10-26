@@ -152,6 +152,10 @@ GEODE_API void        geode_viz_queue_touch_stroke(geode_viz*, float nx, float n
 GEODE_API void        geode_viz_load_milk_preset(geode_viz*, const char* path);
 GEODE_API void        geode_viz_reload_milk_preset(geode_viz*);
 GEODE_API void        geode_viz_set_milk_texture_dir(geode_viz*, const char* dir);
+#ifdef GEODE_STYLE_HOT_RELOAD
+/* Debug builds only: the Style lab folder, <dir>/<id>/, whose packs reload without a restart; "" stops. */
+GEODE_API void        geode_viz_set_style_lab(geode_viz*, const char* dir);
+#endif
 /* The preset MilkDrop last compiled successfully, once; returns the full length, 0 when none is pending. */
 GEODE_API size_t      geode_viz_take_milk_preset_loaded(geode_viz*, char* out, size_t capacity);
 GEODE_API void        geode_viz_push_pcm(geode_viz*, const float* mono, int count);
@@ -159,6 +163,8 @@ GEODE_API void        geode_viz_set_lfo(geode_viz*, int slot, const float* confi
 GEODE_API void        geode_viz_set_adsr(geode_viz*, int slot, const float* config, int count);
 GEODE_API void        geode_viz_set_thermal(geode_viz*, int platform_status, float headroom); /* status < 0 = unknown */
 GEODE_API void        geode_viz_set_paced_fps(geode_viz*, float fps);
+/* The frame rate the hottest thermal tiers ask the pacer to hold to (30), or 0 for no cap. */
+GEODE_API float       geode_viz_frame_cap_fps(geode_viz*);
 GEODE_API void        geode_viz_set_quality_ceiling(geode_viz*, float ceiling); /* Visual quality: 0.6..1 */
 /* The frame pacer's latest window: how many frames it holds and the 95th percentile of the intervals
  * between drawn frames, in ms. The scene and trail buffers scale with it; sample about once a second. */

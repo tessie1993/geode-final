@@ -1,6 +1,8 @@
 package dev.geode.feature.settings.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
@@ -28,11 +30,13 @@ import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -253,6 +257,73 @@ class SettingsCodecTest {
         assertFalse(values.export.finishedAlerts)
         assertEquals(ExportQuality.QHD1440, values.export.quality)
         assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `a surface's own quality and frame rate are kept by name in keys of their own`() {
+        val stored =
+            today + newKeysAtDefaults +
+                mapOf(
+                    "visual_quality_wallpaper" to "SAVER",
+                    "visual_frame_rate_wallpaper" to "FPS30",
+                    "visual_quality_pip" to "BALANCED",
+                    "visual_frame_rate_screen_saver" to "FPS60",
+                    "visual_quality_visual" to "HIGH",
+                    "visual_frame_rate_visual" to "SCREEN_MAX",
+                )
+
+        val values = SettingsCodec.decode(stored)
+
+        assertEquals(
+            mapOf(
+                VisualSurface.WALLPAPER to VisualQuality.SAVER,
+                VisualSurface.PICTURE_IN_PICTURE to VisualQuality.BALANCED,
+                VisualSurface.VISUAL to VisualQuality.HIGH,
+            ),
+            values.performance.surfaceQuality,
+        )
+        assertEquals(
+            mapOf(
+                VisualSurface.WALLPAPER to VisualFrameRate.FPS30,
+                VisualSurface.SCREEN_SAVER to VisualFrameRate.FPS60,
+                VisualSurface.VISUAL to VisualFrameRate.SCREEN_MAX,
+            ),
+            values.performance.surfaceFrameRate,
+        )
+        assertEquals(stored, SettingsCodec.encode(values))
+    }
+
+    @Test
+    fun `a surface that follows the shared setting has no key, and odd values follow it too`() {
+        val stored = SettingsCodec.encode(SettingsValues())
+        val surfaceKeys =
+            listOf(
+                "visual_quality_visual",
+                "visual_quality_wallpaper",
+                "visual_quality_pip",
+                "visual_quality_screen_saver",
+                "visual_frame_rate_visual",
+                "visual_frame_rate_wallpaper",
+                "visual_frame_rate_pip",
+                "visual_frame_rate_screen_saver",
+            )
+
+        for (key in surfaceKeys) assertTrue(key, key in stored && stored[key] == null)
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { keys -> keys.any { it in surfaceKeys } })
+        val odd = SettingsCodec.decode(mapOf("visual_quality_wallpaper" to "ULTRA", "visual_frame_rate_pip" to 30))
+        assertEquals(PerformanceSettings(), odd.performance)
+    }
+
+    @Test
+    fun `the frame rate starts at 60, and a stored Screen max is still the screen's maximum`() {
+        assertEquals("FPS60", SettingsCodec.encode(SettingsValues())["visual_frame_rate"])
+        assertEquals(VisualFrameRate.FPS60, SettingsCodec.decode(emptyMap()).performance.visualFrameRate)
+
+        val screenMax = SettingsCodec.decode(mapOf("visual_frame_rate" to "SCREEN_MAX"))
+
+        assertEquals(VisualFrameRate.SCREEN_MAX, screenMax.performance.visualFrameRate)
+        assertEquals(VisualFrameRate.SCREEN_MAX, screenMax.performance.frameRateFor(VisualSurface.WALLPAPER))
+        assertEquals("SCREEN_MAX", SettingsCodec.encode(screenMax)["visual_frame_rate"])
     }
 
     @Test
@@ -480,6 +551,26 @@ class SettingsCodecTest {
         assertEquals(all.size, all.toSet().size)
         assertTrue(today.keys.all { it in all })
         assertEquals(setOf("geode-prefs", "geode-player", "geode-audiofx", "geode-library"), SettingsKeys.LEGACY_FILES.keys)
+    }
+
+    @Test
+    fun `the start look is kept in its own new key, and anything odd starts on the last look`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "start_look" in it })
+        val looks =
+            mapOf(
+                "style:cymatics" to StartLook.Style(SceneId("cymatics")),
+                "preset:Party: wall" to StartLook.Preset(PresetId("Party: wall")),
+            )
+        for ((stored, look) in looks) {
+            val values = SettingsCodec.decode(mapOf("start_look" to stored))
+            assertEquals(look, values.behavior.startLook)
+            assertEquals(stored, SettingsCodec.encode(values)["start_look"])
+        }
+        assertEquals(null, SettingsCodec.encode(SettingsValues())["start_look"])
+        assertTrue("start_look" in SettingsCodec.encode(SettingsValues()))
+        for (odd in listOf<Any>("random", "style:", "preset: ", 7)) {
+            assertEquals(StartLook.Last, SettingsCodec.decode(mapOf("start_look" to odd)).behavior.startLook)
+        }
     }
 
     private fun idOf(quality: ExportQuality): Any? =

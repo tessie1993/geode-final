@@ -643,5 +643,15 @@ internal object PackExtras {
                 extra(SIZE, 0f, 2f, 1f),
                 extra(FORCE, 0f, 2f, 1f),
             ),
+            pack("canyon_run", SHADER, extra(TURN, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
+            pack("lantern_river", SHADER, extra(SIZE, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
+            pack("ringed_giant", SHADER, extra(SIZE, 0f, 2f, 1f)),
+            pack("crystal_shaft", SHADER, extra(FOG, 0f, 2f, 1f)),
+            pack("night_drive", SHADER, extra(FOG, 0f, 2f, 1f)),
+            pack("reef_glide", SHADER, extra(FOG, 0f, 2f, 1f)),
+            pack("cloud_deck", SHADER, extra(FOG, 0f, 2f, 1f)),
+            pack("gyro_core", SHADER, extra(SPIN, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
+            pack("endless_stacks", SHADER, extra(FOG, 0f, 2f, 1f)),
+            pack("dune_sea", SHADER, extra(FOG, 0f, 2f, 1f)),
         )
 }

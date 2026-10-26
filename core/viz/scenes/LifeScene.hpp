@@ -12,6 +12,7 @@
 #include "scenes/SceneCommon.hpp"
 #include "geode/viz/StyleProfiles.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/FrameRate.hpp"
 
 namespace geode::viz {
 
@@ -48,6 +49,10 @@ private:
     static constexpr float kOvergrown = 0.985f;
     static constexpr float kEnvRisePerSec = 9.0f;
     static constexpr float kEnvFallPerSec = 2.4f;
+    // The field advances in ticks of a 60 fps frame, each of the Style's substeps, so it grows at
+    // the same speed at 30, 60 and 120 Hz (#280). Four ticks covers the longest frame dt allows.
+    static constexpr float kTicksPerSecond = framerate::kReferenceFps;
+    static constexpr int kMaxTicksPerFrame = 4;
 
     fluid::DoubleFbo* ensureState();
     void census(fluid::DoubleFbo& field, GLint restoreFbo);
@@ -86,6 +91,7 @@ private:
     float kickX_ = 0.5f;
     float kickY_ = 0.5f;
     float censusAge_ = 0.0f;
+    framerate::FixedStepClock ticks_{kTicksPerSecond, kMaxTicksPerFrame};
     const TouchField* touch_ = nullptr;
 };
 

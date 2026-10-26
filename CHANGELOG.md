@@ -11,6 +11,27 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Fast Style authoring loop (#284).** Shaders are assembled with `#line`
+  directives, so a compile error names the Style's file and line
+  (`styles/kifs/shader.glsl:12`) on the phone, in the render check and in
+  glslang. Debug builds reload a Style's shader and manifest pushed with adb
+  to their Style lab folder within about a second, keeping the last good
+  shader when a new one fails; release builds compile no hot-reload path.
+  CI checks every Style with glslang (GLSL ES 3.00, CI only), and
+  `tools/glslcheck/check.mjs --watch --push` re-checks and pushes on every
+  save. See docs/style-packs.md, "Authoring loop".
+
+- **projectM v4.1.8 (#275).** The `third_party/projectm` submodule moves
+  from the v4.1.7 tag to v4.1.8: long MilkDrop shaders no longer cost
+  quadratic time to transpile, a self-referencing shader macro no longer
+  hangs the load, float `%` and its precedence translate correctly, an
+  out-of-bounds read in custom waves is fixed, and projectm-eval moves to
+  1.0.7 (`e8c311e`). Geode's patches are rebased onto the tag and renamed
+  `tools/projectm-v4.1.8-*.patch`, and the new
+  `projectm-v4.1.8-plasma-mediump.patch` carries upstream `0227b7a` so the
+  plasma transition stops overflowing at mediump on phones. No Geode code
+  changed: `MilkdropScene` already feeds projectM 576 samples a frame, the
+  size `projectm_pcm_get_max_samples()` now reports.
 
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings

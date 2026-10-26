@@ -13,6 +13,7 @@ import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
+import dev.geode.feature.customization.api.ModulatorParameter
 import dev.geode.feature.customization.api.ModulatorShape
 import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.PresetPart
@@ -89,6 +90,7 @@ class CustomizationReducerTest {
     private val onTunnel = CustomizationState(switchedToTunnel, undo = listOf(julia))
     private val tunnelRedo = CustomizationState(julia, redo = listOf(switchedToTunnel))
     private val zoomPreset = PresetRules.capture("Zoom", zoomed, setOf(PresetPart.CAMERA))
+    private val newerZoomPreset = zoomPreset.copy(unread = "{\"comets\":{}}")
     private val handState = CustomizationState(withHand, undo = listOf(julia))
     private val handId = withHand.modulators.single().id
     private val playing = Edits.playModulator(withHand, handId, true)
@@ -114,6 +116,55 @@ class CustomizationReducerTest {
     private val pickedSwitch = Edits.switchStyle(picksState.current, styles.manifestOf(JULIA), styles.manifestOf(picked.style))
     private val reset = Edits.setAutomations(zoomed, palettes)
     private val keptA = CustomizationState(julia, compare = mapOf(CompareSlot.A to zoomed))
+    private val zoomedFar: Customization = Edits.setShared(julia, SharedProperty.ZOOM, 2.5f)
+    private val dragging = CustomizationState(zoomed, undo = listOf(tunnel), previewFrom = julia)
+
+    private fun zoomTo(value: Float) = CustomizationCommand.SetShared(SharedProperty.ZOOM, value)
+
+    /** A drag's first step of [edit] from [state]: the engine sees [next], the history waits. */
+    private fun previews(
+        name: String,
+        state: CustomizationState,
+        edit: CustomizationCommand,
+        next: Customization,
+    ): Row =
+        Row(
+            "a drag can preview $name",
+            state,
+            command(CustomizationCommand.Preview(edit)),
+            Next(state.copy(current = next, previewFrom = state.current), listOf(publish(next))),
+        )
+
+    private val handDepth = withHand.modulators.single().copy(depth = 0.25f)
+
+    private val previewRows: List<Row> =
+        listOf(
+            previews(
+                "an Extra",
+                fresh,
+                CustomizationCommand.SetExtra(ExtraKind.CENTER_X, 0.9f),
+                Edits.setExtra(julia, ExtraKind.CENTER_X, 0.9f),
+            ),
+            previews("a Macro", fresh, CustomizationCommand.SetMacro(0, 1f), Edits.setMacro(julia, 0, 1f)),
+            previews(
+                "a Sound trim",
+                fresh,
+                CustomizationCommand.TrimSignal(SoundSignal.BASS, SignalTrim(gain = 2f)),
+                Edits.trimSignal(julia, SoundSignal.BASS, SignalTrim(gain = 2f)),
+            ),
+            previews(
+                "a Reaction",
+                fresh,
+                CustomizationCommand.UpdateReaction(bassToZoom.copy(id = ReactionId(1))),
+                Edits.updateReaction(julia, bassToZoom.copy(id = ReactionId(1))),
+            ),
+            previews(
+                "a Modulator",
+                CustomizationState(withHand),
+                CustomizationCommand.UpdateModulator(handDepth),
+                Edits.updateModulator(withHand, handDepth),
+            ),
+        )
 
     private val rows: List<Row> =
         edits("set shared", CustomizationCommand.SetShared(SharedProperty.SPEED, 2f)) { Edits.setShared(it, SharedProperty.SPEED, 2f) } +
@@ -294,6 +345,18 @@ class CustomizationReducerTest {
                 Row("apply a partial preset", fresh, command(CustomizationCommand.ApplyPreset(zoomPreset)), edited(fresh, zoomed)),
                 Row("a loaded partial preset", fresh, CustomizationEvent.PresetLoaded(zoomPreset), edited(fresh, zoomed)),
                 Row(
+                    "a loaded preset with parts only a newer Geode reads applies the rest and says so",
+                    fresh,
+                    CustomizationEvent.PresetLoaded(newerZoomPreset),
+                    edited(fresh, zoomed).let { it.copy(effects = it.effects + ReportFailure(NEEDS_NEWER_GEODE)) },
+                ),
+                Row(
+                    "an applied preset with parts only a newer Geode reads says so even when nothing else changes",
+                    withUndo,
+                    command(CustomizationCommand.ApplyPreset(newerZoomPreset)),
+                    Next(withUndo, listOf(ReportFailure(NEEDS_NEWER_GEODE))),
+                ),
+                Row(
                     "a loaded preset from another Style brings only the shared parts",
                     fresh,
                     CustomizationEvent.PresetLoaded(PresetRules.capture("Tunnel", tunnel, PresetRules.ALL_PARTS - PresetPart.STYLE)),
@@ -326,6 +389,90 @@ class CustomizationReducerTest {
                     Next(withUndo.copy(visualizerStyles = listOf(TUNNEL, JULIA))),
                 ),
                 Row(
+                    "a drag's first step reaches the engine, not the history",
+                    withRedo,
+                    command(CustomizationCommand.Preview(zoomTo(2f))),
+                    Next(withRedo.copy(current = zoomed, previewFrom = julia), listOf(publish(zoomed))),
+                ),
+                Row(
+                    "a drag's next step remembers where the drag began",
+                    dragging,
+                    command(CustomizationCommand.Preview(zoomTo(2.5f))),
+                    Next(dragging.copy(current = zoomedFar), listOf(publish(zoomedFar))),
+                ),
+                Row(
+                    "a drag step that changes nothing",
+                    dragging,
+                    command(CustomizationCommand.Preview(zoomTo(2f))),
+                    Next(dragging),
+                ),
+                Row(
+                    "only a value edit can be previewed",
+                    fresh,
+                    command(CustomizationCommand.Preview(CustomizationCommand.Undo)),
+                    Next(fresh),
+                ),
+                Row(
+                    "a drag ending where it is is one undo step back to where it began",
+                    dragging,
+                    command(zoomTo(2f)),
+                    Next(CustomizationState(zoomed, undo = listOf(tunnel, julia))),
+                ),
+                Row(
+                    "a drag ending elsewhere is still one undo step",
+                    dragging,
+                    command(zoomTo(2.5f)),
+                    Next(CustomizationState(zoomedFar, undo = listOf(tunnel, julia)), listOf(publish(zoomedFar))),
+                ),
+                Row(
+                    "a drag ending where it began leaves no undo step",
+                    dragging,
+                    command(zoomTo(julia.shared.getValue(SharedProperty.ZOOM))),
+                    Next(CustomizationState(julia, undo = listOf(tunnel)), listOf(publish(julia))),
+                ),
+                Row(
+                    "undo in the middle of a drag takes the drag back",
+                    dragging,
+                    command(CustomizationCommand.Undo),
+                    Next(CustomizationState(julia, undo = listOf(tunnel), redo = listOf(zoomed)), listOf(publish(julia))),
+                ),
+                Row(
+                    "a drag left where it began settles with no undo step",
+                    dragging.copy(current = julia),
+                    command(CustomizationCommand.KeepForCompare(CompareSlot.B)),
+                    Next(CustomizationState(julia, undo = listOf(tunnel), compare = mapOf(CompareSlot.B to julia))),
+                ),
+                Row(
+                    "a failed piece of work leaves a drag open",
+                    dragging,
+                    CustomizationEvent.WorkFailed(WorkFailure.ENGINE_REFUSED),
+                    Next(dragging, listOf(ReportFailure("the engine did not take the Customization"))),
+                ),
+                Row(
+                    "a loaded preset settles a drag first",
+                    dragging,
+                    CustomizationEvent.PresetLoaded(zoomPreset),
+                    Next(CustomizationState(zoomed, undo = listOf(tunnel, julia))),
+                ),
+                Row(
+                    "a Style switch due settles a drag first",
+                    dragging,
+                    CustomizationEvent.StyleDue,
+                    Next(CustomizationState(zoomed, undo = listOf(tunnel, julia))),
+                ),
+                Row(
+                    "one value goes back to the Style's own start",
+                    withUndo,
+                    command(CustomizationCommand.ResetValue(Target.Shared(SharedProperty.ZOOM))),
+                    edited(withUndo, julia),
+                ),
+                Row(
+                    "a Modulator's field has no start to go back to",
+                    withUndo,
+                    command(CustomizationCommand.ResetValue(Target.ModulatorField(ModulatorId(0), ModulatorParameter.RATE))),
+                    Next(withUndo),
+                ),
+                Row(
                     "a failed piece of work is reported",
                     withUndo,
                     CustomizationEvent.WorkFailed(WorkFailure.PRESET_NOT_SAVED),
@@ -335,13 +482,19 @@ class CustomizationReducerTest {
 
     @Test
     fun `every row of the transition table`() {
-        rows.forEach { row -> assertEquals(row.name, row.expected, reducer.reduce(row.state, row.event)) }
+        (rows + previewRows).forEach { row -> assertEquals(row.name, row.expected, reducer.reduce(row.state, row.event)) }
+    }
+
+    @Test
+    fun `every previewed value really changes`() {
+        previewRows.forEach { row -> assertNotEquals(row.name, row.state.current, row.expected.state.current) }
     }
 
     @Test
     fun `every edit row really changes something`() {
+        // A drag's undo step goes back to before the drag, whatever is on screen at its end.
         rows.filter { it.expected.state.undo.size > it.state.undo.size }.forEach { row ->
-            assertNotEquals(row.name, row.state.current, row.expected.state.current)
+            assertNotEquals(row.name, row.state.previewFrom ?: row.state.current, row.expected.state.current)
         }
     }
 

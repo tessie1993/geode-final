@@ -44,7 +44,7 @@ class StyleCatalogueTest {
         assertEquals(10, designed.count { it.family == StyleFamily.ACID })
         assertEquals(9, designed.count { it.family == StyleFamily.FLUID })
         assertEquals(11, designed.count { it.family == StyleFamily.CYMATICS })
-        assertEquals(39, designed.count { it.family == StyleFamily.SHADER })
+        assertEquals(59, designed.count { it.family == StyleFamily.SHADER })
     }
 
     @Test
@@ -229,6 +229,6 @@ class StyleCatalogueTest {
     }
 
     private companion object {
-        const val EXPECTED_STYLES = 92
+        const val EXPECTED_STYLES = 112
     }
 }

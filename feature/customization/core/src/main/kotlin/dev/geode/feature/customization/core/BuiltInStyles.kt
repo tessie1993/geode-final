@@ -219,6 +219,44 @@ object BuiltInStyles {
             shader("nectar_flow", true, listOf(react(BASS, FOG, 0.2f))),
         )
 
+    /**
+     * The 3D-world Styles. Each flies a camera of its own through a world it marches or intersects, so
+     * every one owns its flight and moves with the Camera (lib_camera.glsl). Their sound couplings are
+     * drawn in the shader; their Extras are their packs'.
+     */
+    private val worldShaders: List<StyleManifest> =
+        listOf(
+            "canyon_run",
+            "lantern_river",
+            "ringed_giant",
+            "crystal_shaft",
+            "night_drive",
+            "reef_glide",
+            "cloud_deck",
+            "gyro_core",
+            "endless_stacks",
+            "dune_sea",
+        ).map { shader(it, true) }
+
+    /**
+     * The camera-world shader Styles: each moves a real camera through a 3D world of its own (it reads
+     * the Camera through lib_camera.glsl, so push-in, orbit and travel move that camera) and wires its
+     * music in its shader, so none has Extras or default Reactions yet.
+     */
+    private val cameraWorldShaders: List<StyleManifest> =
+        listOf(
+            "hyper_lattice",
+            "dew_macro",
+            "monolith_plain",
+            "spiral_descent",
+            "glass_vines",
+            "swarm_chase",
+            "origami_peaks",
+            "rain_glass",
+            "sea_cave",
+            "pulsar_orbit",
+        ).map { shader(it, true) }
+
     private fun life(id: String): StyleManifest =
         style(id, StyleFamily.LIFE, false, listOf(react(HIT, FORCE, 0.3f), react(LEVEL, GROWTH, 0.1f)))
 
@@ -354,9 +392,9 @@ object BuiltInStyles {
     /** MilkDrop gets the Shared core only; its presets fly and react by themselves. */
     private val milkDrop: StyleManifest = style("milkdrop", StyleFamily.MILKDROP, true)
 
-    /** The Styles the #11 audit designed: the ones with their own Reactions and starting values. */
+    /** The Styles the #11 audit designed (their own Reactions and starting values) and the ones that fly their own camera. */
     internal val designed: List<StyleManifest> =
-        classicShaders + newerShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
+        classicShaders + newerShaders + worldShaders + cameraWorldShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
             listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     /**

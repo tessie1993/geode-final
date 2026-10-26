@@ -18,7 +18,16 @@ node check.mjs --fluid-display --out out/fluid # every SHADING/BLOOM/SUNRAYS x L
 node check.mjs --shader curl_bloom --time 61   # a different point on the clocks
 node check.mjs --all --resize --size 96        # each style's picture across a scene-target resize
 node check.mjs --effects --size 96 --out out/effects  # one frame per Shared core effect
+node check.mjs --all --glslang                 # every Style through glslangValidator (GLSL ES 3.00)
+node check.mjs --glslang-self-test             # glslang still fails on planted violations
+node check.mjs --shader kifs --glslang --watch --push  # the authoring loop
 ```
+
+`--glslang` checks the selected Styles with glslang instead of rendering them (set
+`GLSLANG_VALIDATOR` to use another binary). `--watch` runs the selected checks again on every
+change under the Style packs or `app/src/main/assets/shaders`. `--push` copies each selected
+Style's pack, once it passes, into the debug app's Style lab with `adb`, where the running app
+reloads it ([style-packs.md](../../docs/style-packs.md), "Authoring loop").
 
 `--resize` draws one frame into a scene target, resizes the target the way
 `Framebuffer::resizePreserving` does (a linear blit into the new target,
@@ -31,7 +40,8 @@ that picture comes out darker than half the one before the resize.
 - Includes are resolved the way `core/render/ShaderSource.cpp` resolves them:
   the registered names are parsed out of that file's `kIncludes`, the line
   pattern is the same anchored `//#include <name>`, and an unknown name is a
-  hard error.
+  hard error. The assembly mirrors `core/util/ShaderAssembly.cpp`, `#line`
+  directives included, so a compile error names the Style's file and line.
 - Every uniform the resolved GLSL declares must have a value in the table in
   `check.mjs` (which mirrors `ShaderScene::uploadParams` / `uploadMotion` /
   `uploadTouch` with `SceneParams` defaults and a mid-loudness frame) or the

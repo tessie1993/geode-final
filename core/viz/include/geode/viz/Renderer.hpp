@@ -16,6 +16,7 @@
 #include "geode/viz/CompositePass.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
+#include "geode/viz/HdrPass.hpp"
 #include "geode/viz/Lfo.hpp"
 #include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
@@ -28,6 +29,9 @@
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
 #include "geode/render/ShaderSource.hpp"
+#ifdef GEODE_STYLE_HOT_RELOAD
+#include "geode/viz/StyleLab.hpp"
+#endif
 #include "geode/viz/ThermalGovernor.hpp"
 #include "geode/viz/TouchField.hpp"
 #include "geode/viz/TrailPass.hpp"
@@ -36,7 +40,8 @@
 
 namespace geode::viz {
 
-// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> target.
+// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> bloom and tonemap ->
+// No-flash limiter -> target. Everything before the tonemap is HDR (ToneMap.hpp).
 class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -80,6 +85,11 @@ public:
     std::string lastError() const;
     bool knows(const std::string& sceneId) const { return registry_.knows(sceneId); }
     std::vector<std::string> availableSceneIds() const { return registry_.availableIds(); }
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Any thread, debug builds only (RendererStyleLab.cpp): the Style lab folder to watch, `<dir>/<id>/`
+    // per Style; "" stops watching.
+    void setStyleLab(const std::string& dir);
+#endif
 
     // GL thread.
     void onSurfaceCreated();
@@ -126,6 +136,8 @@ private:
     ExtraValues extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const;
     // Hands a scene this frame's Camera and its Extras before it draws.
     void prepareScene(Scene& scene, const ExtraValues& extras);
+    // What the settled thermal tier lets the Style spend, as its pack declares (#286).
+    quality::Budget qualityFor(const std::string& sceneId) const;
     void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
@@ -135,6 +147,13 @@ private:
     void notePresetLoaded(const std::string& path);
     static double monotonicSeconds();
     void fail(const std::string& message);
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // GL thread, from beginFrame: reloads each Style whose lab folder changed.
+    void pollStyleLab();
+    void reloadStyle(const std::string& id, const std::string& folder, const std::string& shaderFile);
+    // Frees a built scene so the next frame builds it again from its pack.
+    void dropScene(const std::string& id);
+#endif
 
     ShaderSource assets_;
     std::string cacheDir_;
@@ -152,6 +171,8 @@ private:
     SharedFxPass sharedFx_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
+    // HDR: the composite's target, the bloom and the tonemap (highlight roll-off) into the No-flash candidate.
+    HdrPass hdrPass_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;
@@ -229,6 +250,8 @@ private:
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
     SharedEffects frameEffects_;
+    // The red/blue anaglyph's faded mix (sharedfx::anaglyphMix), stepped once per composite.
+    float anaglyphMix_ = 0.0f;
     std::optional<mod::Evaluated> frameCustomization_;
     CameraRig camera_;
     // The active Style's Extras this frame.
@@ -244,6 +267,13 @@ private:
     std::string frameTransitionId_ = "fade";
     int64_t frameTransitionDurationMs_ = 1200;
     std::string lastError_;
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Under stateLock_.
+    std::string styleLabDir_;
+    // GL thread only.
+    lab::ReloadWatch styleLab_;
+    bool styleLabFailed_ = false;
+#endif
 };
 
 }  // namespace geode::viz
