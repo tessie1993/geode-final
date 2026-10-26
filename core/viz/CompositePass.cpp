@@ -154,6 +154,61 @@ void CompositePass::draw(const Inputs& inputs) {
     glActiveTexture(GL_TEXTURE0);
 }
 
+tile::CompositeLook CompositePass::lookOf(const Inputs& inputs) {
+    const SceneParams& fx = inputs.fx;
+    const CameraPose& cam = inputs.camera;
+    tile::CompositeLook look;
+    look.hasLayer = inputs.hasLayer;
+    look.hasOutgoing = inputs.hasOutgoing;
+    look.gate = inputs.gateA;
+    look.camMoves = inputs.cameraGate[0];
+    look.camEndless = inputs.cameraGate[2];
+    look.camPush = cam.push;
+    look.camTiltYaw = cam.tiltYaw;
+    look.camTiltPitch = cam.tiltPitch;
+    look.camShakeX = cam.shakeX;
+    look.camShakeY = cam.shakeY;
+    look.camShakeRoll = cam.shakeRoll;
+    look.camTravelDive = cam.travelDive;
+    look.camEndlessDive = cam.endlessDive;
+    look.flowStrength = inputs.flowStrength;
+    look.rippleStrength = inputs.rippleStrength;
+    look.fisheye = fx.fisheye;
+    look.glitch = fx.glitch;
+    look.chroma = fx.chromaAb;
+    look.scanline = fx.scanlines;
+    look.grain = fx.grain;
+    look.vignette = fx.vignette;
+    look.anaglyph = inputs.anaglyph;
+    look.underlayAmount = inputs.underlayAmount;
+    look.sway = fx.sway;
+    look.shake = fx.shake;
+    look.kaleido = fx.kaleidoscope;
+    look.symmetry = static_cast<float>(fx.symmetry);
+    look.twist = fx.twist;
+    look.warp = fx.warp;
+    look.ripple = fx.ripple;
+    look.driftX = fx.driftX;
+    look.driftY = fx.driftY;
+    look.tile = fx.tile;
+    look.pixelate = fx.pixelate;
+    look.bloom = fx.bloom;
+    look.posterize = fx.posterize;
+    look.temperature = fx.temperature;
+    look.solarize = fx.solarize;
+    look.mirror = fx.mirror;
+    look.invert = fx.invert;
+    look.rotation = inputs.postRotationAngle;
+    look.zoom = fx.zoom;
+    look.hue = fx.colorShift + inputs.postCyclePhase;
+    look.saturation = fx.saturation;
+    look.contrast = fx.contrast;
+    look.gamma = fx.gamma;
+    look.brightness = grade::brightness(fx.brightness, fx.intensity);
+    look.pulse = grade::pulseAmount(fx.pulse, inputs.postBeatPulse);
+    return look;
+}
+
 void CompositePass::bindTextures(UniformCache& p, const Inputs& inputs) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, inputs.texA);

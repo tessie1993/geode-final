@@ -92,8 +92,10 @@ makeTexture('dye', 128, 128, (x, y, px) => {
 
 // The finished picture of a Style, for the Shared core effects: a soft radial gradient with
 // coloured rings and an off-centre bright disc, so geometry, colour and lens effects all show.
-makeTexture('scene', 128, 128, (x, y, px) => {
-  const u = x / 128 - 0.5, v = y / 128 - 0.5;
+// 'scene_half' is the same picture at half the size: the outgoing Style of a transition, and a
+// frame drawn below the output that the last pass upscales (core/viz/TileFrame.hpp, #311).
+const scenePicture = (size) => (x, y, px) => {
+  const u = x / size - 0.5, v = y / size - 0.5;
   const r = Math.hypot(u, v);
   const ring = 0.5 + 0.5 * Math.cos(r * 40);
   const disc = Math.exp(-((u - 0.18) ** 2 + (v - 0.12) ** 2) * 60);
@@ -102,7 +104,9 @@ makeTexture('scene', 128, 128, (x, y, px) => {
   px[1] = Math.min(255, Math.round(255 * (0.1 + 0.4 * ring * (0.5 - v) + 0.5 * disc + stripe)));
   px[2] = Math.min(255, Math.round(255 * (0.25 + 0.5 * (1 - ring) * (0.5 - u) + 0.3 * disc)));
   px[3] = 255;
-});
+};
+makeTexture('scene', 128, 128, scenePicture(128));
+makeTexture('scene_half', 64, 64, scenePicture(64));
 // The last frame, for Trails and Motion blur: the same picture moved and brighter in places.
 makeTexture('history', 128, 128, (x, y, px) => {
   const u = x / 128 - 0.5, v = y / 128 - 0.5;

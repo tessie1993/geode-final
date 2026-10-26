@@ -194,21 +194,24 @@ void Renderer::deliverPcm(Scene& scene) {
     if (count > 0) scene.acceptPcm(pcmDeliverScratch_.data(), count);
 }
 
-void Renderer::bindSecondaryTarget() {
-    glBindFramebuffer(GL_FRAMEBUFFER, fboB_.fbo());
-    glViewport(0, 0, renderWidth_, renderHeight_);
+void Renderer::bindSecondaryTarget(const Framebuffer& target) {
+    glBindFramebuffer(GL_FRAMEBUFFER, target.fbo());
+    glViewport(0, 0, target.width(), target.height());
     glClear(GL_COLOR_BUFFER_BIT);
+    secondaryTex_ = target.tex();
 }
 
 float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
     float progress = 1.0f;
+    secondaryTex_ = fboB_.tex();
     if (layerScene_) {
-        bindSecondaryTarget();
+        bindSecondaryTarget(fboB_);
         wireFlow(*layerScene_, p);
         prepareScene(*layerScene_, extrasFor(layerScene_->id(), nullptr));
         layerScene_->setParams(p);
         deliverPcm(*layerScene_);
         layerScene_->update(gainAdjusted(frameFeatures_, p), dt);
+        layerScene_->setDrawTarget(fboB_.fbo(), fboB_.width(), fboB_.height());
         layerScene_->draw(timeSeconds_);
     }
     if (outgoingScene_) {
@@ -217,12 +220,18 @@ float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
             outgoingScene_ = nullptr;
             outgoingParams_.reset();
         } else {
-            bindSecondaryTarget();
+            // The Style on its way out draws at half size each way (#311): a quarter of the fill for a
+            // picture that is only fading, warping or sliding away. Full size if that target cannot be had.
+            const tile::Size half = tile::outgoingSize({renderWidth_, renderHeight_});
+            const bool halved = fboOut_.ensure(half.width, half.height);
+            const Framebuffer& target = halved ? fboOut_ : fboB_;
+            bindSecondaryTarget(target);
             const SceneParams& op = outgoingParams_ ? *outgoingParams_ : p;
             prepareScene(*outgoingScene_, extrasFor(outgoingScene_->id(), nullptr));
             outgoingScene_->setParams(op);
             deliverPcm(*outgoingScene_);
             outgoingScene_->update(gainAdjusted(frameFeatures_, op), dt);
+            outgoingScene_->setDrawTarget(target.fbo(), target.width(), target.height());
             outgoingScene_->draw(timeSeconds_);
         }
     }
@@ -243,6 +252,7 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
     scene.setParams(p);
     deliverPcm(scene);
     scene.update(gainAdjusted(frameFeatures_, p), dt);
+    scene.setDrawTarget(fboA_.fbo(), renderWidth_, renderHeight_);
     scene.draw(timeSeconds_);
 }
 
@@ -260,16 +270,17 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     // The composite draws into the HDR target, the final pass blooms and tonemaps it into the No-flash
     // limiter's candidate target, and the limiter draws the frame that is shown. Only if the HDR
     // target cannot be made does the composite draw (and dither) the final picture itself, and only if
-    // the limiter's targets cannot be made does the final picture go straight out.
-    const bool hdr = hdrPass_.ensureComposite(width_, height_);
-    const bool limited = noFlash_.bindCandidate(width_, height_);
+    // the limiter's targets cannot be made does the final picture go straight out. Every pass up to
+    // the limiter's last draws at the frame size, which upscales onto the output (TileFrame.hpp).
+    const tile::Size frame = tile::frameSize({renderWidth_, renderHeight_}, {width_, height_});
+    const bool hdr = hdrPass_.ensureComposite(frame.width, frame.height);
+    const bool limited = noFlash_.bindCandidate(frame.width, frame.height);
     const GLuint finalFbo = limited ? noFlash_.candidateFbo() : targetFbo;
-    glBindFramebuffer(GL_FRAMEBUFFER, hdr ? hdrPass_.compositeFbo() : finalFbo);
-    glViewport(0, 0, width_, height_);
-    glDisable(GL_BLEND);
+    // Without the limiter, the pass that writes the final picture draws straight onto the output.
+    const tile::Size finalSize = limited ? frame : tile::Size{width_, height_};
     CompositePass::Inputs& in = compositeInputs_;
     in.texA = sceneTex;
-    in.texB = fboB_.tex();
+    in.texB = secondaryTex_ != 0 ? secondaryTex_ : fboB_.tex();
     GLuint flowTex = compositePass_.zeroTex();
     float flowStrength = 0.0f;
     if (p.flowEnabled) {
@@ -326,10 +337,26 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     anaglyphMix_ = sharedfx::anaglyphMix(anaglyphMix_, frameEffects_.anaglyph, dt);
     in.anaglyph = anaglyphMix_;
     in.dither = !hdr;
-    compositePass_.draw(in);
-    if (hdr) hdrPass_.resolve(tone::bloomFor(p.bloom, thermalTierInfo(thermal_.tier()).optionalPasses), finalFbo, quadVao_);
+    // A composite that would hand the picture on unchanged (the default look of most Styles) is not
+    // drawn: the tonemap reads the scene target itself, one full-screen pass fewer (#311). Without the
+    // HDR pipeline the composite is the pass that writes the final picture, so it always runs.
+    const bool skipped = hdr && tile::compositeIsIdentity(CompositePass::lookOf(in));
+    if (!skipped) {
+        const GLuint compositeFbo = hdr ? hdrPass_.compositeFbo() : finalFbo;
+        const tile::Size compositeSize = hdr ? frame : finalSize;
+        glBindFramebuffer(GL_FRAMEBUFFER, compositeFbo);
+        Framebuffer::discardBound(compositeFbo);
+        glViewport(0, 0, compositeSize.width, compositeSize.height);
+        glDisable(GL_BLEND);
+        compositePass_.draw(in);
+    }
+    if (hdr) {
+        const GLuint source = skipped ? sceneTex : hdrPass_.compositeTex();
+        hdrPass_.resolve(tone::bloomFor(p.bloom, thermalTierInfo(thermal_.tier()).optionalPasses), source, finalFbo, finalSize.width,
+                         finalSize.height, quadVao_);
+    }
     // The offscreen Render waits for each frame's own measurement, so every frame it writes is the one asked for.
-    if (limited) noFlash_.present(dt, targetFbo, quadVao_, thermal_.offscreen());
+    if (limited) noFlash_.present(dt, targetFbo, width_, height_, quadVao_, thermal_.offscreen());
     // W00: overlay is its own draw call, over whatever composite() just wrote to targetFbo, so it
     // never enters postFx/transitions/Layers and comes out identical live, in the wallpaper and in
     // the offscreen export.

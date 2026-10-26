@@ -10,8 +10,10 @@ namespace geode::viz::scale {
 //   total = supersample x max(style x min(load, thermal), kMinQualityScale)   live
 //   total = export supersample (a named setting, kExportSupersample by default)  Render (export)
 //
-// The composite always writes exactly the surface or export size; only the scene targets behind it
-// follow this factor, and the composite samples them with linear filtering.
+// The frame shown is always exactly the surface or export size. The scene targets follow this factor;
+// the composite, the tonemap and the No-flash limiter draw at the smaller of the two on each side
+// (tile::frameSize), so a supersampled scene is downsampled by the composite and a reduced one is
+// upscaled, with linear filtering, only by the limiter's last pass onto the output.
 
 // ---- supersampling -------------------------------------------------------------------------------
 

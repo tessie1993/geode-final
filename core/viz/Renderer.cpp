@@ -277,6 +277,7 @@ void Renderer::onSurfaceCreated() {
     }
     fboA_.release();
     fboB_.release();
+    fboOut_.release();
     hdrPass_.release();
     compositePass_.releaseStaleTextures();
     // The HDR targets (ToneMap.hpp) are RGBA16F where this device proved it renders and blends them.
@@ -285,6 +286,7 @@ void Renderer::onSurfaceCreated() {
         half.renderable() && half.blendsAdditively ? Framebuffer::Format::Rgba16F : Framebuffer::Format::Rgba8;
     fboA_.setFormat(hdrFormat);
     fboB_.setFormat(hdrFormat);
+    fboOut_.setFormat(hdrFormat);
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);
     hdrPass_.setTargetFormat(hdrFormat);

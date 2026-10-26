@@ -70,7 +70,7 @@ struct BloomSettings {
 // The bloom for a frame: off when the thermal tier has dropped the optional passes.
 BloomSettings bloomFor(float bloomParam, bool optionalPasses);
 
-// The mip chain: level 0 at half the output size, each next level half the one before, rounded up,
+// The mip chain: level 0 at half the frame size, each next level half the one before, rounded up,
 // until a level would be smaller than kMinLevelSize on either side or kMaxLevels are made.
 constexpr int kMaxLevels = 6;
 constexpr int kMinLevelSize = 8;

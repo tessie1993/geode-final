@@ -66,7 +66,7 @@ bool HdrPass::ensureComposite(int width, int height) {
     return true;
 }
 
-int HdrPass::drawBloom(const tone::BloomSettings& bloom, GLuint quadVao) {
+int HdrPass::drawBloom(const tone::BloomSettings& bloom, GLuint source, GLuint quadVao) {
     std::array<tone::LevelSize, tone::kMaxLevels> sizes{};
     const int count = tone::bloomLevels(width_, height_, sizes);
     for (int i = 0; i < count; ++i) {
@@ -81,12 +81,14 @@ int HdrPass::drawBloom(const tone::BloomSettings& bloom, GLuint quadVao) {
     glUseProgram(downProgram_);
     glUniform1i(downUniforms_.loc("uSource"), 0);
     glUniform2f(downUniforms_.loc("uCurve"), bloom.threshold, bloom.knee);
-    GLuint source = composite_.tex();
+    // The first level's taps are a frame texel apart whatever the source's own size, so a skipped
+    // composite (the supersampled scene target read directly) blurs exactly as the composite would.
     int sourceWidth = width_;
     int sourceHeight = height_;
     for (int i = 0; i < count; ++i) {
         const Framebuffer& level = levels_[static_cast<size_t>(i)];
         glBindFramebuffer(GL_FRAMEBUFFER, level.fbo());
+        level.discardContents();
         glViewport(0, 0, level.width(), level.height());
         glBindTexture(GL_TEXTURE_2D, source);
         glUniform1i(downUniforms_.loc("uPrefilter"), i == 0 ? 1 : 0);
@@ -115,14 +117,16 @@ int HdrPass::drawBloom(const tone::BloomSettings& bloom, GLuint quadVao) {
     return count;
 }
 
-void HdrPass::resolve(const tone::BloomSettings& bloom, GLuint targetFbo, GLuint quadVao) {
-    const int levels = bloom.on && bloom.strength > 0.0f ? drawBloom(bloom, quadVao) : 0;
+void HdrPass::resolve(const tone::BloomSettings& bloom, GLuint source, GLuint targetFbo, int targetWidth, int targetHeight,
+                      GLuint quadVao) {
+    const int levels = bloom.on && bloom.strength > 0.0f ? drawBloom(bloom, source, quadVao) : 0;
     glBindFramebuffer(GL_FRAMEBUFFER, targetFbo);
-    glViewport(0, 0, width_, height_);
+    Framebuffer::discardBound(targetFbo);
+    glViewport(0, 0, targetWidth, targetHeight);
     glDisable(GL_BLEND);
     glUseProgram(toneProgram_);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, composite_.tex());
+    glBindTexture(GL_TEXTURE_2D, source);
     glUniform1i(toneUniforms_.loc("uScene"), 0);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, levels > 0 ? levels_[0].tex() : blackTex_);

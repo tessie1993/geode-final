@@ -14,6 +14,9 @@
 namespace geode::viz {
 
 // Port of FluidSceneBase.kt: the shared clock, idle synthesis, quality ladder and GL state guard.
+// The guard asks the driver nothing once the renderer hands over its target (Scene::setDrawTarget):
+// it returns to that framebuffer and viewport, and leaves blending off, as every pass of the
+// renderer expects to find it and sets its own (#311).
 class FluidSceneBase : public Scene {
 public:
     FluidSceneBase(std::string id, float timeWrapSeconds, ProgramLoader loader, SceneHost host)
@@ -24,6 +27,7 @@ public:
     void setParams(const SceneParams& params) override { params_ = params; }
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void update(const GeodeFeatureFrame& features, float dt) override;
+    void setDrawTarget(GLuint fbo, int width, int height) override;
 
 protected:
     float tickPcm(float dt) { return pcmPulse_.tick(dt); }
@@ -67,6 +71,7 @@ protected:
 
 private:
     PcmPulse pcmPulse_;
+    bool targetHanded_ = false;
     GLint prevFbo_ = 0;
     std::array<GLint, 4> prevViewport_{};
     std::array<GLint, 4> prevBlendFunc_{};

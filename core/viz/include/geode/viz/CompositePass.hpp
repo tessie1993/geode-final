@@ -9,6 +9,7 @@
 #include "geode/viz/Params.hpp"
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/viz/TileFrame.hpp"
 #include "geode/viz/Transition.hpp"
 
 namespace geode::viz {
@@ -91,6 +92,9 @@ public:
     void warmTransition(const std::string& id) { transitions_.warm(id); }
     TransitionCatalog& catalog() { return transitions_.catalog(); }
     void draw(const Inputs& inputs);
+    // What draw() would hand composite_frag.glsl that can change the active Style's picture, in the
+    // values it uploads, for tile::compositeIsIdentity.
+    static tile::CompositeLook lookOf(const Inputs& inputs);
 
     // W00: overlay/underlay uploads, called on the GL thread only (Renderer::applyOverlayUploads).
     // `argbPixels` is Android's Bitmap.getPixels layout (0xAARRGGBB per int); converted to GL's

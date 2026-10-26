@@ -19,29 +19,34 @@ namespace geode::viz {
 // one frame later (DelayedPresent), when its measurement has arrived: FlashLimiter decides how much
 // of it may be shown and the result is drawn into the output (noflash_mix_frag.glsl). So nothing
 // stalls on the GPU, and the limiter still judges every frame before any of it reaches the screen.
-// The frame shown last is kept as the crossfade source; four output-sized targets rotate (the one
+// The frame shown last is kept as the crossfade source; four frame-sized targets rotate (the one
 // being drawn, the one pending, the one shown, a spare) so that a frame passed through unchanged
-// costs no copy into the history.
+// costs no copy into the history. They are drawn at the frame size (tile::frameSize: the scene's
+// where it is below the output) and the last draw into the output upscales, so a reduced render
+// scale saves its pixels in every pass up to the screen (#311).
 class NoFlashPass {
 public:
     ~NoFlashPass() { release(); }
 
     bool create(const ShaderSource& assets, ProgramBinaryCache* cache, const std::string& fadeVert, std::string* error);
     void release();
-    // Binds the candidate target at the output size. False when the pass cannot run (no program
-    // or no memory for its targets); the caller then draws straight to its output.
+    // Binds the candidate target at the frame size. False when the pass cannot run (no program
+    // or no memory for its targets); the caller then draws straight to its output. A new frame size
+    // moves every target keeping its picture, so the frames pending and shown stay valid and the
+    // limiter keeps judging against them.
     bool bindCandidate(int width, int height);
     // The candidate target bindCandidate() made, for a pass that draws into it later in the frame.
     GLuint candidateFbo() const { return candidate_->frame.fbo(); }
     // Measures the candidate, limits the frame due now and draws it into `targetFbo`, which is left
-    // bound at the output size. `synchronous` (the offscreen Render) waits for this candidate's own
-    // measurement and shows it in this frame, so every rendered frame is the one asked for.
-    void present(float dt, GLuint targetFbo, GLuint quadVao, bool synchronous);
+    // bound at targetWidth x targetHeight (the output size). `synchronous` (the offscreen Render)
+    // waits for this candidate's own measurement and shows it in this frame, so every rendered frame
+    // is the one asked for.
+    void present(float dt, GLuint targetFbo, int targetWidth, int targetHeight, GLuint quadVao, bool synchronous);
     // How much of the last frame the limiter judged was shown (1 = all of it).
     float lastAmount() const { return lastAmount_; }
 
 private:
-    // One output-sized target and the pixel-pack buffer its measurement is read into.
+    // One frame-sized target and the pixel-pack buffer its measurement is read into.
     struct Slot {
         explicit Slot(const char* label) : frame(label) {}
         Framebuffer frame;
@@ -56,8 +61,9 @@ private:
     static void dropFence(Slot& slot);
     // Limits `next` against the frame shown last and draws the result into `targetFbo`; `next`
     // or the damped frame becomes the frame shown last.
-    void show(Slot*& next, float dt, GLuint targetFbo, GLuint quadVao);
-    void drawMix(GLuint fbo, GLuint shownTex, GLuint nextTex, float amount, GLuint quadVao);
+    void show(Slot*& next, float dt, GLuint targetFbo, int targetWidth, int targetHeight, GLuint quadVao);
+    // Draws the whole of `fbo`, width x height, from the two frames.
+    void drawMix(GLuint fbo, int width, int height, GLuint shownTex, GLuint nextTex, float amount, GLuint quadVao);
 
     Slot slotA_{"noFlashA"};
     Slot slotB_{"noFlashB"};

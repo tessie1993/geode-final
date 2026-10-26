@@ -254,6 +254,21 @@ const BLOOM_UP_NEUTRAL = { uTexel: [0, 0] };
 const TONEMAP_NEUTRAL = { uBloomStrength: 0, uCeiling: 2.0, uDither: 1 / 255 };
 const HDR_TEXTURES = { uSource: 'scene', uScene: 'scene', uBloom: 'history', uNoise: 'noise' };
 
+// The tile-friendly frame (core/viz/TileFrame.hpp, #311): the outgoing Style of a transition drawn at
+// half size and read by the composite's fade, slide, zoom and melt; the tonemap reading a smaller
+// scene target directly when the composite is skipped; and the No-flash limiter's last pass
+// upscaling a frame drawn below the output, shown as it is and damped.
+const COMPOSITE_HALF_TEXTURES = { ...COMPOSITE_TEXTURES, uTexB: 'scene_half' };
+const COMPOSITE_FROM_HALF = {
+  fade_from_half: { uStyle: 1, uProgress: 0.5 },
+  melt_from_half: { uStyle: 2, uProgress: 0.5 },
+  slide_from_half: { uStyle: 3, uProgress: 0.5 },
+  zoom_from_half: { uStyle: 4, uProgress: 0.5 },
+};
+const HDR_HALF_TEXTURES = { ...HDR_TEXTURES, uScene: 'scene_half' };
+const NOFLASH_MIX_NEUTRAL = { uAmount: 1 };
+const NOFLASH_MIX_TEXTURES = { uShown: 'history', uNext: 'scene_half' };
+
 function effectJobs(registry, size) {
   const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
   const jobs = [];
@@ -271,6 +286,9 @@ function effectJobs(registry, size) {
   add('hdr', 'bloom_down_frag.glsl', BLOOM_DOWN_NEUTRAL, HDR_TEXTURES, { bloom_prefilter: {}, bloom_down: { uPrefilter: 0 } });
   add('hdr', 'bloom_up_frag.glsl', BLOOM_UP_NEUTRAL, HDR_TEXTURES, { bloom_up: {} });
   add('hdr', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_TEXTURES, { tonemap: {}, tonemap_bloom: { uBloomStrength: 0.5 } });
+  add('tile', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_HALF_TEXTURES, COMPOSITE_FROM_HALF);
+  add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
+  add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
   return jobs;
 }
 

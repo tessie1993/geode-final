@@ -30,6 +30,7 @@
 #include "geode/viz/SharedFxPass.hpp"
 #include "geode/render/ShaderSource.hpp"
 #include "geode/viz/ThermalGovernor.hpp"
+#include "geode/viz/TileFrame.hpp"
 #include "geode/viz/TouchField.hpp"
 #include "geode/viz/TrailPass.hpp"
 #include "geode/viz/VisualSafety.hpp"
@@ -115,7 +116,8 @@ private:
     void resolveLayerScene();
     bool ensureTargets();
     float drawSecondaryTargets(const SceneParams& p, float dt);
-    void bindSecondaryTarget();
+    // Binds and clears the Layer's or the outgoing Style's target, which the composite then reads.
+    void bindSecondaryTarget(const Framebuffer& target);
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
     // The active Style's picture with the Shared core effects drawn over it, or the scene target as
     // it is while every effect is 0.
@@ -166,6 +168,10 @@ private:
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
     Framebuffer fboB_{"sceneB"};
+    // The outgoing Style's half-size target during a transition (tile::outgoingSize).
+    Framebuffer fboOut_{"sceneOutgoing"};
+    // What the composite reads as its second picture this frame: fboB_ or fboOut_.
+    GLuint secondaryTex_ = 0;
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
