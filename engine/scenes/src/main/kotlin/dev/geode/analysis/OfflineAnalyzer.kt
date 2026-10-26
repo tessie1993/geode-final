@@ -1,6 +1,7 @@
 package dev.geode.analysis
 
 import android.content.Context
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -86,8 +87,7 @@ class OfflineAnalyzer(
                 val durationUs =
                     if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
                 val mime = requireNotNull(format.getString(MediaFormat.KEY_MIME))
-                val codec = MediaCodec.createDecoderByType(mime).also { codecRef = it }
-                codec.configure(format, null, null, 0)
+                val codec = floatDecoder(mime, format).also { codecRef = it }
                 codec.start()
                 while (!outputDone) {
                     if (!stillWanted()) throw CancellationException("analysis cancelled")
@@ -147,6 +147,22 @@ class OfflineAnalyzer(
             onProgress(1f)
             streaming.finish()
         }
+    }
+
+    /**
+     * A decoder for [format] asked for float PCM (#299), so a 24-bit file keeps its precision; one that
+     * will not give float is configured for its default 16-bit output instead.
+     */
+    private fun floatDecoder(
+        mime: String,
+        format: MediaFormat,
+    ): MediaCodec {
+        format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_FLOAT)
+        val floatCodec = MediaCodec.createDecoderByType(mime)
+        if (runCatching { floatCodec.configure(format, null, null, 0) }.isSuccess) return floatCodec
+        floatCodec.release()
+        format.removeKey(MediaFormat.KEY_PCM_ENCODING)
+        return MediaCodec.createDecoderByType(mime).also { it.configure(format, null, null, 0) }
     }
 
     internal class StreamingPipeline(
@@ -213,7 +229,7 @@ class OfflineAnalyzer(
             while (analyzer.pull()) {
                 // Stamped at the middle of the window it was measured over, the moment it describes,
                 // not at its start (#302): a Render then draws each hop where it is heard.
-                val timeMs = (absSample + AnalysisEngine.DEFAULT_FFT_SIZE / 2) * 1000L / sampleRate
+                val timeMs = (absSample + AnalysisHop.windowFrames(sampleRate, AnalysisEngine.DEFAULT_FFT_SIZE) / 2) * 1000L / sampleRate
                 frames.add(TimelineFrame(timeMs, snapshot()))
                 absSample += hopSamples
             }

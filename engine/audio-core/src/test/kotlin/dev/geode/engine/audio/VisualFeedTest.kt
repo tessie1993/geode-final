@@ -81,6 +81,7 @@ class VisualFeedTest {
         feed.setRoute(OutputRoute.BLUETOOTH)
         feed.setSyncOffset(Millis(-40))
         feed.setSensitivity(6f)
+        feed.setWindowGain(FeedSource.LIVE, 2f)
         feed.setTuning(3f, 333f, 0.01f, 0.1f)
         feed.resetAnalysis()
         feed.attachSnapshots(null)
@@ -93,6 +94,7 @@ class VisualFeedTest {
                 "feedSetRoute",
                 "feedSetUserOffset",
                 "feedSetGain",
+                "feedSetWindowGain",
                 "feedSetTuning",
                 "feedResetAnalysis",
                 "feedAttachSnapshots",

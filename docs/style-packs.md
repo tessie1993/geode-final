@@ -75,7 +75,7 @@ check every name is a real property.
 | `id` | yes | The Style id; the folder's name. Saved presets and settings store it. |
 | `label` | yes | The name the App UI shows. |
 | `family` | yes | The renderer that draws it, declared in `families.json`. |
-| `shader` | shader Styles only | The fragment shader, a file in the Style's own folder. Its `//#include` lines resolve against `shaders/lib_*.glsl`. |
+| `shader` | shader Styles only | The fragment shader, a file in the Style's own folder. Its `//#include` lines resolve against `shaders/lib_*.glsl`. The sound reaches it through `uAudioTex` (`lib_scene_uniforms`, `geode/viz/AudioInputs.hpp`): `aband(x)` the spectrum, 30 Hz–16 kHz on a log scale and one level scale, `apeak(x)` its peak hold, `awave(x)` a steady oscilloscope of the mid, and `awaveL(x)`/`awaveR(x)` its left and right channels. |
 | `renderScale` | no | 0.5–1, default 1: the Style draws at this fraction of the live render size (ADR-0005, "Visual buffers follow load"). |
 | `detail` | no | What Detail drives beyond the shared quality ladder: `"none"` (default) or `"march"` (the Style breaks its raymarch on the Detail step budget). |
 | `parameters` | no | Values for the family's parameters, each within the family's range; the rest take the family default. |

@@ -29,6 +29,7 @@ set(GEODE_AUDIO_PURE_SOURCES
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
+    analysis/Decimator.cpp
     analysis/Spectrum.cpp
     analysis/AdaptiveRange.cpp
     analysis/LogBands.cpp
@@ -51,6 +52,7 @@ set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/AnalysisSession.cpp
 )
 set(GEODE_VIZ_PURE_SOURCES
+    viz/AudioInputs.cpp
     viz/Params.cpp
     viz/ParamsFields.cpp
     viz/Lfo.cpp

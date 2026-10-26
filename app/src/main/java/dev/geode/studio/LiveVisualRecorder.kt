@@ -102,7 +102,10 @@ class LiveVisualRecorder(
             if (renderer == null || renderer.surfaceWidth <= 0 || renderer.surfaceHeight <= 0) {
                 return@withContext RecordingEnd.Failed(RecordingProblem.NO_VISUAL)
             }
-            val tap = FeedTap(feed())
+            val visualFeed = feed()
+            val tap = FeedTap(visualFeed)
+            // A Recording keeps the analysis awake (#298), even while the Visual is off the screen.
+            visualFeed.acquire()
             try {
                 if (!tap.open) return@withContext RecordingEnd.Failed(RecordingProblem.NOT_SAVED)
                 val pcm = FloatArray(TAP_FRAMES * 2)
@@ -117,6 +120,7 @@ class LiveVisualRecorder(
                 if (end is RecordingEnd.Saved) file.publish() else file.discard()
                 if (end is RecordingEnd.Saved) end.copy(video = end.video.copy(name = nameOf(song), song = song)) else end
             } finally {
+                visualFeed.release()
                 tap.close()
             }
         }

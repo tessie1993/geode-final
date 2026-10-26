@@ -25,6 +25,7 @@ FeedRing::FeedRing(size_t capacityFrames)
         running_[i].store(true, std::memory_order_relaxed);
         delayNs_[i].store(0, std::memory_order_relaxed);
         speed_[i].store(1.0f, std::memory_order_relaxed);
+        windowGain_[i].store(1.0f, std::memory_order_relaxed);
         measured_[i].store(true, std::memory_order_relaxed);
     }
 }
@@ -78,6 +79,17 @@ void FeedRing::setGainDb(float db) {
 
 void FeedRing::setUserOffset(int64_t offsetNs) {
     userOffsetNs_.store(heard::clampUserOffsetNs(offsetNs), std::memory_order_relaxed);
+}
+
+void FeedRing::setWindowGain(FeedSource source, float gain) {
+    const size_t i = indexOf(source);
+    if (i == 0) return;
+    windowGain_[i].store(std::isfinite(gain) ? std::clamp(gain, 0.0f, kMaxWindowGain) : 1.0f, std::memory_order_relaxed);
+}
+
+float FeedRing::windowGain(FeedSource source) const {
+    const size_t i = indexOf(source);
+    return i == 0 ? 1.0f : windowGain_[i].load(std::memory_order_relaxed);
 }
 
 size_t FeedRing::write(FeedSource source, const float* interleaved, size_t frames, int channels, int rateHz,
@@ -166,6 +178,12 @@ uint64_t FeedRing::oldestReadable() const {
     return std::max(safe, begin_.load(std::memory_order_acquire));
 }
 
+uint64_t FeedRing::resumeFrom(int64_t nowNs, uint64_t lookbackFrames) const {
+    const uint64_t heard = locate(nowNs).end;
+    const uint64_t from = heard > lookbackFrames ? heard - lookbackFrames : 0;
+    return std::max(from, oldestReadable());
+}
+
 size_t FeedRing::copyRange(uint64_t from, size_t frames, float* out) const {
     if (!out || frames == 0) return 0;
     const uint64_t w = written_.load(std::memory_order_acquire);
@@ -206,7 +224,12 @@ size_t FeedRing::copy(const ReadPoint& point, float* out, size_t frames) const {
     const uint64_t span = point.end - point.begin;
     const size_t audible = span < frames ? static_cast<size_t>(span) : frames;
     const size_t lead = frames - audible;
-    return copyRange(point.end - audible, audible, out + lead * kChannels);
+    const size_t carried = copyRange(point.end - audible, audible, out + lead * kChannels);
+    const float gain = windowGain(selected());
+    if (gain != 1.0f) {
+        for (size_t i = lead * kChannels; i < frames * kChannels; ++i) out[i] = std::clamp(out[i] * gain, -1.0f, 1.0f);
+    }
+    return carried;
 }
 
 }  // namespace geode::audio::feed

@@ -540,6 +540,13 @@ object GeodeNative {
         offsetUs: Long,
     ): Int
 
+    /** The gain on [source]'s window for the scenes, after the Sensitivity; never on the analysis. */
+    external fun feedSetWindowGain(
+        handle: Long,
+        source: Int,
+        gain: Float,
+    ): Int
+
     /** Returns the frames taken: 0 when [source] is not the one listened to. */
     external fun feedWrite(
         handle: Long,
