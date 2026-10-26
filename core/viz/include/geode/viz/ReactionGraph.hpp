@@ -44,6 +44,15 @@ constexpr int kMaxMacroLinks = 64;
 constexpr int kMaxAutomations = 48;
 // The longest frame the graph steps over: a stall does not jump every Modulator ahead at once.
 constexpr float kMaxFrameSeconds = 0.1f;
+// The Level (0..1, as heard, before the trims) under which Style switching takes the music for silence
+// (#361), and how long silence lasts before switching's spacing starts again when sound returns. The
+// one place to retarget silence: to the analysis' measured noise floor once it reports one (#278).
+// Automation.SILENCE_LEVEL and SILENCE_SECONDS in :feature:customization:core mirror them.
+constexpr float kSilenceLevel = 0.02f;
+constexpr float kSilenceSeconds = 2.5f;
+
+// Whether Style switching takes a frame whose Level is `level` for silence.
+bool silent(float level);
 
 enum class ModulatorField : uint8_t { Rate, Depth, Pattern };
 constexpr size_t kModulatorFieldCount = 3;
@@ -100,6 +109,9 @@ float macroLink(float base, float low, float high, float value);
 //   BigMoments   when the louder of Surge and Change rises past `threshold`, once each time.
 // A `held` cadence never moves, and its spacing starts again from the moment it is released: the
 // person's Hold, or Customize being open (#282), so a switch never lands straight after either.
+// Style switching also waits during silence (#361): never while the Level heard (before the trims) is
+// under kSilenceLevel, and once that has lasted kSilenceSeconds of play, its spacing starts again when
+// sound returns. A pause, the gap between tracks or a quiet intro never switches.
 //
 //   StyleSwitch  no target: counts each move into Evaluated::stylesDue, from which the reducer moves
 //                to the next Style (CustomizationEvent.StyleDue) and the engine crossfades;
@@ -198,6 +210,8 @@ private:
     // spacing started (its last move, or the moment a hold let go).
     double beats_ = 0.0;
     double seconds_ = 0.0;
+    // How long the music has been silent, in seconds played (#361).
+    double quietSeconds_ = 0.0;
     std::array<int64_t, kMaxAutomations> lastBlock_{};
     std::array<uint32_t, kMaxAutomations> due_{};
     std::array<bool, kMaxAutomations> armed_{};

@@ -365,4 +365,12 @@ class AutomationTest {
         assertEquals(automations, reset.automations)
         assertEquals(julia, reset.copy(automations = Automations.NONE))
     }
+
+    @Test
+    fun `Style switching takes a Level under the silence level for silence`() {
+        assertTrue(Automation.silent(0f))
+        assertTrue(Automation.silent(Automation.SILENCE_LEVEL - 0.001f))
+        assertFalse(Automation.silent(Automation.SILENCE_LEVEL))
+        assertFalse(Automation.silent(0.5f))
+    }
 }

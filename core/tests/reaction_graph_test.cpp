@@ -353,9 +353,13 @@ TEST(CustomizationPlan, RefusesLinksAndAutomationsPastItsSize) {
 // A tenth of a second a frame: five frames a beat at a reported 0.5 s beat.
 constexpr float kAutomationDt = 0.1f;
 
+// Music heard well above silence, so Style switching does not wait (#361).
+constexpr float kAudible = 0.5f;
+
 SignalFrame atTempo(float beatSeconds) {
     SignalFrame f;
     f.beatSeconds = beatSeconds;
+    f.level[static_cast<size_t>(SoundSignal::Level)] = kAudible;
     return f;
 }
 
@@ -542,7 +546,9 @@ TEST(Automations, ABigMomentFiresOncePerRiseAboveItsThreshold) {
     EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Change), 0.0f).stylesDue, 2u);
     // Big moments need no tempo.
     graph.evaluate(plan, atTempo(0.0f), 0.0f);
-    EXPECT_EQ(graph.evaluate(plan, [] { SignalFrame f; f.level[static_cast<size_t>(SoundSignal::Surge)] = 1.0f; return f; }(), 0.0f).stylesDue, 3u);
+    SignalFrame noTempo = atTempo(0.0f);
+    noTempo.level[static_cast<size_t>(SoundSignal::Surge)] = 1.0f;
+    EXPECT_EQ(graph.evaluate(plan, noTempo, 0.0f).stylesDue, 3u);
 }
 
 TEST(Automations, TheSpacingHoldsTheNextMoveBack) {
@@ -582,6 +588,60 @@ TEST(Automations, AHoldNeverRestartsAPaletteFade) {
     const float mix = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::PaletteMix];
     EXPECT_NEAR(mix, 0.5f, 1e-3f) << "the fade goes on while held";
     EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Change), kAutomationDt)[Shared::Palette2], 1.0f) << "no new change while held";
+}
+
+SignalFrame at(float level, SignalFrame f = atTempo(0.5f)) {
+    f.level[static_cast<size_t>(SoundSignal::Level)] = level;
+    return f;
+}
+
+TEST(Automations, SilenceIsALevelUnderTheSilenceLevel) {
+    EXPECT_TRUE(silent(0.0f));
+    EXPECT_TRUE(silent(kSilenceLevel - 0.001f));
+    EXPECT_FALSE(silent(kSilenceLevel));
+    EXPECT_FALSE(silent(kAudible));
+}
+
+TEST(Automations, StyleSwitchingWaitsWhileTheMusicIsSilent) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 0.0f));
+    // A trim that lifts the Level does not make silence music: silence is judged as heard.
+    plan.trims[static_cast<size_t>(SoundSignal::Level)].gain = 4.0f;
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, at(0.01f, big(SoundSignal::Surge)), kAutomationDt).stylesDue, 0u) << "silent";
+    graph.evaluate(plan, at(0.01f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "a short silence holds nothing back";
+}
+
+TEST(Automations, AfterALongSilenceTheSpacingStartsAgainWhenSoundReturns) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 1.0f));
+    ReactionGraph graph;
+    for (int i = 0; i < 26; ++i) graph.evaluate(plan, at(0.0f), kAutomationDt);
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 0u) << "0.2 s after the silence";
+    for (int i = 0; i < 8; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "a second after it";
+}
+
+TEST(Automations, SilenceOnlyCountsWhileTheMusicPlays) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 1.0f));
+    ReactionGraph graph;
+    SignalFrame paused = at(0.0f);
+    paused.playing = false;
+    for (int i = 0; i < 20; ++i) graph.evaluate(plan, at(0.0f), kAutomationDt);
+    for (int i = 0; i < 20; ++i) graph.evaluate(plan, paused, kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "two seconds of silence played";
+}
+
+TEST(Automations, OnlyStyleSwitchingWaitsForSilence) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::Palette, 0.5f, 0.0f));
+    ReactionGraph graph;
+    for (int i = 0; i < 30; ++i) graph.evaluate(plan, at(0.0f), kAutomationDt);
+    graph.evaluate(plan, at(0.0f, big(SoundSignal::Surge)), kAutomationDt);
+    EXPECT_GT(graph.evaluate(plan, at(0.0f), kAutomationDt)[Shared::PaletteMix], 0.0f) << "a palette change fades in, in silence too";
 }
 
 TEST(Automations, APaletteChangeCrossfadesIntoTheNextPaletteAndWrapsRound) {

@@ -42,6 +42,20 @@ object Automation {
             is Trigger.EveryBars -> beat != null && beat > 0 && beat % (trigger.bars * BEATS_PER_BAR) == 0
         }
 
+    /**
+     * The Level (0..1, as heard, before the trims) under which Style switching takes the music for
+     * silence (#361): it never switches then, so a pause, the gap between tracks or a quiet intro never
+     * switches. The one value to retarget to the analysis' measured noise floor (#278); the engine's
+     * kSilenceLevel is the same.
+     */
+    const val SILENCE_LEVEL: Float = 0.02f
+
+    /** How long silence lasts, in played time, before Style switching's spacing starts again when sound returns. */
+    val SILENCE: Millis = Millis(2_500)
+
+    /** Whether Style switching takes a [level] (as heard) for silence. */
+    fun silent(level: Float): Boolean = level < SILENCE_LEVEL
+
     /** Whether [cadence] lets a move happen [sinceLast] after its last one (null: there was none yet). */
     fun spaced(
         cadence: Cadence,

@@ -43,6 +43,8 @@ int wrapPalette(int64_t index) {
 }
 }  // namespace
 
+bool silent(float level) { return level < kSilenceLevel; }
+
 float crossfade(float elapsedSeconds, float lengthSeconds) {
     if (!(lengthSeconds > 0.0f)) return 1.0f;
     const float x = unit(elapsedSeconds / lengthSeconds);
@@ -92,6 +94,7 @@ void ReactionGraph::reset() {
     for (auto& m : modulators_) m.reset();
     beats_ = 0.0;
     seconds_ = 0.0;
+    quietSeconds_ = 0.0;
     lastBlock_.fill(kUnseen);
     due_.fill(0);
     armed_.fill(true);
@@ -189,6 +192,10 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         if (frame.beatSeconds > 0.0f) beats_ += step / std::max(frame.beatSeconds, kMinPeriodSeconds);
     }
     const float bigMoment = std::max(frame[SoundSignal::Surge], frame[SoundSignal::Change]);
+    // Silence, from the Level as heard: a trim must not turn a quiet room into music (#361).
+    const bool quiet = silent(raw[SoundSignal::Level]);
+    if (frame.playing) quietSeconds_ = quiet ? quietSeconds_ + step : 0.0;
+    const bool longQuiet = quietSeconds_ >= kSilenceSeconds;
     const auto beat = static_cast<int64_t>(std::floor(beats_));
     for (int a = 0; a < kMaxAutomations; ++a) {
         const auto i = static_cast<size_t>(a);
@@ -213,9 +220,10 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         }
         lastBlock_[i] = block;
         const double spacing = std::isfinite(automation.spacingSeconds) ? std::max(automation.spacingSeconds, 0.0f) : 0.0;
-        if (automation.held) spacedFrom_[i] = seconds_;
+        const bool switching = automation.kind == AutomationKind::StyleSwitch;
+        if (automation.held || (switching && longQuiet)) spacedFrom_[i] = seconds_;
         const bool spaced = spacedFrom_[i] < 0.0 || seconds_ - spacedFrom_[i] >= spacing;
-        const bool moves = fired && !automation.held && spaced;
+        const bool moves = fired && !automation.held && !(switching && quiet) && spaced;
         if (moves) spacedFrom_[i] = seconds_;
         switch (automation.kind) {
             case AutomationKind::StyleSwitch:
