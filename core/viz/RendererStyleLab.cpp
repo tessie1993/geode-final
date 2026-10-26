@@ -88,11 +88,13 @@ void Renderer::reloadStyle(const std::string& id, const std::string& folder, con
     const packs::StylePack* before = registry_.pack(id);
     const bool wasShader = before != nullptr && before->family == styles::family::kShader;
     // Copied: the reload replaces the pack in place. A shader Style built with other inputs or another
-    // feedback warp or other passes is built again rather than handed the new shader.
+    // feedback warp or other passes (the engine's, or its own buffers) is built again rather than handed the new shader.
     const inputs::Set inputsBefore = before != nullptr ? before->inputs : 0;
     const feedback::WarpSpec feedbackBefore = before != nullptr ? before->feedback : feedback::WarpSpec{};
     const std::string warpShaderBefore = before != nullptr ? before->feedbackShaderPath : std::string();
     const multipass::Spec passesBefore = before != nullptr ? before->multipass : multipass::Spec{};
+    const bufferpass::Spec buffersBefore = before != nullptr ? before->buffers : bufferpass::Spec{};
+    const std::vector<std::string> bufferShadersBefore = before != nullptr ? before->bufferShaderPaths : std::vector<std::string>{};
     std::string error;
     if (!registry_.reload(id, manifest, shader, &error)) {
         styleLabFailed_ = true;
@@ -110,7 +112,8 @@ void Renderer::reloadStyle(const std::string& id, const std::string& folder, con
     if (built == nullptr) return;
     const packs::StylePack* after = registry_.pack(id);
     const bool sameBuild = after != nullptr && after->inputs == inputsBefore && after->feedback == feedbackBefore &&
-                           after->feedbackShaderPath == warpShaderBefore && after->multipass == passesBefore;
+                           after->feedbackShaderPath == warpShaderBefore && after->multipass == passesBefore &&
+                           after->buffers == buffersBefore && after->bufferShaderPaths == bufferShadersBefore;
     if (wasShader && sameBuild && after->family == styles::family::kShader) {
         const auto fragment = registry_.fragment(*after, &error);
         if (!fragment) {

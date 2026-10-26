@@ -14,6 +14,7 @@
 #include "geode/render/Texture.hpp"
 #include "geode/render/ImageDecoder.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/BufferPasses.hpp"
 #include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/FrameRate.hpp"
 #include "geode/viz/MultiPass.hpp"
@@ -48,6 +49,13 @@ struct ShaderMultipass {
     std::string resolve;
 };
 
+// The Style's own buffer passes ("buffers", BufferPasses.hpp): their spec and each pass's assembled
+// fragment shader, A to D, drawn on the same fullscreen triangle as the Style's image pass.
+struct ShaderBuffers {
+    bufferpass::Spec spec;
+    std::vector<std::string> fragments;
+};
+
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
@@ -61,9 +69,11 @@ public:
     // packs::kMaxTextures, each bound to its sampler on a unit of its own.
     // `multipass`: the engine's passes, when the pack opts into them; the Style is then drawn as its camera,
     // a coarse prepass and its march at a share of the target, and resolved onto the target.
+    // `buffers`: the Style's own buffer passes, when the pack declares them; each frame draws them in order
+    // into the buffers it keeps, then the Style's image pass, every pass reading the buffers.
     ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
                 inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt, std::vector<ShaderImage> images = {},
-                std::optional<ShaderMultipass> multipass = std::nullopt);
+                std::optional<ShaderMultipass> multipass = std::nullopt, std::optional<ShaderBuffers> buffers = std::nullopt);
     ~ShaderScene() override;
 
     const std::string& id() const override { return id_; }
@@ -172,6 +182,9 @@ private:
     float nextSeed();
 
     void compilePendingIfAny();
+    // Everything a pass's program reads each frame but its size and its pass, uploaded through uniforms_ to
+    // the program bound now: the image pass's, or a buffer pass's while its cache is swapped in.
+    void uploadFrame();
     void uploadParams();
     void uploadMotion();
     void uploadTouch();
@@ -218,6 +231,19 @@ private:
     void drawPass(GLuint fbo, int width, int height, float pass, bool useCoarse, const std::array<float, 2>& jitterUv);
     void resolvePasses(bool historyOn, const std::array<float, 2>& jitter, int now);
     void releasePasses();
+    // ---- the Style's own buffer passes (BufferPasses.hpp) ----
+    // Builds each buffer pass's program the first time the Style draws.
+    void buildBuffersIfNeeded();
+    // The first unit the buffers are read on: the one after the pack's images.
+    GLint firstBufferUnit() const { return kFirstImageUnit + static_cast<GLint>(images_.size()); }
+    Framebuffer& bufferTarget(int index, int which) { return bufferTargets_[static_cast<size_t>(index * 2 + which)]; }
+    // Before the image pass: every buffer pass drawn in order into its buffer's free target, each reading the
+    // buffers' newest pictures; sets buffersReady_, and binds the draw target again.
+    void drawBuffers();
+    // Binds each buffer's newest picture on its unit (black while the buffers are not ready) for the bound
+    // program, with uBufFrame and `pass` as uBufPass.
+    void bindBuffers(float pass);
+    void releaseBuffers();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -346,6 +372,20 @@ private:
     static constexpr GLint kFirstImageUnit = 12;
     std::vector<ShaderImage> images_;
     std::array<Texture, packs::kMaxTextures> imageTex_{};
+
+    // ---- the Style's own buffer passes ("buffers", #387) ---------------------
+    std::optional<ShaderBuffers> buffers_;
+    // Each pass's program and uniforms, A to D; 0 for a pass that did not compile, whose buffer stays black.
+    std::array<GLuint, bufferpass::kMaxBuffers> bufferPrograms_{};
+    std::array<UniformCache, bufferpass::kMaxBuffers> bufferUniforms_{UniformCache(0), UniformCache(0), UniformCache(0), UniformCache(0)};
+    bool buffersBuilt_ = false;
+    // True while this frame's buffers exist at their size and the passes read them.
+    bool buffersReady_ = false;
+    bufferpass::Chain bufferChain_;
+    // Two targets a buffer, ping-ponged: A's are 0 and 1, B's 2 and 3, and so on.
+    std::array<Framebuffer, 2 * bufferpass::kMaxBuffers> bufferTargets_{
+        Framebuffer("styleBufferA0"), Framebuffer("styleBufferA1"), Framebuffer("styleBufferB0"), Framebuffer("styleBufferB1"),
+        Framebuffer("styleBufferC0"), Framebuffer("styleBufferC1"), Framebuffer("styleBufferD0"), Framebuffer("styleBufferD1")};
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;

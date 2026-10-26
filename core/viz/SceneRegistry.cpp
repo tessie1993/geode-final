@@ -78,6 +78,18 @@ std::optional<std::vector<ShaderImage>> imagesOf(const packs::StylePack& pack, c
     return images;
 }
 
+// The Style's own buffer passes ("buffers", #387): each pass's fragment, A to D, its includes resolved; nullopt,
+// with the reason, when one is missing, as for a missing shader.
+std::optional<ShaderBuffers> buffersOf(const packs::StylePack& pack, const ShaderSource& assets, std::string* error) {
+    ShaderBuffers buffers{pack.buffers, {}};
+    for (const std::string& path : pack.bufferShaderPaths) {
+        auto fragment = assets.loadAsset(path, error);
+        if (!fragment) return std::nullopt;
+        buffers.fragments.push_back(std::move(*fragment));
+    }
+    return buffers;
+}
+
 std::unique_ptr<Scene> buildShader(const Build& b) {
     std::string error;
     const auto fragment = fragmentOf(b.pack, b.loader.assets, b.labShader, &error);
@@ -108,8 +120,16 @@ std::unique_ptr<Scene> buildShader(const Build& b) {
         }
         passes = ShaderMultipass{b.pack.multipass, b.quadVert, *resolve};
     }
+    std::optional<ShaderBuffers> buffers;
+    if (b.pack.buffers.count > 0) {
+        buffers = buffersOf(b.pack, b.loader.assets, &error);
+        if (!buffers) {
+            b.host.onShaderError(error);
+            return nullptr;
+        }
+    }
     return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs, std::move(feedback),
-                                         std::move(*images), std::move(passes));
+                                         std::move(*images), std::move(passes), std::move(buffers));
 }
 
 // One renderer per family. A Style is a pack naming one of these; nothing here names a Style.

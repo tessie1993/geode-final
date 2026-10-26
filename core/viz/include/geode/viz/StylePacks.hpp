@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "geode/viz/BufferPasses.hpp"
 #include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/LensFx.hpp"
 #include "geode/viz/MultiPass.hpp"
@@ -136,6 +137,12 @@ struct StylePack {
     multipass::Spec multipass;
     // The images the Style ships in its pack ("textures"), in the manifest's order; shader Styles only.
     std::vector<TextureSpec> textures;
+    // The Style's own buffer passes ("buffers", BufferPasses.hpp), A to D: how many and each one's share of
+    // the target, and each pass's fragment shader (`styles/<id>/<file>`), in the same order. None when the
+    // manifest does not declare them. The buffers take the sampler units after the images', so the two
+    // together are at most kMaxTextures.
+    bufferpass::Spec buffers;
+    std::vector<std::string> bufferShaderPaths;
 
     // The resolved value of `key`; 0 for a key the family does not declare.
     float parameter(std::string_view key) const;

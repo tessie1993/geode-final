@@ -95,6 +95,7 @@ sound, the bands, the spectrum and the stereo image, so its Styles declare exact
 | `reactivity` | yes | The Style's reactivity profile (#319): what it reacts to at each level of the music, `macro` (sections and energy), `meso` (the bar and the beat) and `micro` (onsets and the spectrum), each a list of the features below. A shader Style declares exactly what its own code reads, its shader and its feedback warp stage (its copy of `view()` and of the audio taps aside: those are the Shared core's controls; nor what the engine's warp does with `react` and the Extras); any other Style declares exactly what its family declares. CI rejects a feature nothing reads and one read but not declared. |
 | `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1), `react` (0–1, how much the music speeds the motion), `outer` and `inner` (the borders painted into the loop: `size` 0–0.1 frame heights, above 0, `color` [r, g, b] 0–1 and `alpha` 0–1, the share of the colour a band takes on in a second), `streaks` (lines along the motion field: `amount` 0–1, above 0, the share of the colour a line takes on in a second, `color` [r, g, b] 0–1 and `cells` 6–40, the grid's cells down the frame), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
 | `multipass` | no | The engine's passes ("Multi-pass Styles" below), each part optional: `scale` (0.25–0.75, default 0.5, the march's share of the target), `coarse` and `temporal` (booleans, default true). Shader Styles only, never with `feedback`; the shader includes `lib_multipass` and does its part of each pass that runs. |
+| `buffers` | no | The Style's own buffer passes ("Buffers" below), 1 to 4, A to D in order: each a `shader` (a fragment shader of its own in the Style's folder, not the image pass's) and optionally a `scale` (0.25–1, default 1, its share of the scene target each way). Shader Styles only, never with `feedback` or `multipass`; the images and the buffers together are at most 4. |
 | `textures` | no | The Style's own images ("Images" below), at most 4: each a `name` (lower-case letters, digits and `_`, starting with a letter), a PNG `file` in its folder, and optionally `wrap` (`repeat`, the default, `mirror` or `clamp`) and `filter` (`linear`, the default, `nearest` or `mipmap`). Shader Styles only. |
 | `particles3d` | no | The shared 3D particle layer (#314): `amount` (above 0, up to 1), `kind` (`streaks` or `sparks`), and multipliers `count` (0.25–2), `speed` (0.1–3) and `size` (0.3–3), and a `tint` [r, g, b] in 0–2. |
 
@@ -220,6 +221,48 @@ a Style's frame costs about a third of drawing it in one pass at the same target
 reprojects with the Style's own camera, not with `view()`'s zoom and turn, whose motion the clamp
 absorbs. The passes need half-float targets; without them the Style draws in one pass, where the
 helpers change nothing (`uMpPass` 0).
+
+## Buffers
+
+Multi-buffer shader art draws a frame as up to four buffer passes, A to D, and then an image pass; a
+Style declares the same under `buffers` (#387, `geode/viz/BufferPasses.hpp`) and its `shader` is the
+image pass:
+
+```json
+"buffers": [ { "shader": "buffer_a.glsl", "scale": 0.5 }, { "shader": "buffer_b.glsl", "scale": 0.5 } ]
+```
+
+Every pass includes `lib_buffers` and reads the buffers as `uBufA` to `uBufD`. The engine keeps each
+buffer from frame to frame in two targets at its share of the scene target, half float where the device
+renders it (RGB10_A2 elsewhere: nothing below 0, two bits of alpha), and ping-pongs them: each frame the
+buffer passes run in order, each reading every buffer's newest picture and drawing into its buffer's other
+target, so a pass sees the buffers drawn before it as this frame's and itself and those after it as last
+frame's, and the image pass sees them all as this frame left them. `bufFetch()` reads a texel wrapped
+around the edges, for a simulation on a torus; `uBufFrame` counts the frames of the visit (0 on the
+first, when every buffer is black: `bufFirstFrame()`), `uBufPass` names the pass (0 to 3, 4 the image)
+and `uResolution` is the size of what the pass draws. Every pass is handed the same uniforms as the image
+pass, the shared inputs the manifest declares among them. The buffers follow the scene target's size
+keeping what they hold (ADR-0005), start black at each visit, and a Render draws every frame on its own
+clock, so a Render gives the same frames every time.
+
+The buffers take the units of the Style's images (12 to 15, after the shared inputs'), so the images and
+the buffers together are at most four. A buffer is the Style's state, not light on screen: only the image
+pass is shown, and the No-flash limiter bounds it like any other Style. The pack check holds the
+manifest and every pass: each buffer is read by some pass, the image pass reads at least one, no pass
+reads a buffer the manifest does not declare, and the Extras, the inputs and the reactivity profile are
+read across all the passes. The render check runs the whole chain from a fresh visit and fails a frame
+that comes out black or jumps in brightness from frame to frame; glslang checks every pass. Reaction
+Garden is the example: buffer A grows a reaction-diffusion field, buffer B remembers where it grew.
+
+**Importing shader art.** `tools/shader_import/convert.py` turns multi-buffer shader art written to the
+common convention (`mainImage`, `iTime`, `iResolution`, `iFrame`, `iTimeDelta`, `iMouse`,
+`iChannel0`–`3`) into such a pack, offline: the clock becomes the Style's (paced a little by the music's
+energy), the mouse the primary finger, each channel a buffer or the music's spectrum (`uAudioTex`), and
+the image pass ends on `grade()`. It refuses every source without a permissive licence header (MIT, BSD,
+Apache-2.0, CC0, the Unlicense; never GPL, AGPL, LGPL, a NonCommercial or ShareAlike licence, or none),
+keeps the header in each pass, and refuses what a Style cannot read (`iDate`, `iSampleRate`, cube maps).
+It downloads nothing. The pack still goes through the checks and is listed by hand (Adding a Style), and
+art that strobes is not a Style, however it is licensed.
 
 ## The music in a Style
 

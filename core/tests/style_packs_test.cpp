@@ -491,6 +491,113 @@ TEST(StyleManifest, RejectsBadImages) {
     }
 }
 
+TEST(StyleManifest, ReadsTheBuffersItDeclares) {
+    std::vector<packs::PackProblem> problems;
+    const auto pack = manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader", "shader": "image.glsl",
+        "textures": [{"name": "paper", "file": "paper.png"}, {"name": "dust", "file": "dust.png"}],
+        "buffers": [{"shader": "buffer_a.glsl", "scale": 0.5}, {"shader": "buffer_b.glsl"}]})", problems);
+    ASSERT_TRUE(pack.has_value()) << (problems.empty() ? "" : problems.front().detail);
+    EXPECT_EQ(pack->buffers.count, 2);
+    EXPECT_FLOAT_EQ(pack->buffers.scale[0], 0.5f);
+    EXPECT_FLOAT_EQ(pack->buffers.scale[1], geode::viz::bufferpass::kDefaultScale);
+    ASSERT_EQ(pack->bufferShaderPaths.size(), 2u);
+    EXPECT_EQ(pack->bufferShaderPaths[0], "styles/x/buffer_a.glsl");
+    EXPECT_EQ(pack->bufferShaderPaths[1], "styles/x/buffer_b.glsl");
+    // A scale off its range is held to it, as the render scale is.
+    const auto held = manifest("y", R"({"version": 1, "id": "y", "label": "Y", "family": "shader", "shader": "image.glsl",
+        "buffers": [{"shader": "a.glsl", "scale": 2}, {"shader": "b.glsl", "scale": 0.1}, {"shader": "c.glsl", "scale": 0.75},
+                    {"shader": "d.glsl"}]})", problems);
+    ASSERT_TRUE(held.has_value()) << (problems.empty() ? "" : problems.front().detail);
+    EXPECT_EQ(held->buffers.count, geode::viz::bufferpass::kMaxBuffers);
+    EXPECT_FLOAT_EQ(held->buffers.scale[0], geode::viz::bufferpass::kMaxScale);
+    EXPECT_FLOAT_EQ(held->buffers.scale[1], geode::viz::bufferpass::kMinScale);
+    EXPECT_FLOAT_EQ(held->buffers.scale[2], 0.75f);
+    EXPECT_EQ(held->bufferShaderPaths.back(), "styles/y/d.glsl");
+    const auto none = manifest("z", R"({"version": 1, "id": "z", "label": "Z", "family": "shader", "shader": "image.glsl"})", problems);
+    ASSERT_TRUE(none.has_value());
+    EXPECT_EQ(none->buffers.count, 0);
+    EXPECT_TRUE(none->bufferShaderPaths.empty());
+    EXPECT_TRUE(problems.empty());
+}
+
+TEST(StyleManifest, RejectsBadBuffers) {
+    const char* bad[] = {
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": {"shader": "a.glsl"}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": []})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"shader": "a.glsl"}, {"shader": "b.glsl"},
+            {"shader": "c.glsl"}, {"shader": "d.glsl"}, {"shader": "e.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "plate", "parameters": {"mode": 1}, "buffers": [{"shader": "a.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {},
+            "buffers": [{"shader": "a.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "multipass": {}, "buffers": [{"shader": "a.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png"},
+            {"name": "b", "file": "b.png"}, {"name": "c", "file": "c.png"}], "buffers": [{"shader": "a.glsl"}, {"shader": "b.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"shader": "../y/a.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "shader": "shader.glsl", "buffers": [{"shader": "shader.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"shader": "a.glsl"}, {"shader": "a.glsl"}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"shader": "a.glsl", "scale": "half"}]})",
+    };
+    for (const char* text : bad) {
+        std::vector<packs::PackProblem> problems;
+        EXPECT_FALSE(manifest("x", text, problems)) << text;
+        EXPECT_EQ(onlyError(problems), packs::PackError::BadValue) << text;
+    }
+    // Four images leave no unit for a buffer at all.
+    std::vector<packs::PackProblem> full;
+    EXPECT_FALSE(manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png"},
+        {"name": "b", "file": "b.png"}, {"name": "c", "file": "c.png"}, {"name": "d", "file": "d.png"}],
+        "buffers": [{"shader": "a.glsl"}]})", full));
+    ASSERT_EQ(full.size(), 1u);
+    EXPECT_NE(full.front().detail.find("no unit is left"), std::string::npos) << full.front().detail;
+    std::vector<packs::PackProblem> crowded;
+    EXPECT_FALSE(manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader", "textures": [{"name": "a", "file": "a.png"}],
+        "buffers": [{"shader": "a.glsl"}, {"shader": "b.glsl"}, {"shader": "c.glsl"}, {"shader": "d.glsl"}]})", crowded));
+    ASSERT_EQ(crowded.size(), 1u);
+    EXPECT_NE(crowded.front().detail.find("1 to 3 passes"), std::string::npos) << crowded.front().detail;
+    const char* incomplete[] = {
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"scale": 0.5}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": ["a.glsl"]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"shader": ""}]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "buffers": [{"shader": "a.glsl"}, {"shader": 2}]})",
+    };
+    for (const char* text : incomplete) {
+        std::vector<packs::PackProblem> problems;
+        EXPECT_FALSE(manifest("x", text, problems)) << text;
+        EXPECT_EQ(onlyError(problems), packs::PackError::MissingField) << text;
+    }
+    // Problems name the buffer by its letter.
+    std::vector<packs::PackProblem> named;
+    EXPECT_FALSE(manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader",
+        "buffers": [{"shader": "a.glsl"}, {"shader": "b.glsl"}, {"shader": "b.glsl"}]})", named));
+    ASSERT_EQ(named.size(), 1u);
+    EXPECT_NE(named.front().detail.find("buffer C"), std::string::npos) << named.front().detail;
+}
+
+TEST(ShippedStylePacks, EveryBufferStyleShipsEachPassAndFitsItsUnits) {
+    const auto registry = shipped();
+    int buffered = 0;
+    for (const packs::StylePack& pack : registry.styles()) {
+        EXPECT_EQ(static_cast<size_t>(pack.buffers.count), pack.bufferShaderPaths.size()) << pack.id;
+        if (pack.buffers.count == 0) continue;
+        ++buffered;
+        EXPECT_EQ(pack.family, std::string(styles::family::kShader)) << pack.id;
+        EXPECT_FALSE(pack.feedback.on) << pack.id;
+        EXPECT_FALSE(pack.multipass.on) << pack.id;
+        EXPECT_LE(pack.textures.size() + pack.bufferShaderPaths.size(), static_cast<size_t>(packs::kMaxTextures)) << pack.id;
+        for (const std::string& path : pack.bufferShaderPaths) EXPECT_TRUE(readShipped(path).has_value()) << path;
+    }
+    // At least one shipping Style draws through its own buffers, so the passes run on every device.
+    EXPECT_GE(buffered, 1);
+    const packs::StylePack* garden = registry.find("reaction_garden");
+    ASSERT_NE(garden, nullptr);
+    EXPECT_EQ(garden->buffers.count, 2);
+    EXPECT_FLOAT_EQ(garden->buffers.scale[0], 0.5f);
+    EXPECT_FLOAT_EQ(garden->buffers.scale[1], 0.5f);
+    ASSERT_EQ(garden->bufferShaderPaths.size(), 2u);
+    EXPECT_EQ(garden->bufferShaderPaths[0], "styles/reaction_garden/buffer_a.glsl");
+    EXPECT_EQ(garden->bufferShaderPaths[1], "styles/reaction_garden/buffer_b.glsl");
+}
+
 TEST(StylePackPaths, AnImageIsSampledByItsNameInPascalCase) {
     EXPECT_EQ(packs::textureUniform("paper"), "uImagePaper");
     EXPECT_EQ(packs::textureUniform("fold_ramp"), "uImageFoldRamp");

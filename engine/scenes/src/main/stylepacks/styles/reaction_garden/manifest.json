@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "reaction_garden",
+  "label": "Reaction Garden",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "buffers": [
+    { "shader": "buffer_a.glsl", "scale": 0.5 },
+    { "shader": "buffer_b.glsl", "scale": 0.5 }
+  ],
+  "inputs": ["clocks"],
+  "extras": [
+    { "name": "growth", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "variant", "min": 0, "max": 9, "default": 0 }
+  ],
+  "reactivity": {"macro": ["energy", "section"], "micro": ["bands"]}
+}

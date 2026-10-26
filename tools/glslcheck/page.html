@@ -514,5 +514,151 @@ window.__renderFeedback = async function (job) {
   }
   return out;
 };
+// A Style's own buffer passes (core/viz BufferPasses.hpp, ShaderScene::drawBuffers), run for real: two
+// targets a buffer, half float where the context renders it and RGB10_A2 elsewhere, cleared to opaque black
+// as Framebuffer makes them, each at its share of the job's size. Every frame draws the buffer passes in
+// order, A first, each reading every buffer's newest picture (lib_buffers' uBufA..uBufD; one a pass has not
+// declared reads black) and drawing into its other target, with uBufFrame counting the frames and uBufPass
+// naming the pass; then the image pass draws the frame from the buffers. Reports the last frame's stats and
+// the largest jump of mean brightness between frames over the last `watch` frames.
+const BUFFER_SAMPLERS = ['uBufA', 'uBufB', 'uBufC', 'uBufD'];
+let bufferBlack = null;
+function blackTexture() {
+  if (bufferBlack) return bufferBlack;
+  const active = gl.getParameter(gl.ACTIVE_TEXTURE);
+  gl.activeTexture(gl.TEXTURE0 + SCRATCH_UNIT);
+  bufferBlack = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, bufferBlack);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+  gl.activeTexture(active);
+  return bufferBlack;
+}
+
+function makeBufferTarget(w, h, spec) {
+  const active = gl.getParameter(gl.ACTIVE_TEXTURE);
+  gl.activeTexture(gl.TEXTURE0 + SCRATCH_UNIT);
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, spec.internal, w, h, 0, spec.format, spec.type, null);
+  const fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('buffer target incomplete');
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.activeTexture(active);
+  return { tex, fbo, w, h };
+}
+
+window.__renderBuffers = async function (job) {
+  const out = { dropped: [] };
+  const programs = [];
+  const targets = [];
+  let failedPass = -1;
+  try {
+    canvas.width = job.width;
+    canvas.height = job.height;
+    const spec = gl.getExtension('EXT_color_buffer_float') ? TARGET_FORMATS.rgba16f : TARGET_FORMATS.rgb10a2;
+    const count = job.buffers.length;
+    for (const buffer of job.buffers) {
+      const w = Math.max(1, Math.ceil(job.width * buffer.scale));
+      const h = Math.max(1, Math.ceil(job.height * buffer.scale));
+      targets.push([makeBufferTarget(w, h, spec), makeBufferTarget(w, h, spec)]);
+    }
+    const latest = new Array(count).fill(0);
+    // Each pass's program, its uniforms uploaded once (they do not change between frames here), and the
+    // units its buffer samplers read on.
+    const passes = [...job.buffers, job.image];
+    const live = new Set();
+    const named = new Set();
+    passes.forEach((pass, index) => {
+      failedPass = index;
+      const program = link(job.vert, pass.frag);
+      gl.useProgram(program);
+      let unit = 0;
+      const samplers = [];
+      for (const u of pass.uniforms) {
+        named.add(u.name);
+        if (u.texture) u.unit = unit++;
+        if (BUFFER_SAMPLERS.includes(u.name)) {
+          const loc = gl.getUniformLocation(program, u.name);
+          if (loc !== null) {
+            gl.uniform1i(loc, u.unit);
+            live.add(u.name);
+            samplers.push({ buffer: BUFFER_SAMPLERS.indexOf(u.name), unit: u.unit });
+          }
+          continue;
+        }
+        if (upload(program, u)) live.add(u.name);
+      }
+      programs.push({
+        program, samplers, frame: gl.getUniformLocation(program, 'uBufFrame'), pass: gl.getUniformLocation(program, 'uBufPass'),
+        resolution: gl.getUniformLocation(program, 'uResolution'),
+      });
+    });
+    failedPass = -1;
+    out.dropped = [...named].filter((name) => !live.has(name));
+    const bind = (p) => {
+      for (const s of p.samplers) {
+        gl.activeTexture(gl.TEXTURE0 + s.unit);
+        gl.bindTexture(gl.TEXTURE_2D, s.buffer < count ? targets[s.buffer][latest[s.buffer]].tex : blackTexture());
+      }
+      gl.activeTexture(gl.TEXTURE0);
+    };
+    gl.disableVertexAttribArray(0);
+    gl.disable(gl.BLEND);
+    let previous = null;
+    let jump = 0;
+    for (let frame = 0; frame < job.frames; frame++) {
+      for (let i = 0; i < count; i++) {
+        const p = programs[i];
+        const target = targets[i][1 - latest[i]];
+        gl.useProgram(p.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, target.w, target.h);
+        bind(p);
+        if (p.frame !== null) gl.uniform1f(p.frame, frame);
+        if (p.pass !== null) gl.uniform1f(p.pass, i);
+        if (p.resolution !== null) gl.uniform2f(p.resolution, target.w, target.h);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        latest[i] = 1 - latest[i];
+      }
+      if (frame + job.watch < job.frames) continue;
+      const p = programs[count];
+      gl.useProgram(p.program);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, job.width, job.height);
+      bind(p);
+      if (p.frame !== null) gl.uniform1f(p.frame, frame);
+      if (p.pass !== null) gl.uniform1f(p.pass, count);
+      if (p.resolution !== null) gl.uniform2f(p.resolution, job.width, job.height);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      const stats = frameStats(job.width, job.height);
+      if (previous !== null) jump = Math.max(jump, Math.abs(stats.meanLuma - previous));
+      previous = stats.meanLuma;
+      Object.assign(out, stats);
+    }
+    gl.finish();
+    const err = gl.getError();
+    out.glError = err === gl.NO_ERROR ? 0 : err;
+    out.meanJump = jump;
+    out.png = canvas.toDataURL('image/png').split(',')[1];
+  } catch (e) {
+    out.error = String(e.message || e).replace(/\n/g, ' | ');
+    out.failedPass = failedPass;
+  } finally {
+    for (const pair of targets) for (const t of pair) dropTarget(t);
+    for (const p of programs) gl.deleteProgram(p.program);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  return out;
+};
 window.__harnessReady = true;
 </script>

@@ -48,7 +48,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "inputs", "lens", "particles3d", "feedback", "multipass", "reactivity", "textures",
+    "effects", "tiers", "inputs", "lens", "particles3d", "feedback", "multipass", "reactivity", "textures", "buffers",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -190,6 +190,19 @@ TEXTURE_FILTERS = {"linear", "nearest", "mipmap"}
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PNG_COLOUR_TYPES = {0, 2, 3, 4, 6}
 IMAGE_UNIFORM = re.compile(r"\buImage[A-Z]\w*")
+# A shader Style's own buffer passes (#387, geode/viz/BufferPasses.hpp): one to four, A to D in order, each its
+# own fragment shader in the Style's folder at a share of the scene target, every pass reading them through
+# lib_buffers' uBufA..uBufD. They take the sampler units after the Style's images (the two share four), and
+# never run beside a feedback loop or the engine's multi-pass march. Every buffer is read by some pass, the
+# image pass reads at least one, and no pass reads a buffer the manifest does not declare (it would be bound
+# to nothing).
+MAX_BUFFERS = 4
+BUFFER_LETTERS = "ABCD"
+BUFFER_SCALE = (0.25, 1.0)
+BUFFER_KEYS = {"shader", "scale"}
+BUFFERS_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_buffers[ \t]*$", re.MULTILINE)
+BUFFER_SAMPLER = re.compile(r"\buBuf([A-D])\b")
+BUFFER_WORDS = re.compile(r"\b(?:uBuf[A-D]|uBufFrame|uBufPass|bufFetch|bufFirstFrame)\b")
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -388,16 +401,17 @@ def strip_comments(source: str) -> str:
     return re.sub(r"//[^\n]*", "", re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL))
 
 
-def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report) -> None:
+def check_shader_reads(manifest: dict, shaders: list[Path], where: str, report: Report) -> None:
+    """Every Extra a shader Style declares is read by one of its passes (its shader and its buffer passes)."""
     names = [e["name"] for e in manifest.get("extras", []) if isinstance(e, dict) and isinstance(e.get("name"), str)]
     if isinstance(manifest.get("feedback"), dict):
         names = [name for name in names if name not in FEEDBACK_EXTRAS]
     if not names:
         return
-    source = shader.read_text(encoding="utf-8")
-    if not STYLE_INCLUDE.search(source):
+    sources = [shader.read_text(encoding="utf-8") for shader in shaders]
+    if not any(STYLE_INCLUDE.search(source) for source in sources):
         report.error(where, "a shader Style with Extras includes lib_style (//#include lib_style)")
-    code = strip_comments(source)
+    code = "\n".join(strip_comments(source) for source in sources)
     for name in names:
         # A rate Extra (flight, spin, drift) may be read through its clock, uX<Name>Time (flight also through
         # lib_dmt's uFlight), and the count and the variant through lib_style's xcount() and xvariant().
@@ -495,7 +509,7 @@ def check_reactivity(
         if not shaders:
             return
         read = set().union(*(shader_reactivity(path.read_text(encoding="utf-8")) for path in shaders))
-        reader = "the shader" if len(shaders) == 1 else "the shader and its warp stage"
+        reader = "the shader" if len(shaders) == 1 else "the Style's passes (" + ", ".join(path.name for path in shaders) + ")"
     else:
         read, reader = profiles.get(family, set()), f'family "{family}"\'s renderer'
     for level, feature in sorted(declared - read, key=lambda p: (list(REACTIVITY).index(p[0]), p[1])):
@@ -505,7 +519,9 @@ def check_reactivity(
         report.error(where, f'{reader} reads "{feature}" but "reactivity" "{level}" does not declare it')
 
 
-def check_inputs(manifest: dict, family: str, shader: Path | None, where: str, report: Report) -> None:
+def check_inputs(manifest: dict, family: str, shaders: list[Path] | None, where: str, report: Report) -> None:
+    """The shared inputs a shader Style declares are exactly those its passes read (the engine binds them for
+    every pass), and every pass that reads one includes lib_inputs."""
     declared = manifest.get("inputs", [])
     if not isinstance(declared, list) or not all(isinstance(name, str) for name in declared):
         report.error(where, '"inputs" must be a list of input names')
@@ -518,12 +534,19 @@ def check_inputs(manifest: dict, family: str, shader: Path | None, where: str, r
         if declared:
             report.error(where, f'family "{family}" reads no shared inputs; only a shader Style declares them')
         return
-    if shader is None:
+    if not shaders:
         return
-    source = shader.read_text(encoding="utf-8")
-    code = strip_comments(source)
-    reads = {name for name, words in INPUT_READS.items() if any(re.search(rf"\b{word}\b", code) for word in words)}
-    if (declared or reads) and not INPUTS_INCLUDE.search(source):
+    reads: set[str] = set()
+    included = False
+    for shader in shaders:
+        source = shader.read_text(encoding="utf-8")
+        code = strip_comments(source)
+        read = {name for name, words in INPUT_READS.items() if any(re.search(rf"\b{word}\b", code) for word in words)}
+        included = included or INPUTS_INCLUDE.search(source) is not None
+        if read and not INPUTS_INCLUDE.search(source):
+            report.error(where, f"a shader Style with inputs includes lib_inputs (//#include lib_inputs) in {shader.name}")
+        reads |= read
+    if declared and not included:
         report.error(where, "a shader Style with inputs includes lib_inputs (//#include lib_inputs)")
     for name in sorted(n for n in set(declared) if n in INPUT_READS and n not in reads):
         report.error(where, f'input "{name}" is declared but the shader never reads {" or ".join(INPUT_READS[name])}')
@@ -628,14 +651,20 @@ def check_manifest(
         else:
             expected.add(shader)
             shader_file = folder / shader
-            check_shader_reads(manifest, shader_file, where, report)
-            check_feature_reads(shader_file, where, report)
     elif "shader" in manifest:
         report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
+    buffers = check_buffers(manifest, family, folder, shader_file, where, report)
+    expected.update(buffers)
+    # Every pass of a shader Style: its shader, then its buffer passes.
+    passes = [shader_file] + [folder / name for name in buffers] if shader_file is not None else []
+    if passes:
+        check_shader_reads(manifest, passes, where, report)
+        for path in passes:
+            check_feature_reads(path, where, report)
     warp = check_feedback(manifest, family, folder, where, report)
     if warp is not None:
         expected.add(warp)
-    expected.update(check_textures(manifest, family, folder, shader_file, where, report))
+    expected.update(check_textures(manifest, family, folder, passes, where, report))
     if files != expected:
         report.error(where, f"the folder holds {sorted(files)}, expected {sorted(expected)}")
     if "renderScale" in manifest:
@@ -649,11 +678,11 @@ def check_manifest(
     check_macros(manifest, where, report)
     check_reactions(manifest, where, report)
     check_tiers(manifest, where, report)
-    check_inputs(manifest, family, shader_file, where, report)
+    check_inputs(manifest, family, passes or None, where, report)
     check_lens(manifest, family, where, report)
     check_multipass(manifest, family, shader_file, where, report)
-    own = [path for path in (shader_file, folder / warp if warp is not None else None) if path is not None]
-    check_reactivity(manifest, family, own if shader_file is not None else None, profiles, where, report)
+    own = passes + ([folder / warp] if warp is not None and passes else [])
+    check_reactivity(manifest, family, own or None, profiles, where, report)
 
 
 def check_part(name: str, part: object, shape: tuple, where: str, report: Report) -> None:
@@ -771,7 +800,64 @@ def check_multipass(manifest: dict, family: str, shader: Path | None, where: str
                 report.error(where, f"the shader never calls {call}(), which {pass_name} needs")
 
 
-def check_textures(manifest: dict, family: str, folder: Path, shader: Path | None, where: str, report: Report) -> list[str]:
+def check_buffers(manifest: dict, family: str, folder: Path, shader: Path | None, where: str, report: Report) -> list[str]:
+    """The Style's own buffer passes (#387); returns their file names, which belong in its folder."""
+    declared = manifest.get("buffers")
+    if declared is None:
+        if shader is not None and BUFFERS_INCLUDE.search(shader.read_text(encoding="utf-8")):
+            report.error(where, 'the shader includes lib_buffers but the manifest does not declare "buffers"')
+        return []
+    textures = manifest.get("textures", [])
+    room = MAX_BUFFERS - (len(textures) if isinstance(textures, list) else 0)
+    if not isinstance(declared, list) or not declared or len(declared) > room or not all(isinstance(b, dict) for b in declared):
+        shape = 'no unit is left for "buffers"' if room <= 0 else f'"buffers" must be a list of 1 to {room} passes'
+        report.error(where, f"{shape}: the images and the buffers share {MAX_TEXTURES} units")
+        return []
+    if family != SHADER_FAMILY:
+        report.error(where, '"buffers" needs a shader Style')
+        return []
+    for key in ("feedback", "multipass"):
+        if key in manifest:
+            report.error(where, f'a Style with "{key}" cannot also declare "buffers"')
+    files: list[str] = []
+    for index, buffer in enumerate(declared):
+        name = f"buffer {BUFFER_LETTERS[index]}"
+        unknown = set(buffer) - BUFFER_KEYS
+        if unknown:
+            report.error(where, f"{name} may hold only {sorted(BUFFER_KEYS)}, not {sorted(unknown)}")
+        if "scale" in buffer and not (is_number(buffer["scale"]) and BUFFER_SCALE[0] <= buffer["scale"] <= BUFFER_SCALE[1]):
+            report.error(where, f'{name} "scale" must be a number in [{BUFFER_SCALE[0]}, {BUFFER_SCALE[1]}]')
+        file = buffer.get("shader")
+        if not is_text(file) or "/" in file or not (folder / file).is_file():
+            report.error(where, f'{name} needs "shader": a file in the Style\'s own folder')
+        elif file == manifest.get("shader"):
+            report.error(where, f"{name} needs a shader of its own, not the image pass's")
+        elif file in files:
+            report.error(where, f"{name} shares its shader with another buffer")
+        else:
+            files.append(file)
+    if shader is None or len(files) != len(declared):
+        return files
+    read: set[str] = set()
+    for path in [shader] + [folder / file for file in files]:
+        source = path.read_text(encoding="utf-8")
+        code = strip_comments(source)
+        if BUFFER_WORDS.search(code) and not BUFFERS_INCLUDE.search(source):
+            report.error(where, f"{path.name} reads the buffers but does not include lib_buffers (//#include lib_buffers)")
+        letters = set(BUFFER_SAMPLER.findall(code))
+        for letter in sorted(letters):
+            if BUFFER_LETTERS.index(letter) >= len(files):
+                report.error(where, f'{path.name} reads uBuf{letter}, a buffer "buffers" does not declare')
+        if path == shader and not letters:
+            report.error(where, "the image pass reads none of the buffers (uBufA..uBufD)")
+        read |= letters
+    for letter in BUFFER_LETTERS[: len(files)]:
+        if letter not in read:
+            report.error(where, f"buffer {letter} is declared but no pass reads uBuf{letter}")
+    return files
+
+
+def check_textures(manifest: dict, family: str, folder: Path, shaders: list[Path] | None, where: str, report: Report) -> list[str]:
     """The images the Style ships (#391); returns their file names, which belong in its folder."""
     declared = manifest.get("textures", [])
     if not isinstance(declared, list) or len(declared) > MAX_TEXTURES or not all(isinstance(t, dict) for t in declared):
@@ -804,8 +890,8 @@ def check_textures(manifest: dict, family: str, folder: Path, shader: Path | Non
         problem = png_problem(folder / file)
         if problem:
             report.error(where, f'image "{name}" ({file}) {problem}')
-    if shader is not None:
-        code = strip_comments(shader.read_text(encoding="utf-8"))
+    if shaders:
+        code = "\n".join(strip_comments(shader.read_text(encoding="utf-8")) for shader in shaders)
         for uniform in sorted(uniforms):
             if not re.search(rf"\buniform\s+(?:(?:highp|mediump|lowp)\s+)?sampler2D\s+{uniform}\s*;", code):
                 report.error(where, f"the shader declares no sampler for its image: uniform sampler2D {uniform};")
@@ -993,6 +1079,12 @@ GOOD_MANIFESTS = {
         "multipass": {"scale": 0.5, "coarse": True, "temporal": True},
         "reactivity": {"micro": ["bands"]},
     },
+    "pools": {
+        "version": 1, "id": "pools", "label": "Pools", "family": "shader", "shader": "shader.glsl",
+        "buffers": [{"shader": "buffer_a.glsl", "scale": 0.5}, {"shader": "buffer_b.glsl"}],
+        "inputs": ["clocks"], "extras": [{"name": "growth", "min": 0, "max": 2, "default": 1}],
+        "reactivity": {"macro": ["energy"], "micro": ["bands"]},
+    },
 }
 
 
@@ -1027,6 +1119,20 @@ PASSES_SHADER = (
 )
 
 
+POOLS_IMAGE = "//#include lib_buffers\nvoid main() { fragColor = texture(uBufB, vUv) * uEnergy; }\n"
+POOLS_A = (
+    "//#include lib_buffers\n//#include lib_inputs\n//#include lib_style\n"
+    "void main() { fragColor = bufFetch(uBufA, ivec2(gl_FragCoord.xy)) * uFrameDt * uXGrowth + vec4(uBass); }\n"
+)
+POOLS_B = "//#include lib_buffers\nvoid main() { fragColor = mix(texture(uBufB, vUv), texture(uBufA, vUv), 0.1); }\n"
+POOLS_FILES = [("shader.glsl", POOLS_IMAGE), ("buffer_a.glsl", POOLS_A), ("buffer_b.glsl", POOLS_B)]
+
+
+def pools(image: str = POOLS_IMAGE, a: str = POOLS_A, b: str = POOLS_B) -> list[tuple[str, str]]:
+    """The buffer Style's files, any pass replaced, for the self-test."""
+    return [("shader.glsl", image), ("buffer_a.glsl", a), ("buffer_b.glsl", b)]
+
+
 def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
     styles = root / "styles"
     styles.mkdir()
@@ -1050,7 +1156,9 @@ def run_case(mutate) -> list[str]:
     families = copy.deepcopy(GOOD_FAMILIES)
     manifests = copy.deepcopy(GOOD_MANIFESTS)
     index = list(manifests)
-    shaders = {"orb": list(ORB_FILES), "loop": list(LOOP_FILES), "passes": ("shader.glsl", PASSES_SHADER)}
+    shaders = {
+        "orb": list(ORB_FILES), "loop": list(LOOP_FILES), "passes": ("shader.glsl", PASSES_SHADER), "pools": list(POOLS_FILES),
+    }
     mutate(families, index, manifests, shaders)
     with tempfile.TemporaryDirectory() as tmp:
         return check(write_tree(Path(tmp), families, index, manifests, shaders))
@@ -1171,6 +1279,44 @@ def self_test() -> int:
         "coarse multipass shader that never starts from it": lambda f, i, m, s: s.update(
             {"passes": ("shader.glsl", PASSES_SHADER.replace("mpStart(0.0)", "0.0"))}),
         "lib_multipass without multipass": setter(["passes", "multipass"], DELETE),
+        "buffers not a list": setter(["pools", "buffers"], {"shader": "buffer_a.glsl"}),
+        "buffers empty": setter(["pools", "buffers"], []),
+        "too many buffers": setter(["pools", "buffers"], [{"shader": f"b{n}.glsl"} for n in range(MAX_BUFFERS + 1)]),
+        "buffers crowded out by images": lambda f, i, m, s: (
+            m["pools"].update({"textures": [{"name": f"t{n}", "file": "ramp.png"} for n in range(3)]}),
+            s.update({"pools": list(POOLS_FILES) + [("ramp.png", GOOD_PNG)]})),
+        "buffers on a non-shader family": setter(["drum", "buffers"], [{"shader": "buffer_a.glsl"}]),
+        "buffers beside feedback": lambda f, i, m, s: (
+            m["loop"].update({"buffers": [{"shader": "buffer_a.glsl"}]}),
+            s.update({"loop": list(LOOP_FILES) + [("buffer_a.glsl", POOLS_B.replace("uBufB", "uBufA"))]})),
+        "buffers beside multipass": lambda f, i, m, s: (
+            m["passes"].update({"buffers": [{"shader": "buffer_a.glsl"}]}),
+            s.update({"passes": [("shader.glsl", PASSES_SHADER), ("buffer_a.glsl", POOLS_B.replace("uBufB", "uBufA"))]})),
+        "buffer with an unknown key": setter(["pools", "buffers", 0, "filter"], "nearest"),
+        "buffer scale out of range": setter(["pools", "buffers", 0, "scale"], 0.1),
+        "buffer scale not a number": setter(["pools", "buffers", 1, "scale"], "half"),
+        "buffer shader missing": lambda f, i, m, s: s.update({"pools": [("shader.glsl", POOLS_IMAGE), ("buffer_a.glsl", POOLS_A)]}),
+        "buffer without a shader": setter(["pools", "buffers", 1], {"scale": 0.5}),
+        "buffer shader outside the folder": setter(["pools", "buffers", 0, "shader"], "../buffer_a.glsl"),
+        "buffer sharing the image pass's shader": setter(["pools", "buffers", 1, "shader"], "shader.glsl"),
+        "two buffers sharing a shader": lambda f, i, m, s: (
+            m["pools"]["buffers"][1].update({"shader": "buffer_a.glsl"}), s.update({"pools": pools()[:2]})),
+        "buffer pass without lib_buffers": lambda f, i, m, s: s.update(
+            {"pools": pools(b=POOLS_B.replace("//#include lib_buffers\n", ""))}),
+        "image pass reading no buffer": lambda f, i, m, s: s.update(
+            {"pools": pools(image="//#include lib_buffers\nvoid main() { fragColor = vec4(uEnergy, uBufFrame, 0.0, 1.0); }\n")}),
+        "pass reading a buffer that is not declared": lambda f, i, m, s: s.update(
+            {"pools": pools(image=POOLS_IMAGE.replace("* uEnergy", "* uEnergy + texture(uBufC, vUv)"))}),
+        "buffer no pass reads": lambda f, i, m, s: s.update(
+            {"pools": pools(image=POOLS_IMAGE.replace("uBufB", "uBufA"), b=POOLS_B.replace("texture(uBufB, vUv)", "vec4(0.0)"))}),
+        "lib_buffers without buffers": lambda f, i, m, s: s.update(
+            {"orb": [("shader.glsl", GOOD_SHADER + "//#include lib_buffers\n"), ("ramp.png", GOOD_PNG)]}),
+        "input only a buffer pass reads, not declared": setter(["pools", "inputs"], []),
+        "buffer pass reading an input without lib_inputs": lambda f, i, m, s: s.update(
+            {"pools": pools(a=POOLS_A.replace("//#include lib_inputs\n", ""))}),
+        "Extra only a buffer pass would read, never read": lambda f, i, m, s: s.update(
+            {"pools": pools(a=POOLS_A.replace(" * uXGrowth", ""))}),
+        "reactivity a buffer pass reads but the Style does not declare": setter(["pools", "reactivity"], {"macro": ["energy"]}),
         "textures not a list": setter(["orb", "textures"], {"name": "fold_ramp", "file": "ramp.png"}),
         "too many textures": setter(["orb", "textures"], [{"name": f"t{n}", "file": "ramp.png"} for n in range(MAX_TEXTURES + 1)]),
         "textures on a non-shader family": lambda f, i, m, s: (

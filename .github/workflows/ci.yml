@@ -421,6 +421,7 @@ jobs:
         run: |
           python3 tools/ci/check_style_packs.py --self-test
           python3 tools/ci/check_style_packs.py
+          python3 tools/shader_import/convert.py --self-test
       - name: Render every Style (compile + non-black frame)
         env:
           MUSICVIZ_CHROMIUM: ${{ steps.chrome.outputs.chrome-path }}
