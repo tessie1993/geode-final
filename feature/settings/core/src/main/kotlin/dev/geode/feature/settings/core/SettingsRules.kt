@@ -73,7 +73,8 @@ object SettingsRules {
         command: LookCommand,
     ): LookSettings =
         when (command) {
-            is LookCommand.SetElement -> look.copy(element = command.element)
+            is LookCommand.SetThemeMode -> look.copy(themeMode = command.mode)
+            is LookCommand.SetReduceTransparency -> look.copy(reduceTransparency = command.on)
             is LookCommand.SetAccentIntensity -> look.copy(accentIntensity = command.intensity)
             is LookCommand.SetBackgroundDim -> look.copy(backgroundDim = command.dim)
             is LookCommand.SetFontColor -> look.copy(fontColor = command.color)
@@ -83,7 +84,6 @@ object SettingsRules {
             is LookCommand.SetCornerStyle -> look.copy(cornerStyle = command.style)
             is LookCommand.SetCompactPlayer -> look.copy(compactPlayer = command.on)
             is LookCommand.SetClearVisualsMenu -> look.copy(clearVisualsMenu = command.on)
-            is LookCommand.SetAmbientMode -> look.copy(ambientMode = command.mode)
         }
 
     private fun playback(

@@ -3,7 +3,6 @@ package dev.geode.feature.settings.core
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
-import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
@@ -15,7 +14,6 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -45,6 +43,7 @@ import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
@@ -73,8 +72,11 @@ class SettingsRulesTest {
     private val lookRows: List<Row> =
         listOf(
             Row(LookCommand.SetAccentIntensity(1.2f), defaults.copy(look = look.copy(accentIntensity = 1.2f))),
-            Row(LookCommand.SetElement(Element.STONE), defaults.copy(look = look.copy(element = Element.STONE))),
-            Row(LookCommand.SetElement(Element.WATER), defaults),
+            Row(LookCommand.SetThemeMode(ThemeMode.LIGHT), defaults.copy(look = look.copy(themeMode = ThemeMode.LIGHT))),
+            Row(LookCommand.SetThemeMode(ThemeMode.DARK), defaults.copy(look = look.copy(themeMode = ThemeMode.DARK))),
+            Row(LookCommand.SetThemeMode(ThemeMode.SYSTEM), defaults),
+            Row(LookCommand.SetReduceTransparency(true), defaults.copy(look = look.copy(reduceTransparency = true))),
+            Row(LookCommand.SetReduceTransparency(false), defaults),
             Row(LookCommand.SetAccentIntensity(0.1f), defaults.copy(look = look.copy(accentIntensity = 0.5f))),
             Row(LookCommand.SetAccentIntensity(9f), defaults.copy(look = look.copy(accentIntensity = 1.5f))),
             Row(LookCommand.SetBackgroundDim(0.3f), defaults.copy(look = look.copy(backgroundDim = 0.3f))),
@@ -92,8 +94,6 @@ class SettingsRulesTest {
             Row(LookCommand.SetCornerStyle(CornerStyle.PILL), defaults.copy(look = look.copy(cornerStyle = CornerStyle.PILL))),
             Row(LookCommand.SetCompactPlayer(true), defaults.copy(look = look.copy(compactPlayer = true))),
             Row(LookCommand.SetClearVisualsMenu(true), defaults.copy(look = look.copy(clearVisualsMenu = true))),
-            Row(LookCommand.SetAmbientMode(AmbientMode.STILL), defaults.copy(look = look.copy(ambientMode = AmbientMode.STILL))),
-            Row(LookCommand.SetAmbientMode(AmbientMode.OFF), defaults.copy(look = look.copy(ambientMode = AmbientMode.OFF))),
         )
 
     private val playbackRows: List<Row> =

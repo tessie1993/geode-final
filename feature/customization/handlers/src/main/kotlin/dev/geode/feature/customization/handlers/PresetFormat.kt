@@ -270,15 +270,16 @@ object PresetFormat {
         known: (String) -> K?,
     ): Map<K, Float> {
         val values = o.optJSONObject(key) ?: return emptyMap()
-        return keysOf(values).mapNotNull { name ->
-            val value = values.get(name)
-            val k = known(name)
-            when {
-                k == null -> null.also { unread.entry(key, name, value) }
-                value is Number && !value.toDouble().isNaN() -> k to value.toFloat()
-                else -> null
-            }
-        }.toMap()
+        return keysOf(values)
+            .mapNotNull { name ->
+                val value = values.get(name)
+                val k = known(name)
+                when {
+                    k == null -> null.also { unread.entry(key, name, value) }
+                    value is Number && !value.toDouble().isNaN() -> k to value.toFloat()
+                    else -> null
+                }
+            }.toMap()
     }
 
     private fun legacy(

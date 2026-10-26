@@ -21,10 +21,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,9 +60,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.ModulatorShape
 import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.abs
@@ -83,8 +83,8 @@ internal fun SectionTitle(
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
-        color = LocalForestColors.current.textSecondary,
-        modifier = modifier.padding(top = ForestSpacing.Medium, bottom = ForestSpacing.ExtraSmall),
+        color = LocalGlassStyle.current.colors.textSecondary,
+        modifier = modifier.padding(top = GlassSpacing.Medium, bottom = GlassSpacing.ExtraSmall),
     )
 }
 
@@ -93,8 +93,8 @@ internal fun SectionTitle(
 @Composable
 internal fun ChipFlow(content: @Composable () -> Unit) {
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
-        verticalArrangement = Arrangement.spacedBy(ForestSpacing.ExtraSmall),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall),
     ) { content() }
 }
 
@@ -111,7 +111,7 @@ internal fun ChoiceChip(
         onClick = onClick,
         enabled = enabled,
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        shape = ForestShapes.Chip,
+        shape = MaterialTheme.shapes.small,
     )
 }
 
@@ -149,7 +149,7 @@ internal fun ValueSlider(
     var held by remember { mutableFloatStateOf(row.value) }
     val shown = if (dragging) held else row.value
     var explained by remember { mutableStateOf(false) }
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     val reactTo = stringResource(R.string.customize_react_to)
     val explain = stringResource(R.string.customize_explain)
     val enabled = !row.ignored
@@ -169,10 +169,10 @@ internal fun ValueSlider(
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             if (row.linked) {
                 Icon(
-                    Icons.Filled.Link,
+                    Icons.Rounded.Link,
                     contentDescription = stringResource(R.string.customize_linked),
                     tint = colors.accent,
-                    modifier = Modifier.padding(end = ForestSpacing.Small).size(ForestSpacing.Large),
+                    modifier = Modifier.padding(end = GlassSpacing.Small).size(GlassSpacing.Large),
                 )
             }
             if (row.kind == ValueKind.SWITCH) {
@@ -186,7 +186,7 @@ internal fun ValueSlider(
                 NudgeButton(up = true, enabled = enabled) { nudge(true, it) }
             }
             IconButton(onClick = onReset, enabled = enabled) {
-                Icon(Icons.Filled.Restore, contentDescription = stringResource(R.string.customize_reset_value, label))
+                Icon(Icons.Rounded.Restore, contentDescription = stringResource(R.string.customize_reset_value, label))
             }
         }
         if (explained && help != null) HelpLine(help)
@@ -222,8 +222,8 @@ internal fun HelpLine(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = LocalForestColors.current.textSecondary,
-        modifier = Modifier.padding(bottom = ForestSpacing.ExtraSmall),
+        color = LocalGlassStyle.current.colors.textSecondary,
+        modifier = Modifier.padding(bottom = GlassSpacing.ExtraSmall),
     )
 }
 
@@ -242,7 +242,7 @@ internal fun NudgeButton(
     val coarse = stringResource(if (up) R.string.customize_step_up_coarse else R.string.customize_step_down_coarse)
     Box(
         Modifier
-            .size(ForestSpacing.TapTarget)
+            .size(GlassSize.TapTarget)
             .combinedClickable(
                 enabled = enabled,
                 onClickLabel = fine,
@@ -254,10 +254,10 @@ internal fun NudgeButton(
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            if (up) Icons.Filled.Add else Icons.Filled.Remove,
+            if (up) Icons.Rounded.Add else Icons.Rounded.Remove,
             contentDescription = fine,
-            tint = LocalForestColors.current.textSecondary,
-            modifier = Modifier.size(ForestSpacing.Large),
+            tint = LocalGlassStyle.current.colors.textSecondary,
+            modifier = Modifier.size(GlassSpacing.Large),
         )
     }
 }
@@ -292,10 +292,10 @@ internal fun Meter(
     level: Float,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     Canvas(modifier.fillMaxWidth().height(CustomizeDimens.meter)) {
         drawRect(colors.textSecondary.copy(alpha = QUIET_ALPHA))
-        drawRect(colors.highlight, size = Size(size.width * level.coerceIn(0f, 1f), size.height))
+        drawRect(colors.warm, size = Size(size.width * level.coerceIn(0f, 1f), size.height))
     }
 }
 
@@ -320,7 +320,7 @@ internal fun MacroKnobView(
     val set by rememberUpdatedState(onSet)
     val preview by rememberUpdatedState(onPreview)
     val shown = if (dragging) held else knob.value
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     val percent = (shown * 100).roundToInt()
     val description = stringResource(R.string.customize_macro_knob, knob.name, percent)
     Column(modifier.alpha(if (knob.ignored) IGNORED_ALPHA else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -363,7 +363,7 @@ internal fun MacroKnobView(
                 ring(colors.accent, shown, stroke, inset = stroke / 2)
                 knob.live?.let { live ->
                     val thin = CustomizeDimens.liveStroke.toPx()
-                    ring(colors.highlight, live, thin, inset = stroke + thin)
+                    ring(colors.warm, live, thin, inset = stroke + thin)
                 }
             }
             Text(stringResource(R.string.customize_percent, percent), style = MaterialTheme.typography.titleMedium)
@@ -386,9 +386,9 @@ internal fun MacroKnobView(
                 maxLines = 1,
                 modifier =
                     Modifier
-                        .padding(top = ForestSpacing.Hairline)
-                        .background(colors.accent, ForestShapes.Chip)
-                        .padding(horizontal = ForestSpacing.Small, vertical = ForestSpacing.Hairline),
+                        .padding(top = GlassSpacing.Hairline)
+                        .background(colors.accent, MaterialTheme.shapes.small)
+                        .padding(horizontal = GlassSpacing.Small, vertical = GlassSpacing.Hairline),
             )
         }
     }
@@ -418,7 +418,7 @@ internal fun ModulatorPicture(
     shape: ModulatorShape,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     Canvas(modifier.fillMaxWidth().height(CustomizeDimens.picture)) {
         val stroke = CustomizeDimens.pictureStroke.toPx()
         when (shape) {

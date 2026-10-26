@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
@@ -90,7 +90,7 @@ fun boardOf(reactions: List<Reaction>): Board {
 @Composable
 internal fun PatchBoard(model: CustomizeModel) {
     val board = boardOf(model.reactions.flatMap { group -> group.links.map { it.reaction } })
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     val rows = maxOf(board.sources.size, board.targets.size)
     Row(Modifier.fillMaxWidth()) {
         Text(
@@ -126,7 +126,7 @@ internal fun PatchBoard(model: CustomizeModel) {
                     }
                 drawPath(
                     path,
-                    color = if (cable.loop) colors.highlight else colors.accent,
+                    color = if (cable.loop) colors.warm else colors.accent,
                     style = Stroke(stroke, cap = StrokeCap.Round, pathEffect = if (cable.loop) dashed else null),
                 )
                 drawCircle(colors.accent, node, start)

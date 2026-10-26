@@ -1,7 +1,6 @@
 package dev.geode.feature.visuals.ui
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,13 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Fullscreen
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -41,12 +40,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.design.forest.ForestGlass
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleGroup
 
@@ -64,8 +64,8 @@ fun VisualsTabScreen(
 ) {
     LazyColumn(
         modifier.fillMaxSize(),
-        contentPadding = PaddingValues(ForestSpacing.Large),
-        verticalArrangement = Arrangement.spacedBy(ForestSpacing.Medium),
+        contentPadding = PaddingValues(GlassSpacing.Large),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.Medium),
     ) {
         item { Header(model, onAction) }
         item { SearchField(model.query, onAction) }
@@ -146,7 +146,7 @@ private fun Header(
     model: VisualsTabModel,
     onAction: (VisualsAction) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().glass().padding(ForestSpacing.Large), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.visuals_title), style = MaterialTheme.typography.headlineMedium)
             model.currentName?.let {
@@ -157,9 +157,9 @@ private fun Header(
                 )
             }
         }
-        FilledTonalButton(onClick = { onAction(VisualsAction.EnterFullScreen) }, shape = ForestShapes.Button) {
-            Icon(Icons.Filled.Fullscreen, contentDescription = null)
-            Text(stringResource(R.string.visuals_full_screen), Modifier.padding(start = ForestSpacing.Small))
+        FilledTonalButton(onClick = { onAction(VisualsAction.EnterFullScreen) }) {
+            Icon(Icons.Rounded.Fullscreen, contentDescription = null)
+            Text(stringResource(R.string.visuals_full_screen), Modifier.padding(start = GlassSpacing.Small))
         }
     }
 }
@@ -174,9 +174,9 @@ private fun SearchField(
         onValueChange = { onAction(VisualsAction.Search(it)) },
         modifier = Modifier.fillMaxWidth().glass(),
         placeholder = { Text(stringResource(R.string.visuals_search)) },
-        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
         singleLine = true,
-        shape = ForestShapes.Chip,
+        shape = MaterialTheme.shapes.small,
     )
 }
 
@@ -184,7 +184,7 @@ private fun SearchField(
 internal fun SectionTitle(title: String) {
     Text(
         title,
-        modifier = Modifier.padding(top = ForestSpacing.Small, start = ForestSpacing.Small),
+        modifier = Modifier.padding(top = GlassSpacing.Small, start = GlassSpacing.Small),
         style = MaterialTheme.typography.titleMedium,
     )
 }
@@ -218,7 +218,7 @@ internal fun Hint(
 ) {
     Text(
         stringResource(text),
-        modifier = Modifier.fillMaxWidth().glass().padding(ForestSpacing.Large),
+        modifier = Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -229,7 +229,7 @@ private fun Path(
     path: List<FolderItem>,
     onAction: (VisualsAction) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(ForestSpacing.ExtraSmall), verticalAlignment = Alignment.CenterVertically) {
+    Row(horizontalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = { onAction(VisualsAction.OpenFolder(null)) }) { Text(stringResource(R.string.visuals_top)) }
         for (folder in path.dropLast(1)) {
             Text("/", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -251,14 +251,14 @@ private fun FolderRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = ForestSpacing.TapTarget)
+            .heightIn(min = GlassSize.TapTarget)
             .glass()
             .clickable { onAction(VisualsAction.OpenFolder(folder.id)) }
-            .padding(horizontal = ForestSpacing.Large, vertical = ForestSpacing.Small),
+            .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Filled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f).padding(start = ForestSpacing.Medium)) {
+        Icon(Icons.Rounded.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(start = GlassSpacing.Medium)) {
             Text(folder.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 stringResource(R.string.visuals_folder_count, folder.count),
@@ -268,7 +268,7 @@ private fun FolderRow(
         }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.visuals_more, folder.name))
+                Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, folder.name))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
@@ -312,11 +312,11 @@ private fun StyleRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = ForestSpacing.TapTarget)
+            .heightIn(min = GlassSize.TapTarget)
             .glass()
             .clickable { onAction(VisualsAction.Choose(style.id)) }
-            .padding(start = ForestSpacing.Large, end = ForestSpacing.Small)
-            .padding(vertical = ForestSpacing.Small),
+            .padding(start = GlassSpacing.Large, end = GlassSpacing.Small)
+            .padding(vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -335,7 +335,7 @@ private fun StyleRow(
         }
         if (style.current) {
             Icon(
-                Icons.Filled.GraphicEq,
+                Icons.Rounded.GraphicEq,
                 contentDescription = stringResource(R.string.visuals_showing),
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -343,18 +343,18 @@ private fun StyleRow(
         IconButton(onClick = { onAction(VisualsAction.SetFavourite(style.id, !style.favourite)) }) {
             if (style.favourite) {
                 Icon(
-                    Icons.Filled.Favorite,
+                    Icons.Rounded.Favorite,
                     contentDescription = stringResource(R.string.visuals_unfavourite, style.name),
                     tint = MaterialTheme.colorScheme.primary,
                 )
             } else {
-                Icon(Icons.Outlined.FavoriteBorder, contentDescription = stringResource(R.string.visuals_favourite, style.name))
+                Icon(Icons.Rounded.FavoriteBorder, contentDescription = stringResource(R.string.visuals_favourite, style.name))
             }
         }
         if (folders.isNotEmpty()) {
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.visuals_more, style.name))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, style.name))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     openFolder?.let { folder ->
@@ -407,10 +407,9 @@ private fun NameDialog(
     )
 }
 
-/** Frosted glass over the live Visual, opaque enough to carry text (ForestGlass.TEXT_OPACITY_MIN). */
+/** A glass card over the live Visual: matte, so it carries text, until the engine frosts the Visual (#349). */
 @Composable
-internal fun Modifier.glass(): Modifier =
-    clip(ForestShapes.Card).background(MaterialTheme.colorScheme.surface.copy(alpha = ForestGlass.TEXT_OPACITY_MIN))
+internal fun Modifier.glass(): Modifier = glassSurface(GlassKind.CARD, MaterialTheme.shapes.large, GlassBackdrop.Visual)
 
 /** The name a family is listed under. */
 @get:StringRes

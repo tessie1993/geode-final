@@ -1,6 +1,5 @@
 package dev.geode.feature.visuals.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -20,15 +19,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassEdge
+import dev.geode.design.glass.GlassFade
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.glassSurface
 import dev.geode.engine.types.SceneId
 
 /**
@@ -59,7 +61,8 @@ fun FullScreenVisualScreen(
                 }
             },
     ) {
-        if (model.controlsShown) Controls(model, onAction)
+        // Glass over the Visual fades in and out, never slides (#270).
+        GlassFade(model.controlsShown) { Controls(model, onAction) }
     }
 }
 
@@ -68,42 +71,40 @@ private fun Controls(
     model: FullScreenModel,
     onAction: (FullScreenAction) -> Unit,
 ) {
-    // A soft gradient, not glass: the Visual is a GL surface that cannot be blurred (design system).
-    val scrim = MaterialTheme.colorScheme.scrim
+    // Bands of glass over the Visual: matte until the engine frosts it (#349).
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(scrim.copy(alpha = SCRIM_ALPHA), Color.Transparent)))
+                .glassSurface(GlassKind.BAR, RectangleShape, GlassBackdrop.Visual, GlassEdge.NONE)
                 .safeDrawingPadding()
-                .padding(ForestSpacing.Large),
+                .padding(GlassSpacing.Large),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 model.name.orEmpty(),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            FilledTonalIconButton(onClick = { onAction(FullScreenAction.Exit) }, shape = ForestShapes.Button) {
-                Icon(Icons.Filled.FullscreenExit, contentDescription = stringResource(R.string.visuals_exit_full_screen))
+            FilledTonalIconButton(onClick = { onAction(FullScreenAction.Exit) }) {
+                Icon(Icons.Rounded.FullscreenExit, contentDescription = stringResource(R.string.visuals_exit_full_screen))
             }
         }
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color.Transparent, scrim.copy(alpha = SCRIM_ALPHA))))
+                .glassSurface(GlassKind.BAR, RectangleShape, GlassBackdrop.Visual, GlassEdge.TOP)
                 .safeDrawingPadding()
-                .padding(ForestSpacing.Large),
+                .padding(GlassSpacing.Large),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             StepButton(model.previous, onAction) {
-                Icon(Icons.Filled.ChevronLeft, contentDescription = stringResource(R.string.visuals_previous_style))
+                Icon(Icons.Rounded.ChevronLeft, contentDescription = stringResource(R.string.visuals_previous_style))
             }
             StepButton(model.next, onAction) {
-                Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.visuals_next_style))
+                Icon(Icons.Rounded.ChevronRight, contentDescription = stringResource(R.string.visuals_next_style))
             }
         }
     }
@@ -118,10 +119,6 @@ private fun StepButton(
     FilledTonalIconButton(
         onClick = { style?.let { onAction(FullScreenAction.Choose(it)) } },
         enabled = style != null,
-        shape = ForestShapes.Button,
         content = icon,
     )
 }
-
-/** How dark the gradient behind the controls gets at the screen's edge. */
-private const val SCRIM_ALPHA = 0.55f

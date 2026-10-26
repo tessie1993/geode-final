@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkAdd
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -211,7 +211,7 @@ private fun BookmarkSection(
     Column(verticalArrangement = Arrangement.spacedBy(PlayerDimens.small)) {
         Heading(stringResource(R.string.playback_bookmarks_title))
         OutlinedButton(onClick = { onAction(ListeningAction.AddBookmark) }, enabled = model.trackOpen) {
-            Icon(Icons.Filled.BookmarkAdd, contentDescription = null)
+            Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
             Text(stringResource(R.string.playback_bookmarks_add), Modifier.padding(start = PlayerDimens.small))
         }
         if (model.bookmarks.isEmpty()) {
@@ -235,7 +235,7 @@ private fun BookmarkRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(PlayerDimens.miniGutter),
     ) {
-        Icon(Icons.Filled.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Rounded.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f)) {
             Text(bookmark.track.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
@@ -247,7 +247,7 @@ private fun BookmarkRow(
             )
         }
         IconButton(onClick = { onAction(ListeningAction.RemoveBookmark(bookmark.id)) }) {
-            Icon(Icons.Filled.Delete, stringResource(R.string.playback_action_remove_bookmark))
+            Icon(Icons.Rounded.Delete, stringResource(R.string.playback_action_remove_bookmark))
         }
     }
 }

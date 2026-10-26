@@ -9,8 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -112,7 +112,7 @@ fun SmartPlaylistEditor(
             )
         }
         TextButton(onClick = { onChange(fields.withNewRule()) }) {
-            Icon(Icons.Filled.Add, contentDescription = null)
+            Icon(Icons.Rounded.Add, contentDescription = null)
             Text(stringResource(R.string.library_smart_add_rule))
         }
         OutlinedTextField(
@@ -173,7 +173,7 @@ private fun RuleEditor(
                 )
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.library_smart_remove_rule))
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.library_smart_remove_rule))
             }
         }
     }

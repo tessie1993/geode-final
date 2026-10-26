@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.LinkOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,9 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.SharedGroup
@@ -52,8 +51,8 @@ internal fun AdvancedView(
     page: CustomizePage.Advanced,
 ) {
     Row(
-        Modifier.horizontalScroll(rememberScrollState()).padding(vertical = ForestSpacing.ExtraSmall),
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
+        Modifier.horizontalScroll(rememberScrollState()).padding(vertical = GlassSpacing.ExtraSmall),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
     ) {
         AdvancedSection.entries.forEach { section ->
             ChoiceChip(sectionName(section), section == page.section) { panel.open(CustomizePage.Advanced(section)) }
@@ -76,7 +75,7 @@ internal fun AdvancedView(
         AdvancedSection.MACROS -> MacrosSection(panel, page.macro)
         AdvancedSection.LAYERS -> LayersSection(panel)
     }
-    TextButton(onClick = { panel.send(CustomizationCommand.ResetToStyle) }, modifier = Modifier.padding(top = ForestSpacing.Large)) {
+    TextButton(onClick = { panel.send(CustomizationCommand.ResetToStyle) }, modifier = Modifier.padding(top = GlassSpacing.Large)) {
         Text(stringResource(R.string.customize_reset))
     }
 }
@@ -99,8 +98,8 @@ internal fun QuietText(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = LocalForestColors.current.textSecondary,
-        modifier = Modifier.padding(vertical = ForestSpacing.Small),
+        color = LocalGlassStyle.current.colors.textSecondary,
+        modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
 }
 
@@ -134,7 +133,7 @@ private fun ReactionsSection(
 ) {
     val board = page.board
     val model = panel.model
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
         ChoiceChip(stringResource(R.string.customize_links_list), !board) { panel.open(page.copy(board = false)) }
         ChoiceChip(stringResource(R.string.customize_links_board), board) { panel.open(page.copy(board = true)) }
         Spacer(Modifier.weight(1f))
@@ -142,7 +141,7 @@ private fun ReactionsSection(
             Text(stringResource(R.string.customize_learn))
         }
         IconButton(onClick = { panel.open(CustomizePage.ChooseSource()) }) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.customize_new_link))
+            Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.customize_new_link))
         }
     }
     when {
@@ -168,13 +167,13 @@ private fun LinkItem(
             Modifier
                 .fillMaxWidth()
                 .clickable { panel.open(CustomizePage.EditReaction(reaction, isNew = false)) }
-                .padding(vertical = ForestSpacing.ExtraSmall),
+                .padding(vertical = GlassSpacing.ExtraSmall),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
                 Row {
                     Text(sourceName(reaction.source, panel.model), style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.width(ForestSpacing.Small))
+                    Spacer(Modifier.width(GlassSpacing.Small))
                     Text(
                         if (reaction.invert) {
                             stringResource(R.string.customize_link_inverted)
@@ -182,13 +181,13 @@ private fun LinkItem(
                             stringResource(R.string.customize_percent, percentOf(reaction.amount))
                         },
                         style = MaterialTheme.typography.labelMedium,
-                        color = LocalForestColors.current.textSecondary,
+                        color = LocalGlassStyle.current.colors.textSecondary,
                     )
                 }
-                Meter(link.live ?: reaction.amount, Modifier.padding(top = ForestSpacing.ExtraSmall))
+                Meter(link.live ?: reaction.amount, Modifier.padding(top = GlassSpacing.ExtraSmall))
             }
             IconButton(onClick = remove) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.customize_remove_link))
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.customize_remove_link))
             }
         }
     }
@@ -221,7 +220,7 @@ internal fun HeldSlider(
             held = nudged(held, range.start, range.endInclusive, ValueKind.CONTINUOUS, up = false, coarse = coarse)
             onSet(held)
         }
-        Text(text(held), style = MaterialTheme.typography.labelMedium, color = LocalForestColors.current.textSecondary)
+        Text(text(held), style = MaterialTheme.typography.labelMedium, color = LocalGlassStyle.current.colors.textSecondary)
         NudgeButton(up = true) { coarse ->
             held = nudged(held, range.start, range.endInclusive, ValueKind.CONTINUOUS, up = true, coarse = coarse)
             onSet(held)
@@ -269,7 +268,7 @@ private fun MacroCard(
                 onClick = { panel.send(CustomizationCommand.RenameMacro(knob.index, name.trim())) },
                 enabled = name.isNotBlank() && name.trim() != knob.name,
             ) {
-                Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.customize_rename))
+                Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.customize_rename))
             }
         }
         HeldSlider(
@@ -311,10 +310,10 @@ private fun MacroLinkItem(
         Text(
             stringResource(R.string.customize_range_value, percentOf(link.low), percentOf(link.high)),
             style = MaterialTheme.typography.labelMedium,
-            color = LocalForestColors.current.textSecondary,
+            color = LocalGlassStyle.current.colors.textSecondary,
         )
         IconButton(onClick = { panel.send(CustomizationCommand.UnlinkMacro(index, link.target)) }) {
-            Icon(Icons.Filled.LinkOff, contentDescription = stringResource(R.string.customize_macro_unlink, name))
+            Icon(Icons.Rounded.LinkOff, contentDescription = stringResource(R.string.customize_macro_unlink, name))
         }
     }
     RangeSlider(
@@ -334,11 +333,13 @@ private fun MacroLinkItem(
 @Composable
 internal fun InsetCard(content: @Composable () -> Unit) {
     Surface(
-        shape = ForestShapes.Card,
-        color = LocalForestColors.current.base.copy(alpha = QUIET_ALPHA),
-        modifier = Modifier.fillMaxWidth().padding(vertical = ForestSpacing.Small),
+        shape = MaterialTheme.shapes.large,
+        color =
+            LocalGlassStyle.current.colors.base
+                .copy(alpha = QUIET_ALPHA),
+        modifier = Modifier.fillMaxWidth().padding(vertical = GlassSpacing.Small),
     ) {
-        Column(Modifier.padding(ForestSpacing.Medium)) { content() }
+        Column(Modifier.padding(GlassSpacing.Medium)) { content() }
     }
 }
 

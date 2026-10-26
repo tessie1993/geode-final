@@ -1,6 +1,5 @@
 package dev.geode.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +21,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.design.CrystalButton
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.calmBackdrop
 
 /**
  * The first-run photosensitivity notice.
@@ -40,7 +40,7 @@ fun SafetyConsent(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .calmBackdrop()
                 .systemBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
@@ -69,7 +69,7 @@ fun SafetyConsent(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(28.dp))
-        CrystalButton(
+        GlassButton(
             onClick = onAcknowledge,
             modifier = Modifier.fillMaxWidth(),
         ) {

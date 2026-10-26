@@ -2,10 +2,8 @@ package dev.geode.feature.settings.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
-import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
@@ -13,6 +11,7 @@ import dev.geode.feature.settings.api.ExportQuality
 import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
+import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
@@ -21,13 +20,12 @@ import dev.geode.feature.settings.api.VisualSurface
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
 
 @Composable
-internal fun elementName(element: Element): String =
+internal fun themeModeName(mode: ThemeMode): String =
     stringResource(
-        when (element) {
-            Element.WATER -> R.string.look_element_water
-            Element.WOOD -> R.string.look_element_wood
-            Element.STONE -> R.string.look_element_stone
-            Element.BIOLUMINESCENCE -> R.string.look_element_bioluminescence
+        when (mode) {
+            ThemeMode.SYSTEM -> R.string.look_theme_system
+            ThemeMode.DARK -> R.string.look_theme_dark
+            ThemeMode.LIGHT -> R.string.look_theme_light
         },
     )
 
@@ -57,16 +55,6 @@ internal fun cornerName(style: CornerStyle): String =
             CornerStyle.SHARP -> R.string.look_corner_sharp
             CornerStyle.ROUNDED -> R.string.look_corner_rounded
             CornerStyle.PILL -> R.string.look_corner_pill
-        },
-    )
-
-@Composable
-internal fun ambientName(mode: AmbientMode): String =
-    stringResource(
-        when (mode) {
-            AmbientMode.DRIFTING -> R.string.look_ambient_drifting
-            AmbientMode.STILL -> R.string.look_ambient_still
-            AmbientMode.OFF -> R.string.look_ambient_off
         },
     )
 

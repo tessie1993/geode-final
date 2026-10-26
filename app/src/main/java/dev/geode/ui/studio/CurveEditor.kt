@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,7 +28,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.design.CrystalSlider
+import dev.geode.design.glass.GlassSheet
+import dev.geode.design.glass.GlassSlider
 import dev.geode.editor.AnimatableParam
 import dev.geode.editor.BezierCurve
 import dev.geode.editor.EaseShape
@@ -196,7 +196,7 @@ private fun LabeledValueSlider(
 ) {
     Column {
         Text(label, style = MaterialTheme.typography.labelMedium)
-        CrystalSlider(value = value.coerceIn(min, max), onValueChange = onChange, valueRange = min..max)
+        GlassSlider(value = value.coerceIn(min, max), onValueChange = onChange, valueRange = min..max)
     }
 }
 
@@ -208,7 +208,7 @@ fun AddTrackSheet(
     onPick: (AnimatableParam) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    GlassSheet(onDismissRequest = onDismiss) {
         Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
             Text(stringResource(R.string.curve_add_track), style = MaterialTheme.typography.titleMedium)
             LazyColumn {

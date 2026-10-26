@@ -204,7 +204,12 @@ class PresetFormatTest {
     /** [value] as plain maps, lists and doubles, so two files compare whatever their key order. */
     private fun plain(value: Any?): Any? =
         when (value) {
-            is JSONObject -> value.keys().asSequence().toList().associateWith { plain(value.get(it)) }
+            is JSONObject ->
+                value
+                    .keys()
+                    .asSequence()
+                    .toList()
+                    .associateWith { plain(value.get(it)) }
             is JSONArray -> List(value.length()) { plain(value.get(it)) }
             is Number -> value.toDouble()
             else -> value

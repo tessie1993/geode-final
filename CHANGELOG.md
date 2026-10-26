@@ -53,6 +53,22 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   An output that disconnects is reopened with backoff, and after its retries
   it reports an output error rather than "decoding failed".
 
+- **Frosted glass App UI (#324), and the Elements retired (#333).** The App UI
+  is one classic look of frosted, translucent, matte glass, light or dark (or
+  as the phone is), in `dev.geode.design.glass`: the #270 tokens (blur
+  24/32/40 dp, backdrop clamp 0.35, tint 0.60/0.65, 4% grain, 1 dp edge, matte
+  0.94), Material roles mapped onto glass, Inter, and familiar Material
+  controls with 48 dp touch targets. The playing song's art, blurred and
+  clamped, sits behind Home and the plain player; a calm backdrop behind the
+  other pages. The Bar frosts the page live through Haze 2.0.1; glass over the
+  live Visual is matte until the engine frosts it (#349). Settings > Theme
+  adds Match phone / Dark / Light and Reduce transparency; battery saver,
+  heat, contrast settings and Visuals off calm the glass on their own. Empty,
+  loading and error states say what is going on in one line with one thing to
+  do. `GlassContrastRulesTest` holds every text role to WCAG AA over the worst
+  backdrop in both modes. The Element picker, skins, the Water module, the Home
+  placeholder, the Crystal, stone and forest components, their art, sounds and
+  fonts, and the Element asset pipeline and its CI check are gone.
 
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings

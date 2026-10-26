@@ -30,9 +30,12 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.design.CrystalButton
-import dev.geode.design.CrystalOverline
-import dev.geode.design.crystalPanel
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSectionHeader
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.glassSurface
 import dev.geode.ui.shell.Place
 
 /**
@@ -76,16 +79,11 @@ fun TutorialOverlay(
                 .navigationBarsPadding()
                 .padding(16.dp)
                 .fillMaxWidth()
-                .crystalPanel(
-                    0.92f,
-                    MaterialTheme.colorScheme.surface,
-                    MaterialTheme.colorScheme.primary,
-                    corner = 20.dp,
-                    glowStrength = 0.7f,
-                ).padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .glassSurface(GlassKind.SHEET, MaterialTheme.shapes.extraLarge, GlassBackdrop.Unknown)
+                .padding(GlassSpacing.ExtraLarge),
+            verticalArrangement = Arrangement.spacedBy(GlassSpacing.Medium),
         ) {
-            CrystalOverline(stringResource(R.string.tutorial_progress, index + 1, steps.size))
+            GlassSectionHeader(stringResource(R.string.tutorial_progress, index + 1, steps.size))
             Text(
                 stringResource(step.titleRes),
                 style = MaterialTheme.typography.titleMedium,
@@ -132,13 +130,13 @@ private fun TutorialActions(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         // Skip stays put at the left on every step, including the last, so it never becomes a
         // moving target and nobody has to hunt for the way out.
-        CrystalButton(onClick = onSkip) { Text(stringResource(R.string.tutorial_skip)) }
+        GlassButton(onClick = onSkip) { Text(stringResource(R.string.tutorial_skip)) }
         Spacer(Modifier.weight(1f))
         if (!atFirst) {
-            CrystalButton(onClick = onBack) { Text(stringResource(R.string.tutorial_back)) }
+            GlassButton(onClick = onBack) { Text(stringResource(R.string.tutorial_back)) }
             Spacer(Modifier.width(8.dp))
         }
-        CrystalButton(onClick = onNext) {
+        GlassButton(onClick = onNext) {
             Text(stringResource(if (atLast) R.string.tutorial_finish else R.string.tutorial_next))
         }
     }

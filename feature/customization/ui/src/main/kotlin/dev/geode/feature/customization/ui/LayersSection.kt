@@ -77,7 +77,10 @@ private fun LayerSliders(
     vararg properties: SharedProperty,
 ) {
     val wanted = properties.map { Target.Shared(it) }
-    val rows = panel.model.shared[SharedGroup.LAYERS].orEmpty().filter { it.target in wanted }
+    val rows =
+        panel.model.shared[SharedGroup.LAYERS]
+            .orEmpty()
+            .filter { it.target in wanted }
     SliderGroup(panel, rows)
 }
 

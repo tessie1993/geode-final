@@ -9,7 +9,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
-import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BackgroundCommand
@@ -49,6 +48,7 @@ import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
@@ -61,15 +61,21 @@ private const val MILLIBELS_PER_DECIBEL = 100f
 private const val BASS_BOOST_FULL = 1_000f
 private val NO_SLEEP_TIMER = Minutes(0)
 
-/** Theme (was Look): the Element, accent, text and layout of the App UI. */
+/** Theme (was Look): light or dark, transparency, accent, text and layout of the App UI. */
 internal fun LazyListScope.themeSection(
     look: LookSettings,
     fontColors: List<FontColorChoice>,
     change: (SettingsCommand) -> Unit,
 ) {
     item {
-        SettingsGroup(stringResource(R.string.look_group_element)) {
-            ElementPicker(look.element) { change(LookCommand.SetElement(it)) }
+        SettingsGroup(stringResource(R.string.look_group_appearance)) {
+            ChoiceRow(stringResource(R.string.look_theme_mode), ThemeMode.entries, look.themeMode, { themeModeName(it) }) {
+                change(LookCommand.SetThemeMode(it))
+            }
+            SwitchRow(stringResource(R.string.look_reduce_transparency), look.reduceTransparency) {
+                change(LookCommand.SetReduceTransparency(it))
+            }
+            Note(stringResource(R.string.look_reduce_transparency_note))
         }
     }
     item {
@@ -118,20 +124,6 @@ internal fun LazyListScope.themeSection(
             SwitchRow(stringResource(R.string.look_clear_visuals_menu), look.clearVisualsMenu) {
                 change(LookCommand.SetClearVisualsMenu(it))
             }
-        }
-    }
-    item { HomeGroup(look.ambientMode, change) }
-}
-
-/** Ambient: how much Home's Hero scene moves by itself. Its own group, so its screenshot shows it whole. */
-@Composable
-internal fun HomeGroup(
-    ambientMode: AmbientMode,
-    change: (SettingsCommand) -> Unit,
-) {
-    SettingsGroup(stringResource(R.string.look_group_home)) {
-        ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, ambientMode, { ambientName(it) }) {
-            change(LookCommand.SetAmbientMode(it))
         }
     }
 }
