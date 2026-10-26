@@ -16,6 +16,8 @@ class GeodeApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Before any activity starts, so Studio's queue knows whether the app is in front (#28).
+        AppPresence.watch(this)
         // Failures caught at the native bridge go to the app-wide error channel for the life of the process.
         EngineFailureNotices.reportTo(errors)
         if (BuildConfig.DEBUG) {

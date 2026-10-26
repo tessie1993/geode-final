@@ -110,7 +110,9 @@ class StudioHandlers(
                     results.report(StudioEvent.VideosAdded(work.project, storage.addVideos(work.project, work.videos)))
                 }
             StudioWork.FollowRenderSettings -> sources.renders.settings.collect { results.report(StudioEvent.RenderSettingsChanged(it)) }
+            StudioWork.FollowAppInFront -> sources.renders.inFront.collect { results.report(StudioEvent.AppInFront(it)) }
             is StudioWork.QueueRenders -> queue(work, results)
+            is StudioWork.QueueRenderAgain -> queueAgain(work, results)
             is StudioWork.Render -> render(work.render, results)
             is StudioWork.StopRender -> stopping += work.render
             is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
@@ -128,6 +130,18 @@ class StudioHandlers(
         if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
         guarded(results, StudioFailure.QUEUE_RENDER) {
             results.report(StudioEvent.RendersQueued(storage.queueRenders(work.renders, look, sources.now())))
+        }
+    }
+
+    /** Reads back the look frozen for the Render being made again, then saves the new Render with it (#327). */
+    private suspend fun queueAgain(
+        work: StudioWork.QueueRenderAgain,
+        results: Results<StudioEvent>,
+    ) {
+        val look = attempt { storage.lookOfVideo(work.file) }
+        if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
+        guarded(results, StudioFailure.QUEUE_RENDER) {
+            results.report(StudioEvent.RendersQueued(storage.queueRenders(listOf(work.render), look, sources.now())))
         }
     }
 
@@ -205,7 +219,13 @@ fun studioStore(
         toEvent = StudioEvent::Command,
         runner = StudioHandlers(sources),
         runtime = runtime,
-        start = listOf(Perform(StudioWork.Load), Perform(StudioWork.FollowSaveFolder), Perform(StudioWork.FollowRenderSettings)),
+        start =
+            listOf(
+                Perform(StudioWork.Load),
+                Perform(StudioWork.FollowSaveFolder),
+                Perform(StudioWork.FollowRenderSettings),
+                Perform(StudioWork.FollowAppInFront),
+            ),
     )
 
 /**

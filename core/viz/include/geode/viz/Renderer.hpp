@@ -92,6 +92,8 @@ public:
     void setOverlayRgba(const uint32_t* pixels, int width, int height);
     void setUnderlayRgba(const uint32_t* pixels, int width, int height, int blend, float amount);
     ThermalGovernor& thermal() { return thermal_; }
+    // GL thread, before surfaceChanged: a Render's scene supersample (scale::totalScale clamps it, #345).
+    void setExportSupersample(float factor) { exportSupersample_ = factor; }
     // Any thread: the frame pacer's latest window (frames in it, 95th percentile interval in ms),
     // which the load scale follows. Sampled by the host about once a second.
     void setFrameLoad(int frames, float p95Ms);
@@ -249,6 +251,7 @@ private:
     std::atomic<bool> reducedMotion_{false};
     std::atomic<float> touchSmear_{0.0f};
     scale::FrameLoad frameLoad_;
+    float exportSupersample_ = scale::kExportSupersample;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
     // The audio window setFramePcm handed over for the next frame, and the one this frame draws: latched in

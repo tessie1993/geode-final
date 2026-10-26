@@ -368,6 +368,12 @@ object GeodeNative {
         on: Boolean,
     ): Int
 
+    /** A Render's scene supersample, 1..2 (#345); set before the surface size. */
+    external fun vizSetExportSupersample(
+        handle: Long,
+        factor: Float,
+    ): Int
+
     external fun vizKnows(
         handle: Long,
         sceneId: String,
@@ -464,6 +470,17 @@ object GeodeNative {
     external fun vizAttachFeed(
         handle: Long,
         feed: Long,
+    ): Int
+
+    /**
+     * The next frame's audio for a Visual reading no feed (#342): [frames] interleaved stereo frames of
+     * [stereo] ending at the audio heard, the newest [fresh] of them heard since the last frame.
+     */
+    external fun vizSetFramePcm(
+        handle: Long,
+        stereo: FloatArray,
+        frames: Int,
+        fresh: Int,
     ): Int
 
     /** When the next frame is expected on screen, in System.nanoTime nanoseconds; 0 draws for now. */

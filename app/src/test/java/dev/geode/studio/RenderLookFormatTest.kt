@@ -8,6 +8,7 @@ import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.CameraMove
 import dev.geode.feature.customization.api.CameraMoveKind
 import dev.geode.feature.customization.api.Lane
+import dev.geode.feature.customization.api.Layer
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.ModulatorParameter
@@ -15,6 +16,7 @@ import dev.geode.feature.customization.api.ModulatorShape
 import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.StepLength
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
@@ -88,5 +90,26 @@ class RenderLookFormatTest {
         val o = JSONObject(RenderLookFormat.encode(look))
         o.remove("automations")
         assertEquals(Automations.NONE, RenderLookFormat.decode(o.toString(), SceneId("fallback")).automations)
+    }
+
+    @Test
+    fun `Layer 2 and the chosen Styles of switching are kept with the look`() {
+        val other = BuiltInStyles.all[1].id
+        val layered =
+            look.copy(
+                layer = Layer(style = other),
+                automations = automations.copy(style = automations.style?.copy(pool = StylePool.CHOSEN, chosen = listOf(style, other))),
+            )
+        assertEquals(layered, RenderLookFormat.decode(RenderLookFormat.encode(layered), SceneId("fallback")))
+    }
+
+    @Test
+    fun `what Style switching picks from is frozen beside the look`() {
+        val other = BuiltInStyles.all[1].id
+        val context = SwitchingContext(listOf(style), mapOf(style to StyleMark.LOVE, other to StyleMark.NEVER), listOf(other))
+        assertEquals(context, RenderLookFormat.decodeContext(RenderLookFormat.encode(look, context)))
+        // A look frozen before the context was kept picks from nothing more than its own.
+        val older = JSONObject(RenderLookFormat.encode(look, context)).apply { remove("switchingFrom") }
+        assertEquals(SwitchingContext(), RenderLookFormat.decodeContext(older.toString()))
     }
 }

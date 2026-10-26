@@ -370,6 +370,7 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     in.surfaceWidth = width_;
     in.surfaceHeight = height_;
     in.offscreen = thermal_.offscreen();
+    in.exportSupersample = exportSupersample_;
     in.thermalCeiling = thermal_.renderCeiling();
     // MilkDrop follows load on its own (MilkdropAdaptation: mesh first, buffers only at a preset
     // change), so the load scale leaves its scene target alone; the thermal ceiling still applies.

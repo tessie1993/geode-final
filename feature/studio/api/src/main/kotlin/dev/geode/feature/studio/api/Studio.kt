@@ -62,9 +62,9 @@ fun shapeOf(
 /**
  * A finished video that is not in the library yet, as whatever made it hands it to Studio with
  * [StudioCommand.AddVideos]: a Render (#22), a Recording (#23), an Edit or Short (#24, #25), or an old
- * Studio export imported once at the switch-over (#17). Only the common fields (#21); re-render data
- * comes with #22. [file] and [thumbnail] are content uris; [song] is the title of the song it was made
- * to, blank when there was none or it is not known.
+ * Studio export imported once at the switch-over (#17). [file] and [thumbnail] are content uris; [song]
+ * is the title of the song it was made to, blank when there was none or it is not known. [madeWith] is,
+ * for a Render Studio made, the setup it was made from, so it can be made again (#327); null otherwise.
  */
 data class NewVideo(
     val kind: VideoKind,
@@ -75,9 +75,14 @@ data class NewVideo(
     val width: Int,
     val height: Int,
     val song: String,
+    val madeWith: RenderSpec? = null,
 )
 
-/** One video in the library, in exactly one [project]. The fields are [NewVideo]'s. */
+/**
+ * One video in the library, in exactly one [project]. The fields are [NewVideo]'s: a Render Studio
+ * made keeps the setup it was made from in [madeWith], and can be made again at another shape or
+ * quality with [StudioCommand.RenderAgain] (#327).
+ */
 data class Video(
     val id: VideoId,
     val project: ProjectId,
@@ -89,6 +94,7 @@ data class Video(
     val width: Int,
     val height: Int,
     val song: String,
+    val madeWith: RenderSpec? = null,
 ) {
     val shape: Shape get() = shapeOf(width, height)
 }
@@ -119,6 +125,8 @@ sealed interface SaveFolder {
  * app started. [visualsOff] is Settings' Visuals off, while which no Render can be made (#196).
  * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
  * [recording] is the Recording of the live Visual, if one runs or waits for its Project (#317).
+ * [rendersKeepGoing] is Settings' Renders keep going switch (#28), and [appInFront] whether the app is
+ * what the person sees: with the switch off, Renders only run while the app is in front.
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -132,7 +140,12 @@ data class StudioState(
     val renderFormat: RenderFormat = RenderFormat(),
     val renderExtras: RenderExtras = RenderExtras(),
     val recording: RecordingState = RecordingState.Idle,
+    val rendersKeepGoing: Boolean = true,
+    val appInFront: Boolean = true,
 ) {
+    /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
+    val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront
+
     fun videosIn(project: ProjectId): List<Video> = videos.filter { it.project == project }
 
     /** Whether Studio's first-run step should be shown: Settings are read and no save folder is picked. */
@@ -214,6 +227,18 @@ sealed interface StudioCommand {
      * a word on the banner, while Visuals off is on or when there is no Project for it.
      */
     data class QueueRender(
+        val spec: RenderSpec,
+    ) : StudioCommand
+
+    /**
+     * Makes the Render [video] again (#327): a new Render of the same Track with the look frozen for
+     * [video], and [spec]'s format, length, Project, extras and MilkDrop preset. [spec]'s tracks, look
+     * and playlist are not looked at. The new video is its own Render, and nothing about it changes what
+     * the next fresh Render of the song starts from. Refused as [QueueRender] is; a video that is not a
+     * Render Studio made does nothing.
+     */
+    data class RenderAgain(
+        val video: VideoId,
         val spec: RenderSpec,
     ) : StudioCommand
 

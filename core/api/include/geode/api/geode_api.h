@@ -174,6 +174,9 @@ GEODE_API void        geode_viz_set_quality_ceiling(geode_viz*, float ceiling); 
  * between drawn frames, in ms. The scene and trail buffers scale with it; sample about once a second. */
 GEODE_API void        geode_viz_set_frame_load(geode_viz*, int frames, float p95_ms);
 GEODE_API void        geode_viz_set_offscreen(geode_viz*, int on);
+/* A Render's scene supersample, 1..2 (clamped): its scene draws at the export size times this (#345).
+ * Set before the surface size; the live Visual ignores it. */
+GEODE_API void        geode_viz_set_export_supersample(geode_viz*, float factor);
 GEODE_API int         geode_viz_knows(geode_viz*, const char* scene_id);
 GEODE_API size_t      geode_viz_scene_ids(geode_viz*, char* out, size_t capacity);   /* newline-joined; returns the full length */
 GEODE_API const char* geode_viz_last_error(geode_viz*);   /* "" when clean */
@@ -200,6 +203,11 @@ GEODE_API GeodeStatus geode_viz_attach_feed(geode_viz*, geode_feed*);
 /* Freeze reactions (#366), for a Visual reading a feed: while held, each frame gets the features as they
  * stood when the hold began, with no event firing, and the scenes the same audio window. Any thread. */
 GEODE_API void        geode_viz_set_reactions_held(geode_viz*, int held);
+/* The next frame's audio for the scenes, interleaved stereo: `frames` frames ending at the audio heard (the
+ * newest GEODE_FEED_SPAN_FRAMES are kept), the newest `fresh` of them heard since the last frame. What a
+ * Render, which reads no feed, hands over from its own decode of the track (#342): the same span and window
+ * an attached feed gives the live Visual. Drawing thread only; it holds for the next frame alone. */
+GEODE_API void        geode_viz_set_frame_pcm(geode_viz*, const float* stereo, int frames, int fresh);
 /* When the next frame is expected on screen, in nanoseconds of CLOCK_MONOTONIC (System.nanoTime): a Visual
  * reading a feed draws the audio heard then rather than now. 0 (the default) draws for now. Any thread. */
 GEODE_API void        geode_viz_set_present_time(geode_viz*, int64_t present_ns);
