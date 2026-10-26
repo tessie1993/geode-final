@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material.icons.rounded.Refresh
@@ -43,7 +45,10 @@ import dev.geode.design.glass.GlassSpacing
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
 import dev.geode.feature.visuals.api.MilkdropPreset
+import dev.geode.feature.visuals.api.PackLimit
+import dev.geode.feature.visuals.api.PackProblem
 import dev.geode.feature.visuals.api.PresetPlayback
 
 /**
@@ -169,6 +174,12 @@ private fun Header(
             ImportButton(R.string.milkdrop_import_textures, Icons.Rounded.Image, canImport) {
                 onAction(MilkdropAction.Pick(MilkdropKind.TEXTURES))
             }
+            ImportButton(R.string.milkdrop_import_folder, Icons.Rounded.FolderOpen, canImport) {
+                onAction(MilkdropAction.PickPack(MilkdropPackType.FOLDER))
+            }
+            ImportButton(R.string.milkdrop_import_zip, Icons.Rounded.Archive, canImport) {
+                onAction(MilkdropAction.PickPack(MilkdropPackType.ZIP))
+            }
         }
     }
 }
@@ -192,47 +203,65 @@ private fun Report(
     onAction: (MilkdropAction) -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large), verticalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
-        val count = report.imported.size
-        val headline =
-            when {
-                count == 0 -> stringResource(R.string.milkdrop_nothing_imported)
-                report.kind == MilkdropKind.PRESETS -> pluralStringResource(R.plurals.milkdrop_imported_presets, count, count)
-                else -> pluralStringResource(R.plurals.milkdrop_imported_textures, count, count)
-            }
-        Text(headline, style = MaterialTheme.typography.titleMedium)
-        if (report.broken.isNotEmpty()) {
-            Text(
-                pluralStringResource(R.plurals.milkdrop_broken, report.broken.size, report.broken.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Text(headline(report), style = MaterialTheme.typography.titleMedium)
+        // A pack (#399): the textures that came with its presets, what it held besides, and where it stopped.
+        val brought = report.textures.size
+        if (brought > 0 &&
+            report.imported.isNotEmpty()
+        ) {
+            ReportNote(pluralStringResource(R.plurals.milkdrop_pack_textures, brought, brought))
+        }
+        report.stopped?.let { ReportNote(stringResource(it.label)) }
+        if (report.broken.isNotEmpty()) ReportNote(pluralStringResource(R.plurals.milkdrop_broken, report.broken.size, report.broken.size))
+        if (report.skipped.isNotEmpty()) {
+            ReportNote(
+                pluralStringResource(R.plurals.milkdrop_skipped, report.skipped.size, report.skipped.size),
             )
         }
-        for (name in report.imported) {
-            val playback = report.playback[name] ?: continue
+        // A pack can bring thousands; the first of each kind are named, and the rest counted.
+        val played = report.imported.mapNotNull { name -> report.playback[name]?.let { name to it } }
+        Capped(played) { (name, playback) ->
             ReportLine(name, playback.label(), if (playback == PresetPlayback.Full) MaterialTheme.colorScheme.primary else null)
         }
-        for (broken in report.broken) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    broken.name,
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    stringResource(broken.problem.label),
-                    Modifier.padding(start = GlassSpacing.Medium),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-        }
+        Capped(report.broken) { ReportLine(it.name, stringResource(it.problem.label), null) }
+        Capped(report.skipped) { ReportLine(it.path, stringResource(it.problem.label), MaterialTheme.colorScheme.onSurfaceVariant) }
         TextButton(onClick = { onAction(MilkdropAction.DismissReport) }, modifier = Modifier.align(Alignment.End)) {
             Text(stringResource(R.string.milkdrop_dismiss))
         }
     }
 }
+
+/** The report's first line: how many came in, presets or textures, or that nothing did. */
+@Composable
+private fun headline(report: ImportReport): String {
+    val presets = report.imported.size
+    val textures = report.textures.size
+    return when {
+        presets == 0 && textures == 0 -> stringResource(R.string.milkdrop_nothing_imported)
+        report.kind == MilkdropKind.TEXTURES -> pluralStringResource(R.plurals.milkdrop_imported_textures, presets, presets)
+        presets == 0 -> pluralStringResource(R.plurals.milkdrop_imported_textures, textures, textures)
+        else -> pluralStringResource(R.plurals.milkdrop_imported_presets, presets, presets)
+    }
+}
+
+@Composable
+private fun ReportNote(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+/** The first [REPORT_LINES] of [items], each as [line], and how many more there are. */
+@Composable
+private fun <T> Capped(
+    items: List<T>,
+    line: @Composable (T) -> Unit,
+) {
+    items.take(REPORT_LINES).forEach { line(it) }
+    val more = items.size - REPORT_LINES
+    if (more > 0) ReportNote(pluralStringResource(R.plurals.milkdrop_and_more, more, more))
+}
+
+/** The most files of one kind a report names; a pack can bring thousands. */
+private const val REPORT_LINES = 40
 
 /** One file of the report: its [name], and what came of it in [color] (the error colour when null). */
 @Composable
@@ -360,6 +389,24 @@ private fun TextureRow(
         DeleteButton(name, canDelete, onDelete)
     }
 }
+
+/** Why a file in a pack was passed over, said on screen (#399). */
+@get:StringRes
+internal val PackProblem.label: Int
+    get() =
+        when (this) {
+            PackProblem.NOT_MILKDROP -> R.string.milkdrop_skipped_not_milkdrop
+            PackProblem.UNSAFE_PATH -> R.string.milkdrop_skipped_unsafe
+        }
+
+/** The limit a pack ran into, said on screen (#399). */
+@get:StringRes
+internal val PackLimit.label: Int
+    get() =
+        when (this) {
+            PackLimit.ENTRIES -> R.string.milkdrop_pack_too_many
+            PackLimit.SIZE -> R.string.milkdrop_pack_too_large
+        }
 
 /** How a problem is said on screen. */
 @get:StringRes

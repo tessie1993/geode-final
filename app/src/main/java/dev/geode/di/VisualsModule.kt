@@ -22,6 +22,7 @@ import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.handlers.ContentPickedFiles
+import dev.geode.feature.visuals.handlers.ContentPickedPacks
 import dev.geode.feature.visuals.handlers.DataStoreVisualsStorage
 import dev.geode.feature.visuals.handlers.visualsDataStore
 import dev.geode.feature.visuals.handlers.visualsStore
@@ -128,6 +129,7 @@ object VisualsModule {
             manifests = BuiltInStyles.all,
             milkdrop = InstalledMilkdropFolder(application),
             picked = ContentPickedFiles(application),
+            packs = ContentPickedPacks(application),
             builtInMilkdrop =
                 MilkCatalog.load(application).presets.map { MilkdropPreset(it.file, it.name, it.author, builtIn = true) },
             runtime = runtime,

@@ -6,6 +6,7 @@ import dev.geode.feature.visuals.api.BrokenFile
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
 import dev.geode.feature.visuals.api.VisualsCommand
@@ -67,6 +68,8 @@ class MilkdropModelTest {
     fun `dismissing sends a Command, and picking stays in the route`() {
         assertEquals(VisualsCommand.DismissImportReport, MilkdropAction.DismissReport.toCommand())
         assertNull(MilkdropAction.Pick(MilkdropKind.PRESETS).toCommand())
+        assertNull(MilkdropAction.PickPack(MilkdropPackType.FOLDER).toCommand())
+        assertNull(MilkdropAction.PickPack(MilkdropPackType.ZIP).toCommand())
         assertNull(MilkdropAction.Reload.toCommand())
         assertFalse(VisualsState(milkdrop = MilkdropShelf(presets)).toMilkdropModel().canReload)
     }

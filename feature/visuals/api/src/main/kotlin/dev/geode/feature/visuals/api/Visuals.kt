@@ -175,6 +175,19 @@ sealed interface VisualsCommand {
         val files: List<String>,
     ) : VisualsCommand
 
+    /**
+     * Imports the whole pack at [uri] (#399): a folder (a document tree uri from the system folder
+     * picker) or a `.zip` file (a document uri), as [type] says. Every preset and texture in it comes
+     * in as [ImportMilkdrop] brings in one; each subfolder becomes a folder of the Visuals tab holding
+     * its presets, inside one named for the pack. Anything else in it is passed over, and the report in
+     * [MilkdropShelf.lastImport] says so. Does nothing while another import runs or before the MilkDrop
+     * folder has been listed.
+     */
+    data class ImportMilkdropPack(
+        val type: MilkdropPackType,
+        val uri: String,
+    ) : VisualsCommand
+
     /** Forgets [MilkdropShelf.lastImport], once the person has read it. */
     data object DismissImportReport : VisualsCommand
 

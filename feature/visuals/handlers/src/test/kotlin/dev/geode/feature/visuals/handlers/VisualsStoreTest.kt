@@ -47,6 +47,7 @@ class VisualsStoreTest {
             manifests,
             FakeMilkdropFolder(),
             FakePickedFiles(emptyMap()),
+            FakePickedPacks(),
             emptyList(),
             inPlaceRuntime(failures = failures),
         )

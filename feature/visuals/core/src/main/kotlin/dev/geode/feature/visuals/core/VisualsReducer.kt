@@ -31,8 +31,9 @@ import dev.geode.kernel.ReportFailure
  * listed as a Style of its own in the MilkDrop group (#305), so it is chosen like any other. An import runs one
  * at a time, and only once the folder has been listed; while it runs, another is ignored. Its report
  * stays until the person dismisses it or starts the next import. An import that fails as a whole is
- * reported on the app-wide error channel, and the next one may start. The person's own presets and
- * textures can be deleted ([MilkdropEdits], #360).
+ * reported on the app-wide error channel, and the next one may start. A whole pack, a folder or a zip,
+ * imports the same way (#399), and its presets are filed in folders of the library named for the pack's.
+ * The person's own presets and textures can be deleted ([MilkdropEdits], #360).
  */
 object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
     /** What the store carries out once, when it is built. */
@@ -88,6 +89,7 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsCommand.ImportPresetLink -> PresetEdits.importLink(state, command.text)
             is VisualsCommand.ImportPresetFile -> Next(state, listOf(Perform(VisualsWork.ImportPresetFile(command.uri))))
             is VisualsCommand.ImportMilkdrop -> import(state, command)
+            is VisualsCommand.ImportMilkdropPack -> importPack(state, command)
             VisualsCommand.DismissImportReport -> dismiss(state)
             is VisualsCommand.DeleteMilkdrop -> MilkdropEdits.delete(state, command)
         }
@@ -150,13 +152,24 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
         state: VisualsState,
         command: VisualsCommand.ImportMilkdrop,
     ): Next<VisualsState, VisualsEffect> {
-        val shelf = state.milkdrop
         val files = command.files.distinct()
-        if (shelf == null || shelf.importing || files.isEmpty()) return Next(state)
-        return Next(
-            state.copy(milkdrop = shelf.copy(importing = true, lastImport = null)),
-            listOf(Perform(VisualsWork.ImportMilkdrop(command.kind, files))),
-        )
+        return if (files.isEmpty()) Next(state) else importing(state, VisualsWork.ImportMilkdrop(command.kind, files))
+    }
+
+    private fun importPack(
+        state: VisualsState,
+        command: VisualsCommand.ImportMilkdropPack,
+    ): Next<VisualsState, VisualsEffect> =
+        if (command.uri.isBlank()) Next(state) else importing(state, VisualsWork.ImportMilkdropPack(command.type, command.uri))
+
+    /** Starts [work], an import, once the folder has been listed and no other import runs. */
+    private fun importing(
+        state: VisualsState,
+        work: VisualsWork,
+    ): Next<VisualsState, VisualsEffect> {
+        val shelf = state.milkdrop
+        if (shelf == null || shelf.importing) return Next(state)
+        return Next(state.copy(milkdrop = shelf.copy(importing = true, lastImport = null)), listOf(Perform(work)))
     }
 
     private fun dismiss(state: VisualsState): Next<VisualsState, VisualsEffect> {
@@ -176,16 +189,21 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             Next(state.copy(styles = styles, milkdrop = MilkdropShelf(event.presets, event.textures)))
         }
 
+    /**
+     * The import's lists and report; a pack's presets are filed in the folders [VisualsEvent.MilkdropImported.folders]
+     * names (#399), once the library has loaded.
+     */
     private fun imported(
         state: VisualsState,
         event: VisualsEvent.MilkdropImported,
-    ): Next<VisualsState, VisualsEffect> =
-        Next(
+    ): Next<VisualsState, VisualsEffect> {
+        val next =
             state.copy(
                 styles = StyleEntries.withMilkdrop(state.styles, event.presets),
                 milkdrop = MilkdropShelf(event.presets, event.textures, importing = false, lastImport = event.report),
-            ),
-        )
+            )
+        return edit(next) { LibraryEdits.file(it, next, event.folders) }
+    }
 
     private fun deleted(
         state: VisualsState,

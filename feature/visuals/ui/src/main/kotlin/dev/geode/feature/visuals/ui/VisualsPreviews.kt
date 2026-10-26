@@ -92,6 +92,10 @@ internal fun MilkdropPreview() = MilkdropPreviewOf(PreviewStates.milkdrop)
 @Composable
 internal fun MilkdropLightPreview() = MilkdropPreviewOf(PreviewStates.milkdrop, dark = false)
 
+@Preview(name = "MilkDrop, after a pack", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun MilkdropPackPreview() = MilkdropPreviewOf(PreviewStates.milkdropPack)
+
 @Preview(name = "MilkDrop, loading", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 internal fun MilkdropLoadingPreview() = MilkdropPreviewOf(PreviewStates.milkdropLoading)

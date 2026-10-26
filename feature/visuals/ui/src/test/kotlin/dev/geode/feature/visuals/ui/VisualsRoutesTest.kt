@@ -136,12 +136,43 @@ class VisualsRoutesTest {
 
         compose.onNodeWithText("Import textures").performClick()
         val picker = shadowOf(compose.activity).nextStartedActivityForResult.intent
+        // The pack buttons (#399) make the header taller, so the report's button may sit below the screen.
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("OK"))
         compose.onNodeWithText("OK").performClick()
 
         assertEquals(Intent.ACTION_OPEN_DOCUMENT, picker.action)
         assertTrue(picker.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false))
         assertEquals(listOf("image/*", "application/octet-stream"), picker.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.toList())
         assertEquals(listOf<VisualsCommand>(VisualsCommand.DismissImportReport), milkdrop.sent)
+    }
+
+    @Test
+    fun `a whole pack is picked as a folder through the folder picker, or as a zip (#399)`() {
+        compose.setContent { MilkdropRoute(RecordingVisuals(PreviewStates.milkdrop)) }
+
+        compose.onNodeWithText("Import a folder").performClick()
+        val folder = shadowOf(compose.activity).nextStartedActivityForResult.intent
+        compose.onNodeWithText("Import a .zip pack").performClick()
+        val zip = shadowOf(compose.activity).nextStartedActivityForResult.intent
+
+        assertEquals(Intent.ACTION_OPEN_DOCUMENT_TREE, folder.action)
+        assertEquals(Intent.ACTION_OPEN_DOCUMENT, zip.action)
+        assertEquals(
+            listOf("application/zip", "application/x-zip-compressed", "application/octet-stream"),
+            zip.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.toList(),
+        )
+    }
+
+    @Test
+    fun `a pack's report says what came along, what was passed over and where it stopped`() {
+        compose.setContent { MilkdropRoute(RecordingVisuals(PreviewStates.milkdropPack)) }
+
+        compose.onNodeWithText("Imported 1 preset").assertExists()
+        compose.onNodeWithText("1 texture came with them.").assertExists()
+        compose.onNodeWithText("1 file in the pack was passed over.").assertExists()
+        compose.onNodeWithText("Mix/readme.txt").assertExists()
+        compose.onNodeWithText("Not a preset or texture").assertExists()
+        compose.onNodeWithText("The pack unpacks to more than one import takes. The rest of it was not read.").assertExists()
     }
 
     @Test

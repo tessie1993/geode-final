@@ -122,4 +122,22 @@ class MilkdropChecksTest {
 
         assertEquals(PresetPlayback.WithoutShader(listOf("determinant")), playback)
     }
+
+    @Test
+    fun `a preset's needs are read once and judged later beside the textures held then (#399)`() {
+        val needs = MilkdropChecks.needs(preset(warp = "ret = tex2D(sampler_worms, uv);", comp = "ret = tex2D(sampler_fw_Sky, uv);"))
+
+        assertEquals(PresetNeeds(emptyList(), listOf("worms", "Sky")), needs)
+        assertEquals(PresetPlayback.MissingTextures(listOf("worms", "Sky")), MilkdropChecks.playback(needs, emptyList()))
+        assertEquals(PresetPlayback.MissingTextures(listOf("Sky")), MilkdropChecks.playback(needs, listOf("worms.png")))
+        assertEquals(PresetPlayback.Full, MilkdropChecks.playback(needs, listOf("worms.png", "sky_0a1b2c3d.jpg")))
+    }
+
+    @Test
+    fun `needs that cannot run play without their shader, whatever is held`() {
+        val needs = MilkdropChecks.needs(preset(warp = "ret = tex2D(sampler_worms, uv) * determinant(m);"))
+
+        assertEquals(PresetNeeds(listOf("determinant"), listOf("worms")), needs)
+        assertEquals(PresetPlayback.WithoutShader(listOf("determinant")), MilkdropChecks.playback(needs, listOf("worms.png")))
+    }
 }

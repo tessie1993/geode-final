@@ -11,6 +11,20 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **MilkDrop packs in one go (#399).** The MilkDrop screen imports a whole
+  folder, through the system folder picker, or a `.zip` pack, through the
+  file picker, with no new permission. Every preset and texture in it comes
+  in as a picked one does, checked first; the pack's subfolders become
+  folders of the Visuals tab holding their presets, inside one named for the
+  pack, and its textures come along, so presets are judged against them
+  wherever in the pack they sit. Zips are read with `java.util.zip` as they
+  stream: an entry whose path leads out of the pack (`..`, absolute, a
+  drive) is refused, a pack stops at 20,000 entries or 512 MB unpacked
+  (counted as it unpacks, skipped entries too), and anything that is neither
+  preset nor texture is passed over. The import report says what came along,
+  what was passed over and why, and where a pack stopped. Texture links are
+  rebuilt once per pack rather than after each file.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio

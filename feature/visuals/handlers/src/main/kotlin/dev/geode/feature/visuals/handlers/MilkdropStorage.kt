@@ -31,6 +31,12 @@ interface MilkdropFolder {
         kind: MilkdropKind,
         name: String,
     )
+
+    /**
+     * Runs [block], a run of writes made as one, such as a whole pack's (#399): a folder that does work
+     * after each write may do it once, after the last, whether [block] finishes or throws.
+     */
+    suspend fun <T> batch(block: suspend () -> T): T = block()
 }
 
 /** Reads what the person picked through the system picker. */

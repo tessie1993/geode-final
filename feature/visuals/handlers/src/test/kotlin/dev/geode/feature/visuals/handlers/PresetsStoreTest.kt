@@ -67,6 +67,7 @@ class PresetsStoreTest {
             manifests,
             FakeMilkdropFolder(),
             FakePickedFiles(emptyMap()),
+            FakePickedPacks(),
             emptyList(),
             inPlaceRuntime(failures = failures),
         )

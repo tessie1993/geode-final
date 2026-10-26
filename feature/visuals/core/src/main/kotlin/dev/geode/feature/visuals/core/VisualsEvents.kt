@@ -5,6 +5,7 @@ import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.PresetShelf
@@ -60,11 +61,16 @@ sealed interface VisualsEvent {
         val textures: List<String>,
     ) : VisualsEvent
 
-    /** An import finished as [report] says, and left the MilkDrop folder holding [presets] and [textures]. */
+    /**
+     * An import finished as [report] says, and left the MilkDrop folder holding [presets] and [textures].
+     * A pack's (#399) files each preset it brought in (by file name) in [folders]: the folder of the
+     * Visuals tab it goes in, by name, outermost first ([MilkdropPacks.folders]).
+     */
     data class MilkdropImported(
         val report: ImportReport,
         val presets: List<MilkdropPreset>,
         val textures: List<String>,
+        val folders: Map<String, List<String>> = emptyMap(),
     ) : VisualsEvent
 
     /** A file was deleted from the MilkDrop folder, which now holds [presets] and [textures] (#360). */
@@ -188,6 +194,16 @@ sealed interface VisualsWork {
     data class ImportMilkdrop(
         val kind: MilkdropKind,
         val files: List<String>,
+    ) : VisualsWork
+
+    /**
+     * Walk the pack at [uri] (a folder or a zip, as [type] says), bringing in its presets and textures as
+     * [ImportMilkdrop] does and passing over the rest ([MilkdropPacks.sort]), within the pack limits;
+     * answered with [VisualsEvent.MilkdropImported], its presets filed by folder.
+     */
+    data class ImportMilkdropPack(
+        val type: MilkdropPackType,
+        val uri: String,
     ) : VisualsWork
 
     /** Delete the file [file] of [kind] from the MilkDrop folder; answered with [VisualsEvent.MilkdropDeleted]. */

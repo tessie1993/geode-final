@@ -18,6 +18,40 @@ enum class MilkdropKind {
     TEXTURES,
 }
 
+/**
+ * A whole pack of MilkDrop presets brought in at once (#399): a [FOLDER] picked through the system
+ * folder picker, or a [ZIP] file. Its subfolders become folders of the Visuals tab holding their
+ * presets, and its textures come along.
+ */
+enum class MilkdropPackType {
+    FOLDER,
+    ZIP,
+}
+
+/** Why a file in a pack was passed over without being read (#399). */
+enum class PackProblem {
+    /** Neither a MilkDrop preset nor a texture, by its name: a readme, a screenshot list, an installer. */
+    NOT_MILKDROP,
+
+    /** Its path in the pack leads out of it (`..`), or starts at the top of the phone (absolute). */
+    UNSAFE_PATH,
+}
+
+/** A file in a pack that was passed over: its [path] in the pack, and why. */
+data class SkippedEntry(
+    val path: String,
+    val problem: PackProblem,
+)
+
+/** The limit a pack ran into, after which nothing more of it was read (#399). */
+enum class PackLimit {
+    /** It holds more files and folders than one import takes. */
+    ENTRIES,
+
+    /** What it unpacks to is larger than one import takes. */
+    SIZE,
+}
+
 /** Why a picked file was not imported. Nothing about it reached the MilkDrop folder. */
 enum class MilkdropImportProblem {
     /** Not a MilkDrop preset: no `[preset00]` section, or not text at all. */
@@ -74,12 +108,19 @@ sealed interface PresetPlayback {
  * How one import went: the [kind] of files picked, the names of those [imported] (as the lists show
  * them), and every file that was [broken]. A broken file never stops the others. For an import of
  * presets, [playback] says how each one imported (by the name it is shown by) will play.
+ *
+ * A pack (#399) imports as presets: [textures] are the textures that came along with them, [skipped]
+ * the files in it that were neither (or whose path was unsafe), and [stopped] the limit it ran into,
+ * when it did; what came before that is in.
  */
 data class ImportReport(
     val kind: MilkdropKind,
     val imported: List<String>,
     val broken: List<BrokenFile>,
     val playback: Map<String, PresetPlayback> = emptyMap(),
+    val textures: List<String> = emptyList(),
+    val skipped: List<SkippedEntry> = emptyList(),
+    val stopped: PackLimit? = null,
 )
 
 /**

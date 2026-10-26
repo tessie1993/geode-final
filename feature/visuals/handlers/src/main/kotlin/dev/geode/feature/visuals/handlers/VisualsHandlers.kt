@@ -10,6 +10,7 @@ import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.PresetPlayback
 import dev.geode.feature.visuals.api.PresetShelf
@@ -20,6 +21,7 @@ import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.api.VisualsState
 import dev.geode.feature.visuals.core.MilkdropChecks
 import dev.geode.feature.visuals.core.MilkdropFiles
+import dev.geode.feature.visuals.core.MilkdropPacks
 import dev.geode.feature.visuals.core.PickedFile
 import dev.geode.feature.visuals.core.Planned
 import dev.geode.feature.visuals.core.PresetLinks
@@ -57,8 +59,9 @@ interface VisualsStorage {
  * library in [storage], and lists, changes, shares and imports the preset files in [presets]. Saves
  * are written one at a time, in the order they start. It lists the [milkdrop] folder beside the
  * [builtInMilkdrop] presets, and imports [picked] files into it one by one, each checked first
- * ([MilkdropFiles.plan]), so a broken file is reported and never stops the rest. Everything that can
- * fail is caught here and reported as a named event.
+ * ([MilkdropFiles.plan]), so a broken file is reported and never stops the rest; a whole pack, a folder
+ * or a zip the person picked, comes in the same way through [packs] (#399). Everything that can fail is
+ * caught here and reported as a named event.
  */
 class VisualsHandlers(
     private val customization: CustomizationFeature,
@@ -66,6 +69,7 @@ class VisualsHandlers(
     private val presets: PresetFiles,
     private val milkdrop: MilkdropFolder,
     private val picked: PickedFiles,
+    private val packs: PickedPacks,
     private val builtInMilkdrop: List<MilkdropPreset>,
 ) : EffectRunner<VisualsWork, VisualsEvent> {
     private val writing = Mutex()
@@ -119,6 +123,9 @@ class VisualsHandlers(
                     ?.let { (milks, textures) -> results.report(VisualsEvent.MilkdropListed(milks, textures)) }
             is VisualsWork.ImportMilkdrop ->
                 attempt(results, WorkFailure.MILKDROP_NOT_IMPORTED) { importMilkdrop(work.kind, work.files) }?.let(results::report)
+            is VisualsWork.ImportMilkdropPack ->
+                attempt(results, WorkFailure.MILKDROP_NOT_IMPORTED) { milkdrop.batch { importPack(work.type, work.uri) } }
+                    ?.let(results::report)
             is VisualsWork.DeleteMilkdrop ->
                 attempt(results, WorkFailure.MILKDROP_NOT_DELETED) {
                     milkdrop.delete(work.kind, work.file)
@@ -200,6 +207,32 @@ class VisualsHandlers(
         return VisualsEvent.MilkdropImported(ImportReport(kind, imported, broken, playback), milks, textures)
     }
 
+    /**
+     * Walks the pack at [uri], bringing in its presets and textures one by one ([PackImport]) and filing
+     * each preset by the pack folder it sat in ([MilkdropPacks.folders]). A pack that stops being readable
+     * part way is reported broken, by its name, and keeps what came in before.
+     */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    private suspend fun importPack(
+        type: MilkdropPackType,
+        uri: String,
+    ): VisualsEvent.MilkdropImported {
+        val pack = packs.name(type, uri)
+        val presets = milkdrop.files(MilkdropKind.PRESETS) + builtInMilkdrop.map { it.file }
+        val run = PackImport(presets, milkdrop.files(MilkdropKind.TEXTURES)) { kind, planned -> written(kind, planned) }
+        val stopped =
+            try {
+                packs.walk(type, uri) { run.take(it) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (thrown: Exception) {
+                run.unreadable(pack.ifEmpty { uri.substringAfterLast('/') })
+                null
+            }
+        val (milks, textures) = listing()
+        return VisualsEvent.MilkdropImported(run.report(textures, stopped), milks, textures, MilkdropPacks.folders(pack, run.placed))
+    }
+
     private fun playbackOf(
         planned: Planned.Write,
         held: List<String>,
@@ -257,7 +290,8 @@ class VisualsHandlers(
  * MilkDrop folder are its start effects.
  *
  * MilkDrop (#145): [milkdrop] is the folder presets and textures are imported into
- * ([FileMilkdropFolder.of]), [picked] reads what the system picker gives ([ContentPickedFiles]), and
+ * ([FileMilkdropFolder.of]), [picked] reads what the system picker gives ([ContentPickedFiles]), [packs]
+ * reads the folders and zips of presets the person picks (#399, [ContentPickedPacks]), and
  * [builtInMilkdrop] are the curated presets Geode ships (#93), from `assets/milk/catalog.json`, each
  * with its display name and author.
  */
@@ -268,6 +302,7 @@ fun visualsStore(
     manifests: List<StyleManifest>,
     milkdrop: MilkdropFolder,
     picked: PickedFiles,
+    packs: PickedPacks,
     builtInMilkdrop: List<MilkdropPreset>,
     runtime: FeatureRuntime,
 ): Visuals =
@@ -276,7 +311,7 @@ fun visualsStore(
         initial = VisualsState(styles = StyleEntries.from(manifests)),
         reducer = VisualsReducer,
         toEvent = VisualsEvent::Command,
-        runner = VisualsHandlers(customization, storage, presets, milkdrop, picked, builtInMilkdrop),
+        runner = VisualsHandlers(customization, storage, presets, milkdrop, picked, packs, builtInMilkdrop),
         runtime = runtime,
         start = VisualsReducer.start,
     )

@@ -1,5 +1,6 @@
 package dev.geode.feature.visuals.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleLibrary
@@ -101,6 +102,42 @@ internal object LibraryEdits {
         library: StyleLibrary,
         command: VisualsCommand.RemoveFromFolder,
     ): StyleLibrary = library.change(command.folder) { it.copy(styles = it.styles - command.style) }
+
+    /**
+     * Files each MilkDrop preset of [placed] (its file, and the folder it goes in, by name, outermost
+     * first) in that folder, after the presets it already holds (#399). A folder is found by its name
+     * inside its parent, or made, numbered one after the highest in use, so importing a pack again fills
+     * the same folders. A preset whose Style this version does not draw, or whose folder has no name
+     * left once cleaned, is not filed.
+     */
+    fun file(
+        library: StyleLibrary,
+        state: VisualsState,
+        placed: Map<String, List<String>>,
+    ): StyleLibrary {
+        var filed = library
+        for ((file, names) in placed) {
+            val style = MilkdropStyles.of(file)
+            val path = names.mapNotNull(::clean)
+            if (!state.draws(style) || path.isEmpty()) continue
+            val (made, folder) = filed.folderAt(path)
+            filed = made.change(folder) { if (style in it.styles) it else it.copy(styles = it.styles + style) }
+        }
+        return filed
+    }
+
+    /** The folder at [path] (names, outermost first, from the top), made where it is missing, and the library holding it. */
+    private fun StyleLibrary.folderAt(path: List<String>): Pair<StyleLibrary, FolderId> {
+        var library = this
+        var parent: FolderId? = null
+        for (name in path) {
+            val found = library.foldersIn(parent).firstOrNull { it.name == name }
+            val id = found?.id ?: FolderId((library.folders.maxOfOrNull { it.id.value } ?: 0L) + 1)
+            if (found == null) library = library.copy(folders = library.folders + Folder(id, name, parent, emptyList()))
+            parent = id
+        }
+        return library to checkNotNull(parent)
+    }
 
     /** [name] without stray spaces and cut to [FOLDER_NAME_LIMIT], or null when nothing is left. */
     private fun clean(name: String): String? =

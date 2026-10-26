@@ -48,6 +48,8 @@ import dev.geode.feature.playback.handlers.PlaybackStorage
 import dev.geode.feature.playback.handlers.SavedSession
 import dev.geode.feature.playback.handlers.playbackStore
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
+import dev.geode.feature.visuals.api.PackLimit
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.SavedPreset
 import dev.geode.feature.visuals.api.StyleLibrary
@@ -55,7 +57,9 @@ import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.core.PickedFile
 import dev.geode.feature.visuals.handlers.MilkdropFolder
+import dev.geode.feature.visuals.handlers.PackFile
 import dev.geode.feature.visuals.handlers.PickedFiles
+import dev.geode.feature.visuals.handlers.PickedPacks
 import dev.geode.feature.visuals.handlers.PresetFiles
 import dev.geode.feature.visuals.handlers.SavedPresets
 import dev.geode.feature.visuals.handlers.VisualsStorage
@@ -139,6 +143,7 @@ class VisualsJourneyRobolectricTest {
             BuiltInStyles.all,
             EmptyMilkdropFolder,
             NoPicks,
+            NoPacks,
             emptyList(),
             runtime,
         )
@@ -307,6 +312,19 @@ class VisualsJourneyRobolectricTest {
             uri: String,
             limit: Int,
         ): PickedFile = PickedFile.Unreadable(uri)
+    }
+
+    private object NoPacks : PickedPacks {
+        override suspend fun name(
+            type: MilkdropPackType,
+            uri: String,
+        ): String = uri
+
+        override suspend fun walk(
+            type: MilkdropPackType,
+            uri: String,
+            visit: suspend (PackFile) -> Unit,
+        ): PackLimit? = null
     }
 
     private class MemoryPlaybackStorage : PlaybackStorage {

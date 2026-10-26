@@ -50,6 +50,7 @@ class MilkdropStoreTest {
             listOf(manifest(milk, StyleFamily.MILKDROP)),
             folder,
             picked,
+            FakePickedPacks(),
             listOf(tidal, aurora),
             inPlaceRuntime(failures = failures),
         )

@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.MilkdropStyles
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsState
@@ -39,6 +40,11 @@ sealed interface MilkdropAction {
         val kind: MilkdropKind,
     ) : MilkdropAction
 
+    /** Open the system picker for a whole pack of [type]: the folder picker, or the file picker for a zip (#399). */
+    data class PickPack(
+        val type: MilkdropPackType,
+    ) : MilkdropAction
+
     /** The last import's report has been read. */
     data object DismissReport : MilkdropAction
 
@@ -63,7 +69,7 @@ sealed interface MilkdropAction {
 /** The Command an action sends; null for one the route carries out itself. */
 fun MilkdropAction.toCommand(): VisualsCommand? =
     when (this) {
-        is MilkdropAction.Pick, MilkdropAction.Reload -> null
+        is MilkdropAction.Pick, is MilkdropAction.PickPack, MilkdropAction.Reload -> null
         MilkdropAction.DismissReport -> VisualsCommand.DismissImportReport
         is MilkdropAction.Play -> VisualsCommand.Choose(MilkdropStyles.of(file))
         is MilkdropAction.Delete -> VisualsCommand.DeleteMilkdrop(kind, file)

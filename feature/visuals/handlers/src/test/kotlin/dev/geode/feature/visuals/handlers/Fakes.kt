@@ -13,6 +13,8 @@ import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.customization.api.StyleManifest
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
+import dev.geode.feature.visuals.api.PackLimit
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.SavedPreset
 import dev.geode.feature.visuals.api.StyleLibrary
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import java.io.FileNotFoundException
+import java.io.IOException
 
 /** A Customization showing [style]; nothing else of it matters here. */
 fun customizationOf(style: SceneId): CustomizationState =
@@ -119,6 +122,14 @@ class FakeMilkdropFolder(
         check(name !in failDelete) { "read-only" }
         stored.getValue(kind).remove(name)
     }
+
+    /** How many batches of writes were made (#399). */
+    var batches = 0
+
+    override suspend fun <T> batch(block: suspend () -> T): T {
+        batches++
+        return block()
+    }
 }
 
 /** Picked files by uri; a uri it does not know is unreadable, and [throwing] ones throw. */
@@ -135,6 +146,54 @@ class FakePickedFiles(
         limits += limit
         check(uri !in throwing) { "provider crashed" }
         return files[uri] ?: PickedFile.Unreadable(uri)
+    }
+}
+
+/**
+ * A pack in memory (#399): its [name], and its [files] by path in the order a walk meets them; a file
+ * whose bytes are null cannot be read. A walk hands over every file and then says it ran into
+ * [stopped], or, when [breaks], throws after the last.
+ */
+class FakePack(
+    val name: String,
+    val files: List<Pair<String, ByteArray?>>,
+    val stopped: PackLimit? = null,
+    val breaks: Boolean = false,
+)
+
+/** Packs by uri; a uri it does not know cannot be read at all. */
+class FakePickedPacks(
+    private val packs: Map<String, FakePack> = emptyMap(),
+) : PickedPacks {
+    /** The limit every file was asked for, in order. */
+    val limits = mutableListOf<Int>()
+
+    override suspend fun name(
+        type: MilkdropPackType,
+        uri: String,
+    ): String = packs[uri]?.name.orEmpty()
+
+    override suspend fun walk(
+        type: MilkdropPackType,
+        uri: String,
+        visit: suspend (PackFile) -> Unit,
+    ): PackLimit? {
+        val pack = packs[uri] ?: throw IOException("no pack at $uri")
+        for ((where, bytes) in pack.files) {
+            visit(
+                object : PackFile {
+                    override val path: String = where
+
+                    override suspend fun read(limit: Int): ByteArray? {
+                        limits += limit
+                        val read = bytes ?: throw IOException("$where is gone")
+                        return read.takeIf { it.size <= limit }
+                    }
+                },
+            )
+        }
+        if (pack.breaks) throw IOException("the pack broke")
+        return pack.stopped
     }
 }
 

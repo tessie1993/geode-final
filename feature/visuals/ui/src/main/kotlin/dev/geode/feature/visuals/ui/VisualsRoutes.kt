@@ -22,6 +22,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.MilkdropKind
+import dev.geode.feature.visuals.api.MilkdropPackType
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
@@ -105,9 +106,11 @@ fun FullScreenVisualRoute(
 }
 
 /**
- * The MilkDrop presets and textures' place (#145, ADR-0003): it reads the Visuals store and owns the two
+ * The MilkDrop presets and textures' place (#145, ADR-0003): it reads the Visuals store and owns the
  * system pickers. Whatever the person picks goes to the store as one import, by content uri; the store
- * reads, checks and copies each file, and its report comes back in the state. `:app` wires it at the
+ * reads, checks and copies each file, and its report comes back in the state. A whole pack (#399) is
+ * picked as a folder, through the system folder picker, or as a `.zip` file, and goes as one import
+ * too; neither picker needs a permission. `:app` wires it at the
  * switch-over (#17), reached from the Visuals tab. [onReload] loads the preset the Visual shows again
  * from its file (#382), which only the engine can do; without it, the screen offers no reload.
  */
@@ -129,6 +132,16 @@ fun MilkdropRoute(
         rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { importPicked(MilkdropKind.PRESETS, it) }
     val texturePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { importPicked(MilkdropKind.TEXTURES, it) }
+
+    fun importPack(
+        type: MilkdropPackType,
+        picked: Uri?,
+    ) {
+        if (picked != null) visuals.send(VisualsCommand.ImportMilkdropPack(type, picked.toString()))
+    }
+    val folderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { importPack(MilkdropPackType.FOLDER, it) }
+    val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { importPack(MilkdropPackType.ZIP, it) }
     MilkdropScreen(
         state.toMilkdropModel().copy(canReload = onReload != null),
         onAction = { action ->
@@ -137,6 +150,11 @@ fun MilkdropRoute(
                     when (action.kind) {
                         MilkdropKind.PRESETS -> presetPicker.launch(PRESET_TYPES)
                         MilkdropKind.TEXTURES -> texturePicker.launch(TEXTURE_TYPES)
+                    }
+                is MilkdropAction.PickPack ->
+                    when (action.type) {
+                        MilkdropPackType.FOLDER -> folderPicker.launch(null)
+                        MilkdropPackType.ZIP -> zipPicker.launch(ZIP_TYPES)
                     }
                 MilkdropAction.Reload -> onReload?.invoke()
                 MilkdropAction.DismissReport, is MilkdropAction.Play, is MilkdropAction.Delete -> action.toCommand()?.let(visuals::send)
@@ -151,6 +169,9 @@ private val PRESET_TYPES = arrayOf("*/*")
 
 /** Images, and files a provider cannot type: TGA and DDS often come as plain binary. */
 private val TEXTURE_TYPES = arrayOf("image/*", "application/octet-stream")
+
+/** A zip pack, by the types providers give zips; some give none better than plain binary. */
+private val ZIP_TYPES = arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")
 
 /** Hides the status and navigation bars while this is composed; a swipe shows them for a moment. */
 @Composable

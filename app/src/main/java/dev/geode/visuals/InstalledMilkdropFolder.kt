@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * are copied in ([MilkStarterPack]), so they play as Styles from the same folder as the person's own; and
  * the texture links are rebuilt ([MilkTextureLinks]) then and after every import and delete, so the engine finds
  * each texture a preset asks for under the name it asks for it. A link that cannot be made never fails
- * the import: the preset is in, and its report says what it is missing.
+ * the import: the preset is in, and its report says what it is missing. A pack's writes (#399) are made
+ * as one batch, and the links rebuilt once after its last, not after each of its files.
  */
 class InstalledMilkdropFolder(
     private val context: Context,
@@ -23,6 +24,9 @@ class InstalledMilkdropFolder(
 ) : MilkdropFolder {
     private val installed = AtomicBoolean(false)
     private val links by lazy { MilkTextureLinks(context) }
+
+    @Volatile
+    private var batching = false
 
     override suspend fun files(kind: MilkdropKind): List<String> {
         install()
@@ -35,6 +39,7 @@ class InstalledMilkdropFolder(
         bytes: ByteArray,
     ) {
         folder.write(kind, name, bytes)
+        if (batching) return
         relink { if (kind == MilkdropKind.PRESETS) links.relink(File(StyleTargets.milkFolder(context), name)) else links.relinkAll() }
     }
 
@@ -45,6 +50,16 @@ class InstalledMilkdropFolder(
         folder.delete(kind, name)
         // relinkAll sweeps a deleted preset's links, and points every preset away from a deleted texture.
         relink { links.relinkAll() }
+    }
+
+    override suspend fun <T> batch(block: suspend () -> T): T {
+        batching = true
+        try {
+            return block()
+        } finally {
+            batching = false
+            relink { links.relinkAll() }
+        }
     }
 
     private fun install() {

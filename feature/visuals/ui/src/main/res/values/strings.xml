@@ -80,6 +80,8 @@
     <string name="milkdrop_subtitle">Every preset plays as a Style of its own. Tap one to show it.</string>
     <string name="milkdrop_import_presets">Import presets</string>
     <string name="milkdrop_import_textures">Import textures</string>
+    <string name="milkdrop_import_folder">Import a folder</string>
+    <string name="milkdrop_import_zip">Import a .zip pack</string>
     <string name="milkdrop_loading">Finding your MilkDrop presets…</string>
     <string name="milkdrop_importing">Importing…</string>
     <string name="milkdrop_presets">Presets</string>
@@ -101,6 +103,22 @@
         <item quantity="other">%1$d files were left out. Everything else is as it was.</item>
     </plurals>
     <string name="milkdrop_dismiss">OK</string>
+    <plurals name="milkdrop_pack_textures">
+        <item quantity="one">%1$d texture came with them.</item>
+        <item quantity="other">%1$d textures came with them.</item>
+    </plurals>
+    <plurals name="milkdrop_skipped">
+        <item quantity="one">%1$d file in the pack was passed over.</item>
+        <item quantity="other">%1$d files in the pack were passed over.</item>
+    </plurals>
+    <plurals name="milkdrop_and_more">
+        <item quantity="one">…and %1$d more</item>
+        <item quantity="other">…and %1$d more</item>
+    </plurals>
+    <string name="milkdrop_skipped_not_milkdrop">Not a preset or texture</string>
+    <string name="milkdrop_skipped_unsafe">Its path leads out of the pack</string>
+    <string name="milkdrop_pack_too_many">The pack holds more files than one import takes. The rest of it was not read.</string>
+    <string name="milkdrop_pack_too_large">The pack unpacks to more than one import takes. The rest of it was not read.</string>
     <string name="milkdrop_problem_not_a_preset">Not a MilkDrop preset</string>
     <string name="milkdrop_problem_not_an_image">Not the image its name says</string>
     <string name="milkdrop_problem_wrong_type">Use PNG, JPEG, BMP, TGA or DDS</string>

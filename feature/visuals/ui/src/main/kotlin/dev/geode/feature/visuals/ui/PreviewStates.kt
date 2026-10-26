@@ -11,9 +11,13 @@ import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
+import dev.geode.feature.visuals.api.PackLimit
+import dev.geode.feature.visuals.api.PackProblem
 import dev.geode.feature.visuals.api.PresetFolderPath
+import dev.geode.feature.visuals.api.PresetPlayback
 import dev.geode.feature.visuals.api.PresetShelf
 import dev.geode.feature.visuals.api.SavedPreset
+import dev.geode.feature.visuals.api.SkippedEntry
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
@@ -103,6 +107,24 @@ internal object PreviewStates {
 
     /** MilkDrop listed, just after an import that left two files out. */
     val milkdrop = ready.copy(milkdrop = milkdropShelf)
+
+    /** MilkDrop just after a zip pack came in (#399): a texture along with its presets, a readme passed over, and its size limit reached. */
+    val milkdropPack =
+        ready.copy(
+            milkdrop =
+                milkdropShelf.copy(
+                    lastImport =
+                        ImportReport(
+                            MilkdropKind.PRESETS,
+                            imported = listOf("Beach at dusk"),
+                            broken = listOf(BrokenFile("Mix/aurora_veil.milk", MilkdropImportProblem.ALREADY_THERE)),
+                            playback = mapOf("Beach at dusk" to PresetPlayback.Full),
+                            textures = listOf("worms.jpg"),
+                            skipped = listOf(SkippedEntry("Mix/readme.txt", PackProblem.NOT_MILKDROP)),
+                            stopped = PackLimit.SIZE,
+                        ),
+                ),
+        )
 
     /** MilkDrop before its folder has been listed. */
     val milkdropLoading = ready

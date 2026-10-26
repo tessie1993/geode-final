@@ -71,11 +71,24 @@ object MilkdropChecks {
     fun playback(
         text: String,
         textures: Collection<String>,
-    ): PresetPlayback {
+    ): PresetPlayback = playback(needs(text), textures)
+
+    /**
+     * What [text] (a preset file's text) needs to play in full, read once and kept small, so a pack's
+     * presets can be judged once all of its textures are in (#399).
+     */
+    fun needs(text: String): PresetNeeds {
         val code = shaderCode(text)
-        val unsupported = unsupported(code)
-        if (unsupported.isNotEmpty()) return PresetPlayback.WithoutShader(unsupported)
-        val missing = missingTextures(code, textures)
+        return PresetNeeds(unsupported(code), textures(code))
+    }
+
+    /** How a preset that has [needs] will play, beside a MilkDrop folder holding the textures [textures] (file names). */
+    fun playback(
+        needs: PresetNeeds,
+        textures: Collection<String>,
+    ): PresetPlayback {
+        if (needs.unsupported.isNotEmpty()) return PresetPlayback.WithoutShader(needs.unsupported)
+        val missing = missing(needs.samples, textures)
         return if (missing.isEmpty()) PresetPlayback.Full else PresetPlayback.MissingTextures(missing)
     }
 
@@ -105,14 +118,29 @@ object MilkdropChecks {
     fun missingTextures(
         code: String,
         textures: Collection<String>,
+    ): List<String> = missing(textures(code), textures)
+
+    /** The names of [samples] that none of [textures] answers, as [missingTextures] finds them. */
+    private fun missing(
+        samples: List<String>,
+        textures: Collection<String>,
     ): List<String> {
         val held =
             textures
                 .map { it.substringBeforeLast('.') }
                 .flatMap { listOf(normalized(it), normalized(it.replace(renameSuffix, ""))) }
                 .toSet()
-        return textures(code).filterNot { normalized(it) in held }
+        return samples.filterNot { normalized(it) in held }
     }
 
     private fun normalized(name: String): String = name.lowercase().filter { it.isLetterOrDigit() }
 }
+
+/**
+ * What a preset needs to play in full (#399): the calls its shaders make that Geode's MilkDrop cannot
+ * translate ([unsupported]), and the textures they sample by name ([samples]).
+ */
+data class PresetNeeds(
+    val unsupported: List<String>,
+    val samples: List<String>,
+)
