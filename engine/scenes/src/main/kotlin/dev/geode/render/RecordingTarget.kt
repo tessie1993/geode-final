@@ -64,7 +64,7 @@ internal class FrameRecorder(
         val height = query(window, EGL14.EGL_HEIGHT)
         val toWidth = query(surface, EGL14.EGL_WIDTH)
         val toHeight = query(surface, EGL14.EGL_HEIGHT)
-        if (width <= 0 || height <= 0 || toWidth <= 0 || toHeight <= 0) return false
+        if (minOf(width, height, toWidth, toHeight) <= 0) return false
         // Drawn into the encoder, read from the window: one blit copies the finished frame across.
         if (!EGL14.eglMakeCurrent(display, surface, window, context)) return false
         val scissor = GLES30.glIsEnabled(GLES30.GL_SCISSOR_TEST)

@@ -45,25 +45,7 @@ class OfflineAnalyzer(
         stillWanted: () -> Boolean = { true },
     ): FeatureTimeline {
         dev.geode.audio.AiffPcm.open(context, uri)?.let { aiff ->
-            val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs, profile)
-            try {
-                val buf = ShortArray(16384)
-                var last = 0f
-                while (true) {
-                    if (!stillWanted()) throw CancellationException("analysis cancelled")
-                    val n = aiff.read(buf)
-                    if (n <= 0) break
-                    pipeline.feed(java.nio.ShortBuffer.wrap(buf, 0, n), aiff.channels, aiff.sampleRate)
-                    if (aiff.progress - last > 0.01f) {
-                        last = aiff.progress
-                        onProgress(last)
-                    }
-                }
-                return pipeline.finish()
-            } finally {
-                pipeline.close()
-                aiff.close()
-            }
+            return analyzeAiff(aiff, StreamingPipeline(beatSensitivity, beatMinIntervalMs, profile), onProgress, stillWanted)
         }
         val extractor = MediaExtractor()
         var codecRef: MediaCodec? = null
@@ -92,50 +74,13 @@ class OfflineAnalyzer(
                 while (!outputDone) {
                     if (!stillWanted()) throw CancellationException("analysis cancelled")
                     if (!inputDone) {
-                        val inIndex = codec.dequeueInputBuffer(10_000)
-                        if (inIndex >= 0) {
-                            val buf = checkNotNull(codec.getInputBuffer(inIndex)) { "decoder input buffer null (codec error state)" }
-                            val size = extractor.readSampleData(buf, 0)
-                            if (size < 0) {
-                                codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                inputDone = true
-                            } else {
-                                codec.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
-                                if (durationUs > 0) {
-                                    val p = (extractor.sampleTime / durationUs.toFloat()).coerceIn(0f, 1f)
-                                    if (p - lastProgress > 0.01f) {
-                                        lastProgress = p
-                                        onProgress(p)
-                                    }
-                                }
-                                extractor.advance()
+                        inputDone =
+                            queueOne(codec, extractor) { sampleUs ->
+                                lastProgress =
+                                    progressed(sampleUs, durationUs, lastProgress, onProgress)
                             }
-                        }
                     }
-                    val outIndex = codec.dequeueOutputBuffer(info, 10_000)
-                    if (outIndex >= 0) {
-                        if (info.size > 0) {
-                            val outFormat = codec.outputFormat
-                            val sampleRate = outFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                            val channels = outFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                            val buf = checkNotNull(codec.getOutputBuffer(outIndex)) { "decoder output buffer null (codec error state)" }
-                            buf.position(info.offset)
-                            buf.limit(info.offset + info.size)
-                            val pcmEncoding =
-                                if (outFormat.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                                    outFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
-                                } else {
-                                    android.media.AudioFormat.ENCODING_PCM_16BIT
-                                }
-                            if (pcmEncoding == android.media.AudioFormat.ENCODING_PCM_FLOAT) {
-                                pipeline.feedFloat(buf.order(ByteOrder.nativeOrder()).asFloatBuffer(), channels, sampleRate)
-                            } else {
-                                pipeline.feed(buf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer(), channels, sampleRate)
-                            }
-                        }
-                        codec.releaseOutputBuffer(outIndex, false)
-                        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outputDone = true
-                    }
+                    outputDone = drainOne(codec, info, streaming)
                 }
             } finally {
                 codecRef?.let {
@@ -147,6 +92,100 @@ class OfflineAnalyzer(
             onProgress(1f)
             streaming.finish()
         }
+    }
+
+    /** Reports progress through the file when it moved on by more than 1 %; returns the progress last reported. */
+    private fun progressed(
+        sampleUs: Long,
+        durationUs: Long,
+        last: Float,
+        onProgress: (Float) -> Unit,
+    ): Float {
+        if (durationUs <= 0) return last
+        val p = (sampleUs / durationUs.toFloat()).coerceIn(0f, 1f)
+        if (p - last <= 0.01f) return last
+        onProgress(p)
+        return p
+    }
+
+    private fun analyzeAiff(
+        aiff: dev.geode.audio.AiffPcm,
+        pipeline: StreamingPipeline,
+        onProgress: (Float) -> Unit,
+        stillWanted: () -> Boolean,
+    ): FeatureTimeline {
+        try {
+            val buf = ShortArray(16384)
+            var last = 0f
+            while (true) {
+                if (!stillWanted()) throw CancellationException("analysis cancelled")
+                val n = aiff.read(buf)
+                if (n <= 0) break
+                pipeline.feed(java.nio.ShortBuffer.wrap(buf, 0, n), aiff.channels, aiff.sampleRate)
+                if (aiff.progress - last > 0.01f) {
+                    last = aiff.progress
+                    onProgress(last)
+                }
+            }
+            return pipeline.finish()
+        } finally {
+            pipeline.close()
+            aiff.close()
+        }
+    }
+
+    /**
+     * Feeds the decoder one buffer from [extractor], if it has room; [onQueued] gets the sample time of
+     * what was queued. Returns whether the end of the stream was queued.
+     */
+    private inline fun queueOne(
+        codec: MediaCodec,
+        extractor: MediaExtractor,
+        onQueued: (Long) -> Unit,
+    ): Boolean {
+        val inIndex = codec.dequeueInputBuffer(10_000)
+        if (inIndex < 0) return false
+        val buf = checkNotNull(codec.getInputBuffer(inIndex)) { "decoder input buffer null (codec error state)" }
+        val size = extractor.readSampleData(buf, 0)
+        if (size < 0) {
+            codec.queueInputBuffer(inIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            return true
+        }
+        codec.queueInputBuffer(inIndex, 0, size, extractor.sampleTime, 0)
+        onQueued(extractor.sampleTime)
+        extractor.advance()
+        return false
+    }
+
+    /** Hands one decoded buffer, if there is one, to [pipeline]. Returns whether the stream ended. */
+    private fun drainOne(
+        codec: MediaCodec,
+        info: MediaCodec.BufferInfo,
+        pipeline: StreamingPipeline,
+    ): Boolean {
+        val outIndex = codec.dequeueOutputBuffer(info, 10_000)
+        if (outIndex < 0) return false
+        if (info.size > 0) {
+            val outFormat = codec.outputFormat
+            val sampleRate = outFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            val channels = outFormat.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+            val buf = checkNotNull(codec.getOutputBuffer(outIndex)) { "decoder output buffer null (codec error state)" }
+            buf.position(info.offset)
+            buf.limit(info.offset + info.size)
+            val pcmEncoding =
+                if (outFormat.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
+                    outFormat.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                } else {
+                    android.media.AudioFormat.ENCODING_PCM_16BIT
+                }
+            if (pcmEncoding == android.media.AudioFormat.ENCODING_PCM_FLOAT) {
+                pipeline.feedFloat(buf.order(ByteOrder.nativeOrder()).asFloatBuffer(), channels, sampleRate)
+            } else {
+                pipeline.feed(buf.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer(), channels, sampleRate)
+            }
+        }
+        codec.releaseOutputBuffer(outIndex, false)
+        return info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
     }
 
     /**

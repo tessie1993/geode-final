@@ -166,19 +166,23 @@ class MicCapture(
         val source = preferredSource()
         val builtIn = builtInMic()
         for (rate in LiveInputPolicy.rates) {
-            for (encoding in intArrayOf(AudioFormat.ENCODING_PCM_FLOAT, AudioFormat.ENCODING_PCM_16BIT)) {
-                val rec = tryRecord(source, rate, encoding)
-                if (rec != null) {
-                    // Chosen before the capture starts, so a plugged-in headset mic never replaces it.
-                    builtIn?.let { device -> bestEffort(TAG, "setPreferredDevice") { rec.setPreferredDevice(device) } }
-                    sampleRateHz = rate
-                    unprocessed = source == MediaRecorder.AudioSource.UNPROCESSED
-                    return rec
-                }
-            }
+            val rec = tryRecordAnyEncoding(source, rate) ?: continue
+            // Chosen before the capture starts, so a plugged-in headset mic never replaces it.
+            builtIn?.let { device -> bestEffort(TAG, "setPreferredDevice") { rec.setPreferredDevice(device) } }
+            sampleRateHz = rate
+            unprocessed = source == MediaRecorder.AudioSource.UNPROCESSED
+            return rec
         }
         return null
     }
+
+    /** Float samples first, 16-bit if the device refuses them at this [rate]. */
+    private fun tryRecordAnyEncoding(
+        source: Int,
+        rate: Int,
+    ): AudioRecord? =
+        tryRecord(source, rate, AudioFormat.ENCODING_PCM_FLOAT)
+            ?: tryRecord(source, rate, AudioFormat.ENCODING_PCM_16BIT)
 
     private fun tryRecord(
         source: Int,

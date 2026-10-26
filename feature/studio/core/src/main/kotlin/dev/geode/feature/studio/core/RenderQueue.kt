@@ -86,8 +86,11 @@ internal object RenderQueue {
      * Starts the oldest waiting Render, unless one runs, the library is not read yet, Visuals off is on,
      * or the queue is held while the app is away.
      */
+    private fun canStart(state: StudioState): Boolean =
+        !state.loading && !state.visualsOff && !state.rendersHeld && state.runningRender == null
+
     fun next(state: StudioState): Next<StudioState, StudioEffect> {
-        if (state.loading || state.visualsOff || state.rendersHeld || state.runningRender != null) return Next(state)
+        if (!canStart(state)) return Next(state)
         val waiting = state.renders.firstOrNull { it.status == RenderStatus.Queued } ?: return Next(state)
         val started = waiting.copy(status = RenderStatus.Running(RenderPhase.PREPARING, 0f))
         return Next(state.replacing(started), listOf(Perform(StudioWork.Render(started))))
