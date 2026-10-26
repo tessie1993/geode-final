@@ -269,13 +269,6 @@ object GeodeNative {
         on: Boolean,
     ): Int
 
-    external fun vizSetLayer(
-        handle: Long,
-        sceneId: String,
-        mix: Float,
-        blendMode: Int,
-    ): Int
-
     external fun vizSetTransition(
         handle: Long,
         id: String,
@@ -291,6 +284,19 @@ object GeodeNative {
         handle: Long,
         xy: FloatArray,
         points: Int,
+    ): Int
+
+    external fun vizSetTouchSmear(
+        handle: Long,
+        on: Boolean,
+        strength: Float,
+    ): Int
+
+    external fun vizSetGravity(
+        handle: Long,
+        x: Float,
+        y: Float,
+        z: Float,
     ): Int
 
     external fun vizQueueTouchStroke(
@@ -345,6 +351,9 @@ object GeodeNative {
         handle: Long,
         fps: Float,
     ): Int
+
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap (#286). */
+    external fun vizFrameCapFps(handle: Long): Float
 
     /** The Visual quality on screen as a render scale ceiling under the thermal one (#28). */
     external fun vizSetQualityCeiling(

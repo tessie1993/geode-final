@@ -33,6 +33,7 @@ import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.PresetPart
+import dev.geode.feature.customization.core.IgnoredControls
 import dev.geode.feature.customization.core.PresetRules
 import dev.geode.feature.customization.handlers.PresetFormat
 import dev.geode.feature.customization.handlers.PresetLibrary
@@ -41,10 +42,12 @@ import dev.geode.feature.customization.ui.LookChip
 import dev.geode.feature.customization.ui.ModulatorsAutomationRoute
 import dev.geode.feature.customization.ui.PresetChip
 import dev.geode.feature.visuals.api.PresetShare
+import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.feature.visuals.ui.MilkdropRoute
 import dev.geode.feature.visuals.ui.PresetsRoute
 import dev.geode.feature.visuals.ui.VisualsRoute
+import dev.geode.render.scene.StylePacks
 import dev.geode.ui.shell.ShellViewModel
 import java.io.File
 
@@ -116,7 +119,8 @@ fun VisualsPlace(
 
 /**
  * Customize over the live Visual, as the Visuals tab and the sheet over full-screen mode show it: its
- * look picker offers the Visuals feature's Styles and its preset row this Style's saved presets.
+ * look picker offers the Visuals feature's Styles and its preset row this Style's saved presets. The
+ * controls this Style's family ignores, as its Style pack declares them, are greyed out (#365).
  */
 @Composable
 fun CustomizePanel(
@@ -134,13 +138,18 @@ fun CustomizePanel(
         onShare = { shareCustomization(context, it) },
         onHide = onHide,
         modifier = modifier,
-        looks = visuals.styles.map { LookChip(it.id, it.name) },
+        looks = visuals.styles.map { LookChip(it.id, it.name, canBeLayer = it.group != StyleGroup.MILKDROP) },
         presets =
             visuals.presets
                 ?.saved
                 .orEmpty()
                 .filter { it.style == style }
                 .map { PresetChip(it.id, it.id.value) },
+        ignored =
+            IgnoredControls.targets(
+                customization.current,
+                IgnoredControls.properties(StylePacks.find(style)?.ignores.orEmpty()),
+            ),
         onBrowsePresets = onBrowsePresets,
     )
 }

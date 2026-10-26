@@ -71,7 +71,7 @@ words.
 | [PavelDoGreat/WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation) | `a2d2929` (2024-11-12) | MIT | **ADAPT** — already partially ported and attributed in `THIRD_PARTY_NOTICES`. Consolidate shared advection, pressure, splat, bloom and format-fallback infrastructure. |
 | [QC20/Colourful-Attraction](https://github.com/QC20/Colourful-Attraction) | `6e502d3` (2026-04-14) | MIT | **ADAPT the GLSL only** — basis for the first signature scene: particles morphing between velocity fields without resetting state. See the caveat below. |
 | [kevinraymond/fosfora](https://github.com/kevinraymond/fosfora) | `09132c0` (2026-08-10) | Apache-2.0 **and** MIT (dual) | **STUDY** in practice — the plan lists it for adaptation, but its runtime is Rust/wgpu and nothing is portable. Its value is the architecture: lock-free audio delivery, multi-resolution analysis, HDR layering, data-driven effects, modulation and audio textures. Algorithms must be independently validated. |
-| projectM | tag `v4.1.7` = `e0b0a96` + local patch | LGPL-2.1 (`LICENSE.txt`) | **RETAIN as-is.** Dynamically linked, notices shipped, patch and build recipe in-tree. Not the architecture for new visuals. See `tools/build-projectm.md`. |
+| projectM | tag `v4.1.8` = `4967dc0` + local patches | LGPL-2.1 (`LICENSE.txt`) | **RETAIN as-is.** Dynamically linked, notices shipped, patch and build recipe in-tree. Not the architecture for new visuals. See `tools/build-projectm.md`. |
 
 ## 3. Algorithm references — reimplement, do not copy
 

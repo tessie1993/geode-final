@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "origami_peaks",
+  "label": "Origami Peaks",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march"
+}

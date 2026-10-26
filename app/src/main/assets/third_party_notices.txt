@@ -78,11 +78,14 @@ libprojectM
 -----------
 The MilkDrop-compatible visualization engine bundled as a native library
 (libprojectM, https://github.com/projectM-visualizer/projectm) is licensed
-under the GNU Lesser General Public License v2.1 (LGPL-2.1). Geode links
-it dynamically as a separate shared object (.so) and does not modify it.
-Per LGPL-2.1: this notice preserves attribution; the library's source is
-available at the URL above; and the dynamic-linking arrangement preserves
-the user's ability to replace the library. LGPL-2.1 section 6 requires a
+under the GNU Lesser General Public License v2.1 (LGPL-2.1). Geode builds
+it from the projectM v4.1.8 release (bundling projectm-eval at commit
+e8c311e) with the small patches in tools/projectm-*.patch, which are the
+corresponding source of the modification, and links it dynamically as a
+separate shared object (.so). Per LGPL-2.1: this notice preserves
+attribution; the library's source is available at the URL above; and the
+dynamic-linking arrangement preserves the user's ability to replace the
+library. LGPL-2.1 section 6 requires a
 copy of the licence itself to accompany the app, not merely a link, so the
 full text is reproduced verbatim at the end of this file.
 

@@ -32,6 +32,8 @@ private:
     // The declared grid of the curl field (short side, in cells) and the particles riding it.
     static constexpr int kFieldRes = 96;
     static constexpr int kParticleCount = 49152;
+    // Tilt: how fast the particles fall toward down, sim units per second squared.
+    static constexpr float kParticleFall = 6.0f;
 
     fluid::Particles particles_;
     fluid::Formats formats_;

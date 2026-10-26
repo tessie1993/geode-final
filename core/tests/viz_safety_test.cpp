@@ -4,8 +4,6 @@
 
 #include <string>
 
-using geode::viz::BlendMode;
-using geode::viz::blendModeFromOrdinal;
 using geode::viz::LfoTarget;
 using geode::viz::SceneParams;
 using geode::viz::TransitionStyle;
@@ -24,14 +22,6 @@ TEST(VisualSafety, TransitionStyleIds) {
     EXPECT_EQ(std::string(transitionStyleId(TransitionStyle::Melt)), "melt");
     EXPECT_EQ(std::string(transitionStyleId(TransitionStyle::Slide)), "slide");
     EXPECT_EQ(std::string(transitionStyleId(TransitionStyle::Zoom)), "zoom");
-}
-
-TEST(VisualSafety, BlendModeFromOrdinalFallsBackToScreen) {
-    EXPECT_EQ(blendModeFromOrdinal(0), BlendMode::Normal);
-    EXPECT_EQ(blendModeFromOrdinal(3), BlendMode::Multiply);
-    EXPECT_EQ(blendModeFromOrdinal(7), BlendMode::Darken);
-    EXPECT_EQ(blendModeFromOrdinal(8), BlendMode::Screen);
-    EXPECT_EQ(blendModeFromOrdinal(-1), BlendMode::Screen);
 }
 
 TEST(VisualSafety, ApplyClampsLuminance) {
@@ -111,13 +101,4 @@ TEST(VisualSafety, BeatIntervalAndTransitions) {
     EXPECT_EQ(safety::transitionStyle(TransitionStyle::Melt), TransitionStyle::Melt);
     EXPECT_EQ(safety::transitionId("cut"), "fade");
     EXPECT_EQ(safety::transitionId("melt"), "melt");
-}
-
-TEST(VisualSafety, LayerMixCapsTheFlashingBlendModes) {
-    EXPECT_NEAR(safety::layerMix(0.9f, BlendMode::Difference), 0.25f, kTol);
-    EXPECT_NEAR(safety::layerMix(0.9f, BlendMode::Add), 0.25f, kTol);
-    EXPECT_NEAR(safety::layerMix(0.1f, BlendMode::Add), 0.1f, kTol);
-    EXPECT_NEAR(safety::layerMix(0.9f, BlendMode::Screen), 0.9f, kTol);
-    EXPECT_NEAR(safety::layerMix(1.5f, BlendMode::Normal), 1.0f, kTol);
-    EXPECT_NEAR(safety::layerMix(-1.0f, BlendMode::Normal), 0.0f, kTol);
 }

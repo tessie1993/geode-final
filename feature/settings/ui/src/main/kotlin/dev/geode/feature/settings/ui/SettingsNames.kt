@@ -12,8 +12,10 @@ import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.ThemeMode
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
 
@@ -33,6 +35,16 @@ internal fun positionName(position: PlayerPosition): String =
         when (position) {
             PlayerPosition.TOP -> R.string.look_position_top
             PlayerPosition.BOTTOM -> R.string.look_position_bottom
+        },
+    )
+
+@Composable
+internal fun tiltName(amount: TiltAmount): String =
+    stringResource(
+        when (amount) {
+            TiltAmount.OFF -> R.string.behavior_tilt_off
+            TiltAmount.SUBTLE -> R.string.behavior_tilt_subtle
+            TiltAmount.FULL -> R.string.behavior_tilt_full
         },
     )
 
@@ -139,3 +151,14 @@ internal fun visualQualityName(quality: VisualQuality): String =
 @Composable
 internal fun visualFrameRateName(frameRate: VisualFrameRate): String =
     frameRate.fps?.let { stringResource(R.string.cpu_gpu_fps, it) } ?: stringResource(R.string.cpu_gpu_screen_max)
+
+@Composable
+internal fun visualSurfaceName(surface: VisualSurface): String =
+    stringResource(
+        when (surface) {
+            VisualSurface.VISUAL -> R.string.cpu_gpu_surface_visual
+            VisualSurface.WALLPAPER -> R.string.cpu_gpu_surface_wallpaper
+            VisualSurface.PICTURE_IN_PICTURE -> R.string.cpu_gpu_surface_pip
+            VisualSurface.SCREEN_SAVER -> R.string.cpu_gpu_surface_screen_saver
+        },
+    )

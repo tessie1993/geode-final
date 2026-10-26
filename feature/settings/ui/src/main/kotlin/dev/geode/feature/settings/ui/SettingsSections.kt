@@ -47,9 +47,12 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.ThemeMode
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -322,12 +325,35 @@ internal fun LazyListScope.batterySection(
             ) { change(PerformanceCommand.SetVisualFrameRate(it)) }
         }
     }
+    // The other places the Visual is drawn can run gentler (#394); each follows the choices above until it has its own.
+    for (surface in SURFACES_WITH_OWN_CHOICE) {
+        item {
+            SettingsGroup(visualSurfaceName(surface)) {
+                Note(stringResource(R.string.cpu_gpu_surface_note))
+                ChoiceRow(
+                    stringResource(R.string.cpu_gpu_quality),
+                    listOf<VisualQuality?>(null) + VisualQuality.entries,
+                    performance.surfaceQuality[surface],
+                    { quality -> quality?.let { visualQualityName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                ) { change(PerformanceCommand.SetSurfaceQuality(surface, it)) }
+                ChoiceRow(
+                    stringResource(R.string.cpu_gpu_frame_rate),
+                    listOf<VisualFrameRate?>(null) + VisualFrameRate.entries,
+                    performance.surfaceFrameRate[surface],
+                    { frameRate -> frameRate?.let { visualFrameRateName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                ) { change(PerformanceCommand.SetSurfaceFrameRate(surface, it)) }
+            }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.cpu_gpu_group_heat)) {
             Note(stringResource(R.string.cpu_gpu_heat_note))
         }
     }
 }
+
+/** The surfaces Battery offers a quality and frame rate of their own for; the screen saver joins once it exists. */
+private val SURFACES_WITH_OWN_CHOICE = listOf(VisualSurface.WALLPAPER, VisualSurface.PICTURE_IN_PICTURE)
 
 /**
  * Default paths (was Folders, #101): where Studio saves its videos (#21), the music folders, where
@@ -407,11 +433,12 @@ private fun FolderChoiceGroup(
 }
 
 /**
- * Application preferences (was Behavior): keeping the screen on, what runs in the background (#28),
- * touch, motion and the live wallpaper.
+ * Application preferences (was Behavior): keeping the screen on, the look Geode starts on (#383), what
+ * runs in the background (#28), touch, motion and the live wallpaper.
  */
 internal fun LazyListScope.applicationSection(
     values: SettingsValues,
+    startLooks: List<StartLookChoice>,
     onAction: (SettingsAction) -> Unit,
 ) {
     val behavior = values.behavior
@@ -423,6 +450,7 @@ internal fun LazyListScope.applicationSection(
             }
         }
     }
+    item { StartLookGroup(behavior.startLook, startLooks, change) }
     item {
         SettingsGroup(stringResource(R.string.application_group_background)) {
             SwitchRow(stringResource(R.string.background_music), values.background.music) { change(BackgroundCommand.SetMusic(it)) }
@@ -447,6 +475,10 @@ internal fun LazyListScope.applicationSection(
             SwitchRow(stringResource(R.string.behavior_touch_transform), behavior.touchTransform) {
                 change(BehaviorCommand.SetTouchTransform(it))
             }
+            ChoiceRow(stringResource(R.string.behavior_tilt), TiltAmount.entries, behavior.tilt, { tiltName(it) }) {
+                change(BehaviorCommand.SetTilt(it))
+            }
+            if (behavior.reducedMotion && behavior.tilt != TiltAmount.OFF) Note(stringResource(R.string.behavior_tilt_reduced_motion))
         }
     }
     item {
@@ -465,6 +497,32 @@ internal fun LazyListScope.applicationSection(
         }
     }
 }
+
+/**
+ * Start on (#383): the last look, or one of the looks the app lists. A chosen look the app no longer
+ * lists, such as a preset since deleted, stays shown by its id until another is picked.
+ */
+@Composable
+private fun StartLookGroup(
+    chosen: StartLook,
+    listed: List<StartLookChoice>,
+    change: (SettingsCommand) -> Unit,
+) {
+    val last = StartLookChoice(StartLook.Last, stringResource(R.string.start_look_last))
+    val options = (listOf(last) + listed).distinctBy { it.look }
+    val shown = if (options.any { it.look == chosen }) options else options + StartLookChoice(chosen, startLookId(chosen))
+    SettingsGroup(stringResource(R.string.start_look_group)) {
+        ChoiceRow(null, shown, shown.first { it.look == chosen }, { it.name }) { change(BehaviorCommand.SetStartLook(it.look)) }
+        Note(stringResource(R.string.start_look_note))
+    }
+}
+
+private fun startLookId(look: StartLook): String =
+    when (look) {
+        StartLook.Last -> ""
+        is StartLook.Style -> look.style.value
+        is StartLook.Preset -> look.preset.value
+    }
 
 internal fun LazyListScope.helpSection(
     onboarding: OnboardingSettings,

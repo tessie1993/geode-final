@@ -865,6 +865,7 @@ public final class dev/geode/feature/customization/api/SharedGroup : java/lang/E
 }
 
 public final class dev/geode/feature/customization/api/SharedProperty : java/lang/Enum {
+	public static final field ANAGLYPH Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field AUDIO_DRIVE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field BRIGHTNESS Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field CHROMATIC Ldev/geode/feature/customization/api/SharedProperty;

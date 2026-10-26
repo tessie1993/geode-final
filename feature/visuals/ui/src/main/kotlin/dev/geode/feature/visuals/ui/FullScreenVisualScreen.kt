@@ -1,7 +1,5 @@
 package dev.geode.feature.visuals.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,12 +17,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassBackdrop
@@ -37,9 +35,13 @@ import dev.geode.engine.types.SceneId
 
 /**
  * Full-screen visual mode (#43): the one live Visual fills the screen, and this is the App UI over it.
- * It has no background, so the Visual the app keeps running behind it shows through. A tap shows or
- * hides the controls: the Style's name, the Styles either side of it, and the way back. Stateless
- * (ADR-0003): it draws [model] and sends every tap to [onAction].
+ * It has no background, so the Visual the app keeps running behind it shows through. The controls are
+ * the Style's name, the Styles either side of it, and the way back.
+ *
+ * Every touch on the picture belongs to the Style (#290), so this layer handles no pointer input of
+ * its own: the Visual's host turns a double tap into [FullScreenAction.ToggleControls], and touches
+ * pass straight through to it. Accessibility services still reach the toggle, as this layer's click
+ * action. Stateless (ADR-0003): it draws [model] and sends every tap to [onAction].
  */
 @Composable
 fun FullScreenVisualScreen(
@@ -51,9 +53,12 @@ fun FullScreenVisualScreen(
     Box(
         modifier
             .fillMaxSize()
-            .semantics { contentDescription = toggle }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                onAction(FullScreenAction.ToggleControls)
+            .semantics {
+                contentDescription = toggle
+                onClick(label = toggle) {
+                    onAction(FullScreenAction.ToggleControls)
+                    true
+                }
             },
     ) {
         // Glass over the Visual fades in and out, never slides (#270).

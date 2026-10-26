@@ -131,16 +131,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetReducedMotion(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetLayer(JNIEnv* env, jobject, jlong handle, jstring sceneId, jfloat mix,
-                                                     jint blendMode) {
-    return vizCall(env, "vizSetLayer", handle, [&](geode_viz* v) {
-        Utf8Chars id(env, sceneId);
-        geode_viz_set_layer(v, id.get() ? id.get() : "", mix, blendMode);
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetTransition(JNIEnv* env, jobject, jlong handle, jstring id, jlong durationMs) {
     return vizCall(env, "vizSetTransition", handle, [&](geode_viz* v) {
         Utf8Chars name(env, id);
@@ -163,6 +153,22 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetTouch(JNIEnv* env, jobject, jlong
         FloatElements data(env, xy);
         const jint available = data.get() ? data.length() / kTouchFloatsPerPoint : 0;
         geode_viz_set_touch(v, data.get(), points < available ? points : available);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetTouchSmear(JNIEnv* env, jobject, jlong handle, jboolean on, jfloat strength) {
+    return vizCall(env, "vizSetTouchSmear", handle, [&](geode_viz* v) {
+        geode_viz_set_touch_smear(v, on == JNI_TRUE ? 1 : 0, strength);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetGravity(JNIEnv* env, jobject, jlong handle, jfloat x, jfloat y, jfloat z) {
+    return vizCall(env, "vizSetGravity", handle, [&](geode_viz* v) {
+        geode_viz_set_gravity(v, x, y, z);
         return GEODE_STATUS_OK;
     });
 }
@@ -201,6 +207,19 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetMilkTextureDir(JNIEnv* env, jobje
         return GEODE_STATUS_OK;
     });
 }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+// The debug build's Style lab (DebugStyleLab.kt in :engine:scenes' debug source set). A release build
+// has neither this entry point nor the Kotlin class that calls it.
+JNIEXPORT jint JNICALL
+Java_dev_geode_render_DebugStyleLab_nativeAttach(JNIEnv* env, jobject, jlong handle, jstring dir) {
+    return vizCall(env, "styleLabAttach", handle, [&](geode_viz* v) {
+        Utf8Chars path(env, dir);
+        geode_viz_set_style_lab(v, path.get());
+        return GEODE_STATUS_OK;
+    });
+}
+#endif
 
 JNIEXPORT jstring JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizTakeMilkPresetLoaded(JNIEnv* env, jobject, jlong handle) {
@@ -272,6 +291,11 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetPacedFps(JNIEnv* env, jobject, jl
         geode_viz_set_paced_fps(v, fps);
         return GEODE_STATUS_OK;
     });
+}
+
+JNIEXPORT jfloat JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizFrameCapFps(JNIEnv* env, jobject, jlong handle) {
+    return valueCall(env, "vizFrameCapFps", jfloat{0.0f}, [&]() -> jfloat { return geode_viz_frame_cap_fps(vizOf(handle)); });
 }
 
 JNIEXPORT jint JNICALL

@@ -32,6 +32,11 @@ public:
     float curlStrength = 30.0f;
     float dyeCeiling = 0.0f;
     float chromaticAging = 0.0f;
+    // Tilt: the velocity a unit of ink gains per second, in grid units, toward down. Ink is heavier
+    // than the clear fluid, so it sinks and the pressure solve lifts the rest (a plain uniform force
+    // would be cancelled by it). Zero leaves the solver exactly as it was.
+    float buoyancyX = 0.0f;
+    float buoyancyY = 0.0f;
     std::function<void(const std::string&)> onShaderError = [](const std::string&) {};
 
     bool available() const { return available_; }

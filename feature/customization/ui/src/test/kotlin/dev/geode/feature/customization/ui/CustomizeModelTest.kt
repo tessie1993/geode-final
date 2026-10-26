@@ -146,6 +146,40 @@ class CustomizeModelTest {
     }
 
     @Test
+    fun `zoom, speed and the other multiplicative controls move by ratios, their defaults near the middle`() {
+        val rows =
+            model.shared.values
+                .flatten()
+                .associateBy { (it.target as Target.Shared).property }
+        assertEquals(RATIO_PROPERTIES, rows.filterValues { it.ratio }.keys)
+        for (property in RATIO_PROPERTIES) {
+            val row = rows.getValue(property)
+            val middle = row.position(property.default)
+            assertTrue("$property sits at $middle", middle in 0.4f..0.7f)
+            assertEquals(property.name, property.default, row.valueAt(middle), 1e-4f)
+        }
+        val zoom = rows.getValue(SharedProperty.ZOOM)
+        assertEquals(0f, zoom.position(0.1f))
+        assertEquals(1f, zoom.position(9f))
+        assertEquals(0.3f, zoom.valueAt(-1f), 1e-6f)
+        assertEquals(3f, zoom.valueAt(2f), 1e-5f)
+        assertEquals(0.5f, zoom.position(kotlin.math.sqrt(0.9f)), 1e-5f)
+    }
+
+    @Test
+    fun `other sliders move evenly, stepped ones by whole numbers`() {
+        val rotation = SliderRow(Target.Shared(SharedProperty.ROTATION), 0f, -3f, 3f, ValueKind.CONTINUOUS, linked = false)
+        assertEquals(0.5f, rotation.position(0f))
+        assertEquals(0.75f, rotation.position(1.5f))
+        assertEquals(-1.5f, rotation.valueAt(0.25f))
+        assertEquals(-3f, rotation.valueAt(-1f))
+        assertEquals(1f, rotation.position(5f))
+        val symmetry = SliderRow(Target.Shared(SharedProperty.SYMMETRY), 6f, 0f, 16f, ValueKind.STEPPED, linked = false)
+        assertEquals(6f, symmetry.valueAt(0.37f))
+        assertEquals(16f, symmetry.valueAt(1f))
+    }
+
+    @Test
     fun `Extras are 0 to 1 sliders, only the ones the Style has, in the catalogue's order`() {
         assertEquals(listOf(Target.Extra(ExtraKind.SCALE), Target.Extra(ExtraKind.FLIGHT)), model.extras.map { it.target })
         assertEquals(listOf(0.7f, 0.3f), model.extras.map { it.value })
@@ -189,5 +223,30 @@ class CustomizeModelTest {
         val state = CustomizationState(customization, compare = mapOf(CompareSlot.B to customization))
         assertEquals(setOf(CompareSlot.B), state.toCustomizeModel().kept)
         assertEquals(emptySet<CompareSlot>(), CustomizationState(customization).toCustomizeModel().kept)
+    }
+
+    @Test
+    fun `the controls the Style ignores are greyed out, and only those`() {
+        val ignored = setOf(Target.Shared(SharedProperty.SPEED), Target.Shared(SharedProperty.KALEIDOSCOPE), Target.MacroSlot(0))
+        val shown = CustomizationState(customization).toCustomizeModel(ignored = ignored)
+
+        val speed = shown.shared.getValue(SharedGroup.SPEED_AND_ENERGY).single { it.target == Target.Shared(SharedProperty.SPEED) }
+        assertTrue(speed.ignored)
+        assertFalse(
+            shown.shared.values
+                .flatten()
+                .single { it.target == Target.Shared(SharedProperty.ZOOM) }
+                .ignored,
+        )
+        assertTrue(shown.effects.single { it.property == SharedProperty.KALEIDOSCOPE }.ignored)
+        assertFalse(shown.effects.single { it.property == SharedProperty.MIRROR }.ignored)
+        assertEquals(listOf(true, false, false, false, false, false), shown.macros.map { it.ignored })
+        assertFalse(
+            model.shared.values
+                .flatten()
+                .any { it.ignored } ||
+                model.effects.any { it.ignored } ||
+                model.macros.any { it.ignored },
+        )
     }
 }

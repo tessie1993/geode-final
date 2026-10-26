@@ -21,7 +21,10 @@ import dev.geode.feature.diagnostics.ui.DiagnosticsScreen
 import dev.geode.feature.diagnostics.ui.overlayModel
 import dev.geode.feature.diagnostics.ui.toSectionModel
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.ui.SettingsRoute
+import dev.geode.feature.settings.ui.StartLookChoice
+import dev.geode.feature.visuals.api.VisualsState
 import dev.geode.ui.shell.ShellViewModel
 import dev.geode.wallpaper.VisualizerWallpaperService
 import dev.geode.feature.settings.ui.FontColorChoice as SettingsFontColor
@@ -38,6 +41,7 @@ internal fun SettingsPlace(
     val context = LocalContext.current
     val fontColors =
         FontColorChoice.CHOICES.map { SettingsFontColor(it.argb?.let(::Argb), stringResource(it.labelRes)) }
+    val visuals by shell.visuals.state.collectAsStateWithLifecycle()
     Column(Modifier.fillMaxSize()) {
         GlassTopBar(title = stringResource(R.string.nav_settings))
         SettingsRoute(
@@ -46,9 +50,26 @@ internal fun SettingsPlace(
             appVersion = BuildConfig.VERSION_NAME,
             onStartTutorial = onStartTutorial,
             onSetLiveWallpaper = { context.openLiveWallpaperPicker() },
+            startLooks = startLookChoices(visuals),
             helpExtra = { DiagnosticsSection(shell.diagnostics) },
         )
     }
+}
+
+/**
+ * The looks Settings offers to start on (#383), besides the last one: the Style on screen now, the
+ * Favourites, then the saved presets. Styles this version does not draw are left out.
+ */
+internal fun startLookChoices(visuals: VisualsState): List<StartLookChoice> {
+    val names = visuals.styles.associate { it.id to it.name }
+    val styles = (listOfNotNull(visuals.current) + visuals.library?.favourites.orEmpty()).distinct()
+    val styleChoices = styles.mapNotNull { id -> names[id]?.let { StartLookChoice(StartLook.Style(id), it) } }
+    val presetChoices =
+        visuals.presets
+            ?.saved
+            .orEmpty()
+            .map { StartLookChoice(StartLook.Preset(it.id), it.id.value) }
+    return styleChoices + presetChoices
 }
 
 @Composable

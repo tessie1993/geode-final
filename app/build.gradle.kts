@@ -95,6 +95,13 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             isDebuggable = true
+            // The Style lab: Style packs pushed with adb reload without a restart (docs/style-packs.md).
+            // Release builds compile no hot-reload path.
+            externalNativeBuild {
+                cmake {
+                    arguments += listOf("-DGEODE_STYLE_HOT_RELOAD=ON")
+                }
+            }
         }
     }
 

@@ -50,6 +50,9 @@ internal const val KNOB_START = 135f
 /** The longest rise and fall the editor offers, in milliseconds. */
 internal const val MAX_RESPONSE_MILLIS = 2_000
 
+/** How faint a control the current Style does not use is drawn (#365). */
+internal const val IGNORED_ALPHA = 0.38f
+
 /** How dim the board's loop cables and the knob's empty track are drawn. */
 internal const val QUIET_ALPHA = 0.35f
 

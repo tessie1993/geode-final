@@ -20,6 +20,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // MORPHOGEN - one organism, continuously metamorphosing between skeletons.
@@ -943,7 +944,7 @@ void main() {
 
     // ---- camera ------------------------------------------------------------
     vec3 ro = vec3(0.0, 0.0, -CAM_DIST);
-    vec3 rd = normalize(vec3(uv * gViewScale, CAM_DIST));
+    vec3 rd = tiltLook(normalize(vec3(uv * gViewScale, CAM_DIST)));
 
     // Analytic entry into the bounding sphere. Everything this style draws is
     // inside it, so a ray that misses it can skip the march entirely - which

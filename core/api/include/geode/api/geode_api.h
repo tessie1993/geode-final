@@ -143,15 +143,22 @@ GEODE_API void        geode_viz_set_params(geode_viz*, const float* values, int 
 GEODE_API int         geode_viz_set_param(geode_viz*, const char* name, float value);   /* 1 = known name */
 GEODE_API void        geode_viz_set_features(geode_viz*, const GeodeFeatureFrame*);
 GEODE_API void        geode_viz_set_reduced_motion(geode_viz*, int on);
-GEODE_API void        geode_viz_set_layer(geode_viz*, const char* scene_id, float mix, int blend_mode); /* "" = none */
 GEODE_API void        geode_viz_set_transition(geode_viz*, const char* id, int64_t duration_ms);
 GEODE_API void        geode_viz_begin_param_morph(geode_viz*, float seconds);
 GEODE_API void        geode_viz_set_touch(geode_viz*, const float* xy_ndc, int points);   /* 0 points = all lifted */
 /* One finger sample in 0..1 surface space with its motion, for the fluid smear and the water ripples. */
 GEODE_API void        geode_viz_queue_touch_stroke(geode_viz*, float nx, float ny, float ndx, float ndy, float dt, float strength);
+/* Whether a Style that does not draw the strokes itself shows them as the shared ripple smear, and how strongly. */
+GEODE_API void        geode_viz_set_touch_smear(geode_viz*, int on, float strength);
+/* The latest reading of down in screen space (x right, y up, z out of the screen), any length; 0,0,0 = none. */
+GEODE_API void        geode_viz_set_gravity(geode_viz*, float x, float y, float z);
 GEODE_API void        geode_viz_load_milk_preset(geode_viz*, const char* path);
 GEODE_API void        geode_viz_reload_milk_preset(geode_viz*);
 GEODE_API void        geode_viz_set_milk_texture_dir(geode_viz*, const char* dir);
+#ifdef GEODE_STYLE_HOT_RELOAD
+/* Debug builds only: the Style lab folder, <dir>/<id>/, whose packs reload without a restart; "" stops. */
+GEODE_API void        geode_viz_set_style_lab(geode_viz*, const char* dir);
+#endif
 /* The preset MilkDrop last compiled successfully, once; returns the full length, 0 when none is pending. */
 GEODE_API size_t      geode_viz_take_milk_preset_loaded(geode_viz*, char* out, size_t capacity);
 GEODE_API void        geode_viz_push_pcm(geode_viz*, const float* mono, int count);
@@ -159,6 +166,8 @@ GEODE_API void        geode_viz_set_lfo(geode_viz*, int slot, const float* confi
 GEODE_API void        geode_viz_set_adsr(geode_viz*, int slot, const float* config, int count);
 GEODE_API void        geode_viz_set_thermal(geode_viz*, int platform_status, float headroom); /* status < 0 = unknown */
 GEODE_API void        geode_viz_set_paced_fps(geode_viz*, float fps);
+/* The frame rate the hottest thermal tiers ask the pacer to hold to (30), or 0 for no cap. */
+GEODE_API float       geode_viz_frame_cap_fps(geode_viz*);
 GEODE_API void        geode_viz_set_quality_ceiling(geode_viz*, float ceiling); /* Visual quality: 0.6..1 */
 /* The frame pacer's latest window: how many frames it holds and the 95th percentile of the intervals
  * between drawn frames, in ms. The scene and trail buffers scale with it; sample about once a second. */

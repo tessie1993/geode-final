@@ -41,6 +41,20 @@ class EditsTest {
     }
 
     @Test
+    fun `one value goes back to the Style's own start`() {
+        val manifest = styles.manifestOf(JULIA)
+        val changed = Edits.setExtra(Edits.setMacro(Edits.setShared(julia, SharedProperty.ZOOM, 2f), 0, 1f), ExtraKind.CENTER_X, 0.9f)
+        assertEquals(julia.shared[SharedProperty.ZOOM], Edits.resetValue(changed, manifest, zoom).shared[SharedProperty.ZOOM])
+        assertEquals(1f, Edits.resetValue(changed, manifest, zoom).macros[0].value)
+        val center = Target.Extra(ExtraKind.CENTER_X)
+        assertEquals(julia.extras[ExtraKind.CENTER_X], Edits.resetValue(changed, manifest, center).extras[ExtraKind.CENTER_X])
+        assertEquals(julia.macros[0].value, Edits.resetValue(changed, manifest, Target.MacroSlot(0)).macros[0].value)
+        assertSame(changed, Edits.resetValue(changed, manifest, Target.Extra(ExtraKind.FLIGHT)))
+        assertSame(changed, Edits.resetValue(changed, manifest, Target.MacroSlot(MACRO_COUNT)))
+        assertSame(changed, Edits.resetValue(changed, manifest, Target.ModulatorField(ModulatorId(0), ModulatorParameter.RATE)))
+    }
+
+    @Test
     fun `macros are set, renamed and cleared by place`() {
         assertEquals(1f, Edits.setMacro(julia, 0, 2f).macros[0].value)
         assertEquals(julia, Edits.setMacro(julia, MACRO_COUNT, 1f))

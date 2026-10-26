@@ -15,6 +15,7 @@ import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.core.Defaults
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -240,6 +241,41 @@ class CustomizationStoreTest {
 
         assertEquals(converted, places.appStorage.contents)
         assertTrue(places.backup.contents.isEmpty())
+    }
+
+    @Test
+    fun `an upgraded old preset keeps its MilkDrop preset choice`() {
+        store(appStorage = mapOf("Old.json" to oldPresetFile("Old", "milkdrop", extra = ",\n\"milkPreset\": \"Cosmic.milk\"")))
+
+        assertEquals("Cosmic.milk", JSONObject(places.appStorage.read("Old.json")).getString("milkPreset"))
+    }
+
+    @Test
+    fun `a preset from a newer Geode loads what it can, says so, and keeps the rest when saved again`() {
+        val newer =
+            JSONObject()
+                .put("version", PRESET_VERSION + 1)
+                .put("name", "Comet")
+                .put("style", "julia")
+                .put("parts", JSONArray(listOf("CAMERA", "COMETS")))
+                .put("shared", JSONObject().put("ZOOM", 2.0).put("COMET_TAIL", 0.5))
+                .put("comet", JSONObject().put("tail", 3))
+        val store = store(appStorage = mapOf("Comet.json" to newer.toString()))
+
+        store.send(CustomizationCommand.LoadPreset(PresetId("Comet")))
+
+        assertEquals(2f, store.state.value.current.shared[SharedProperty.ZOOM])
+        assertEquals(listOf("customization: some parts of this preset need a newer Geode: they are kept, but not applied"), messages())
+
+        store.send(CustomizationCommand.SetShared(SharedProperty.ZOOM, 2.5f))
+        store.send(CustomizationCommand.SavePreset("Comet", setOf(PresetPart.CAMERA)))
+
+        val saved = JSONObject(places.appStorage.read("Comet.json"))
+        assertEquals(PRESET_VERSION + 1, saved.getInt("version"))
+        assertEquals(3, saved.getJSONObject("comet").getInt("tail"))
+        assertEquals(0.5, saved.getJSONObject("shared").getDouble("COMET_TAIL"), 0.0)
+        assertEquals(2.5, saved.getJSONObject("shared").getDouble("ZOOM"), 0.0)
+        assertEquals("COMETS", saved.getJSONArray("parts").getString(1))
     }
 
     @Test

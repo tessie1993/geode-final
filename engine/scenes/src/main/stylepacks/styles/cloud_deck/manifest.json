@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "cloud_deck",
+  "label": "Cloud Deck",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.7
+}

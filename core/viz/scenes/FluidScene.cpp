@@ -78,9 +78,15 @@ void FluidScene::draw(float timeSeconds) {
     choreography_.tick(f, simDt, sim_.aspect());
     emitters_.tick(f, simDt, sim_.aspect(), hueBase, hueSpan, splats_);
     for (const auto& s : splats_) sim_.queueSplat(s);
+    splatTouchStrokes(hueBase, hueSpan);
+    const std::array<float, 2> down = inPlaneDown();
+    sim_.buoyancyX = down[0] * kBuoyancy;
+    sim_.buoyancyY = down[1] * kBuoyancy;
     sim_.step(simDt);
     if (particles_.available() && p.fluidParticlesEnabled) {
         applyChoreographyTo(particles_);
+        particles_.fallX = down[0] * kParticleFall;
+        particles_.fallY = down[1] * kParticleFall;
         particles_.step(simDt, sim_.velocityTex(), sim_.aspect(), sim_.flowScale(), time_);
     }
     look_.bloomIntensity = std::clamp(p.fluidBloomIntensity * style_.bloom, 0.1f, 2.0f) * (0.6f + p.fluidBloomAudio * energy);
@@ -107,6 +113,31 @@ void FluidScene::draw(float timeSeconds) {
                         static_cast<float>(p.particleShape), particle_look::glow(p.bloom), timeSeconds);
     }
     restoreBlend();
+}
+
+void FluidScene::queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
+    if (touchStrokes_.size() >= static_cast<size_t>(kMaxTouchStrokes)) return;
+    touchStrokes_.push_back({nx, ny, ndx, ndy, dt, strength});
+}
+
+void FluidScene::splatTouchStrokes(float hueBase, float hueSpan) {
+    const float aspect = sim_.aspect();
+    float rgb[3];
+    for (const auto& st : touchStrokes_) {
+        // NDC, y up, to sim space: x across -aspect..aspect, as the emitters place their splats.
+        const float x = st[0] * aspect;
+        const float y = st[1];
+        const float dx = st[2] * aspect;
+        const float dy = st[3];
+        const float strength = std::clamp(st[5], 0.0f, 1.0f);
+        const float perSecond = 1.0f / std::max(st[4], 1.0f / 240.0f);
+        const float vx = std::clamp(dx * perSecond * kTouchForce, -kTouchMaxSpeed, kTouchMaxSpeed) * strength;
+        const float vy = std::clamp(dy * perSecond * kTouchForce, -kTouchMaxSpeed, kTouchMaxSpeed) * strength;
+        hue::rgb(hueBase + 0.5f * hueSpan, 0.85f, rgb);
+        const float ink = kTouchInk * strength;
+        sim_.queueSplat({x - dx, y - dy, x, y, kTouchRadius, vx, vy, rgb[0] * ink, rgb[1] * ink, rgb[2] * ink});
+    }
+    touchStrokes_.clear();
 }
 
 void FluidScene::release() {

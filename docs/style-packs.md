@@ -45,6 +45,12 @@ declares the parameters its renderer reads from the Style it draws:
 A parameter without a `default` must be set by every Style of the family. The C++ profiles read exactly
 these keys; a host test fails if a key and a profile field drift apart.
 
+A family may also list, under `ignores`, the Shared core properties its renderer never reads, named as
+presets name them: MilkDrop paces itself and takes raw sound, so it has
+`"ignores": ["SPEED", "AUDIO_DRIVE", …]`. Customize greys those controls out on the family's Styles,
+and any Macro that moves only them (#365). Only the Kotlin side reads it; the Customization tests
+check every name is a real property.
+
 ## `manifest.json`
 
 ```json
@@ -76,6 +82,8 @@ these keys; a host test fails if a key and a profile field drift apart.
 | `extras` | no | The Style's own controls, declared generically: `name`, `min`, `max`, `default`. One name is one control with one range on every Style that has it, which CI checks across packs. |
 | `macros` | no | Default Macros, at most 6 (the shared set): `name` and `links`, each a `target` and an `amount` in −1…1. |
 | `reactions` | no | Default Reactions: a Sound `signal` (0–1) moving a `target` by an `amount` in −1…1, with `riseMs`, `fallMs` (≥ 0) and a `curve` (`linear`, `ease_in`, `ease_out`, `smooth`). |
+| `effects` | no | The Style's costly effects the hot thermal tiers may switch off, at most 8 lower-case names. The shader reads effect *i* (its position in the list) with `fxOn(i)` from `lib_scene_uniforms`. |
+| `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 
 No Style ships Extras, Macros or Reactions yet; their shapes are fixed here so the Customization work
 (#39, #40, #54) fills them in as data.
@@ -93,3 +101,31 @@ suggestions for it drop out. Removing the default Style also means changing `Sce
 
 A pack that cannot be read is left out on the device, with a typed `PackError` logged, and every other
 Style keeps working; CI never lets one ship.
+
+## Authoring loop
+
+Shaders are assembled with `#line` directives (`core/util/ShaderAssembly.cpp`): each file is its own
+source string and the assembled source ends with a comment naming them, so a compile error on a phone,
+in the render check or in glslang names the file and line the author wrote
+(`styles/kifs/shader.glsl:12: 'x' : undeclared identifier`), not a line of the assembled source.
+
+A debug build reloads a Style without a restart from its **Style lab**, a folder on the device:
+`/sdcard/Android/data/dev.geode.debug/files/stylelab/<id>/`, holding the Style's `manifest.json`, its
+shader, or both. The renderer looks at it four times a second and reloads a Style whose files there
+changed: a shader Style compiles the new shader at its next frame and keeps drawing the last one that
+compiled if it fails (the error reaches logcat and the app's log), and a new manifest replaces the
+Style's pack (render scale, Detail, parameters, Extras' ranges). Only Styles that ship can be reloaded,
+the App UI keeps the label and controls it started with, and pushed packs stay in force, across
+restarts too, until the folder is removed and the app restarted. A release build has none of this: the
+native hot-reload path is compiled only with `GEODE_STYLE_HOT_RELOAD`, which the debug build type alone
+sets, and the Kotlin side lives in `:engine:scenes`' debug source set.
+
+`tools/glslcheck/check.mjs` drives the loop from the repository:
+
+```sh
+node tools/glslcheck/check.mjs --shader kifs --glslang --watch --push
+```
+
+Every save of the pack or of a shared `shaders/lib_*.glsl` checks the Style with glslang and, when it
+passes, pushes its folder to the debug app with `adb`, which shows it within about a second. Drop
+`--glslang` to render a frame with ANGLE instead; `--package` names another application id.

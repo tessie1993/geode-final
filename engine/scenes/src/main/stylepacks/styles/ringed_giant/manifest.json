@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "ringed_giant",
+  "label": "Ringed Giant",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75
+}

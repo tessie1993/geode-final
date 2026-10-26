@@ -213,4 +213,31 @@ float FlashLimiter::step(float dt, const LumaGrid& candidate) {
     return amount;
 }
 
+void DelayedPresent::reset() {
+    shown_ = false;
+    pending_ = false;
+}
+
+DelayedPresent::Step DelayedPresent::onCandidate(float dt, bool synchronous) {
+    Step step;
+    if (synchronous || !shown_) {
+        step.action = Action::MeasureAndShow;
+        step.dt = pending_ ? pendingDt_ + dt : dt;
+        step.droppedPending = pending_;
+        shown_ = true;
+        pending_ = false;
+        return step;
+    }
+    if (pending_) {
+        step.action = Action::ShowPending;
+        step.dt = pendingDt_;
+    } else {
+        step.action = Action::HoldShown;
+        step.dt = 0.0f;
+    }
+    pending_ = true;
+    pendingDt_ = dt;
+    return step;
+}
+
 }  // namespace geode::viz

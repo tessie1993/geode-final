@@ -141,17 +141,20 @@ internal fun ReactionEditor(
         range = 0f..1f,
         text = { stringResource(R.string.customize_percent, percentOf(it)) },
         onSet = { draft = draft.copy(amount = it) },
+        help = stringResource(R.string.customize_help_amount),
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.customize_invert), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
         Switch(checked = reaction.invert, onCheckedChange = { draft = draft.copy(invert = it) })
     }
+    HelpLine(stringResource(R.string.customize_help_invert))
     HeldSlider(
         label = stringResource(R.string.customize_rise),
         value = reaction.rise.value.toFloat(),
         range = 0f..MAX_RESPONSE_MILLIS.toFloat(),
         text = { stringResource(R.string.customize_millis, it.roundToInt()) },
         onSet = { draft = draft.copy(rise = Millis(it.roundToInt().toLong())) },
+        help = stringResource(R.string.customize_help_rise),
     )
     HeldSlider(
         label = stringResource(R.string.customize_fall),
@@ -159,6 +162,7 @@ internal fun ReactionEditor(
         range = 0f..MAX_RESPONSE_MILLIS.toFloat(),
         text = { stringResource(R.string.customize_millis, it.roundToInt()) },
         onSet = { draft = draft.copy(fall = Millis(it.roundToInt().toLong())) },
+        help = stringResource(R.string.customize_help_fall),
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.customize_range), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -167,6 +171,7 @@ internal fun ReactionEditor(
             style = MaterialTheme.typography.labelMedium,
         )
     }
+    HelpLine(stringResource(R.string.customize_help_range))
     RangeSlider(
         value = reaction.low..reaction.high,
         onValueChange = { draft = draft.copy(low = it.start, high = it.endInclusive) },

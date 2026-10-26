@@ -21,9 +21,13 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -31,11 +35,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -47,12 +53,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
+import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.ModulatorShape
@@ -90,16 +98,18 @@ internal fun ChipFlow(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** One chip that is either chosen or not. */
+/** One chip that is either chosen or not; greyed out when not [enabled]. */
 @Composable
 internal fun ChoiceChip(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     FilterChip(
         selected = selected,
         onClick = onClick,
+        enabled = enabled,
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
     )
@@ -117,8 +127,12 @@ private fun valueText(
     }
 
 /**
- * One slider of the Advanced view. It follows the finger and sets the value when let go, so one drag
- * is one undo step. A switch for on/off properties. A long-press on its name offers "React to…".
+ * One slider of the Advanced view (#285). While it is dragged the Visual follows the finger
+ * ([onPreview]), and letting go sets the value ([onSet]), so one drag is one undo step. A multiplicative
+ * control moves by ratios ([SliderRow.ratio]). A switch for on/off properties. The reset button puts
+ * the value back to the Style's own ([onReset]); a long-press on its name offers "React to…". A row
+ * the current Style does not use is greyed out and says so (#365). Its − and + take fine steps, and
+ * coarse ones on a long-press (#392). A tap on its name shows its one-line [help] (#393).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -126,16 +140,30 @@ internal fun ValueSlider(
     row: SliderRow,
     label: String,
     onSet: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
+    onReset: () -> Unit,
     onReactTo: () -> Unit,
+    help: String? = null,
 ) {
-    var held by remember(row.value) { mutableFloatStateOf(row.value) }
+    var dragging by remember { mutableStateOf(false) }
+    var held by remember { mutableFloatStateOf(row.value) }
+    val shown = if (dragging) held else row.value
+    var explained by remember { mutableStateOf(false) }
     val colors = LocalGlassStyle.current.colors
     val reactTo = stringResource(R.string.customize_react_to)
+    val explain = stringResource(R.string.customize_explain)
+    val enabled = !row.ignored
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .combinedClickable(onClick = {}, onLongClick = onReactTo, onLongClickLabel = reactTo),
+                .alpha(if (enabled) 1f else IGNORED_ALPHA)
+                .combinedClickable(
+                    onClickLabel = explain,
+                    onLongClickLabel = reactTo,
+                    onLongClick = onReactTo,
+                    onClick = { explained = !explained },
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -148,20 +176,89 @@ internal fun ValueSlider(
                 )
             }
             if (row.kind == ValueKind.SWITCH) {
-                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) })
+                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) }, enabled = enabled)
             } else {
-                Text(valueText(row.kind, held), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                val nudge = { up: Boolean, coarse: Boolean ->
+                    onSet(nudged(row.value, row.min, row.max, row.kind, up, coarse))
+                }
+                NudgeButton(up = false, enabled = enabled) { nudge(false, it) }
+                Text(valueText(row.kind, shown), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                NudgeButton(up = true, enabled = enabled) { nudge(true, it) }
+            }
+            IconButton(onClick = onReset, enabled = enabled) {
+                Icon(Icons.Rounded.Restore, contentDescription = stringResource(R.string.customize_reset_value, label))
             }
         }
+        if (explained && help != null) HelpLine(help)
         if (row.kind != ValueKind.SWITCH) {
             Slider(
-                value = held,
-                onValueChange = { held = it },
-                valueRange = row.min..row.max,
+                value = row.position(shown),
+                onValueChange = { position ->
+                    dragging = true
+                    held = row.valueAt(position)
+                    onPreview(held)
+                },
                 steps = if (row.kind == ValueKind.STEPPED) ((row.max - row.min).roundToInt() - 1).coerceAtLeast(0) else 0,
-                onValueChangeFinished = { onSet(held) },
+                onValueChangeFinished = {
+                    if (dragging) onSet(held)
+                    dragging = false
+                },
+                enabled = enabled,
             )
         }
+        if (row.ignored) {
+            Text(
+                stringResource(R.string.customize_ignored),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+/** A control's one-line help (#393), shown under its name. */
+@Composable
+internal fun HelpLine(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = LocalGlassStyle.current.colors.textSecondary,
+        modifier = Modifier.padding(bottom = GlassSpacing.ExtraSmall),
+    )
+}
+
+/**
+ * A row's − or + ([up]): a tap is a fine step and a long-press a coarse one (#392), each handed to
+ * [onNudge] with whether it is coarse.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun NudgeButton(
+    up: Boolean,
+    enabled: Boolean = true,
+    onNudge: (coarse: Boolean) -> Unit,
+) {
+    val fine = stringResource(if (up) R.string.customize_step_up else R.string.customize_step_down)
+    val coarse = stringResource(if (up) R.string.customize_step_up_coarse else R.string.customize_step_down_coarse)
+    Box(
+        Modifier
+            .size(GlassSize.TapTarget)
+            .combinedClickable(
+                enabled = enabled,
+                onClickLabel = fine,
+                role = Role.Button,
+                onLongClickLabel = coarse,
+                onLongClick = { onNudge(true) },
+                onClick = { onNudge(false) },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (up) Icons.Rounded.Add else Icons.Rounded.Remove,
+            contentDescription = fine,
+            tint = LocalGlassStyle.current.colors.textSecondary,
+            modifier = Modifier.size(GlassSpacing.Large),
+        )
     }
 }
 
@@ -204,7 +301,8 @@ internal fun Meter(
 
 /**
  * One Macro knob of the basic view: its ring shows the set value, and an inner ring its live value as
- * the music moves it. Drag up or down to turn it; a long-press opens its editor.
+ * the music moves it. Drag up or down to turn it: the Visual follows the drag ([onPreview]) and
+ * letting go sets the value ([onSet]), one undo step. A long-press opens its editor.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -212,27 +310,46 @@ internal fun MacroKnobView(
     knob: MacroKnob,
     driver: String?,
     onSet: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
     onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var held by remember(knob.value) { mutableFloatStateOf(knob.value) }
+    var dragging by remember { mutableStateOf(false) }
+    var held by remember { mutableFloatStateOf(knob.value) }
+    val latest by rememberUpdatedState(knob.value)
     val set by rememberUpdatedState(onSet)
+    val preview by rememberUpdatedState(onPreview)
+    val shown = if (dragging) held else knob.value
     val colors = LocalGlassStyle.current.colors
-    val percent = (held * 100).roundToInt()
+    val percent = (shown * 100).roundToInt()
     val description = stringResource(R.string.customize_macro_knob, knob.name, percent)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.alpha(if (knob.ignored) IGNORED_ALPHA else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
                 .size(CustomizeDimens.knob)
-                .pointerInput(knob.index, knob.value) {
-                    detectVerticalDragGestures(onDragEnd = { set(held) }) { change, dragged ->
+                .pointerInput(knob.index) {
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            held = latest
+                            dragging = true
+                        },
+                        onDragEnd = {
+                            dragging = false
+                            set(held)
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            set(held)
+                        },
+                    ) { change, dragged ->
                         change.consume()
                         held = (held - dragged / (size.height * 2f)).coerceIn(0f, 1f)
+                        preview(held)
                     }
                 }.combinedClickable(onClick = {}, onLongClick = onEdit)
                 .semantics {
                     contentDescription = description
-                    progressBarRangeInfo = ProgressBarRangeInfo(held, 0f..1f)
+                    progressBarRangeInfo = ProgressBarRangeInfo(shown, 0f..1f)
                     setProgress { value ->
                         set(value.coerceIn(0f, 1f))
                         true
@@ -243,7 +360,7 @@ internal fun MacroKnobView(
             Canvas(Modifier.fillMaxSize()) {
                 val stroke = CustomizeDimens.knobStroke.toPx()
                 ring(colors.textSecondary.copy(alpha = QUIET_ALPHA), 1f, stroke, inset = stroke / 2)
-                ring(colors.accent, held, stroke, inset = stroke / 2)
+                ring(colors.accent, shown, stroke, inset = stroke / 2)
                 knob.live?.let { live ->
                     val thin = CustomizeDimens.liveStroke.toPx()
                     ring(colors.warm, live, thin, inset = stroke + thin)
@@ -252,6 +369,15 @@ internal fun MacroKnobView(
             Text(stringResource(R.string.customize_percent, percent), style = MaterialTheme.typography.titleMedium)
         }
         Text(knob.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (knob.ignored) {
+            Text(
+                stringResource(R.string.customize_macro_ignored),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (driver != null) {
             Text(
                 driver,

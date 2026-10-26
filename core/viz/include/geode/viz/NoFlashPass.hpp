@@ -12,12 +12,16 @@
 
 namespace geode::viz {
 
-// The GL side of the No-flash rule. The composite pass draws the finished frame into this pass's
-// candidate target instead of the output; present() measures it on a 4x4 grid on the GPU
-// (noflash_measure_frag.glsl), reads those 16 texels back, asks FlashLimiter how much of the new
-// frame may be shown, and draws the result into the output (noflash_mix_frag.glsl). It keeps the
-// frame it showed last as the crossfade source, ping-ponging three output-sized targets so that
-// a frame passed through unchanged costs no copy into the history.
+// The GL side of the No-flash rule. The final pass (HdrPass, after the composite) draws the
+// finished, tonemapped frame into this pass's candidate target instead of the output; present()
+// measures it on a 4x4 grid on the GPU (noflash_measure_frag.glsl) and starts reading those 16
+// texels back into a pixel-pack buffer behind a fence, without waiting for them. The frame is shown
+// one frame later (DelayedPresent), when its measurement has arrived: FlashLimiter decides how much
+// of it may be shown and the result is drawn into the output (noflash_mix_frag.glsl). So nothing
+// stalls on the GPU, and the limiter still judges every frame before any of it reaches the screen.
+// The frame shown last is kept as the crossfade source; four output-sized targets rotate (the one
+// being drawn, the one pending, the one shown, a spare) so that a frame passed through unchanged
+// costs no copy into the history.
 class NoFlashPass {
 public:
     ~NoFlashPass() { release(); }
@@ -27,28 +31,49 @@ public:
     // Binds the candidate target at the output size. False when the pass cannot run (no program
     // or no memory for its targets); the caller then draws straight to its output.
     bool bindCandidate(int width, int height);
-    // Measures the candidate, limits it and draws the frame to show into `targetFbo`, which is
-    // left bound at the output size.
-    void present(float dt, GLuint targetFbo, GLuint quadVao);
-    // How much of the last candidate was shown (1 = all of it).
+    // The candidate target bindCandidate() made, for a pass that draws into it later in the frame.
+    GLuint candidateFbo() const { return candidate_->frame.fbo(); }
+    // Measures the candidate, limits the frame due now and draws it into `targetFbo`, which is left
+    // bound at the output size. `synchronous` (the offscreen Render) waits for this candidate's own
+    // measurement and shows it in this frame, so every rendered frame is the one asked for.
+    void present(float dt, GLuint targetFbo, GLuint quadVao, bool synchronous);
+    // How much of the last frame the limiter judged was shown (1 = all of it).
     float lastAmount() const { return lastAmount_; }
 
 private:
-    void measure(GLuint quadVao);
-    void drawMix(GLuint fbo, float amount, GLuint quadVao);
+    // One output-sized target and the pixel-pack buffer its measurement is read into.
+    struct Slot {
+        explicit Slot(const char* label) : frame(label) {}
+        Framebuffer frame;
+        GLuint pbo = 0;
+        GLsync fence = nullptr;
+    };
 
-    Framebuffer frameA_{"noFlashA"};
-    Framebuffer frameB_{"noFlashB"};
-    Framebuffer frameC_{"noFlashC"};
-    Framebuffer* candidate_ = &frameA_;
-    Framebuffer* shown_ = &frameB_;
-    Framebuffer* spare_ = &frameC_;
+    bool ensureSlot(Slot& slot, int width, int height);
+    void measure(Slot& slot, GLuint quadVao);
+    // Waits for the slot's measurement (normally long arrived) and copies it into readback_.
+    bool readMeasurement(Slot& slot);
+    static void dropFence(Slot& slot);
+    // Limits `next` against the frame shown last and draws the result into `targetFbo`; `next`
+    // or the damped frame becomes the frame shown last.
+    void show(Slot*& next, float dt, GLuint targetFbo, GLuint quadVao);
+    void drawMix(GLuint fbo, GLuint shownTex, GLuint nextTex, float amount, GLuint quadVao);
+
+    Slot slotA_{"noFlashA"};
+    Slot slotB_{"noFlashB"};
+    Slot slotC_{"noFlashC"};
+    Slot slotD_{"noFlashD"};
+    Slot* candidate_ = &slotA_;
+    Slot* pending_ = &slotB_;
+    Slot* shown_ = &slotC_;
+    Slot* spare_ = &slotD_;
     Framebuffer grid_{"noFlashGrid"};
     GLuint measureProgram_ = 0;
     GLuint mixProgram_ = 0;
     UniformCache measureUniforms_;
     UniformCache mixUniforms_;
     FlashLimiter limiter_;
+    DelayedPresent schedule_;
     std::array<uint8_t, noflash::kReadbackBytes> readback_{};
     int width_ = 0;
     int height_ = 0;
