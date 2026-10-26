@@ -46,6 +46,8 @@ import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassCard
 import dev.geode.design.glass.GlassKind
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
@@ -84,7 +86,7 @@ fun RenderQueue(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (model.canClear) {
-                    TextButton(onClick = { onAction(StudioAction.Send(StudioCommand.ClearFinishedRenders)) }) {
+                    TextButton(onClick = rememberPressing { onAction(StudioAction.Send(StudioCommand.ClearFinishedRenders)) }) {
                         Text(stringResource(R.string.studio_render_clear))
                     }
                 }
@@ -108,7 +110,7 @@ private fun RenderBatch(
                 style = MaterialTheme.typography.labelLarge,
             )
             if (batch.cancellable.size > 1) {
-                TextButton(onClick = { onAction(StudioAction.Send(StudioCommand.CancelRenders(batch.cancellable))) }) {
+                TextButton(onClick = rememberPressing { onAction(StudioAction.Send(StudioCommand.CancelRenders(batch.cancellable))) }) {
                     Text(stringResource(R.string.studio_render_cancel_rest))
                 }
             }
@@ -135,7 +137,7 @@ private fun RenderRow(
                 )
             }
             if (cancellable) {
-                TextButton(onClick = { onAction(StudioAction.Send(StudioCommand.CancelRenders(setOf(job.id)))) }) {
+                TextButton(onClick = rememberPressing { onAction(StudioAction.Send(StudioCommand.CancelRenders(setOf(job.id)))) }) {
                     Text(stringResource(R.string.studio_cancel))
                 }
             }
@@ -230,8 +232,11 @@ fun RenderSetupDialog(
                 if (draft.spec.tracks.size > 1) PlaylistChapters(draft, onSaveChapters)
                 ProjectPicker(draft, projects, onDraft)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.studio_cancel)) }
-                    Button(onClick = onRender, enabled = draft.ready) { Text(stringResource(R.string.studio_render_start)) }
+                    TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.studio_cancel)) }
+                    Button(
+                        onClick = rememberPressing(onRender),
+                        enabled = draft.ready,
+                    ) { Text(stringResource(R.string.studio_render_start)) }
                 }
             }
         }
@@ -250,12 +255,12 @@ private fun SourcePicker(
     Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
         FilterChip(
             selected = !playlists,
-            onClick = { playlists = false },
+            onClick = rememberPressing { playlists = false },
             label = { Text(stringResource(R.string.studio_render_source_track)) },
         )
         FilterChip(
             selected = playlists,
-            onClick = { playlists = true },
+            onClick = rememberPressing { playlists = true },
             label = { Text(stringResource(R.string.studio_render_source_playlist)) },
         )
     }
@@ -472,11 +477,13 @@ private fun PlaylistChapters(
     Note(stringResource(R.string.studio_render_chapters_note))
     Text(text.trimEnd(), style = MaterialTheme.typography.bodySmall)
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
-        TextButton(onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, text))) } }) {
+        TextButton(onClick = rememberPressing { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, text))) } }) {
             Text(stringResource(R.string.studio_render_chapters_copy))
         }
         ChapterFile.entries.forEach { file ->
-            TextButton(onClick = { onSave(file) }) { Text(stringResource(R.string.studio_render_chapters_save, file.extension)) }
+            TextButton(
+                onClick = rememberPressing { onSave(file) },
+            ) { Text(stringResource(R.string.studio_render_chapters_save, file.extension)) }
         }
     }
 }
@@ -500,7 +507,7 @@ private fun Check(
     Row(
         Modifier
             .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange)
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = rememberToggling(onChange))
             .padding(vertical = StudioDimens.gap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -531,7 +538,7 @@ private fun <T> Chips(
 ) {
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
         options.forEach { option ->
-            FilterChip(selected = selected(option), onClick = { onPick(option) }, label = { Text(label(option)) })
+            FilterChip(selected = selected(option), onClick = rememberPressing { onPick(option) }, label = { Text(label(option)) })
         }
     }
 }
@@ -545,7 +552,7 @@ private fun Choice(
     Row(
         Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .selectable(selected = selected, onClick = rememberPressing(onClick), role = Role.RadioButton)
             .padding(vertical = StudioDimens.gap),
         verticalAlignment = Alignment.CenterVertically,
     ) {

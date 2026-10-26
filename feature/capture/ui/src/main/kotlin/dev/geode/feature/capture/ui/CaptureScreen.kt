@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.capture.api.CaptureCommand
 import dev.geode.feature.capture.api.CaptureProblem
 import dev.geode.feature.capture.api.CaptureSource
@@ -74,10 +75,10 @@ fun CaptureScreen(
             is CaptureState.AskingAboutMusic -> {
                 Text(stringResource(R.string.capture_music_question))
                 Row(horizontalArrangement = Arrangement.spacedBy(CaptureDimens.GAP)) {
-                    Button(onClick = { send(CaptureCommand.ChooseMusic(MusicChoice.PAUSE)) }) {
+                    Button(onClick = rememberPressing { send(CaptureCommand.ChooseMusic(MusicChoice.PAUSE)) }) {
                         Text(stringResource(R.string.capture_music_pause))
                     }
-                    OutlinedButton(onClick = { send(CaptureCommand.ChooseMusic(MusicChoice.KEEP_PLAYING)) }) {
+                    OutlinedButton(onClick = rememberPressing { send(CaptureCommand.ChooseMusic(MusicChoice.KEEP_PLAYING)) }) {
                         Text(stringResource(R.string.capture_music_keep))
                     }
                 }
@@ -86,7 +87,7 @@ fun CaptureScreen(
             is CaptureState.AwaitingPermission -> {
                 Text(stringResource(R.string.capture_permission_body, inlineName(state.source)))
                 Row(horizontalArrangement = Arrangement.spacedBy(CaptureDimens.GAP)) {
-                    Button(onClick = { onAction(CaptureAction.AskForPermission) }) {
+                    Button(onClick = rememberPressing { onAction(CaptureAction.AskForPermission) }) {
                         Text(stringResource(R.string.capture_permission_allow))
                     }
                     CancelButton(send)
@@ -97,13 +98,13 @@ fun CaptureScreen(
                 Text(stringResource(R.string.capture_capturing, inlineName(state.source)))
                 if (state.quiet) Text(stringResource(R.string.capture_quiet), style = MaterialTheme.typography.bodySmall)
                 SourceButtons(selected = state.source) { send(CaptureCommand.Start(it)) }
-                Button(onClick = { send(CaptureCommand.Stop) }) { Text(stringResource(R.string.capture_stop)) }
+                Button(onClick = rememberPressing { send(CaptureCommand.Stop) }) { Text(stringResource(R.string.capture_stop)) }
             }
             is CaptureState.Failed -> {
                 Text(stringResource(problemText(state.problem), inlineName(state.source)))
                 Row(horizontalArrangement = Arrangement.spacedBy(CaptureDimens.GAP)) {
-                    Button(onClick = { send(CaptureCommand.Stop) }) { Text(stringResource(R.string.capture_dismiss)) }
-                    OutlinedButton(onClick = { send(CaptureCommand.Start(state.source)) }) {
+                    Button(onClick = rememberPressing { send(CaptureCommand.Stop) }) { Text(stringResource(R.string.capture_dismiss)) }
+                    OutlinedButton(onClick = rememberPressing { send(CaptureCommand.Start(state.source)) }) {
                         Text(stringResource(R.string.capture_retry))
                     }
                 }
@@ -122,9 +123,9 @@ private fun SourceButtons(
         for (source in CaptureSource.entries) {
             val label = stringResource(sourceName(source))
             if (source == selected) {
-                Button(onClick = { onPick(source) }) { Text(label) }
+                Button(onClick = rememberPressing { onPick(source) }) { Text(label) }
             } else {
-                OutlinedButton(onClick = { onPick(source) }) { Text(label) }
+                OutlinedButton(onClick = rememberPressing { onPick(source) }) { Text(label) }
             }
         }
     }
@@ -141,7 +142,7 @@ private fun Waiting(
 
 @Composable
 private fun CancelButton(send: (CaptureCommand) -> Unit) {
-    TextButton(onClick = { send(CaptureCommand.Stop) }) { Text(stringResource(R.string.capture_cancel)) }
+    TextButton(onClick = rememberPressing { send(CaptureCommand.Stop) }) { Text(stringResource(R.string.capture_cancel)) }
 }
 
 @StringRes

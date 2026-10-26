@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.design.glass.GlassCard
+import dev.geode.design.glass.rememberPressing
 
 /**
  * Studio's own first-run step (owner decision on #21): where Studio saves its videos, picked with the
@@ -38,7 +39,7 @@ fun StudioSetupScreen(
             Column(Modifier.padding(StudioDimens.padding), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
                 Text(stringResource(R.string.studio_setup_folder), style = MaterialTheme.typography.titleSmall)
                 Text(model.folder ?: stringResource(R.string.studio_setup_no_folder))
-                OutlinedButton(onClick = { onAction(StudioSetupAction.PickFolder) }) {
+                OutlinedButton(onClick = rememberPressing { onAction(StudioSetupAction.PickFolder) }) {
                     Text(stringResource(if (model.folder == null) R.string.studio_choose_folder else R.string.studio_change_folder))
                 }
             }
@@ -48,7 +49,7 @@ fun StudioSetupScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(onClick = { onAction(StudioSetupAction.Continue) }, enabled = model.folder != null) {
+        Button(onClick = rememberPressing { onAction(StudioSetupAction.Continue) }, enabled = model.folder != null) {
             Text(stringResource(R.string.studio_setup_continue))
         }
     }

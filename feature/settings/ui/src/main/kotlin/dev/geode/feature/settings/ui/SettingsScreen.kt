@@ -34,6 +34,7 @@ import dev.geode.design.glass.GlassListRow
 import dev.geode.design.glass.GlassLoading
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.GlassTopBar
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
 
@@ -55,7 +56,7 @@ fun SettingsScreen(
     val back: (@Composable () -> Unit)? =
         if (open != null) {
             {
-                IconButton(onClick = { onAction(SettingsAction.Back) }) {
+                IconButton(onClick = rememberPressing { onAction(SettingsAction.Back) }) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                 }
             }

@@ -11,6 +11,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.playback.api.RepeatMode
 
 /** Shuffle, lit while [on]; the Player controls and the queue both show it. */
@@ -19,7 +20,7 @@ internal fun ShuffleButton(
     on: Boolean,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick) {
+    IconButton(onClick = rememberPressing(onClick)) {
         if (on) {
             Icon(Icons.Rounded.ShuffleOn, stringResource(R.string.playback_shuffle_on), tint = MaterialTheme.colorScheme.primary)
         } else {
@@ -34,7 +35,7 @@ internal fun RepeatButton(
     mode: RepeatMode,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick) {
+    IconButton(onClick = rememberPressing(onClick)) {
         when (mode) {
             RepeatMode.OFF -> Icon(Icons.Rounded.Repeat, stringResource(R.string.playback_repeat_off))
             RepeatMode.ALL ->

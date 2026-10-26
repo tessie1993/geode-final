@@ -51,6 +51,7 @@ import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleMark
@@ -162,7 +163,7 @@ private fun Header(
                 )
             }
         }
-        FilledTonalButton(onClick = { onAction(VisualsAction.EnterFullScreen) }) {
+        FilledTonalButton(onClick = rememberPressing { onAction(VisualsAction.EnterFullScreen) }) {
             Icon(Icons.Rounded.Fullscreen, contentDescription = null)
             Text(stringResource(R.string.visuals_full_screen), Modifier.padding(start = GlassSpacing.Small))
         }
@@ -216,7 +217,7 @@ private fun FoldersTitle(
     // Whether the "new folder" dialog is open: App UI state only (ADR-0003).
     var naming by rememberSaveable { mutableStateOf(false) }
     SectionTitle(title) {
-        TextButton(onClick = { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
+        TextButton(onClick = rememberPressing { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
     }
     if (naming) {
         NameDialog(
@@ -257,10 +258,10 @@ private fun Path(
         horizontalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = { onAction(VisualsAction.OpenFolder(null)) }) { Text(stringResource(R.string.visuals_top)) }
+        TextButton(onClick = rememberPressing { onAction(VisualsAction.OpenFolder(null)) }) { Text(stringResource(R.string.visuals_top)) }
         for (folder in path.dropLast(1)) {
             Text("/", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = { onAction(VisualsAction.OpenFolder(folder.id)) }) {
+            TextButton(onClick = rememberPressing { onAction(VisualsAction.OpenFolder(folder.id)) }) {
                 Text(folder.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -294,7 +295,7 @@ private fun FolderRow(
             )
         }
         Box {
-            IconButton(onClick = { menu = true }) {
+            IconButton(onClick = rememberPressing { menu = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, folder.name))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -367,7 +368,7 @@ private fun StyleRow(
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        IconButton(onClick = { onAction(VisualsAction.SetFavourite(style.id, !style.favourite)) }) {
+        IconButton(onClick = rememberPressing { onAction(VisualsAction.SetFavourite(style.id, !style.favourite)) }) {
             if (style.favourite) {
                 Icon(
                     Icons.Rounded.Favorite,
@@ -379,7 +380,7 @@ private fun StyleRow(
             }
         }
         Box {
-            IconButton(onClick = { menu = true }) {
+            IconButton(onClick = rememberPressing { menu = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, style.name))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -445,9 +446,12 @@ private fun NameDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.visuals_save)) }
+            TextButton(
+                onClick = rememberPressing { onDone(name) },
+                enabled = name.isNotBlank(),
+            ) { Text(stringResource(R.string.visuals_save)) }
         },
-        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.visuals_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing { onDone(null) }) { Text(stringResource(R.string.visuals_cancel)) } },
     )
 }
 

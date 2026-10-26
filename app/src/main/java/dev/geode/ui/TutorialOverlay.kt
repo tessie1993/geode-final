@@ -40,6 +40,7 @@ import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberToggling
 import dev.geode.ui.shell.Place
 
 /**
@@ -107,7 +108,7 @@ fun TutorialOverlay(
                 Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = GlassSize.TapTarget)
-                    .toggleable(value = dontShowAgain, role = Role.Checkbox, onValueChange = onDontShowAgainChange),
+                    .toggleable(value = dontShowAgain, role = Role.Checkbox, onValueChange = rememberToggling(onDontShowAgainChange)),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
             ) {

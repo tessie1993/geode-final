@@ -19,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -35,6 +34,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.glass.GlassSlider
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.engine.types.Millis
 import dev.geode.feature.playback.api.AbLoop
 import dev.geode.feature.playback.api.Bookmark
@@ -84,19 +86,19 @@ private fun SleepSection(
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(PlayerDimens.small)) {
             FilterChip(
                 selected = sleep == SleepTimer.Off,
-                onClick = { onAction(ListeningAction.CancelSleep) },
+                onClick = rememberPressing { onAction(ListeningAction.CancelSleep) },
                 label = { Text(stringResource(R.string.playback_sleep_off)) },
             )
             SLEEP_CHOICES.forEach { minutes ->
                 FilterChip(
                     selected = false,
-                    onClick = { onAction(ListeningAction.StartSleep(Millis(minutes * MILLIS_PER_MINUTE))) },
+                    onClick = rememberPressing { onAction(ListeningAction.StartSleep(Millis(minutes * MILLIS_PER_MINUTE))) },
                     label = { Text(stringResource(R.string.playback_sleep_minutes, minutes)) },
                 )
             }
             FilterChip(
                 selected = sleep == SleepTimer.AfterTrack,
-                onClick = { onAction(ListeningAction.SleepAfterTrack) },
+                onClick = rememberPressing { onAction(ListeningAction.SleepAfterTrack) },
                 label = { Text(stringResource(R.string.playback_sleep_end_of_track)) },
             )
         }
@@ -129,7 +131,7 @@ private fun JoinSection(
             },
             style = MaterialTheme.typography.bodyMedium,
         )
-        Slider(
+        GlassSlider(
             value = seconds,
             onValueChange = { dragged = it },
             onValueChangeFinished = {
@@ -142,7 +144,7 @@ private fun JoinSection(
         )
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.playback_gapless), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Switch(checked = model.gapless, onCheckedChange = { onAction(ListeningAction.SetGapless(it)) })
+            Switch(checked = model.gapless, onCheckedChange = rememberToggling { onAction(ListeningAction.SetGapless(it)) })
         }
     }
 }
@@ -157,12 +159,12 @@ private fun QueueEndSection(
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(PlayerDimens.small)) {
             FilterChip(
                 selected = end == QueueEnd.STOP,
-                onClick = { onAction(ListeningAction.SetQueueEnd(QueueEnd.STOP)) },
+                onClick = rememberPressing { onAction(ListeningAction.SetQueueEnd(QueueEnd.STOP)) },
                 label = { Text(stringResource(R.string.playback_queue_end_stop)) },
             )
             FilterChip(
                 selected = end == QueueEnd.SIMILAR,
-                onClick = { onAction(ListeningAction.SetQueueEnd(QueueEnd.SIMILAR)) },
+                onClick = rememberPressing { onAction(ListeningAction.SetQueueEnd(QueueEnd.SIMILAR)) },
                 label = { Text(stringResource(R.string.playback_queue_end_similar)) },
             )
         }
@@ -187,7 +189,7 @@ private fun LoopSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(PlayerDimens.small)) {
-            OutlinedButton(onClick = { onAction(ListeningAction.MarkLoop) }, enabled = model.trackOpen) {
+            OutlinedButton(onClick = rememberPressing { onAction(ListeningAction.MarkLoop) }, enabled = model.trackOpen) {
                 Text(
                     when (loop) {
                         AbLoop.Off -> stringResource(R.string.playback_loop_set_a)
@@ -197,7 +199,9 @@ private fun LoopSection(
                 )
             }
             if (loop is AbLoop.Starting) {
-                TextButton(onClick = { onAction(ListeningAction.ClearLoop) }) { Text(stringResource(R.string.playback_loop_clear)) }
+                TextButton(
+                    onClick = rememberPressing { onAction(ListeningAction.ClearLoop) },
+                ) { Text(stringResource(R.string.playback_loop_clear)) }
             }
         }
     }
@@ -210,7 +214,7 @@ private fun BookmarkSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(PlayerDimens.small)) {
         Heading(stringResource(R.string.playback_bookmarks_title))
-        OutlinedButton(onClick = { onAction(ListeningAction.AddBookmark) }, enabled = model.trackOpen) {
+        OutlinedButton(onClick = rememberPressing { onAction(ListeningAction.AddBookmark) }, enabled = model.trackOpen) {
             Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
             Text(stringResource(R.string.playback_bookmarks_add), Modifier.padding(start = PlayerDimens.small))
         }
@@ -246,7 +250,7 @@ private fun BookmarkRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButton(onClick = { onAction(ListeningAction.RemoveBookmark(bookmark.id)) }) {
+        IconButton(onClick = rememberPressing { onAction(ListeningAction.RemoveBookmark(bookmark.id)) }) {
             Icon(Icons.Rounded.Delete, stringResource(R.string.playback_action_remove_bookmark))
         }
     }

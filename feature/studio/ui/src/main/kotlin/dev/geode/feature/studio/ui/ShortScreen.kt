@@ -40,6 +40,8 @@ import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSlider
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.GlassSwitchRow
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberRangeTicking
 import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.ProjectId
@@ -105,7 +107,7 @@ private fun ShortHeader(
     onAction: (EditAction) -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(EditAction.Send(EditCommand.Close)) }) {
+        IconButton(onClick = rememberPressing { onAction(EditAction.Send(EditCommand.Close)) }) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.edit_back))
         }
         Column(Modifier.weight(StudioDimens.FILL)) {
@@ -181,11 +183,12 @@ private fun ShortSection(
     ShortCard(stringResource(R.string.short_section)) {
         RangeSlider(
             value = edit.startMs.toFloat()..edit.endMs.toFloat(),
-            onValueChange = { range ->
-                val start = range.start.toLong()
-                shortSection(start, range.endInclusive.toLong(), model.lengthMs, startMoved = start != edit.startMs)
-                    ?.let { (from, to) -> onSection(from, to) }
-            },
+            onValueChange =
+                rememberRangeTicking(edit.startMs.toFloat()..edit.endMs.toFloat(), 0f..model.lengthMs.toFloat()) { range ->
+                    val start = range.start.toLong()
+                    shortSection(start, range.endInclusive.toLong(), model.lengthMs, startMoved = start != edit.startMs)
+                        ?.let { (from, to) -> onSection(from, to) }
+                },
             valueRange = 0f..model.lengthMs.toFloat(),
         )
         Text(

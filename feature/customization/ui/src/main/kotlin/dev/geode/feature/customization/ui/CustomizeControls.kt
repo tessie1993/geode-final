@@ -29,7 +29,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,8 +60,11 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.GlassSlider
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.customization.api.ModulatorShape
 import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.abs
@@ -108,7 +110,7 @@ internal fun ChoiceChip(
 ) {
     FilterChip(
         selected = selected,
-        onClick = onClick,
+        onClick = rememberPressing(onClick),
         enabled = enabled,
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = MaterialTheme.shapes.small,
@@ -176,7 +178,11 @@ internal fun ValueSlider(
                 )
             }
             if (row.kind == ValueKind.SWITCH) {
-                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) }, enabled = enabled)
+                Switch(
+                    checked = row.value > row.min,
+                    onCheckedChange = rememberToggling { onSet(if (it) row.max else row.min) },
+                    enabled = enabled,
+                )
             } else {
                 val nudge = { up: Boolean, coarse: Boolean ->
                     onSet(nudged(row.value, row.min, row.max, row.kind, up, coarse))
@@ -185,13 +191,13 @@ internal fun ValueSlider(
                 Text(valueText(row.kind, shown), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
                 NudgeButton(up = true, enabled = enabled) { nudge(true, it) }
             }
-            IconButton(onClick = onReset, enabled = enabled) {
+            IconButton(onClick = rememberPressing(onReset), enabled = enabled) {
                 Icon(Icons.Rounded.Restore, contentDescription = stringResource(R.string.customize_reset_value, label))
             }
         }
         if (explained && help != null) HelpLine(help)
         if (row.kind != ValueKind.SWITCH) {
-            Slider(
+            GlassSlider(
                 value = row.position(shown),
                 onValueChange = { position ->
                     dragging = true

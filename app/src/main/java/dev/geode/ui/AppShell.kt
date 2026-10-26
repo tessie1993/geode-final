@@ -89,6 +89,7 @@ import dev.geode.design.glass.GlassVisualSheet
 import dev.geode.design.glass.glassSource
 import dev.geode.design.glass.glassSurface
 import dev.geode.design.glass.rememberGlassSource
+import dev.geode.design.glass.rememberPressing
 import dev.geode.design.theme.LocalReducedMotion
 import dev.geode.engine.types.Millis
 import dev.geode.feature.library.api.LibraryCommand
@@ -312,16 +313,22 @@ fun AppRoot() {
                         )
                     },
                     confirmButton = {
-                        Button(onClick = {
-                            val cm = context.getSystemService(android.content.ClipboardManager::class.java)
-                            cm.setPrimaryClip(android.content.ClipData.newPlainText(clipLabel, text))
-                        }) { Text(stringResource(R.string.action_copy)) }
+                        Button(
+                            onClick =
+                                rememberPressing {
+                                    val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+                                    cm.setPrimaryClip(android.content.ClipData.newPlainText(clipLabel, text))
+                                },
+                        ) { Text(stringResource(R.string.action_copy)) }
                     },
                     dismissButton = {
-                        TextButton(onClick = {
-                            java.io.File(context.filesDir, "crash-latest.txt").delete()
-                            crashText = null
-                        }) { Text(stringResource(R.string.action_dismiss)) }
+                        TextButton(
+                            onClick =
+                                rememberPressing {
+                                    java.io.File(context.filesDir, "crash-latest.txt").delete()
+                                    crashText = null
+                                },
+                        ) { Text(stringResource(R.string.action_dismiss)) }
                     },
                 )
             }
@@ -563,7 +570,7 @@ private fun PlainPlayer(
             GlassTopBar(
                 title = stringResource(R.string.home_now_playing),
                 navigation = {
-                    IconButton(onClick = { shell.appUi.send(AppUiCommand.ExitFullScreen) }) {
+                    IconButton(onClick = rememberPressing { shell.appUi.send(AppUiCommand.ExitFullScreen) }) {
                         Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.player_close))
                     }
                 },

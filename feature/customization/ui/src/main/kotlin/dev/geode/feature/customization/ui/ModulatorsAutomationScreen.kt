@@ -29,6 +29,8 @@ import dev.geode.design.glass.GlassKind
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -89,7 +91,7 @@ private fun ModulatorsSection(
     ChipFlow {
         ModulatorKind.entries.forEach { kind ->
             AssistChip(
-                onClick = { send(CustomizationCommand.AddModulator(newModulator(kind))) },
+                onClick = rememberPressing { send(CustomizationCommand.AddModulator(newModulator(kind))) },
                 label = { Text(kindName(kind)) },
                 leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.customize_add_modulator)) },
                 shape = MaterialTheme.shapes.small,
@@ -112,7 +114,7 @@ private fun ModulatorCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(modulatorName(modulator.id, model), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             if (modulator.start == StartMode.ByHand) {
-                IconButton(onClick = { send(togglePlay(modulator)) }) {
+                IconButton(onClick = rememberPressing { send(togglePlay(modulator)) }) {
                     if (modulator.playing) {
                         Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.customize_stop))
                     } else {
@@ -120,7 +122,7 @@ private fun ModulatorCard(
                     }
                 }
             }
-            IconButton(onClick = { send(CustomizationCommand.RemoveModulator(modulator.id)) }) {
+            IconButton(onClick = rememberPressing { send(CustomizationCommand.RemoveModulator(modulator.id)) }) {
                 Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
             }
         }
@@ -258,13 +260,13 @@ private fun StylesSeen(
     if (!model.canGoBack && !model.canGoForward) return
     ChipFlow {
         AssistChip(
-            onClick = { send(CustomizationCommand.StyleBack) },
+            onClick = rememberPressing { send(CustomizationCommand.StyleBack) },
             label = { Text(stringResource(R.string.automation_style_back)) },
             enabled = model.canGoBack,
             shape = MaterialTheme.shapes.small,
         )
         AssistChip(
-            onClick = { send(CustomizationCommand.StyleForward) },
+            onClick = rememberPressing { send(CustomizationCommand.StyleForward) },
             label = { Text(stringResource(R.string.automation_style_forward)) },
             enabled = model.canGoForward,
             shape = MaterialTheme.shapes.small,
@@ -362,7 +364,7 @@ private fun Lanes(
     automations.lanes.forEachIndexed { index, lane ->
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionTitle(stringResource(R.string.automation_lane, index + 1), Modifier.weight(1f))
-            IconButton(onClick = { set(automations.withoutLane(index)) }) {
+            IconButton(onClick = rememberPressing { set(automations.withoutLane(index)) }) {
                 Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.automation_remove_lane))
             }
         }
@@ -453,6 +455,6 @@ private fun SwitchRow(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Switch(checked = on, onCheckedChange = onChange)
+        Switch(checked = on, onCheckedChange = rememberToggling(onChange))
     }
 }

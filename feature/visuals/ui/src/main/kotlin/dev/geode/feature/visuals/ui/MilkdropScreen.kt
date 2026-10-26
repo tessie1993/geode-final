@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
@@ -126,8 +127,8 @@ private fun ConfirmDelete(
             val body = if (kind == MilkdropKind.PRESETS) R.string.milkdrop_delete_preset_body else R.string.milkdrop_delete_texture_body
             Text(stringResource(body))
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.milkdrop_delete)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.visuals_cancel)) } },
+        confirmButton = { TextButton(onClick = rememberPressing(onConfirm)) { Text(stringResource(R.string.milkdrop_delete)) } },
+        dismissButton = { TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.visuals_cancel)) } },
     )
 }
 
@@ -138,7 +139,7 @@ private fun DeleteButton(
     enabled: Boolean,
     onDelete: () -> Unit,
 ) {
-    IconButton(onClick = onDelete, enabled = enabled) {
+    IconButton(onClick = rememberPressing(onDelete), enabled = enabled) {
         Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.milkdrop_delete_named, name))
     }
 }
@@ -180,7 +181,7 @@ private fun ImportButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    FilledTonalButton(onClick = onClick, enabled = enabled) {
+    FilledTonalButton(onClick = rememberPressing(onClick), enabled = enabled) {
         Icon(icon, contentDescription = null)
         Text(stringResource(label), Modifier.padding(start = GlassSpacing.Small))
     }
@@ -228,7 +229,7 @@ private fun Report(
                 )
             }
         }
-        TextButton(onClick = { onAction(MilkdropAction.DismissReport) }, modifier = Modifier.align(Alignment.End)) {
+        TextButton(onClick = rememberPressing { onAction(MilkdropAction.DismissReport) }, modifier = Modifier.align(Alignment.End)) {
             Text(stringResource(R.string.milkdrop_dismiss))
         }
     }
@@ -304,7 +305,7 @@ private fun MilkdropPresetRow(
     ) {
         PresetLines(preset, playing, Modifier.weight(1f))
         if (onReload != null) {
-            IconButton(onClick = onReload) {
+            IconButton(onClick = rememberPressing(onReload)) {
                 Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.milkdrop_reload, preset.name))
             }
         }

@@ -63,6 +63,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassMessage
 import dev.geode.design.glass.GlassTopBar
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.GroupRow
 import dev.geode.feature.library.api.IndexStatus
@@ -148,7 +149,7 @@ private fun TopBar(
     val back: (@Composable () -> Unit)? =
         if (model.canGoBack) {
             {
-                IconButton(onClick = { send(LibraryCommand.Back) }) {
+                IconButton(onClick = rememberPressing { send(LibraryCommand.Back) }) {
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.library_back))
                 }
             }
@@ -179,7 +180,7 @@ private fun SearchField(
         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
         trailingIcon = {
             if (query.isNotEmpty()) {
-                IconButton(onClick = { send(LibraryCommand.Search("")) }) {
+                IconButton(onClick = rememberPressing { send(LibraryCommand.Search("")) }) {
                     Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.library_search_clear))
                 }
             }
@@ -199,7 +200,7 @@ private fun ViewChips(
         items(LibraryView.entries) { view ->
             FilterChip(
                 selected = view == selected,
-                onClick = { send(LibraryCommand.Show(view)) },
+                onClick = rememberPressing { send(LibraryCommand.Show(view)) },
                 label = { Text(viewName(view)) },
             )
         }
@@ -227,7 +228,9 @@ private fun IndexBanner(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
-                    Button(onClick = { onAction(LibraryAction.AskPermission) }) { Text(stringResource(R.string.library_allow)) }
+                    Button(
+                        onClick = rememberPressing { onAction(LibraryAction.AskPermission) },
+                    ) { Text(stringResource(R.string.library_allow)) }
                 }
             }
     }
@@ -398,7 +401,7 @@ private fun LazyListScope.found(
 @Composable
 private fun ShuffleShown(send: (LibraryCommand) -> Unit) {
     TextButton(
-        onClick = { send(LibraryCommand.Shuffle(Pick.Shown)) },
+        onClick = rememberPressing { send(LibraryCommand.Shuffle(Pick.Shown)) },
         modifier = Modifier.padding(horizontal = LibraryDimens.gutter),
     ) {
         Icon(Icons.Rounded.Shuffle, contentDescription = null)
@@ -455,7 +458,7 @@ private fun SongItem(
             )
         }
         Text(formatLength(song.duration), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        IconButton(onClick = { send(LibraryCommand.ToggleFavourite(song.id)) }) {
+        IconButton(onClick = rememberPressing { send(LibraryCommand.ToggleFavourite(song.id)) }) {
             Icon(
                 if (row.favourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                 contentDescription =
@@ -464,7 +467,7 @@ private fun SongItem(
             )
         }
         Box {
-            IconButton(onClick = { menu = true }) {
+            IconButton(onClick = rememberPressing { menu = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.library_action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -527,7 +530,7 @@ private fun GroupItem(
             )
         }
         Box {
-            IconButton(onClick = { menu = true }) {
+            IconButton(onClick = rememberPressing { menu = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.library_action_more))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -606,19 +609,24 @@ private fun GroupHeader(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
-            Button(onClick = { send(LibraryCommand.Play(pick)) }) { Text(stringResource(R.string.library_action_play)) }
-            OutlinedButton(onClick = { send(LibraryCommand.PlayNext(pick)) }) { Text(stringResource(R.string.library_action_play_next)) }
-            OutlinedButton(onClick = { send(LibraryCommand.AddToQueue(pick)) }) {
+            Button(onClick = rememberPressing { send(LibraryCommand.Play(pick)) }) { Text(stringResource(R.string.library_action_play)) }
+            OutlinedButton(
+                onClick =
+                    rememberPressing {
+                        send(LibraryCommand.PlayNext(pick))
+                    },
+            ) { Text(stringResource(R.string.library_action_play_next)) }
+            OutlinedButton(onClick = rememberPressing { send(LibraryCommand.AddToQueue(pick)) }) {
                 Text(stringResource(R.string.library_action_add_to_queue))
             }
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
-            OutlinedButton(onClick = { onAction(LibraryAction.ExportPlaylist(pick, name)) }) {
+            OutlinedButton(onClick = rememberPressing { onAction(LibraryAction.ExportPlaylist(pick, name)) }) {
                 Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
                 Text(stringResource(R.string.library_action_export), Modifier.padding(start = LibraryDimens.small))
             }
             if (place.key.kind == GroupKind.SMART_PLAYLIST) {
-                OutlinedButton(onClick = { onEditSmart(place.key.name) }) {
+                OutlinedButton(onClick = rememberPressing { onEditSmart(place.key.name) }) {
                     Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
                     Text(stringResource(R.string.library_action_edit_rules), Modifier.padding(start = LibraryDimens.small))
                 }
@@ -640,11 +648,11 @@ private fun PlaylistsHeader(
             .padding(horizontal = LibraryDimens.gutter, vertical = LibraryDimens.small),
         horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small),
     ) {
-        OutlinedButton(onClick = { onAction(LibraryAction.ImportPlaylist) }) {
+        OutlinedButton(onClick = rememberPressing { onAction(LibraryAction.ImportPlaylist) }) {
             Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null)
             Text(stringResource(R.string.library_action_import), Modifier.padding(start = LibraryDimens.small))
         }
-        OutlinedButton(onClick = onNewSmart) {
+        OutlinedButton(onClick = rememberPressing(onNewSmart)) {
             Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
             Text(stringResource(R.string.library_smart_new), Modifier.padding(start = LibraryDimens.small))
         }

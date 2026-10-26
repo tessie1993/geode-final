@@ -31,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.api.SongEdit
 
@@ -65,11 +67,11 @@ internal fun SongEditorDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onSave(fields.toEdit(song), fields.writeToFile) }, enabled = fields.canSave) {
+            TextButton(onClick = rememberPressing { onSave(fields.toEdit(song), fields.writeToFile) }, enabled = fields.canSave) {
                 Text(stringResource(R.string.library_edit_save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_edit_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.library_edit_cancel)) } },
     )
 }
 
@@ -104,9 +106,9 @@ fun SongEditor(
                     stringResource(if (fields.artwork == null) R.string.library_edit_file_art else R.string.library_edit_chosen_art),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                TextButton(onClick = onPickArtwork) { Text(stringResource(R.string.library_edit_choose_artwork)) }
+                TextButton(onClick = rememberPressing(onPickArtwork)) { Text(stringResource(R.string.library_edit_choose_artwork)) }
                 if (fields.artwork != null) {
-                    TextButton(onClick = { onChange(fields.copy(artwork = null)) }) {
+                    TextButton(onClick = rememberPressing { onChange(fields.copy(artwork = null)) }) {
                         Text(stringResource(R.string.library_edit_clear_artwork))
                     }
                 }
@@ -117,7 +119,7 @@ fun SongEditor(
             COMMON_GENRES.forEach { genre ->
                 FilterChip(
                     selected = fields.genre.equals(genre, ignoreCase = true),
-                    onClick = { onChange(fields.copy(genre = genre)) },
+                    onClick = rememberPressing { onChange(fields.copy(genre = genre)) },
                     label = { Text(genre) },
                 )
             }
@@ -143,7 +145,7 @@ fun SongEditor(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(stringResource(R.string.library_edit_write_file), style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = fields.writeToFile, onCheckedChange = { onChange(fields.copy(writeToFile = it)) })
+            Switch(checked = fields.writeToFile, onCheckedChange = rememberToggling { onChange(fields.copy(writeToFile = it)) })
         }
         Text(
             stringResource(R.string.library_edit_write_note),

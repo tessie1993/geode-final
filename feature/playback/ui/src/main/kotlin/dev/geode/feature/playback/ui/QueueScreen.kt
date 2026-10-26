@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassMessage
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.playback.api.Track
 
 /**
@@ -130,13 +131,13 @@ private fun QueueRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButton(onClick = { onAction(QueueAction.MoveUp(index)) }, enabled = index > 0) {
+        IconButton(onClick = rememberPressing { onAction(QueueAction.MoveUp(index)) }, enabled = index > 0) {
             Icon(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.playback_action_move_up))
         }
-        IconButton(onClick = { onAction(QueueAction.MoveDown(index)) }, enabled = index < model.tracks.lastIndex) {
+        IconButton(onClick = rememberPressing { onAction(QueueAction.MoveDown(index)) }, enabled = index < model.tracks.lastIndex) {
             Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.playback_action_move_down))
         }
-        IconButton(onClick = { onAction(QueueAction.Remove(index)) }, enabled = !current) {
+        IconButton(onClick = rememberPressing { onAction(QueueAction.Remove(index)) }, enabled = !current) {
             Icon(Icons.Rounded.Close, stringResource(R.string.playback_action_remove))
         }
     }

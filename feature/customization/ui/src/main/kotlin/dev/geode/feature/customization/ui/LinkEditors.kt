@@ -20,6 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberRangeTicking
+import dev.geode.design.glass.rememberToggling
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.PresetPart
@@ -145,7 +148,7 @@ internal fun ReactionEditor(
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(stringResource(R.string.customize_invert), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Switch(checked = reaction.invert, onCheckedChange = { draft = draft.copy(invert = it) })
+        Switch(checked = reaction.invert, onCheckedChange = rememberToggling { draft = draft.copy(invert = it) })
     }
     HelpLine(stringResource(R.string.customize_help_invert))
     HeldSlider(
@@ -174,7 +177,11 @@ internal fun ReactionEditor(
     HelpLine(stringResource(R.string.customize_help_range))
     RangeSlider(
         value = reaction.low..reaction.high,
-        onValueChange = { draft = draft.copy(low = it.start, high = it.endInclusive) },
+        onValueChange =
+            rememberRangeTicking(reaction.low..reaction.high, 0f..1f) {
+                draft =
+                    draft.copy(low = it.start, high = it.endInclusive)
+            },
     )
     SectionTitle(stringResource(R.string.customize_curve))
     ChipFlow {
@@ -190,20 +197,22 @@ internal fun ReactionEditor(
     ) {
         if (!page.isNew) {
             TextButton(
-                onClick = {
-                    panel.send(CustomizationCommand.RemoveReaction(reaction.id))
-                    panel.open(back(page))
-                },
+                onClick =
+                    rememberPressing {
+                        panel.send(CustomizationCommand.RemoveReaction(reaction.id))
+                        panel.open(back(page))
+                    },
             ) { Text(stringResource(R.string.customize_remove)) }
         }
-        TextButton(onClick = { panel.open(back(page)) }, modifier = Modifier.weight(1f)) {
+        TextButton(onClick = rememberPressing { panel.open(back(page)) }, modifier = Modifier.weight(1f)) {
             Text(stringResource(R.string.customize_cancel))
         }
         Button(
-            onClick = {
-                panel.send(saveReaction(reaction, page.isNew))
-                panel.open(back(page))
-            },
+            onClick =
+                rememberPressing {
+                    panel.send(saveReaction(reaction, page.isNew))
+                    panel.open(back(page))
+                },
         ) { Text(stringResource(R.string.customize_done)) }
     }
 }
@@ -239,12 +248,13 @@ internal fun SavePresetPage(panel: PanelState) {
         Modifier.fillMaxWidth().padding(top = GlassSpacing.Medium),
         horizontalArrangement = Arrangement.End,
     ) {
-        TextButton(onClick = { panel.open(CustomizePage.Basic) }) { Text(stringResource(R.string.customize_cancel)) }
+        TextButton(onClick = rememberPressing { panel.open(CustomizePage.Basic) }) { Text(stringResource(R.string.customize_cancel)) }
         Button(
-            onClick = {
-                save?.let(panel.send)
-                panel.open(CustomizePage.Basic)
-            },
+            onClick =
+                rememberPressing {
+                    save?.let(panel.send)
+                    panel.open(CustomizePage.Basic)
+                },
             enabled = save != null,
         ) { Text(stringResource(R.string.customize_save_confirm)) }
     }
@@ -252,7 +262,7 @@ internal fun SavePresetPage(panel: PanelState) {
 
 @Composable
 private fun CancelButton(panel: PanelState) {
-    TextButton(onClick = { panel.open(back(panel.page)) }, modifier = Modifier.padding(top = GlassSpacing.Medium)) {
+    TextButton(onClick = rememberPressing { panel.open(back(panel.page)) }, modifier = Modifier.padding(top = GlassSpacing.Medium)) {
         Text(stringResource(R.string.customize_cancel))
     }
 }

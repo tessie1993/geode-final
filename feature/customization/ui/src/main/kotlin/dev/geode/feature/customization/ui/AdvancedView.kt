@@ -21,7 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RangeSlider
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,8 +33,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.glass.GlassSlider
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberRangeTicking
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.SharedGroup
@@ -78,7 +80,13 @@ internal fun AdvancedView(
         AdvancedSection.MACROS -> MacrosSection(panel, page.macro)
         AdvancedSection.LAYERS -> LayersSection(panel)
     }
-    TextButton(onClick = { panel.send(CustomizationCommand.ResetToStyle) }, modifier = Modifier.padding(top = GlassSpacing.Large)) {
+    TextButton(
+        onClick =
+            rememberPressing {
+                panel.send(CustomizationCommand.ResetToStyle)
+            },
+        modifier = Modifier.padding(top = GlassSpacing.Large),
+    ) {
         Text(stringResource(R.string.customize_reset))
     }
 }
@@ -135,11 +143,11 @@ private fun TrimSlider(
                 style = MaterialTheme.typography.labelMedium,
                 color = LocalGlassStyle.current.colors.textSecondary,
             )
-            IconButton(onClick = { panel.send(trimCommand(row, SignalTrim.NEUTRAL_GAIN)) }) {
+            IconButton(onClick = rememberPressing { panel.send(trimCommand(row, SignalTrim.NEUTRAL_GAIN)) }) {
                 Icon(Icons.Rounded.Restore, contentDescription = stringResource(R.string.customize_trim_reset, label))
             }
         }
-        Slider(
+        GlassSlider(
             value = shown,
             onValueChange = {
                 dragging = true
@@ -189,10 +197,10 @@ private fun ReactionsSection(
         ChoiceChip(stringResource(R.string.customize_links_list), !board) { panel.open(page.copy(board = false)) }
         ChoiceChip(stringResource(R.string.customize_links_board), board) { panel.open(page.copy(board = true)) }
         Spacer(Modifier.weight(1f))
-        TextButton(onClick = { panel.open(CustomizePage.ChooseSource(learn = true)) }) {
+        TextButton(onClick = rememberPressing { panel.open(CustomizePage.ChooseSource(learn = true)) }) {
             Text(stringResource(R.string.customize_learn))
         }
-        IconButton(onClick = { panel.open(CustomizePage.ChooseSource()) }) {
+        IconButton(onClick = rememberPressing { panel.open(CustomizePage.ChooseSource()) }) {
             Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.customize_new_link))
         }
     }
@@ -238,7 +246,7 @@ private fun LinkItem(
                 }
                 Meter(link.live ?: reaction.amount, Modifier.padding(top = GlassSpacing.ExtraSmall))
             }
-            IconButton(onClick = remove) {
+            IconButton(onClick = rememberPressing(remove)) {
                 Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.customize_remove_link))
             }
         }
@@ -279,7 +287,7 @@ internal fun HeldSlider(
         }
     }
     if (explained && help != null) HelpLine(help)
-    Slider(value = held, onValueChange = { held = it }, valueRange = range, onValueChangeFinished = { onSet(held) })
+    GlassSlider(value = held, onValueChange = { held = it }, valueRange = range, onValueChangeFinished = { onSet(held) })
 }
 
 /**
@@ -317,7 +325,7 @@ private fun MacroCard(
                 modifier = Modifier.weight(1f),
             )
             IconButton(
-                onClick = { panel.send(CustomizationCommand.RenameMacro(knob.index, name.trim())) },
+                onClick = rememberPressing { panel.send(CustomizationCommand.RenameMacro(knob.index, name.trim())) },
                 enabled = name.isNotBlank() && name.trim() != knob.name,
             ) {
                 Icon(Icons.Rounded.Check, contentDescription = stringResource(R.string.customize_rename))
@@ -338,10 +346,13 @@ private fun MacroCard(
         if (knob.links.isEmpty()) QuietText(stringResource(R.string.customize_macro_no_links))
         knob.links.forEach { link -> MacroLinkItem(panel, knob.index, link) }
         Row {
-            TextButton(onClick = { panel.open(CustomizePage.ChooseTarget(macro = knob.index)) }) {
+            TextButton(onClick = rememberPressing { panel.open(CustomizePage.ChooseTarget(macro = knob.index)) }) {
                 Text(stringResource(R.string.customize_macro_add_link))
             }
-            TextButton(onClick = { panel.send(CustomizationCommand.ClearMacro(knob.index)) }, enabled = knob.links.isNotEmpty()) {
+            TextButton(
+                onClick = rememberPressing { panel.send(CustomizationCommand.ClearMacro(knob.index)) },
+                enabled = knob.links.isNotEmpty(),
+            ) {
                 Text(stringResource(R.string.customize_macro_clear))
             }
         }
@@ -364,13 +375,13 @@ private fun MacroLinkItem(
             style = MaterialTheme.typography.labelMedium,
             color = LocalGlassStyle.current.colors.textSecondary,
         )
-        IconButton(onClick = { panel.send(CustomizationCommand.UnlinkMacro(index, link.target)) }) {
+        IconButton(onClick = rememberPressing { panel.send(CustomizationCommand.UnlinkMacro(index, link.target)) }) {
             Icon(Icons.Rounded.LinkOff, contentDescription = stringResource(R.string.customize_macro_unlink, name))
         }
     }
     RangeSlider(
         value = held,
-        onValueChange = { held = it },
+        onValueChange = rememberRangeTicking(held, 0f..1f) { held = it },
         onValueChangeFinished = {
             // A link turned down as the Macro goes up keeps its direction when its range is moved.
             val reversed = link.low > link.high

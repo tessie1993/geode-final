@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.SharedProperty
@@ -85,7 +86,12 @@ internal fun BasicView(panel: PanelState) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         SectionTitle(stringResource(R.string.customize_presets), Modifier.weight(1f))
         // The way into the Presets browser (#144): every built-in and saved preset, by folder.
-        TextButton(onClick = { panel.onAction(CustomizeAction.BrowsePresets) }) { Text(stringResource(R.string.customize_all_presets)) }
+        TextButton(
+            onClick =
+                rememberPressing {
+                    panel.onAction(CustomizeAction.BrowsePresets)
+                },
+        ) { Text(stringResource(R.string.customize_all_presets)) }
     }
     if (model.presets.isEmpty()) {
         Text(

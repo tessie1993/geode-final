@@ -52,4 +52,13 @@ class GlassTicksTest {
         assertTrue(GlassTicks.crossed(0.56f, 0.54f, 0f..1f, steps = 0))
         assertFalse(GlassTicks.crossed(0.3f, 0.3f, 0f..1f, steps = 0))
     }
+
+    @Test
+    fun `a range slider ticks when either end passes a tick`() {
+        assertFalse(GlassTicks.crossed(0.21f..0.71f, 0.24f..0.74f, 0f..1f, steps = 0))
+        assertTrue(GlassTicks.crossed(0.24f..0.71f, 0.26f..0.71f, 0f..1f, steps = 0))
+        assertTrue(GlassTicks.crossed(0.21f..0.74f, 0.21f..0.76f, 0f..1f, steps = 0))
+        assertTrue(GlassTicks.crossed(0f..1f, 0f..0.75f, 0f..1f, steps = 3))
+        assertFalse(GlassTicks.crossed(0f..0.5f, 0f..0.5f, 0f..1f, steps = 3))
+    }
 }

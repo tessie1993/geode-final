@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import dev.geode.design.glass.GlassButton
 import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.edit.AutoCut
 import dev.geode.feature.studio.api.edit.ClipContent
@@ -240,7 +241,12 @@ private fun TimelineHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall),
     ) {
-        IconButton(onClick = { send(EditCommand.Close) }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.edit_back)) }
+        IconButton(
+            onClick =
+                rememberPressing {
+                    send(EditCommand.Close)
+                },
+        ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.edit_back)) }
         Text(stringResource(R.string.edit_playhead, clockLabel(model.playheadMs)), style = MaterialTheme.typography.labelMedium)
         SmallButton(stringResource(R.string.edit_undo), enabled = model.canUndo) { send(EditCommand.Undo) }
         SmallButton(stringResource(R.string.edit_redo), enabled = model.canRedo) { send(EditCommand.Redo) }

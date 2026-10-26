@@ -33,6 +33,7 @@ import dev.geode.design.glass.GlassFade
 import dev.geode.design.glass.GlassKind
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberPressing
 import dev.geode.engine.types.SceneId
 
 /**
@@ -94,7 +95,7 @@ private fun Controls(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            FilledTonalIconButton(onClick = { onAction(FullScreenAction.Exit) }) {
+            FilledTonalIconButton(onClick = rememberPressing { onAction(FullScreenAction.Exit) }) {
                 Icon(Icons.Rounded.FullscreenExit, contentDescription = stringResource(R.string.visuals_exit_full_screen))
             }
         }
@@ -131,7 +132,7 @@ private fun StepButton(
     icon: @Composable () -> Unit,
 ) {
     FilledTonalIconButton(
-        onClick = { style?.let { onAction(FullScreenAction.Choose(it)) } },
+        onClick = rememberPressing { style?.let { onAction(FullScreenAction.Choose(it)) } },
         enabled = style != null,
         content = icon,
     )

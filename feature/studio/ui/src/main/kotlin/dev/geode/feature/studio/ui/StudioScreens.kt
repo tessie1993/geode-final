@@ -57,6 +57,8 @@ import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassCard
 import dev.geode.design.glass.GlassLoading
 import dev.geode.design.glass.GlassMessage
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
@@ -102,18 +104,25 @@ fun ProjectListScreen(
                 Modifier.weight(StudioDimens.FILL),
                 style = MaterialTheme.typography.headlineSmall,
             )
-            OutlinedButton(onClick = { onAction(StudioAction.OpenRender) }, enabled = !model.loading && !queue.visualsOff) {
+            OutlinedButton(
+                onClick = rememberPressing { onAction(StudioAction.OpenRender) },
+                enabled = !model.loading && !queue.visualsOff,
+            ) {
                 Text(stringResource(R.string.studio_render))
             }
-            Button(onClick = { naming = true }, enabled = !model.loading, modifier = Modifier.padding(start = StudioDimens.gap)) {
+            Button(
+                onClick = rememberPressing { naming = true },
+                enabled = !model.loading,
+                modifier = Modifier.padding(start = StudioDimens.gap),
+            ) {
                 Text(stringResource(R.string.studio_new_project))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
-            OutlinedButton(onClick = { onAction(StudioAction.PickVideoToEdit) }, enabled = !model.loading) {
+            OutlinedButton(onClick = rememberPressing { onAction(StudioAction.PickVideoToEdit) }, enabled = !model.loading) {
                 Text(stringResource(R.string.edit_open_video))
             }
-            OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenCut)) }, enabled = !model.loading) {
+            OutlinedButton(onClick = rememberPressing { onAction(StudioAction.Send(EditCommand.OpenCut)) }, enabled = !model.loading) {
                 Text(stringResource(R.string.edit_open_cut))
             }
         }
@@ -166,7 +175,7 @@ private fun SavedCuts(
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
             names.forEach { name ->
                 AssistChip(
-                    onClick = { onAction(StudioAction.Send(EditCommand.OpenSavedCut(name))) },
+                    onClick = rememberPressing { onAction(StudioAction.Send(EditCommand.OpenSavedCut(name))) },
                     label = { Text(name) },
                     leadingIcon = { Icon(Icons.Rounded.ContentCut, contentDescription = null) },
                 )
@@ -180,7 +189,9 @@ private fun FolderMissing(onAction: (StudioAction) -> Unit) {
     GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(StudioDimens.padding), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
             Text(stringResource(R.string.studio_folder_missing))
-            OutlinedButton(onClick = { onAction(StudioAction.PickSaveFolder) }) { Text(stringResource(R.string.studio_choose_folder)) }
+            OutlinedButton(
+                onClick = rememberPressing { onAction(StudioAction.PickSaveFolder) },
+            ) { Text(stringResource(R.string.studio_choose_folder)) }
         }
     }
 }
@@ -230,7 +241,7 @@ private fun ProjectMenu(
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
+        IconButton(onClick = rememberPressing { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem(stringResource(R.string.studio_rename)) {
                 menu = false
@@ -282,21 +293,27 @@ internal fun DeleteProjectPrompt(
             if (model.videos == 0) {
                 Text(stringResource(R.string.studio_delete_empty))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { onChoice(null) }) { Text(stringResource(R.string.studio_cancel)) }
-                    TextButton(onClick = { onChoice(VideosOnDelete.Delete) }) { Text(stringResource(R.string.studio_delete)) }
+                    TextButton(onClick = rememberPressing { onChoice(null) }) { Text(stringResource(R.string.studio_cancel)) }
+                    TextButton(
+                        onClick = rememberPressing { onChoice(VideosOnDelete.Delete) },
+                    ) { Text(stringResource(R.string.studio_delete)) }
                 }
             } else {
                 Text(pluralStringResource(R.plurals.studio_delete_videos_too, model.videos, model.videos))
                 KeepChoices(model, moveTo) { moveTo = it }
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
-                    TextButton(onClick = { onChoice(VideosOnDelete.Delete) }) {
+                    TextButton(onClick = rememberPressing { onChoice(VideosOnDelete.Delete) }) {
                         Text(pluralStringResource(R.plurals.studio_delete_videos_yes, model.videos, model.videos))
                     }
                     val target = model.others.firstOrNull { it.id == moveTo }
-                    TextButton(onClick = { target?.let { onChoice(VideosOnDelete.MoveTo(it.id)) } }, enabled = target != null) {
+                    TextButton(
+                        onClick = rememberPressing { target?.let { onChoice(VideosOnDelete.MoveTo(it.id)) } },
+                        enabled =
+                            target != null,
+                    ) {
                         Text(stringResource(R.string.studio_delete_videos_keep, target?.name.orEmpty()))
                     }
-                    TextButton(onClick = { onChoice(null) }) { Text(stringResource(R.string.studio_cancel)) }
+                    TextButton(onClick = rememberPressing { onChoice(null) }) { Text(stringResource(R.string.studio_cancel)) }
                 }
             }
         }
@@ -319,7 +336,7 @@ private fun KeepChoices(
         Row(
             Modifier
                 .fillMaxWidth()
-                .selectable(selected = other.id == moveTo, role = Role.RadioButton) { onPick(other.id) },
+                .selectable(selected = other.id == moveTo, role = Role.RadioButton, onClick = rememberPressing { onPick(other.id) }),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RadioButton(selected = other.id == moveTo, onClick = null)
@@ -343,7 +360,7 @@ private fun NewProjectDialog(
             Column(verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
                 NameField(name) { name = it }
                 Row(
-                    Modifier.toggleable(value = makeDefault, role = Role.Checkbox) { makeDefault = it },
+                    Modifier.toggleable(value = makeDefault, role = Role.Checkbox, onValueChange = rememberToggling { makeDefault = it }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Checkbox(checked = makeDefault, onCheckedChange = null)
@@ -352,11 +369,11 @@ private fun NewProjectDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDone(StudioCommand.CreateProject(name, makeDefault)) }, enabled = name.isNotBlank()) {
+            TextButton(onClick = rememberPressing { onDone(StudioCommand.CreateProject(name, makeDefault)) }, enabled = name.isNotBlank()) {
                 Text(stringResource(R.string.studio_create))
             }
         },
-        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
     )
 }
 
@@ -372,11 +389,11 @@ private fun RenameDialog(
         text = { NameField(name) { name = it } },
         confirmButton = {
             TextButton(
-                onClick = { onDone(name) },
+                onClick = rememberPressing { onDone(name) },
                 enabled = name.isNotBlank(),
             ) { Text(stringResource(R.string.studio_save)) }
         },
-        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
     )
 }
 
@@ -453,7 +470,7 @@ private fun KindChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
+    FilterChip(selected = selected, onClick = rememberPressing(onClick), label = { Text(label) })
 }
 
 /**
@@ -484,25 +501,25 @@ fun VideoScreen(
         VideoFacts(video)
         Text(stringResource(R.string.studio_in_project, model.project.name), style = MaterialTheme.typography.bodyMedium)
         model.source?.let { source ->
-            TextButton(onClick = { onAction(StudioAction.OpenVideo(source.id)) }) {
+            TextButton(onClick = rememberPressing { onAction(StudioAction.OpenVideo(source.id)) }) {
                 Text(stringResource(R.string.studio_made_from, source.name))
             }
         }
-        Button(onClick = { onAction(StudioAction.Share(video)) }) {
+        Button(onClick = rememberPressing { onAction(StudioAction.Share(video)) }) {
             Icon(Icons.Rounded.Share, contentDescription = null)
             Text(stringResource(R.string.studio_share), Modifier.padding(start = StudioDimens.gap))
         }
-        OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenVideo(video.id))) }) {
+        OutlinedButton(onClick = rememberPressing { onAction(StudioAction.Send(EditCommand.OpenVideo(video.id))) }) {
             Text(stringResource(R.string.edit_this_video))
         }
         if (model.canMakeShort) {
-            OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.MakeShort(video.id))) }) {
+            OutlinedButton(onClick = rememberPressing { onAction(StudioAction.Send(EditCommand.MakeShort(video.id))) }) {
                 Text(stringResource(R.string.studio_make_short))
             }
         }
-        OutlinedButton(onClick = { exporting = true }) { Text(stringResource(R.string.studio_export_as)) }
+        OutlinedButton(onClick = rememberPressing { exporting = true }) { Text(stringResource(R.string.studio_export_as)) }
         if (video.madeWith != null) {
-            OutlinedButton(onClick = { onAction(StudioAction.RenderAgain(video.id)) }) {
+            OutlinedButton(onClick = rememberPressing { onAction(StudioAction.RenderAgain(video.id)) }) {
                 Text(stringResource(R.string.studio_render_again))
             }
         }
@@ -544,11 +561,11 @@ internal fun ExportAsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDone(StudioCommand.ExportAs(model.video.id, preset, project)) }) {
+            TextButton(onClick = rememberPressing { onDone(StudioCommand.ExportAs(model.video.id, preset, project)) }) {
                 Text(stringResource(R.string.export_as_go))
             }
         },
-        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
     )
 }
 
@@ -561,7 +578,7 @@ private fun ChoiceRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onPick),
+            .selectable(selected = selected, role = Role.RadioButton, onClick = rememberPressing(onPick)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)
@@ -585,7 +602,7 @@ private fun MoveMenu(
     var menu by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
+        IconButton(onClick = rememberPressing { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem(stringResource(R.string.studio_move), enabled = others.isNotEmpty()) {
                 menu = false
@@ -614,7 +631,7 @@ private fun MenuItem(
 
 @Composable
 private fun BackButton(onAction: (StudioAction) -> Unit) {
-    IconButton(onClick = { onAction(StudioAction.Back) }) {
+    IconButton(onClick = rememberPressing { onAction(StudioAction.Back) }) {
         Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.studio_back))
     }
 }

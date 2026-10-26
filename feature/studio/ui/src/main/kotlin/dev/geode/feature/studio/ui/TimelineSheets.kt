@@ -37,6 +37,7 @@ import dev.geode.design.glass.GlassSheet
 import dev.geode.design.glass.GlassSlider
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.GlassSwitchRow
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.studio.api.edit.AutoCut
 import dev.geode.feature.studio.api.edit.AutoCutMiss
 import dev.geode.feature.studio.api.edit.AutoCutResult
@@ -125,12 +126,15 @@ internal fun TransitionSheet(
                     )
                 }
             }
-            TextButton(onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = rememberPressing { onPick(null) }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.edit_transition_none), modifier = Modifier.fillMaxWidth())
             }
             LazyColumn {
                 items(names, key = { it }) { name ->
-                    TextButton(onClick = { onPick(ClipTransition(name, durationMs)) }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(
+                        onClick = rememberPressing { onPick(ClipTransition(name, durationMs)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         Text(
                             if (name == current?.id) stringResource(R.string.edit_transition_current, name) else name,
                             modifier = Modifier.fillMaxWidth(),
@@ -156,7 +160,7 @@ internal fun AddTrackSheet(
             Text(stringResource(R.string.edit_curve_add_track), style = MaterialTheme.typography.titleMedium)
             LazyColumn {
                 items(ClipParams.all, key = { it.id.value }) { param ->
-                    TextButton(onClick = { onPick(param.id) }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = rememberPressing { onPick(param.id) }, modifier = Modifier.fillMaxWidth()) {
                         Text(paramLabel(param.id), modifier = Modifier.fillMaxWidth())
                     }
                 }
@@ -338,9 +342,12 @@ internal fun TextClipDialog(
         title = { Text(stringResource(R.string.edit_text_title)) },
         text = { OutlinedTextField(value = text, onValueChange = { text = it }, minLines = 2, modifier = Modifier.fillMaxWidth()) },
         confirmButton = {
-            TextButton(enabled = text.isNotBlank(), onClick = { onConfirm(text.trim()) }) { Text(stringResource(R.string.edit_save)) }
+            TextButton(
+                enabled = text.isNotBlank(),
+                onClick = rememberPressing { onConfirm(text.trim()) },
+            ) { Text(stringResource(R.string.edit_save)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.edit_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.edit_cancel)) } },
     )
 }
 
@@ -356,12 +363,12 @@ internal fun ChapterFileDialog(
         text = {
             Column {
                 ChapterFile.entries.forEach { file ->
-                    TextButton(onClick = { onPick(file) }) { Text(stringResource(chapterLabel(file))) }
+                    TextButton(onClick = rememberPressing { onPick(file) }) { Text(stringResource(chapterLabel(file))) }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.edit_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.edit_cancel)) } },
     )
 }
 

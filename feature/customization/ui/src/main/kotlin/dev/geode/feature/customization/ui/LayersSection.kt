@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.LayerBlend
 import dev.geode.feature.customization.api.LayerInfluence
@@ -65,7 +66,7 @@ internal fun LayersSection(panel: PanelState) {
 
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         SectionTitle(stringResource(R.string.customize_layer_loop), Modifier.weight(1f))
-        Switch(checked = layer.loop != null, onCheckedChange = { panel.send(loopToggled(layer)) })
+        Switch(checked = layer.loop != null, onCheckedChange = rememberToggling { panel.send(loopToggled(layer)) })
     }
     layer.loop?.let { LoopControls(panel, it) }
 }

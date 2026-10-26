@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.playback.api.PlaybackFailure
 
 /**
@@ -150,7 +151,7 @@ private fun Transport(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(PlayerDimens.gap),
     ) {
-        IconButton(onClick = { onAction(PlayerAction.Previous) }, enabled = hasTrack && model.canGoPrevious) {
+        IconButton(onClick = rememberPressing { onAction(PlayerAction.Previous) }, enabled = hasTrack && model.canGoPrevious) {
             Icon(
                 Icons.Rounded.SkipPrevious,
                 stringResource(R.string.playback_action_previous),
@@ -158,13 +159,13 @@ private fun Transport(
             )
         }
         FilledIconButton(
-            onClick = { onAction(PlayerAction.PlayPause) },
+            onClick = rememberPressing { onAction(PlayerAction.PlayPause) },
             enabled = hasTrack,
             modifier = Modifier.size(PlayerDimens.mainButton),
         ) {
             PlayPauseIcon(model.meantToPlay, Modifier.size(PlayerDimens.mainIcon))
         }
-        IconButton(onClick = { onAction(PlayerAction.Next) }, enabled = hasTrack && model.canGoNext) {
+        IconButton(onClick = rememberPressing { onAction(PlayerAction.Next) }, enabled = hasTrack && model.canGoNext) {
             Icon(Icons.Rounded.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.sideIcon))
         }
     }
@@ -180,7 +181,7 @@ private fun Options(
         ShuffleButton(model.shuffle) { onAction(PlayerAction.ToggleShuffle) }
         RepeatButton(model.repeat) { onAction(PlayerAction.CycleRepeat) }
         if (favourite != null) {
-            IconButton(onClick = { onAction(PlayerAction.ToggleFavourite) }, enabled = model.track != null) {
+            IconButton(onClick = rememberPressing { onAction(PlayerAction.ToggleFavourite) }, enabled = model.track != null) {
                 if (favourite) {
                     Icon(
                         Icons.Rounded.Favorite,
@@ -192,10 +193,10 @@ private fun Options(
                 }
             }
         }
-        IconButton(onClick = { onAction(PlayerAction.OpenQueue) }) {
+        IconButton(onClick = rememberPressing { onAction(PlayerAction.OpenQueue) }) {
             Icon(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.playback_action_open_queue))
         }
-        IconButton(onClick = { onAction(PlayerAction.OpenTools) }) {
+        IconButton(onClick = rememberPressing { onAction(PlayerAction.OpenTools) }) {
             Icon(Icons.Rounded.Tune, stringResource(R.string.playback_action_open_tools))
         }
     }
@@ -280,10 +281,10 @@ fun MiniPlayer(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                IconButton(onClick = { onAction(PlayerAction.PlayPause) }) {
+                IconButton(onClick = rememberPressing { onAction(PlayerAction.PlayPause) }) {
                     PlayPauseIcon(model.meantToPlay, Modifier.size(PlayerDimens.miniIcon))
                 }
-                IconButton(onClick = { onAction(PlayerAction.Next) }, enabled = model.canGoNext) {
+                IconButton(onClick = rememberPressing { onAction(PlayerAction.Next) }, enabled = model.canGoNext) {
                     Icon(Icons.Rounded.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.miniIcon))
                 }
             }

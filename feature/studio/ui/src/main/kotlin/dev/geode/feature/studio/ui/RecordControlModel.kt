@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import dev.geode.design.glass.rememberPressing
 import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
@@ -93,7 +94,7 @@ fun RecordControl(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
-        FilledTonalButton(onClick = if (model.recording) onStop else onRecord, enabled = !model.busy) {
+        FilledTonalButton(onClick = rememberPressing(if (model.recording) onStop else onRecord), enabled = !model.busy) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
                 Box(Modifier.size(DOT).background(RecordingRed, CircleShape))
                 Text(
@@ -155,10 +156,13 @@ fun RecordingProjectDialog(
         },
         confirmButton = {
             if (state.projects.isEmpty()) {
-                TextButton(onClick = { onCreate(name) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.studio_create)) }
+                TextButton(
+                    onClick = rememberPressing { onCreate(name) },
+                    enabled = name.isNotBlank(),
+                ) { Text(stringResource(R.string.studio_create)) }
             } else {
                 val into = chosen ?: state.projects.first().id
-                TextButton(onClick = { onSave(into) }) { Text(stringResource(R.string.studio_save)) }
+                TextButton(onClick = rememberPressing { onSave(into) }) { Text(stringResource(R.string.studio_save)) }
             }
         },
     )
@@ -175,8 +179,11 @@ private fun ProjectChoices(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .selectable(selected = project.id == chosen, role = Role.RadioButton) { onChoose(project.id) }
-                    .padding(vertical = StudioDimens.gap),
+                    .selectable(
+                        selected = project.id == chosen,
+                        role = Role.RadioButton,
+                        onClick = rememberPressing { onChoose(project.id) },
+                    ).padding(vertical = StudioDimens.gap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(selected = project.id == chosen, onClick = null)

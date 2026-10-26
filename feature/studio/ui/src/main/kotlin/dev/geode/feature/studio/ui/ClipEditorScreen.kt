@@ -36,6 +36,8 @@ import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSlider
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.GlassSwitchRow
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberRangeTicking
 import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.RenderAspect
@@ -81,14 +83,14 @@ private fun ClipEditorHeader(
     onReset: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onAction(EditAction.Send(EditCommand.Close)) }) {
+        IconButton(onClick = rememberPressing { onAction(EditAction.Send(EditCommand.Close)) }) {
             Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.edit_back))
         }
         Column(Modifier.weight(StudioDimens.FILL)) {
             Text(model.source.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(sourceFacts(model), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (!model.atDefaults) TextButton(onClick = onReset) { Text(stringResource(R.string.edit_reset)) }
+        if (!model.atDefaults) TextButton(onClick = rememberPressing(onReset)) { Text(stringResource(R.string.edit_reset)) }
     }
 }
 
@@ -161,14 +163,15 @@ private fun CutSection(
         }
         RangeSlider(
             value = edit.startMs.toFloat()..model.outMs.toFloat(),
-            onValueChange = { range ->
-                change(
-                    edit.copy(
-                        startMs = range.start.toLong().coerceIn(0L, length),
-                        endMs = if (range.endInclusive >= length - 1) 0L else range.endInclusive.toLong(),
-                    ),
-                )
-            },
+            onValueChange =
+                rememberRangeTicking(edit.startMs.toFloat()..model.outMs.toFloat(), 0f..length.toFloat()) { range ->
+                    change(
+                        edit.copy(
+                            startMs = range.start.toLong().coerceIn(0L, length),
+                            endMs = if (range.endInclusive >= length - 1) 0L else range.endInclusive.toLong(),
+                        ),
+                    )
+                },
             valueRange = 0f..length.toFloat(),
         )
         val trim =
@@ -215,7 +218,9 @@ private fun LookSection(
             if (edit.lutUri !=
                 null
             ) {
-                TextButton(onClick = { change(edit.copy(lutUri = null)) }) { Text(stringResource(R.string.edit_lut_clear)) }
+                TextButton(
+                    onClick = rememberPressing { change(edit.copy(lutUri = null)) },
+                ) { Text(stringResource(R.string.edit_lut_clear)) }
             }
         }
         EditNote(

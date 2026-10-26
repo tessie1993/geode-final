@@ -51,6 +51,7 @@ import dev.geode.design.glass.GlassKind
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
@@ -343,7 +344,7 @@ private fun BarButton(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick, enabled = enabled) {
+    IconButton(onClick = rememberPressing(onClick), enabled = enabled) {
         Icon(icon, contentDescription = stringResource(label))
     }
 }
@@ -369,7 +370,7 @@ private fun LearningBanner(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = onCancel) {
+        TextButton(onClick = rememberPressing(onCancel)) {
             Text(stringResource(R.string.customize_learning_cancel), color = colors.onAccent)
         }
     }

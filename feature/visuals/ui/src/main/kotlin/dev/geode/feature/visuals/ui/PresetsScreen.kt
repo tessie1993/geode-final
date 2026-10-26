@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.PresetFolderPath
 
@@ -131,11 +132,11 @@ private fun PresetsHeader(
             )
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
-            FilledTonalButton(onClick = { onAction(PresetsAction.PasteLink) }) {
+            FilledTonalButton(onClick = rememberPressing { onAction(PresetsAction.PasteLink) }) {
                 Icon(Icons.Rounded.ContentPaste, contentDescription = null)
                 Text(stringResource(R.string.presets_paste_link), Modifier.padding(start = GlassSpacing.Small))
             }
-            FilledTonalButton(onClick = { onAction(PresetsAction.OpenFile) }) {
+            FilledTonalButton(onClick = rememberPressing { onAction(PresetsAction.OpenFile) }) {
                 Icon(Icons.Rounded.FileOpen, contentDescription = null)
                 Text(stringResource(R.string.presets_open_file), Modifier.padding(start = GlassSpacing.Small))
             }
@@ -160,7 +161,7 @@ private fun Notice(
         }
     Row(Modifier.fillMaxWidth().glass().padding(start = GlassSpacing.Large), verticalAlignment = Alignment.CenterVertically) {
         Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        IconButton(onClick = { onAction(PresetsAction.DismissNotice) }) {
+        IconButton(onClick = rememberPressing { onAction(PresetsAction.DismissNotice) }) {
             Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.presets_dismiss))
         }
     }
@@ -174,10 +175,12 @@ private fun Trail(
 ) {
     // On glass, like everything over the live Visual.
     FlowRow(Modifier.fillMaxWidth().glass().padding(horizontal = GlassSpacing.Small)) {
-        TextButton(onClick = { onAction(PresetsAction.Open(PresetPlace.TOP)) }) { Text(stringResource(R.string.presets_top)) }
+        TextButton(
+            onClick = rememberPressing { onAction(PresetsAction.Open(PresetPlace.TOP)) },
+        ) { Text(stringResource(R.string.presets_top)) }
         for (crumb in trail.dropLast(1)) {
             Text("/", Modifier.align(Alignment.CenterVertically), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = { onAction(PresetsAction.Open(crumb.place)) }) {
+            TextButton(onClick = rememberPressing { onAction(PresetsAction.Open(crumb.place)) }) {
                 Text(crumb.name ?: stringResource(R.string.presets_built_in), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -194,7 +197,7 @@ private fun FolderTitle(
     val title =
         model.trail.lastOrNull()?.let { it.name ?: stringResource(R.string.presets_built_in) } ?: stringResource(R.string.presets_folders)
     val newFolder: @Composable () -> Unit = {
-        TextButton(onClick = { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
+        TextButton(onClick = rememberPressing { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
     }
     SectionTitle(title, action = newFolder.takeIf { model.editable })
     if (naming) {
@@ -240,7 +243,7 @@ private fun FolderRow(
         }
         if (saved != null) {
             Box {
-                IconButton(onClick = { menu = true }) {
+                IconButton(onClick = rememberPressing { menu = true }) {
                     Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, folder.name))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -313,7 +316,7 @@ private fun PresetRow(
         }
         if (!preset.builtIn) {
             Box {
-                IconButton(onClick = { menu = true }) {
+                IconButton(onClick = rememberPressing { menu = true }) {
                     Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, preset.name))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -362,12 +365,15 @@ private fun PresetRow(
                 title = { Text(stringResource(R.string.presets_delete_title, preset.name)) },
                 text = { Text(stringResource(R.string.presets_delete_body)) },
                 confirmButton = {
-                    TextButton(onClick = {
-                        close()
-                        onAction(PresetsAction.Delete(preset.id))
-                    }) { Text(stringResource(R.string.presets_delete)) }
+                    TextButton(
+                        onClick =
+                            rememberPressing {
+                                close()
+                                onAction(PresetsAction.Delete(preset.id))
+                            },
+                    ) { Text(stringResource(R.string.presets_delete)) }
                 },
-                dismissButton = { TextButton(onClick = close) { Text(stringResource(R.string.visuals_cancel)) } },
+                dismissButton = { TextButton(onClick = rememberPressing(close)) { Text(stringResource(R.string.visuals_cancel)) } },
             )
     }
 }
@@ -396,13 +402,13 @@ private fun MoveDialog(
                 for (target in targets) {
                     FilterChip(
                         selected = false,
-                        onClick = { onMove(target.folder) },
+                        onClick = rememberPressing { onMove(target.folder) },
                         label = { Text(target.name.ifEmpty { stringResource(R.string.presets_top) }) },
                     )
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.visuals_cancel)) } },
+        confirmButton = { TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.visuals_cancel)) } },
     )
 }
 
@@ -431,8 +437,14 @@ private fun TextDialog(
             )
         },
         confirmButton = {
-            TextButton(onClick = { onDone(name) }, enabled = name.isNotBlank() && !clash) { Text(stringResource(R.string.visuals_save)) }
+            TextButton(
+                onClick =
+                    rememberPressing {
+                        onDone(name)
+                    },
+                enabled = name.isNotBlank() && !clash,
+            ) { Text(stringResource(R.string.visuals_save)) }
         },
-        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.visuals_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing { onDone(null) }) { Text(stringResource(R.string.visuals_cancel)) } },
     )
 }

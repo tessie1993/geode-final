@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.SortKey
 
@@ -47,7 +48,7 @@ internal fun Controls(
         FolderChip(model, send)
         FilterChip(
             selected = model.filter.hideShortClips,
-            onClick = { send(LibraryCommand.FilterBy(model.filter.copy(hideShortClips = !model.filter.hideShortClips))) },
+            onClick = rememberPressing { send(LibraryCommand.FilterBy(model.filter.copy(hideShortClips = !model.filter.hideShortClips))) },
             label = { Text(stringResource(R.string.library_filter_short_clips)) },
         )
     }
@@ -141,7 +142,7 @@ private fun MenuChip(
     Box {
         FilterChip(
             selected = selected,
-            onClick = { open = true },
+            onClick = rememberPressing { open = true },
             label = { Text(label) },
             trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
         )

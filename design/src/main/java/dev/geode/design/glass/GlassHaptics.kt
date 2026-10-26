@@ -94,6 +94,14 @@ object GlassTicks {
         range: ClosedFloatingPointRange<Float>,
         steps: Int,
     ): Boolean = index(from, range, steps) != index(to, range, steps)
+
+    /** Whether moving a range slider from [from] to [to] passes a tick at either end. */
+    fun crossed(
+        from: ClosedFloatingPointRange<Float>,
+        to: ClosedFloatingPointRange<Float>,
+        range: ClosedFloatingPointRange<Float>,
+        steps: Int,
+    ): Boolean = crossed(from.start, to.start, range, steps) || crossed(from.endInclusive, to.endInclusive, range, steps)
 }
 
 /**
@@ -116,6 +124,59 @@ fun rememberTicking(
             if (GlassTicks.crossed(last[0], next, range, steps)) haptics.tick()
             last[0] = next
             latest(next)
+        }
+    }
+}
+
+/**
+ * [onChange] for a range slider at [value] in [range] with [steps] stops, playing a tick
+ * ([GlassHaptics.tick]) each time either dragged end passes one ([GlassTicks]).
+ */
+@Composable
+fun rememberRangeTicking(
+    value: ClosedFloatingPointRange<Float>,
+    range: ClosedFloatingPointRange<Float>,
+    steps: Int = 0,
+    onChange: (ClosedFloatingPointRange<Float>) -> Unit,
+): (ClosedFloatingPointRange<Float>) -> Unit {
+    val haptics = LocalGlassHaptics.current
+    val latest by rememberUpdatedState(onChange)
+    val last = remember { arrayOf(value) }
+    SideEffect { last[0] = value }
+    return remember(haptics, range, steps) {
+        { next: ClosedFloatingPointRange<Float> ->
+            if (GlassTicks.crossed(last[0], next, range, steps)) haptics.tick()
+            last[0] = next
+            latest(next)
+        }
+    }
+}
+
+/**
+ * [onClick] that plays the press haptic ([GlassHaptics.press]) first, for a Material button that has no
+ * glass component to stand in for it (a text or icon button).
+ */
+@Composable
+fun rememberPressing(onClick: () -> Unit): () -> Unit {
+    val haptics = LocalGlassHaptics.current
+    val latest by rememberUpdatedState(onClick)
+    return remember(haptics) {
+        {
+            haptics.press()
+            latest()
+        }
+    }
+}
+
+/** [onChange] that plays the toggle haptic ([GlassHaptics.toggle]) first, for a switch or a checkbox. */
+@Composable
+fun rememberToggling(onChange: (Boolean) -> Unit): (Boolean) -> Unit {
+    val haptics = LocalGlassHaptics.current
+    val latest by rememberUpdatedState(onChange)
+    return remember(haptics) {
+        { on: Boolean ->
+            haptics.toggle(on)
+            latest(on)
         }
     }
 }

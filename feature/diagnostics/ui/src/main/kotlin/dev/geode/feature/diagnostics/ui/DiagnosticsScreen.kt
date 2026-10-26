@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.geode.design.glass.rememberPressing
+import dev.geode.design.glass.rememberToggling
 import dev.geode.feature.diagnostics.api.DiagnosticsCommand
 
 /** Spacing of the Diagnostics section; replaced by the `:design` tokens once that module lands (#61). */
@@ -53,7 +55,7 @@ fun DiagnosticsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Button(
-            onClick = { onAction(DiagnosticsCommand.Share) },
+            onClick = rememberPressing { onAction(DiagnosticsCommand.Share) },
             enabled = model.share != ShareUi.WORKING,
         ) {
             Text(stringResource(if (model.share == ShareUi.WORKING) R.string.diagnostics_preparing else R.string.diagnostics_share))
@@ -66,7 +68,7 @@ fun DiagnosticsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
-                TextButton(onClick = { onAction(DiagnosticsCommand.DismissProblem) }) {
+                TextButton(onClick = rememberPressing { onAction(DiagnosticsCommand.DismissProblem) }) {
                     Text(stringResource(R.string.diagnostics_dismiss))
                 }
             }
@@ -92,7 +94,7 @@ fun DiagnosticsScreen(
                 }
                 Switch(
                     checked = model.overlayOn,
-                    onCheckedChange = { onAction(DiagnosticsCommand.SetOverlay(visible = it)) },
+                    onCheckedChange = rememberToggling { onAction(DiagnosticsCommand.SetOverlay(visible = it)) },
                 )
             }
         }

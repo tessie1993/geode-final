@@ -8,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import dev.geode.design.glass.rememberPressing
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.AccentTint
 import dev.geode.feature.settings.api.AnalysisCommand
@@ -255,10 +256,15 @@ private fun AnalysisGroup(
         AnalysisSettings.BEAT_MIN_INTERVAL_MS,
     ) { change(AnalysisCommand.SetBeatMinInterval(it)) }
     Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
-        OutlinedButton(onClick = { change(AnalysisCommand.UseBeatTuning(BeatTuning.SLOW_TRACK)) }) {
+        OutlinedButton(onClick = rememberPressing { change(AnalysisCommand.UseBeatTuning(BeatTuning.SLOW_TRACK)) }) {
             Text(stringResource(R.string.audio_slow_track))
         }
-        TextButton(onClick = { change(AnalysisCommand.UseBeatTuning(BeatTuning.DEFAULT)) }) { Text(stringResource(R.string.audio_default)) }
+        TextButton(
+            onClick =
+                rememberPressing {
+                    change(AnalysisCommand.UseBeatTuning(BeatTuning.DEFAULT))
+                },
+        ) { Text(stringResource(R.string.audio_default)) }
     }
     SliderRow(
         stringResource(R.string.audio_preset_morph, analysis.presetMorph.value),
@@ -410,12 +416,14 @@ internal fun LazyListScope.defaultPathsSection(
             folders.musicFolders.sortedBy { it.value }.forEach { folder ->
                 Row {
                     Note(folder.value)
-                    TextButton(onClick = { onAction(SettingsAction.RemoveMusicFolder(folder)) }) {
+                    TextButton(onClick = rememberPressing { onAction(SettingsAction.RemoveMusicFolder(folder)) }) {
                         Text(stringResource(R.string.folders_music_remove))
                     }
                 }
             }
-            OutlinedButton(onClick = { onAction(SettingsAction.PickMusicFolder) }) { Text(stringResource(R.string.folders_music_add)) }
+            OutlinedButton(
+                onClick = rememberPressing { onAction(SettingsAction.PickMusicFolder) },
+            ) { Text(stringResource(R.string.folders_music_add)) }
         }
     }
     item {
@@ -456,8 +464,8 @@ private fun FolderChoiceGroup(
     SettingsGroup(title) {
         Note(folder?.value ?: none)
         Row(horizontalArrangement = Arrangement.spacedBy(SettingsDimens.chipGap)) {
-            OutlinedButton(onClick = onPick) { Text(stringResource(R.string.folders_presets_choose)) }
-            if (folder != null && clear != null) TextButton(onClick = onClear) { Text(clear) }
+            OutlinedButton(onClick = rememberPressing(onPick)) { Text(stringResource(R.string.folders_presets_choose)) }
+            if (folder != null && clear != null) TextButton(onClick = rememberPressing(onClear)) { Text(clear) }
         }
     }
 }
@@ -530,7 +538,7 @@ internal fun LazyListScope.applicationSection(
     }
     item {
         SettingsGroup(stringResource(R.string.behavior_group_wallpaper)) {
-            OutlinedButton(onClick = { onAction(SettingsAction.SetLiveWallpaper) }) {
+            OutlinedButton(onClick = rememberPressing { onAction(SettingsAction.SetLiveWallpaper) }) {
                 Text(stringResource(R.string.behavior_wallpaper_button))
             }
         }
@@ -570,7 +578,7 @@ internal fun LazyListScope.helpSection(
     item {
         SettingsGroup(stringResource(R.string.help_tutorial_group)) {
             val start = if (onboarding.tutorialSeen) R.string.help_tutorial_replay else R.string.help_tutorial_start
-            OutlinedButton(onClick = { onAction(SettingsAction.StartTutorial) }) { Text(stringResource(start)) }
+            OutlinedButton(onClick = rememberPressing { onAction(SettingsAction.StartTutorial) }) { Text(stringResource(start)) }
             SwitchRow(stringResource(R.string.help_tutorial_on_first_run), onboarding.tutorialOnFirstRun) {
                 onAction(SettingsAction.Change(OnboardingCommand.SetTutorialOnFirstRun(it)))
             }

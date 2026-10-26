@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import dev.geode.design.glass.rememberPressing
 import dev.geode.feature.library.api.RuleField
 import dev.geode.feature.library.api.RuleOp
 import dev.geode.feature.library.api.SmartPlaylist
@@ -54,11 +55,11 @@ internal fun SmartPlaylistEditorDialog(
             SmartPlaylistEditor(fields, taken, onChange = { fields = it }, modifier = Modifier.verticalScroll(rememberScrollState()))
         },
         confirmButton = {
-            TextButton(onClick = { onSave(fields.toPlaylist()) }, enabled = fields.canSave(taken)) {
+            TextButton(onClick = rememberPressing { onSave(fields.toPlaylist()) }, enabled = fields.canSave(taken)) {
                 Text(stringResource(R.string.library_edit_save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.library_edit_cancel)) } },
+        dismissButton = { TextButton(onClick = rememberPressing(onDismiss)) { Text(stringResource(R.string.library_edit_cancel)) } },
     )
 }
 
@@ -87,12 +88,12 @@ fun SmartPlaylistEditor(
         Row(horizontalArrangement = Arrangement.spacedBy(LibraryDimens.small)) {
             FilterChip(
                 selected = fields.matchAll,
-                onClick = { onChange(fields.copy(matchAll = true)) },
+                onClick = rememberPressing { onChange(fields.copy(matchAll = true)) },
                 label = { Text(stringResource(R.string.library_smart_match_all)) },
             )
             FilterChip(
                 selected = !fields.matchAll,
-                onClick = { onChange(fields.copy(matchAll = false)) },
+                onClick = rememberPressing { onChange(fields.copy(matchAll = false)) },
                 label = { Text(stringResource(R.string.library_smart_match_any)) },
             )
         }
@@ -111,7 +112,7 @@ fun SmartPlaylistEditor(
                 onRemove = { onChange(fields.withoutRule(index)) },
             )
         }
-        TextButton(onClick = { onChange(fields.withNewRule()) }) {
+        TextButton(onClick = rememberPressing { onChange(fields.withNewRule()) }) {
             Icon(Icons.Rounded.Add, contentDescription = null)
             Text(stringResource(R.string.library_smart_add_rule))
         }
@@ -141,7 +142,7 @@ private fun RuleEditor(
             RuleField.entries.forEach { field ->
                 FilterChip(
                     selected = rule.field == field,
-                    onClick = { onChange(SmartPlaylistFields.withField(rule, field)) },
+                    onClick = rememberPressing { onChange(SmartPlaylistFields.withField(rule, field)) },
                     label = { Text(fieldName(field)) },
                 )
             }
@@ -151,7 +152,11 @@ private fun RuleEditor(
             horizontalArrangement = Arrangement.spacedBy(LibraryDimens.tiny),
         ) {
             rule.field.ops.forEach { op ->
-                FilterChip(selected = rule.op == op, onClick = { onChange(rule.copy(op = op)) }, label = { Text(opName(op)) })
+                FilterChip(
+                    selected = rule.op == op,
+                    onClick = rememberPressing { onChange(rule.copy(op = op)) },
+                    label = { Text(opName(op)) },
+                )
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -172,7 +177,7 @@ private fun RuleEditor(
                     modifier = Modifier.weight(1f),
                 )
             }
-            IconButton(onClick = onRemove) {
+            IconButton(onClick = rememberPressing(onRemove)) {
                 Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.library_smart_remove_rule))
             }
         }
