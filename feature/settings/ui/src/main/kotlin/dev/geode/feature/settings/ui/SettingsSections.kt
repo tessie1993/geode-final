@@ -48,6 +48,7 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import kotlin.math.roundToInt
@@ -415,11 +416,12 @@ private fun FolderChoiceGroup(
 }
 
 /**
- * Application preferences (was Behavior): keeping the screen on, what runs in the background (#28),
- * touch, motion and the live wallpaper.
+ * Application preferences (was Behavior): keeping the screen on, the look Geode starts on (#383), what
+ * runs in the background (#28), touch, motion and the live wallpaper.
  */
 internal fun LazyListScope.applicationSection(
     values: SettingsValues,
+    startLooks: List<StartLookChoice>,
     onAction: (SettingsAction) -> Unit,
 ) {
     val behavior = values.behavior
@@ -431,6 +433,7 @@ internal fun LazyListScope.applicationSection(
             }
         }
     }
+    item { StartLookGroup(behavior.startLook, startLooks, change) }
     item {
         SettingsGroup(stringResource(R.string.application_group_background)) {
             SwitchRow(stringResource(R.string.background_music), values.background.music) { change(BackgroundCommand.SetMusic(it)) }
@@ -473,6 +476,32 @@ internal fun LazyListScope.applicationSection(
         }
     }
 }
+
+/**
+ * Start on (#383): the last look, or one of the looks the app lists. A chosen look the app no longer
+ * lists, such as a preset since deleted, stays shown by its id until another is picked.
+ */
+@Composable
+private fun StartLookGroup(
+    chosen: StartLook,
+    listed: List<StartLookChoice>,
+    change: (SettingsCommand) -> Unit,
+) {
+    val last = StartLookChoice(StartLook.Last, stringResource(R.string.start_look_last))
+    val options = (listOf(last) + listed).distinctBy { it.look }
+    val shown = if (options.any { it.look == chosen }) options else options + StartLookChoice(chosen, startLookId(chosen))
+    SettingsGroup(stringResource(R.string.start_look_group)) {
+        ChoiceRow(null, shown, shown.first { it.look == chosen }, { it.name }) { change(BehaviorCommand.SetStartLook(it.look)) }
+        Note(stringResource(R.string.start_look_note))
+    }
+}
+
+private fun startLookId(look: StartLook): String =
+    when (look) {
+        StartLook.Last -> ""
+        is StartLook.Style -> look.style.value
+        is StartLook.Preset -> look.preset.value
+    }
 
 internal fun LazyListScope.helpSection(
     onboarding: OnboardingSettings,

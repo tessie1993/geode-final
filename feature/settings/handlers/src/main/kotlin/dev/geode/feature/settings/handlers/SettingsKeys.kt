@@ -104,6 +104,12 @@ internal object SettingsKeys {
     // New with #196, so in no old file.
     const val VISUALS_OFF = "visuals_off"
 
+    /**
+     * New with #383, so in no old file: the look Geode starts on, as `style:<id>` or `preset:<id>`;
+     * absent for the last look.
+     */
+    const val START_LOOK = "start_look"
+
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"
     const val SETUP_DONE = "gui_setup_done"
