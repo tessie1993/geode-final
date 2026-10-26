@@ -42,7 +42,13 @@ data class Customization(
  *
  * Style switching's own bookkeeping sits beside it, outside the history: [visualizerStyles], the
  * Visualizer styles `:app` hands in ([CustomizationCommand.UseVisualizerStyles]), and [styleSwitches],
- * how many times it has switched, which says where the app's picks' shuffle has got to.
+ * how many times it has switched, which says where the app's picks' shuffle has got to. [styleHeld] is
+ * the person's Hold ("keep this Style") and [editing] says Customize is open: either holds switching
+ * ([switchingHeld]), and its spacing starts again once both let go (#282).
+ *
+ * The Styles seen this session sit outside the history too (#282): [stylesBack] holds each Style left,
+ * with the Customization it had then, the latest last, and [stylesForward] the ones gone back from, so
+ * back and forward walk through them like a browser's.
  *
  * A/B compare's two slots ([compare]) sit outside the history too: what the person kept to switch
  * between while they decide.
@@ -59,7 +65,15 @@ data class CustomizationState(
     val styleSwitches: Int = 0,
     val compare: Map<CompareSlot, Customization> = emptyMap(),
     val previewFrom: Customization? = null,
-)
+    val styleHeld: Boolean = false,
+    val editing: Boolean = false,
+    val stylesBack: List<Customization> = emptyList(),
+    val stylesForward: List<Customization> = emptyList(),
+) {
+    /** Whether Style switching waits: held by the person, or Customize is open. */
+    val switchingHeld: Boolean
+        get() = styleHeld || editing
+}
 
 /** A/B compare's two slots. */
 enum class CompareSlot {
@@ -164,6 +178,31 @@ sealed interface CustomizationCommand {
     data class UseVisualizerStyles(
         val styles: List<SceneId>,
     ) : CustomizationCommand
+
+    /**
+     * Hold ("keep this Style", #282): while [held], Style switching does not move; once released its
+     * spacing starts again. Session state, not an edit: kept out of the history and out of presets.
+     */
+    data class HoldStyle(
+        val held: Boolean,
+    ) : CustomizationCommand
+
+    /**
+     * Whether Customize is open (#282): while it is, Style switching waits, so a switch never throws away
+     * fresh edits, and its spacing starts again when it closes. Not an edit.
+     */
+    data class SetEditing(
+        val editing: Boolean,
+    ) : CustomizationCommand
+
+    /**
+     * Back to the Style seen before this one, with the Customization it had then, the current
+     * Automations kept (#282). Live like Style switching's own moves: kept out of the history.
+     */
+    data object StyleBack : CustomizationCommand
+
+    /** Forward again to the Style [StyleBack] left. Live, kept out of the history. */
+    data object StyleForward : CustomizationCommand
 
     /** Back to the current Style's own defaults. Undoable. */
     data object ResetToStyle : CustomizationCommand

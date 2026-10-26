@@ -25,6 +25,9 @@ class VisualizerRenderer(
     context: Context,
 ) : GLSurfaceView.Renderer {
     companion object {
+        /** How long a change of Style crossfades when Style switching does not say. */
+        val DEFAULT_TRANSITION: Millis = Millis(1200L)
+
         /** The floats a parameter fade must never glide, and why. */
         val NOT_FADED: Map<String, String> =
             mapOf(
@@ -69,8 +72,12 @@ class VisualizerRenderer(
     @Volatile
     var transitionStyle: TransitionStyle = TransitionStyle.FADE
 
+    /**
+     * How long a change of Style crossfades: [DEFAULT_TRANSITION], or Style switching's own transition
+     * while it is on (#282).
+     */
     @Volatile
-    var transitionDuration: Millis = Millis(1200L)
+    var transitionDuration: Millis = DEFAULT_TRANSITION
 
     @Volatile
     var transitionId: String = TransitionStyle.FADE.name.lowercase()
@@ -81,6 +88,13 @@ class VisualizerRenderer(
     // Assigned from Main and read on the GL thread in onDrawFrame.
     @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
+
+    /**
+     * The engine heard the moment Style switching waits for (#282): called on the GL thread, at most
+     * once a frame, each time the engine's count of due switches rises.
+     */
+    @Volatile
+    var onStyleDue: () -> Unit = {}
 
     @Volatile
     var pcmProvider: () -> PcmChunk? = { null }
@@ -115,6 +129,9 @@ class VisualizerRenderer(
 
     // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
     private val displayEvents = DisplayEvents()
+
+    // GL thread only: the engine's count of due Style switches after the last frame.
+    private var stylesDue = 0
 
     @Volatile
     private var lastMilkPreset: String? = null
@@ -190,6 +207,10 @@ class VisualizerRenderer(
             lastMilkPreset = path
             onMilkPresetLoaded(path)
         }
+        // A drop is a fresh start (a new plan, or none): only a rise is a switch.
+        val due = nativeViz.stylesDue()
+        if (due > stylesDue) onStyleDue()
+        stylesDue = due
     }
 
     private fun syncNativeState() {

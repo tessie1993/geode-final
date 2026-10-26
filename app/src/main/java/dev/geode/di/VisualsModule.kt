@@ -7,11 +7,13 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.data.MilkCatalog
 import dev.geode.engine.bridge.NativeSnapshots
+import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.handlers.CustomizationHandlers
 import dev.geode.feature.customization.handlers.EnginePublisher
 import dev.geode.feature.customization.handlers.SharedPreferencesLegacyModulation
+import dev.geode.feature.customization.handlers.StyleCues
 import dev.geode.feature.customization.handlers.customizationStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
@@ -51,6 +53,11 @@ object VisualsModule {
     @Singleton
     fun provideSnapshots(): NativeSnapshots = NativeSnapshots()
 
+    /** The live Visual's word that Style switching is due, which Customization's handlers follow (#282). */
+    @Provides
+    @Singleton
+    fun provideStyleCues(): StyleCues = StyleCues()
+
     @Provides
     @Singleton
     @Suppress("InjectDispatcher")
@@ -58,14 +65,17 @@ object VisualsModule {
         application: Application,
         settings: Settings,
         snapshots: NativeSnapshots,
+        styleCues: StyleCues,
         runtime: FeatureRuntime,
     ): CustomizationFeature {
         val engine =
             EnginePublisher(
-                snapshotOf = { EngineSnapshots.of(it, (settings.state.value as? SettingsState.Ready)?.values) },
+                snapshotOf = { customization, held ->
+                    EngineSnapshots.of(customization, (settings.state.value as? SettingsState.Ready)?.values, held)
+                },
                 offer = snapshots::offer,
             )
-        val handlers = CustomizationHandlers.onDevice(application, settings, engine, SceneIds.DEFAULT)
+        val handlers = CustomizationHandlers.onDevice(application, settings, engine, SceneIds.DEFAULT, styleCues)
         return customizationStore(handlers, SceneIds.DEFAULT, runtime).also { customization ->
             // What the snapshot takes from Settings reaches the engine as soon as it changes, not only
             // with the next change to the Customization.
@@ -74,7 +84,10 @@ object VisualsModule {
                     .filterIsInstance<SettingsState.Ready>()
                     .map { it.values.behavior.reducedMotion to it.values.analysis }
                     .distinctUntilChanged()
-                    .collect { engine.publish(customization.state.value.current) }
+                    .collect {
+                        val state = customization.state.value
+                        engine.publish(state.current, state.switchingHeld)
+                    }
             }
         }
     }
@@ -104,7 +117,10 @@ object VisualsModule {
             builtInMilkdrop =
                 MilkCatalog.load(application).presets.map { MilkdropPreset(it.file, it.name, it.author, builtIn = true) },
             runtime = runtime,
-        )
+        ).also { visuals ->
+            // Style switching's Visualizer styles are the Styles Visuals lists, in its order (#282).
+            customization.send(CustomizationCommand.UseVisualizerStyles(visuals.state.value.styles.map { it.id }))
+        }
 
     /** The app's own preset folder, where Customization saves presets until the person picks another. */
     private const val PRESET_FOLDER = "presets"

@@ -25,10 +25,14 @@ object EngineSnapshots {
 
     private val noEnvelope: List<Float> = List(CustomizationSnapshot.ADSR_COUNT) { 0f }
 
-    /** [customization] as the engine reads it, with [settings] when they have loaded, otherwise their defaults. */
+    /**
+     * [customization] as the engine reads it, with [settings] when they have loaded, otherwise their
+     * defaults; its Style switching held when [switchingHeld] (#282).
+     */
     fun of(
         customization: Customization,
         settings: SettingsValues?,
+        switchingHeld: Boolean = false,
     ): CustomizationSnapshot {
         val values = settings ?: SettingsValues()
         return CustomizationSnapshot(
@@ -37,7 +41,7 @@ object EngineSnapshots {
             params = defaultParams,
             lfo = noLfo,
             adsr = noEnvelope,
-            plan = NativePlan.encode(customization),
+            plan = NativePlan.encode(customization, switchingHeld),
             soundSensitivity = BeatTuning.clampSensitivity(values.analysis.beatSensitivity),
             soundRefractoryMs = VisualSafety.beatMinIntervalMs(values.analysis.beatMinIntervalMs),
             soundAttackSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_ATTACK),

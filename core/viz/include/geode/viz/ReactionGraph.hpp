@@ -98,6 +98,8 @@ float macroLink(float base, float low, float high, float value);
 // (played time) after its last move:
 //   EveryBeats   on each beat past 0 that is a multiple of `everyBeats` (EveryBars: bars * 4);
 //   BigMoments   when the louder of Surge and Change rises past `threshold`, once each time.
+// A `held` cadence never moves, and its spacing starts again from the moment it is released: the
+// person's Hold, or Customize being open (#282), so a switch never lands straight after either.
 //
 //   StyleSwitch  no target: counts each move into Evaluated::stylesDue, from which the reducer moves
 //                to the next Style (CustomizationEvent.StyleDue) and the engine crossfades;
@@ -122,6 +124,7 @@ struct AutomationSpec {
     float spacingSeconds = 0.0f;
     float fadeSeconds = 2.0f;
     bool alternate = false;
+    bool held = false;
     std::array<float, kMaxSteps> steps{};
     int stepCount = 0;
 };
@@ -191,13 +194,15 @@ private:
     // Each Shared property's fraction last frame, from which a luminous one may only rise so fast.
     std::array<float, kSharedCount> lastShared_{};
     // The Automations' clocks: beats reported, and seconds played. Per Automation: the beat block it
-    // last saw, how often it moved, whether a big moment may fire, and when it last moved.
+    // last saw, how often it moved, whether a big moment may fire, when it last moved, and when its
+    // spacing started (its last move, or the moment a hold let go).
     double beats_ = 0.0;
     double seconds_ = 0.0;
     std::array<int64_t, kMaxAutomations> lastBlock_{};
     std::array<uint32_t, kMaxAutomations> due_{};
     std::array<bool, kMaxAutomations> armed_{};
     std::array<double, kMaxAutomations> lastMove_{};
+    std::array<double, kMaxAutomations> spacedFrom_{};
     bool primed_ = false;
     Evaluated out_;
 };

@@ -556,6 +556,34 @@ TEST(Automations, TheSpacingHoldsTheNextMoveBack) {
     EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 2u) << "a second on";
 }
 
+TEST(Automations, AHeldSwitchNeverMovesAndItsSpacingStartsAgainOnRelease) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 1.0f));
+    plan.automations[0].held = true;
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 0u) << "held";
+    for (int i = 0; i < 20; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    plan.automations[0].held = false;
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 0u) << "0.2 s after the release";
+    for (int i = 0; i < 8; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "a second after the release";
+}
+
+TEST(Automations, AHoldNeverRestartsAPaletteFade) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    AutomationSpec palette = onBigMoments(AutomationKind::Palette, 0.5f, 0.0f);
+    palette.fadeSeconds = 1.0f;
+    plan.add(palette);
+    ReactionGraph graph;
+    graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt);
+    for (int i = 0; i < 4; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    plan.automations[0].held = true;
+    const float mix = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::PaletteMix];
+    EXPECT_NEAR(mix, 0.5f, 1e-3f) << "the fade goes on while held";
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Change), kAutomationDt)[Shared::Palette2], 1.0f) << "no new change while held";
+}
+
 TEST(Automations, APaletteChangeCrossfadesIntoTheNextPaletteAndWrapsRound) {
     CustomizationPlan plan = CustomizationPlan::defaults();
     plan.shared[static_cast<size_t>(Shared::Palette)] = toUnit(Shared::Palette, 20.0f);

@@ -182,7 +182,7 @@ fun AppRoot() {
                 }
             }
     }
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
+    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.styleCues, shell.settings)
     val element = settingsValues?.look?.element ?: Element.Default
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.

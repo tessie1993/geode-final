@@ -1,10 +1,12 @@
 package dev.geode.feature.customization.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.customization.api.Customization
+import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
 import kotlin.random.Random
 
@@ -18,7 +20,7 @@ import kotlin.random.Random
  * app stays offline), and [onHide] leaves the Visual alone once the panel is swiped away. [looks],
  * [presets] and [live] are what the opening place offers: the look picker's Styles, this Style's saved
  * presets, and the engine's live values when it has them. [onBrowsePresets] opens the Presets browser
- * (#144), which the Visuals feature keeps.
+ * (#144), which the Visuals feature keeps. While it is open, Style switching waits (#282).
  */
 @Composable
 fun CustomizeRoute(
@@ -31,6 +33,11 @@ fun CustomizeRoute(
     live: LiveMeters = LiveMeters.NONE,
     onBrowsePresets: () -> Unit = {},
 ) {
+    // While Customize is open Style switching waits, so a switch never throws away fresh edits (#282).
+    DisposableEffect(customization) {
+        customization.send(CustomizationCommand.SetEditing(true))
+        onDispose { customization.send(CustomizationCommand.SetEditing(false)) }
+    }
     val state by customization.state.collectAsStateWithLifecycle()
     CustomizeScreen(
         model = state.toCustomizeModel(looks, presets, live),

@@ -221,4 +221,18 @@ class CustomizeModelTest {
         assertEquals(setOf(CompareSlot.B), state.toCustomizeModel().kept)
         assertEquals(emptySet<CompareSlot>(), CustomizationState(customization).toCustomizeModel().kept)
     }
+
+    @Test
+    fun `the Hold and the Styles seen come from the state`() {
+        val plain = CustomizationState(customization).toCustomizeModel()
+        assertFalse(plain.styleHeld)
+        assertFalse(plain.canGoBack)
+        assertFalse(plain.canGoForward)
+        val walked =
+            CustomizationState(customization, styleHeld = true, stylesBack = listOf(customization), stylesForward = listOf(customization))
+                .toCustomizeModel()
+        assertTrue(walked.styleHeld)
+        assertTrue(walked.canGoBack)
+        assertTrue(walked.canGoForward)
+    }
 }

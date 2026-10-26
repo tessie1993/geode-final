@@ -72,7 +72,7 @@ fun ModulatorsAutomationScreen(
             SectionTitle(stringResource(R.string.customize_section_modulators))
             ModulatorsSection(model, send)
             SectionTitle(stringResource(R.string.automation_section))
-            AutomationsSection(model) { send(CustomizationCommand.SetAutomations(it)) }
+            AutomationsSection(model, send)
         }
     }
 }
@@ -178,13 +178,18 @@ private fun ModulatorCard(
 @Composable
 private fun AutomationsSection(
     model: CustomizeModel,
-    set: (Automations) -> Unit,
+    send: (CustomizationCommand) -> Unit,
 ) {
     val automations = model.automations
+    val set = { next: Automations -> send(CustomizationCommand.SetAutomations(next)) }
     QuietText(stringResource(R.string.automation_live_only))
     InsetCard {
         SwitchRow(stringResource(R.string.automation_style), automations.style != null) { set(automations.switchingStyle(it)) }
-        automations.style?.let { switching -> StyleSwitchingControls(switching) { set(automations.copy(style = it)) } }
+        automations.style?.let { switching ->
+            StyleSwitchingControls(switching) { set(automations.copy(style = it)) }
+            SwitchRow(stringResource(R.string.automation_hold), model.styleHeld) { send(CustomizationCommand.HoldStyle(it)) }
+        }
+        StylesSeen(model, send)
     }
     InsetCard {
         SwitchRow(stringResource(R.string.automation_palette), automations.palette != null) { set(automations.changingPalette(it)) }
@@ -212,6 +217,29 @@ private fun StyleSwitchingControls(
         onSet = { set(switching.transitionOf(it)) },
     )
     QuietText(stringResource(R.string.automation_no_flash))
+}
+
+/** Back and forward through the Styles seen this session (#282); not undo steps. */
+@Composable
+private fun StylesSeen(
+    model: CustomizeModel,
+    send: (CustomizationCommand) -> Unit,
+) {
+    if (!model.canGoBack && !model.canGoForward) return
+    ChipFlow {
+        AssistChip(
+            onClick = { send(CustomizationCommand.StyleBack) },
+            label = { Text(stringResource(R.string.automation_style_back)) },
+            enabled = model.canGoBack,
+            shape = ForestShapes.Chip,
+        )
+        AssistChip(
+            onClick = { send(CustomizationCommand.StyleForward) },
+            label = { Text(stringResource(R.string.automation_style_forward)) },
+            enabled = model.canGoForward,
+            shape = ForestShapes.Chip,
+        )
+    }
 }
 
 @Composable

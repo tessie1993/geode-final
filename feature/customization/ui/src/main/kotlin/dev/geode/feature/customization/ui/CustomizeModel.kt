@@ -179,6 +179,11 @@ data class CustomizeModel(
     val automations: Automations,
     /** The A/B compare slots that keep a Customization to switch to. */
     val kept: Set<CompareSlot> = emptySet(),
+    /** Whether the person holds the Style, so Style switching waits (#282). */
+    val styleHeld: Boolean = false,
+    /** Whether there is a Style seen before this one to go back to, and one to go forward to again. */
+    val canGoBack: Boolean = false,
+    val canGoForward: Boolean = false,
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 }
@@ -252,5 +257,8 @@ fun CustomizationState.toCustomizeModel(
                 },
         automations = customization.automations,
         kept = compare.keys,
+        styleHeld = styleHeld,
+        canGoBack = stylesBack.isNotEmpty(),
+        canGoForward = stylesForward.isNotEmpty(),
     )
 }

@@ -376,6 +376,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizReleaseScenes(JNIEnv* env, jobject, 
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizStylesDue(JNIEnv* env, jobject, jlong handle) {
+    // Kotlin's Int holds the count: past 2^31 it wraps to 0, which the host takes as a fresh start.
+    return valueCall(env, "vizStylesDue", jint{0}, [&]() -> jint {
+        return static_cast<jint>(geode_viz_styles_due(vizOf(handle)) & 0x7fffffffu);
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizAttachSnapshots(JNIEnv* env, jobject, jlong handle, jlong snapshots) {
     return vizCall(env, "vizAttachSnapshots", handle, [&](geode_viz* v) {
         return geode_viz_attach_snapshots(v, reinterpret_cast<geode_snapshots*>(snapshots));

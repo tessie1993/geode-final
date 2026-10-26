@@ -312,6 +312,9 @@
     <string name="automation_move_shake">Shake</string>
     <string name="automation_transition">Transition</string>
     <string name="automation_seconds">%1$.1f s</string>
+    <string name="automation_hold">Hold this Style</string>
+    <string name="automation_style_back">Back a Style</string>
+    <string name="automation_style_forward">Forward a Style</string>
     <string name="automation_no_flash">Fades smoothly from one Style to the next. The Visual never flashes.</string>
 
 </resources>

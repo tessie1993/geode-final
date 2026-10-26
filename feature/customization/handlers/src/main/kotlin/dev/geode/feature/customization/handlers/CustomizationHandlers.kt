@@ -22,14 +22,16 @@ import dev.geode.kernel.Results
 import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * Carries out Customization's work (ADR-0005): it hands each Customization to the [engine], and saves,
- * loads and upgrades the preset files in the [presets] library. Everything that fails at this edge
- * comes back to the reducer as a named [WorkFailure], which reports it on the app-wide error channel
- * (ADR-0004); nothing here stops the audio or the Visual.
+ * Carries out Customization's work (ADR-0005): it hands each Customization to the [engine], saves,
+ * loads and upgrades the preset files in the [presets] library, and passes on the engine's word that
+ * Style switching is due from [styleCues]. Everything that fails at this edge comes back to the reducer
+ * as a named [WorkFailure], which reports it on the app-wide error channel (ADR-0004); nothing here
+ * stops the audio or the Visual.
  */
 class CustomizationHandlers(
     private val engine: EnginePublisher,
     private val presets: PresetLibrary,
+    private val styleCues: StyleCues = StyleCues(),
 ) : EffectRunner<CustomizationWork, CustomizationEvent> {
     override suspend fun run(
         work: CustomizationWork,
@@ -49,13 +51,17 @@ class CustomizationHandlers(
                         onSuccess = { null },
                         onFailure = { failed(WorkFailure.PRESETS_NOT_UPGRADED) },
                     )
+                CustomizationWork.FollowStyleCues -> {
+                    styleCues.cues.collect { results.report(CustomizationEvent.StyleDue) }
+                    null
+                }
             }
         event?.let(results::report)
     }
 
     private fun publish(work: CustomizationWork.Publish): CustomizationEvent? {
         // A throw on the way to the bridge counts as a refusal too: the engine did not take it.
-        val outcome = runCatching { engine.publish(work.customization) }
+        val outcome = runCatching { engine.publish(work.customization, work.switchingHeld) }
         return if (outcome.isFailure || outcome.getOrNull() != null) failed(WorkFailure.ENGINE_REFUSED) else null
     }
 
@@ -71,18 +77,20 @@ class CustomizationHandlers(
         /**
          * The handlers on the phone: presets in the folders Settings' Default paths chose (the app's
          * own folder until the person picks one), the old app-wide slots read from where an older
-         * Geode kept them, and [fallbackStyle] (the app's single default Style, `SceneIds.DEFAULT`) for
-         * a preset whose Style is gone.
+         * Geode kept them, [fallbackStyle] (the app's single default Style, `SceneIds.DEFAULT`) for
+         * a preset whose Style is gone, and the live Visual's [styleCues].
          */
         fun onDevice(
             context: Context,
             settings: Settings,
             engine: EnginePublisher,
             fallbackStyle: SceneId,
+            styleCues: StyleCues,
             styles: StyleCatalogue = BuiltInStyles.catalogue,
         ): CustomizationHandlers =
             CustomizationHandlers(
                 engine = engine,
+                styleCues = styleCues,
                 presets =
                     PresetLibrary(
                         places = AndroidPresetPlaces(context, settings),

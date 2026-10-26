@@ -96,6 +96,7 @@ void ReactionGraph::reset() {
     due_.fill(0);
     armed_.fill(true);
     lastMove_.fill(kNever);
+    spacedFrom_.fill(kNever);
     primed_ = false;
     out_ = Evaluated{};
 }
@@ -121,6 +122,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         lastBlock_.fill(kUnseen);
         armed_.fill(true);
         lastMove_.fill(kNever);
+        spacedFrom_.fill(kNever);
     }
 
     // 2. The Modulators: only those some Reaction listens to run.
@@ -195,6 +197,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
             due_[i] = 0;
             armed_[i] = true;
             lastMove_[i] = kNever;
+            spacedFrom_[i] = kNever;
             continue;
         }
         const AutomationSpec& automation = plan.automations[i];
@@ -210,7 +213,10 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         }
         lastBlock_[i] = block;
         const double spacing = std::isfinite(automation.spacingSeconds) ? std::max(automation.spacingSeconds, 0.0f) : 0.0;
-        const bool moves = fired && (lastMove_[i] < 0.0 || seconds_ - lastMove_[i] >= spacing);
+        if (automation.held) spacedFrom_[i] = seconds_;
+        const bool spaced = spacedFrom_[i] < 0.0 || seconds_ - spacedFrom_[i] >= spacing;
+        const bool moves = fired && !automation.held && spaced;
+        if (moves) spacedFrom_[i] = seconds_;
         switch (automation.kind) {
             case AutomationKind::StyleSwitch:
                 if (moves) {
