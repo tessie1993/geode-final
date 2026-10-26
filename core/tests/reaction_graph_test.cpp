@@ -246,7 +246,7 @@ TEST(ReactionGraph, HandsLayerTwoOnAsThePlanAsks) {
     CustomizationPlan plan = CustomizationPlan::defaults();
     plan.layer.style = 1234u;
     plan.layer.blend = layer::Blend::Overlay;
-    plan.layer.influence = layer::Influence::Displace;
+    plan.layer.influence = layer::Influence::Bend;
     ReactionGraph graph;
     const Evaluated& out = graph.evaluate(plan, heard(SoundSignal::Bass, 0.0f), kFrameDt);
     EXPECT_EQ(out.layer, plan.layer);

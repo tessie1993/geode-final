@@ -22,7 +22,7 @@ uniform float uRatio;
 uniform float uProgress;
 uniform int uStyle;
 // Layer 2 (core/viz/include/geode/viz/Layers.hpp, lib_layers.glsl): a second Style's picture, laid
-// over everything above (Layer 1, transitions included) in linear light. uTexL is its picture, with its
+// over everything above (Layer 1, transitions included). uTexL is its picture, with its
 // own gate and Camera pair (x its flat moves, y its flat endless zoom), as uTexA and uTexB have theirs.
 // uLayerPresence is how far it is faded in: 0 is no Layer 2, and then nothing of it runs. uLayerBlend is
 // layer::Blend's ordinal, uLayerOpacity the source opacity (already held to the mode's No-flash cap),
@@ -420,7 +420,7 @@ vec4 getToColor(vec2 uv) { return vec4(postFx(uTexA, clamp(uv, 0.0, 1.0), uGateA
 
 /**
  * The transition stage: the incoming scene, or a blend of it with the outgoing
- * one, sampled at [uv] (vUv, or where Layer 2's Displace has bent it). Split
+ * one, sampled at [uv] (vUv, or where Layer 2's Bend or Swirl moved it). Split
  * out of main() so every path returns a colour rather than writing
  * fragColor itself - the dither below has to be the last thing that touches the
  * output, and an early `return` in main() used to skip it.
@@ -462,43 +462,58 @@ vec3 blended(vec2 uv) {
     }
 }
 
-// Layer 2's Displace: its luminance gradient (central differences a few texels apart, where its picture
-// is drawn) bends where Layer 1 is sampled, like a refraction, soft-capped the way the ripple overlay's
-// refraction is. Fades with Layer 2.
-vec2 layerDisplaced(vec2 uv) {
-    if (uLayerPresence <= 0.0 || uLayerInfluence != 1 || uLayerAmount <= 0.0001) return uv;
-    vec2 p = geo(uv, uGateL, uCamGateL.x > 0.5, 1.0);
+// Layer 2's luminance gradient where its picture is drawn: central differences a few texels apart, read
+// raw from its target. Bend, Swirl and Outline share it.
+vec2 layerGradient() {
+    vec2 p = geo(vUv, uGateL, uCamGateL.x > 0.5, 1.0);
     vec2 texel = 2.5 / vec2(textureSize(uTexL, 0));
     float lL = layerLum(texture(uTexL, p - vec2(texel.x, 0.0)).rgb);
     float lR = layerLum(texture(uTexL, p + vec2(texel.x, 0.0)).rgb);
     float lB = layerLum(texture(uTexL, p - vec2(0.0, texel.y)).rgb);
     float lT = layerLum(texture(uTexL, p + vec2(0.0, texel.y)).rgb);
-    vec2 off = vec2(lR - lL, lT - lB) * uLayerAmount * uLayerPresence * 0.08;
+    return vec2(lR - lL, lT - lB);
+}
+
+// Bend and Swirl: Layer 2's gradient [g] moves where Layer 1 is sampled, away from Layer 2's edges like a
+// refraction (Bend) or along them (Swirl, the gradient turned a quarter), soft-capped the way the ripple
+// overlay's refraction is, since an unbounded warp reads as flashing. Fades with Layer 2.
+vec2 layerDisplaced(vec2 uv, vec2 g) {
+    if (uLayerInfluence != 1 && uLayerInfluence != 2) return uv;
+    vec2 d = uLayerInfluence == 2 ? vec2(-g.y, g.x) : g;
+    vec2 off = d * uLayerAmount * uLayerPresence * 0.08;
     off *= 0.06 / (0.06 + length(off));
     return clamp(uv - off, 0.0, 1.0);
 }
 
-// Layer 2 over Layer 1 ([base], everything above it, transitions included), both as postFx gives them:
-// Layer 1 is first acted on by Layer 2 (Mask: its luminance gates Layer 1, a luma key; Tint: Layer 1 at
-// its own luminance in Layer 2's colour), then Layer 2 is laid over it, or with the swap Layer 1 over
-// Layer 2, and the whole fades with uLayerPresence.
-vec3 layered(vec3 base, vec3 top) {
-    vec3 b = layerToLinear(base);
-    vec3 t = layerToLinear(top);
+// Layer 2 over Layer 1 ([base], everything above it, transitions included), both as postFx gives them,
+// kept to 0..1. Layer 1 is first acted on by Layer 2: Cut-out shows it only where Layer 2 is lit (a luma
+// key), Tint gives it Layer 2's colour at its own brightness (W3C Color, weighted by how much colour
+// Layer 2 has there), Outline shows it only along Layer 2's edges ([g]). Then Layer 2 is laid over it, or
+// with the swap Layer 1 over Layer 2, and the whole fades in with uLayerPresence.
+vec3 layered(vec3 base, vec3 top, vec2 g) {
+    vec3 b = clamp(base, 0.0, 1.0);
+    vec3 t = clamp(top, 0.0, 1.0);
     vec3 l1 = b;
-    if (uLayerInfluence == 2) {
-        l1 *= mix(1.0, smoothstep(0.02, 0.5, layerLum(t)), uLayerAmount);
-    } else if (uLayerInfluence == 3) {
-        l1 = mix(l1, layerSetLum(t, layerLum(l1)), uLayerAmount);
+    if (uLayerInfluence == 3) {
+        l1 *= mix(1.0, smoothstep(0.05, 0.6, layerLum(t)), uLayerAmount);
+    } else if (uLayerInfluence == 4) {
+        float chroma = max(max(t.r, t.g), t.b) - min(min(t.r, t.g), t.b);
+        l1 = mix(l1, layerSetLum(t, layerLum(l1)), uLayerAmount * smoothstep(0.02, 0.25, chroma));
+    } else if (uLayerInfluence == 5) {
+        l1 *= mix(1.0, clamp(length(g) * 6.0, 0.0, 1.0), uLayerAmount);
     }
     vec3 col = layerOver(l1, t, uLayerBlend, uLayerOpacity);
     if (uLayerSwap > 0.0001) col = mix(col, layerOver(t, l1, uLayerBlend, uLayerOpacity), uLayerSwap);
-    return layerToSrgb(mix(b, col, uLayerPresence));
+    return mix(b, col, uLayerPresence);
 }
 
 void main() {
-    vec3 col = blended(layerDisplaced(vUv));
-    if (uLayerPresence > 0.0) col = layered(col, postFx(uTexL, vUv, uGateL, uCamGateL));
+    // Layer 2's gradient is read only by the influences that use it, and only while Layer 2 is in.
+    vec2 g = vec2(0.0);
+    bool edges = uLayerInfluence == 1 || uLayerInfluence == 2 || uLayerInfluence == 5;
+    if (uLayerPresence > 0.0 && uLayerAmount > 0.0001 && edges) g = layerGradient();
+    vec3 col = blended(layerDisplaced(vUv, g));
+    if (uLayerPresence > 0.0) col = layered(col, postFx(uTexL, vUv, uGateL, uCamGateL), g);
     // Underlay (W00): folded in here, after every transition/Layer 2/postFx blend above and
     // before the dither, so it is the one place both the live composite and the offscreen export
     // apply it - see the uUnderlay* declarations above and CompositePass.hpp.

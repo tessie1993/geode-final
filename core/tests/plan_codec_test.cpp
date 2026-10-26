@@ -79,8 +79,8 @@ TEST(PlanCodec, ReadsLayerTwoAtTheEnd) {
     data[kLayerAt + 2] = 2.0f;
     const CustomizationPlan plan = decoded(data);
     EXPECT_EQ(plan.layer.style, 3997830u);
-    EXPECT_EQ(plan.layer.blend, layer::Blend::SoftLight);
-    EXPECT_EQ(plan.layer.influence, layer::Influence::Mask);
+    EXPECT_EQ(plan.layer.blend, layer::Blend::Overlay);
+    EXPECT_EQ(plan.layer.influence, layer::Influence::Swirl);
 }
 
 TEST(PlanCodec, AnythingButAWhole24BitNameIsNoLayerTwo) {

@@ -51,21 +51,23 @@ std::optional<std::string> readShipped(const std::string& path) {
 
 TEST(Layers, TheModesAreTheModelsInItsOrder) {
     EXPECT_EQ(kBlendCount, 10);
-    EXPECT_EQ(kInfluenceCount, 4);
+    EXPECT_EQ(kInfluenceCount, 6);
     EXPECT_EQ(blendAt(0.0f), Blend::Normal);
     EXPECT_EQ(blendAt(1.0f), Blend::Add);
     EXPECT_EQ(blendAt(2.0f), Blend::Screen);
-    EXPECT_EQ(blendAt(3.0f), Blend::Multiply);
-    EXPECT_EQ(blendAt(4.0f), Blend::Overlay);
-    EXPECT_EQ(blendAt(5.0f), Blend::SoftLight);
-    EXPECT_EQ(blendAt(6.0f), Blend::HardLight);
+    EXPECT_EQ(blendAt(3.0f), Blend::Lighten);
+    EXPECT_EQ(blendAt(4.0f), Blend::Multiply);
+    EXPECT_EQ(blendAt(5.0f), Blend::Overlay);
+    EXPECT_EQ(blendAt(6.0f), Blend::SoftLight);
     EXPECT_EQ(blendAt(7.0f), Blend::Difference);
     EXPECT_EQ(blendAt(8.0f), Blend::Exclusion);
     EXPECT_EQ(blendAt(9.0f), Blend::Luminosity);
     EXPECT_EQ(influenceAt(0.0f), Influence::None);
-    EXPECT_EQ(influenceAt(1.0f), Influence::Displace);
-    EXPECT_EQ(influenceAt(2.0f), Influence::Mask);
-    EXPECT_EQ(influenceAt(3.0f), Influence::Tint);
+    EXPECT_EQ(influenceAt(1.0f), Influence::Bend);
+    EXPECT_EQ(influenceAt(2.0f), Influence::Swirl);
+    EXPECT_EQ(influenceAt(3.0f), Influence::CutOut);
+    EXPECT_EQ(influenceAt(4.0f), Influence::Tint);
+    EXPECT_EQ(influenceAt(5.0f), Influence::Outline);
 }
 
 TEST(Layers, AModeOrdinalIsRoundedAndAnythingElseIsTheFirstMode) {
@@ -77,18 +79,18 @@ TEST(Layers, AModeOrdinalIsRoundedAndAnythingElseIsTheFirstMode) {
     EXPECT_EQ(blendAt(-1.0f), Blend::Normal);
     EXPECT_EQ(blendAt(kNaN), Blend::Normal);
     EXPECT_EQ(blendAt(std::numeric_limits<float>::infinity()), Blend::Normal);
-    EXPECT_EQ(influenceAt(2.6f), Influence::Tint);
-    EXPECT_EQ(influenceAt(4.0f), Influence::None);
+    EXPECT_EQ(influenceAt(2.6f), Influence::CutOut);
+    EXPECT_EQ(influenceAt(4.6f), Influence::Outline);
+    EXPECT_EQ(influenceAt(6.0f), Influence::None);
     EXPECT_EQ(influenceAt(-1.0f), Influence::None);
     EXPECT_EQ(influenceAt(kNaN), Influence::None);
 }
 
-TEST(Layers, OnlyTheModesThatInvertOrClipAreHeldToTheFlashDepth) {
-    EXPECT_FLOAT_EQ(opacityCap(Blend::Add), safety::kMaxFlashDepth);
+TEST(Layers, OnlyTheModesThatInvertAreHeldToTheFlashDepth) {
     EXPECT_FLOAT_EQ(opacityCap(Blend::Difference), safety::kMaxFlashDepth);
     EXPECT_FLOAT_EQ(opacityCap(Blend::Exclusion), safety::kMaxFlashDepth);
-    for (const Blend mode : {Blend::Normal, Blend::Screen, Blend::Multiply, Blend::Overlay, Blend::SoftLight, Blend::HardLight,
-                             Blend::Luminosity}) {
+    for (const Blend mode : {Blend::Normal, Blend::Add, Blend::Screen, Blend::Lighten, Blend::Multiply, Blend::Overlay,
+                             Blend::SoftLight, Blend::Luminosity}) {
         EXPECT_FLOAT_EQ(opacityCap(mode), 1.0f);
     }
 }
@@ -165,7 +167,7 @@ TEST(Mixer, ALayerTurnedOffFadesOutBeforeItGoes) {
 
 TEST(Mixer, ANewStyleOrModeComesInOnlyOnceTheOldOneHasGone) {
     for (const Request& next : {asking(kPlasma), asking(kJulia, Blend::Multiply), asking(kJulia, Blend::Normal, 1.0f, 0.0f, 0.0f,
-                                                                                            Influence::Mask)}) {
+                                                                                            Influence::CutOut)}) {
         Mixer mixer = showing(asking(kJulia));
         float last = 1.0f;
         int frames = 0;
@@ -218,11 +220,11 @@ TEST(Mixer, AFastLoopIsBoundedLikeASlowOneAtAnyFrameRate) {
 }
 
 TEST(Mixer, TheFlashingModesAreHeldToTheirCap) {
-    Mixer add = showing(asking(kJulia, Blend::Add, 0.9f));
-    EXPECT_FLOAT_EQ(add.current().opacity, safety::kMaxFlashDepth);
-    for (int i = 0; i < 10; ++i) add.step(asking(kJulia, Blend::Add, 0.9f), kStep);
-    EXPECT_FLOAT_EQ(add.current().opacity, safety::kMaxFlashDepth);
-    EXPECT_FLOAT_EQ(add.step(asking(kJulia, Blend::Add, 0.1f), kStep).opacity, 0.15f);
+    Mixer difference = showing(asking(kJulia, Blend::Difference, 0.9f));
+    EXPECT_FLOAT_EQ(difference.current().opacity, safety::kMaxFlashDepth);
+    for (int i = 0; i < 10; ++i) difference.step(asking(kJulia, Blend::Difference, 0.9f), kStep);
+    EXPECT_FLOAT_EQ(difference.current().opacity, safety::kMaxFlashDepth);
+    EXPECT_FLOAT_EQ(difference.step(asking(kJulia, Blend::Difference, 0.1f), kStep).opacity, 0.15f);
     Mixer screen = showing(asking(kJulia, Blend::Screen, 0.9f));
     EXPECT_FLOAT_EQ(screen.current().opacity, 0.9f);
 }
@@ -252,6 +254,16 @@ TEST(Mixer, ABrokenFrameMovesNothingAndAStallMovesOneLongFrame) {
     }
     EXPECT_NEAR(mixer.step(asking(kJulia, Blend::Normal, 1.0f), 5.0f).opacity, kMaxStepSeconds / kSlewSeconds, kTolerance);
     EXPECT_NEAR(mixer.step(asking(kPlasma), 5.0f).presence, 1.0f - kMaxStepSeconds / kFadeSeconds, kTolerance);
+}
+
+TEST(Mixer, CoolingLetsLayerTwoGoSlowly) {
+    Mixer mixer = showing(asking(kJulia));
+    Request cool = asking(kNoStyle);
+    cool.cooling = true;
+    EXPECT_NEAR(mixer.step(cool, kStep).presence, 1.0f - kStep / kCoolingFadeSeconds, kTolerance);
+    EXPECT_GE(kCoolingFadeSeconds, 1.0f);
+    Mixer quick = showing(asking(kJulia));
+    EXPECT_NEAR(quick.step(asking(kNoStyle), kStep).presence, 1.0f - kStep / kFadeSeconds, kTolerance);
 }
 
 TEST(Mixer, AResetTakesTheNextRequestAtOnce) {

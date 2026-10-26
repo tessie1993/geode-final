@@ -37,6 +37,7 @@ Request sanitized(const Request& request) {
     out.opacity = std::min(unitOf(request.opacity), opacityCap(out.spec.blend));
     out.amount = unitOf(request.amount);
     out.swap = unitOf(request.swap);
+    out.cooling = request.cooling;
     return out;
 }
 }  // namespace
@@ -53,16 +54,16 @@ Influence influenceAt(float ordinal) {
 
 float opacityCap(Blend mode) {
     switch (mode) {
-        case Blend::Add:
         case Blend::Difference:
         case Blend::Exclusion:
             return safety::kMaxFlashDepth;
         case Blend::Normal:
+        case Blend::Add:
         case Blend::Screen:
+        case Blend::Lighten:
         case Blend::Multiply:
         case Blend::Overlay:
         case Blend::SoftLight:
-        case Blend::HardLight:
         case Blend::Luminosity:
             break;
     }
@@ -96,7 +97,7 @@ const Mix& Mixer::step(const Request& request, float dt) {
         return out_;
     }
     const float t = std::isfinite(dt) && dt > 0.0f ? std::min(dt, kMaxStepSeconds) : 0.0f;
-    const float fade = t / kFadeSeconds;
+    const float fade = t / (want.cooling ? kCoolingFadeSeconds : kFadeSeconds);
     if (!(out_.spec == want.spec)) {
         // What is shown fades out first; only once it is gone does the new Style or mode come in.
         const float left = out_.presence - fade;

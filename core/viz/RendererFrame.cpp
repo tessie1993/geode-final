@@ -87,12 +87,19 @@ SceneParams Renderer::resolveParams(float dt) {
     const auto& lfoValues = lfo_.tick(dt, frameFeatures_, envRate_.data(), envDepth_.data());
     SceneParams p = lfo_.apply(displayedParams_, lfoValues);
     p = AdsrEngine::apply(p, adsr_.configs, envValues);
+    // Layer 2 draws its own Style as its pack tunes it, not Layer 1's Customization: the two pictures
+    // then move each on their own instead of in lockstep. The Camera and the composite's Shared core
+    // still apply to both.
+    layerParams_ = p;
     const bool reducedMotion = reducedMotion_.load(std::memory_order_relaxed);
     applyCustomization(p, dt, reducedMotion);
     p = safety::apply(p, reducedMotion);
+    layerParams_ = safety::apply(layerParams_, reducedMotion);
     if (!thermalTierInfo(thermal_.tier()).optionalPasses) {
         p.flowEnabled = false;
         p.rippleOverlayEnabled = false;
+        layerParams_.flowEnabled = false;
+        layerParams_.rippleOverlayEnabled = false;
     }
     lastFinalParams_ = p;
     postRotationAngle_ = grade::integrateRotation(postRotationAngle_, p.rotation, dt);
@@ -157,6 +164,12 @@ void Renderer::resolveLayer(float dt) {
     }
     const std::string activeId = activeScene_ != nullptr ? activeScene_->id() : std::string();
     if (!canBeLayer(layerStyleId(request.spec.style), activeId)) request.spec.style = layer::kNoStyle;
+    // At the hottest thermal tier the second Style is the first thing let go, slowly. A Render never
+    // adapts (ADR-0005), so it keeps Layer 2.
+    if (thermal_.tier() == ThermalTier::Minimal && !thermal_.offscreen() && request.spec.style != layer::kNoStyle) {
+        request.spec.style = layer::kNoStyle;
+        request.cooling = true;
+    }
     // A Style that stops being drawable as Layer 2 (it became the active one) still fades out: its
     // scene is then Layer 1's, and its picture is read from there (layerTexture).
     frameLayer_ = layerMixer_.step(request, dt);
@@ -247,18 +260,19 @@ void Renderer::drawLayerTarget(const SceneParams& p, float dt) {
     glBindFramebuffer(GL_FRAMEBUFFER, fboL_.fbo());
     glViewport(0, 0, renderWidth_, renderHeight_);
     // A Style that keeps its last frame (Curl Flow) keeps it as Layer 2 too, but never another's.
-    const float keep = layerScene_->trailRetention(p);
+    const SceneParams& own = layerParams_;
+    const float keep = layerScene_->trailRetention(own);
     if (keep > 0.0f && layerDrawn_ == layerScene_) {
-        trailPass_.apply(p, keep, timeSeconds_, dt, fboL_, quadVao_, renderWidth_, renderHeight_);
+        trailPass_.apply(own, keep, timeSeconds_, dt, fboL_, quadVao_, renderWidth_, renderHeight_);
     } else {
         glClear(GL_COLOR_BUFFER_BIT);
     }
     layerDrawn_ = layerScene_;
     wireFlow(*layerScene_, p);
     prepareScene(*layerScene_, extrasFor(layerScene_->id(), nullptr));
-    layerScene_->setParams(p);
+    layerScene_->setParams(own);
     deliverPcm(*layerScene_);
-    layerScene_->update(gainAdjusted(frameFeatures_, p), dt);
+    layerScene_->update(gainAdjusted(frameFeatures_, own), dt);
     layerScene_->draw(timeSeconds_);
 }
 

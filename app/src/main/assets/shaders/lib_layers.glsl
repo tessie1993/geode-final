@@ -1,13 +1,15 @@
 // Layer 2's maths (core/viz/include/geode/viz/Layers.hpp), included by composite_frag.glsl.
 //
-// The two pictures are composited in linear light: both are decoded from sRGB, blended, mixed by the
-// opacity and encoded again. The blend functions are the W3C Compositing and Blending Level 1 ones,
-// B(Cb, Cs) with Cb the backdrop (the lower picture) and Cs the source (the one laid over it), on
-// values 0..1; both pictures are opaque, so the result is Co = (1 - opacity) * Cb + opacity * B(Cb, Cs).
-// The modes are layer::Blend's ordinals.
+// The blend functions are the W3C Compositing and Blending Level 1 ones, B(Cb, Cs) with Cb the backdrop
+// (the lower picture) and Cs the source (the one laid over it). Both pictures are opaque, so the result
+// is Co = (1 - opacity) * Cb + opacity * B(Cb, Cs). They work in display space, the space the scene
+// targets hold and every Style was tuned in, on values kept to 0..1: postFx can lift a picture above 1,
+// where Screen, Exclusion and the Lights stop behaving like colours. Add alone works in linear light,
+// where two mid greys add up to a brighter grey instead of white, under a soft shoulder that rolls off
+// towards 1 instead of clipping. The modes are layer::Blend's ordinals; with the layers swapped Overlay
+// gives Hard Light and Luminosity gives Color.
 
-// sRGB's own transfer curve, both ways, on values kept to 0..1 (a scene target is RGBA8, and the
-// display clips anything above 1 anyway).
+// sRGB's own transfer curve, both ways, on values kept to 0..1 (for Add).
 vec3 layerToLinear(vec3 c) {
     c = clamp(c, 0.0, 1.0);
     return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
@@ -55,14 +57,23 @@ vec3 layerSoftLight(vec3 b, vec3 s) {
     return mix(darker, lighter, step(vec3(0.5), s));
 }
 
-// B(Cb, Cs) for `mode`, on linear values 0..1. Add clips at 1, the one mode that can leave the range.
+// Add in linear light: the sum is left alone up to the knee and rolls off above it towards 1, with no
+// kink where it starts, so overlapping light glows instead of burning out.
+vec3 layerAdd(vec3 b, vec3 s) {
+    const float knee = 0.6;
+    vec3 x = layerToLinear(b) + layerToLinear(s);
+    vec3 rolled = vec3(knee) + (1.0 - knee) * (vec3(1.0) - exp(-(x - vec3(knee)) / (1.0 - knee)));
+    return layerToSrgb(mix(x, rolled, step(vec3(knee), x)));
+}
+
+// B(Cb, Cs) for `mode`, on display values 0..1.
 vec3 layerBlend(vec3 b, vec3 s, int mode) {
-    if (mode == 1) return min(b + s, vec3(1.0));
+    if (mode == 1) return layerAdd(b, s);
     if (mode == 2) return layerScreen(b, s);
-    if (mode == 3) return b * s;
-    if (mode == 4) return layerHardLight(s, b);
-    if (mode == 5) return layerSoftLight(b, s);
-    if (mode == 6) return layerHardLight(b, s);
+    if (mode == 3) return max(b, s);
+    if (mode == 4) return b * s;
+    if (mode == 5) return layerHardLight(s, b);
+    if (mode == 6) return layerSoftLight(b, s);
     if (mode == 7) return abs(b - s);
     if (mode == 8) return b + s - 2.0 * b * s;
     if (mode == 9) return layerSetLum(b, layerLum(s));

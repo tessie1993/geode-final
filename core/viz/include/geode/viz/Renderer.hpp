@@ -233,6 +233,8 @@ private:
     Scene* layerDrawn_ = nullptr;
     layer::Mixer layerMixer_;
     layer::Mix frameLayer_;
+    // Layer 2's own parameters this frame: its Style's, without Layer 1's Customization.
+    SceneParams layerParams_;
     std::map<uint32_t, std::string> layerIds_;
     std::optional<SceneParams> outgoingParams_;
     double transitionStartS_ = 0.0;

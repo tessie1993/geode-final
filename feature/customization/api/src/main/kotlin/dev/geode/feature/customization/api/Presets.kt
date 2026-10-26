@@ -30,6 +30,9 @@ enum class PresetPart(
     PARTICLES(SharedGroup.PARTICLES),
     COLOUR_GRADING(SharedGroup.COLOUR_GRADING),
 
+    /** Layer 2: its Style, blend, influence and loop, and its opacity, influence amount and swap. */
+    LAYERS(SharedGroup.LAYERS),
+
     /** The normaliser's trims of the Sound signals. */
     SOUND(null),
     EXTRAS(null),
@@ -40,7 +43,8 @@ enum class PresetPart(
 
 /**
  * A saved preset: only the [parts] the person ticked are filled in, the rest are empty. [version]
- * is the format it was written in; [style] is the Style it was made on.
+ * is the format it was written in; [style] is the Style it was made on. [layer] is kept with
+ * [PresetPart.LAYERS].
  */
 data class Preset(
     val version: Int,
@@ -53,4 +57,5 @@ data class Preset(
     val reactions: List<Reaction> = emptyList(),
     val modulators: List<Modulator> = emptyList(),
     val signals: Map<SoundSignal, SignalTrim> = emptyMap(),
+    val layer: Layer? = null,
 )
