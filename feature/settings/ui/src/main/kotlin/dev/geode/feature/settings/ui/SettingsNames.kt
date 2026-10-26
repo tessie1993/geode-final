@@ -16,6 +16,7 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
 
@@ -162,3 +163,14 @@ internal fun visualQualityName(quality: VisualQuality): String =
 @Composable
 internal fun visualFrameRateName(frameRate: VisualFrameRate): String =
     frameRate.fps?.let { stringResource(R.string.cpu_gpu_fps, it) } ?: stringResource(R.string.cpu_gpu_screen_max)
+
+@Composable
+internal fun visualSurfaceName(surface: VisualSurface): String =
+    stringResource(
+        when (surface) {
+            VisualSurface.VISUAL -> R.string.cpu_gpu_surface_visual
+            VisualSurface.WALLPAPER -> R.string.cpu_gpu_surface_wallpaper
+            VisualSurface.PICTURE_IN_PICTURE -> R.string.cpu_gpu_surface_pip
+            VisualSurface.SCREEN_SAVER -> R.string.cpu_gpu_surface_screen_saver
+        },
+    )

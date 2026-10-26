@@ -14,6 +14,7 @@ import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.VisualizerView
 import dev.geode.render.scene.PcmChunk
@@ -23,8 +24,8 @@ import dev.geode.render.scene.PcmChunk
  * the renderer is attached to the [snapshots] exchange, which Customization's store publishes to
  * (ADR-0002, ADR-0004). The sound never passes through the main thread: each frame the renderer reads
  * the analysis' latest features from the [AudioBus] and the newest samples from the engine's ring, on
- * its own thread. Only the Style to draw and the Visual behaviours from Settings (reduce motion, the
- * finger smear) are handed over from here, when they change.
+ * its own thread. Only the Style to draw, the Visual behaviours from Settings (reduce motion, the
+ * finger smear) and the [surface]'s quality and frame rate are handed over from here, when they change.
  */
 @Composable
 fun LiveVisualBindings(
@@ -32,6 +33,7 @@ fun LiveVisualBindings(
     customization: CustomizationFeature,
     snapshots: NativeSnapshots,
     settings: Settings,
+    surface: VisualSurface,
 ) {
     val context = LocalContext.current
     DisposableEffect(view, snapshots) {
@@ -62,6 +64,9 @@ fun LiveVisualBindings(
         view.visualizerRenderer.touchSmear = behavior.touchSmear
         view.visualizerRenderer.touchSmearStrength = behavior.touchSmearStrength
     }
+    // The quality and frame rate of where the Visual is shown now (#394); until Settings are read, the engine's own.
+    val drawing = (values as? SettingsState.Ready)?.values?.performance?.let { SurfaceDrawing.of(it, surface) }
+    LaunchedEffect(drawing) { drawing?.applyTo(view.visualizerRenderer, view.framePacer, view.holder.surface) }
 }
 
 /** The samples the engine's ring received since the last frame; read on the GL thread only. */

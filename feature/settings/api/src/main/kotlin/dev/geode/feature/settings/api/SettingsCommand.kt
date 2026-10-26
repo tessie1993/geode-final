@@ -280,6 +280,18 @@ sealed interface PerformanceCommand : SettingsCommand {
         val frameRate: VisualFrameRate,
     ) : PerformanceCommand
 
+    /** The quality [surface] draws at (#394); null makes it follow [SetVisualQuality] again. */
+    data class SetSurfaceQuality(
+        val surface: VisualSurface,
+        val quality: VisualQuality?,
+    ) : PerformanceCommand
+
+    /** The frame rate [surface] draws at (#394); null makes it follow [SetVisualFrameRate] again. */
+    data class SetSurfaceFrameRate(
+        val surface: VisualSurface,
+        val frameRate: VisualFrameRate?,
+    ) : PerformanceCommand
+
     data class SetSaveMode(
         val on: Boolean,
     ) : PerformanceCommand

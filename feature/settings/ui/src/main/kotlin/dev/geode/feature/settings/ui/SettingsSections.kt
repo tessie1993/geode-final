@@ -52,6 +52,7 @@ import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -332,12 +333,35 @@ internal fun LazyListScope.batterySection(
             ) { change(PerformanceCommand.SetVisualFrameRate(it)) }
         }
     }
+    // The other places the Visual is drawn can run gentler (#394); each follows the choices above until it has its own.
+    for (surface in SURFACES_WITH_OWN_CHOICE) {
+        item {
+            SettingsGroup(visualSurfaceName(surface)) {
+                Note(stringResource(R.string.cpu_gpu_surface_note))
+                ChoiceRow(
+                    stringResource(R.string.cpu_gpu_quality),
+                    listOf<VisualQuality?>(null) + VisualQuality.entries,
+                    performance.surfaceQuality[surface],
+                    { quality -> quality?.let { visualQualityName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                ) { change(PerformanceCommand.SetSurfaceQuality(surface, it)) }
+                ChoiceRow(
+                    stringResource(R.string.cpu_gpu_frame_rate),
+                    listOf<VisualFrameRate?>(null) + VisualFrameRate.entries,
+                    performance.surfaceFrameRate[surface],
+                    { frameRate -> frameRate?.let { visualFrameRateName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                ) { change(PerformanceCommand.SetSurfaceFrameRate(surface, it)) }
+            }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.cpu_gpu_group_heat)) {
             Note(stringResource(R.string.cpu_gpu_heat_note))
         }
     }
 }
+
+/** The surfaces Battery offers a quality and frame rate of their own for; the screen saver joins once it exists. */
+private val SURFACES_WITH_OWN_CHOICE = listOf(VisualSurface.WALLPAPER, VisualSurface.PICTURE_IN_PICTURE)
 
 /**
  * Default paths (was Folders, #101): where Studio saves its videos (#21), the music folders, where

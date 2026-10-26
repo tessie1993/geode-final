@@ -15,10 +15,12 @@ import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.PresetStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.render.FramePacer
 import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
+import dev.geode.ui.SurfaceDrawing
 import dev.geode.ui.ThemeStore
 import dev.geode.util.bestEffort
 import javax.inject.Inject
@@ -156,6 +158,7 @@ class VisualizerWallpaperService : WallpaperService() {
         private fun syncRunState() {
             val engine = renderer ?: return
             if (surfaceAvailable && visible) {
+                drawAsSettingsSay(engine)
                 glView?.onResume()
                 pacer.start()
                 startFeeding(engine)
@@ -167,6 +170,16 @@ class VisualizerWallpaperService : WallpaperService() {
                 glView?.onPause()
                 stopFeeding()
             }
+        }
+
+        /**
+         * The wallpaper's own quality and frame rate (#394), read each time it comes into view: a change
+         * made in the app's Settings meanwhile is picked up the next time the home screen shows. Until
+         * Settings are read, the engine's defaults stand.
+         */
+        private fun drawAsSettingsSay(engine: VisualizerRenderer) {
+            val performance = (settings.state.value as? SettingsState.Ready)?.values?.performance ?: return
+            SurfaceDrawing.of(performance, VisualSurface.WALLPAPER).applyTo(engine, pacer, surfaceHolder?.surface)
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
@@ -284,6 +297,9 @@ class VisualizerWallpaperService : WallpaperService() {
         const val FEEDER_JOIN_MS = 200L
 
         /**
+         * What the wallpaper asks for until Settings are read; after that its frame rate is the one
+         * Settings give the wallpaper surface (#394). The note below is why this start is not lower.
+         *
          * The same target the app renders at, deliberately — not the 24–30 fps §4.4 of the
          * quality bar wants from a wallpaper.
          *

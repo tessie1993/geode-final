@@ -394,16 +394,35 @@ enum class VisualFrameRate(
 }
 
 /**
+ * Where the live Visual is drawn (#394), each with its own quality and frame rate when the person
+ * picks one. Renders are not here: they draw offline at their own export settings.
+ */
+enum class VisualSurface {
+    /** The Visual in the app: on its page, full screen and behind the player. */
+    VISUAL,
+
+    /** The live wallpaper on the home and lock screens. */
+    WALLPAPER,
+
+    /** The full-screen Visual shrunk into a picture-in-picture window (#287). */
+    PICTURE_IN_PICTURE,
+
+    /** The screen saver, once there is one. */
+    SCREEN_SAVER,
+}
+
+/**
  * The CPU/GPU section (#101) and the CPU/GPU save mode switch, which sits in Application preferences.
  * Cooling down when the phone is hot is automatic and has no setting.
  *
- * Readers take the effective values ([visual], [frameRate], [floatingAssetsHeldStill],
- * [rendersSlowed]), which already apply [saveMode]; the chosen ones stay as they were, so turning save
- * mode off brings them back.
+ * Readers take the effective values ([visual], [frameRate], [visualFor], [frameRateFor],
+ * [floatingAssetsHeldStill], [rendersSlowed]), which already apply [saveMode]; the chosen ones stay as
+ * they were, so turning save mode off brings them back.
  */
 data class PerformanceSettings(
     val visualQuality: VisualQuality = VisualQuality.HIGH,
-    val visualFrameRate: VisualFrameRate = VisualFrameRate.SCREEN_MAX,
+    /** 60 out of the box, the rate the Visual always drew at; the screen's maximum is a choice. */
+    val visualFrameRate: VisualFrameRate = VisualFrameRate.FPS60,
     /** Saves battery and heat: lower Visual quality, 30 fps, still floating assets, slower renders. */
     val saveMode: Boolean = false,
     /**
@@ -411,12 +430,23 @@ data class PerformanceSettings(
      * made. The Element and its Hero scene still run. Visuals and Studio read it here.
      */
     val visualsOff: Boolean = false,
+    /** The quality picked for a surface of its own (#394); a surface not here follows [visualQuality]. */
+    val surfaceQuality: Map<VisualSurface, VisualQuality> = emptyMap(),
+    /** The frame rate picked for a surface of its own (#394); a surface not here follows [visualFrameRate]. */
+    val surfaceFrameRate: Map<VisualSurface, VisualFrameRate> = emptyMap(),
 ) {
     /** The Visual quality to draw at: [VisualQuality.SAVER] in save mode, else the chosen one. */
     val visual: VisualQuality get() = if (saveMode) VisualQuality.SAVER else visualQuality
 
     /** The frame rate to draw at: 30 in save mode, else the chosen one. */
     val frameRate: VisualFrameRate get() = if (saveMode) VisualFrameRate.FPS30 else visualFrameRate
+
+    /** The quality [surface] draws at: [VisualQuality.SAVER] in save mode, else its own pick, else [visualQuality]. */
+    fun visualFor(surface: VisualSurface): VisualQuality = if (saveMode) VisualQuality.SAVER else surfaceQuality[surface] ?: visualQuality
+
+    /** The frame rate [surface] draws at: 30 in save mode, else its own pick, else [visualFrameRate]. */
+    fun frameRateFor(surface: VisualSurface): VisualFrameRate =
+        if (saveMode) VisualFrameRate.FPS30 else surfaceFrameRate[surface] ?: visualFrameRate
 
     /** The floating assets hold still (Drifting acts as Still), as with battery saver (#100). */
     val floatingAssetsHeldStill: Boolean get() = saveMode

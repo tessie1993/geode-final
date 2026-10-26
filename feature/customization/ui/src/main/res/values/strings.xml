@@ -381,6 +381,7 @@
     <string name="customize_help_property_gamma">Lifts or deepens the mid-tones.</string>
     <string name="customize_help_property_temperature">Warms the colours toward orange, or cools them toward blue.</string>
     <string name="customize_help_property_invert">Swaps every colour for its opposite.</string>
+    <string name="customize_help_property_anaglyph">Red/blue 3D for anaglyph glasses. Fades in and out gently.</string>
     <string name="customize_help_extra_scale">The size of the pattern or its cells.</string>
     <string name="customize_help_extra_count">How many: bars, arms, rays, lines or folds.</string>
     <string name="customize_help_extra_size">The size of each element.</string>
