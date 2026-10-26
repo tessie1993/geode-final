@@ -15,9 +15,15 @@ in vec2 vUv;
 out vec4 fragColor;
 
 uniform sampler2D uScene;
-// Bloom level 0, linear light; a 1x1 black texture and uBloomStrength 0 while bloom is off.
+// Bloom level 0, linear light; a 1x1 black texture and uBloomStrength 0 while bloom is off. Its rgb
+// is the light above the chain's threshold and its alpha the luminance of the bloom's part of it
+// (bloom_down_frag.glsl): the bloom is rgb scaled by that share (lens::bloomShare in LensFx.cpp).
 uniform sampler2D uBloom;
 uniform float uBloomStrength;
+// The lens effects' light (flare ghosts, god rays, streaks: lens_frag.glsl), linear, at quarter size;
+// a 1x1 black texture and uLensStrength 0 while none is on.
+uniform sampler2D uLens;
+uniform float uLensStrength;
 // The shoulder's ceiling (ToneMap.hpp, kShoulderCeiling).
 uniform float uCeiling;
 // Blue-noise dither mask, sampled 1:1 with output pixels (see composite_frag.glsl). It is applied
@@ -26,6 +32,8 @@ uniform sampler2D uNoise;
 uniform float uDither;
 
 const float kHdrCeiling = 64.0;
+const vec3 kLuma = vec3(0.2126, 0.7152, 0.0722);
+const float kShareEpsilon = 1e-4;
 
 vec3 sanitize(vec3 c) {
     return any(isnan(c)) ? vec3(0.0) : clamp(c, 0.0, kHdrCeiling);
@@ -53,10 +61,20 @@ vec3 rollOff(vec3 c) {
     return hue + (vec3(1.0) - hue) * bleach;
 }
 
+float bloomShare(float chainLuma, float bloomLuma) {
+    if (!(chainLuma > kShareEpsilon)) return 0.0;
+    return clamp(bloomLuma / chainLuma, 0.0, 1.0);
+}
+
 void main() {
     vec3 c = sanitize(texture(uScene, vUv).rgb);
-    if (uBloomStrength > 0.0) {
-        c = encode(decode(c) + sanitize(texture(uBloom, vUv).rgb) * uBloomStrength);
+    if (uBloomStrength > 0.0 || uLensStrength > 0.0) {
+        vec4 chain = texture(uBloom, vUv);
+        vec3 chainLight = sanitize(chain.rgb);
+        float share = bloomShare(dot(chainLight, kLuma), isnan(chain.a) ? 0.0 : chain.a);
+        vec3 light = chainLight * share * uBloomStrength;
+        light += sanitize(texture(uLens, vUv).rgb) * uLensStrength;
+        c = encode(decode(c) + light);
     }
     vec3 col = clamp(rollOff(c), 0.0, 1.0);
     col += (texture(uNoise, gl_FragCoord.xy / 64.0).r - 0.5) * uDither;

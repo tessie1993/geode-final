@@ -341,10 +341,34 @@ function layerJobs(registry, size) {
 // The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
 // level and a plain one), its upsample, and the final tonemap (highlight roll-off) with and without bloom. The
 // stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
-const BLOOM_DOWN_NEUTRAL = { uTexel: [0, 0], uPrefilter: 1, uCurve: [0.6, 0.5] };
+const BLOOM_DOWN_NEUTRAL = { uTexel: [0, 0], uPrefilter: 1, uCurve: [0.6, 0.5], uBloomThreshold: 0.6 };
 const BLOOM_UP_NEUTRAL = { uTexel: [0, 0] };
-const TONEMAP_NEUTRAL = { uBloomStrength: 0, uCeiling: 2.0, uDither: 1 / 255 };
-const HDR_TEXTURES = { uSource: 'scene', uScene: 'scene', uBloom: 'history', uNoise: 'noise' };
+const TONEMAP_NEUTRAL = { uBloomStrength: 0, uCeiling: 2.0, uDither: 1 / 255, uLensStrength: 0 };
+const HDR_TEXTURES = { uSource: 'scene', uScene: 'scene', uBloom: 'history', uNoise: 'noise', uLens: 'history' };
+
+// The lens effects (core/viz/HdrPass, LensFx.hpp): the glare (lens_frag.glsl) from the bloom chain's
+// quarter-size level, one frame per part with the others off; depth of field (dof_frag.glsl) over a
+// scene target whose alpha (1 here, "far") is the Style's depth; and the 3D particle layer
+// (particles3d_vert.glsl, particles3d_frag.glsl), an instanced draw of motion-stretched streaks.
+const LENS_NEUTRAL = {
+  uAspect: 1, uFlare: 0, uFlareGhosts: 5, uFlareHalo: 0.5, uFlareDispersion: 0.5,
+  uRays: 0, uRaySource: [0.5, 0.5], uRayLength: 0.7, uRayDecay: 0.94, uRaySamples: 24,
+  uStreaks: 0, uStreakShape: 0, uStreakSpokes: 6, uStreakLength: 0.6, uStreakSamples: 8,
+};
+const LENS_TEXTURES = { uLight: 'scene', uLightSoft: 'history' };
+const LENS_EFFECTS = {
+  lens_flare: { uFlare: 1 },
+  lens_god_rays: { uRays: 1 },
+  lens_streaks_star: { uStreaks: 1, uStreakShape: 0 },
+  lens_streaks_zoom: { uStreaks: 1, uStreakShape: 1 },
+  lens_streaks_anamorphic: { uStreaks: 1, uStreakShape: 2 },
+};
+const DOF_NEUTRAL = { uTexel: [0, 0], uAperture: 0.8, uFocus: 0.3, uMaxRadius: 4, uSamples: 24 };
+const PARTICLES_NEUTRAL = {
+  uPhase: 12.5, uTail: 0.8, uEmission: 0.9, uSize: 1.5, uKind: 0, uAspect: 1, uPixel: 0,
+  uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uTint: [1, 0.9, 0.8],
+};
+const PARTICLE_INSTANCES = 900;
 
 // The tile-friendly frame (core/viz/TileFrame.hpp, #311): the outgoing Style of a transition drawn at
 // half size and read by the composite's fade, slide, zoom and melt; the tonemap reading a smaller
@@ -378,7 +402,18 @@ function effectJobs(registry, size) {
   add('shared', 'shared_fx_frag.glsl', SHARED_FX_NEUTRAL, SHARED_FX_TEXTURES, SHARED_FX_EFFECTS);
   add('hdr', 'bloom_down_frag.glsl', BLOOM_DOWN_NEUTRAL, HDR_TEXTURES, { bloom_prefilter: {}, bloom_down: { uPrefilter: 0 } });
   add('hdr', 'bloom_up_frag.glsl', BLOOM_UP_NEUTRAL, HDR_TEXTURES, { bloom_up: {} });
-  add('hdr', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_TEXTURES, { tonemap: {}, tonemap_bloom: { uBloomStrength: 0.5 } });
+  add('hdr', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_TEXTURES,
+    { tonemap: {}, tonemap_bloom: { uBloomStrength: 0.5 }, tonemap_lens: { uBloomStrength: 0.5, uLensStrength: 1 } });
+  add('hdr', 'lens_frag.glsl', LENS_NEUTRAL, LENS_TEXTURES, LENS_EFFECTS);
+  add('lens', 'dof_frag.glsl', DOF_NEUTRAL, { uScene: 'scene' }, { depth_of_field: {} });
+  // The particles bring their own vertex shader and draw instanced.
+  const pvert = fs.readFileSync(path.join(SHADERS, 'particles3d_vert.glsl'), 'utf8');
+  const pfrag = fs.readFileSync(path.join(SHADERS, 'particles3d_frag.glsl'), 'utf8');
+  for (const [name, values] of Object.entries({ particles3d_streaks: { uKind: 0 }, particles3d_sparks: { uKind: 1, uTail: 0.08 } })) {
+    const all = { ...PARTICLES_NEUTRAL, ...values, uPixel: 2 / size };
+    const uniforms = plan([...parseUniforms(pvert), ...parseUniforms(pfrag)], all, {}, size, size);
+    jobs.push({ name: `lens_${name}`, vert: pvert, frag: pfrag, uniforms, instances: PARTICLE_INSTANCES, vertices: 6 });
+  }
   add('tile', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_HALF_TEXTURES, COMPOSITE_FROM_HALF);
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });

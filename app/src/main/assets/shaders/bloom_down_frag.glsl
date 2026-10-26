@@ -17,6 +17,7 @@ uniform sampler2D uSource;
 uniform vec2 uTexel;
 uniform int uPrefilter;
 uniform vec2 uCurve;
+uniform float uBloomThreshold;
 
 const float kHdrCeiling = 64.0;
 const vec3 kLuma = vec3(0.2126, 0.7152, 0.0722);
@@ -32,37 +33,40 @@ vec3 decode(vec3 c) {
     return mix(hi, lo, vec3(lessThanEqual(c, vec3(0.04045))));
 }
 
-float contribution(float b) {
+float contribution(float b, float threshold) {
     float knee = uCurve.y;
-    if (knee <= 0.0) return max(b - uCurve.x, 0.0);
-    float soft = clamp(b - uCurve.x + knee, 0.0, 2.0 * knee);
-    return max(soft * soft / (4.0 * knee), b - uCurve.x);
+    if (knee <= 0.0) return max(b - threshold, 0.0);
+    float soft = clamp(b - threshold + knee, 0.0, 2.0 * knee);
+    return max(soft * soft / (4.0 * knee), b - threshold);
 }
 
-vec3 light(vec2 uv) {
+// rgb: the chain's light; a: the luminance of the bloom's.
+vec4 light(vec2 uv) {
     vec3 c = decode(sanitize(texture(uSource, uv).rgb));
     float b = max(c.r, max(c.g, c.b));
-    return c * (contribution(b) / max(b, 0.0001));
+    vec3 chain = c * (contribution(b, uCurve.x) / max(b, 0.0001));
+    vec3 bloom = c * (contribution(b, uBloomThreshold) / max(b, 0.0001));
+    return vec4(chain, dot(bloom, kLuma));
 }
 
 void main() {
     vec2 d = uTexel;
     vec2 taps[4] = vec2[4](vec2(-d.x, -d.y), vec2(d.x, -d.y), vec2(-d.x, d.y), vec2(d.x, d.y));
     if (uPrefilter == 1) {
-        vec3 c = light(vUv);
-        float w = 4.0 / (1.0 + dot(c, kLuma));
-        vec3 sum = c * w;
+        vec4 c = light(vUv);
+        float w = 4.0 / (1.0 + dot(c.rgb, kLuma));
+        vec4 sum = c * w;
         float weight = w;
         for (int i = 0; i < 4; ++i) {
-            vec3 t = light(vUv + taps[i]);
-            float tw = 1.0 / (1.0 + dot(t, kLuma));
+            vec4 t = light(vUv + taps[i]);
+            float tw = 1.0 / (1.0 + dot(t.rgb, kLuma));
             sum += t * tw;
             weight += tw;
         }
-        fragColor = vec4(sum / weight, 1.0);
+        fragColor = sum / weight;
         return;
     }
-    vec3 sum = texture(uSource, vUv).rgb * 4.0;
-    for (int i = 0; i < 4; ++i) sum += texture(uSource, vUv + taps[i]).rgb;
-    fragColor = vec4(sum / 8.0, 1.0);
+    vec4 sum = texture(uSource, vUv) * 4.0;
+    for (int i = 0; i < 4; ++i) sum += texture(uSource, vUv + taps[i]);
+    fragColor = sum / 8.0;
 }

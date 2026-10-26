@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "geode/viz/LensFx.hpp"
 #include "geode/viz/QualityTiers.hpp"
 
 namespace geode::viz::packs {
@@ -84,6 +85,10 @@ struct StylePack {
     std::vector<std::string> effects;
     // What each thermal tier lets the Style spend ("tiers"): its march step share and the effects off.
     quality::Budgets tiers = quality::defaults();
+    // The shared lens effects and the 3D particle layer the Style declares ("lens", "particles3d"),
+    // each held to its range; everything is off when the manifest declares neither.
+    lens::LensSpec lensEffects;
+    lens::ParticleSpec particles3d;
 
     // The resolved value of `key`; 0 for a key the family does not declare.
     float parameter(std::string_view key) const;
