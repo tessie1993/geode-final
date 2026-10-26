@@ -121,6 +121,7 @@ class NativeCustomizationKonsistTest {
         assertEquals(NativePlan.MACRO_LINK_FLOATS.toString(), constant(codec, "kMacroLinkFloats"))
         assertEquals("${NativePlan.AUTOMATION_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kAutomationFloats"))
         assertEquals(NativePlan.LAYER_FLOATS.toString(), constant(codec, "kLayerFloats"))
+        assertEquals(NativePlan.STYLE_FLOATS.toString(), constant(codec, "kStyleFloats"))
         assertEquals(NativePlan.floatCount.toString(), constant(codec, "kPlanFloats"))
     }
 

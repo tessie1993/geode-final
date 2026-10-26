@@ -21,6 +21,7 @@ constexpr size_t kModulatorsAt = kReactionsAt + kMaxReactions * kReactionFloats;
 constexpr size_t kLinksAt = kModulatorsAt + kMaxModulators * kModulatorFloats;
 constexpr size_t kAutomationsAt = kLinksAt + kMaxMacroLinks * kMacroLinkFloats;
 constexpr size_t kLayerAt = kAutomationsAt + kMaxAutomations * kAutomationFloats;
+constexpr size_t kStyleAt = kLayerAt + kLayerFloats;
 constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
 
 std::vector<float> carried() {
@@ -71,8 +72,8 @@ TEST(PlanCodec, ReadsTheCountsAndValues) {
     EXPECT_EQ(plan.trims[static_cast<size_t>(SoundSignal::Bass)].floor, 0.3f);
 }
 
-TEST(PlanCodec, ReadsLayerTwoAtTheEnd) {
-    EXPECT_EQ(kLayerAt + kLayerFloats, kPlanFloats);
+TEST(PlanCodec, ReadsLayerTwoBeforeTheStyle) {
+    EXPECT_EQ(kStyleAt + kStyleFloats, kPlanFloats);
     std::vector<float> data = carried();
     data[kLayerAt] = 3997830.0f;
     data[kLayerAt + 1] = 5.0f;
@@ -99,6 +100,33 @@ TEST(PlanCodec, AnythingButAWhole24BitNameIsNoLayerTwo) {
     EXPECT_EQ(decoded(data).layer.style, 1u);
     data[kLayerAt] = 16777215.0f;
     EXPECT_EQ(decoded(data).layer.style, 16777215u);
+}
+
+TEST(PlanCodec, ReadsTheStyleTheCustomizationIsForLast) {
+    std::vector<float> data = carried();
+    EXPECT_EQ(decoded(data).style, layer::kNoStyle) << "unnamed";
+    data[kStyleAt] = 3997830.0f;
+    EXPECT_EQ(decoded(data).style, 3997830u);
+    EXPECT_EQ(decoded(data).layer.style, layer::kNoStyle) << "not Layer 2's";
+    for (const float style : {0.5f, -3.0f, 12.5f, 16777216.0f, kNaN}) {
+        data[kStyleAt] = style;
+        EXPECT_EQ(decoded(data).style, layer::kNoStyle) << style;
+    }
+    data[kStyleAt] = 16777215.0f;
+    EXPECT_EQ(decoded(data).style, 16777215u);
+}
+
+TEST(PlanCodec, NamesThePlansStyleWithoutDecodingIt) {
+    std::vector<float> data = carried();
+    data[kStyleAt] = 3997830.0f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size()), 3997830u);
+    data[kStyleAt] = 2.5f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size()), layer::kNoStyle);
+    data[kStyleAt] = 3997830.0f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size() - 1), layer::kNoStyle) << "not a plan's size";
+    EXPECT_EQ(geode::viz::mod::planStyle(nullptr, data.size()), layer::kNoStyle);
+    data[0] = 0.0f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size()), layer::kNoStyle) << "carries no plan";
 }
 
 TEST(PlanCodec, ReadsAReactionInItsPlace) {

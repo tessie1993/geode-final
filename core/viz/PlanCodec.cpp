@@ -45,6 +45,12 @@ public:
     void steps(std::array<float, kMaxSteps>& out) {
         for (auto& s : out) s = next();
     }
+    // A Style's 24-bit name (layer::styleHash) is a whole float; anything else names no Style.
+    uint32_t styleName() {
+        const float v = next();
+        const bool named = std::isfinite(v) && v >= 1.0f && v <= kMaxStyleName && v == std::floor(v);
+        return named ? static_cast<uint32_t>(v) : layer::kNoStyle;
+    }
 
 private:
     const float* data_;
@@ -119,14 +125,18 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         a.stepCount = in.count(kMaxSteps);
         in.steps(a.steps);
     }
-    // The Style's 24-bit name is a whole float; anything else names no Style.
-    const float style = in.next();
-    const bool named = std::isfinite(style) && style >= 1.0f && style <= kMaxStyleName && style == std::floor(style);
-    plan.layer.style = named ? static_cast<uint32_t>(style) : layer::kNoStyle;
+    plan.layer.style = in.styleName();
     plan.layer.blend = layer::blendAt(in.next());
     plan.layer.influence = layer::influenceAt(in.next());
+    plan.style = in.styleName();
     out = plan;
     return true;
+}
+
+uint32_t planStyle(const float* data, size_t count) {
+    if (!data || count != kPlanFloats || !(data[0] > 0.5f)) return layer::kNoStyle;
+    Cursor in(data + kPlanFloats - kStyleFloats);
+    return in.styleName();
 }
 
 SignalFrame signalFrame(const GeodeFeatureFrame& f) {
