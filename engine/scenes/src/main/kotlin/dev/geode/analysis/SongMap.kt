@@ -69,8 +69,9 @@ class SongMap(
         /** How many bars before a drop its build starts. */
         const val BUILD_BARS: Int = 4
 
-        private const val MIN_BPM = 50f
-        private const val MAX_BPM = 220f
+        // Every tempo the tempo tracker reads (its kMinBpm..kMaxBpm, #277).
+        private const val MIN_BPM = 40f
+        private const val MAX_BPM = 250f
         private const val MILLIS_PER_MINUTE = 60_000.0
 
         /** The map of [timeline]: deterministic, the same analysis gives the same map. */

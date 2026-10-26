@@ -184,4 +184,33 @@ class FeatureTimelineTest {
         assertEquals(0f, none.rms, 0f)
         assertFalse(none.beat)
     }
+
+    @Test
+    fun `levels stamped at the middle of their window are drawn at that moment, not half a window early`() {
+        // As the offline analyser stamps them (#302): 21 ms in, then every 16.67 ms.
+        val frames = (0..600).map { i -> TimelineFrame(21L + i * 1000L / 60, AudioFeatures.empty().copy(rms = i / 1000f)) }
+        val t = FeatureTimeline(frames, hopMs = 16)
+
+        // At 100 ms the nearest hop is 5 (104 ms), not 6 (121 ms), which counting hops from 0 would give.
+        assertEquals(0.005f, t.featuresAt(100L).rms, 1e-6f)
+        assertEquals(0.299f, t.featuresAt(5_000L).rms, 1e-6f)
+        // Before the first hop, the first; after the last, the last; halfway between two, the later.
+        assertEquals(0f, t.featuresAt(0L).rms, 0f)
+        assertEquals(0.6f, t.featuresAt(99_000L).rms, 1e-6f)
+        assertEquals(0.001f, t.featuresAt(29L).rms, 1e-6f)
+        assertEquals(0f, t.featuresAt(28L).rms, 0f)
+    }
+
+    @Test
+    fun `the track's tempo is the one it settled on, not its last hop's`() {
+        fun track(vararg bpm: Float) =
+            FeatureTimeline(bpm.mapIndexed { i, b -> TimelineFrame(i * 16L, AudioFeatures.empty().copy(bpm = b)) }, hopMs = 16)
+
+        // A fade-out drifts the last hops; the tempo read across the second half holds.
+        assertEquals(124f, track(0f, 90f, 124f, 124f, 124f, 124f, 124f, 131f).bpm, 0f)
+        // The tracker's whole range counts, up to 250 BPM.
+        assertEquals(240f, track(240f, 240f, 240f).bpm, 0f)
+        assertEquals(0f, track(0f, 0f).bpm, 0f)
+        assertEquals(0f, FeatureTimeline(emptyList(), hopMs = 16).bpm, 0f)
+    }
 }

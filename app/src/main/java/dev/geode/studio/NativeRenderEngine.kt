@@ -330,9 +330,11 @@ class NativeRenderEngine(
         val gap = BeatTuning.clampIntervalMs(values.analysis.beatMinIntervalMs)
         val analysed =
             withContext(work) {
+                // A fresh analysis is drawn at the precision the cache keeps, so a Render of it and a Render
+                // of it read back from the cache are the same (#302).
                 AnalysisCache.load(context, uri, sensitivity, gap, AnalysisProfile.RENDER)
-                    ?: analyzer
-                        .analyzeBlocking(uri, sensitivity, gap, onProgress, AnalysisProfile.RENDER) { !isCancelled() }
+                    ?: AnalysisCache
+                        .stored(analyzer.analyzeBlocking(uri, sensitivity, gap, onProgress, AnalysisProfile.RENDER) { !isCancelled() })
                         .also { AnalysisCache.save(context, uri, it, AnalysisProfile.RENDER) }
             }
         onProgress(1f)
