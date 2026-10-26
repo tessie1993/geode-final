@@ -59,8 +59,9 @@ import java.io.IOException
  * Makes a Render's video on the phone (#316): Studio's [RenderEngine] over the native engine. The whole
  * Track is analysed first (ADR-0001), or its analysis read back from the cache; the frozen look is
  * handed to an offscreen renderer on its own engine instance (ADR-0004), which draws everything the
- * live Visual would for it (#337); the encoder muxes the Track's sound beside it, and the video is
- * saved to `Movies/Geode`, from where Studio adds it to the Render's Project.
+ * live Visual would for it (#337); the encoder muxes the Track's sound beside it, levelled to the
+ * Render's loudness target (#329), and the video is saved to `Movies/Geode`, from where Studio adds it to
+ * the Render's Project.
  *
  * A Render is not bound to real time: it draws as fast as the encoder takes frames, except while the
  * live Visual is on screen ([liveVisualShown]) or the CPU/GPU save mode is on, when it waits a little
@@ -77,6 +78,7 @@ class NativeRenderEngine(
 ) : RenderEngine {
     private val exporter = VideoExporter(context)
     private val analyzer = OfflineAnalyzer(context)
+    private val loudness = TrackLoudness(context)
 
     override suspend fun render(
         job: RenderJob,
@@ -95,11 +97,14 @@ class NativeRenderEngine(
             timelineOf(uri, values, isCancelled) { progress(RenderPhase.ANALYSING, it * ANALYSIS_SHARE) }
                 ?: return if (isCancelled()) RenderEnd.Cancelled else RenderEnd.Failed(RenderProblem.TRACK_UNREADABLE)
         if (isCancelled()) return RenderEnd.Cancelled
+        // The Track is measured once and its sound levelled to the target the Render carries (#329).
+        val gainDb = loudness.gainDb(uri, job.extras.loudness, isCancelled)
+        if (isCancelled()) return RenderEnd.Cancelled
         val format = job.format
         val frame = RenderPlan.frameOf(format)
         val scene = sceneOf(customization, job)
         RenderPlan.longFormOf(job.length, track.length)?.let { longForm ->
-            val drawn = LongFormDrawing(track, uri, timeline, scene, customization, values, format)
+            val drawn = LongFormDrawing(track, uri, timeline, scene, customization, values, format, gainDb)
             return renderLongForm(longForm, drawn, progress, isCancelled)
         }
         val section = RenderPlan.sectionOf(job.length, track.length)
@@ -115,12 +120,13 @@ class NativeRenderEngine(
                 switches = switchesOf(customization, context, values),
                 codec = codecOf(format),
                 supersample = RenderPlan.supersampleOf(format),
+                gainDb = gainDb,
             )
         val result = encode(made, track, progress, isCancelled) ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
         return endOf(result, track, frame.width, frame.height)
     }
 
-    /** What a long-form Render draws: its Track and analysis, its Style and look, and its format. */
+    /** What a long-form Render draws: its Track and analysis, its Style and look, its format, and its sound's gain. */
     private class LongFormDrawing(
         val track: RenderTrack,
         val uri: Uri,
@@ -129,6 +135,7 @@ class NativeRenderEngine(
         val customization: Customization,
         val values: SettingsValues,
         val format: RenderFormat,
+        val gainDb: Double,
     )
 
     /**
@@ -184,6 +191,7 @@ class NativeRenderEngine(
                     onProgress = { progress(RenderPhase.SAVING, REPEAT_FROM + it * (1f - REPEAT_FROM)) },
                     isCancelled = isCancelled,
                     maxDurationUs = totalUs,
+                    gainDb = drawn.gainDb,
                 )
             return when (extended) {
                 is LoopExtend.Result.Saved ->

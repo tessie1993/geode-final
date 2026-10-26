@@ -247,7 +247,10 @@ class RecordingsTest {
         val waiting = StudioReducer.reduce(StudioState(), command(RecordingCommand.Start("Low Tide"))).state
         val read = StudioReducer.reduce(waiting, StudioEvent.Loaded(listOf(trip), emptyList(), trip.id))
         assertEquals(RecordingState.Starting, read.state.recording)
-        assertEquals(listOf(Perform(RecordingWork.Record("Low Tide"))), read.effects)
+        assertEquals(
+            listOf(Perform(RecordingWork.Record("Low Tide")), Perform(StudioWork.ImportOldVideos), Perform(EditWork.ListCuts)),
+            read.effects,
+        )
     }
 
     @Test

@@ -3,6 +3,7 @@ package dev.geode.feature.studio.ui
 import androidx.compose.runtime.Immutable
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
+import dev.geode.feature.studio.api.Chapters
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
@@ -117,6 +118,23 @@ data class RenderDraft(
                     project = state.defaultProject ?: state.projects.firstOrNull()?.id,
                 ),
             )
+    }
+}
+
+/**
+ * The chapters of a video of [tracks], one song after another (#329), as [file]'s text: one per song at
+ * the moment it starts. Empty for a single Track.
+ */
+fun chapterText(
+    tracks: List<RenderTrack>,
+    file: ChapterFile,
+): String {
+    val chapters = Chapters.of(tracks)
+    if (chapters.isEmpty()) return ""
+    return when (file) {
+        ChapterFile.DESCRIPTION -> Chapters.description(chapters)
+        ChapterFile.WEB_VTT -> Chapters.webVtt(chapters)
+        ChapterFile.FFMETADATA -> Chapters.ffmetadata(chapters)
     }
 }
 

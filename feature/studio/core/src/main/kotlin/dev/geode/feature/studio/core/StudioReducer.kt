@@ -39,14 +39,23 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
         when (event) {
             is StudioEvent.Command ->
                 if (state.loading) Next(state.copy(pending = state.pending + event.command)) else command(state, event.command)
-            is StudioEvent.Loaded ->
-                ready(
-                    state.copy(
-                        projects = event.projects,
-                        videos = event.videos,
-                        defaultProject = event.defaultProject,
-                        renders = event.renders,
-                    ),
+            is StudioEvent.Loaded -> {
+                val read =
+                    ready(
+                        state.copy(
+                            projects = event.projects,
+                            videos = event.videos,
+                            defaultProject = event.defaultProject,
+                            renders = event.renders,
+                        ),
+                    )
+                // With the library known, the old Studio's videos and editor cuts can be brought in (#347).
+                Next(read.state, read.effects + Perform(StudioWork.ImportOldVideos) + Perform(EditWork.ListCuts))
+            }
+            is StudioEvent.OldVideosImported ->
+                Next(
+                    state.copy(projects = listOf(event.project) + state.projects, videos = state.videos + event.videos),
+                    listOf(Emit(StudioFact.VideosAdded(event.project.id, event.videos.map { it.id }))),
                 )
             is StudioEvent.SaveFolderChanged -> Next(state.copy(saveFolder = event.folder))
             is StudioEvent.ProjectCreated ->
@@ -68,6 +77,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioEvent.RendersQueued -> RenderQueue.queued(state, event.renders)
             is StudioEvent.RenderProgress -> RenderQueue.progress(state, event)
             is StudioEvent.RenderEnded -> RenderQueue.ended(state, event)
+            is StudioEvent.FinishReady -> RenderQueue.finish(state, event)
             is RecordingEvent -> Recordings.event(state, event)
             is EditEvent -> Edits.event(state, event)
         }
@@ -109,6 +119,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioCommand.RenderAgain -> RenderQueue.again(state, command.video, command.spec)
             is StudioCommand.CancelRenders -> RenderQueue.cancel(state, command.renders)
             StudioCommand.ClearFinishedRenders -> RenderQueue.clearFinished(state)
+            is StudioCommand.ExportAs -> Siblings.exportAs(state, command)
             is RecordingCommand -> Recordings.command(state, command)
             is EditCommand -> Edits.command(state, command)
         }

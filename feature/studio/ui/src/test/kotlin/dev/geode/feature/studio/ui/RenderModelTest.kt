@@ -152,4 +152,13 @@ class RenderModelTest {
         assertNull(parseMinutes(""))
         assertEquals(RenderLength.Minutes(60), AN_HOUR)
     }
+
+    @Test
+    fun `a playlist's chapters come in each file, and a single Track has none`() {
+        val tracks = listOf(PreviewStudio.night, PreviewStudio.tide)
+        assertEquals("0:00 Midnight City\n4:04 Teardrop\n", chapterText(tracks, ChapterFile.DESCRIPTION))
+        assertTrue(chapterText(tracks, ChapterFile.WEB_VTT).startsWith("WEBVTT"))
+        assertTrue(chapterText(tracks, ChapterFile.FFMETADATA).startsWith(";FFMETADATA1"))
+        assertEquals("", chapterText(listOf(PreviewStudio.night), ChapterFile.WEB_VTT))
+    }
 }

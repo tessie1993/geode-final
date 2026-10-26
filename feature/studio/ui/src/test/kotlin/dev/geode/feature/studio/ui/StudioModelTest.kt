@@ -68,6 +68,25 @@ class StudioModelTest {
     }
 
     @Test
+    fun `a video's page shows what it was made from while that is there, and what Export as does`() {
+        val first = state.videos.first()
+        val short = first.copy(id = VideoId(77), kind = VideoKind.SHORT, source = first.id)
+        val withShort = state.copy(videos = state.videos + short)
+
+        val page = checkNotNull(withShort.toVideoModel(short.id))
+
+        assertEquals(first, page.source)
+        assertFalse(page.canMakeShort)
+        assertEquals(listOf(page.project) + page.others, page.projects)
+        assertNull(withShort.copy(videos = listOf(short)).toVideoModel(short.id)?.source)
+        assertEquals(first.madeWith != null, withShort.toVideoModel(first.id)?.redraws)
+        assertEquals(false, withShort.copy(visualsOff = true).toVideoModel(first.id)?.redraws)
+        assertTrue(checkNotNull(withShort.toVideoModel(first.id)).copy(video = first.copy(kind = VideoKind.RECORDING)).canMakeShort)
+        assertTrue(checkNotNull(withShort.toVideoModel(first.id)).copy(video = first.copy(kind = VideoKind.RENDER)).canMakeShort)
+        assertFalse(checkNotNull(withShort.toVideoModel(first.id)).copy(video = first.copy(kind = VideoKind.EDIT)).canMakeShort)
+    }
+
+    @Test
     fun `a video's page names its Project, and is gone with the video`() {
         assertEquals(trip, state.toVideoModel(VideoId(1))?.project)
         assertNull(state.toVideoModel(VideoId(9)))

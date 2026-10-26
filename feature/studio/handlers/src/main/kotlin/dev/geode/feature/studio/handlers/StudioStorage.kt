@@ -84,7 +84,27 @@ interface StudioStorage {
 
     /** Forgets [render]: it was cancelled or failed, and left no video. */
     suspend fun forgetRender(render: RenderId)
+
+    /** Whether the one-time import [name] is done (#347). */
+    suspend fun imported(name: String): Boolean
+
+    /**
+     * Marks the import [name] done; with [videos], saves them first into a new Project named
+     * [projectName] created at [createdAt], all together, and returns them. Null when nothing was saved.
+     */
+    suspend fun import(
+        name: String,
+        projectName: String,
+        createdAt: Millis,
+        videos: List<NewVideo>,
+    ): ImportedVideos?
 }
+
+/** What an import brought into the library (#347): the new [project] and the [videos] in it. */
+data class ImportedVideos(
+    val project: Project,
+    val videos: List<Video>,
+)
 
 /** [StudioStorage] in Studio's own Room database. */
 class RoomStudioStorage(
@@ -138,20 +158,7 @@ class RoomStudioStorage(
         project: ProjectId,
         videos: List<NewVideo>,
     ): List<Video> {
-        val rows =
-            videos.map {
-                VideoEntity(
-                    projectId = project.value,
-                    kind = it.kind.name,
-                    name = it.name,
-                    file = it.file,
-                    thumbnail = it.thumbnail,
-                    lengthMs = it.length.value,
-                    width = it.width,
-                    height = it.height,
-                    song = it.song,
-                )
-            }
+        val rows = videos.map { it.toEntity(project.value) }
         val ids = dao.insertVideos(rows)
         return rows.zip(ids).zip(videos) { (row, id), video -> row.copy(id = id).toVideo(video.madeWith) }
     }
@@ -184,6 +191,39 @@ class RoomStudioStorage(
 
     override suspend fun forgetRender(render: RenderId) = dao.forgetRender(render.value)
 
+    override suspend fun imported(name: String): Boolean = dao.importsNamed(name) > 0
+
+    override suspend fun import(
+        name: String,
+        projectName: String,
+        createdAt: Millis,
+        videos: List<NewVideo>,
+    ): ImportedVideos? {
+        if (videos.isEmpty()) {
+            dao.markImported(ImportEntity(name))
+            return null
+        }
+        val rows = videos.map { it.toEntity(projectId = 0) }
+        val saved = dao.importVideos(name, ProjectEntity(name = projectName, createdAtMs = createdAt.value), rows)
+        val project = Project(ProjectId(saved.projectId), projectName, createdAt)
+        val kept = rows.zip(saved.videoIds) { row, id -> row.copy(id = id, projectId = saved.projectId).toVideo(null) }
+        return ImportedVideos(project, kept)
+    }
+
+    private fun NewVideo.toEntity(projectId: Long) =
+        VideoEntity(
+            projectId = projectId,
+            kind = kind.name,
+            name = name,
+            file = file,
+            thumbnail = thumbnail,
+            lengthMs = length.value,
+            width = width,
+            height = height,
+            song = song,
+            sourceId = source?.value,
+        )
+
     private fun VideoEntity.toVideo(madeWith: RenderSpec?) =
         Video(
             id = VideoId(id),
@@ -197,5 +237,6 @@ class RoomStudioStorage(
             height = height,
             song = song,
             madeWith = madeWith,
+            source = sourceId?.let(::VideoId),
         )
 }

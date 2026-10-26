@@ -2,6 +2,8 @@ package dev.geode.feature.studio.core
 
 import dev.geode.feature.studio.api.RenderLoudness
 import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 /**
  * The level a platform plays back at and the headroom it wants (the old export's targets, moved here
@@ -56,4 +58,16 @@ object Loudness {
         if (inBand && peakSafe) return 0.0
         return if (abs(gain) < GAIN_TOLERANCE_DB) 0.0 else gain
     }
+
+    /** [gainDb] as the factor a sample is multiplied by. */
+    fun factorOf(gainDb: Double): Double = BASE.pow(gainDb / DB_PER_DECADE)
+
+    /** A 16-bit [sample] times [factor], held to the 16-bit range so a raised peak clips rather than wraps. */
+    fun scaled(
+        sample: Short,
+        factor: Double,
+    ): Short = (sample * factor).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+
+    private const val BASE = 10.0
+    private const val DB_PER_DECADE = 20.0
 }
