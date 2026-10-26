@@ -52,6 +52,10 @@
     <string name="customize_linked">Moved by a Reaction</string>
     <string name="customize_ignored">This Style doesn\'t use it</string>
     <string name="customize_macro_ignored">Unused here</string>
+    <string name="customize_step_down">Step down</string>
+    <string name="customize_step_up">Step up</string>
+    <string name="customize_step_down_coarse">Big step down</string>
+    <string name="customize_step_up_coarse">Big step up</string>
 
     <!-- New link, step by step -->
     <string name="customize_step_source">Step 1 of 3: what should it react to?</string>

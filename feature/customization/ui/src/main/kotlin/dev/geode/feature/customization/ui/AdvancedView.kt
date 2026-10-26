@@ -39,6 +39,7 @@ import dev.geode.design.forest.LocalForestColors
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.SharedGroup
+import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.roundToInt
 
 /**
@@ -188,7 +189,10 @@ private fun LinkItem(
     }
 }
 
-/** A labelled slider that follows the finger and sets its value when let go: one drag, one undo step. */
+/**
+ * A labelled slider that follows the finger and sets its value when let go: one drag, one undo step.
+ * Its − and + take fine steps, and coarse ones on a long-press (#392).
+ */
 @Composable
 internal fun HeldSlider(
     label: String,
@@ -200,7 +204,15 @@ internal fun HeldSlider(
     var held by remember(value) { mutableFloatStateOf(value) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        NudgeButton(up = false) { coarse ->
+            held = nudged(held, range.start, range.endInclusive, ValueKind.CONTINUOUS, up = false, coarse = coarse)
+            onSet(held)
+        }
         Text(text(held), style = MaterialTheme.typography.labelMedium, color = LocalForestColors.current.textSecondary)
+        NudgeButton(up = true) { coarse ->
+            held = nudged(held, range.start, range.endInclusive, ValueKind.CONTINUOUS, up = true, coarse = coarse)
+            onSet(held)
+        }
     }
     Slider(value = held, onValueChange = { held = it }, valueRange = range, onValueChangeFinished = { onSet(held) })
 }

@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -123,7 +126,8 @@ private fun valueText(
 /**
  * One slider of the Advanced view. It follows the finger and sets the value when let go, so one drag
  * is one undo step. A switch for on/off properties. A long-press on its name offers "React to…". A
- * row the current Style does not use is greyed out and says so (#365).
+ * row the current Style does not use is greyed out and says so (#365). Its − and + take fine steps,
+ * and coarse ones on a long-press (#392).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -157,7 +161,13 @@ internal fun ValueSlider(
             if (row.kind == ValueKind.SWITCH) {
                 Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) }, enabled = enabled)
             } else {
+                val nudge = { up: Boolean, coarse: Boolean ->
+                    held = nudged(held, row.min, row.max, row.kind, up, coarse)
+                    onSet(held)
+                }
+                NudgeButton(up = false, enabled = enabled) { nudge(false, it) }
                 Text(valueText(row.kind, held), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                NudgeButton(up = true, enabled = enabled) { nudge(true, it) }
             }
         }
         if (row.kind != ValueKind.SWITCH) {
@@ -177,6 +187,41 @@ internal fun ValueSlider(
                 color = colors.textSecondary,
             )
         }
+    }
+}
+
+/**
+ * A row's − or + ([up]): a tap is a fine step and a long-press a coarse one (#392), each handed to
+ * [onNudge] with whether it is coarse.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun NudgeButton(
+    up: Boolean,
+    enabled: Boolean = true,
+    onNudge: (coarse: Boolean) -> Unit,
+) {
+    val fine = stringResource(if (up) R.string.customize_step_up else R.string.customize_step_down)
+    val coarse = stringResource(if (up) R.string.customize_step_up_coarse else R.string.customize_step_down_coarse)
+    Box(
+        Modifier
+            .size(ForestSpacing.TapTarget)
+            .combinedClickable(
+                enabled = enabled,
+                onClickLabel = fine,
+                role = Role.Button,
+                onLongClickLabel = coarse,
+                onLongClick = { onNudge(true) },
+                onClick = { onNudge(false) },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (up) Icons.Filled.Add else Icons.Filled.Remove,
+            contentDescription = fine,
+            tint = LocalForestColors.current.textSecondary,
+            modifier = Modifier.size(ForestSpacing.Large),
+        )
     }
 }
 
