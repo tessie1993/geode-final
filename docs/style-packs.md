@@ -93,7 +93,8 @@ sound, the bands, the spectrum and the stereo image, so its Styles declare exact
 | `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 | `lens` | no | The shared lens effects (#313, `geode/viz/LensFx.hpp`), each part optional: `threshold` (0.5–1, the light the glare gathers from), `flare` (`amount`, `ghosts` 1–8, `halo`, `dispersion`), `godRays` (`amount`, `source` [x, y] in 0–1 from the bottom left, `length` 0.1–1, `decay` 0.8–0.99), `streaks` (`amount`, `shape` `star`, `zoom` or `anamorphic`, `spokes` 2–8, `length` 0.1–1) and `depthOfField` (`aperture`, `focus` 0.05–0.95). Amounts, halo, dispersion and aperture are 0–1, and each part needs its `amount` (`aperture` for depth of field) above 0. Depth of field is for shader Styles only: the shader writes its depth into alpha as t / (t + the subject's distance), 1 for nothing hit. |
 | `reactivity` | yes | The Style's reactivity profile (#319): what it reacts to at each level of the music, `macro` (sections and energy), `meso` (the bar and the beat) and `micro` (onsets and the spectrum), each a list of the features below. A shader Style declares exactly what its own code reads, its shader and its feedback warp stage (its copy of `view()` and of the audio taps aside: those are the Shared core's controls; nor what the engine's warp does with `react` and the Extras); any other Style declares exactly what its family declares. CI rejects a feature nothing reads and one read but not declared. |
-| `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1) and `react` (0–1, how much the music speeds the motion), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
+| `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1), `react` (0–1, how much the music speeds the motion), `outer` and `inner` (the borders painted into the loop: `size` 0–0.1 frame heights, above 0, `color` [r, g, b] 0–1 and `alpha` 0–1, the share of the colour a band takes on in a second), `streaks` (lines along the motion field: `amount` 0–1, above 0, the share of the colour a line takes on in a second, `color` [r, g, b] 0–1 and `cells` 6–40, the grid's cells down the frame), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
+| `multipass` | no | The engine's passes ("Multi-pass Styles" below), each part optional: `scale` (0.25–0.75, default 0.5, the march's share of the target), `coarse` and `temporal` (booleans, default true). Shader Styles only, never with `feedback`; the shader includes `lib_multipass` and does its part of each pass that runs. |
 | `textures` | no | The Style's own images ("Images" below), at most 4: each a `name` (lower-case letters, digits and `_`, starting with a letter), a PNG `file` in its folder, and optionally `wrap` (`repeat`, the default, `mirror` or `clamp`) and `filter` (`linear`, the default, `nearest` or `mipmap`). Shader Styles only. |
 | `particles3d` | no | The shared 3D particle layer (#314): `amount` (above 0, up to 1), `kind` (`streaks` or `sparks`), and multipliers `count` (0.25–2), `speed` (0.1–3) and `size` (0.3–3), and a `tint` [r, g, b] in 0–2. |
 
@@ -176,12 +177,49 @@ step no longer moves the stored value, a ghost that never fades. A dither of one
 keeps the expected value on the exact decay, and 1/256 taken off each second ends every trail at exact
 black. The CI render check runs the loop in all three formats and fails on a ghost.
 
+What the loop paints is asked for in the manifest, with no code: `outer` paints a band along the
+frame's edge and `inner` one just inside it (#363). They are painted into the kept picture before it
+decays, so a zoom below 1 carries their copies inward into the classic tunnel and one above 1 carries
+them off the frame. `streaks` lays a short line through the centre of each cell of a square grid, along
+the way the motion grid moves the picture there, longer where it moves faster and gone where it is
+still (#386); the loop draws each out into a trail, so the motion reads at a glance. What is painted
+fades with the loop like anything the Style draws, and eases in over the first second of each visit
+(`FeedbackWarp.hpp` `kPaintFadeSeconds`), so nothing appears in one frame.
+
 A Style's own warp stage (`"shader"` under `feedback`) is a fragment shader that includes
 `lib_feedback`: it reads the kept picture with `fbFetch()` wherever it likes around `vSrc` (where
 the grid says this point reads from), scales anything it moves by `uFbDt`, and hands what it keeps to
 `fbSettle()` last. Without one, the shared stage keeps `fbWarp()`. The warp stage is not reloaded from
 the Style lab; a changed `feedback` or `inputs` there rebuilds the Style. A Style with feedback keeps
 its depth for depth of field only in half float (RGB10_A2 has two bits of alpha).
+
+## Multi-pass Styles
+
+A heavy raymarched world declares `multipass` and the engine draws it in passes (#332,
+`geode/viz/MultiPass.hpp`), so it fits a mid-range phone. The folder stays one manifest and one shader:
+the engine runs that shader once per pass and says which in `uMpPass` (`//#include lib_multipass`).
+
+1. **Camera** (`temporal`): a 5 × 1 target where the Style writes its camera and returns before it
+   marches: `if (mpCameraPass()) { fragColor = mpCameraTexel(ro, frame, focal); return; }`, where a ray
+   is `normalize(frame * vec3(uv, focal))` from `ro`.
+2. **Coarse prepass** (`coarse`): the march four times smaller each way with a wider cone (`mpCone`),
+   writing only its depth (`if (mpCoarsePass()) { fragColor = vec4(0.0, 0.0, 0.0, mpDepth(t)); return; }`);
+   each march ray then starts a little short of the nearest coarse depth around it (`mpStart(t0)`). What
+   a ray would have passed before that is skipped, so a Style that gathers glow along its rays sets
+   `"coarse": false`.
+3. **March**: the picture at `scale` of the target, its depth in alpha (`mpDepth(t)`: t / (t + 4)),
+   each frame offset by a sub-pixel Halton jitter when `temporal` is on.
+4. **Resolve** (`multipass_resolve_frag.glsl`): a depth-aware upscale to the target, then last frame's
+   resolved picture reprojected through the two cameras and accumulated. History is dropped where the
+   camera cut, where the point was off screen, and where the depth kept there disagrees with the
+   point's distance (a disocclusion), and what is kept is clamped to the colours around the pixel this
+   frame, so fast camera moves leave no ghost; the faster a pixel moves, the more of this frame it takes.
+
+At the default scale the march covers a quarter of the pixels (a sixteenth more with the prepass), so
+a Style's frame costs about a third of drawing it in one pass at the same target size. The resolve
+reprojects with the Style's own camera, not with `view()`'s zoom and turn, whose motion the clamp
+absorbs. The passes need half-float targets; without them the Style draws in one pass, where the
+helpers change nothing (`uMpPass` 0).
 
 ## The music in a Style
 

@@ -22,6 +22,28 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   longer exists. Importing earlier videos and v1 editor projects is
   unchanged.
 
+- **Multi-pass Styles (#332).** A shader Style can declare `multipass` and the
+  engine draws it in passes: its camera into a tiny target, an optional coarse
+  prepass that lets each ray start near its surface, the march at half the
+  target (or another share) with a sub-pixel jitter each frame, and a resolve
+  that upscales by depth and accumulates last frame's picture, reprojected
+  through both cameras with the depth kept in alpha. History is dropped on a
+  camera cut, off screen and where the depth disagrees, and is clamped to this
+  frame's colours around the pixel, so fast moves leave no ghost. The folder
+  stays one manifest and one shader (`lib_multipass`). A Style marches about a
+  quarter of the pixels it did; Mirror Prism is the first to use it.
+
+- **Mirror Prism (#331).** A new Style: a flight down a corridor of black
+  mirror glass laced with neon wireframe, opening every so often into a
+  mirrored chamber where a crystal turns in a neon cage. The mirrors are folded
+  space, so the corridor repeats in every direction and dims with every wall a
+  ray passes through. The crystal's refraction is traced through its facets
+  exactly, once per colour with its own index, so the chamber's light splits
+  into fringes (faked dispersion), and the lens flare and star carry it into
+  the glare. The bass and the passage's swell bend the crystal harder and
+  widen the split; loudness and the bass speed the flight and the light
+  streaming down the rails.
+
 - **Style packs ship their own images (#391).** A shader Style may declare
   up to four PNGs in its folder under `textures`, each with a wrap
   (`repeat`, `mirror`, `clamp`) and a filter (`linear`, `nearest`,

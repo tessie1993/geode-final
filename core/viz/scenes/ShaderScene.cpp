@@ -58,6 +58,23 @@ constexpr std::array<InputSampler, 9> kInputSamplers = {{
     {inputs::Input::Blur3, "uBlur3", GL_TEXTURE_2D, 11},
 }};
 
+// The engine's passes (MultiPass.hpp): the resolve's four textures. The Style's coarse prepass takes the
+// first unit above the pack's images (coarseUnit()), within the 16 every GLES 3 device has.
+constexpr GLint kGuaranteedUnits = 16;
+constexpr GLint kResolveMarchUnit = 0;
+constexpr GLint kResolveHistoryUnit = 1;
+constexpr GLint kResolveCamNowUnit = 2;
+constexpr GLint kResolveCamPrevUnit = 3;
+// lib_multipass's uMpPass.
+constexpr float kPassPicture = 0.0f;
+constexpr float kPassCoarse = 1.0f;
+constexpr float kPassCamera = 2.0f;
+
+// A pass target of w x h that holds half floats, which the depth in alpha and the camera's numbers need.
+bool halfFloatTarget(Framebuffer& target, int width, int height) {
+    return target.ensure(width, height) && target.format() == Framebuffer::Format::Rgba16F;
+}
+
 // The feedback loop's buffer: half float where the HDR targets are, else RGB10_A2, ten bits a channel,
 // which every GLES 3 device renders (FeedbackWarp.hpp).
 Framebuffer::Format feedbackFormat(Framebuffer::Format hdr) {
@@ -92,7 +109,8 @@ float wrappedDelta(float from, float to, float period) {
 }  // namespace
 
 ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                         inputs::Set inputs, std::optional<ShaderFeedback> feedback, std::vector<ShaderImage> images)
+                         inputs::Set inputs, std::optional<ShaderFeedback> feedback, std::vector<ShaderImage> images,
+                         std::optional<ShaderMultipass> multipass)
     : id_(std::move(id)),
       vertexSrc_(std::move(vertexSrc)),
       currentFragment_(std::move(fragmentSrc)),
@@ -100,6 +118,7 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
       host_(std::move(host)),
       inputs_(inputs),
       feedback_(std::move(feedback)),
+      multipass_(std::move(multipass)),
       images_(std::move(images)) {
     pendingFragment_ = currentFragment_;
     if (images_.size() > imageTex_.size()) images_.resize(imageTex_.size());
@@ -120,6 +139,9 @@ void ShaderScene::init() {
     warpProgram_ = 0;
     warpUniforms_ = UniformCache(0);
     warpBuilt_ = false;
+    resolveProgram_ = 0;
+    resolveUniforms_ = UniformCache(0);
+    resolveBuilt_ = false;
     {
         std::lock_guard<std::mutex> lock(pendingLock_);
         pendingFragment_ = currentFragment_;
@@ -181,6 +203,10 @@ void ShaderScene::setSharedInputs(SharedInputs* shared) {
     for (Framebuffer& level : blur_) level.setFormat(format);
     kept_.setFormat(feedbackFormat(format));
     warped_.setFormat(feedbackFormat(format));
+    passMarch_.setFormat(format);
+    passCoarse_.setFormat(format);
+    for (Framebuffer& camera : passCamera_) camera.setFormat(format);
+    passResolved_.setFormat(format);
 }
 
 void ShaderScene::beginVisit() {
@@ -189,6 +215,8 @@ void ShaderScene::beginVisit() {
     releaseHistory();
     warpMotion_.reset();
     warpFrame_ = 0;
+    // The jitter starts its cycle again and nothing of the last visit is reprojected.
+    passHistory_.reset();
 }
 
 void ShaderScene::setDrawTarget(GLuint fbo, int width, int height) {
@@ -315,6 +343,7 @@ void ShaderScene::draw(float timeSeconds) {
     compilePendingIfAny();
     if (program_ == 0) return;
     buildWarpIfNeeded();
+    buildResolveIfNeeded();
     feeding_ = feedback_.has_value() && warpFeedback();
     glDisable(GL_BLEND);
     glUseProgram(program_);
@@ -352,9 +381,18 @@ void ShaderScene::draw(float timeSeconds) {
     uploadFeatures();
     uploadInputs();
     uploadImages();
-    glBindVertexArray(vao_);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    glBindVertexArray(0);
+    // A single pass draws the picture from the camera, as a Style without passes does (lib_multipass).
+    set1f("uMpPass", kPassPicture);
+    set1f("uMpUseCoarse", 0.0f);
+    glUniform2f(uniforms_.loc("uMpJitter"), 0.0f, 0.0f);
+    const multipass::Plan passes = passPlan();
+    if (!passes.passes || !drawPasses(passes)) {
+        // Drawn in one pass at the target's size: nothing is kept for the next frame's resolve.
+        if (multipass_) passHistory_.lost();
+        glBindVertexArray(vao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+    }
     if (feeding_) presentFeedback();
     captureHistory(feeding_ ? kept_.fbo() : drawFbo_);
 }
@@ -556,6 +594,7 @@ void ShaderScene::releaseHistory() {
     kept_.release();
     warped_.release();
     feeding_ = false;
+    releasePasses();
 }
 
 void ShaderScene::buildWarpIfNeeded() {
@@ -623,6 +662,12 @@ void ShaderScene::uploadWarp(int width, int height) {
     glUniform1f(u.loc("uFbHalf"), flag(half));
     glUniform1f(u.loc("uFbStep"), half ? 0.0f : feedback::quantum(0.0f, precision));
     glUniform1f(u.loc("uFbSeed"), static_cast<float>(warpFrame_));
+    glUniform4f(u.loc("uFbOuter"), step.outer.color[0], step.outer.color[1], step.outer.color[2], step.outer.cover);
+    glUniform1f(u.loc("uFbOuterSize"), step.outer.size);
+    glUniform4f(u.loc("uFbInner"), step.inner.color[0], step.inner.color[1], step.inner.color[2], step.inner.cover);
+    glUniform1f(u.loc("uFbInnerSize"), step.inner.size);
+    glUniform4f(u.loc("uFbStreak"), step.streaks.color[0], step.streaks.color[1], step.streaks.color[2], step.streaks.cover);
+    glUniform1f(u.loc("uFbStreakCell"), step.streaks.size);
 }
 
 void ShaderScene::presentFeedback() {
@@ -632,6 +677,124 @@ void ShaderScene::presentFeedback() {
     glBlitFramebuffer(0, 0, kept_.width(), kept_.height(), 0, 0, drawWidth_, drawHeight_, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
     glViewport(0, 0, drawWidth_, drawHeight_);
+}
+
+void ShaderScene::buildResolveIfNeeded() {
+    if (!multipass_ || resolveBuilt_) return;
+    // Once: a resolve that does not compile is reported and the Style draws in one pass.
+    resolveBuilt_ = true;
+    std::string error;
+    resolveProgram_ = program::build(multipass_->vertex, multipass_->resolve, cache_, &error);
+    if (resolveProgram_ == 0) {
+        host_.onShaderError(error);
+        return;
+    }
+    resolveUniforms_ = UniformCache(resolveProgram_);
+}
+
+multipass::Plan ShaderScene::passPlan() const {
+    if (!multipass_ || feedback_ || resolveProgram_ == 0 || sharedInputs_ == nullptr) return multipass::Plan{};
+    const bool halfFloat = sharedInputs_->format() == Framebuffer::Format::Rgba16F;
+    multipass::Plan plan = multipass::plan(multipass_->spec, drawWidth_, drawHeight_, halfFloat);
+    // A pack with four images leaves no unit for the prepass: its rays start at the camera.
+    if (coarseUnit() >= kGuaranteedUnits) plan.coarse = false;
+    return plan;
+}
+
+bool ShaderScene::drawPasses(const multipass::Plan& plan) {
+    const int width = drawWidth_;
+    const int height = drawHeight_;
+    bool ready = halfFloatTarget(passMarch_, plan.march.width, plan.march.height);
+    ready = ready && (!plan.coarse || halfFloatTarget(passCoarse_, plan.coarseSize.width, plan.coarseSize.height));
+    bool temporal = plan.temporal && ready;
+    if (temporal) {
+        // The history follows the target's size; a new size has nothing to reproject (History::begin).
+        temporal = halfFloatTarget(passCamera_[0], multipass::kCameraTexels, 1) && halfFloatTarget(passCamera_[1], multipass::kCameraTexels, 1) &&
+                   halfFloatTarget(passResolved_, width, height);
+    }
+    if (!ready) {
+        glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
+        glViewport(0, 0, width, height);
+        return false;
+    }
+    const bool historyOn = temporal && passHistory_.begin(width, height);
+    const int now = static_cast<int>(passHistory_.frame() & 1u);
+    const std::array<float, 2> still{0.0f, 0.0f};
+    const std::array<float, 2> jitter = temporal ? multipass::jitter(passHistory_.frame()) : still;
+    glBindVertexArray(vao_);
+    if (temporal) drawPass(passCamera_[static_cast<size_t>(now)].fbo(), multipass::kCameraTexels, 1, kPassCamera, false, still);
+    if (plan.coarse) drawPass(passCoarse_.fbo(), plan.coarseSize.width, plan.coarseSize.height, kPassCoarse, false, still);
+    const std::array<float, 2> jitterUv{jitter[0] / static_cast<float>(plan.march.width), jitter[1] / static_cast<float>(plan.march.height)};
+    if (plan.coarse) {
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + coarseUnit()));
+        glBindTexture(GL_TEXTURE_2D, passCoarse_.tex());
+        glActiveTexture(GL_TEXTURE0);
+    }
+    drawPass(passMarch_.fbo(), plan.march.width, plan.march.height, kPassPicture, plan.coarse, jitterUv);
+    glBindVertexArray(0);
+    resolvePasses(historyOn, jitter, now);
+    if (temporal) {
+        // What was resolved is kept for the next frame's reprojection.
+        blitInto(drawFbo_, width, height, passResolved_, GL_NEAREST);
+        passHistory_.kept();
+    } else {
+        passHistory_.lost();
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
+    glViewport(0, 0, width, height);
+    glUseProgram(program_);
+    return true;
+}
+
+void ShaderScene::drawPass(GLuint fbo, int width, int height, float pass, bool useCoarse, const std::array<float, 2>& jitterUv) {
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    Framebuffer::discardBound(fbo);
+    glViewport(0, 0, width, height);
+    glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(width), static_cast<float>(height));
+    set1f("uMpPass", pass);
+    set1f("uMpUseCoarse", flag(useCoarse));
+    glUniform1i(uniforms_.loc("uMpCoarse"), std::min(coarseUnit(), kGuaranteedUnits - 1));
+    glUniform2f(uniforms_.loc("uMpJitter"), jitterUv[0], jitterUv[1]);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+void ShaderScene::resolvePasses(bool historyOn, const std::array<float, 2>& jitter, int now) {
+    const int width = drawWidth_;
+    const int height = drawHeight_;
+    glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
+    Framebuffer::discardBound(drawFbo_);
+    glViewport(0, 0, width, height);
+    glUseProgram(resolveProgram_);
+    UniformCache& u = resolveUniforms_;
+    const GLuint black = sharedInputs_->black();
+    const auto bind = [](GLint unit, GLuint texture) {
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + unit));
+        glBindTexture(GL_TEXTURE_2D, texture);
+    };
+    bind(kResolveMarchUnit, passMarch_.tex());
+    bind(kResolveHistoryUnit, historyOn ? passResolved_.tex() : black);
+    bind(kResolveCamNowUnit, historyOn ? passCamera_[static_cast<size_t>(now)].tex() : black);
+    bind(kResolveCamPrevUnit, historyOn ? passCamera_[static_cast<size_t>(1 - now)].tex() : black);
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(u.loc("uMpMarch"), kResolveMarchUnit);
+    glUniform1i(u.loc("uMpHistory"), kResolveHistoryUnit);
+    glUniform1i(u.loc("uMpCamNow"), kResolveCamNowUnit);
+    glUniform1i(u.loc("uMpCamPrev"), kResolveCamPrevUnit);
+    glUniform1f(u.loc("uMpHistoryOn"), flag(historyOn));
+    glUniform2f(u.loc("uMpJitter"), jitter[0], jitter[1]);
+    glUniform1f(u.loc("uMpAspect"), static_cast<float>(width) / static_cast<float>(height));
+    glUniform2f(u.loc("uMpTexel"), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height));
+    glBindVertexArray(vao_);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+}
+
+void ShaderScene::releasePasses() {
+    passMarch_.release();
+    passCoarse_.release();
+    for (Framebuffer& camera : passCamera_) camera.release();
+    passResolved_.release();
+    passHistory_.lost();
 }
 
 void ShaderScene::set1f(const char* name, float value) {
@@ -681,6 +844,10 @@ void ShaderScene::release() {
     warpProgram_ = 0;
     warpUniforms_ = UniformCache(0);
     warpBuilt_ = false;
+    if (resolveProgram_ != 0) glDeleteProgram(resolveProgram_);
+    resolveProgram_ = 0;
+    resolveUniforms_ = UniformCache(0);
+    resolveBuilt_ = false;
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
     audioTex_.release();
     for (Texture& image : imageTex_) image.release();

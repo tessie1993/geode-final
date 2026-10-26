@@ -16,6 +16,7 @@
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/FrameRate.hpp"
+#include "geode/viz/MultiPass.hpp"
 #include "geode/viz/SharedInputs.hpp"
 #include "geode/viz/StyleInputs.hpp"
 #include "geode/viz/StylePacks.hpp"
@@ -39,6 +40,14 @@ struct ShaderImage {
     Image image;
 };
 
+// The engine's passes a shader Style opts into ("multipass", MultiPass.hpp): its spec and the resolve's
+// assembled sources (the fullscreen triangle and multipass_resolve_frag.glsl).
+struct ShaderMultipass {
+    multipass::Spec spec;
+    std::string vertex;
+    std::string resolve;
+};
+
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
@@ -50,8 +59,11 @@ public:
     // `feedback`: the warp layer, when the pack opts into it; the Style then reads the warped picture as
     // its previous frame and what it draws is kept. `images`: the pack's own images, at most
     // packs::kMaxTextures, each bound to its sampler on a unit of its own.
+    // `multipass`: the engine's passes, when the pack opts into them; the Style is then drawn as its camera,
+    // a coarse prepass and its march at a share of the target, and resolved onto the target.
     ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt, std::vector<ShaderImage> images = {});
+                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt, std::vector<ShaderImage> images = {},
+                std::optional<ShaderMultipass> multipass = std::nullopt);
     ~ShaderScene() override;
 
     const std::string& id() const override { return id_; }
@@ -191,6 +203,21 @@ private:
     void uploadWarp(int width, int height);
     // After the Style drew into kept_: shows it, copied onto the renderer's target.
     void presentFeedback();
+    // ---- the engine's passes (MultiPass.hpp) ----
+    // Builds the resolve's program the first time a multi-pass Style draws.
+    void buildResolveIfNeeded();
+    // What this frame runs: nothing extra unless the pack declares multipass, the resolve built and the
+    // scene targets are half float.
+    multipass::Plan passPlan() const;
+    // The unit the Style reads its coarse prepass on: the first above the pack's images.
+    GLint coarseUnit() const { return kFirstImageUnit + static_cast<GLint>(images_.size()); }
+    // Draws the Style through its passes and resolves it onto the draw target, the Style's program bound
+    // and its uniforms set; false, with nothing drawn, when the passes' targets cannot be made.
+    bool drawPasses(const multipass::Plan& plan);
+    // One run of the Style's shader into `fbo` (width x height) as pass `pass` (lib_multipass's uMpPass).
+    void drawPass(GLuint fbo, int width, int height, float pass, bool useCoarse, const std::array<float, 2>& jitterUv);
+    void resolvePasses(bool historyOn, const std::array<float, 2>& jitter, int now);
+    void releasePasses();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -301,6 +328,18 @@ private:
     std::array<Framebuffer, kBlurChain> blur_{Framebuffer("styleBlur0"), Framebuffer("styleBlur1"), Framebuffer("styleBlur2"),
                                               Framebuffer("styleBlur3")};
     int blurBuilt_ = 0;
+    // ---- the engine's passes (MultiPass.hpp) -------------------------------
+    std::optional<ShaderMultipass> multipass_;
+    GLuint resolveProgram_ = 0;
+    UniformCache resolveUniforms_;
+    bool resolveBuilt_ = false;
+    multipass::History passHistory_;
+    // The march at its share of the target, the coarse prepass, the cameras of this frame and the last
+    // (ping-pong, by the frame's parity) and last frame's resolved picture.
+    Framebuffer passMarch_{"styleMarch"};
+    Framebuffer passCoarse_{"styleCoarse"};
+    std::array<Framebuffer, 2> passCamera_{Framebuffer("styleCamera0"), Framebuffer("styleCamera1")};
+    Framebuffer passResolved_{"styleResolved"};
 
     // ---- the pack's own images ("textures", #391) ---------------------------
     // The first unit they take: above the audio, flow, palette and the shared inputs' (3..11).

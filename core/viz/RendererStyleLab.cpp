@@ -88,10 +88,11 @@ void Renderer::reloadStyle(const std::string& id, const std::string& folder, con
     const packs::StylePack* before = registry_.pack(id);
     const bool wasShader = before != nullptr && before->family == styles::family::kShader;
     // Copied: the reload replaces the pack in place. A shader Style built with other inputs or another
-    // feedback warp is built again rather than handed the new shader.
+    // feedback warp or other passes is built again rather than handed the new shader.
     const inputs::Set inputsBefore = before != nullptr ? before->inputs : 0;
     const feedback::WarpSpec feedbackBefore = before != nullptr ? before->feedback : feedback::WarpSpec{};
     const std::string warpShaderBefore = before != nullptr ? before->feedbackShaderPath : std::string();
+    const multipass::Spec passesBefore = before != nullptr ? before->multipass : multipass::Spec{};
     std::string error;
     if (!registry_.reload(id, manifest, shader, &error)) {
         styleLabFailed_ = true;
@@ -109,7 +110,7 @@ void Renderer::reloadStyle(const std::string& id, const std::string& folder, con
     if (built == nullptr) return;
     const packs::StylePack* after = registry_.pack(id);
     const bool sameBuild = after != nullptr && after->inputs == inputsBefore && after->feedback == feedbackBefore &&
-                           after->feedbackShaderPath == warpShaderBefore;
+                           after->feedbackShaderPath == warpShaderBefore && after->multipass == passesBefore;
     if (wasShader && sameBuild && after->family == styles::family::kShader) {
         const auto fragment = registry_.fragment(*after, &error);
         if (!fragment) {

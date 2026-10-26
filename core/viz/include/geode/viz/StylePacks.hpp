@@ -8,6 +8,7 @@
 
 #include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/LensFx.hpp"
+#include "geode/viz/MultiPass.hpp"
 #include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/StyleInputs.hpp"
 
@@ -130,6 +131,9 @@ struct StylePack {
     // or empty for the shared one (shaders/feedback_warp_frag.glsl).
     feedback::WarpSpec feedback;
     std::string feedbackShaderPath;
+    // The engine's passes the Style opts into ("multipass", MultiPass.hpp): its march at a share of the
+    // target, the coarse prepass and the temporal accumulation; off when the manifest does not declare it.
+    multipass::Spec multipass;
     // The images the Style ships in its pack ("textures"), in the manifest's order; shader Styles only.
     std::vector<TextureSpec> textures;
 

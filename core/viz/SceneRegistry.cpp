@@ -98,8 +98,18 @@ std::unique_ptr<Scene> buildShader(const Build& b) {
         b.host.onShaderError(error);
         return nullptr;
     }
+    std::optional<ShaderMultipass> passes;
+    if (b.pack.multipass.on) {
+        // The engine's resolve, on the same fullscreen triangle as the Style (MultiPass.hpp).
+        const auto resolve = b.loader.assets.load("multipass_resolve_frag.glsl", &error);
+        if (!resolve) {
+            b.host.onShaderError(error);
+            return nullptr;
+        }
+        passes = ShaderMultipass{b.pack.multipass, b.quadVert, *resolve};
+    }
     return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs, std::move(feedback),
-                                         std::move(*images));
+                                         std::move(*images), std::move(passes));
 }
 
 // One renderer per family. A Style is a pack naming one of these; nothing here names a Style.
