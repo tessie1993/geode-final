@@ -214,12 +214,19 @@ data class AnalysisSettings(
     val presetMorph: Seconds = PRESET_MORPH_DEFAULT,
     /** Whether the Visual reacts to the microphone when the app starts. Capture reads it. */
     val reactToMicrophone: Boolean = false,
+    /**
+     * Moves the Visual against the music the player plays (#295): positive draws it later, negative
+     * earlier. The engine already lines the picture up with what the speaker plays; this is for the
+     * outputs and screens it cannot measure. Live input is heard as it is captured and never moves.
+     */
+    val syncOffset: Millis = Millis.ZERO,
 ) {
     companion object {
         val BEAT_SENSITIVITY: ClosedFloatingPointRange<Float> = 1.5f..8f
         val BEAT_MIN_INTERVAL_MS: ClosedFloatingPointRange<Float> = 200f..1_200f
         val PRESET_MORPH_DEFAULT = Seconds(2f)
         val PRESET_MORPH: ClosedRange<Seconds> = Seconds(0f)..Seconds(8f)
+        val SYNC_OFFSET: ClosedRange<Millis> = Millis(-300)..Millis(300)
     }
 }
 

@@ -118,8 +118,9 @@ void Feed::analyse() {
     }
 }
 
-bool Feed::read(GeodeFeatureFrame& features, float* stereo, size_t frames) {
-    const audio::feed::ReadPoint point = ring_.locate(nowNs());
+bool Feed::read(GeodeFeatureFrame& features, float* stereo, size_t frames, int64_t presentNs) {
+    const int64_t now = nowNs();
+    const audio::feed::ReadPoint point = ring_.locate(now, audio::feed::heard::presentAheadNs(now, presentNs));
     ring_.copy(point, stereo, frames);
     if (!point.live || !history_.at(point.epoch, point.end, features)) {
         features = GeodeFeatureFrame{};

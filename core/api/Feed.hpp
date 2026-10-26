@@ -39,9 +39,10 @@ public:
     void resetAnalysis();
     void attachSnapshots(geode_snapshots* snapshots);
 
-    // The drawing thread: this frame's features and the `frames` stereo frames heard now. Returns false,
-    // with an empty frame and silence, when nothing is heard.
-    bool read(GeodeFeatureFrame& features, float* stereo, size_t frames);
+    // The drawing thread: this frame's features and the `frames` stereo frames heard when the frame reaches
+    // the screen, at presentNs on the steady clock (0 or less for now). Returns false, with an empty frame
+    // and silence, when nothing is heard.
+    bool read(GeodeFeatureFrame& features, float* stereo, size_t frames, int64_t presentNs = 0);
 
     static int64_t nowNs();
 

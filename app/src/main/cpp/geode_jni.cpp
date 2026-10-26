@@ -399,6 +399,16 @@ Java_dev_geode_engine_bridge_GeodeNative_feedSetPresentation(JNIEnv* env, jobjec
                     [&](geode_feed* f) { geode_feed_set_presentation(f, source, delayUs, speed); });
 }
 
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetRoute(JNIEnv* env, jobject, jlong handle, jint route) {
+    return feedCall(env, "feedSetRoute", handle, [&](geode_feed* f) { geode_feed_set_route(f, route); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetUserOffset(JNIEnv* env, jobject, jlong handle, jlong offsetUs) {
+    return feedCall(env, "feedSetUserOffset", handle, [&](geode_feed* f) { geode_feed_set_user_offset(f, offsetUs); });
+}
+
 // The frames taken: 0 when the source is not the one listened to, or the engine threw.
 JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_feedWrite(JNIEnv* env, jobject, jlong handle, jint source, jfloatArray interleaved,

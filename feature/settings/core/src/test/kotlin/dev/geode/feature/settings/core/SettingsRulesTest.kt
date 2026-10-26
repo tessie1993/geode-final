@@ -180,6 +180,10 @@ class SettingsRulesTest {
             Row(AnalysisCommand.SetPresetMorph(Seconds(-1f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(0f)))),
             Row(AnalysisCommand.SetPresetMorph(Seconds(30f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(8f)))),
             Row(AnalysisCommand.SetReactToMicrophone(true), defaults.copy(analysis = analysis.copy(reactToMicrophone = true))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(120)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(120)))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(-80)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(-80)))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(-5_000)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(-300)))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(5_000)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(300)))),
         )
 
     private val behaviorRows: List<Row> =
@@ -377,7 +381,8 @@ class SettingsRulesTest {
                 look = look.copy(accentIntensity = 7f, backgroundDim = -2f, textScale = 0f, barOpacity = 5f),
                 playback = playback.copy(speed = 9f, pitch = Semitones(-9f), sleepTimer = Minutes(-1), fade = Millis(-5)),
                 equalizer = equalizer.copy(bands = loud, bassBoost = 2_000, loudness = Millibels(-1)),
-                analysis = analysis.copy(beatSensitivity = 0f, beatMinIntervalMs = 9_000f, presetMorph = Seconds(99f)),
+                analysis =
+                    analysis.copy(beatSensitivity = 0f, beatMinIntervalMs = 9_000f, presetMorph = Seconds(99f), syncOffset = Millis(-900)),
                 behavior = behavior.copy(touchSmearStrength = 0f),
             )
 
@@ -386,7 +391,10 @@ class SettingsRulesTest {
         assertEquals(look.copy(accentIntensity = 1.5f, backgroundDim = 0f, textScale = 0.85f, barOpacity = 1f), tamed.look)
         assertEquals(playback.copy(speed = 2f, pitch = Semitones(-6f), sleepTimer = Minutes(0), fade = Millis.ZERO), tamed.playback)
         assertEquals(equalizer.copy(bands = bands(0 to 1_500, 1 to -1_500), bassBoost = 1_000), tamed.equalizer)
-        assertEquals(analysis.copy(beatSensitivity = 1.5f, beatMinIntervalMs = 1_200f, presetMorph = Seconds(8f)), tamed.analysis)
+        assertEquals(
+            analysis.copy(beatSensitivity = 1.5f, beatMinIntervalMs = 1_200f, presetMorph = Seconds(8f), syncOffset = Millis(-300)),
+            tamed.analysis,
+        )
         assertEquals(behavior.copy(touchSmearStrength = 0.2f), tamed.behavior)
     }
 

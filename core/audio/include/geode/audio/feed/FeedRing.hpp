@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "geode/audio/feed/HeardClock.hpp"
+
 namespace geode::audio::feed {
 
 // Who writes the Visual's audio: the player (Geode's own engine or ExoPlayer, whichever the session
@@ -29,11 +31,17 @@ struct ReadPoint {
 //
 // A source writes as it produces audio, which may be well ahead of the speaker (ExoPlayer's tap sits
 // before half a second of AudioTrack buffer). It says how far ahead with setPresentation, and the
-// reader backs off by that much, moving on with the wall clock between writes. A source that stops
-// (a pause) says so with setRunning; one that just goes quiet expires once no audio has come for
-// longer than its packet interval plus its buffered duration. Selecting another source, a flush (a
-// seek dropped what was buffered) or a change of sample rate starts a new epoch, and the reader never
-// reaches back across one.
+// reader backs off by that much, moving on with the wall clock between writes. A source whose output
+// gives no timestamp says its delay is not measured, and the reader adds what its output route is
+// known to add (heard::routeFallbackNs). The person's offset moves the player's picture further, either
+// way; Live input is heard as it is captured and never moves. The reader may ask for the frame heard a
+// little after now (the moment its frame reaches the screen), but never for one not yet written: the
+// lead over the speaker only ever delays the picture.
+//
+// A source that stops (a pause) says so with setRunning; one that just goes quiet expires once no audio
+// has come for longer than its packet interval plus its buffered duration. Selecting another source, a
+// flush (a seek dropped what was buffered) or a change of sample rate starts a new epoch, and the reader
+// never reaches back across one.
 //
 // write() never blocks or allocates, so the native player's audio callback calls it directly. A write
 // that finds another one under way is dropped rather than waited for; that happens only around a
@@ -61,16 +69,25 @@ public:
     void flush(FeedSource source);
     // Whether the source is playing; a paused source is silent at once, whatever it buffered.
     void setRunning(FeedSource source, bool running);
-    // How far ahead of the speaker the source writes, and the speed its frames are heard at.
-    void setPresentation(FeedSource source, int64_t delayNs, float speed);
+    // How far ahead of the speaker the source writes, and the speed its frames are heard at. `measured` is
+    // false when the output could not time itself and delayNs is only its buffer: the route's latency is
+    // added on reading.
+    void setPresentation(FeedSource source, int64_t delayNs, float speed, bool measured = true);
+    // Where the sound comes out: what an unmeasured delay is topped up with.
+    void setRoute(OutputRoute route);
+    OutputRoute route() const { return heard::routeOf(route_.load(std::memory_order_relaxed)); }
+    // The person's offset (heard::kMaxUserOffsetNs either way): positive draws the player's picture later.
+    void setUserOffset(int64_t offsetNs);
+    int64_t userOffsetNs() const { return userOffsetNs_.load(std::memory_order_relaxed); }
 
     // Writers. Returns the frames stored: 0 when `source` is not the one listened to, when another write
     // is under way, or for an unusable format. Mono is heard on both channels; past two channels only
     // the first two are kept.
     size_t write(FeedSource source, const float* interleaved, size_t frames, int channels, int rateHz, int64_t nowNs);
 
-    // Readers.
-    ReadPoint locate(int64_t nowNs) const;
+    // Readers. The frame heard aheadNs after nowNs (the frame's expected present time), as far as it was
+    // written; liveness is judged at nowNs.
+    ReadPoint locate(int64_t nowNs, int64_t aheadNs = 0) const;
     // The `frames` frames ending at point.end, interleaved stereo. Frames outside the epoch, or that the
     // writer may already have overwritten, read as silence; a point that is not live reads all silence.
     // Returns how many frames carried audio.
@@ -109,6 +126,9 @@ private:
     std::array<std::atomic<bool>, kSources> running_{};
     std::array<std::atomic<int64_t>, kSources> delayNs_{};
     std::array<std::atomic<float>, kSources> speed_{};
+    std::array<std::atomic<bool>, kSources> measured_{};
+    std::atomic<int> route_{static_cast<int>(OutputRoute::Unknown)};
+    std::atomic<int64_t> userOffsetNs_{0};
 };
 
 }  // namespace geode::audio::feed

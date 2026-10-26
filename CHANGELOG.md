@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The Visual lands on the beat you hear (#295).** Each Visual frame now
+  reads the audio heard at the moment it reaches the screen, from
+  Choreographer's frame timeline (API 33+) or two refreshes after its vsync,
+  instead of the moment it starts drawing. Geode's own player times its
+  output with the stream's timestamps; an output that gives none is read its
+  buffer plus what its route is known to add (about 200 ms on Bluetooth,
+  80 ms on LE Audio, 10-25 ms wired, USB and speaker), with the route taken
+  from the connected devices. A new Picture sync setting (Audio, Analysis,
+  ±300 ms) moves the player's picture against the music for anything left
+  over. Live input is never moved, and nothing is ever drawn ahead of the
+  newest audio.
+
 - **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
   feed, Freeze reactions is held in the engine: every Style, MilkDrop
   included, keeps the Sound signals and audio window of the first held frame

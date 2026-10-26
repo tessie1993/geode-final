@@ -463,6 +463,12 @@ object GeodeNative {
         feed: Long,
     ): Int
 
+    /** When the next frame is expected on screen, in System.nanoTime nanoseconds; 0 draws for now. */
+    external fun vizSetPresentTime(
+        handle: Long,
+        presentNs: Long,
+    ): Int
+
     /** Freeze reactions (#366) for a Visual reading a feed: its features and audio window hold still. */
     external fun vizSetReactionsHeld(
         handle: Long,
@@ -494,6 +500,18 @@ object GeodeNative {
         source: Int,
         delayUs: Long,
         speed: Float,
+    ): Int
+
+    /** [route] is a GEODE_FEED_ROUTE_* code ([dev.geode.engine.audio.OutputRoute.code]). */
+    external fun feedSetRoute(
+        handle: Long,
+        route: Int,
+    ): Int
+
+    /** The person's sync offset in microseconds; positive draws the player's picture later. */
+    external fun feedSetUserOffset(
+        handle: Long,
+        offsetUs: Long,
     ): Int
 
     /** Returns the frames taken: 0 when [source] is not the one listened to. */

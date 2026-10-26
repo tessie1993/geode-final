@@ -60,6 +60,8 @@ class EngineTuning(
         session.analysis.beatSensitivity = analysis.beatSensitivity
         // The beats the person heard, at the gap they chose; the No-flash rule is the engine's, every frame.
         session.analysis.beatMinIntervalMs = analysis.beatMinIntervalMs
+        // The person's sync offset moves the player's picture against what the speaker plays (#295).
+        session.feed.setSyncOffset(analysis.syncOffset)
     }
 
     internal companion object {

@@ -108,6 +108,9 @@ internal object SettingsKeys {
     // New with #196, so in no old file.
     const val VISUALS_OFF = "visuals_off"
 
+    /** New with #295, so in no old file: the Visual's sync offset in whole milliseconds. */
+    const val SYNC_OFFSET = "visual_sync_offset_ms"
+
     /**
      * New with #383, so in no old file: the look Geode starts on, as `style:<id>` or `preset:<id>`;
      * absent for the last look.

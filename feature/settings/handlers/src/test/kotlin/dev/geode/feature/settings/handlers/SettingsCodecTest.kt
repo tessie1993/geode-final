@@ -230,6 +230,16 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `the Visual's sync offset is kept in whole milliseconds in its own key, none when nothing is stored`() {
+        assertEquals(0, newKeysAtDefaults["visual_sync_offset_ms"])
+        val values = SettingsValues(analysis = AnalysisSettings(syncOffset = Millis(-120)))
+        val stored = SettingsCodec.encode(values)
+        assertEquals(-120, stored["visual_sync_offset_ms"])
+        assertEquals(Millis(-120), SettingsCodec.decode(stored).analysis.syncOffset)
+        assertEquals(Millis(300), SettingsCodec.decode(mapOf("visual_sync_offset_ms" to 2_000)).analysis.syncOffset)
+    }
+
+    @Test
     fun `the keys written since the old files are in no old file`() {
         assertTrue(newKeysAtDefaults.isNotEmpty())
         assertTrue(newKeysAtDefaults.keys.none { key -> SettingsKeys.LEGACY_FILES.values.any { key in it } })

@@ -199,6 +199,9 @@ GEODE_API GeodeStatus geode_viz_attach_feed(geode_viz*, geode_feed*);
 /* Freeze reactions (#366), for a Visual reading a feed: while held, each frame gets the features as they
  * stood when the hold began, with no event firing, and the scenes the same audio window. Any thread. */
 GEODE_API void        geode_viz_set_reactions_held(geode_viz*, int held);
+/* When the next frame is expected on screen, in nanoseconds of CLOCK_MONOTONIC (System.nanoTime): a Visual
+ * reading a feed draws the audio heard then rather than now. 0 (the default) draws for now. Any thread. */
+GEODE_API void        geode_viz_set_present_time(geode_viz*, int64_t present_ns);
 GEODE_API void        geode_viz_render(geode_viz*, double time_seconds, uint32_t target_fbo);
 GEODE_API void        geode_viz_release_scenes(geode_viz*);
 
@@ -337,6 +340,14 @@ GEODE_API void          geode_player_set_feed(geode_player*, geode_feed*);
 #define GEODE_FEED_PLAYER 1          /* the player's tap: Geode's own engine or ExoPlayer */
 #define GEODE_FEED_LIVE 2            /* Live input: the microphone */
 #define GEODE_FEED_WINDOW_FRAMES 576 /* the stereo window each Visual frame reads: projectM's ring size */
+/* Where the player's sound comes out: what an output that cannot time itself is assumed to add. */
+#define GEODE_FEED_ROUTE_UNKNOWN 0
+#define GEODE_FEED_ROUTE_SPEAKER 1
+#define GEODE_FEED_ROUTE_WIRED 2
+#define GEODE_FEED_ROUTE_USB 3
+#define GEODE_FEED_ROUTE_BLUETOOTH 4
+#define GEODE_FEED_ROUTE_BLUETOOTH_LE 5
+#define GEODE_FEED_ROUTE_HDMI 6
 
 GEODE_API geode_feed* geode_feed_create(void);
 /* Only once no player writes into it; an attached Visual keeps the analysis' results until it detaches. */
@@ -350,6 +361,11 @@ GEODE_API void        geode_feed_set_running(geode_feed*, int source, int runnin
 /* How far ahead of the speaker the source writes, in microseconds of its own audio, and the speed it is
  * heard at: the Visual reads that far behind the newest frame. */
 GEODE_API void        geode_feed_set_presentation(geode_feed*, int source, int64_t delay_us, float speed);
+/* The output route (GEODE_FEED_ROUTE_*): a source whose output gives no timestamp is read that much later. */
+GEODE_API void        geode_feed_set_route(geode_feed*, int route);
+/* The person's sync offset, in microseconds, at most half a second either way: positive draws the player's
+ * picture later. Live input is heard as it is captured and is never moved. */
+GEODE_API void        geode_feed_set_user_offset(geode_feed*, int64_t offset_us);
 /* Interleaved float PCM; returns the frames taken, 0 when `source` is not the one listened to. */
 GEODE_API size_t      geode_feed_write(geode_feed*, int source, const float* interleaved, size_t frames, int channels,
                                        int sample_rate);

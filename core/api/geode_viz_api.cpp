@@ -43,6 +43,9 @@ struct geode_viz {
     std::atomic<bool> reactionsHeld{false};
     geode::viz::SignalHold feedHold;
     std::array<float, GEODE_FEED_WINDOW_FRAMES * 2> heldPcm{};
+    // When the next frame is expected on screen (CLOCK_MONOTONIC ns, 0 for now): the feed is read at the audio
+    // heard then. Set from any thread, read on the drawing thread.
+    std::atomic<int64_t> presentNs{0};
 };
 
 namespace {
@@ -341,7 +344,7 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
 static void readFeed(geode_viz* v) {
     if (!v->feed) return;
     GeodeFeatureFrame heard{};
-    const bool live = v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
+    const bool live = v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES, v->presentNs.load(std::memory_order_acquire));
     // Events keep being edge-detected under a hold, so those that fire meanwhile are dropped, not replayed.
     const GeodeFeatureFrame events = v->feedEvents.frame(heard, live);
     const bool held = v->reactionsHeld.load(std::memory_order_acquire);
@@ -355,6 +358,10 @@ static void readFeed(geode_viz* v) {
 
 void geode_viz_set_reactions_held(geode_viz* v, int held) {
     if (v) v->reactionsHeld.store(held != 0, std::memory_order_release);
+}
+
+void geode_viz_set_present_time(geode_viz* v, int64_t present_ns) {
+    if (v) v->presentNs.store(present_ns, std::memory_order_release);
 }
 
 GeodeStatus geode_viz_attach_feed(geode_viz* v, geode_feed* f) {

@@ -3,6 +3,7 @@ package dev.geode.engine.audio
 import dev.geode.engine.bridge.GeodeNative
 import dev.geode.engine.bridge.NativeFailures
 import dev.geode.engine.bridge.NativeSnapshots
+import dev.geode.engine.types.Millis
 
 /** Who writes the Visual's audio; the codes are GEODE_FEED_* in geode_api.h. */
 enum class FeedSource(
@@ -54,6 +55,16 @@ class VisualFeed internal constructor(
         delayUs: Long,
         speed: Float,
     ) = backend.call("feedSetPresentation") { h -> GeodeNative.feedSetPresentation(h, source.code, delayUs, speed) }
+
+    /** Where the player's sound comes out: an output that cannot time itself is read the route's latency later. */
+    fun setRoute(route: OutputRoute) = backend.call("feedSetRoute") { h -> GeodeNative.feedSetRoute(h, route.code) }
+
+    /**
+     * The person's sync offset (Settings): positive draws the player's picture later, negative earlier,
+     * at most half a second either way. Live input is heard as it is captured and is never moved.
+     */
+    fun setSyncOffset(offset: Millis) =
+        backend.call("feedSetUserOffset") { h -> GeodeNative.feedSetUserOffset(h, offset.toMicros().value) }
 
     fun setTuning(
         sensitivity: Float,
