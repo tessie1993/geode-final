@@ -23,6 +23,9 @@ out vec4 fragColor;
 //#include lib_touch
 //#include lib_gravity
 //#include lib_dmt
+// The noise volume (manifest "inputs": noise_vol): fbmVol is lib_sdf3's fbm3 at one texture fetch per
+// octave instead of eight lattice hashes, the same value noise drawn from the shared seeded volume.
+//#include lib_inputs
 
 // NEBULA - a volumetric fbm cloud, lit from inside.
 //
@@ -493,9 +496,9 @@ float nebEnvelope(float rSq, float radius) {
 vec3 nebWarpCoord(vec3 p) {
     vec3 pw = p * NEB_WARP_SCALE;
     vec3 w = vec3(
-        fbm3(pw, NEB_WARP_OCTAVES),
-        fbm3(pw + vec3(23.7, 8.3, 47.1), NEB_WARP_OCTAVES),
-        fbm3(pw + vec3(5.9, 63.7, 13.1), NEB_WARP_OCTAVES)
+        fbmVol(pw, NEB_WARP_OCTAVES),
+        fbmVol(pw + vec3(23.7, 8.3, 47.1), NEB_WARP_OCTAVES),
+        fbmVol(pw + vec3(5.9, 63.7, 13.1), NEB_WARP_OCTAVES)
     ) - 0.5;
     return p * NEB_DENSITY_SCALE + w * NEB_WARP_AMP;
 }
@@ -682,7 +685,7 @@ void main() {
         float lod = clamp((t - tNear) / max(span, 1e-3), 0.0, 1.0);
         int oct = NEB_MAX_OCTAVES - int(lod * float(NEB_MAX_OCTAVES - NEB_MIN_OCTAVES) + 0.5);
         oct = clamp(int(float(oct) * uXComplexity + 0.5), 1, FBM3_MAX_OCTAVES);
-        float f = fbm3(q, oct);
+        float f = fbmVol(q, oct);
 
         // ---- how much medium is here --------------------------------------
         float well = 0.0;
@@ -752,7 +755,7 @@ void main() {
                 if (ltrans < NEB_LIGHT_CUTOFF) break;
                 float lr = r - lt;
                 float lenv = nebEnvelope(lr * lr, radius);
-                float lf = fbm3(q + toCoreN * (lt * NEB_DENSITY_SCALE), NEB_SHADOW_OCTAVES);
+                float lf = fbmVol(q + toCoreN * (lt * NEB_DENSITY_SCALE), NEB_SHADOW_OCTAVES);
                 float ld = lenv * max(lf - thr, 0.0) * NEB_DENSITY_GAIN;
                 ltrans *= exp(-ld * extinction * NEB_LIGHT_STEP);
                 lt += NEB_LIGHT_STEP;

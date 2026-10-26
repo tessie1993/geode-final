@@ -12,6 +12,7 @@ import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.core.RecordingWork
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderEta
 import dev.geode.feature.studio.core.StudioEvent
@@ -41,7 +42,7 @@ fun interface VideoFiles {
 /**
  * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
  * > Default paths, the [files] of deleted videos, the wall clock that stamps a new Project and times a
- * Render, and what the [renders] need (#338).
+ * Render, what the [renders] need (#338), and the [recorder] of the live Visual (#317).
  */
 class StudioSources(
     val storage: StudioStorage,
@@ -49,6 +50,7 @@ class StudioSources(
     val files: VideoFiles,
     val now: () -> Millis,
     val renders: RenderSources,
+    val recorder: LiveRecorder = LiveRecorder.None,
 )
 
 /**
@@ -80,6 +82,8 @@ class StudioHandlers(
     // The Renders asked to stop; the engine reads it from its own thread.
     private val stopping: MutableSet<RenderId> = ConcurrentHashMap.newKeySet()
 
+    private val recordings = RecordingHandlers(sources.recorder)
+
     override suspend fun run(
         work: StudioWork,
         results: Results<StudioEvent>,
@@ -106,10 +110,13 @@ class StudioHandlers(
                     results.report(StudioEvent.VideosAdded(work.project, storage.addVideos(work.project, work.videos)))
                 }
             StudioWork.FollowRenderSettings -> sources.renders.settings.collect { results.report(StudioEvent.RenderSettingsChanged(it)) }
+            StudioWork.FollowAppInFront -> sources.renders.inFront.collect { results.report(StudioEvent.AppInFront(it)) }
             is StudioWork.QueueRenders -> queue(work, results)
+            is StudioWork.QueueRenderAgain -> queueAgain(work, results)
             is StudioWork.Render -> render(work.render, results)
             is StudioWork.StopRender -> stopping += work.render
             is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
+            is RecordingWork -> recordings.run(work, results)
         }
     }
 
@@ -123,6 +130,18 @@ class StudioHandlers(
         if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
         guarded(results, StudioFailure.QUEUE_RENDER) {
             results.report(StudioEvent.RendersQueued(storage.queueRenders(work.renders, look, sources.now())))
+        }
+    }
+
+    /** Reads back the look frozen for the Render being made again, then saves the new Render with it (#327). */
+    private suspend fun queueAgain(
+        work: StudioWork.QueueRenderAgain,
+        results: Results<StudioEvent>,
+    ) {
+        val look = attempt { storage.lookOfVideo(work.file) }
+        if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
+        guarded(results, StudioFailure.QUEUE_RENDER) {
+            results.report(StudioEvent.RendersQueued(storage.queueRenders(listOf(work.render), look, sources.now())))
         }
     }
 
@@ -200,7 +219,13 @@ fun studioStore(
         toEvent = StudioEvent::Command,
         runner = StudioHandlers(sources),
         runtime = runtime,
-        start = listOf(Perform(StudioWork.Load), Perform(StudioWork.FollowSaveFolder), Perform(StudioWork.FollowRenderSettings)),
+        start =
+            listOf(
+                Perform(StudioWork.Load),
+                Perform(StudioWork.FollowSaveFolder),
+                Perform(StudioWork.FollowRenderSettings),
+                Perform(StudioWork.FollowAppInFront),
+            ),
     )
 
 /**

@@ -7,6 +7,7 @@ import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderQuality
 import dev.geode.feature.studio.api.RenderSize
@@ -32,6 +33,15 @@ class RenderPlanTest {
         val spec = RenderSpec(listOf(night, tide))
         assertEquals(listOf(listOf(night), listOf(tide)), RenderPlan.rendersOf(spec, project).map { it.tracks })
         assertEquals(listOf(project, project), RenderPlan.rendersOf(spec, project).map { it.project })
+    }
+
+    @Test
+    fun `every Render queued carries the MilkDrop preset of the setup`() {
+        val spec = RenderSpec(listOf(night, tide), milkdrop = "aurora_veil.milk")
+        assertEquals(listOf("aurora_veil.milk", "aurora_veil.milk"), RenderPlan.rendersOf(spec, project).map { it.milkdrop })
+        val job = RenderPlan.rendersOf(spec, project).first().queuedAs(RenderId(3), RenderId(3))
+        assertEquals("aurora_veil.milk", job.milkdrop)
+        assertNull(RenderPlan.rendersOf(RenderSpec(listOf(night)), project).single().milkdrop)
     }
 
     @Test
@@ -125,5 +135,50 @@ class RenderPlanTest {
             TrackSection(Millis(1), Millis(199_999)),
             RenderPlan.sectionOf(RenderLength.Section(Millis(1), Millis(199_999)), track),
         )
+    }
+
+    @Test
+    fun `a Render's scene is supersampled by its quality, within what the GPU draws`() {
+        val hd = RenderFormat(aspect = RenderAspect.R16_9, size = RenderSize.FHD1080)
+        assertEquals(1f, RenderPlan.supersampleOf(hd.copy(quality = RenderQuality.STANDARD)), 0f)
+        assertEquals(1.5f, RenderPlan.supersampleOf(hd.copy(quality = RenderQuality.HIGH)), 0f)
+        assertEquals(2f, RenderPlan.supersampleOf(hd.copy(quality = RenderQuality.BEST)), 0f)
+        // 1440p is 2560 wide: twice over would pass 4096, so it stops at 1.6.
+        assertEquals(1.6f, RenderPlan.supersampleOf(hd.copy(size = RenderSize.QHD1440, quality = RenderQuality.BEST)), 1e-6f)
+        // 4K is 3840 wide: a little over once; 21:9 4K already fills 4096, so exactly once.
+        assertEquals(4096f / 3840f, RenderPlan.supersampleOf(hd.copy(size = RenderSize.UHD4K, quality = RenderQuality.BEST)), 1e-6f)
+        val wide = RenderFormat(aspect = RenderAspect.R21_9, size = RenderSize.UHD4K, quality = RenderQuality.BEST)
+        assertEquals(1f, RenderPlan.supersampleOf(wide), 0f)
+        // Portrait counts its long side too.
+        val tall = RenderFormat(aspect = RenderAspect.R9_16, size = RenderSize.QHD1440, quality = RenderQuality.HIGH)
+        assertEquals(1.5f, RenderPlan.supersampleOf(tall), 0f)
+    }
+
+    @Test
+    fun `a seamless loop is as long as the Track, within the loop limits, and is the whole video`() {
+        assertEquals(LongForm(Millis(215_000), Millis(215_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis(215_000)))
+        assertEquals(LongForm(Millis(30_000), Millis(30_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis(12_000)))
+        assertEquals(LongForm(Millis(300_000), Millis(300_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis(900_000)))
+        assertEquals(LongForm(Millis(300_000), Millis(300_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis.ZERO))
+    }
+
+    @Test
+    fun `an N-minute Render repeats the loop to that many minutes, within ten hours`() {
+        assertEquals(LongForm(Millis(215_000), Millis(3_600_000)), RenderPlan.longFormOf(RenderLength.Minutes(60), Millis(215_000)))
+        assertEquals(Millis(60_000), RenderPlan.longFormOf(RenderLength.Minutes(0), Millis(215_000))?.total)
+        assertEquals(Millis(36_000_000), RenderPlan.longFormOf(RenderLength.Minutes(5_000), Millis(215_000))?.total)
+        assertNull(RenderPlan.longFormOf(RenderLength.WholeTrack, Millis(215_000)))
+        assertNull(RenderPlan.longFormOf(RenderLength.Section(Millis(1_000), Millis(30_000)), Millis(215_000)))
+        assertNull(RenderPlan.sectionOf(RenderLength.Loop, Millis(215_000)))
+    }
+
+    @Test
+    fun `the Track plays back to back for as long as the video runs`() {
+        assertEquals(17, RenderPlan.playsFor(Millis(3_600_000), Millis(215_000)))
+        assertEquals(2, RenderPlan.playsFor(Millis(430_000), Millis(215_000)))
+        assertEquals(3, RenderPlan.playsFor(Millis(430_001), Millis(215_000)))
+        assertEquals(1, RenderPlan.playsFor(Millis(100_000), Millis(215_000)))
+        assertEquals(1, RenderPlan.playsFor(Millis.ZERO, Millis(215_000)))
+        assertEquals(1, RenderPlan.playsFor(Millis(3_600_000), Millis.ZERO))
     }
 }

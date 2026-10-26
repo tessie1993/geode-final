@@ -44,8 +44,17 @@ public:
     // while bloom is). The bloom chain, and so the glare, follow the size ensureComposite() was given.
     void resolve(const tone::BloomSettings& bloom, GLuint source, GLuint targetFbo, int targetWidth, int targetHeight,
                  GLuint quadVao, const lens::Glare& glare = {});
+    // The bloom chain's down filter without its threshold, run down `count` targets: the first drawn from
+    // `source` with its taps a texel of sourceWidth x sourceHeight apart, each next one from the one
+    // before. A shader Style's blur levels are made with it (StyleInputs.hpp), so they blur exactly as
+    // the bloom chain does. Leaves the last target bound; false when the pass has no program.
+    bool downsample(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, GLuint quadVao);
 
 private:
+    // Draws the down filter into each of `count` targets in turn (see downsample), the first through the
+    // threshold (uCurve: curveThreshold and knee; uBloomThreshold: the bloom's own share) when `prefilter`.
+    void drawDown(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, bool prefilter,
+                  float curveThreshold, float bloomThreshold, float knee);
     // Draws the bloom chain, and the glare between its way down and its way up; returns how many
     // levels it holds (0 when there is none this frame).
     int drawBloom(const tone::BloomSettings& bloom, const lens::Glare& glare, GLuint source, GLuint quadVao);

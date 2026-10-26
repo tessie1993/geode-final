@@ -1,6 +1,7 @@
 package dev.geode.feature.studio.core
 
 import dev.geode.feature.studio.api.NewVideo
+import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderExtras
@@ -11,6 +12,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderProblem
+import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioCommand
@@ -59,6 +61,11 @@ sealed interface StudioEvent {
         val settings: RenderSettings,
     ) : StudioEvent
 
+    /** The app came in front of the person, or left (#28): with Renders keep going off, the queue follows it. */
+    data class AppInFront(
+        val inFront: Boolean,
+    ) : StudioEvent
+
     /** Renders were saved to the queue, with their ids, in the order they were queued. */
     data class RendersQueued(
         val renders: List<RenderJob>,
@@ -94,18 +101,20 @@ sealed interface RenderEnd {
 }
 
 /**
- * What Studio's Renders read from Settings: [visualsOff] (no Render while it is on, #196), and what a
- * new Render starts from in Export preferences (#22, #28).
+ * What Studio's Renders read from Settings: [visualsOff] (no Render while it is on, #196), what a new
+ * Render starts from in Export preferences (#22, #28), and Run in background's Renders keep going
+ * switch ([keepGoing], #28).
  */
 data class RenderSettings(
     val visualsOff: Boolean,
     val format: RenderFormat,
     val extras: RenderExtras,
+    val keepGoing: Boolean = true,
 )
 
 /**
  * A Render about to be queued: a [RenderJob] before Studio's database gives it its id and batch. Every
- * Render queued together has the same [look].
+ * Render queued together has the same [look]; [milkdrop] is the MilkDrop preset it plays (#341).
  */
 data class NewRender(
     val tracks: List<RenderTrack>,
@@ -114,13 +123,30 @@ data class NewRender(
     val length: RenderLength,
     val project: ProjectId,
     val extras: RenderExtras,
+    val milkdrop: String? = null,
 ) {
     /** It as saved: its [id], and the [batch] it was queued in. It waits until the queue starts it. */
     fun queuedAs(
         id: RenderId,
         batch: RenderId,
-    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras)
+    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop)
+
+    /** The setup it was made from, as its video keeps it to be made again (#327). */
+    fun toSpec(): RenderSpec =
+        RenderSpec(
+            tracks = tracks,
+            look = look,
+            format = format,
+            length = length,
+            project = project,
+            playlist = if (tracks.size > 1) PlaylistMode.ONE_CONTINUOUS_VIDEO else PlaylistMode.ONE_VIDEO_PER_TRACK,
+            extras = extras,
+            milkdrop = milkdrop,
+        )
 }
+
+/** [this] Render before it was queued: its choices without its id, batch or status. */
+internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop)
 
 /** What went wrong in the handlers. */
 enum class StudioFailure {
@@ -129,7 +155,7 @@ enum class StudioFailure {
     ADD_VIDEOS,
     DELETE_FILES,
 
-    /** The look could not be frozen when a Render was queued. */
+    /** The look could not be frozen when a Render was queued, or read back to make one again. */
     FREEZE_LOOK,
 
     /** A Render could not be saved to the queue. */
@@ -184,12 +210,24 @@ sealed interface StudioWork {
     /** Follow Settings' Visuals off and Export preferences for as long as the app runs. */
     data object FollowRenderSettings : StudioWork
 
+    /** Follow whether the app is in front of the person, for as long as it runs (#28). */
+    data object FollowAppInFront : StudioWork
+
     /**
      * Freeze the [renders]' look once (the full Customization, Automations included) and save them to
      * the queue with it; they come back with their ids in [StudioEvent.RendersQueued].
      */
     data class QueueRenders(
         val renders: List<NewRender>,
+    ) : StudioWork
+
+    /**
+     * Queue [render] with the look frozen for the Render whose video is [file] (#327); it comes back with
+     * its id in [StudioEvent.RendersQueued].
+     */
+    data class QueueRenderAgain(
+        val file: String,
+        val render: NewRender,
     ) : StudioWork
 
     /** Make [render]'s video with the look frozen for it; it reports its progress, then how it ended. */

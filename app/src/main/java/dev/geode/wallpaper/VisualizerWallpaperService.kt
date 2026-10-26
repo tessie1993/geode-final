@@ -81,6 +81,8 @@ class VisualizerWallpaperService : WallpaperService() {
             // the person touching the wallpaper. Only COMMAND_TAP (a tap on empty space) reaches it.
             setTouchEventsEnabled(false)
             val engine = VisualizerRenderer(this@VisualizerWallpaperService)
+            // Drawn for the moment this engine's pacer expects each frame on screen (#295).
+            engine.presentation = pacer
             renderer = engine
             restoreLiveState(engine)
             glView =

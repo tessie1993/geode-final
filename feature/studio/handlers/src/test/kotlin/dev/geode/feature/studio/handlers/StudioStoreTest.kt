@@ -339,6 +339,61 @@ class StudioStoreTest {
     }
 
     @Test
+    fun `a Render is made again at another shape with its own look, and becomes its own Render`() {
+        val (studio, trip) = renderingStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night), look = RenderLook.Preset(PresetId("Calm")), milkdrop = "a.milk")))
+        val first =
+            studio.state.value.videos
+                .single()
+        val madeWith = checkNotNull(first.madeWith)
+        assertEquals(listOf(night), madeWith.tracks)
+        assertEquals("a.milk", madeWith.milkdrop)
+
+        // The Customization changes meanwhile; the Render made again keeps the look frozen for the first.
+        val square = RenderFormat(aspect = RenderAspect.R1_1, size = RenderSize.HD720)
+        studio.send(StudioCommand.RenderAgain(first.id, madeWith.copy(format = square, look = RenderLook.Current)))
+
+        assertEquals(listOf<RenderLook>(RenderLook.Preset(PresetId("Calm"))), looks.frozen)
+        val again = engine.made.last()
+        assertEquals(FrozenLook("look 1"), again.second)
+        assertEquals(square, again.first.format)
+        assertEquals(RenderLook.Preset(PresetId("Calm")), again.first.look)
+        assertEquals(listOf(night), again.first.tracks)
+        assertEquals(2, studio.state.value.videos.size)
+        assertEquals(
+            listOf(trip, trip),
+            studio.state.value.videos
+                .map { it.project },
+        )
+        assertEquals(
+            square,
+            studio.state.value.videos
+                .last()
+                .madeWith
+                ?.format,
+        )
+        // A fresh Render of the song still starts from Settings, not from either Render.
+        assertEquals(RenderFormat(), studio.state.value.renderFormat)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Render whose look is gone cannot be made again, and says so`() {
+        val (studio, _) = renderingStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+        val first =
+            studio.state.value.videos
+                .single()
+        storage.loseLooks = true
+
+        studio.send(StudioCommand.RenderAgain(first.id, checkNotNull(first.madeWith)))
+
+        assertEquals(1, engine.made.size)
+        assertEquals(1, studio.state.value.renders.size)
+        assertEquals(listOf("Could not read the look for the Render, so it was not queued"), failures.map { it.message })
+    }
+
+    @Test
     fun `a playlist is made one video per track, in order, each its own Render`() {
         val (studio, _) = renderingStore()
 
@@ -774,7 +829,7 @@ private class FakeStudioStorage : StudioStorage {
     ): List<Video> {
         ensureWorking()
         return videos.map {
-            Video(VideoId(nextId++), project, it.kind, it.name, it.file, it.thumbnail, it.length, it.width, it.height, it.song)
+            Video(VideoId(nextId++), project, it.kind, it.name, it.file, it.thumbnail, it.length, it.width, it.height, it.song, it.madeWith)
                 .also { video -> videosById[video.id] = video }
         }
     }
@@ -801,6 +856,11 @@ private class FakeStudioStorage : StudioStorage {
     override suspend fun lookOf(render: RenderId): FrozenLook? {
         ensureWorking()
         return if (loseLooks) null else rendersById[render]?.look
+    }
+
+    override suspend fun lookOfVideo(file: String): FrozenLook? {
+        ensureWorking()
+        return if (loseLooks) null else rendersById.values.lastOrNull { it.file == file }?.look
     }
 
     override suspend fun renderSaved(

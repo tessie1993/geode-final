@@ -82,12 +82,14 @@
     <string name="eq_loudness">Loudness  %1$+.1f dB</string>
 
     <string name="audio_group_analysis">Analysis</string>
+    <string name="audio_sensitivity">Sensitivity  %1$+.1f dB</string>
     <string name="audio_beat_sensitivity">Beat sensitivity  %1$.1f</string>
     <string name="audio_beat_min_gap">Shortest gap between beats  %1$d ms</string>
     <string name="audio_slow_track">Slow track</string>
     <string name="audio_default">Default</string>
     <string name="audio_preset_morph">Preset glide  %1$.1f s</string>
     <string name="audio_react_mic">React to the microphone</string>
+    <string name="audio_sync_offset">Picture sync  %1$+d ms (later when positive)</string>
 
     <!-- Export -->
     <string name="export_group_defaults">New renders start with</string>

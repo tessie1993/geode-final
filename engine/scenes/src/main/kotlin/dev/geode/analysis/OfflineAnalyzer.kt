@@ -1,6 +1,7 @@
 package dev.geode.analysis
 
 import android.content.Context
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -40,10 +41,11 @@ class OfflineAnalyzer(
         beatSensitivity: Float = BeatTuning.SENSITIVITY_DEFAULT,
         beatMinIntervalMs: Float = BeatTuning.INTERVAL_MS_DEFAULT,
         onProgress: (Float) -> Unit = {},
+        profile: AnalysisProfile = AnalysisProfile.LIVE,
         stillWanted: () -> Boolean = { true },
     ): FeatureTimeline {
         dev.geode.audio.AiffPcm.open(context, uri)?.let { aiff ->
-            val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs)
+            val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs, profile)
             try {
                 val buf = ShortArray(16384)
                 var last = 0f
@@ -65,7 +67,7 @@ class OfflineAnalyzer(
         }
         val extractor = MediaExtractor()
         var codecRef: MediaCodec? = null
-        val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs)
+        val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs, profile)
         // pipeline.use ensures the native analysis handle is released on every exit path
         // (normal completion, "No audio track in file", a codec error, or cancellation),
         // not only on the success path.
@@ -85,8 +87,7 @@ class OfflineAnalyzer(
                 val durationUs =
                     if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
                 val mime = requireNotNull(format.getString(MediaFormat.KEY_MIME))
-                val codec = MediaCodec.createDecoderByType(mime).also { codecRef = it }
-                codec.configure(format, null, null, 0)
+                val codec = floatDecoder(mime, format).also { codecRef = it }
                 codec.start()
                 while (!outputDone) {
                     if (!stillWanted()) throw CancellationException("analysis cancelled")
@@ -148,9 +149,26 @@ class OfflineAnalyzer(
         }
     }
 
+    /**
+     * A decoder for [format] asked for float PCM (#299), so a 24-bit file keeps its precision; one that
+     * will not give float is configured for its default 16-bit output instead.
+     */
+    private fun floatDecoder(
+        mime: String,
+        format: MediaFormat,
+    ): MediaCodec {
+        format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_FLOAT)
+        val floatCodec = MediaCodec.createDecoderByType(mime)
+        if (runCatching { floatCodec.configure(format, null, null, 0) }.isSuccess) return floatCodec
+        floatCodec.release()
+        format.removeKey(MediaFormat.KEY_PCM_ENCODING)
+        return MediaCodec.createDecoderByType(mime).also { it.configure(format, null, null, 0) }
+    }
+
     internal class StreamingPipeline(
         sigma: Float,
         minIntervalMs: Float,
+        private val profile: AnalysisProfile = AnalysisProfile.LIVE,
     ) : AutoCloseable {
         private val analyzer =
             ReactiveAnalyzer(
@@ -164,7 +182,7 @@ class OfflineAnalyzer(
                 it.releaseSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_DECAY)
             }
 
-        private val frames = FrameAccumulator()
+        private val frames = FrameAccumulator(profile.maxFrames)
         private var scratch = FloatArray(AnalysisEngine.DEFAULT_FFT_SIZE * 4)
         private var sampleRate = 44100
         private var hopSamples = AnalysisHop.samples(sampleRate, AnalysisEngine.DEFAULT_FFT_SIZE)
@@ -211,7 +229,7 @@ class OfflineAnalyzer(
             while (analyzer.pull()) {
                 // Stamped at the middle of the window it was measured over, the moment it describes,
                 // not at its start (#302): a Render then draws each hop where it is heard.
-                val timeMs = (absSample + AnalysisEngine.DEFAULT_FFT_SIZE / 2) * 1000L / sampleRate
+                val timeMs = (absSample + AnalysisHop.windowFrames(sampleRate, AnalysisEngine.DEFAULT_FFT_SIZE) / 2) * 1000L / sampleRate
                 frames.add(TimelineFrame(timeMs, snapshot()))
                 absSample += hopSamples
             }
@@ -220,7 +238,7 @@ class OfflineAnalyzer(
         private fun snapshot(): AudioFeatures =
             AudioFeatures(
                 bands = analyzer.bands.copyOf(),
-                waveform = analyzer.waveform.copyOf(),
+                waveform = if (profile.keepsWaveform) analyzer.waveform.copyOf() else NO_WAVEFORM,
                 rms = analyzer.rms,
                 bass = analyzer.bass,
                 mid = analyzer.mid,
@@ -279,6 +297,9 @@ class OfflineAnalyzer(
 
     companion object {
         const val OFFLINE_HOP_RATE_HZ = AnalysisHop.RATE_HZ
+
+        /** What a hop of the Render profile holds for a waveform: nothing, shared. */
+        private val NO_WAVEFORM = FloatArray(0)
     }
 }
 

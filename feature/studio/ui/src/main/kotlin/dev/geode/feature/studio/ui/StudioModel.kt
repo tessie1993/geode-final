@@ -168,6 +168,11 @@ sealed interface StudioAction {
     /** Open the Render setup (#316). */
     data object OpenRender : StudioAction
 
+    /** Open the Render setup to make [video], a Render, again at another shape or quality (#327). */
+    data class RenderAgain(
+        val video: VideoId,
+    ) : StudioAction
+
     data object Back : StudioAction
 }
 

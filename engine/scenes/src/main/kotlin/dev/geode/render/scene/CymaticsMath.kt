@@ -58,8 +58,8 @@ object CymaticsMath {
     ): Float {
         if (bandCount <= 0) return MIN_BAND_HZ
         val ratio = ln(MAX_BAND_HZ / MIN_BAND_HZ)
-        val low = MIN_BAND_HZ * exp(ratio * band / bandCount).toFloat()
-        val high = MIN_BAND_HZ * exp(ratio * (band + 1) / bandCount).toFloat()
+        val low = MIN_BAND_HZ * exp(ratio * band / bandCount)
+        val high = MIN_BAND_HZ * exp(ratio * (band + 1) / bandCount)
         return sqrt(low * high)
     }
 

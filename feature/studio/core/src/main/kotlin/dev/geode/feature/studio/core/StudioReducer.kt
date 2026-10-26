@@ -2,6 +2,7 @@ package dev.geode.feature.studio.core
 
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RecordingCommand
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
@@ -26,7 +27,8 @@ import dev.geode.kernel.ReportFailure
  * they are handed back to be asked about, never dropped.
  *
  * The render queue's rules are [RenderQueue]'s (#338); the saved Renders that had not finished come
- * back with the library and start once it is read.
+ * back with the library and start once it is read. Recordings of the live Visual are [Recordings]'
+ * (#317).
  */
 object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
     override fun reduce(
@@ -61,9 +63,11 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
                 )
             is StudioEvent.Failed -> failed(state, event.failure)
             is StudioEvent.RenderSettingsChanged -> RenderQueue.settings(state, event.settings)
+            is StudioEvent.AppInFront -> RenderQueue.next(state.copy(appInFront = event.inFront))
             is StudioEvent.RendersQueued -> RenderQueue.queued(state, event.renders)
             is StudioEvent.RenderProgress -> RenderQueue.progress(state, event)
             is StudioEvent.RenderEnded -> RenderQueue.ended(state, event)
+            is RecordingEvent -> Recordings.event(state, event)
         }
 
     /** The library is read: carry out the Commands that waited for it, in order, then start the queue. */
@@ -100,8 +104,10 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioCommand.MoveVideo -> move(state, command)
             is StudioCommand.AddVideos -> addVideos(state, command.videos, command.project)
             is StudioCommand.QueueRender -> RenderQueue.queue(state, command.spec)
+            is StudioCommand.RenderAgain -> RenderQueue.again(state, command.video, command.spec)
             is StudioCommand.CancelRenders -> RenderQueue.cancel(state, command.renders)
             StudioCommand.ClearFinishedRenders -> RenderQueue.clearFinished(state)
+            is RecordingCommand -> Recordings.command(state, command)
         }
 
     private fun create(

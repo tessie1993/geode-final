@@ -141,7 +141,11 @@ sealed interface CaptureAnnouncement : AudioAnnouncement {
         val quiet: Boolean,
     ) : CaptureAnnouncement
 
-    /** The capture from [source] ended by itself: the device was unplugged or the read failed. */
+    /**
+     * The capture from [source] is lost: another app or the system took it, the app went to the
+     * background, or reading failed past its retries. Unless it ended for good, a [Running] follows when
+     * the source is back.
+     */
     data class Lost(
         val source: CaptureSource,
     ) : CaptureAnnouncement

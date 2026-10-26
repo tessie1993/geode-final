@@ -34,6 +34,7 @@
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
+#include "geode/viz/SharedInputs.hpp"
 #include "geode/render/ShaderSource.hpp"
 #ifdef GEODE_STYLE_HOT_RELOAD
 #include "geode/viz/StyleLab.hpp"
@@ -53,6 +54,8 @@ class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
     static constexpr int kPcmWindowFrames = 576;
+    // The longest span of audio a frame is handed: a frame interval at 15 fps and 48 kHz, plus a window.
+    static constexpr int kPcmSpanFrames = 4096;
 
     Renderer(AAssetManager* assets, std::string cacheDir);
     ~Renderer();
@@ -90,6 +93,8 @@ public:
     void setOverlayRgba(const uint32_t* pixels, int width, int height);
     void setUnderlayRgba(const uint32_t* pixels, int width, int height, int blend, float amount);
     ThermalGovernor& thermal() { return thermal_; }
+    // GL thread, before surfaceChanged: a Render's scene supersample (scale::totalScale clamps it, #345).
+    void setExportSupersample(float factor) { exportSupersample_ = factor; }
     // Any thread: the frame pacer's latest window (frames in it, 95th percentile interval in ms),
     // which the load scale follows. Sampled by the host about once a second.
     void setFrameLoad(int frames, float p95Ms);
@@ -104,10 +109,12 @@ public:
 #endif
 
     // GL thread.
-    // The next frame's audio window, interleaved stereo (at most kPcmWindowFrames): handed to every scene
-    // that frame and then dropped, so no window is ever drawn twice. Without one, the scenes fall back to
-    // the features' waveform.
-    void setFramePcm(const float* stereo, int frames);
+    // The next frame's audio, interleaved stereo: up to kPcmSpanFrames frames ending at the audio heard,
+    // the newest `fresh` of them heard since the last frame. Every scene gets the newest
+    // kPcmWindowFrames as its window, and the whole span (Scene::acceptPcmSpan); both are handed over
+    // that frame and then dropped, so no window is ever drawn twice. Without them, the scenes fall back
+    // to the features' waveform.
+    void setFramePcm(const float* stereo, int frames, int fresh = 0);
     void onSurfaceCreated();
     void surfaceChanged(int width, int height);
     bool setScene(const std::string& sceneId);
@@ -205,6 +212,8 @@ private:
     CompositePass::Inputs compositeInputs_;
     // HDR: the composite's target, the bloom and the tonemap (highlight roll-off) into the No-flash candidate.
     HdrPass hdrPass_;
+    // The shared Style inputs (StyleInputs.hpp): noise made on first use, blur levels through hdrPass_.
+    SharedInputs sharedInputs_;
     // The lens effects (#313) and the 3D particle layer (#314): depth of field over the scene target,
     // the particles onto the composite; the glare is drawn by hdrPass_ from its bloom chain.
     DofPass dofPass_;
@@ -243,13 +252,18 @@ private:
     std::atomic<bool> reducedMotion_{false};
     std::atomic<float> touchSmear_{0.0f};
     scale::FrameLoad frameLoad_;
+    float exportSupersample_ = scale::kExportSupersample;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
     // The audio window setFramePcm handed over for the next frame, and the one this frame draws: latched in
     // beginFrame, so every scene of a frame gets the same window and the next frame gets none unless a new
     // one comes.
-    std::array<float, kPcmWindowFrames * 2> pendingPcm_{};
+    std::array<float, kPcmSpanFrames * 2> pendingPcm_{};
     int pendingPcmFrames_ = 0;
+    int pendingPcmFresh_ = 0;
+    std::array<float, kPcmSpanFrames * 2> frameSpan_{};
+    int frameSpanFrames_ = 0;
+    int frameSpanFresh_ = 0;
     std::array<float, kPcmWindowFrames * 2> framePcm_{};
     std::array<float, kPcmWindowFrames> framePcmMono_{};
     int framePcmFrames_ = 0;

@@ -28,9 +28,11 @@ import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.SoundSignal.BASS
 import dev.geode.feature.customization.api.SoundSignal.BEAT
 import dev.geode.feature.customization.api.SoundSignal.BRIGHTNESS
+import dev.geode.feature.customization.api.SoundSignal.CHANGE
 import dev.geode.feature.customization.api.SoundSignal.HIT
 import dev.geode.feature.customization.api.SoundSignal.LEVEL
 import dev.geode.feature.customization.api.SoundSignal.MID
+import dev.geode.feature.customization.api.SoundSignal.SURGE
 import dev.geode.feature.customization.api.SoundSignal.TREBLE
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.customization.api.StyleManifest
@@ -39,6 +41,9 @@ import dev.geode.feature.customization.api.Target
 /** How fast a default Reaction follows its signal up and back down. */
 val DEFAULT_RISE = Millis(30)
 val DEFAULT_FALL = Millis(250)
+
+/** How slowly a spark burst settles after the drop or arrival that threw it. */
+private val BURST_FALL = Millis(1_600)
 
 /** The amount of a default "hit brightens it" Reaction; it always rises (No-flash rule). */
 const val HIT_GLOW: Float = 0.2f
@@ -290,8 +295,35 @@ object BuiltInStyles {
             "tide_line",
             "warp_drive",
             "mandala_cavern",
+            "polyhedra_cathedral",
             "iris_droste",
         ).map { shader(it, true) }
+
+    /**
+     * A spark burst: [signal] (a drop or an arrival) pushes the FORCE Extra by [amount], rising no faster
+     * than the No-flash rise and settling over [BURST_FALL], so a burst blooms and dies away.
+     */
+    private fun burst(
+        signal: SoundSignal,
+        amount: Float,
+    ): Reaction =
+        Reaction(
+            UNNUMBERED,
+            ReactionSource.Sound(signal),
+            Target.Extra(FORCE),
+            amount,
+            rise = NO_FLASH_MIN_RISE,
+            fall = BURST_FALL,
+        )
+
+    /**
+     * The Visuals v3 Styles. Vortex Forge (#323) owns its camera (lib_camera) and reads FORCE above its
+     * neutral 1 as its spark burst, which drops and arrivals throw.
+     */
+    private val forgeShaders: List<StyleManifest> =
+        listOf(
+            shader("vortex_forge", true, listOf(burst(SURGE, 0.5f), burst(CHANGE, 0.4f))),
+        )
 
     private fun life(id: String): StyleManifest =
         style(id, StyleFamily.LIFE, false, listOf(react(HIT, FORCE, 0.3f), react(LEVEL, GROWTH, 0.1f)))
@@ -430,8 +462,8 @@ object BuiltInStyles {
 
     /** The Styles the #11 audit designed (their own Reactions and starting values) and the ones that fly their own camera. */
     internal val designed: List<StyleManifest> =
-        classicShaders + newerShaders + worldShaders + cameraWorldShaders + cameraJourneys + cameraWorlds + lifeStyles +
-            mycoStyles + acidStyles + fluidStyles + listOf(curlFlow, water) + cymaticsStyles + milkDrop
+        classicShaders + newerShaders + worldShaders + cameraWorldShaders + cameraJourneys + cameraWorlds + forgeShaders +
+            lifeStyles + mycoStyles + acidStyles + fluidStyles + listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     /**
      * [audited], then a plain manifest (its pack's family and Extras, no Reactions or own flight) for

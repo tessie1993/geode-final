@@ -75,7 +75,7 @@ check every name is a real property.
 | `id` | yes | The Style id; the folder's name. Saved presets and settings store it. |
 | `label` | yes | The name the App UI shows. |
 | `family` | yes | The renderer that draws it, declared in `families.json`. |
-| `shader` | shader Styles only | The fragment shader, a file in the Style's own folder. Its `//#include` lines resolve against `shaders/lib_*.glsl`. |
+| `shader` | shader Styles only | The fragment shader, a file in the Style's own folder. Its `//#include` lines resolve against `shaders/lib_*.glsl`. The sound reaches it through `uAudioTex` (`lib_scene_uniforms`, `geode/viz/AudioInputs.hpp`): `aband(x)` the spectrum, 30 Hz–16 kHz on a log scale and one level scale, `apeak(x)` its peak hold, `awave(x)` a steady oscilloscope of the mid, and `awaveL(x)`/`awaveR(x)` its left and right channels. |
 | `renderScale` | no | 0.5–1, default 1: the Style draws at this fraction of the live render size (ADR-0005, "Visual buffers follow load"). |
 | `detail` | no | What Detail drives beyond the shared quality ladder: `"none"` (default) or `"march"` (the Style breaks its raymarch on the Detail step budget). |
 | `parameters` | no | Values for the family's parameters, each within the family's range; the rest take the family default. |
@@ -83,6 +83,7 @@ check every name is a real property.
 | `macros` | no | Default Macros, at most 6 (the shared set): `name` and `links`, each a `target` and an `amount` in −1…1. |
 | `reactions` | no | Default Reactions: a Sound `signal` (0–1) moving a `target` by an `amount` in −1…1, with `riseMs`, `fallMs` (≥ 0) and a `curve` (`linear`, `ease_in`, `ease_out`, `smooth`). |
 | `effects` | no | The Style's costly effects the hot thermal tiers may switch off, at most 8 lower-case names. The shader reads effect *i* (its position in the list) with `fxOn(i)` from `lib_scene_uniforms`. |
+| `inputs` | no | The shared Style inputs the shader reads ("Shared inputs" below), each named once: `noise_lq`, `noise_mq`, `noise_hq`, `noise_vol`, `blue_noise`, `blur1`, `blur2`, `blur3`, `previous_frame`, `clocks`, `bar`. Shader Styles only; the shader includes `lib_inputs` and reads every input it declares and no other (CI checks both, the render check on the linked program). |
 | `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 | `lens` | no | The shared lens effects (#313, `geode/viz/LensFx.hpp`), each part optional: `threshold` (0.5–1, the light the glare gathers from), `flare` (`amount`, `ghosts` 1–8, `halo`, `dispersion`), `godRays` (`amount`, `source` [x, y] in 0–1 from the bottom left, `length` 0.1–1, `decay` 0.8–0.99), `streaks` (`amount`, `shape` `star`, `zoom` or `anamorphic`, `spokes` 2–8, `length` 0.1–1) and `depthOfField` (`aperture`, `focus` 0.05–0.95). Amounts, halo, dispersion and aperture are 0–1, and each part needs its `amount` (`aperture` for depth of field) above 0. Depth of field is for shader Styles only: the shader writes its depth into alpha as t / (t + the subject's distance), 1 for nothing hit. |
 | `particles3d` | no | The shared 3D particle layer (#314): `amount` (above 0, up to 1), `kind` (`streaks` or `sparks`), and multipliers `count` (0.25–2), `speed` (0.1–3) and `size` (0.3–3), and a `tint` [r, g, b] in 0–2. |
@@ -97,6 +98,27 @@ Kotlin side lists them in `PackExtras.kt` (`:feature:customization:core`), gener
 `python3 tools/ci/check_style_packs.py --write-kotlin` and held to the packs by CI. No Style ships Macros or
 Reactions yet; the default Reactions are still in `BuiltInStyles.kt`.
 
+## Shared inputs
+
+What MilkDrop's shared include gives every preset, a shader Style gets by declaring it under `inputs`
+(`geode/viz/StyleInputs.hpp`; `//#include lib_inputs`). The engine makes and binds only what the drawing
+Style declares, so an input no Style declares is never made and one a Style does not declare costs it
+nothing.
+
+| Input | Reads as | What it is |
+|---|---|---|
+| `noise_lq`, `noise_mq`, `noise_hq` | `uNoiseLq`, `uNoiseMq`, `uNoiseHq`; `fbmTex()` | 256×256 RGBA noise that tiles, four independent channels: white noise, then smooth value noise with a lattice point every 4 and every 8 texels. |
+| `noise_vol` | `uNoiseVol`; `vnoiseVol()`, `fbmVol()` | A 32³ RGBA volume of white noise. `vnoiseVol` and `fbmVol` are `lib_sdf3`'s `vnoise3` and `fbm3` at one fetch per octave. |
+| `blue_noise` | `uBlueNoise` | The 64×64 blue-noise mask the tonemap dithers with. |
+| `previous_frame` | `uPrevFrame` | The last frame this Style drew, at its size, kept across a resize. |
+| `blur1`, `blur2`, `blur3` | `uBlur1`, `uBlur2`, `uBlur3` | That frame blurred at 1/4, 1/8 and 1/16 of its size by the bloom chain's own down filter (`HdrPass::downsample`), only as deep as the deepest one declared. |
+| `clocks` | `uFrame`, `uFrameDt`, `uVisitRand`, `uStyleAge` | Frames drawn this visit, the frame's seconds, four random values drawn once per visit, and seconds into the visit. A visit starts when the Style starts to be drawn, as Layer 1 or Layer 2. |
+| `bar` | `uBarPhase`, `uBarConfidence` | Where the music is in its bar (0–1, four beats), a clock locked to the heard downbeat that never runs backwards or jumps, and how sure it is. |
+
+The noise is drawn from the Render seed, and so is `uVisitRand` in a Render, so a Render gives the same
+frames every time. The previous frame and the blur levels are the Style's own picture: what feeds back
+must stay below 1, or the loop grows into a flash. A Style's kept frames start black at each visit.
+
 ## The music in a Style
 
 The analysis hears far more than the bands and the beat, and every family draws from the same reading
@@ -107,8 +129,8 @@ without either), and the tempo-locked values fall away while the tracker is unsu
 tempo leaves the picture to the energy instead of making it jitter. Silence settles every value and
 holds it still, and the same frames give the same values, so a Render repeats.
 
-A shader Style reads it with `//#include lib_scene_features` (the bar's phase is the bar shared input,
-`uBarPhase`). The other families read it through `featuremap` in the same header.
+A shader Style reads it with `//#include lib_scene_features`. It is not a shared input: nothing is made
+for it, so it needs no `inputs` entry (the bar's phase is the `bar` shared input, `uBarPhase`). The other families read it through `featuremap` in the same header.
 
 | Scale | Feature | Uniform | Drives | Families |
 |---|---|---|---|---|
