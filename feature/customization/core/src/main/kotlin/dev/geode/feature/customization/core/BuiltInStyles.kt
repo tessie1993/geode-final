@@ -169,7 +169,6 @@ object BuiltInStyles {
             shader("plasma", false, listOf(react(BASS, SCALE, 0.3f), react(LEVEL, DRIFT, 0.2f))),
             shader("bars", false),
             shader("ring", false, listOf(react(BASS, SIZE, 0.2f))),
-            shader("scope", false, listOf(react(LEVEL, SCALE, 0.3f))),
             shader("liss", false, listOf(react(MID, SCALE, 0.2f))),
             shader("warp", true, listOf(react(LEVEL, FLIGHT, 0.5f), react(BEAT, FLIGHT, 0.3f))),
             shader("grid", true, listOf(react(BASS, FLIGHT, 0.6f), hitGlow)),
@@ -177,7 +176,6 @@ object BuiltInStyles {
             shader("metaballs", false, listOf(react(LEVEL, SIZE, 0.4f), hitGlow)),
             shader("ripples", false, listOf(react(BASS, SCALE, 0.3f), hitGlow)),
             shader("starfield", true, listOf(react(LEVEL, FLIGHT, 0.5f), hitGlow)),
-            shader("waves", false, listOf(react(BASS, THICKNESS, 0.3f), react(LEVEL, SCALE, 0.2f))),
             // Cell scale was Morph's second meaning (+6·Morph); it is the SCALE Extra now.
             shader("hexgrid", true, listOf(react(TREBLE, EDGE, 0.2f), react(LEVEL, FLIGHT, 0.3f))),
             // Arm count was Morph's second meaning (+4·Morph); it is the COUNT Extra now.

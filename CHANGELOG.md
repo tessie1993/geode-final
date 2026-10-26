@@ -11,6 +11,11 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Scope and Waves are removed (#456).** The owner cut both Styles; their
+  packs, their built-in Reactions and Extras and their ids go. A stored
+  preset or setting naming either loads as the default Style. The feedback
+  warp machinery Scope used stays in the engine for later Styles.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio
