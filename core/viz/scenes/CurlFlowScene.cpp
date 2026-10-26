@@ -84,8 +84,9 @@ void CurlFlowScene::draw(float timeSeconds) {
         glUniform1f(fieldUniforms_.loc("uTime"), noiseTime_);
         glUniform1f(fieldUniforms_.loc("uFreq"), 1.2f * (0.5f + std::clamp(params_.turbulence, 0.1f, 2.0f)));
         glUniform1f(fieldUniforms_.loc("uDetail"), std::clamp(f.treble * 3.0f + pcmKick_ * 0.8f, 0.0f, 1.5f));
+        // A build pushes the field harder (#294).
         glUniform1f(fieldUniforms_.loc("uAmp"), fluid::curl::fieldAmp(params_.audioDrive, beatDrive_) * (1.0f + pcmKick_ * 0.35f) *
-                                                      extras_.multiplier(mod::Extra::Swirl, 0.0f));
+                                                      extras_.multiplier(mod::Extra::Swirl, 0.0f) * featuremap::curlForce(bus_));
         glUniform2f(fieldUniforms_.loc("uPeriod"), 0.0f, 0.0f);
         glBindFramebuffer(GL_FRAMEBUFFER, fld.fbo());
         // The field is rebuilt from noise every audio frame, so nothing carries over: discard, then fill.

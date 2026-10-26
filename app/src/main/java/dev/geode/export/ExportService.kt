@@ -29,7 +29,8 @@ import javax.inject.Inject
  * Keeps Studio's render queue alive while the app is not in front (ADR-0004, #316): a foreground
  * service of the media-processing type with a progress notification. It does not own the Renders —
  * Studio's store runs them — it follows Studio's state, shows how far the queue has got, and stops
- * once nothing waits or runs. It is sticky: when Android kills the process mid-Render it starts the
+ * once nothing waits or runs, or once Settings' Renders keep going is off (#28): then Renders run only
+ * while the app is in front, and nothing needs keeping alive. It is sticky: when Android kills the process mid-Render it starts the
  * service again, which brings Studio's store back, and the store resumes the queue from its database.
  */
 @AndroidEntryPoint
@@ -50,7 +51,7 @@ class ExportService : Service() {
         watcher =
             scope.launch {
                 studio.state.collect { state ->
-                    if (!state.loading && state.renders.none { it.active }) {
+                    if (!state.loading && (state.renders.none { it.active } || !state.rendersKeepGoing)) {
                         stopSelf()
                     } else {
                         bestEffort(TAG, "startForegroundNotification(state)") { startForegroundNotification(state) }
@@ -84,17 +85,7 @@ class ExportService : Service() {
     }
 
     private fun startForegroundNotification(state: StudioState) {
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                getString(dev.geode.R.string.export_channel_name),
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = getString(dev.geode.R.string.export_channel_description)
-                setShowBadge(false)
-            },
-        )
+        ensureChannel(this)
         val open =
             PendingIntent.getActivity(
                 this,
@@ -144,9 +135,24 @@ class ExportService : Service() {
         }
 
     companion object {
-        private const val CHANNEL_ID = "geode-export"
+        /** The Renders' notification channel: the queue's progress, and a Render's finished alert (#28). */
+        const val CHANNEL_ID = "geode-export"
         private const val NOTIFICATION_ID = 4711
         private const val PROGRESS_MAX = 1000
+
+        /** Makes the Renders' channel, once; asking again changes nothing. */
+        fun ensureChannel(context: Context) {
+            context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+                NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(dev.geode.R.string.export_channel_name),
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = context.getString(dev.geode.R.string.export_channel_description)
+                    setShowBadge(false)
+                },
+            )
+        }
 
         fun start(context: Context) {
             runCatching {

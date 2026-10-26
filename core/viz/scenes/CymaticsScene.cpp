@@ -54,7 +54,9 @@ void CymaticsScene::draw(float timeSeconds) {
                   cymatics::ringSeconds(extras::scaled(p.cymaticsRing, extras_[mod::Extra::Decay])),
                   p.cymaticsFocus);
     plate_.advancePhases(dt, p.speed);
-    const int modes = extras::count(std::min(p.cymaticsModes, style_.modeCap), extras_[mod::Extra::Count], cymatics::kMaxRenderedModes);
+    // While the bar is trusted the plate climbs through its modes over each bar (#294).
+    const int modes = featuremap::cymaticsModes(
+        extras::count(std::min(p.cymaticsModes, style_.modeCap), extras_[mod::Extra::Count], cymatics::kMaxRenderedModes), bus_);
     modeCount_ = plate_.snapshot(modes, modes_.data(), static_cast<int>(modes_.size()));
 
     float totalAmplitude = 0.0f;

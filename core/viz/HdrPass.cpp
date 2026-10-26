@@ -82,32 +82,15 @@ int HdrPass::drawBloom(const tone::BloomSettings& bloom, const lens::Glare& glar
         if (!levels_[static_cast<size_t>(i)].ensure(size.width, size.height)) return 0;
     }
     if (count == 0) return 0;
-    glDisable(GL_BLEND);
     glBindVertexArray(quadVao);
-    glActiveTexture(GL_TEXTURE0);
     // Down the chain: the composite's light above the threshold into level 0, then each level halved.
     // While the glare is on the chain gathers from the lens's threshold too, the bloom's share in alpha.
-    glUseProgram(downProgram_);
-    glUniform1i(downUniforms_.loc("uSource"), 0);
-    glUniform2f(downUniforms_.loc("uCurve"), lens::chainThreshold(bloom.threshold, glare), bloom.knee);
-    glUniform1f(downUniforms_.loc("uBloomThreshold"), bloom.threshold);
     // The first level's taps are a frame texel apart whatever the source's own size, so a skipped
     // composite (the supersampled scene target read directly) blurs exactly as the composite would.
-    int sourceWidth = width_;
-    int sourceHeight = height_;
-    for (int i = 0; i < count; ++i) {
-        const Framebuffer& level = levels_[static_cast<size_t>(i)];
-        glBindFramebuffer(GL_FRAMEBUFFER, level.fbo());
-        level.discardContents();
-        glViewport(0, 0, level.width(), level.height());
-        glBindTexture(GL_TEXTURE_2D, source);
-        glUniform1i(downUniforms_.loc("uPrefilter"), i == 0 ? 1 : 0);
-        glUniform2f(downUniforms_.loc("uTexel"), 1.0f / static_cast<float>(sourceWidth), 1.0f / static_cast<float>(sourceHeight));
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        source = level.tex();
-        sourceWidth = level.width();
-        sourceHeight = level.height();
-    }
+    std::array<Framebuffer*, tone::kMaxLevels> targets{};
+    for (int i = 0; i < count; ++i) targets[static_cast<size_t>(i)] = &levels_[static_cast<size_t>(i)];
+    drawDown(source, width_, height_, targets.data(), count, true, lens::chainThreshold(bloom.threshold, glare), bloom.threshold,
+             bloom.knee);
     // The glare reads the quarter-size level before the way up adds the wider ones onto it.
     glareDrawn_ = glare.on() && drawGlare(glare, count);
     // Back up: each smaller level added onto the one above it, so level 0 gathers them all.
@@ -127,6 +110,39 @@ int HdrPass::drawBloom(const tone::BloomSettings& bloom, const lens::Glare& glar
     glDisable(GL_BLEND);
     glBindVertexArray(0);
     return count;
+}
+
+void HdrPass::drawDown(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, bool prefilter,
+                       float curveThreshold, float bloomThreshold, float knee) {
+    glDisable(GL_BLEND);
+    glActiveTexture(GL_TEXTURE0);
+    glUseProgram(downProgram_);
+    glUniform1i(downUniforms_.loc("uSource"), 0);
+    glUniform2f(downUniforms_.loc("uCurve"), curveThreshold, knee);
+    glUniform1f(downUniforms_.loc("uBloomThreshold"), bloomThreshold);
+    for (int i = 0; i < count; ++i) {
+        const Framebuffer& level = *targets[i];
+        glBindFramebuffer(GL_FRAMEBUFFER, level.fbo());
+        level.discardContents();
+        glViewport(0, 0, level.width(), level.height());
+        glBindTexture(GL_TEXTURE_2D, source);
+        glUniform1i(downUniforms_.loc("uPrefilter"), prefilter && i == 0 ? 1 : 0);
+        glUniform2f(downUniforms_.loc("uTexel"), 1.0f / static_cast<float>(sourceWidth), 1.0f / static_cast<float>(sourceHeight));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        source = level.tex();
+        sourceWidth = level.width();
+        sourceHeight = level.height();
+    }
+}
+
+bool HdrPass::downsample(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, GLuint quadVao) {
+    if (downProgram_ == 0 || sourceWidth <= 0 || sourceHeight <= 0) return false;
+    if (count <= 0) return true;
+    glBindVertexArray(quadVao);
+    const tone::BloomSettings plain;
+    drawDown(source, sourceWidth, sourceHeight, targets, count, false, plain.threshold, plain.threshold, plain.knee);
+    glBindVertexArray(0);
+    return true;
 }
 
 bool HdrPass::drawGlare(const lens::Glare& glare, int levels) {

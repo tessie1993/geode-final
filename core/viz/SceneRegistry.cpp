@@ -52,7 +52,7 @@ std::unique_ptr<Scene> buildShader(const Build& b) {
         b.host.onShaderError(error);
         return nullptr;
     }
-    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host);
+    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs);
 }
 
 // One renderer per family. A Style is a pack naming one of these; nothing here names a Style.

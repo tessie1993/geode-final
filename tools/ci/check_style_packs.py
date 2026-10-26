@@ -6,7 +6,8 @@ shader Style, its fragment shader. styles/index.json lists the Styles in picker 
 styles/families.json declares each family's parameters with their types and ranges. Both the Kotlin
 side (StylePacks.kt) and the native side (geode/viz/StylePacks.hpp) read these files; this check holds
 them to the format, plus the rules that span packs (every folder listed exactly once, an Extra name
-meaning the same range on every Style, every Extra a shader Style declares read by its shader).
+meaning the same range on every Style, every Extra a shader Style declares read by its shader, and a
+shader Style reading exactly the shared inputs it declares).
 
 The packs are the one source of a Style's Extras. The Kotlin side lists them in a generated file
 (PackExtras.kt in :feature:customization:core), which this check holds to the packs.
@@ -32,6 +33,8 @@ PACK_EXTRAS_KT = (
     ROOT / "feature" / "customization" / "core" / "src" / "main" / "kotlin" / "dev" / "geode" / "feature" / "customization" / "core"
     / "PackExtras.kt"
 )
+# The feature bus's uniforms (#294): a Style that includes the library reads at least one of them.
+FEATURES_LIB = ROOT / "app" / "src" / "main" / "assets" / "shaders" / "lib_scene_features.glsl"
 
 FORMAT_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -41,7 +44,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "lens", "particles3d",
+    "effects", "tiers", "inputs", "lens", "particles3d",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -66,12 +69,30 @@ STYLE_HELPERS = {"count": "xcount", "variant": "xvariant"}
 # lib_dmt's flight path clock, which ShaderScene runs at the FLIGHT Extra's rate as it runs uXFlightTime.
 ENGINE_CLOCKS = {"flight": "uFlight"}
 STYLE_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_style[ \t]*$", re.MULTILINE)
+FEATURES_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_scene_features[ \t]*$", re.MULTILINE)
 # The thermal tiers a Style may budget (geode/viz/QualityTiers.hpp); "full" is always the whole budget.
 TIER_NAMES = ("eased", "reduced", "minimal")
 TIER_KEYS = {"steps", "off"}
 MAX_EFFECTS = 8
 MIN_TIER_STEPS = 0.25
 MAX_TIER_STEPS = 1.0
+# The shared Style inputs (geode/viz/StyleInputs.hpp, lib_inputs.glsl), in Input's order: each name, and
+# what in lib_inputs reads it (its uniforms, and the helpers that sample it). The engine binds only the
+# inputs a manifest declares, so a shader reading one it does not declare would sample nothing.
+INPUT_READS = {
+    "noise_lq": ("uNoiseLq",),
+    "noise_mq": ("uNoiseMq",),
+    "noise_hq": ("uNoiseHq",),
+    "noise_vol": ("uNoiseVol", "vnoiseVol", "fbmVol"),
+    "blue_noise": ("uBlueNoise",),
+    "blur1": ("uBlur1",),
+    "blur2": ("uBlur2",),
+    "blur3": ("uBlur3",),
+    "previous_frame": ("uPrevFrame",),
+    "clocks": ("uFrame", "uFrameDt", "uVisitRand", "uStyleAge"),
+    "bar": ("uBarPhase", "uBarConfidence"),
+}
+INPUTS_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_inputs[ \t]*$", re.MULTILINE)
 # The lens effects and the 3D particle layer (geode/viz/LensFx.hpp): each part's fields as
 # (type, low, high), type "number", "int", "pair" (two numbers), "rgb" (three) or a set of names. The
 # "required" field must be above 0. Only a shader Style can declare depth of field: it hands over its
@@ -282,6 +303,48 @@ def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report)
             report.error(where, f'extra "{name}" is declared but the shader never reads {extra_uniform(name)}')
 
 
+def feature_uniforms() -> list[str]:
+    code = strip_comments(FEATURES_LIB.read_text(encoding="utf-8"))
+    return re.findall(r"\buniform\s+(?:(?:highp|mediump|lowp)\s+)?\w+\s+(\w+)\s*;", code)
+
+
+def check_feature_reads(shader: Path, where: str, report: Report) -> None:
+    """Including lib_scene_features declares that the Style follows the music's structure, rhythm,
+    timbre or space; one that reads none of it is declared-but-unread, like an unread Extra."""
+    source = shader.read_text(encoding="utf-8")
+    if not FEATURES_INCLUDE.search(source):
+        return
+    code = strip_comments(source)
+    if not any(re.search(rf"\b{name}\b", code) for name in feature_uniforms()):
+        report.error(where, "the shader includes lib_scene_features but reads none of its uniforms")
+
+
+def check_inputs(manifest: dict, family: str, shader: Path | None, where: str, report: Report) -> None:
+    declared = manifest.get("inputs", [])
+    if not isinstance(declared, list) or not all(isinstance(name, str) for name in declared):
+        report.error(where, '"inputs" must be a list of input names')
+        return
+    for name in sorted(set(n for n in declared if n not in INPUT_READS)):
+        report.error(where, f'input "{name}" is not one of the shared inputs {list(INPUT_READS)}')
+    if len(set(declared)) != len(declared):
+        report.error(where, '"inputs" names an input twice')
+    if family != SHADER_FAMILY:
+        if declared:
+            report.error(where, f'family "{family}" reads no shared inputs; only a shader Style declares them')
+        return
+    if shader is None:
+        return
+    source = shader.read_text(encoding="utf-8")
+    code = strip_comments(source)
+    reads = {name for name, words in INPUT_READS.items() if any(re.search(rf"\b{word}\b", code) for word in words)}
+    if (declared or reads) and not INPUTS_INCLUDE.search(source):
+        report.error(where, "a shader Style with inputs includes lib_inputs (//#include lib_inputs)")
+    for name in sorted(n for n in set(declared) if n in INPUT_READS and n not in reads):
+        report.error(where, f'input "{name}" is declared but the shader never reads {" or ".join(INPUT_READS[name])}')
+    for name in sorted(reads - set(declared)):
+        report.error(where, f'the shader reads input "{name}" ({" or ".join(INPUT_READS[name])}) but "inputs" does not declare it')
+
+
 def check_extras(manifest: dict, where: str, report: Report, extra_ranges: dict[str, tuple[float, float, str]]) -> None:
     names: set[str] = set()
     for extra in check_list(manifest, "extras", where, report):
@@ -370,13 +433,16 @@ def check_manifest(
         return
     files = {p.name for p in folder.iterdir()}
     expected = {MANIFEST_FILE}
+    shader_file: Path | None = None
     if family == SHADER_FAMILY:
         shader = manifest.get("shader")
         if not is_text(shader) or "/" in shader or not (folder / shader).is_file():
             report.error(where, 'a shader Style needs "shader": a file in its own folder')
         else:
             expected.add(shader)
-            check_shader_reads(manifest, folder / shader, where, report)
+            shader_file = folder / shader
+            check_shader_reads(manifest, shader_file, where, report)
+            check_feature_reads(shader_file, where, report)
     elif "shader" in manifest:
         report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
     if files != expected:
@@ -392,6 +458,7 @@ def check_manifest(
     check_macros(manifest, where, report)
     check_reactions(manifest, where, report)
     check_tiers(manifest, where, report)
+    check_inputs(manifest, family, shader_file, where, report)
     check_lens(manifest, family, where, report)
 
 
@@ -569,6 +636,7 @@ GOOD_MANIFESTS = {
         "version": 1, "id": "orb", "label": "Orb", "family": "shader", "shader": "shader.glsl", "renderScale": 0.75,
         "detail": "march", "extras": [{"name": "scale", "min": 0, "max": 2, "default": 1}],
         "effects": ["halo"], "tiers": {"reduced": {"steps": 0.7, "off": ["halo"]}, "minimal": {"steps": 0.5}},
+        "inputs": ["noise_vol", "clocks"],
         "macros": [{"name": "energy", "links": [{"target": "scale", "amount": 0.5}]}],
         "reactions": [{"signal": "bass", "target": "scale", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
         "lens": {
@@ -584,7 +652,7 @@ GOOD_MANIFESTS = {
 }
 
 
-GOOD_SHADER = "//#include lib_style\nvoid main() { float s = uXScale; }\n"
+GOOD_SHADER = "//#include lib_style\n//#include lib_inputs\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n"
 
 
 def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
@@ -676,6 +744,15 @@ def self_test() -> int:
         "particle tint out of range": setter(["orb", "particles3d", "tint"], [1, 1, 3]),
         "particles with an unknown key": setter(["orb", "particles3d", "colour"], 1),
         "too many effects": setter(["orb", "effects"], [f"fx{n}" for n in range(MAX_EFFECTS + 1)]),
+        "inputs not a list": setter(["orb", "inputs"], "clocks"),
+        "input that is no input": setter(["orb", "inputs"], ["noise_vol", "clocks", "noise_xq"]),
+        "input named twice": setter(["orb", "inputs"], ["noise_vol", "clocks", "clocks"]),
+        "input the shader never reads": setter(["orb", "inputs"], ["noise_vol", "clocks", "blur2"]),
+        "input read but not declared": setter(["orb", "inputs"], ["noise_vol"]),
+        "input read through a helper but not declared": setter(["orb", "inputs"], ["clocks"]),
+        "inputs without lib_inputs": lambda f, i, m, s: s.update(
+            {"orb": ("shader.glsl", "//#include lib_style\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n")}),
+        "inputs on a non-shader family": setter(["drum", "inputs"], ["clocks"]),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),
@@ -687,6 +764,9 @@ def self_test() -> int:
         "extra not starting neutral": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 1.5}]),
         "extra the shader never reads": setter(["orb", "extras"], [{"name": "fog", "min": 0, "max": 2, "default": 1}]),
         "shader Extras without lib_style": lambda f, i, m, s: s.update({"orb": ("shader.glsl", "void main() { float s = uXScale; }\n")}),
+        "lib_scene_features included and never read": lambda f, i, m, s: s.update(
+            {"orb": ("shader.glsl", GOOD_SHADER + "//#include lib_scene_features\n// uKick\nfloat k() { return uKickX; }\n")}
+        ),
         "too many Macros": setter(["orb", "macros"], [{"name": f"m{n}", "links": []} for n in range(MAX_MACROS + 1)]),
         "Macro amount out of range": setter(["orb", "macros"], [{"name": "energy", "links": [{"target": "x", "amount": 2}]}]),
         "Reaction with negative rise": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": -1, "fallMs": 0, "curve": "linear"}]),

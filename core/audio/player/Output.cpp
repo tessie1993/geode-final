@@ -93,6 +93,12 @@ double Output::latencyMillis() {
     return latency ? latency.value() : -1.0;
 }
 
+int32_t Output::bufferedFrames() const {
+    if (!isOpen()) return 0;
+    const int32_t tuned = tuner_.sizeFrames();
+    return tuned > 0 ? tuned : stream_->getBufferSizeInFrames();
+}
+
 bool Output::settle(oboe::StreamState leaving, oboe::StreamState wanted) {
     oboe::StreamState next = oboe::StreamState::Unknown;
     stream_->waitForStateChange(leaving, &next, kStateTimeoutNs);

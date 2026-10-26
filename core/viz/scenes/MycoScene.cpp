@@ -98,7 +98,8 @@ void MycoScene::step(fluid::DoubleFbo& colony, fluid::DoubleFbo& field, float sp
     glUniform1f(agent_.loc("uInit"), agentsSeeded_ ? 0.0f : 1.0f);
     glUniform1f(agent_.loc("uSpeciesMix"), style_.speciesMix);
     glUniform1f(agent_.loc("uSensorDist"), style_.sensorDist);
-    glUniform1f(agent_.loc("uSensorAngle"), style_.sensorAngle);
+    // A novel passage widens the sensors, so the colony branches more (#294).
+    glUniform1f(agent_.loc("uSensorAngle"), style_.sensorAngle * featuremap::mycoSensorAngleScale(bus_));
     glUniform1f(agent_.loc("uTurnAngle"), style_.turnAngle);
     glUniform1f(agent_.loc("uMoveStep"), style_.moveStep * speed * (1.0f + 0.5f * envBass_ * drive));
     glUniform4f(agent_.loc("uMatrix"), style_.selfA, style_.crossAb, style_.crossBa, style_.selfB);

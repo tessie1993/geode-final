@@ -183,9 +183,27 @@ class NativeViz(
         live { h -> NativeFailures.check(GeodeNative.vizAttachFeed(h, feed?.handle ?: 0L), "vizAttachFeed") }
     }
 
+    /**
+     * GL thread: the next frame's audio for the scenes, [frames] interleaved stereo frames of [stereo]
+     * ending at the audio heard, the newest [fresh] of them new since the last frame (#342). A Render hands
+     * over its own decode of the track this way, as a feed does live.
+     */
+    fun setFramePcm(
+        stereo: FloatArray,
+        frames: Int,
+        fresh: Int,
+    ) {
+        live { h -> NativeFailures.check(GeodeNative.vizSetFramePcm(h, stereo, frames, fresh), "vizSetFramePcm") }
+    }
+
     /** Freeze reactions (#366) on the features and audio window read from an attached feed. */
     fun setReactionsHeld(held: Boolean) {
         live { h -> GeodeNative.vizSetReactionsHeld(h, held) }
+    }
+
+    /** When the next frame is expected on screen (System.nanoTime nanoseconds); 0 draws for now. */
+    fun setPresentTime(presentNanos: Long) {
+        live { h -> GeodeNative.vizSetPresentTime(h, presentNanos) }
     }
 
     fun setLfoConfigs(configs: List<LfoConfig>) {
@@ -234,6 +252,11 @@ class NativeViz(
 
     fun setOffscreen(on: Boolean) {
         live { h -> GeodeNative.vizSetOffscreen(h, on) }
+    }
+
+    /** GL thread, before [surfaceChanged]: a Render's scene supersample, 1..2 (#345). */
+    fun setExportSupersample(factor: Float) {
+        live { h -> NativeFailures.check(GeodeNative.vizSetExportSupersample(h, factor), "vizSetExportSupersample") }
     }
 
     fun surfaceCreated() {

@@ -92,6 +92,26 @@ sealed interface RenderLength {
         val start: Millis,
         val length: Millis,
     ) : RenderLength
+
+    /**
+     * One seamless loop (#346): the Visual of the Track's opening, as long as the Track up to five
+     * minutes and trimmed to whole bars, whose last frame dissolves into its first, so it plays round
+     * with no seam. The Track's sound runs under it for the loop's length.
+     */
+    data object Loop : RenderLength
+
+    /**
+     * [minutes] long (#346): a seamless loop of the Visual repeated until then, under the Track played
+     * again and again. The loop is rendered once and repeated without drawing anything twice.
+     */
+    data class Minutes(
+        val minutes: Int,
+    ) : RenderLength {
+        companion object {
+            /** The lengths a Render may be: up to ten hours. */
+            val RANGE: IntRange = 1..600
+        }
+    }
 }
 
 /**
@@ -130,8 +150,9 @@ data class RenderTrack(
 /**
  * Everything the person chose in the Render setup (#22): the Track, or the playlist's [tracks] in
  * order; the [look]; the [format]; the [length]; the [project] the videos land in (the default Project
- * when null); how a playlist renders; and the [extras]. These choices belong to the Render, never to
- * the song.
+ * when null); how a playlist renders; the [extras]; and the MilkDrop preset a MilkDrop look plays
+ * ([milkdrop], its file name in the MilkDrop folder; none plays MilkDrop's own idle picture, #341).
+ * These choices belong to the Render, never to the song.
  */
 data class RenderSpec(
     val tracks: List<RenderTrack>,
@@ -141,6 +162,7 @@ data class RenderSpec(
     val project: ProjectId? = null,
     val playlist: PlaylistMode = PlaylistMode.ONE_VIDEO_PER_TRACK,
     val extras: RenderExtras = RenderExtras(),
+    val milkdrop: String? = null,
 ) {
     /** [preset] applied: what it sets is filled in, and what it does not set stays as chosen. */
     fun withPreset(preset: RenderPreset): RenderSpec =
@@ -247,7 +269,8 @@ sealed interface RenderStatus {
 /**
  * One video the queue makes (#338): its [tracks] (one Track, or a whole playlist for one continuous
  * video) with the choices of the [RenderSpec] it was queued from. [batch] is the first Render queued
- * with it, so every track of one playlist shares it; [project] is the Project its video lands in.
+ * with it, so every track of one playlist shares it; [project] is the Project its video lands in;
+ * [milkdrop] the MilkDrop preset it plays when its look is MilkDrop (#341).
  */
 data class RenderJob(
     val id: RenderId,
@@ -259,6 +282,7 @@ data class RenderJob(
     val project: ProjectId,
     val extras: RenderExtras,
     val status: RenderStatus = RenderStatus.Queued,
+    val milkdrop: String? = null,
 ) {
     /** The video's name: its Track's title, or every title of a continuous playlist. */
     val title: String get() = tracks.joinToString(TITLE_SEPARATOR) { it.title }

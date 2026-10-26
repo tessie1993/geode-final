@@ -19,6 +19,7 @@ import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.ValueKind
@@ -261,6 +262,25 @@ class CustomizeModelTest {
                 .any { it.ignored } ||
                 model.effects.any { it.ignored } ||
                 model.macros.any { it.ignored },
+        )
+    }
+
+    @Test
+    fun `bass, mid, treble and beat each show their trim, neutral when none is set`() {
+        val trimmed =
+            customization.copy(
+                signals = mapOf(SoundSignal.MID to SignalTrim(gain = 2f), SoundSignal.KICK to SignalTrim(gain = 3f)),
+            )
+        val trims = CustomizationState(trimmed).toCustomizeModel().trims
+
+        assertEquals(
+            listOf(
+                TrimRow(SoundSignal.BASS, SignalTrim.NEUTRAL),
+                TrimRow(SoundSignal.MID, SignalTrim(gain = 2f)),
+                TrimRow(SoundSignal.TREBLE, SignalTrim.NEUTRAL),
+                TrimRow(SoundSignal.BEAT, SignalTrim.NEUTRAL),
+            ),
+            trims,
         )
     }
 }

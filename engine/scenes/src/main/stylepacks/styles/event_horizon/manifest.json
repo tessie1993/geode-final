@@ -4,6 +4,7 @@
   "label": "Event Horizon",
   "family": "shader",
   "shader": "shader.glsl",
+  "inputs": ["noise_vol"],
   "renderScale": 0.5,
   "detail": "march"
 }

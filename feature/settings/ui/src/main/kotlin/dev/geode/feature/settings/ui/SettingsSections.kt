@@ -228,6 +228,12 @@ private fun AnalysisGroup(
     analysis: AnalysisSettings,
     change: (SettingsCommand) -> Unit,
 ) {
+    // First: the one control that makes every Style, MilkDrop included, react more or less (#301).
+    SliderRow(
+        stringResource(R.string.audio_sensitivity, analysis.sensitivity.value),
+        analysis.sensitivity.value,
+        AnalysisSettings.SENSITIVITY.start.value..AnalysisSettings.SENSITIVITY.endInclusive.value,
+    ) { change(AnalysisCommand.SetSensitivity(Decibels(it))) }
     SliderRow(
         stringResource(R.string.audio_beat_sensitivity, analysis.beatSensitivity),
         analysis.beatSensitivity,
@@ -250,6 +256,11 @@ private fun AnalysisGroup(
         AnalysisSettings.PRESET_MORPH.start.value..AnalysisSettings.PRESET_MORPH.endInclusive.value,
     ) { change(AnalysisCommand.SetPresetMorph(Seconds(it))) }
     SwitchRow(stringResource(R.string.audio_react_mic), analysis.reactToMicrophone) { change(AnalysisCommand.SetReactToMicrophone(it)) }
+    SliderRow(
+        stringResource(R.string.audio_sync_offset, analysis.syncOffset.value),
+        analysis.syncOffset.value.toFloat(),
+        AnalysisSettings.SYNC_OFFSET.millisForSlider(),
+    ) { change(AnalysisCommand.SetSyncOffset(Millis(it.roundToLong()))) }
 }
 
 /** Export preferences (was Export): what new renders start with. */

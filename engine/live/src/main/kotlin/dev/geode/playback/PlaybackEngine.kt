@@ -106,12 +106,17 @@ class PlaybackSession internal constructor(
 
     val analysis = dev.geode.analysis.AnalysisEngine(feed)
 
+    // Where the sound comes out, for outputs that cannot time themselves (#295).
+    private val routes = OutputRouteWatcher(context, feed)
+
     init {
         // The player is what the Visual hears, until Live input takes over.
         feed.select(FeedSource.PLAYER)
+        routes.start()
     }
 
     internal fun release() {
+        routes.stop()
         scope.cancel()
         onAudioFormat = null
         audioFx.release()

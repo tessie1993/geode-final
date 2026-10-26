@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <utility>
 
 #include "CompositeGrade.hpp"
@@ -42,6 +43,9 @@ float Renderer::beginFrame(double timeSeconds) {
         frameTransitionDurationMs_ = transitionDurationMs_;
         frameTransitionSeed_ = transitionSeed_;
     }
+    featureBus_.step(frameFeatures_, dt);
+    frameBus_ = reducedMotion_.load(std::memory_order_relaxed) ? featurebus::calmed(featureBus_.values(), safety::kReducedMotionScale)
+                                                               : featureBus_.values();
     latchFramePcm();
     applyMilkRequests();
     applyOverlayUploads();
@@ -52,10 +56,15 @@ float Renderer::beginFrame(double timeSeconds) {
 }
 
 void Renderer::latchFramePcm() {
-    framePcmFrames_ = std::exchange(pendingPcmFrames_, 0);
+    frameSpanFrames_ = std::exchange(pendingPcmFrames_, 0);
+    frameSpanFresh_ = std::exchange(pendingPcmFresh_, 0);
+    std::copy(pendingPcm_.begin(), pendingPcm_.begin() + static_cast<std::ptrdiff_t>(frameSpanFrames_) * 2, frameSpan_.begin());
+    // The window is the newest kPcmWindowFrames of the span.
+    framePcmFrames_ = std::min(frameSpanFrames_, kPcmWindowFrames);
+    const int first = frameSpanFrames_ - framePcmFrames_;
     for (int i = 0; i < framePcmFrames_; ++i) {
-        const float left = pendingPcm_[static_cast<size_t>(2 * i)];
-        const float right = pendingPcm_[static_cast<size_t>(2 * i + 1)];
+        const float left = frameSpan_[static_cast<size_t>(2 * (first + i))];
+        const float right = frameSpan_[static_cast<size_t>(2 * (first + i) + 1)];
         framePcm_[static_cast<size_t>(2 * i)] = left;
         framePcm_[static_cast<size_t>(2 * i + 1)] = right;
         framePcmMono_[static_cast<size_t>(i)] = 0.5f * (left + right);
@@ -80,6 +89,7 @@ Scene* Renderer::resolveActiveScene(float dt) {
         lastTimeS_ = frameNowS_;
         activeScene_ = requested;
         sceneJustSwitched_ = true;
+        requested->beginVisit();
         return activeScene_;
     }
     // A change of Style, automatic or the person's, waits for the next downbeat while a tempo is heard
@@ -104,6 +114,7 @@ void Renderer::startTransition(Scene* next) {
     activeScene_ = next;
     sceneJustSwitched_ = true;
     inheritTrails_ = true;
+    next->beginVisit();
 }
 
 SceneParams Renderer::resolveParams(float dt) {
@@ -197,6 +208,7 @@ void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {
         scene.setCamera(pose);
     }
     scene.setExtras(extras);
+    scene.setFeatureBus(frameBus_);
     scene.setQuality(qualityFor(scene.id()));
 }
 
@@ -226,7 +238,10 @@ void Renderer::resolveLayer(float dt) {
     // A Style that stops being drawable as Layer 2 (it became the active one) still fades out: its
     // scene is then Layer 1's, and its picture is read from there (layerTexture).
     frameLayer_ = layerMixer_.step(request, dt);
-    layerScene_ = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+    Scene* const layer = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+    // A Style that starts to be drawn as Layer 2 starts a visit; Layer 1's own Style is already on one.
+    if (layer != nullptr && layer != layerScene_ && layer != activeScene_) layer->beginVisit();
+    layerScene_ = layer;
 }
 
 const std::string& Renderer::layerStyleId(uint32_t name) {
@@ -266,6 +281,7 @@ void Renderer::deliverPcm(Scene& scene) {
     if (framePcmFrames_ <= 0) return;
     scene.acceptPcm(framePcmMono_.data(), framePcmFrames_);
     scene.acceptStereoPcm(framePcm_.data(), framePcmFrames_);
+    scene.acceptPcmSpan(frameSpan_.data(), frameSpanFrames_, frameSpanFresh_);
 }
 
 float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {

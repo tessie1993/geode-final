@@ -149,9 +149,13 @@ void WaterScene::draw(float timeSeconds) {
             if (std::fabs(well) > 1e-4f) sim_.queueDrop(s.curX, s.curY, catchRadius, well);
             continue;
         }
-        const float amp = (0.06f + 0.5f * std::min(speed, 2.0f)) * rippleStrength * (1.0f + pcmKick * 0.6f);
+        // A section swells every ripple for a while (#294).
+        const float amp = (0.06f + 0.5f * std::min(speed, 2.0f)) * rippleStrength * (1.0f + pcmKick * 0.6f) * featuremap::waterSwell(bus_);
         if (amp > 1e-4f) sim_.queueDrop(s.curX, s.curY, s.radius * 0.6f, amp, s.r * kInkGain, s.g * kInkGain, s.b * kInkGain);
     }
+    // Each trusted downbeat rings the pool from the centre (#294).
+    const float ring = featuremap::waterRing(bus_) * rippleStrength;
+    if (ring > 1e-4f) sim_.queueDrop(0.0f, 0.0f, kRingRadius, ring);
     if (idle) queueIdleRain(lastDt_);
     drainTouchStrokes(rippleStrength, baseHue);
     tilt(simDt, rippleStrength);

@@ -22,6 +22,7 @@ typedef struct geode_player   geode_player;
 typedef struct geode_tags     geode_tags;
 typedef struct geode_snapshots geode_snapshots;
 typedef struct geode_feed     geode_feed;
+typedef struct geode_feed_tap geode_feed_tap;
 
 #define GEODE_BAND_COUNT 64
 #define GEODE_WAVEFORM_POINTS 128
@@ -175,6 +176,9 @@ GEODE_API void        geode_viz_set_quality_ceiling(geode_viz*, float ceiling); 
  * between drawn frames, in ms. The scene and trail buffers scale with it; sample about once a second. */
 GEODE_API void        geode_viz_set_frame_load(geode_viz*, int frames, float p95_ms);
 GEODE_API void        geode_viz_set_offscreen(geode_viz*, int on);
+/* A Render's scene supersample, 1..2 (clamped): its scene draws at the export size times this (#345).
+ * Set before the surface size; the live Visual ignores it. */
+GEODE_API void        geode_viz_set_export_supersample(geode_viz*, float factor);
 GEODE_API int         geode_viz_knows(geode_viz*, const char* scene_id);
 GEODE_API size_t      geode_viz_scene_ids(geode_viz*, char* out, size_t capacity);   /* newline-joined; returns the full length */
 GEODE_API const char* geode_viz_last_error(geode_viz*);   /* "" when clean */
@@ -201,6 +205,14 @@ GEODE_API GeodeStatus geode_viz_attach_feed(geode_viz*, geode_feed*);
 /* Freeze reactions (#366), for a Visual reading a feed: while held, each frame gets the features as they
  * stood when the hold began, with no event firing, and the scenes the same audio window. Any thread. */
 GEODE_API void        geode_viz_set_reactions_held(geode_viz*, int held);
+/* The next frame's audio for the scenes, interleaved stereo: `frames` frames ending at the audio heard (the
+ * newest GEODE_FEED_SPAN_FRAMES are kept), the newest `fresh` of them heard since the last frame. What a
+ * Render, which reads no feed, hands over from its own decode of the track (#342): the same span and window
+ * an attached feed gives the live Visual. Drawing thread only; it holds for the next frame alone. */
+GEODE_API void        geode_viz_set_frame_pcm(geode_viz*, const float* stereo, int frames, int fresh);
+/* When the next frame is expected on screen, in nanoseconds of CLOCK_MONOTONIC (System.nanoTime): a Visual
+ * reading a feed draws the audio heard then rather than now. 0 (the default) draws for now. Any thread. */
+GEODE_API void        geode_viz_set_present_time(geode_viz*, int64_t present_ns);
 GEODE_API void        geode_viz_render(geode_viz*, double time_seconds, uint32_t target_fbo);
 GEODE_API void        geode_viz_release_scenes(geode_viz*);
 /* How many times the Customization's Style switching has been due (ReactionGraph's stylesDue) since its
@@ -343,6 +355,15 @@ GEODE_API void          geode_player_set_feed(geode_player*, geode_feed*);
 #define GEODE_FEED_PLAYER 1          /* the player's tap: Geode's own engine or ExoPlayer */
 #define GEODE_FEED_LIVE 2            /* Live input: the microphone */
 #define GEODE_FEED_WINDOW_FRAMES 576 /* the stereo window each Visual frame reads: projectM's ring size */
+#define GEODE_FEED_SPAN_FRAMES 4096  /* the span it reads around that window, so MilkDrop misses no kick */
+/* Where the player's sound comes out: what an output that cannot time itself is assumed to add. */
+#define GEODE_FEED_ROUTE_UNKNOWN 0
+#define GEODE_FEED_ROUTE_SPEAKER 1
+#define GEODE_FEED_ROUTE_WIRED 2
+#define GEODE_FEED_ROUTE_USB 3
+#define GEODE_FEED_ROUTE_BLUETOOTH 4
+#define GEODE_FEED_ROUTE_BLUETOOTH_LE 5
+#define GEODE_FEED_ROUTE_HDMI 6
 
 GEODE_API geode_feed* geode_feed_create(void);
 /* Only once no player writes into it; an attached Visual keeps the analysis' results until it detaches. */
@@ -356,6 +377,18 @@ GEODE_API void        geode_feed_set_running(geode_feed*, int source, int runnin
 /* How far ahead of the speaker the source writes, in microseconds of its own audio, and the speed it is
  * heard at: the Visual reads that far behind the newest frame. */
 GEODE_API void        geode_feed_set_presentation(geode_feed*, int source, int64_t delay_us, float speed);
+/* The output route (GEODE_FEED_ROUTE_*): a source whose output gives no timestamp is read that much later. */
+GEODE_API void        geode_feed_set_route(geode_feed*, int route);
+/* The person's sync offset, in microseconds, at most half a second either way: positive draws the player's
+ * picture later. Live input is heard as it is captured and is never moved. */
+GEODE_API void        geode_feed_set_user_offset(geode_feed*, int64_t offset_us);
+/* The Sensitivity, in dB (-12 to +24; 0 leaves the sound as it is): a gain on the audio before the analysis
+ * and every Style reads it, MilkDrop's PCM included, so quiet sources react like loud ones. */
+GEODE_API void        geode_feed_set_gain(geode_feed*, float gain_db);
+/* The gain on `source`'s window for the Visual's scenes (MilkDrop's PCM), never on what the analysis hears,
+ * applied after the Sensitivity (geode_feed_set_gain); 1 by default, clamped to [0, 16]. A raised window
+ * is limited to [-1, 1]. */
+GEODE_API void        geode_feed_set_window_gain(geode_feed*, int source, float gain);
 /* Interleaved float PCM; returns the frames taken, 0 when `source` is not the one listened to. */
 GEODE_API size_t      geode_feed_write(geode_feed*, int source, const float* interleaved, size_t frames, int channels,
                                        int sample_rate);
@@ -366,6 +399,15 @@ GEODE_API void        geode_feed_set_tuning(geode_feed*, float sensitivity, floa
 GEODE_API void        geode_feed_reset_analysis(geode_feed*);
 /* The feed's analysis reads `snapshots` at the start of each hop, as geode_analysis_attach_snapshots does. */
 GEODE_API GeodeStatus geode_feed_attach_snapshots(geode_feed*, geode_snapshots*);
+
+/* A Recording's tap on the feed (#317): the audio heard, handed over in order and once, at the point the Visual
+ * reads, so it lines up with the picture. It keeps the feed alive until it is destroyed. One thread takes. */
+GEODE_API geode_feed_tap* geode_feed_tap_create(geode_feed*);
+GEODE_API void            geode_feed_tap_destroy(geode_feed_tap*);
+/* Up to `max_frames` interleaved stereo frames heard since the last take, or silence for the time nothing was
+ * heard; the first take only marks the start and gives none. Returns the frames written; `rate_hz`, when not
+ * NULL, gets their rate. */
+GEODE_API size_t          geode_feed_tap_take(geode_feed_tap*, float* out, size_t max_frames, int* rate_hz);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,7 @@ import dev.geode.feature.settings.api.BackgroundCommand
 import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorCommand
 import dev.geode.feature.settings.api.BehaviorSettings
+import dev.geode.feature.settings.api.Decibels
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCommand
@@ -143,6 +144,8 @@ object SettingsRules {
                 analysis.copy(beatSensitivity = command.tuning.sensitivity, beatMinIntervalMs = command.tuning.minIntervalMs)
             is AnalysisCommand.SetPresetMorph -> analysis.copy(presetMorph = command.length)
             is AnalysisCommand.SetReactToMicrophone -> analysis.copy(reactToMicrophone = command.on)
+            is AnalysisCommand.SetSyncOffset -> analysis.copy(syncOffset = command.offset)
+            is AnalysisCommand.SetSensitivity -> analysis.copy(sensitivity = command.sensitivity)
         }
 
     private fun behavior(
@@ -259,6 +262,8 @@ object SettingsRules {
             beatSensitivity = beatSensitivity.coerceIn(AnalysisSettings.BEAT_SENSITIVITY),
             beatMinIntervalMs = beatMinIntervalMs.coerceIn(AnalysisSettings.BEAT_MIN_INTERVAL_MS),
             presetMorph = presetMorph.coerceIn(AnalysisSettings.PRESET_MORPH),
+            syncOffset = syncOffset.coerceIn(AnalysisSettings.SYNC_OFFSET),
+            sensitivity = if (sensitivity.value.isNaN()) Decibels(0f) else sensitivity.coerceIn(AnalysisSettings.SENSITIVITY),
         )
 
     private fun BehaviorSettings.inRange(): BehaviorSettings =

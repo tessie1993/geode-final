@@ -10,6 +10,7 @@ import dev.geode.feature.customization.api.CameraMoveKind
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.Lane
+import dev.geode.feature.customization.api.Layer
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.ModulatorParameter
 import dev.geode.feature.customization.api.PRESET_VERSION
@@ -18,6 +19,7 @@ import dev.geode.feature.customization.api.Preset
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.StepLength
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
@@ -36,12 +38,41 @@ import org.json.JSONObject
 object RenderLookFormat {
     private const val CURRENT_VERSION = 1
 
-    fun encode(customization: Customization): String =
+    fun encode(
+        customization: Customization,
+        context: SwitchingContext = SwitchingContext(),
+    ): String =
         JSONObject()
             .put(VERSION, CURRENT_VERSION)
             .put(LOOK, JSONObject(PresetFormat.encode(presetOf(customization))))
             .put(AUTOMATIONS, automations(customization.automations))
+            .put(SWITCHING_FROM, switchingContext(context))
             .toString()
+
+    /**
+     * What Style switching picks from beside the Customization in [text] (#343), as it was frozen; empty
+     * for a look frozen before it was kept. Throws [org.json.JSONException] when [text] is not a look.
+     */
+    fun decodeContext(text: String): SwitchingContext {
+        val o = JSONObject(text).optJSONObject(SWITCHING_FROM) ?: return SwitchingContext()
+        val marks = HashMap<SceneId, StyleMark>()
+        o.optJSONObject(MARKS)?.let { kept ->
+            kept.keys().forEach { id -> enumOrNull<StyleMark>(kept.optString(id))?.let { marks[SceneId(id)] = it } }
+        }
+        return SwitchingContext(
+            visualizer = strings(o.optJSONArray(VISUALIZER)).map(::SceneId),
+            marks = marks,
+            favourites = strings(o.optJSONArray(FAVOURITES)).map(::SceneId),
+        )
+    }
+
+    private fun switchingContext(context: SwitchingContext): JSONObject =
+        JSONObject()
+            .put(VISUALIZER, JSONArray(context.visualizer.map { it.value }))
+            .put(MARKS, JSONObject(context.marks.map { (id, mark) -> id.value to mark.name }.toMap()))
+            .put(FAVOURITES, JSONArray(context.favourites.map { it.value }))
+
+    private fun strings(array: JSONArray?): List<String> = if (array == null) emptyList() else List(array.length()) { array.getString(it) }
 
     /**
      * The Customization [text] holds. A Style this version no longer has lands on [fallbackStyle].
@@ -64,6 +95,7 @@ object RenderLookFormat {
             modulators = preset.modulators,
             signals = preset.signals,
             automations = automationsOf(o.optJSONObject(AUTOMATIONS)),
+            layer = preset.layer ?: Layer.OFF,
         )
     }
 
@@ -79,6 +111,7 @@ object RenderLookFormat {
             reactions = customization.reactions,
             modulators = customization.modulators,
             signals = customization.signals,
+            layer = customization.layer,
         )
 
     private fun automations(automations: Automations): JSONObject {
@@ -90,7 +123,8 @@ object RenderLookFormat {
                     .put(CADENCE, cadence(style.cadence))
                     .put(POOL, style.pool.name)
                     .put(SEED, style.seed)
-                    .put(TRANSITION_MS, style.transition.value),
+                    .put(TRANSITION_MS, style.transition.value)
+                    .put(CHOSEN, JSONArray(style.chosen.map { it.value })),
             )
         }
         automations.palette?.let { palette ->
@@ -118,6 +152,7 @@ object RenderLookFormat {
             pool = enumOrNull<StylePool>(o.optString(POOL)) ?: defaults.pool,
             seed = o.optLong(SEED, defaults.seed),
             transition = Millis(o.optLong(TRANSITION_MS, defaults.transition.value)),
+            chosen = strings(o.optJSONArray(CHOSEN)).map(::SceneId),
         )
     }
 
@@ -236,4 +271,9 @@ object RenderLookFormat {
     private const val MACRO = "macro"
     private const val MODULATOR = "modulator"
     private const val PARAMETER = "parameter"
+    private const val CHOSEN = "chosen"
+    private const val SWITCHING_FROM = "switchingFrom"
+    private const val VISUALIZER = "visualizer"
+    private const val MARKS = "marks"
+    private const val FAVOURITES = "favourites"
 }

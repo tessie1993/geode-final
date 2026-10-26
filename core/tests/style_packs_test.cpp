@@ -202,6 +202,36 @@ TEST(StyleManifest, RejectsAnIncompleteExtra) {
     EXPECT_EQ(onlyError(problems), packs::PackError::MissingField);
 }
 
+TEST(StyleManifest, ReadsTheInputsItDeclares) {
+    namespace inputs = geode::viz::inputs;
+    std::vector<packs::PackProblem> problems;
+    const auto pack = manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader",
+        "inputs": ["noise_mq", "blur2", "clocks"]})", problems);
+    ASSERT_TRUE(pack.has_value()) << (problems.empty() ? "" : problems.front().detail);
+    EXPECT_EQ(pack->inputs, inputs::bit(inputs::Input::NoiseMq) | inputs::bit(inputs::Input::Blur2) | inputs::bit(inputs::Input::Clocks));
+    const auto none = manifest("y", R"({"version": 1, "id": "y", "label": "Y", "family": "shader", "inputs": []})", problems);
+    ASSERT_TRUE(none.has_value());
+    EXPECT_EQ(none->inputs, 0u);
+    const auto plain = manifest("z", R"({"version": 1, "id": "z", "label": "Z", "family": "shader"})", problems);
+    ASSERT_TRUE(plain.has_value());
+    EXPECT_EQ(plain->inputs, 0u);
+    EXPECT_TRUE(problems.empty());
+}
+
+TEST(StyleManifest, RejectsBadInputs) {
+    const char* bad[] = {
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": "noise_lq"})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["noise_xq"]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": [3]})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["bar", "clocks", "bar"]})",
+    };
+    for (const char* text : bad) {
+        std::vector<packs::PackProblem> problems;
+        EXPECT_FALSE(manifest("x", text, problems)) << text;
+        EXPECT_EQ(onlyError(problems), packs::PackError::BadValue) << text;
+    }
+}
+
 // ---- families and the index ----------------------------------------------------------------------
 
 TEST(StyleFamilies, ReadsTypesRangesAndDefaults) {

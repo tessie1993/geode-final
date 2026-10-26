@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <vector>
 
@@ -161,4 +162,77 @@ TEST(AnalysisSession, AReaderLookingAt30_60Or120FpsSeesEveryEventExactlyOnce) {
             EXPECT_EQ(static_cast<float>(seen), hops.back().events[e].seq) << "event " << e << " at " << fps << " fps";
         }
     }
+}
+
+namespace {
+
+// A band-limited beat at `rateHz`, starting `offsetSamples` samples of 48 kHz late: a decaying 60 Hz kick
+// every half second, an 8 kHz tick every quarter, and a steady 440 Hz tone underneath. Stereo interleaved,
+// the right channel a little quieter.
+std::vector<float> bandLimitedBeat(int rateHz, double seconds, double offsetSamples) {
+    const auto frames = static_cast<size_t>(rateHz * seconds);
+    std::vector<float> out(frames * 2);
+    const double pi = 3.14159265358979323846;
+    for (size_t i = 0; i < frames; i++) {
+        const double t = static_cast<double>(i) / rateHz - offsetSamples / 48000.0;
+        double v = 0.0;
+        if (t >= 0.0) {
+            const double inKick = std::fmod(t, 0.5);
+            const double inTick = std::fmod(t, 0.25);
+            v = 0.8 * std::sin(2.0 * pi * 60.0 * inKick) * std::exp(-inKick / 0.08) +
+                0.2 * std::sin(2.0 * pi * 8000.0 * inTick) * std::exp(-inTick / 0.01) + 0.1 * std::sin(2.0 * pi * 440.0 * t);
+        }
+        out[i * 2] = static_cast<float>(v);
+        out[i * 2 + 1] = static_cast<float>(v * 0.8);
+    }
+    return out;
+}
+
+}  // namespace
+
+TEST(AnalysisSession, AHiResSourceIsAnalysedAt48kHzOrLess) {
+    AnalysisSession session(192000, kFftSize, 60.0f);
+    EXPECT_EQ(session.analysisRateHz(), 48000);
+    EXPECT_EQ(session.decimation(), 4);
+    session.setSampleRateHz(44100);
+    EXPECT_EQ(session.analysisRateHz(), 44100);
+    EXPECT_EQ(session.decimation(), 1);
+    session.setSampleRateHz(88200);
+    EXPECT_EQ(session.analysisRateHz(), 44100);
+    EXPECT_EQ(session.decimation(), 2);
+    session.setSampleRateHz(0);
+    EXPECT_EQ(session.analysisRateHz(), 44100);
+}
+
+TEST(AnalysisSession, AHiResSourceHopsAsOftenAsAt48kHz) {
+    AnalysisSession at48(48000, kFftSize, 60.0f);
+    AnalysisSession at192(192000, kFftSize, 60.0f);
+    const auto a = analyse(at48, bandLimitedBeat(48000, 2.0, 0.0), 1024);
+    const auto b = analyse(at192, bandLimitedBeat(192000, 2.0, 0.0), 4096);
+    // 96,000 samples at 48 kHz in 800-sample hops after the first 2048-sample window.
+    EXPECT_EQ(a.size(), (96000u - kFftSize) / 800u + 1u);
+    EXPECT_EQ(b.size(), a.size());
+}
+
+TEST(AnalysisSession, TheSameMusicAt192kHzReadsAsAt48kHz) {
+    // The decimator delays its output by 16 samples of 48 kHz and lands a quarter of an input sample
+    // early; the 48 kHz reference is shifted to match, so the two analyses see the same audio.
+    const double seconds = 8.0;
+    AnalysisSession at48(48000, kFftSize, 60.0f);
+    AnalysisSession at192(192000, kFftSize, 60.0f);
+    at48.setTuning(3.0f, 60.0f, 0.02f, 0.15f);
+    at192.setTuning(3.0f, 60.0f, 0.02f, 0.15f);
+    const auto a = analyse(at48, bandLimitedBeat(48000, seconds, 15.25), 800);
+    const auto b = analyse(at192, bandLimitedBeat(192000, seconds, 0.0), 3200);
+
+    ASSERT_EQ(a.size(), b.size());
+    ASSERT_GT(a.size(), 100u);
+    for (size_t i = 8; i < a.size(); i++) {
+        EXPECT_NEAR(b[i].rms, a[i].rms, 0.01f * a[i].rms + 1e-4f) << "hop " << i;
+        EXPECT_NEAR(b[i].bass, a[i].bass, 0.03f) << "hop " << i;
+        EXPECT_NEAR(b[i].mid, a[i].mid, 0.03f) << "hop " << i;
+        EXPECT_NEAR(b[i].treble, a[i].treble, 0.03f) << "hop " << i;
+    }
+    EXPECT_NEAR(b.back().bpm, a.back().bpm, 0.01f * a.back().bpm + 0.01f);
+    EXPECT_NEAR(b.back().events[GEODE_EVENT_TRANSIENT].seq, a.back().events[GEODE_EVENT_TRANSIENT].seq, 1.0f);
 }

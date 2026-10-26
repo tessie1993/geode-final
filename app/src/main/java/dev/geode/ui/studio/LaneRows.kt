@@ -28,17 +28,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.editor.ClipId
-import dev.geode.editor.EditResult
-import dev.geode.editor.EditorProject
-import dev.geode.editor.Keyframe
-import dev.geode.editor.KeyframeId
-import dev.geode.editor.KeyframeResult
-import dev.geode.editor.KeyframeTrack
-import dev.geode.editor.Lane
-import dev.geode.editor.LaneKind
-import dev.geode.editor.Marker
-import dev.geode.editor.MarkerId
+import dev.geode.feature.studio.core.edit.ClipId
+import dev.geode.feature.studio.core.edit.EditResult
+import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.core.edit.Keyframe
+import dev.geode.feature.studio.core.edit.KeyframeId
+import dev.geode.feature.studio.core.edit.KeyframeResult
+import dev.geode.feature.studio.core.edit.KeyframeTrack
+import dev.geode.feature.studio.core.edit.Lane
+import dev.geode.feature.studio.core.edit.LaneKind
+import dev.geode.feature.studio.core.edit.Marker
+import dev.geode.feature.studio.core.edit.MarkerId
 
 /** Header column beside the scrolling content column; every row height is fixed so the two stay aligned. */
 @Composable

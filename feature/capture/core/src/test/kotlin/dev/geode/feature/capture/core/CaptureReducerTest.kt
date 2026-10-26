@@ -39,8 +39,10 @@ class CaptureReducerTest {
     private val startingKeep = Starting(MICROPHONE, KEEP_PLAYING)
     private val capturing = Capturing(MICROPHONE, quiet = false)
     private val failed = Failed(MICROPHONE, CaptureProblem.SOURCE_LOST)
+    private val unavailable = Failed(MICROPHONE, CaptureProblem.SOURCE_UNAVAILABLE)
 
-    private val states: List<CaptureState> = listOf(off, preparing, asking, awaiting, starting, startingKeep, capturing, failed)
+    private val states: List<CaptureState> =
+        listOf(off, preparing, asking, awaiting, starting, startingKeep, capturing, failed, unavailable)
 
     private val startMic = command(CaptureCommand.Start(MICROPHONE))
     private val stop = command(CaptureCommand.Stop)
@@ -149,12 +151,19 @@ class CaptureReducerTest {
             (capturing to quiet) to Next(Capturing(MICROPHONE, quiet = true)),
             (capturing to lostMic) to Next(Failed(MICROPHONE, CaptureProblem.SOURCE_LOST), listOf(Emit(CaptureFact.Lost(MICROPHONE)))),
             (capturing to workFailed) to Next(capturing, listOf(reportWork)),
-            // Failed: shown until dismissed; a start tries again from the beginning.
+            // Lost: shown while the adapter waits for the source; it resumes when the source runs again,
+            // dismissing it stops the wait, and a start tries again from the beginning.
             (failed to startMic) to prepare(MICROPHONE),
             (failed to toggle) to prepare(MICROPHONE),
-            (failed to stop) to Next(Off),
-            (failed to runningMic) to Next(failed, listOf(end)),
+            (failed to stop) to Next(Off, listOf(end)),
+            (failed to runningMic) to Next(Capturing(MICROPHONE, quiet = false)),
             (failed to workFailed) to Next(failed, listOf(reportWork)),
+            // Any other failure: shown until dismissed; a start tries again from the beginning.
+            (unavailable to startMic) to prepare(MICROPHONE),
+            (unavailable to toggle) to prepare(MICROPHONE),
+            (unavailable to stop) to Next(Off),
+            (unavailable to runningMic) to Next(unavailable, listOf(end)),
+            (unavailable to workFailed) to Next(unavailable, listOf(reportWork)),
         )
 
     @Test

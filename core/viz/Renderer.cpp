@@ -62,10 +62,13 @@ void Renderer::beginParamMorph(float seconds) {
     morphRemainSec_ = seconds * 3.0f;
 }
 
-void Renderer::setFramePcm(const float* stereo, int frames) {
-    const int n = stereo ? std::clamp(frames, 0, kPcmWindowFrames) : 0;
-    std::copy(stereo, stereo + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
+void Renderer::setFramePcm(const float* stereo, int frames, int fresh) {
+    const int n = stereo ? std::clamp(frames, 0, kPcmSpanFrames) : 0;
+    // The newest frames of a longer span, which is where the audio heard is.
+    const std::ptrdiff_t skip = stereo ? static_cast<std::ptrdiff_t>(frames - n) * 2 : 0;
+    std::copy(stereo + skip, stereo + skip + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
     pendingPcmFrames_ = n;
+    pendingPcmFresh_ = std::clamp(fresh, 0, n);
 }
 
 double Renderer::monotonicSeconds() {
@@ -276,6 +279,7 @@ void Renderer::onSurfaceCreated() {
     fboOut_.release();
     fboL_.release();
     hdrPass_.release();
+    sharedInputs_.release();
     dofPass_.release();
     particlePass_.release();
     compositePass_.releaseStaleTextures();
@@ -290,6 +294,7 @@ void Renderer::onSurfaceCreated() {
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);
     hdrPass_.setTargetFormat(hdrFormat);
+    sharedInputs_.attach(&assets_, &hdrPass_, hdrFormat);
     dofPass_.setTargetFormat(hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
@@ -364,6 +369,7 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     in.surfaceWidth = width_;
     in.surfaceHeight = height_;
     in.offscreen = thermal_.offscreen();
+    in.exportSupersample = exportSupersample_;
     in.thermalCeiling = thermal_.renderCeiling();
     // MilkDrop follows load on its own (MilkdropAdaptation: mesh first, buffers only at a preset
     // change), so the load scale leaves its scene target alone; the thermal ceiling still applies.
@@ -458,6 +464,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
     scene->setGravityField(&gravityField_);
+    scene->setSharedInputs(&sharedInputs_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);

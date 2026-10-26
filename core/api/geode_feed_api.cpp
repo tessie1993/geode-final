@@ -1,7 +1,10 @@
+#include <algorithm>
+#include <cstdint>
 #include <memory>
 
 #include "geode/api/geode_api.h"
 #include "FeedHandle.hpp"
+#include "geode/audio/feed/FeedTap.hpp"
 
 namespace {
 
@@ -10,6 +13,13 @@ using geode::audio::feed::FeedSource;
 static_assert(static_cast<int>(FeedSource::Player) == GEODE_FEED_PLAYER);
 static_assert(static_cast<int>(FeedSource::Live) == GEODE_FEED_LIVE);
 static_assert(geode::audio::feed::FeedRing::kChannels == 2);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::Unknown) == GEODE_FEED_ROUTE_UNKNOWN);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::Speaker) == GEODE_FEED_ROUTE_SPEAKER);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::Wired) == GEODE_FEED_ROUTE_WIRED);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::Usb) == GEODE_FEED_ROUTE_USB);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::Bluetooth) == GEODE_FEED_ROUTE_BLUETOOTH);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::BluetoothLe) == GEODE_FEED_ROUTE_BLUETOOTH_LE);
+static_assert(static_cast<int>(geode::audio::feed::OutputRoute::Hdmi) == GEODE_FEED_ROUTE_HDMI);
 
 FeedSource sourceOf(int source) {
     switch (source) {
@@ -20,6 +30,12 @@ FeedSource sourceOf(int source) {
 }
 
 }  // namespace
+
+// The tap shares the feed, so a Recording that outlives the feed's handle still reads a live ring.
+struct geode_feed_tap {
+    std::shared_ptr<geode::api::Feed> feed;
+    geode::audio::feed::FeedTap tap;
+};
 
 extern "C" {
 
@@ -47,6 +63,24 @@ void geode_feed_set_presentation(geode_feed* f, int source, int64_t delay_us, fl
     if (f) f->feed->ring().setPresentation(sourceOf(source), delay_us * 1000, speed);
 }
 
+void geode_feed_set_route(geode_feed* f, int route) {
+    if (f) f->feed->ring().setRoute(geode::audio::feed::heard::routeOf(route));
+}
+
+void geode_feed_set_user_offset(geode_feed* f, int64_t offset_us) {
+    // Clamped before scaling, so no offset overflows on its way to nanoseconds.
+    constexpr int64_t kMaxUs = geode::audio::feed::heard::kMaxUserOffsetNs / 1000;
+    if (f) f->feed->ring().setUserOffset(std::clamp<int64_t>(offset_us, -kMaxUs, kMaxUs) * 1000);
+}
+
+void geode_feed_set_gain(geode_feed* f, float gain_db) {
+    if (f) f->feed->ring().setGainDb(gain_db);
+}
+
+void geode_feed_set_window_gain(geode_feed* f, int source, float gain) {
+    if (f) f->feed->ring().setWindowGain(sourceOf(source), gain);
+}
+
 size_t geode_feed_write(geode_feed* f, int source, const float* interleaved, size_t frames, int channels, int sample_rate) {
     if (!f) return 0;
     return f->feed->ring().write(sourceOf(source), interleaved, frames, channels, sample_rate, geode::api::Feed::nowNs());
@@ -68,6 +102,24 @@ GeodeStatus geode_feed_attach_snapshots(geode_feed* f, geode_snapshots* snapshot
     if (!f) return GEODE_STATUS_NULL_HANDLE;
     f->feed->attachSnapshots(snapshots);
     return GEODE_STATUS_OK;
+}
+
+geode_feed_tap* geode_feed_tap_create(geode_feed* f) {
+    if (!f) return nullptr;
+    auto tap = std::make_unique<geode_feed_tap>();
+    tap->feed = f->feed;
+    return tap.release();
+}
+
+void geode_feed_tap_destroy(geode_feed_tap* t) {
+    std::unique_ptr<geode_feed_tap> owned(t);
+}
+
+size_t geode_feed_tap_take(geode_feed_tap* t, float* out, size_t max_frames, int* rate_hz) {
+    if (!t) return 0;
+    const geode::audio::feed::FeedTap::Take taken = t->tap.take(t->feed->ring(), geode::api::Feed::nowNs(), out, max_frames);
+    if (rate_hz) *rate_hz = taken.rateHz;
+    return taken.frames;
 }
 
 }  // extern "C"

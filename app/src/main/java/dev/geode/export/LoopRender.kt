@@ -5,11 +5,13 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.net.Uri
 import android.opengl.GLES30
 import android.util.Log
 import android.view.Surface
 import dev.geode.analysis.BarTrim
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.audio.TrackPcm
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.SharedProperty
@@ -262,6 +264,9 @@ class LoopRender(
         codec: ExportCodec = ExportCodec.H264,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
+        audioUri: Uri? = null,
+        supersample: Float = 1f,
+        pace: () -> Unit = {},
     ): Result =
         withContext(Dispatchers.Default) {
             val choice =
@@ -283,6 +288,9 @@ class LoopRender(
                     look = look,
                     drift = drift,
                     loopStartMs = start,
+                    audioUri = audioUri,
+                    supersample = supersample,
+                    pace = pace,
                 ),
                 onProgress,
                 isCancelled,
@@ -301,6 +309,12 @@ class LoopRender(
         val look: (DriftStop) -> CustomizationSnapshot,
         val drift: TimeOfDayDrift,
         val loopStartMs: Long,
+        /** The track, decoded in step with each stop's frames so the scenes hear it (#342); none for silence. */
+        val audioUri: Uri?,
+        /** How many times over the scene is drawn before it is brought to the frame (#345). */
+        val supersample: Float,
+        /** Runs after every frame, so a Studio Render can give way to the live Visual or wait (ADR-0004, #28). */
+        val pace: () -> Unit,
     )
 
     private data class EncoderChoice(
@@ -391,6 +405,7 @@ class LoopRender(
         var egl: EncoderSurface? = null
         var renderer: OffscreenSceneRenderer? = null
         var stash: SeamStash? = null
+        var sound: TrackPcm? = null
         try {
             val encoded = StopWriter.open(file, videoFormat(job.aspect, job.choice), job.choice.codec.mimeType).also { writer = it }
             val surface = EncoderSurface(encoded.surface).also { egl = it }
@@ -404,7 +419,9 @@ class LoopRender(
             }
             val loopFrames = job.spec.loopFrames
             val sourceFrames = loopFrames + seamFrames
-            val scene = prepareRenderer(job, stop, sourceFrames).also { renderer = it }
+            // Each stop draws the loop from its start again, so it hears the track from there again too.
+            val pcm = job.audioUri?.let { TrackPcm(context, it) }.also { sound = it }
+            val scene = prepareRenderer(job, stop, sourceFrames, pcm).also { renderer = it }
             scene.prepare()
 
             val outcome =
@@ -420,11 +437,13 @@ class LoopRender(
                     progressSpan = progressSpan,
                     onProgress = onProgress,
                     isCancelled = isCancelled,
+                    pace = job.pace,
                 )
             if (outcome is StopOutcome.Done) encoded.finish()
             return outcome
         } finally {
             bestEffort(TAG, "renderer?.release()") { renderer?.release() }
+            bestEffort(TAG, "sound?.close()") { sound?.close() }
             bestEffort(TAG, "stash?.close()") { stash?.close() }
             bestEffort(TAG, "writer?.close()") { writer?.close() }
             bestEffort(TAG, "egl?.release()") { egl?.release() }
@@ -451,6 +470,7 @@ class LoopRender(
         progressSpan: Float,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
+        pace: () -> Unit,
     ): StopOutcome {
         val sourceFrames = loopFrames + seamFrames
         val frameDurationNs = 1_000_000_000L / fps
@@ -472,6 +492,7 @@ class LoopRender(
                 writer.drain(untilEndOfStream = false)
             }
             onProgress(progressBase + progressSpan * (frame + 1) / sourceFrames)
+            pace()
             frame++
         }
         return if (cancelled) StopOutcome.Cancelled else StopOutcome.Done(seamFrames)
@@ -493,19 +514,22 @@ class LoopRender(
         job: RenderJob,
         stop: DriftStop,
         sourceFrames: Int,
+        pcm: TrackPcm?,
     ): OffscreenSceneRenderer =
         OffscreenSceneRenderer(
             context = context,
             sceneFactory = job.sceneFactory,
             timeline = job.timeline,
+            pcm = pcm,
             spec =
                 OffscreenRenderSpec(
                     width = job.aspect.width,
                     height = job.aspect.height,
                     fps = job.choice.fps,
                     totalFrames = sourceFrames,
-                    rangeStartMs = job.loopStartMs,
+                    firstFrame = OffscreenRenderSpec.firstFrameAt(job.loopStartMs, job.choice.fps),
                     look = job.look(stop),
+                    supersample = job.supersample,
                 ),
         )
 

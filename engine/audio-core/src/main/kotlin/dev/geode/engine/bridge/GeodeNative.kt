@@ -369,6 +369,12 @@ object GeodeNative {
         on: Boolean,
     ): Int
 
+    /** A Render's scene supersample, 1..2 (#345); set before the surface size. */
+    external fun vizSetExportSupersample(
+        handle: Long,
+        factor: Float,
+    ): Int
+
     external fun vizKnows(
         handle: Long,
         sceneId: String,
@@ -467,6 +473,23 @@ object GeodeNative {
         feed: Long,
     ): Int
 
+    /**
+     * The next frame's audio for a Visual reading no feed (#342): [frames] interleaved stereo frames of
+     * [stereo] ending at the audio heard, the newest [fresh] of them heard since the last frame.
+     */
+    external fun vizSetFramePcm(
+        handle: Long,
+        stereo: FloatArray,
+        frames: Int,
+        fresh: Int,
+    ): Int
+
+    /** When the next frame is expected on screen, in System.nanoTime nanoseconds; 0 draws for now. */
+    external fun vizSetPresentTime(
+        handle: Long,
+        presentNs: Long,
+    ): Int
+
     /** Freeze reactions (#366) for a Visual reading a feed: its features and audio window hold still. */
     external fun vizSetReactionsHeld(
         handle: Long,
@@ -500,6 +523,31 @@ object GeodeNative {
         speed: Float,
     ): Int
 
+    /** [route] is a GEODE_FEED_ROUTE_* code ([dev.geode.engine.audio.OutputRoute.code]). */
+    external fun feedSetRoute(
+        handle: Long,
+        route: Int,
+    ): Int
+
+    /** The Sensitivity in dB (-12..24): a gain on the audio before the analysis and every Style reads it. */
+    external fun feedSetGain(
+        handle: Long,
+        gainDb: Float,
+    ): Int
+
+    /** The person's sync offset in microseconds; positive draws the player's picture later. */
+    external fun feedSetUserOffset(
+        handle: Long,
+        offsetUs: Long,
+    ): Int
+
+    /** The gain on [source]'s window for the scenes, after the Sensitivity; never on the analysis. */
+    external fun feedSetWindowGain(
+        handle: Long,
+        source: Int,
+        gain: Float,
+    ): Int
+
     /** Returns the frames taken: 0 when [source] is not the one listened to. */
     external fun feedWrite(
         handle: Long,
@@ -529,6 +577,21 @@ object GeodeNative {
     external fun feedAttachSnapshots(
         handle: Long,
         snapshots: Long,
+    ): Int
+
+    /** A Recording's tap on [feed] (geode_feed_tap, #317); 0 when it could not be created. */
+    external fun feedTapCreate(feed: Long): Long
+
+    external fun feedTapDestroy(handle: Long): Int
+
+    /**
+     * The stereo frames heard since the last take, interleaved into [out] (at most half its size), or
+     * silence for the time nothing was heard; the first take gives none. Their rate goes to `rate[0]`.
+     */
+    external fun feedTapTake(
+        handle: Long,
+        out: FloatArray,
+        rate: IntArray,
     ): Int
 
     /** The Visual reads [snapshots] at the start of each frame from now on; 0 detaches. */

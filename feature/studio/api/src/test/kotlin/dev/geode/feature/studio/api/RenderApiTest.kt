@@ -104,4 +104,12 @@ class RenderApiTest {
         assertEquals(1f, StudioState(renders = listOf(job(1, RenderStatus.Cancelled))).batchProgress(RenderId(1)), 0f)
         assertNull(StudioState().runningRender)
     }
+
+    @Test
+    fun `the queue is held only while Renders keep going is off and the app is away`() {
+        assertFalse(StudioState().rendersHeld)
+        assertFalse(StudioState(rendersKeepGoing = false).rendersHeld)
+        assertFalse(StudioState(appInFront = false).rendersHeld)
+        assertTrue(StudioState(rendersKeepGoing = false, appInFront = false).rendersHeld)
+    }
 }

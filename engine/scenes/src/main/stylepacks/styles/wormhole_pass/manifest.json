@@ -4,5 +4,6 @@
   "label": "Wormhole Pass",
   "family": "shader",
   "shader": "shader.glsl",
+  "inputs": ["noise_vol"],
   "renderScale": 0.75
 }

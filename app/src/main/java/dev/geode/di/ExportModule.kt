@@ -16,8 +16,13 @@ import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.studio.api.NewVideo
+import dev.geode.feature.studio.api.Studio
+import dev.geode.feature.studio.api.StudioCommand
+import dev.geode.feature.studio.handlers.edit.TransitionShaders
 import dev.geode.geodeContainer
 import dev.geode.playback.toUri
+import dev.geode.studio.AppTransitionShaders
 import dev.geode.ui.EditorController
 import dev.geode.ui.ExportController
 import dev.geode.ui.GuiPrefs
@@ -79,6 +84,7 @@ object ExportModule {
         values: Settings,
         customization: CustomizationFeature,
         playback: Playback,
+        studio: Studio,
     ): ExportController =
         ExportController(
             application,
@@ -104,6 +110,11 @@ object ExportModule {
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
 
                 override val exportDefaults: ExportDefaults get() = settings.exportDefaults()
+
+                override val transitions: TransitionShaders = AppTransitionShaders(application)
+
+                // Each saved cut becomes an Edit in Studio's default Project (#318).
+                override fun cutSaved(video: NewVideo) = studio.send(StudioCommand.AddVideos(listOf(video)))
 
                 override fun look(drift: DriftStop): CustomizationSnapshot =
                     EngineSnapshots.forRender(
