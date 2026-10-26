@@ -23,7 +23,11 @@ import yaml
 
 SOURCE = Path(__file__).resolve().parents[2]
 CONFIG = yaml.safe_load((SOURCE / '.pre-commit-config.yaml').read_text())
-HOOK_IDS = [hook['id'] for repo in CONFIG['repos'] for hook in repo['hooks']]
+# The hooks a plain `pre-commit run` runs: those in the pre-commit stage (precheck runs on push only).
+HOOK_IDS = [
+    hook['id'] for repo in CONFIG['repos'] for hook in repo['hooks']
+    if 'pre-commit' in hook.get('stages', CONFIG.get('default_stages', ['pre-commit']))
+]
 CATALOG = '[versions]\ncore = "1.2.3"\n'
 MANIFEST = (
     '[submodule "third_party/example"]\n'

@@ -85,3 +85,12 @@ repos:
         entry: python tools/hooks/check_native_dependencies.py
         pass_filenames: false
         always_run: true
+      # On push only (`pre-commit install --hook-type pre-push`): the fast CI checks over the
+      # branch's changes. tools/precheck.sh says what it runs.
+      - id: precheck
+        name: Fast CI checks over the branch (tools/precheck.sh)
+        language: system
+        entry: tools/precheck.sh
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true

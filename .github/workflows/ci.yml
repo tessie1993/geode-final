@@ -3,9 +3,14 @@ name: CI
 # The whole test suite, on every pull request (docs/ci.md). Every job is a gate: a ticket is done
 # when all of them are green. Nothing is built or tested anywhere else; agents never build locally.
 # Pushes to main are handled by ship-apk.yml, which builds and publishes the APK.
+# The slow jobs wait for the cheap ones, so a broken pull request stops early, and the mutation jobs
+# run for the modules a pull request changes (docs/ci.md, "Which mutation jobs run"). Every night
+# the whole suite runs on main, every mutation job included, which also keeps main's caches warm.
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
   pull_request:
     paths-ignore:
       - "**.md"
@@ -20,6 +25,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Which mutation jobs this run needs (tools/ci/mutation_matrix.py, config/mutation/modules.json).
+  changes:
+    name: Choose mutation jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      kotlin: ${{ steps.matrix.outputs.kotlin }}
+      native: ${{ steps.matrix.outputs.native }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Mutation matrix self-test
+        run: python3 tools/ci/mutation_matrix.py --self-test
+      - name: Mutation jobs for what changed
+        id: matrix
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          full=()
+          if [ "$EVENT" != "pull_request" ] || git log -1 --format=%B "$HEAD_SHA" | grep -qF '[full-mutation]'; then
+            full=(--full)
+          else
+            git diff --name-only "$(git merge-base "$BASE_SHA" "$HEAD_SHA")" "$HEAD_SHA" > "$RUNNER_TEMP/changed.txt"
+          fi
+          if [ ${#full[@]} -gt 0 ]; then
+            python3 tools/ci/mutation_matrix.py --full >> "$GITHUB_OUTPUT"
+          else
+            python3 tools/ci/mutation_matrix.py --changed "$RUNNER_TEMP/changed.txt" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build debug APK
     runs-on: ubuntu-latest
@@ -152,76 +191,15 @@ jobs:
 
   mutation:
     name: Mutation tests ${{ matrix.module }}
+    # After the cheap gates, and only for the modules this pull request changes.
+    needs: [changes, static-analysis, unit-tests]
+    if: needs.changes.outputs.kotlin != '[]'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - module: ":engine:audio-core"
-            task: ":engine:audio-core:pitest"
-            dir: engine/audio-core
-            name: audio-core
-          - module: ":engine:scenes"
-            task: ":engine:scenes:pitestDebug"
-            dir: engine/scenes
-            name: scenes
-          - module: ":engine:audio-android"
-            task: ":engine:audio-android:pitestDebug"
-            dir: engine/audio-android
-            name: audio-android
-          - module: ":engine:live"
-            task: ":engine:live:pitestDebug"
-            dir: engine/live
-            name: live
-          - module: ":app"
-            task: ":app:pitestDebug"
-            dir: app
-            name: app
-          - module: ":design"
-            task: ":design:pitestDebug"
-            dir: design
-            name: design
-          - module: ":arch:kernel"
-            task: ":arch:kernel:pitest"
-            dir: arch/kernel
-            name: arch-kernel
-          - module: ":arch:audio"
-            task: ":arch:audio:pitest"
-            dir: arch/audio
-            name: arch-audio
-          - module: ":feature:capture:core"
-            task: ":feature:capture:core:pitest"
-            dir: feature/capture/core
-            name: capture-core
-          - module: ":feature:playback:core"
-            task: ":feature:playback:core:pitest"
-            dir: feature/playback/core
-            name: playback-core
-          - module: ":feature:settings:core"
-            task: ":feature:settings:core:pitest"
-            dir: feature/settings/core
-            name: feature-settings-core
-          - module: ":feature:customization:core"
-            task: ":feature:customization:core:pitest"
-            dir: feature/customization/core
-            name: customization-core
-          - module: ":feature:library:core"
-            task: ":feature:library:core:pitest"
-            dir: feature/library/core
-            name: library-core
-          - module: ":feature:diagnostics:core"
-            task: ":feature:diagnostics:core:pitest"
-            dir: feature/diagnostics/core
-            name: feature-diagnostics-core
-          - module: ":feature:visuals:core"
-            task: ":feature:visuals:core:pitest"
-            dir: feature/visuals/core
-            name: visuals-core
-          - module: ":feature:studio:core"
-            task: ":feature:studio:core:pitest"
-            dir: feature/studio/core
-            name: studio-core
+        include: ${{ fromJSON(needs.changes.outputs.kotlin) }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -249,6 +227,9 @@ jobs:
   # on one at a time and runs the whole suite against each.
   native-mutation:
     name: C++ mutation tests ${{ matrix.library }}
+    # After the sanitizer suite passes, and only for the libraries this pull request changes.
+    needs: [changes, native-tests]
+    if: needs.changes.outputs.native != '[]'
     runs-on: ubuntu-24.04
     # Every mutant runs the whole native suite (about 15 s on this runner, four at a time); the
     # Visual's library has the most mutants and outgrew an hour.
@@ -256,15 +237,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - library: geode_util
-            dir: core/util
-          - library: geode_audio
-            dir: core/audio
-          - library: geode_analysis
-            dir: core/analysis
-          # geode_viz is paused for now (owner, 2026-10-23): its run outgrows the job's time limit on
-          # most pull requests. Its floor stays in native-thresholds.properties for when it returns.
+        # The libraries in config/mutation/modules.json that this pull request changes. geode_viz is
+        # paused for now (owner, 2026-10-23): its run outgrows the job's time limit on most pull
+        # requests. Its floor stays in native-thresholds.properties for when it returns.
+        include: ${{ fromJSON(needs.changes.outputs.native) }}
     env:
       # Mull is built per LLVM major; 18 is the runner's clang. Pinned to an exact package and its hash.
       LLVM_MAJOR: "18"
@@ -277,24 +253,39 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
+      - name: Restore the Mull package
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/mull-deb
+          key: mull-deb-${{ env.MULL_DEB_SHA256 }}
       - name: Install Mull
         run: |
           set -euo pipefail
-          deb="$RUNNER_TEMP/$MULL_DEB"
-          curl -sSfL -o "$deb" \
-            "https://dl.cloudsmith.io/public/mull-project/mull-stable/deb/ubuntu/pool/noble/main/M/Mu/mull-${LLVM_MAJOR}_${MULL_VERSION}/$MULL_DEB"
+          mkdir -p "$RUNNER_TEMP/mull-deb"
+          deb="$RUNNER_TEMP/mull-deb/$MULL_DEB"
+          if [ ! -f "$deb" ]; then
+            curl -sSfL -o "$deb" \
+              "https://dl.cloudsmith.io/public/mull-project/mull-stable/deb/ubuntu/pool/noble/main/M/Mu/mull-${LLVM_MAJOR}_${MULL_VERSION}/$MULL_DEB"
+          fi
           echo "$MULL_DEB_SHA256  $deb" | sha256sum --check --strict
           sudo apt-get update -q
           sudo apt-get install -y -q "$deb"
           "mull-runner-$LLVM_MAJOR" --version
+      # Mull's compiler plugin reads mull.yml while it compiles, so ccache hashes that file too.
+      - uses: ./.github/actions/ccache
+        with:
+          key: mull-${{ env.MULL_VERSION }}-${{ matrix.library }}-${{ hashFiles('config/mutation/mull.yml') }}
       - name: Configure (${{ matrix.library }} mutated)
         env:
           CC: clang-${{ env.LLVM_MAJOR }}
           CXX: clang++-${{ env.LLVM_MAJOR }}
+          CCACHE_EXTRAFILES: ${{ github.workspace }}/config/mutation/mull.yml
         run: |
           cmake -S core/host -B build-mutation -DCMAKE_BUILD_TYPE=Debug \
             -DGEODE_MUTATE=${{ matrix.library }} -DGEODE_MULL_PLUGIN=/usr/lib/mull-ir-frontend-$LLVM_MAJOR
       - name: Build
+        env:
+          CCACHE_EXTRAFILES: ${{ github.workspace }}/config/mutation/mull.yml
         run: cmake --build build-mutation --parallel --target geode_core_tests
       # Every mutant runs (the build has no coverage filter); one no test reaches survives.
       # mull-runner's own threshold is off: the gate below decides.
@@ -333,6 +324,9 @@ jobs:
         run: python3 tools/bridge_schema/generate.py --check
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
+      - uses: ./.github/actions/ccache
+        with:
+          key: host-asan
       - name: Configure
         env:
           CC: clang
@@ -361,6 +355,9 @@ jobs:
       # ThreadSanitizer's shadow memory needs a narrower address-space randomisation than the runner's default.
       - name: Make room for ThreadSanitizer
         run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - uses: ./.github/actions/ccache
+        with:
+          key: host-tsan
       - name: Configure
         env:
           CC: clang
@@ -389,6 +386,9 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libgles-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
+      - uses: ./.github/actions/ccache
+        with:
+          key: milkdrop
       - name: Configure
         run: cmake -S tools/milkdrop-determinism -B build-milkdrop -DCMAKE_BUILD_TYPE=Release
       - name: Build
@@ -521,6 +521,8 @@ jobs:
   # permission model do not exist off a device, and Robolectric's shadows misreport some of them.
   instrumented-tests:
     name: Instrumented tests (emulator)
+    # After the app builds and the unit tests pass.
+    needs: [build, unit-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -538,6 +540,26 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # A booted emulator snapshot, kept between runs so each run resumes it instead of cold-booting.
+      - name: Restore the emulator snapshot
+        uses: actions/cache@v5
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-31-google_apis-x86_64-v1
+      - name: Create the emulator snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Emulator snapshot created."
       - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -545,6 +567,9 @@ jobs:
           api-level: 31
           target: google_apis
           arch: x86_64
+          force-avd-creation: false
+          # Resume the cached snapshot and never write back to it, so every run starts the same.
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: ./gradlew :app:connectedDebugAndroidTest --stacktrace --no-daemon
       - name: Upload instrumented reports

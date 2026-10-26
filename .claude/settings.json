@@ -1,4 +1,62 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git grep:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git submodule update:*)",
+      "Bash(tools/precheck.sh:*)",
+      "Bash(python3 tools/ci/check_style_packs.py:*)",
+      "Bash(python3 tools/ci/check_native_includes.py:*)",
+      "Bash(python3 tools/ci/check_notices.py:*)",
+      "Bash(python3 tools/bridge_schema/generate.py --check)",
+      "Bash(python3 tools/ci/mutation_matrix.py:*)",
+      "Bash(node tools/glslcheck/check.mjs:*)",
+      "Bash(tools/hostlink/hostlink.sh)",
+      "Bash(clang-format --dry-run:*)",
+      "Bash(pre-commit run:*)",
+      "Bash(cmake -S core/host -B build-host:*)",
+      "Bash(cmake --build build-host:*)",
+      "Bash(ctest --test-dir build-host:*)",
+      "mcp__graphify",
+      "mcp__github__pull_request_read",
+      "mcp__github__issue_read",
+      "mcp__github__list_pull_requests",
+      "mcp__github__list_issues",
+      "mcp__github__list_commits",
+      "mcp__github__list_branches",
+      "mcp__github__search_issues",
+      "mcp__github__search_pull_requests",
+      "mcp__github__search_code",
+      "mcp__github__get_file_contents",
+      "mcp__github__get_commit",
+      "mcp__github__get_check_run",
+      "mcp__github__get_job_logs",
+      "mcp__github__actions_get",
+      "mcp__github__actions_list"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh"
+          }
+        ]
+      }
+    ]
+  },
   "enabledPlugins": {
     "dart-flutter@synced": false,
     "vgv-ai-flutter-plugin@synced": false,

@@ -31,7 +31,7 @@ runs:
         SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?Android SDK location not set on runner}}"
         SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
         yes | "$SDKMANAGER" --licenses >/dev/null || true
-        packages=("platform-tools" "platforms;android-36" "build-tools;36.0.0")
+        packages=("platform-tools" "platforms;android-37" "build-tools;36.0.0")
         if [ "$NATIVE" = "true" ]; then
           packages+=("ndk;28.0.13004108" "cmake;3.22.1")
         fi

@@ -1,0 +1,29 @@
+name: ccache for the host CMake builds
+description: >-
+  Installs ccache and restores its cache, then points CMake at it through
+  CMAKE_C_COMPILER_LAUNCHER and CMAKE_CXX_COMPILER_LAUNCHER (read from the environment by CMake 3.17+).
+  Pull requests restore main's cache, which the nightly run keeps warm.
+inputs:
+  key:
+    description: The cache's name; one per build configuration.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install ccache
+      shell: bash
+      run: |
+        sudo apt-get update -q
+        sudo apt-get install -y -q ccache
+        {
+          echo "CCACHE_DIR=$HOME/.ccache"
+          echo "CCACHE_MAXSIZE=500M"
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache"
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache"
+        } >> "$GITHUB_ENV"
+    - name: Restore ccache
+      uses: actions/cache@v5
+      with:
+        path: ~/.ccache
+        key: ccache-${{ inputs.key }}-${{ github.sha }}
+        restore-keys: ccache-${{ inputs.key }}-

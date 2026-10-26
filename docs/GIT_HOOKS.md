@@ -37,6 +37,19 @@ configuration run these checks. The hook reads each worktree's own configuration
 An existing custom `core.hooksPath` must be reconciled before installing;
 pre-commit deliberately refuses to overwrite that configuration.
 
+Optionally, run the fast CI checks before every push as well:
+
+```sh
+.venv-hooks/bin/python -m pre_commit install --hook-type pre-push --allow-missing-config
+```
+
+The `precheck` hook then runs `tools/precheck.sh` over everything the branch
+changes since its merge base with `origin/main`: whitespace, native include
+boundaries, the bridge schema, the notices, the Style packs, and, by what
+changed, clang-format, the host link check, cmake-lint, ktlint and glslang. It
+needs no Gradle. Claude Code cloud sessions install it from
+`.claude/hooks/session-start.sh`.
+
 ## What runs
 
 | Check | Scope |

@@ -1,0 +1,221 @@
+{
+  "_comment": [
+    "The mutation jobs in .github/workflows/ci.yml, read by tools/ci/mutation_matrix.py (docs/ci.md, 'Which mutation jobs run').",
+    "A pull request runs a module's job when it changes one of that module's paths, or one of the shared paths, which run them all.",
+    "Nightly runs, manual runs and a head commit containing [full-mutation] run every job."
+  ],
+  "shared": [
+    ".github/workflows/ci.yml",
+    ".github/actions/",
+    "config/mutation/",
+    "tools/ci/mutation_matrix.py"
+  ],
+  "kotlin": {
+    "shared": [
+      "build-logic/",
+      "gradle/",
+      "build.gradle.kts",
+      "settings.gradle.kts",
+      "gradle.properties",
+      "arch/",
+      "tools/ci/mutation_gate.py"
+    ],
+    "sharedPatterns": [
+      "^feature/[^/]+/api/"
+    ],
+    "jobs": [
+      {
+        "module": ":engine:audio-core",
+        "task": ":engine:audio-core:pitest",
+        "dir": "engine/audio-core",
+        "name": "audio-core",
+        "paths": [
+          "engine/audio-core/"
+        ]
+      },
+      {
+        "module": ":engine:scenes",
+        "task": ":engine:scenes:pitestDebug",
+        "dir": "engine/scenes",
+        "name": "scenes",
+        "paths": [
+          "engine/scenes/"
+        ]
+      },
+      {
+        "module": ":engine:audio-android",
+        "task": ":engine:audio-android:pitestDebug",
+        "dir": "engine/audio-android",
+        "name": "audio-android",
+        "paths": [
+          "engine/audio-android/",
+          "engine/audio-core/"
+        ]
+      },
+      {
+        "module": ":engine:live",
+        "task": ":engine:live:pitestDebug",
+        "dir": "engine/live",
+        "name": "live",
+        "paths": [
+          "engine/live/",
+          "engine/audio-core/"
+        ]
+      },
+      {
+        "module": ":app",
+        "task": ":app:pitestDebug",
+        "dir": "app",
+        "name": "app",
+        "paths": [
+          "app/"
+        ]
+      },
+      {
+        "module": ":design",
+        "task": ":design:pitestDebug",
+        "dir": "design",
+        "name": "design",
+        "paths": [
+          "design/"
+        ]
+      },
+      {
+        "module": ":arch:kernel",
+        "task": ":arch:kernel:pitest",
+        "dir": "arch/kernel",
+        "name": "arch-kernel",
+        "paths": [
+          "arch/kernel/"
+        ]
+      },
+      {
+        "module": ":arch:audio",
+        "task": ":arch:audio:pitest",
+        "dir": "arch/audio",
+        "name": "arch-audio",
+        "paths": [
+          "arch/audio/"
+        ]
+      },
+      {
+        "module": ":feature:capture:core",
+        "task": ":feature:capture:core:pitest",
+        "dir": "feature/capture/core",
+        "name": "capture-core",
+        "paths": [
+          "feature/capture/api/",
+          "feature/capture/core/"
+        ]
+      },
+      {
+        "module": ":feature:playback:core",
+        "task": ":feature:playback:core:pitest",
+        "dir": "feature/playback/core",
+        "name": "playback-core",
+        "paths": [
+          "feature/playback/api/",
+          "feature/playback/core/"
+        ]
+      },
+      {
+        "module": ":feature:settings:core",
+        "task": ":feature:settings:core:pitest",
+        "dir": "feature/settings/core",
+        "name": "feature-settings-core",
+        "paths": [
+          "feature/settings/api/",
+          "feature/settings/core/"
+        ]
+      },
+      {
+        "module": ":feature:customization:core",
+        "task": ":feature:customization:core:pitest",
+        "dir": "feature/customization/core",
+        "name": "customization-core",
+        "paths": [
+          "feature/customization/api/",
+          "feature/customization/core/"
+        ]
+      },
+      {
+        "module": ":feature:library:core",
+        "task": ":feature:library:core:pitest",
+        "dir": "feature/library/core",
+        "name": "library-core",
+        "paths": [
+          "feature/library/api/",
+          "feature/library/core/"
+        ]
+      },
+      {
+        "module": ":feature:diagnostics:core",
+        "task": ":feature:diagnostics:core:pitest",
+        "dir": "feature/diagnostics/core",
+        "name": "feature-diagnostics-core",
+        "paths": [
+          "feature/diagnostics/api/",
+          "feature/diagnostics/core/"
+        ]
+      },
+      {
+        "module": ":feature:visuals:core",
+        "task": ":feature:visuals:core:pitest",
+        "dir": "feature/visuals/core",
+        "name": "visuals-core",
+        "paths": [
+          "feature/visuals/api/",
+          "feature/visuals/core/"
+        ]
+      },
+      {
+        "module": ":feature:studio:core",
+        "task": ":feature:studio:core:pitest",
+        "dir": "feature/studio/core",
+        "name": "studio-core",
+        "paths": [
+          "feature/studio/api/",
+          "feature/studio/core/"
+        ]
+      }
+    ]
+  },
+  "native": {
+    "shared": [
+      "core/api/",
+      "core/util/",
+      "core/tests/",
+      "core/host/",
+      "core/CMakeLists.txt",
+      "core/native_libraries.cmake",
+      "core/pure_sources.cmake",
+      "third_party/kissfft",
+      "tools/ci/native_mutation_gate.py",
+      "tools/ci/mutation_gate.py"
+    ],
+    "sharedPatterns": [],
+    "jobs": [
+      {
+        "library": "geode_util",
+        "dir": "core/util",
+        "paths": [
+          "core/util/"
+        ]
+      },
+      {
+        "library": "geode_audio",
+        "dir": "core/audio",
+        "paths": [
+          "core/audio/"
+        ]
+      },
+      {
+        "library": "geode_analysis",
+        "dir": "core/analysis",
+        "paths": [
+          "core/analysis/"
+        ]
+      }
+    ]
+  }
+}
