@@ -11,6 +11,15 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **One Sensitivity for every Style, MilkDrop included (#301).** Settings,
+  Audio, Analysis has a Sensitivity (-12 to +24 dB, stored in
+  `visual_sensitivity_db`): a gain on the Visual's audio feed before the
+  analysis and every Style read it, so it reaches projectM's PCM too and
+  quiet music reacts like loud music. Customize, Advanced has a new Sound
+  section that trims bass, mid, treble and beat one by one (the existing
+  per-signal trims, which ride with the Customization and carry across
+  Style changes).
+
 - **MilkDrop presets react the way they were written (#296).** Two projectM
   patches: `projectm-v4.1.8-stereo-beats.patch` (upstream `494269e`) takes
   bass, mid and treble from both channels now that Geode feeds stereo, and

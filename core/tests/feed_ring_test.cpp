@@ -456,3 +456,44 @@ TEST(FeedRingTest, TheScreenNeverReachesPastTheNewestFrame) {
     // Liveness is judged now, not at the present time.
     EXPECT_TRUE(ring.locate(FeedRing::kInitialPacketNs, 50 * kMs).live);
 }
+
+TEST(FeedRingTest, TheSensitivityIsAGainOnEverythingRead) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    const float pcm[] = {0.25f, -0.125f, 0.5f, 0.0625f};
+    ring.write(FeedSource::Player, pcm, 2, 2, kRate, 0);
+    EXPECT_FLOAT_EQ(ring.gain(), 1.0f);
+    ring.setGainDb(20.0f);
+    EXPECT_FLOAT_EQ(ring.gain(), 10.0f);
+    float out[4] = {};
+    EXPECT_EQ(ring.copyRange(0, 2, out), 2u);
+    EXPECT_FLOAT_EQ(out[0], 2.5f);
+    EXPECT_FLOAT_EQ(out[1], -1.25f);
+    EXPECT_FLOAT_EQ(out[2], 5.0f);
+    EXPECT_FLOAT_EQ(out[3], 0.625f);
+    float window[4] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), window, 2), 2u);
+    EXPECT_FLOAT_EQ(window[0], 2.5f);
+    EXPECT_FLOAT_EQ(window[3], 0.625f);
+    // A lower Sensitivity turns it down; what is stored is untouched.
+    ring.setGainDb(-6.0f);
+    ring.copyRange(0, 2, out);
+    EXPECT_NEAR(out[0], 0.25f * 0.501187f, 1e-5f);
+    ring.setGainDb(0.0f);
+    ring.copyRange(0, 2, out);
+    EXPECT_FLOAT_EQ(out[0], 0.25f);
+}
+
+TEST(FeedRingTest, TheSensitivityIsHeldToItsRange) {
+    FeedRing ring(kSmall);
+    ring.setGainDb(40.0f);
+    EXPECT_NEAR(ring.gain(), std::pow(10.0f, FeedRing::kMaxGainDb / 20.0f), 1e-3f);
+    ring.setGainDb(-40.0f);
+    EXPECT_NEAR(ring.gain(), std::pow(10.0f, FeedRing::kMinGainDb / 20.0f), 1e-5f);
+    ring.setGainDb(std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(ring.gain(), 1.0f);
+    ring.setGainDb(-std::numeric_limits<float>::infinity());
+    EXPECT_FLOAT_EQ(ring.gain(), 1.0f);
+    EXPECT_FLOAT_EQ(FeedRing::kMinGainDb, -12.0f);
+    EXPECT_FLOAT_EQ(FeedRing::kMaxGainDb, 24.0f);
+}

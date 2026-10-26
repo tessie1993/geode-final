@@ -43,6 +43,9 @@ struct ReadPoint {
 // flush (a seek dropped what was buffered) or a change of sample rate starts a new epoch, and the reader
 // never reaches back across one.
 //
+// The Sensitivity (setGainDb) is a gain on everything read out, so it reaches the analysis and every
+// Style's audio, MilkDrop's PCM included, at once and the same for every source.
+//
 // write() never blocks or allocates, so the native player's audio callback calls it directly. A write
 // that finds another one under way is dropped rather than waited for; that happens only around a
 // change of source. There is one reader for locate() and copy() at a time per caller; readers never
@@ -58,6 +61,9 @@ public:
     static constexpr int64_t kMaxPacketNs = 250'000'000;
     // The furthest a source may say it runs ahead of the speaker.
     static constexpr int64_t kMaxDelayNs = 2'000'000'000;
+    // The Sensitivity's range, in dB of gain on what is read.
+    static constexpr float kMinGainDb = -12.0f;
+    static constexpr float kMaxGainDb = 24.0f;
 
     // capacityFrames is rounded up to a power of two, and to at least 4 * kMaxWriteFrames.
     explicit FeedRing(size_t capacityFrames);
@@ -79,6 +85,9 @@ public:
     // The person's offset (heard::kMaxUserOffsetNs either way): positive draws the player's picture later.
     void setUserOffset(int64_t offsetNs);
     int64_t userOffsetNs() const { return userOffsetNs_.load(std::memory_order_relaxed); }
+    // The Sensitivity: a gain in dB (kMinGainDb..kMaxGainDb; not a number is 0) on every frame read out.
+    void setGainDb(float db);
+    float gain() const { return gain_.load(std::memory_order_relaxed); }
 
     // Writers. Returns the frames stored: 0 when `source` is not the one listened to, when another write
     // is under way, or for an unusable format. Mono is heard on both channels; past two channels only
@@ -92,7 +101,8 @@ public:
     // writer may already have overwritten, read as silence; a point that is not live reads all silence.
     // Returns how many frames carried audio.
     size_t copy(const ReadPoint& point, float* out, size_t frames) const;
-    // Frames [from, from + frames) as copy() would give them, without regard to epoch or liveness.
+    // Frames [from, from + frames) as copy() would give them, without regard to epoch or liveness. Both
+    // apply the gain.
     size_t copyRange(uint64_t from, size_t frames, float* out) const;
     // The oldest frame still safe to read in the current epoch.
     uint64_t oldestReadable() const;
@@ -129,6 +139,7 @@ private:
     std::array<std::atomic<bool>, kSources> measured_{};
     std::atomic<int> route_{static_cast<int>(OutputRoute::Unknown)};
     std::atomic<int64_t> userOffsetNs_{0};
+    std::atomic<float> gain_{1.0f};
 };
 
 }  // namespace geode::audio::feed

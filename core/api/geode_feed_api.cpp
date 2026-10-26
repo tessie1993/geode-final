@@ -66,6 +66,10 @@ void geode_feed_set_user_offset(geode_feed* f, int64_t offset_us) {
     if (f) f->feed->ring().setUserOffset(std::clamp<int64_t>(offset_us, -kMaxUs, kMaxUs) * 1000);
 }
 
+void geode_feed_set_gain(geode_feed* f, float gain_db) {
+    if (f) f->feed->ring().setGainDb(gain_db);
+}
+
 size_t geode_feed_write(geode_feed* f, int source, const float* interleaved, size_t frames, int channels, int sample_rate) {
     if (!f) return 0;
     return f->feed->ring().write(sourceOf(source), interleaved, frames, channels, sample_rate, geode::api::Feed::nowNs());

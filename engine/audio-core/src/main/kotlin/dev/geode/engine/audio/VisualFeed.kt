@@ -66,6 +66,13 @@ class VisualFeed internal constructor(
     fun setSyncOffset(offset: Millis) =
         backend.call("feedSetUserOffset") { h -> GeodeNative.feedSetUserOffset(h, offset.toMicros().value) }
 
+    /**
+     * The Sensitivity (Settings), in dB: a gain on the audio before the analysis and every Style read it,
+     * MilkDrop's PCM included, so quiet music reacts like loud music. 0 leaves it as it is; the native
+     * feed holds it to -12..+24 dB.
+     */
+    fun setSensitivity(gainDb: Float) = backend.call("feedSetGain") { h -> GeodeNative.feedSetGain(h, gainDb) }
+
     fun setTuning(
         sensitivity: Float,
         refractoryMs: Float,

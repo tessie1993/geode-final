@@ -82,6 +82,7 @@
     <string name="eq_loudness">Loudness  %1$+.1f dB</string>
 
     <string name="audio_group_analysis">Analysis</string>
+    <string name="audio_sensitivity">Sensitivity  %1$+.1f dB</string>
     <string name="audio_beat_sensitivity">Beat sensitivity  %1$.1f</string>
     <string name="audio_beat_min_gap">Shortest gap between beats  %1$d ms</string>
     <string name="audio_slow_track">Slow track</string>

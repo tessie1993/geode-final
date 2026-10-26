@@ -367,6 +367,9 @@ GEODE_API void        geode_feed_set_route(geode_feed*, int route);
 /* The person's sync offset, in microseconds, at most half a second either way: positive draws the player's
  * picture later. Live input is heard as it is captured and is never moved. */
 GEODE_API void        geode_feed_set_user_offset(geode_feed*, int64_t offset_us);
+/* The Sensitivity, in dB (-12 to +24; 0 leaves the sound as it is): a gain on the audio before the analysis
+ * and every Style reads it, MilkDrop's PCM included, so quiet sources react like loud ones. */
+GEODE_API void        geode_feed_set_gain(geode_feed*, float gain_db);
 /* Interleaved float PCM; returns the frames taken, 0 when `source` is not the one listened to. */
 GEODE_API size_t      geode_feed_write(geode_feed*, int source, const float* interleaved, size_t frames, int channels,
                                        int sample_rate);

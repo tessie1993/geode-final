@@ -172,6 +172,11 @@ sealed interface AnalysisCommand : SettingsCommand {
         val on: Boolean,
     ) : AnalysisCommand
 
+    /** The gain every Style's sound is analysed and drawn with. */
+    data class SetSensitivity(
+        val sensitivity: Decibels,
+    ) : AnalysisCommand
+
     /** Positive draws the Visual later than the music, negative earlier. */
     data class SetSyncOffset(
         val offset: Millis,

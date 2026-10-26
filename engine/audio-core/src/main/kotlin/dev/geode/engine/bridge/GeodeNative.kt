@@ -508,6 +508,12 @@ object GeodeNative {
         route: Int,
     ): Int
 
+    /** The Sensitivity in dB (-12..24): a gain on the audio before the analysis and every Style reads it. */
+    external fun feedSetGain(
+        handle: Long,
+        gainDb: Float,
+    ): Int
+
     /** The person's sync offset in microseconds; positive draws the player's picture later. */
     external fun feedSetUserOffset(
         handle: Long,

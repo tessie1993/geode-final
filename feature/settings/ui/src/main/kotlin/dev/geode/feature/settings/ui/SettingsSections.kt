@@ -227,6 +227,12 @@ private fun AnalysisGroup(
     analysis: AnalysisSettings,
     change: (SettingsCommand) -> Unit,
 ) {
+    // First: the one control that makes every Style, MilkDrop included, react more or less (#301).
+    SliderRow(
+        stringResource(R.string.audio_sensitivity, analysis.sensitivity.value),
+        analysis.sensitivity.value,
+        AnalysisSettings.SENSITIVITY.start.value..AnalysisSettings.SENSITIVITY.endInclusive.value,
+    ) { change(AnalysisCommand.SetSensitivity(Decibels(it))) }
     SliderRow(
         stringResource(R.string.audio_beat_sensitivity, analysis.beatSensitivity),
         analysis.beatSensitivity,

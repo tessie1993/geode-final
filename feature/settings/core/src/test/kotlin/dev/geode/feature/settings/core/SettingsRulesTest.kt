@@ -184,6 +184,11 @@ class SettingsRulesTest {
             Row(AnalysisCommand.SetSyncOffset(Millis(-80)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(-80)))),
             Row(AnalysisCommand.SetSyncOffset(Millis(-5_000)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(-300)))),
             Row(AnalysisCommand.SetSyncOffset(Millis(5_000)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(300)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(9f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(9f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(-6f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(-6f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(-40f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(-12f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(40f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(24f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(Float.NaN)), defaults),
         )
 
     private val behaviorRows: List<Row> =

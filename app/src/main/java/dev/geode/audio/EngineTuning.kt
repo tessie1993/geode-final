@@ -22,8 +22,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Applies Settings to the audio engine as they change (#17, Settings slice): the player's speed,
- * pitch, silence skipping and headphone handling, ReplayGain, the equalizer, and the beat detection
- * the Visual reacts to. Settings is the only source; nothing here stores anything.
+ * pitch, silence skipping and headphone handling, ReplayGain, the equalizer, the beat detection
+ * the Visual reacts to, and the Visual's feed: its Sensitivity and picture sync. Settings is the only source; nothing here stores anything.
  *
  * Started once the engine's session opens, and runs for the life of the process, as the engine does.
  */
@@ -62,6 +62,8 @@ class EngineTuning(
         session.analysis.beatMinIntervalMs = analysis.beatMinIntervalMs
         // The person's sync offset moves the player's picture against what the speaker plays (#295).
         session.feed.setSyncOffset(analysis.syncOffset)
+        // One gain before the analysis and every Style's audio, MilkDrop's PCM included (#301).
+        session.feed.setSensitivity(analysis.sensitivity.value)
     }
 
     internal companion object {

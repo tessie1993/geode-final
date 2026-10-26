@@ -71,6 +71,11 @@ void FeedRing::setRoute(OutputRoute route) {
     route_.store(static_cast<int>(route), std::memory_order_relaxed);
 }
 
+void FeedRing::setGainDb(float db) {
+    const float clamped = std::isfinite(db) ? std::clamp(db, kMinGainDb, kMaxGainDb) : 0.0f;
+    gain_.store(std::pow(10.0f, clamped / 20.0f), std::memory_order_relaxed);
+}
+
 void FeedRing::setUserOffset(int64_t offsetNs) {
     userOffsetNs_.store(heard::clampUserOffsetNs(offsetNs), std::memory_order_relaxed);
 }
@@ -164,6 +169,7 @@ uint64_t FeedRing::oldestReadable() const {
 size_t FeedRing::copyRange(uint64_t from, size_t frames, float* out) const {
     if (!out || frames == 0) return 0;
     const uint64_t w = written_.load(std::memory_order_acquire);
+    const float gain = gain_.load(std::memory_order_relaxed);
     for (size_t i = 0; i < frames; ++i) {
         const uint64_t index = from + i;
         float* dst = out + i * kChannels;
@@ -173,8 +179,8 @@ size_t FeedRing::copyRange(uint64_t from, size_t frames, float* out) const {
             continue;
         }
         const float* src = samples_.data() + (index & mask_) * kChannels;
-        dst[0] = src[0];
-        dst[1] = src[1];
+        dst[0] = src[0] * gain;
+        dst[1] = src[1] * gain;
     }
     // Checked after the copy: anything the writer reached while it ran is not trusted.
     const uint64_t after = written_.load(std::memory_order_acquire) + kMaxWriteFrames;
