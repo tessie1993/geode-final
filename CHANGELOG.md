@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The picture follows the music's structure, rhythm, timbre and space (#294).**
+  One feature bus in the engine reads everything the analysis hears beyond the
+  bands and the beat (downbeat, bar, drums, novelty, sections, build-ups,
+  drops, arrivals, timbre and stereo), shaped so nothing jumps a frame, latched
+  at phrase rate where it should be, and faded out while the tempo is unsure.
+  Shader Styles read it through `lib_scene_features.glsl` (Plasma by section,
+  Kaleido by bar and drums, Voronoi by timbre, Liss by stereo, Tunnel by drops
+  and arrivals), and every other family has its own mapping: Fluid's kick and
+  drop, Life's bar-locked seeding and harmonic rule, Mycelium's branching,
+  Acid's feedback, Cymatics' modes over the bar, Curl Flow's build, Water's
+  downbeat ring and section swell, and MilkDrop's post pass.
+
 - **Third-party notices are complete and true (#293).** The notices now cover
   TagLib (with both of its licence options and the choice marked pending,
   #274), utfcpp, KISS FFT, Oboe, Dagger and Hilt, the AndroidX, Kotlin, Guava,

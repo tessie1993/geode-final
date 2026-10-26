@@ -198,6 +198,12 @@ const SHADER_VALUES = {
   uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
   uXFlightTime: 37.0, uXSpinTime: 37.0, uXDriftTime: 37.0,
   uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
+  // The feature bus (lib_scene_features, FeatureBus.hpp) mid-song: a trusted bar, a section and a drop
+  // a few seconds back, a fairly bright and tonal sound, a little wide and right of centre.
+  uKick: 0.4, uSnare: 0.2, uHat: 0.3, uBeatInBar: 1, uDownbeat: 0.25, uDownbeatConfidence: 0.8,
+  uPulseConfidence: 0.85, uTempoStability: 0.9, uNovelty: 0.3, uSection: 0.62, uBuildup: 0.2, uDrop: 0.4,
+  uArrival: 0.1, uMacro: 0.5, uSectionHit: 0.05, uDropHit: 0.1, uArrivalHit: 0.0, uCentroid: 0.55,
+  uHarmonicity: 0.6, uFlux: 0.35, uOnset: 0.3, uStereoWidth: 0.4, uStereoPan: 0.15, uStereoCorrelation: 0.7,
 };
 
 const SHADER_TEXTURES = { uAudioTex: 'audio', uPalLut: 'palette', uFlow: 'flow' };

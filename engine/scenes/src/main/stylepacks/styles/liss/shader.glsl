@@ -137,6 +137,7 @@ vec2 view() {
 }
 
 //#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -158,18 +159,27 @@ vec3 grade(vec3 col) {
 }
 
 // Vectorscope / Lissajous: the waveform drawn against itself.
+//
+// Space (#294), read the way a goniometer reads a mix: a wide mix spreads the trace sideways, the
+// pan leans it toward its side, and as the channels fall out of phase a mirrored trace appears.
 void main() {
     vec2 uv = view();
     float md = 10.0;
     float bright = 0.0;
     float points = xcount(64.0);
+    float spread = 1.0 + 0.6 * uStereoWidth;
+    float lean = -0.5 * uStereoPan;
+    mat2 tilt = mat2(cos(lean), -sin(lean), sin(lean), cos(lean));
+    float ghost = 0.5 * clamp(1.0 - uStereoCorrelation, 0.0, 1.0);
     for (float i = 0.0; i < 128.0; i++) {
         if (i >= points) break;
         float s = i / points;
         vec2 p = vec2(awave(s) * 2.0 - 1.0, awave(fract(s + 0.25)) * 2.0 - 1.0) * 0.75 * xm(uXScale);
+        p = tilt * vec2(p.x * spread, p.y);
         float d = length(uv - p);
         md = min(md, d);
         bright += exp(-d * 30.0 / xm(uXSize)) * 0.12;
+        bright += exp(-length(uv - vec2(-p.x, p.y)) * 30.0 / xm(uXSize)) * 0.12 * ghost;
     }
     vec3 col = pal(md * 2.0 + uEnergy) * (exp(-md * 40.0) + bright * (0.4 + uMid));
     float grid = (step(abs(uv.x), 0.002) + step(abs(uv.y), 0.002)) * 0.15;
