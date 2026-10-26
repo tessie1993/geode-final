@@ -277,6 +277,7 @@ void Renderer::onSurfaceCreated() {
         quadVao_ = 0;
     }
     touchField_.reset();
+    gravityField_.reset();
     loadScale_.reset();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -439,6 +440,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     }
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
+    scene->setGravityField(&gravityField_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);
