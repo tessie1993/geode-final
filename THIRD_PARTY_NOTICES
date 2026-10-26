@@ -272,6 +272,17 @@ Kotlin Standard Library and kotlinx.coroutines
 ----------------------------------------------
 Copyright JetBrains s.r.o. Licensed under the Apache License, Version 2.0.
 
+Haze
+----
+The App UI's frosted glass over its own content (dev.geode.design.glass) blurs
+what lies behind a bar or sheet with the Haze library, the haze and haze-blur
+modules (dev.chrisbanes.haze, 2.0.1), linked unmodified:
+
+  https://github.com/chrisbanes/haze
+
+Copyright 2023 Christopher Banes and the Haze project contributors. Licensed
+under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
+
 Robolectric, JUnit (test-only; not shipped in the APK)
 ------------------------------------------------------
 Robolectric: MIT License. JUnit: Eclipse Public License 1.0/2.0.
