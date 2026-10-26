@@ -217,16 +217,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizTakeMilkPresetLoaded(JNIEnv* env, jo
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizPushPcm(JNIEnv* env, jobject, jlong handle, jfloatArray mono, jint count) {
-    return vizCall(env, "vizPushPcm", handle, [&](geode_viz* v) {
-        FloatElements data(env, mono);
-        if (!data.get()) return GEODE_STATUS_INVALID_ARGUMENT;
-        geode_viz_push_pcm(v, data.get(), count < data.length() ? count : data.length());
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetLfo(JNIEnv* env, jobject, jlong handle, jint slot, jfloatArray config) {
     return vizCall(env, "vizSetLfo", handle, [&](geode_viz* v) {
         FloatElements data(env, config);
@@ -372,6 +362,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizReleaseScenes(JNIEnv* env, jobject, 
     return vizCall(env, "vizReleaseScenes", handle, [](geode_viz* v) {
         geode_viz_release_scenes(v);
         return GEODE_STATUS_OK;
+    });
+}
+
+// GL thread: the Visual reads the live sound from the feed at the start of each frame; 0 detaches.
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizAttachFeed(JNIEnv* env, jobject, jlong handle, jlong feed) {
+    return vizCall(env, "vizAttachFeed", handle, [&](geode_viz* v) {
+        return geode_viz_attach_feed(v, reinterpret_cast<geode_feed*>(feed));
     });
 }
 

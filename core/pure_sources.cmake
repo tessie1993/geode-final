@@ -20,6 +20,8 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Crossfeed.cpp
     audio/dsp/Limiter.cpp
     audio/player/BufferTuner.cpp
+    audio/feed/FeedRing.cpp
+    audio/feed/FeatureHistory.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
@@ -59,6 +61,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Normaliser.cpp
     viz/SharedEffects.cpp
     viz/BeatEnvelope.cpp
+    viz/DisplayEvents.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
     viz/StylePacks.cpp

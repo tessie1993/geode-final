@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include "CompositeGrade.hpp"
 #include "SharedParams.hpp"
@@ -41,9 +42,21 @@ float Renderer::beginFrame(double timeSeconds) {
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
     }
+    latchFramePcm();
     applyMilkRequests();
     applyOverlayUploads();
     return dt;
+}
+
+void Renderer::latchFramePcm() {
+    framePcmFrames_ = std::exchange(pendingPcmFrames_, 0);
+    for (int i = 0; i < framePcmFrames_; ++i) {
+        const float left = pendingPcm_[static_cast<size_t>(2 * i)];
+        const float right = pendingPcm_[static_cast<size_t>(2 * i + 1)];
+        framePcm_[static_cast<size_t>(2 * i)] = left;
+        framePcm_[static_cast<size_t>(2 * i + 1)] = right;
+        framePcmMono_[static_cast<size_t>(i)] = 0.5f * (left + right);
+    }
 }
 
 Scene* Renderer::resolveActiveScene() {
@@ -174,17 +187,9 @@ bool Renderer::ensureTargets() {
 }
 
 void Renderer::deliverPcm(Scene& scene) {
-    // Copy out under the lock, then hand the scene its own scratch buffer
-    // once unlocked: acceptPcm() (a copy of up to 4096 samples plus
-    // fillPcmRow) must never run while stateLock_ is held, or pushPcm() on
-    // the PCM producer thread blocks behind a scene upload.
-    int count = 0;
-    {
-        std::lock_guard<std::mutex> lock(stateLock_);
-        count = pcmCount_;
-        if (count > 0) std::copy(pcm_.begin(), pcm_.begin() + count, pcmDeliverScratch_.begin());
-    }
-    if (count > 0) scene.acceptPcm(pcmDeliverScratch_.data(), count);
+    if (framePcmFrames_ <= 0) return;
+    scene.acceptPcm(framePcmMono_.data(), framePcmFrames_);
+    scene.acceptStereoPcm(framePcm_.data(), framePcmFrames_);
 }
 
 void Renderer::bindSecondaryTarget() {

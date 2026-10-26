@@ -11,6 +11,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dev.geode.audio.MicCapture
+import dev.geode.engine.audio.FeedSource
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.playback.NativePlayer
@@ -26,14 +27,14 @@ import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.withContext
 
 /**
- * The [AudioAdapter] over the pipeline the app runs today: [PlaybackEngine]'s session (its player,
- * its capture sink and its analysis) and [MicCapture] feeding that sink.
+ * The [AudioAdapter] over the pipeline the app runs today: [PlaybackEngine]'s session (its player and
+ * its analysis) and [MicCapture], both writing into the Visual's one audio feed.
  *
  * Nothing is acquired until the first call or the first collector of [announcements], so building
- * this changes nothing. From then on it holds the engine's UI hold, listens to the player, and owns
- * the session's audio-format hook, for the life of the process. It does what the old capture
- * controller did to the pipeline, and no more: a capture resets the analysis and runs it at the
- * capture's rate; stopping resets it again and goes back to the player's rate.
+ * this changes nothing. From then on it holds the engine's UI hold, listens to the player, and
+ * chooses what the Visual hears, for the life of the process: a capture makes the microphone the
+ * feed's one source, and stopping it gives the feed back to the player. The analysis follows the
+ * feed's source at that source's rate and starts over on each change.
  *
  * Playback is announced from the player's own listener callbacks (the media session's player), so
  * nothing here polls. Capture is announced from the pump's callbacks. The microphone is the only
@@ -196,16 +197,16 @@ class NativeAudioAdapter(
 
         private val mainHandler = Handler(Looper.getMainLooper())
 
+        // Live input writes into the feed as its own source, heard only while a capture runs.
+        private val liveSink = session.feed.sink(FeedSource.LIVE)
+
         private val mic =
-            MicCapture(application, session.captureSink).apply {
+            MicCapture(application, liveSink).apply {
                 onEnded = { mainHandler.post { lose() } }
                 onSilenceChanged = { quiet -> announce(CaptureAnnouncement.QuietChanged(quiet)) }
             }
 
         private var capturing: CaptureSource? = null
-
-        @Volatile
-        private var playerRateHz = 0
 
         private val playerListener =
             object : Player.Listener {
@@ -246,12 +247,6 @@ class NativeAudioAdapter(
             }
 
         init {
-            // The analysis follows the player's format, except while a capture owns it.
-            session.onAudioFormat =
-                { rate, _, _ ->
-                    playerRateHz = rate
-                    if (!mic.active) session.analysis.sampleRateHz = rate
-                }
             player.addListener(playerListener)
             session.exoPlayer?.let { session.audioFx.attach(it.audioSessionId) }
         }
@@ -267,10 +262,10 @@ class NativeAudioAdapter(
         fun beginCapture(source: CaptureSource): CaptureFailure? {
             if (capturing == source && mic.active) return null
             endCapture()
-            val failure = mic.start { rate -> session.analysis.sampleRateHz = rate }
+            val failure = mic.start { rate -> liveSink.rateHz = rate }
             if (failure != null) return failure.toCaptureFailure()
-            session.sampleRing.beginEpoch()
-            session.analysis.reset()
+            // Live input replaces the player in the Visual; the feed starts a new epoch and the analysis over.
+            session.feed.select(FeedSource.LIVE)
             capturing = source
             announce(CaptureAnnouncement.Running(source))
             return null
@@ -280,9 +275,8 @@ class NativeAudioAdapter(
             if (capturing == null && !mic.active) return
             mic.stop()
             capturing = null
-            session.sampleRing.beginEpoch()
-            session.analysis.reset()
-            session.analysis.sampleRateHz = playerRateHz.takeIf { it > 0 } ?: FALLBACK_RATE_HZ
+            // The player's feed comes back to the Visual.
+            session.feed.select(FeedSource.PLAYER)
         }
 
         /** The capture ended by itself: a read failed. */
@@ -308,7 +302,6 @@ class NativeAudioAdapter(
 
     private companion object {
         const val BUFFER = 64
-        const val FALLBACK_RATE_HZ = 44_100
 
         /** The crossfade curve Geode's player uses when nothing says otherwise: equal power. */
         const val EQUAL_POWER_CURVE = 1

@@ -3,6 +3,7 @@ package dev.geode.render.bridge
 import android.content.Context
 import android.content.res.AssetManager
 import dev.geode.analysis.AudioFeatures
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
 import dev.geode.engine.bridge.NativeFailures
@@ -160,11 +161,12 @@ class NativeViz(
     /** The preset MilkDrop last compiled, handed out once; null until the next one. */
     fun takeMilkPresetLoaded(): String? = liveOr(null) { h -> GeodeNative.vizTakeMilkPresetLoaded(h) }
 
-    fun pushPcm(
-        mono: FloatArray,
-        count: Int,
-    ) {
-        if (count > 0) live { h -> GeodeNative.vizPushPcm(h, mono, count) }
+    /**
+     * GL thread: from the next frame on, the renderer reads the live sound from [feed] (the features
+     * heard now and the scenes' stereo window) instead of [setFeatures]; null detaches.
+     */
+    fun attachFeed(feed: VisualFeed?) {
+        live { h -> NativeFailures.check(GeodeNative.vizAttachFeed(h, feed?.handle ?: 0L), "vizAttachFeed") }
     }
 
     fun setLfoConfigs(configs: List<LfoConfig>) {

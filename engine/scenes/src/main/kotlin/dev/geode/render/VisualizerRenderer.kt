@@ -5,11 +5,11 @@ import android.opengl.GLSurfaceView
 import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
-import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import javax.microedition.khronos.egl.EGLConfig
@@ -82,12 +82,16 @@ class VisualizerRenderer(
     @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
 
+    /**
+     * The live sound: while set, the native renderer reads the features heard now and the stereo
+     * window for the scenes straight from this feed at the start of each frame, on the GL thread, and
+     * [features] is not sent. Null draws [features].
+     */
     @Volatile
-    var pcmProvider: () -> PcmChunk? = { null }
+    var feed: VisualFeed? = null
 
-    /** The live sound's features, read on the GL thread every frame; [features] while it has none. */
-    @Volatile
-    var featureSource: () -> AudioFeatures? = { null }
+    // GL thread only: the feed the native renderer is attached to now.
+    private var attachedFeed: VisualFeed? = null
 
     /**
      * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
@@ -170,6 +174,7 @@ class VisualizerRenderer(
         ThermalGovernor.attach(appContext)
         nativeViz.surfaceCreated()
         attachedSnapshots = null
+        attachedFeed = null
         nativeParams = null
         nativeLfo = null
         nativeAdsr = null
@@ -202,7 +207,12 @@ class VisualizerRenderer(
             nativeAdsr = null
         }
         if (wanted == null) syncSceneParams()
-        nativeViz.setFeatures(displayEvents.frame(featureSource() ?: features))
+        val live = feed
+        if (live !== attachedFeed) {
+            nativeViz.attachFeed(live)
+            attachedFeed = live
+        }
+        if (live == null) nativeViz.setFeatures(displayEvents.frame(features))
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
@@ -214,7 +224,6 @@ class VisualizerRenderer(
             nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
             nativeViz.setFrameLoad(FramePacer.activeStats())
         }
-        pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
     private fun syncSceneParams() {

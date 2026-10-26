@@ -9,9 +9,11 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/DisplayEvents.hpp"
 #include "geode/viz/Normaliser.hpp"
 #include "geode/viz/PlanCodec.hpp"
 #include "geode/viz/Renderer.hpp"
+#include "FeedHandle.hpp"
 #include "SnapshotHandle.hpp"
 
 struct geode_viz {
@@ -31,6 +33,11 @@ struct geode_viz {
     bool hasPlan = false;
     geode::viz::mod::ReactionGraph graph;
     double lastFrameSeconds = -1.0;
+    // The live sound this Visual reads at the start of each frame; null when it is handed features instead.
+    // Drawing thread only, as are the frame's window and the edge detection on the feed's events.
+    std::shared_ptr<geode::api::Feed> feed;
+    std::array<float, GEODE_FEED_WINDOW_FRAMES * 2> feedPcm{};
+    geode::viz::DisplayEvents feedEvents;
 };
 
 namespace {
@@ -38,6 +45,7 @@ namespace {
 using namespace geode::viz;
 
 static_assert(LfoEngine::kSlots == GEODE_LFO_SLOTS);
+static_assert(Renderer::kPcmWindowFrames == GEODE_FEED_WINDOW_FRAMES);
 static_assert(AdsrEngine::kCount == GEODE_ADSR_SLOTS);
 // The snapshot schema (core/bridge/schema/native_bridge.json) must describe exactly what the Visual reads.
 static_assert(geode::bridge::kSnapshotParamsCount == static_cast<size_t>(SceneParams::kFieldCount));
@@ -148,10 +156,6 @@ size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacit
         out[n] = '\0';
     }
     return path.size();
-}
-
-void geode_viz_push_pcm(geode_viz* v, const float* mono, int count) {
-    if (v && mono && count > 0) v->renderer.pushPcm(mono, count);
 }
 
 void geode_viz_set_lfo(geode_viz* v, int slot, const float* c, int count) {
@@ -314,9 +318,31 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
     v->renderer.setCustomization(&evaluated);
 }
 
+// The sound heard now, read straight from the feed on the drawing thread: the features, with each event on
+// exactly one frame, and the stereo window for the scenes. Before the Customization is evaluated, so its
+// Reactions see the same frame the scenes draw.
+static void readFeed(geode_viz* v) {
+    if (!v->feed) return;
+    GeodeFeatureFrame heard{};
+    const bool live = v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
+    const GeodeFeatureFrame shown = v->feedEvents.frame(heard, live);
+    v->renderer.setFeatures(shown);
+    v->renderer.setFramePcm(v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
+    std::lock_guard<std::mutex> lock(v->configLock);
+    v->features = shown;
+}
+
+GeodeStatus geode_viz_attach_feed(geode_viz* v, geode_feed* f) {
+    if (!v) return GEODE_STATUS_NULL_HANDLE;
+    v->feed = f ? f->feed : nullptr;
+    v->feedEvents.reset();
+    return GEODE_STATUS_OK;
+}
+
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {
     if (!v) return;
     applySnapshot(v);
+    readFeed(v);
     evaluateCustomization(v, time_seconds);
     v->renderer.render(time_seconds, target_fbo);
 }

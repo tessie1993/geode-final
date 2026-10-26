@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **One native audio feed for the Visual (#276).** Every source writes into one
+  native stereo ring (`core/audio/feed/FeedRing`, `core/api/Feed`): the native
+  player from its audio callback, before volume and DSP; ExoPlayer's tap; and
+  Live input, with exactly one source listened to at a time (starting the
+  microphone replaces the player, stopping it gives the player back). The
+  analysis runs natively off the ring on its own thread, and each Visual frame
+  reads, on the drawing thread, the features and a 576-frame stereo window at
+  the audio being heard: ExoPlayer's half-second AudioTrack lead is taken off
+  (`FeedClockSink`), a pause is silent within a frame, audio that stops coming
+  expires to silence, and no window is ever drawn twice. MilkDrop gets both
+  channels. `AudioBus`, the Kotlin PCM rings, the tap pump and the main-thread
+  feature hop are gone; the live wallpaper reads the same feed.
 
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings

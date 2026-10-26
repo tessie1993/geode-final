@@ -66,6 +66,14 @@ void MilkdropScene::acceptPcm(const float* samples, int count) {
     pcmCount_ += n;
 }
 
+void MilkdropScene::acceptStereoPcm(const float* interleaved, int frames) {
+    const int n = std::min(frames, kEnginePcmSamples);
+    if (!interleaved || n <= 0) return;
+    // The newest frames of the window, replacing the last one: a window is added to projectM once.
+    std::copy(interleaved + static_cast<size_t>(frames - n) * 2, interleaved + static_cast<size_t>(frames) * 2, stereo_.begin());
+    stereoFrames_ = n;
+}
+
 void MilkdropScene::queueMilkPreset(const std::string& path) {
     std::lock_guard<std::mutex> lock(presetLock_);
     pendingPresetPath_ = path;
@@ -225,7 +233,11 @@ void MilkdropScene::update(const GeodeFeatureFrame& features, float dt) {
         adapter_.onFrame(dt, host_.pacedFps ? host_.pacedFps() : 0.0f);
     }
     if (!engine_) return;
-    if (pcmCount_ > 0) {
+    if (stereoFrames_ > 0) {
+        projectm_pcm_add_float(engine_.get(), stereo_.data(), static_cast<unsigned int>(stereoFrames_), PROJECTM_STEREO);
+        stereoFrames_ = 0;
+        pcmCount_ = 0;
+    } else if (pcmCount_ > 0) {
         const int n = std::min(pcmCount_, kEnginePcmSamples);
         if (n < pcmCount_) std::copy(pcm_.begin() + (pcmCount_ - n), pcm_.begin() + pcmCount_, pcm_.begin());
         pcmCount_ = 0;

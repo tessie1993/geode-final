@@ -15,6 +15,7 @@ import androidx.media3.common.util.UnstableApi
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.RingLog
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.AudioRestartPolicy
 import dev.geode.engine.bridge.GeodeNative
 import dev.geode.engine.bridge.NativeFailures
@@ -31,11 +32,13 @@ import java.util.concurrent.TimeUnit
  * Playlist edits and commands run on the main thread; file descriptors are opened on one worker and
  * handed to the engine, which owns them from then on. A poll on the main thread mirrors the engine's
  * state, position and gapless joins back into [SimpleBasePlayer].
+ *
+ * The engine writes its mix into the Visual's [feed] from its own audio callback.
  */
 @OptIn(UnstableApi::class)
 class NativePlayer(
     context: Context,
-    private val tap: NativeTapPump,
+    private val feed: VisualFeed,
     private val dsp: NativePlayerDsp,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
     private class Entry(
@@ -104,7 +107,7 @@ class NativePlayer(
         }
 
     init {
-        tap.start(handle)
+        NativeFailures.check(GeodeNative.playerSetFeed(handle, feed.handle), "playerSetFeed")
         dsp.attach(handle)
         main.post(poll)
     }
@@ -186,7 +189,7 @@ class NativePlayer(
         // handle we're about to destroy; the worker bodies also bail out early once released.
         worker.shutdownNow()
         bestEffort(TAG, "await worker shutdown") { worker.awaitTermination(500, TimeUnit.MILLISECONDS) }
-        tap.stop()
+        GeodeNative.playerSetFeed(handle, 0L)
         dsp.release()
         GeodeNative.playerDestroy(handle)
         return done()

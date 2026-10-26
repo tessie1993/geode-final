@@ -34,8 +34,12 @@ AudioTrack ──▶ platform audiofx (Equalizer / BassBoost / Loudness) ──�
                         outside the chain entirely
 ```
 
-The tap (`engine/audio-android/.../PcmTap.kt`) writes into the PCM ring that
-`AudioBus` hands to the analysis engine and every scene. Stages 2–4 are downstream of it.
+The tap (`engine/audio-android/.../PcmTap.kt`) writes into the Visual's one native audio feed
+(`VisualFeed`, `core/api/Feed.hpp`), which runs the analysis and which every Visual reads on its
+drawing thread. Stages 2–4 are downstream of it. The sink is wrapped in `FeedClockSink`, which tells
+the feed when playback pauses or seeks and how far the tap runs ahead of the speaker (about half a
+second of AudioTrack buffer), so the Visual draws the audio being heard. Geode's own player writes
+its mix into the same feed from its audio callback, also before volume and DSP.
 
 ## Why the chain is owned rather than configured
 
