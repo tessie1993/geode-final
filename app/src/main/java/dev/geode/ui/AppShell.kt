@@ -361,7 +361,10 @@ private fun MusicLibrary(shell: ShellViewModel) {
 private fun StudioPlace(shell: ShellViewModel) {
     val library by shell.library.state.collectAsStateWithLifecycle()
     val visuals by shell.visuals.state.collectAsStateWithLifecycle()
-    val choices = remember(library.songs, library.playlists, visuals.presets) { renderChoicesOf(library, visuals.presets) }
+    val choices =
+        remember(library.songs, library.playlists, visuals.presets, visuals.milkdrop) {
+            renderChoicesOf(library, visuals.presets, visuals.milkdrop)
+        }
     Box(Modifier.fillMaxSize()) {
         StudioRoute(
             shell.studio,

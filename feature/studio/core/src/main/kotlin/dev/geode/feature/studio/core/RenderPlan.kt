@@ -53,7 +53,7 @@ object RenderPlan {
         project: ProjectId,
     ): List<NewRender> {
         val groups = if (spec.playlist == PlaylistMode.ONE_VIDEO_PER_TRACK) spec.tracks.map(::listOf) else listOf(spec.tracks)
-        return groups.map { tracks -> NewRender(tracks, spec.look, spec.format, spec.length, project, spec.extras) }
+        return groups.map { tracks -> NewRender(tracks, spec.look, spec.format, spec.length, project, spec.extras, spec.milkdrop) }
     }
 
     /**

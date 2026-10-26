@@ -28,6 +28,7 @@ import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderPlan
 import dev.geode.feature.studio.handlers.FrozenLook
 import dev.geode.feature.studio.handlers.RenderEngine
+import dev.geode.feature.visuals.handlers.FileMilkdropFolder
 import dev.geode.playback.toUri
 import dev.geode.render.SceneFactory
 import dev.geode.render.VisualSafety
@@ -37,6 +38,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.json.JSONException
+import java.io.File
 import java.io.IOException
 
 /**
@@ -85,7 +87,7 @@ class NativeRenderEngine(
             VideoExporter.Job(
                 audioUri = uri,
                 timeline = timeline,
-                sceneFactory = StyleScene(customization.style),
+                sceneFactory = StyleScene(customization.style, milkdropPathOf(customization, job)),
                 look = EngineSnapshots.forRender(customization, values),
                 aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
                 fps = format.fps,
@@ -214,12 +216,27 @@ class NativeRenderEngine(
         if (slowed || liveVisualShown()) Thread.sleep(PACE_MS)
     }
 
-    /** The Style a Render draws. The MilkDrop preset travels with the Render later (#341). */
+    /**
+     * The MilkDrop preset [job] plays, as a file the engine loads, when its look is MilkDrop (#341): the
+     * one in its spec, whatever the live Visual shows. It loads before the first frame, with the textures
+     * beside it in the MilkDrop folder. A preset no longer in the folder leaves MilkDrop's idle picture.
+     */
+    private fun milkdropPathOf(
+        customization: Customization,
+        job: RenderJob,
+    ): String? {
+        val file = job.milkdrop?.takeIf { customization.style == SceneIds.MILKDROP } ?: return null
+        val preset = File(File(context.filesDir, FileMilkdropFolder.FOLDER), file)
+        if (preset.isFile) return preset.absolutePath
+        RingLog.note(TAG, "the Render's MilkDrop preset is no longer in the MilkDrop folder: $file")
+        return null
+    }
+
+    /** The Style a Render draws, and the MilkDrop preset it loads first when that Style is MilkDrop. */
     private class StyleScene(
         override val sceneId: SceneId,
-    ) : SceneFactory {
-        override val milkPresetPath: String? = null
-    }
+        override val milkPresetPath: String?,
+    ) : SceneFactory
 
     private companion object {
         const val TAG = "NativeRenderEngine"

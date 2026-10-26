@@ -124,7 +124,9 @@ class RoomStudioStorageRobolectricTest {
     @Test
     fun `a queued Render reads back exactly as it was queued, with its look, after a restart`() =
         runBlocking {
-            val first = render(listOf(night), RenderLook.Preset(PresetId("Calm")), RenderLength.Section(Millis(1_000), Millis(59_000)))
+            val first =
+                render(listOf(night), RenderLook.Preset(PresetId("Calm")), RenderLength.Section(Millis(1_000), Millis(59_000)))
+                    .copy(milkdrop = "Geiss - Cosmic Dust.milk")
             val second = render(listOf(night, tide), RenderLook.Current, RenderLength.WholeTrack)
 
             val queued = storage.queueRenders(listOf(first, second), FrozenLook("{\"style\":\"fluid_ink\"}"), Millis(7))

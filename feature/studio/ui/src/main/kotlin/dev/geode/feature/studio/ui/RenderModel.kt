@@ -27,16 +27,23 @@ data class LookChoice(
     val name: String,
 )
 
+/** A MilkDrop preset the Render setup offers: its [file] in the MilkDrop folder and the [name] it is shown by. */
+data class MilkdropChoice(
+    val file: String,
+    val name: String,
+)
+
 /**
  * What the Render setup can choose from, which other features own: the Library's [tracks] and
- * [playlists], and Customization's saved [presets]. `:app` hands them in, because Studio's screens may
- * reach only Studio (ADR-0005).
+ * [playlists], Customization's saved [presets], and the MilkDrop presets a MilkDrop look can play
+ * ([milkdrop], #341). `:app` hands them in, because Studio's screens may reach only Studio (ADR-0005).
  */
 @Immutable
 data class RenderChoices(
     val tracks: List<RenderTrack> = emptyList(),
     val playlists: List<RenderPlaylist> = emptyList(),
     val presets: List<LookChoice> = emptyList(),
+    val milkdrop: List<MilkdropChoice> = emptyList(),
 )
 
 /**
@@ -58,6 +65,9 @@ data class RenderDraft(
 
     /** [preset]'s values filled in; it shows as chosen until a value is changed by hand. */
     fun preset(preset: RenderPreset): RenderDraft = copy(spec = spec.withPreset(preset), preset = preset)
+
+    /** The MilkDrop preset a MilkDrop look plays, or none for MilkDrop's own idle picture (#341). */
+    fun milkdrop(file: String?): RenderDraft = copy(spec = spec.copy(milkdrop = file))
 
     /** [length] from [start] of the Track, set by hand. */
     fun section(

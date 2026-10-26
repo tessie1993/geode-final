@@ -72,6 +72,9 @@
     <string name="studio_render_one_per_track">One video per track, each saved as its own Render. One continuous video of a playlist comes later.</string>
     <string name="studio_render_look">Look</string>
     <string name="studio_render_look_current">The current Customization</string>
+    <string name="studio_render_milkdrop">MilkDrop preset</string>
+    <string name="studio_render_milkdrop_note">Played when the look\'s Style is MilkDrop, and kept with the Render.</string>
+    <string name="studio_render_milkdrop_none">None: MilkDrop\'s own idle picture</string>
     <string name="studio_render_preset">Preset</string>
     <string name="studio_preset_tiktok">TikTok / Shorts</string>
     <string name="studio_preset_youtube">YouTube</string>

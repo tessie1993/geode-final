@@ -112,7 +112,7 @@ data class RenderSettings(
 
 /**
  * A Render about to be queued: a [RenderJob] before Studio's database gives it its id and batch. Every
- * Render queued together has the same [look].
+ * Render queued together has the same [look]; [milkdrop] is the MilkDrop preset it plays (#341).
  */
 data class NewRender(
     val tracks: List<RenderTrack>,
@@ -121,12 +121,13 @@ data class NewRender(
     val length: RenderLength,
     val project: ProjectId,
     val extras: RenderExtras,
+    val milkdrop: String? = null,
 ) {
     /** It as saved: its [id], and the [batch] it was queued in. It waits until the queue starts it. */
     fun queuedAs(
         id: RenderId,
         batch: RenderId,
-    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras)
+    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop)
 }
 
 /** What went wrong in the handlers. */

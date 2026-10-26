@@ -196,6 +196,7 @@ fun RenderSetupDialog(
                 Text(stringResource(R.string.studio_render_title), style = MaterialTheme.typography.headlineSmall)
                 SourcePicker(draft, choices, onDraft)
                 LookPicker(draft, choices, onDraft)
+                MilkdropPicker(draft, choices, onDraft)
                 FormatPicker(draft, onDraft)
                 ProjectPicker(draft, projects, onDraft)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -277,6 +278,26 @@ private fun LookPicker(
     choices.presets.forEach { choice ->
         val look = RenderLook.Preset(choice.preset)
         Choice(choice.name, spec.look == look) { onDraft(draft.copy(spec = spec.copy(look = look))) }
+    }
+}
+
+/** The MilkDrop preset the Render plays if its look is MilkDrop (#341); kept with the Render. */
+@Composable
+private fun MilkdropPicker(
+    draft: RenderDraft,
+    choices: RenderChoices,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    if (choices.milkdrop.isEmpty()) return
+    Heading(stringResource(R.string.studio_render_milkdrop))
+    Note(stringResource(R.string.studio_render_milkdrop_note))
+    LazyColumn(Modifier.heightIn(max = StudioDimens.pickerHeight)) {
+        item {
+            Choice(stringResource(R.string.studio_render_milkdrop_none), draft.spec.milkdrop == null) { onDraft(draft.milkdrop(null)) }
+        }
+        items(choices.milkdrop, key = { it.file }) { choice ->
+            Choice(choice.name, draft.spec.milkdrop == choice.file) { onDraft(draft.milkdrop(choice.file)) }
+        }
     }
 }
 

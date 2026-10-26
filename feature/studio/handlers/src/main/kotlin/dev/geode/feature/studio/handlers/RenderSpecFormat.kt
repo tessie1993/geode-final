@@ -37,6 +37,7 @@ internal object RenderSpecFormat {
             .put(LENGTH, length(render.length))
             .put(PROJECT, render.project.value)
             .put(LOUDNESS, render.extras.loudness.name)
+            .putOpt(MILKDROP, render.milkdrop)
             .toString()
     }
 
@@ -60,6 +61,7 @@ internal object RenderSpecFormat {
             length = lengthOf(o.optJSONObject(LENGTH)),
             project = ProjectId(o.getLong(PROJECT)),
             extras = RenderExtras(enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS)),
+            milkdrop = if (o.has(MILKDROP)) o.getString(MILKDROP) else null,
         )
     }
 
@@ -116,4 +118,5 @@ internal object RenderSpecFormat {
     private const val SECTION = "section"
     private const val PROJECT = "project"
     private const val LOUDNESS = "loudness"
+    private const val MILKDROP = "milkdrop"
 }

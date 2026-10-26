@@ -7,6 +7,7 @@ import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderQuality
 import dev.geode.feature.studio.api.RenderSize
@@ -32,6 +33,15 @@ class RenderPlanTest {
         val spec = RenderSpec(listOf(night, tide))
         assertEquals(listOf(listOf(night), listOf(tide)), RenderPlan.rendersOf(spec, project).map { it.tracks })
         assertEquals(listOf(project, project), RenderPlan.rendersOf(spec, project).map { it.project })
+    }
+
+    @Test
+    fun `every Render queued carries the MilkDrop preset of the setup`() {
+        val spec = RenderSpec(listOf(night, tide), milkdrop = "aurora_veil.milk")
+        assertEquals(listOf("aurora_veil.milk", "aurora_veil.milk"), RenderPlan.rendersOf(spec, project).map { it.milkdrop })
+        val job = RenderPlan.rendersOf(spec, project).first().queuedAs(RenderId(3), RenderId(3))
+        assertEquals("aurora_veil.milk", job.milkdrop)
+        assertNull(RenderPlan.rendersOf(RenderSpec(listOf(night)), project).single().milkdrop)
     }
 
     @Test
