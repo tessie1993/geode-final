@@ -47,6 +47,13 @@ data class LookChip(
     val name: String,
 )
 
+/** One folder of Styles Style switching can switch within (#308), as the place that opens the screen names it. */
+@Immutable
+data class StyleFolderChip(
+    val name: String,
+    val styles: List<SceneId>,
+)
+
 /** One saved preset the preset row offers for this Style. */
 @Immutable
 data class PresetChip(
@@ -184,18 +191,22 @@ data class CustomizeModel(
     /** Whether there is a Style seen before this one to go back to, and one to go forward to again. */
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
+    /** The folders Style switching can switch within. */
+    val styleFolders: List<StyleFolderChip> = emptyList(),
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 }
 
 /**
  * Customize's model of this state. [looks] and [presets] are offered by the place that opens
- * Customize; [live] carries the engine's live values when there are any.
+ * Customize, as are the [styleFolders] Style switching may switch within; [live] carries the engine's
+ * live values when there are any.
  */
 fun CustomizationState.toCustomizeModel(
     looks: List<LookChip> = emptyList(),
     presets: List<PresetChip> = emptyList(),
     live: LiveMeters = LiveMeters.NONE,
+    styleFolders: List<StyleFolderChip> = emptyList(),
 ): CustomizeModel {
     val customization = current
     val reactions = customization.reactions
@@ -260,5 +271,6 @@ fun CustomizationState.toCustomizeModel(
         styleHeld = styleHeld,
         canGoBack = stylesBack.isNotEmpty(),
         canGoForward = stylesForward.isNotEmpty(),
+        styleFolders = styleFolders,
     )
 }

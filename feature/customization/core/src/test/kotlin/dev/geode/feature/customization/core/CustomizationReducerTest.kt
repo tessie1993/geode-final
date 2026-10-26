@@ -24,6 +24,7 @@ import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
@@ -134,6 +135,13 @@ class CustomizationReducerTest {
     private val backOnTunnel = tunnelSeen.copy(automations = palettes)
     private val walkedBack = CustomizationState(backOnTunnel, undo = listOf(julia), stylesForward = listOf(withPalettes))
 
+    private val favouritesState =
+        CustomizationState(
+            Edits.setAutomations(julia, Automations(style = StyleSwitching(pool = StylePool.FAVOURITES))),
+            favouriteStyles = listOf(TUNNEL),
+        )
+    private val favouriteSwitch = Edits.switchStyle(favouritesState.current, styles.manifestOf(JULIA), styles.manifestOf(TUNNEL))
+
     private val switchingRows: List<Row> =
         listOf(
             Row(
@@ -213,6 +221,27 @@ class CustomizationReducerTest {
                 ),
             ),
             Row("forward with nowhere to go", seenState, command(CustomizationCommand.StyleForward), Next(seenState)),
+            Row(
+                "the Style library's marks and Favourites are kept beside the history",
+                withUndo,
+                command(CustomizationCommand.UseStyleLibrary(mapOf(TUNNEL to StyleMark.LOVE), listOf(TUNNEL))),
+                Next(withUndo.copy(styleMarks = mapOf(TUNNEL to StyleMark.LOVE), favouriteStyles = listOf(TUNNEL))),
+            ),
+            Row(
+                "a Style switch due never picks a Style marked Never",
+                autoState.copy(styleMarks = mapOf(TUNNEL to StyleMark.NEVER)),
+                CustomizationEvent.StyleDue,
+                Next(autoState.copy(styleMarks = mapOf(TUNNEL to StyleMark.NEVER))),
+            ),
+            Row(
+                "a Style switch due on the Favourites goes to a Favourite",
+                favouritesState,
+                CustomizationEvent.StyleDue,
+                Next(
+                    favouritesState.copy(current = favouriteSwitch, styleSwitches = 1, stylesBack = listOf(favouritesState.current)),
+                    listOf(publish(favouriteSwitch), Emit(CustomizationFact.StyleChanged(TUNNEL))),
+                ),
+            ),
             Row(
                 "a new change of Style forgets the way forward",
                 walkedBack.copy(current = julia, undo = emptyList()),

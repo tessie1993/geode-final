@@ -186,7 +186,7 @@ private fun AutomationsSection(
     InsetCard {
         SwitchRow(stringResource(R.string.automation_style), automations.style != null) { set(automations.switchingStyle(it)) }
         automations.style?.let { switching ->
-            StyleSwitchingControls(switching) { set(automations.copy(style = it)) }
+            StyleSwitchingControls(model, switching) { set(automations.copy(style = it)) }
             SwitchRow(stringResource(R.string.automation_hold), model.styleHeld) { send(CustomizationCommand.HoldStyle(it)) }
         }
         StylesSeen(model, send)
@@ -202,13 +202,21 @@ private fun AutomationsSection(
 
 @Composable
 private fun StyleSwitchingControls(
+    model: CustomizeModel,
     switching: StyleSwitching,
     set: (StyleSwitching) -> Unit,
 ) {
     CadenceControls(switching.cadence) { set(switching.copy(cadence = it)) }
     ChipFlow {
-        StylePool.entries.forEach { pool -> ChoiceChip(poolName(pool), switching.pool == pool) { set(switching.copy(pool = pool)) } }
+        POOL_CHOICES.forEach { pool -> ChoiceChip(poolName(pool), switching.pool == pool) { set(switching.copy(pool = pool)) } }
+        // A folder's Styles, taken as they are now (#308).
+        model.styleFolders.forEach { folder ->
+            ChoiceChip(stringResource(R.string.automation_pool_folder, folder.name), switching.within(folder)) {
+                set(switching.withinFolder(folder))
+            }
+        }
     }
+    QuietText(stringResource(R.string.automation_marks))
     HeldSlider(
         label = stringResource(R.string.automation_transition),
         value = switching.seconds,
@@ -388,6 +396,8 @@ private fun poolName(pool: StylePool): String =
             StylePool.VISUALIZER -> R.string.automation_pool_visualizer
             StylePool.PICKS -> R.string.automation_pool_picks
             StylePool.BOTH -> R.string.automation_pool_both
+            StylePool.FAVOURITES -> R.string.automation_pool_favourites
+            StylePool.CHOSEN -> R.string.automation_pool_chosen
         },
     )
 

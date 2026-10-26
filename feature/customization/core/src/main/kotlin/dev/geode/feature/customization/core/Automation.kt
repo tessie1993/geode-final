@@ -6,6 +6,7 @@ import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.CameraMove
 import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Trigger
@@ -104,9 +105,13 @@ object Automation {
      * - [StylePool.VISUALIZER]: the [visualizer] styles this version draws, in their order;
      * - [StylePool.PICKS]: every one of [builtIns] in a shuffle seeded by the switching's seed and the
      *   round, so none comes again until all have played, and a Render repeats exactly;
-     * - [StylePool.BOTH]: the Visualizer styles, then the shuffle of the other built-in Styles.
+     * - [StylePool.BOTH]: the Visualizer styles, then the shuffle of the other built-in Styles;
+     * - [StylePool.FAVOURITES]: the shuffle of the person's [favourites];
+     * - [StylePool.CHOSEN]: the shuffle of the switching's chosen Styles.
      *
-     * A pick that is the Style already showing is passed over. Null when the pool has nowhere else to go.
+     * Every shuffle is weighted by the person's [marks] ([weighted]); a Style marked Never is left out
+     * of every pool. A pick that is the Style already showing is passed over. Null when the pool has
+     * nowhere else to go.
      */
     fun nextStyle(
         switching: StyleSwitching,
@@ -114,13 +119,19 @@ object Automation {
         visualizer: List<SceneId>,
         builtIns: List<SceneId>,
         played: Int,
+        marks: Map<SceneId, StyleMark> = emptyMap(),
+        favourites: List<SceneId> = emptyList(),
     ): Pick? {
-        val listed = visualizer.filter { it in builtIns }.distinct()
+        val drawn = builtIns.filter { markOf(it, marks) != StyleMark.NEVER }
+        val among = { styles: List<SceneId> -> styles.filter { it in drawn }.distinct() }
+        val listed = among(visualizer)
         val round = { n: Int ->
             when (switching.pool) {
                 StylePool.VISUALIZER -> listed
-                StylePool.PICKS -> shuffled(builtIns, switching.seed, n)
-                StylePool.BOTH -> listed + shuffled(builtIns - listed.toSet(), switching.seed, n)
+                StylePool.PICKS -> weighted(drawn, marks, switching.seed, n)
+                StylePool.BOTH -> listed + weighted(drawn - listed.toSet(), marks, switching.seed, n)
+                StylePool.FAVOURITES -> weighted(among(favourites), marks, switching.seed, n)
+                StylePool.CHOSEN -> weighted(among(switching.chosen), marks, switching.seed, n)
             }
         }
         val size = round(0).size
@@ -137,6 +148,24 @@ object Automation {
         seed: Long,
         round: Int,
     ): List<SceneId> = styles.shuffled(Random(seed * SEED_STRIDE + round))
+
+    /** The mark [style] has in [marks]: Normal when it has none. */
+    fun markOf(
+        style: SceneId,
+        marks: Map<SceneId, StyleMark>,
+    ): StyleMark = marks[style] ?: StyleMark.NORMAL
+
+    /**
+     * [styles] in the weighted shuffle [seed] gives round [round] (#308): each comes round as many times
+     * as its mark's weight, so a loved Style plays three times as often as a Normal one and a Never one
+     * not at all. With no marks it is [shuffled].
+     */
+    fun weighted(
+        styles: List<SceneId>,
+        marks: Map<SceneId, StyleMark>,
+        seed: Long,
+        round: Int,
+    ): List<SceneId> = shuffled(styles.flatMap { style -> List(markOf(style, marks).weight) { style } }, seed, round)
 
     /**
      * How far a crossfade of [length] is, 0..1, [elapsed] into it: a smooth S-curve. Its steepest point

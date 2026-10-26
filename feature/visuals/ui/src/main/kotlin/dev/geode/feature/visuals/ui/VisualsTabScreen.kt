@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Fullscreen
@@ -49,6 +50,7 @@ import dev.geode.design.forest.ForestShapes
 import dev.geode.design.forest.ForestSpacing
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleGroup
+import dev.geode.feature.visuals.api.StyleMark
 
 /**
  * The Visuals tab (#43): where a Style is chosen for the Visual. It is App UI drawn over the one live
@@ -351,35 +353,52 @@ private fun StyleRow(
                 Icon(Icons.Outlined.FavoriteBorder, contentDescription = stringResource(R.string.visuals_favourite, style.name))
             }
         }
-        if (folders.isNotEmpty()) {
-            Box {
-                IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.visuals_more, style.name))
+        Box {
+            IconButton(onClick = { menu = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.visuals_more, style.name))
+            }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                // Marks for automatic Style switching (#308): the one it has is shown ticked.
+                for (mark in StyleMark.entries) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(markName(mark))) },
+                        onClick = {
+                            menu = false
+                            onAction(VisualsAction.SetMark(style.id, mark))
+                        },
+                        trailingIcon = { if (style.mark == mark) Icon(Icons.Filled.Check, contentDescription = null) },
+                    )
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    openFolder?.let { folder ->
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.visuals_remove_from_folder)) },
-                            onClick = {
-                                menu = false
-                                onAction(VisualsAction.RemoveFromFolder(folder, style.id))
-                            },
-                        )
-                    }
-                    for (folder in folders.filter { it.id != openFolder }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.visuals_add_to, folder.name)) },
-                            onClick = {
-                                menu = false
-                                onAction(VisualsAction.AddToFolder(folder.id, style.id))
-                            },
-                        )
-                    }
+                openFolder?.let { folder ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.visuals_remove_from_folder)) },
+                        onClick = {
+                            menu = false
+                            onAction(VisualsAction.RemoveFromFolder(folder, style.id))
+                        },
+                    )
+                }
+                for (folder in folders.filter { it.id != openFolder }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.visuals_add_to, folder.name)) },
+                        onClick = {
+                            menu = false
+                            onAction(VisualsAction.AddToFolder(folder.id, style.id))
+                        },
+                    )
                 }
             }
         }
     }
 }
+
+/** The name of a Style switching mark. */
+private fun markName(mark: StyleMark): Int =
+    when (mark) {
+        StyleMark.LOVE -> R.string.visuals_mark_love
+        StyleMark.NORMAL -> R.string.visuals_mark_normal
+        StyleMark.NEVER -> R.string.visuals_mark_never
+    }
 
 /** Asks for a folder name; [onDone] gets it, or null when cancelled. */
 @Composable

@@ -44,7 +44,9 @@ data class Customization(
  * Visualizer styles `:app` hands in ([CustomizationCommand.UseVisualizerStyles]), and [styleSwitches],
  * how many times it has switched, which says where the app's picks' shuffle has got to. [styleHeld] is
  * the person's Hold ("keep this Style") and [editing] says Customize is open: either holds switching
- * ([switchingHeld]), and its spacing starts again once both let go (#282).
+ * ([switchingHeld]), and its spacing starts again once both let go (#282). [styleMarks] and
+ * [favouriteStyles] come from the person's Style library, which `:app` hands in
+ * ([CustomizationCommand.UseStyleLibrary]); a Style with no mark is Normal (#308).
  *
  * The Styles seen this session sit outside the history too (#282): [stylesBack] holds each Style left,
  * with the Customization it had then, the latest last, and [stylesForward] the ones gone back from, so
@@ -69,6 +71,8 @@ data class CustomizationState(
     val editing: Boolean = false,
     val stylesBack: List<Customization> = emptyList(),
     val stylesForward: List<Customization> = emptyList(),
+    val styleMarks: Map<SceneId, StyleMark> = emptyMap(),
+    val favouriteStyles: List<SceneId> = emptyList(),
 ) {
     /** Whether Style switching waits: held by the person, or Customize is open. */
     val switchingHeld: Boolean
@@ -203,6 +207,15 @@ sealed interface CustomizationCommand {
 
     /** Forward again to the Style [StyleBack] left. Live, kept out of the history. */
     data object StyleForward : CustomizationCommand
+
+    /**
+     * The person's [marks] and [favourites] from the Style library (#308), which `:app` hands in because
+     * Customization cannot depend on Visuals (ADR-0005). Style switching draws by them. Not an edit.
+     */
+    data class UseStyleLibrary(
+        val marks: Map<SceneId, StyleMark>,
+        val favourites: List<SceneId>,
+    ) : CustomizationCommand
 
     /** Back to the current Style's own defaults. Undoable. */
     data object ResetToStyle : CustomizationCommand

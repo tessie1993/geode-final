@@ -19,7 +19,7 @@ import dev.geode.kernel.ReportFailure
  * and [VisualsState.current] moves when Customization says so, whoever asked (this tab, a preset, an
  * undo). Each Style it shows goes to the front of Recent.
  *
- * The person's library (Favourites, Recent and folders) is read once when the store starts. Until it
+ * The person's library (Favourites, Recent, folders and marks) is read once when the store starts. Until it
  * has loaded, edits to it are ignored, so a late read can never overwrite them, and every change after
  * that is saved at once. A library that cannot be read stays unloaded, so a failed read is never
  * saved over.
@@ -66,6 +66,7 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
         when (command) {
             is VisualsCommand.Choose -> choose(state, command.style)
             is VisualsCommand.SetFavourite -> edit(state) { LibraryEdits.favourite(it, state, command) }
+            is VisualsCommand.SetMark -> edit(state) { LibraryEdits.mark(it, state, command) }
             is VisualsCommand.CreateFolder -> LibraryEdits.create(state, command)
             is VisualsCommand.RenameFolder -> edit(state) { LibraryEdits.rename(it, command) }
             is VisualsCommand.MoveFolder -> edit(state) { LibraryEdits.move(it, command) }

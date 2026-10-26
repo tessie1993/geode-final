@@ -292,6 +292,10 @@
     <string name="automation_pool_visualizer">Visualizer styles</string>
     <string name="automation_pool_picks">App\'s picks</string>
     <string name="automation_pool_both">Both</string>
+    <string name="automation_pool_favourites">Favourites</string>
+    <string name="automation_pool_chosen">Chosen Styles</string>
+    <string name="automation_pool_folder">Folder: %1$s</string>
+    <string name="automation_marks">Styles you love come round more often. Styles marked Never are never switched to.</string>
     <string name="automation_palette_fade">Crossfade</string>
     <string name="automation_span_one">Every beat</string>
     <string name="automation_span_two">Every 2 beats</string>

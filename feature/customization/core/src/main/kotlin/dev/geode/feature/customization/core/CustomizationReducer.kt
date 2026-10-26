@@ -33,8 +33,8 @@ import dev.geode.kernel.ReportFailure
  * - Every change of Style, however it came, leaves the Style it left on the trail of Styles seen
  *   ([MAX_STYLES_SEEN] of them); back and forward walk it live, outside the history, the current
  *   Automations kept.
- * - The Visualizer styles `:app` hands in are kept beside the history, not in it, as are A/B
- *   compare's slots; switching to a slot is an edit.
+ * - The Visualizer styles and the Style library's marks and Favourites `:app` hands in are kept
+ *   beside the history, not in it, as are A/B compare's slots; switching to a slot is an edit.
  * - A change of Style is announced as [CustomizationFact.StyleChanged].
  *
  * [styles] are the manifests of the Styles this version knows.
@@ -122,7 +122,15 @@ class CustomizationReducer(
         val switching = current.automations.style ?: return Next(state)
         val builtIns = styles.styles.map { it.id }
         val pick =
-            Automation.nextStyle(switching, current.style, state.visualizerStyles, builtIns, state.styleSwitches) ?: return Next(state)
+            Automation.nextStyle(
+                switching,
+                current.style,
+                state.visualizerStyles,
+                builtIns,
+                state.styleSwitches,
+                state.styleMarks,
+                state.favouriteStyles,
+            ) ?: return Next(state)
         val switched = Edits.switchStyle(current, styles.manifestOf(current.style), styles.manifestOf(pick.style))
         return Next(state.copy(current = switched, styleSwitches = pick.played), handOver(state, current, switched))
     }
@@ -151,6 +159,7 @@ class CustomizationReducer(
             is CustomizationCommand.TrimSignal -> edit(state, Edits.trimSignal(current, command.signal, command.trim))
             is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
             is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
+            is CustomizationCommand.UseStyleLibrary -> Next(state.copy(styleMarks = command.marks, favouriteStyles = command.favourites))
             is CustomizationCommand.HoldStyle -> holding(state, state.copy(styleHeld = command.held))
             is CustomizationCommand.SetEditing -> holding(state, state.copy(editing = command.editing))
             CustomizationCommand.StyleBack -> back(state)

@@ -9,6 +9,7 @@ import dev.geode.data.MilkCatalog
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.customization.api.StyleMark as SwitchingMark
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.handlers.CustomizationHandlers
 import dev.geode.feature.customization.handlers.EnginePublisher
@@ -18,6 +19,7 @@ import dev.geode.feature.customization.handlers.customizationStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.visuals.api.MilkdropPreset
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.handlers.ContentPickedFiles
 import dev.geode.feature.visuals.handlers.DataStoreVisualsStorage
@@ -34,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
@@ -120,6 +123,23 @@ object VisualsModule {
         ).also { visuals ->
             // Style switching's Visualizer styles are the Styles Visuals lists, in its order (#282).
             customization.send(CustomizationCommand.UseVisualizerStyles(visuals.state.value.styles.map { it.id }))
+            // It draws by the person's marks and Favourites, which live in the Visuals library (#308).
+            application.geodeContainer.appScope.launch(Dispatchers.Default) {
+                visuals.state
+                    .map { it.library }
+                    .filterNotNull()
+                    .map { library -> library.marks.mapValues { (_, mark) -> switchingMark(mark) } to library.favourites }
+                    .distinctUntilChanged()
+                    .collect { (marks, favourites) -> customization.send(CustomizationCommand.UseStyleLibrary(marks, favourites)) }
+            }
+        }
+
+    /** A Visuals library mark as Style switching weighs it. */
+    private fun switchingMark(mark: StyleMark): SwitchingMark =
+        when (mark) {
+            StyleMark.LOVE -> SwitchingMark.LOVE
+            StyleMark.NORMAL -> SwitchingMark.NORMAL
+            StyleMark.NEVER -> SwitchingMark.NEVER
         }
 
     /** The app's own preset folder, where Customization saves presets until the person picks another. */

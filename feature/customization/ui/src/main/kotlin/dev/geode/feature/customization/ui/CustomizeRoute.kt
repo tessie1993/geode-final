@@ -57,15 +57,18 @@ fun CustomizeRoute(
 /**
  * Modulators & Automation's place (ADR-0003): the Visuals tab's third sub-tab (#17, owner decision
  * 2026-10-22). Like [CustomizeRoute] it reads the Customization store and sends the screen's Commands.
+ * [looks] names the Styles, and [styleFolders] are the folders Style switching may switch within.
  */
 @Composable
 fun ModulatorsAutomationRoute(
     customization: CustomizationFeature,
     modifier: Modifier = Modifier,
+    looks: List<LookChip> = emptyList(),
+    styleFolders: List<StyleFolderChip> = emptyList(),
 ) {
     val state by customization.state.collectAsStateWithLifecycle()
     ModulatorsAutomationScreen(
-        model = state.toCustomizeModel(),
+        model = state.toCustomizeModel(looks = looks, styleFolders = styleFolders),
         onAction = { action -> if (action is CustomizeAction.Send) customization.send(action.command) },
         modifier = modifier,
     )
