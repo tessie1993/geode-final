@@ -182,8 +182,10 @@ fun AppRoot() {
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
     // Full-screen mode hands the host the double tap that shows and hides its controls; the Visuals
     // tab, where the tab UI is the thing being touched, passes none.
+    // Tilt is stilled under reduce motion, whatever the tilt setting says (#315).
+    val tilt = settingsValues?.behavior?.let { !it.reducedMotion } ?: false
     val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
-        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap)
+        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
     }
     GeodeTheme(element, gui) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }

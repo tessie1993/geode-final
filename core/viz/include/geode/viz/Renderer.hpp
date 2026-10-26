@@ -14,6 +14,7 @@
 #include "geode/viz/Adsr.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
+#include "geode/viz/GravityField.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
 #include "geode/viz/Lfo.hpp"
@@ -53,6 +54,8 @@ public:
     void setTransition(const std::string& id, int64_t durationMs);
     void beginParamMorph(float seconds);
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
+    // The phone's down in screen space, latest-wins (GravityField); 0, 0, 0 says there is none.
+    void submitGravity(float x, float y, float z) { gravityField_.submit(x, y, z); }
     void pushPcm(const float* samples, int count);
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
     // The person's "smear the Visual with a finger" (Settings): whether a Style that does not draw the
@@ -151,6 +154,7 @@ private:
     std::string quadVert_;
 
     TouchField touchField_;
+    GravityField gravityField_;
     TrailPass trailPass_;
     SharedFxPass sharedFx_;
     CompositePass compositePass_;

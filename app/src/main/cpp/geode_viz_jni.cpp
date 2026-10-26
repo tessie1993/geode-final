@@ -176,6 +176,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetTouchSmear(JNIEnv* env, jobject, 
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetGravity(JNIEnv* env, jobject, jlong handle, jfloat x, jfloat y, jfloat z) {
+    return vizCall(env, "vizSetGravity", handle, [&](geode_viz* v) {
+        geode_viz_set_gravity(v, x, y, z);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizQueueTouchStroke(JNIEnv* env, jobject, jlong handle, jfloat nx, jfloat ny, jfloat ndx,
                                                              jfloat ndy, jfloat dt, jfloat strength) {
     return vizCall(env, "vizQueueTouchStroke", handle, [&](geode_viz* v) {

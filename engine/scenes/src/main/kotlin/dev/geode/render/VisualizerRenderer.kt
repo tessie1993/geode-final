@@ -169,6 +169,16 @@ class VisualizerRenderer(
         n: Int,
     ) = nativeViz.submitTouchPoints(xy, n)
 
+    /**
+     * The phone's down in screen space (x right, y up, z out of the screen), any length, latest-wins;
+     * `0, 0, 0` says there is no reading. [GravitySource] calls it; the engine smooths it.
+     */
+    fun submitGravity(
+        x: Float,
+        y: Float,
+        z: Float,
+    ) = nativeViz.submitGravity(x, y, z)
+
     fun beginParamMorph(seconds: Float) {
         if (seconds <= 0f) return
         nativeViz.beginParamMorph(seconds)

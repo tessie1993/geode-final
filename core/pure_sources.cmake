@@ -64,6 +64,8 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/StylePacks.cpp
     viz/StyleProfiles.cpp
     viz/ThermalGovernor.cpp
+    viz/TouchField.cpp
+    viz/GravityField.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/SimGrid.cpp
     viz/fluid/RippleMath.cpp

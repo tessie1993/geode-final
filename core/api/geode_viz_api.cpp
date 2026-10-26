@@ -131,6 +131,10 @@ void geode_viz_set_touch_smear(geode_viz* v, int on, float strength) {
     if (v) v->renderer.setTouchSmear(on != 0, strength);
 }
 
+void geode_viz_set_gravity(geode_viz* v, float x, float y, float z) {
+    if (v) v->renderer.submitGravity(x, y, z);
+}
+
 void geode_viz_load_milk_preset(geode_viz* v, const char* path) {
     if (v && path) v->renderer.loadMilkPreset(path);
 }
