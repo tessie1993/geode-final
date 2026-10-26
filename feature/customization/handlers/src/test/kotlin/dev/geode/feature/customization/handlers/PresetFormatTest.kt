@@ -3,6 +3,13 @@ package dev.geode.feature.customization.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LayerLoop
+import dev.geode.feature.customization.api.LoopRate
+import dev.geode.feature.customization.api.LoopShape
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.Macro
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
@@ -23,9 +30,11 @@ import dev.geode.feature.customization.api.StartMode
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 import dev.geode.feature.customization.core.LegacyPreset
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class PresetFormatTest {
@@ -160,6 +169,41 @@ class PresetFormatTest {
                 )
             }
         assertEquals(StoredPreset.Current(everything.copy(version = PRESET_VERSION + 1)), PresetFormat.decode(newer.toString(), fallback))
+    }
+
+    private val layered =
+        everything.copy(
+            layer =
+                Layer(
+                    SceneId("kaleido"),
+                    LayerBlend.SOFT_LIGHT,
+                    LayerInfluence.CUT_OUT,
+                    LayerLoop(LoopShape.BEAT_STEPS, LoopRate.TWO_BEATS, 0.75f, setOf(LoopTarget.SWAP, LoopTarget.OPACITY)),
+                ),
+        )
+
+    @Test
+    fun `Layer 2 reads back as it was written`() {
+        assertEquals(StoredPreset.Current(layered), PresetFormat.decode(PresetFormat.encode(layered), fallback))
+        val off = everything.copy(layer = Layer.OFF)
+        assertEquals(StoredPreset.Current(off), PresetFormat.decode(PresetFormat.encode(off), fallback))
+        assertFalse(JSONObject(PresetFormat.encode(everything)).has("layer"))
+    }
+
+    @Test
+    fun `a newer Layer 2 is read for what this version knows`() {
+        val newer =
+            JSONObject(PresetFormat.encode(layered)).apply {
+                getJSONObject("layer").put("blend", "COMET").put("influence", "COMET").put("comet", 1)
+                getJSONObject("layer").getJSONObject("loop").put("shape", "COMET").put("rate", "COMET")
+            }
+        val read = (PresetFormat.decode(newer.toString(), fallback) as StoredPreset.Current).preset.layer
+        assertEquals(Layer(SceneId("kaleido"), loop = LayerLoop(depth = 0.75f, targets = setOf(LoopTarget.SWAP, LoopTarget.OPACITY))), read)
+        val noTargets =
+            JSONObject(PresetFormat.encode(layered)).apply {
+                getJSONObject("layer").getJSONObject("loop").put("targets", JSONArray().put("COMET"))
+            }
+        assertEquals(null, (PresetFormat.decode(noTargets.toString(), fallback) as StoredPreset.Current).preset.layer?.loop)
     }
 
     @Test(expected = JSONException::class)

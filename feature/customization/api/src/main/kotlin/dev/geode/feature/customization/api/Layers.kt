@@ -4,21 +4,26 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 
 /**
- * How Layer 2 is laid over Layer 1, with Photoshop's names, composited in linear light with the W3C
- * Compositing and Blending formulas (the engine's Layers.hpp, in the same order). [maxOpacity] is the
- * No-flash rule on blending: the modes that clip or invert where the two pictures move against each
- * other are held to a quarter, every other mode reaches full opacity.
+ * How Layer 2 is laid over Layer 1, with Photoshop's names and the W3C Compositing and Blending formulas
+ * (the engine's Layers.hpp, in the same order; presets save the names). With the layers swapped
+ * ([SharedProperty.LAYER_SWAP] at 1) Overlay gives Hard Light and Luminosity gives Color. [maxOpacity] is
+ * the No-flash rule on blending: the modes that invert where the two pictures move against each other
+ * are held to a quarter; every other mode reaches full opacity.
  */
 enum class LayerBlend(
     val maxOpacity: Float = 1f,
 ) {
     NORMAL,
-    ADD(QUARTER),
+
+    /** Light adds to light in linear light, rolled off before white. */
+    ADD,
     SCREEN,
+
+    /** Whichever layer is brighter at each point: never brighter than the brighter of the two. */
+    LIGHTEN,
     MULTIPLY,
     OVERLAY,
     SOFT_LIGHT,
-    HARD_LIGHT,
     DIFFERENCE(QUARTER),
     EXCLUSION(QUARTER),
 
@@ -33,14 +38,20 @@ private const val QUARTER = 0.25f
 enum class LayerInfluence {
     NONE,
 
-    /** Layer 2's brightness edges bend Layer 1, like looking through rippled glass. */
-    DISPLACE,
+    /** Layer 2's bright edges bend Layer 1, like looking through rippled glass. */
+    BEND,
 
-    /** Layer 1 shows only where Layer 2 is bright: a luma key. */
-    MASK,
+    /** Layer 1 flows along Layer 2's contours. */
+    SWIRL,
+
+    /** Layer 1 shows only where Layer 2 is lit: a luma key. */
+    CUT_OUT,
 
     /** Layer 1 keeps its own brightness in Layer 2's colours. */
     TINT,
+
+    /** Layer 1 shows only along Layer 2's edges. */
+    OUTLINE,
 }
 
 /** The shape a [LayerLoop] moves its targets in. */

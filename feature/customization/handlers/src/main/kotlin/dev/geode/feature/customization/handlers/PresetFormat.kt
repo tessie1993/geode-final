@@ -3,6 +3,13 @@ package dev.geode.feature.customization.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LayerLoop
+import dev.geode.feature.customization.api.LoopRate
+import dev.geode.feature.customization.api.LoopShape
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.Macro
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
@@ -57,6 +64,7 @@ object PresetFormat {
             .put(REACTIONS, JSONArray(preset.reactions.map(::reaction)))
             .put(MODULATORS, JSONArray(preset.modulators.map(::modulator)))
             .put(SIGNALS, JSONObject(preset.signals.entries.associate { (signal, trim) -> signal.name to trim(trim) }))
+            .apply { preset.layer?.let { put(LAYER, layer(it)) } }
             .toString(INDENT)
 
     /**
@@ -88,6 +96,7 @@ object PresetFormat {
             reactions = objects(o.optJSONArray(REACTIONS)).mapNotNull(::reactionOf),
             modulators = objects(o.optJSONArray(MODULATORS)).mapNotNull(::modulatorOf),
             signals = signalsOf(o.optJSONObject(SIGNALS)),
+            layer = o.optJSONObject(LAYER)?.let(::layerOf),
         )
 
     private fun legacy(
@@ -281,6 +290,42 @@ object PresetFormat {
             else -> null
         }
 
+    private fun layer(layer: Layer): JSONObject =
+        JSONObject()
+            .put(BLEND, layer.blend.name)
+            .put(INFLUENCE, layer.influence.name)
+            .apply { layer.style?.let { put(STYLE, it.value) } }
+            .apply { layer.loop?.let { put(LOOP, loop(it)) } }
+
+    private fun loop(loop: LayerLoop): JSONObject =
+        JSONObject()
+            .put(SHAPE, loop.shape.name)
+            .put(RATE, loop.rate.name)
+            .put(DEPTH, loop.depth.toDouble())
+            .put(TARGETS, JSONArray(loop.targets.sortedBy { it.ordinal }.map { it.name }))
+
+    // Layer 2 as far as this version knows it: a mode it does not know reads as the default, and a loop
+    // with no target it knows is no loop.
+    private fun layerOf(o: JSONObject): Layer =
+        Layer(
+            style = o.optString(STYLE).takeIf { it.isNotEmpty() }?.let(::SceneId),
+            blend = enumOrNull<LayerBlend>(o.optString(BLEND)) ?: Layer.OFF.blend,
+            influence = enumOrNull<LayerInfluence>(o.optString(INFLUENCE)) ?: Layer.OFF.influence,
+            loop = o.optJSONObject(LOOP)?.let(::loopOf),
+        )
+
+    private fun loopOf(o: JSONObject): LayerLoop? {
+        val targets = names(o.optJSONArray(TARGETS)).mapNotNull { enumOrNull<LoopTarget>(it) }.toSet()
+        if (targets.isEmpty()) return null
+        val defaults = LayerLoop()
+        return LayerLoop(
+            shape = enumOrNull<LoopShape>(o.optString(SHAPE)) ?: defaults.shape,
+            rate = enumOrNull<LoopRate>(o.optString(RATE)) ?: defaults.rate,
+            depth = o.optDouble(DEPTH, defaults.depth.toDouble()).toFloat(),
+            targets = targets,
+        )
+    }
+
     private fun trim(trim: SignalTrim): JSONObject = JSONObject().put(GAIN, trim.gain.toDouble()).put(FLOOR, trim.floor.toDouble())
 
     private fun signalsOf(o: JSONObject?): Map<SoundSignal, SignalTrim> {
@@ -372,6 +417,11 @@ object PresetFormat {
     private const val WHILE_PLAYING = "whilePlaying"
     private const val ON_SOUND = "onSound"
     private const val BY_HAND = "byHand"
+    private const val LAYER = "layer"
+    private const val BLEND = "blend"
+    private const val INFLUENCE = "influence"
+    private const val LOOP = "loop"
+    private const val TARGETS = "targets"
     private const val GAIN = "gain"
     private const val FLOOR = "floor"
 
