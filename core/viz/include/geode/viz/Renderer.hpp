@@ -16,6 +16,7 @@
 #include "geode/viz/CompositePass.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
+#include "geode/viz/HdrPass.hpp"
 #include "geode/viz/Lfo.hpp"
 #include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
@@ -36,7 +37,8 @@
 
 namespace geode::viz {
 
-// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> target.
+// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> bloom and tonemap ->
+// No-flash limiter -> target. Everything before the tonemap is HDR (ToneMap.hpp).
 class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -152,6 +154,8 @@ private:
     SharedFxPass sharedFx_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
+    // HDR: the composite's target, the bloom and the filmic tonemap into the No-flash candidate.
+    HdrPass hdrPass_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;

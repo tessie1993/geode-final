@@ -244,6 +244,14 @@ const SHARED_FX_EFFECTS = {
   particles_bubbles: { uParticles: 0.8, uParticleKind: 3, uParticleSize: 1.5 },
 };
 
+// The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
+// level and a plain one), its upsample, and the final filmic tonemap with and without bloom. The
+// stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
+const BLOOM_DOWN_NEUTRAL = { uTexel: [0, 0], uPrefilter: 1, uCurve: [0.6, 0.5] };
+const BLOOM_UP_NEUTRAL = { uTexel: [0, 0] };
+const TONEMAP_NEUTRAL = { uBloomStrength: 0, uExposure: 0.7, uWhite: 3.0, uDither: 1 / 255 };
+const HDR_TEXTURES = { uSource: 'scene', uScene: 'scene', uBloom: 'history', uNoise: 'noise' };
+
 function effectJobs(registry, size) {
   const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
   const jobs = [];
@@ -252,12 +260,15 @@ function effectJobs(registry, size) {
     const uniforms = parseUniforms(frag);
     for (const [name, values] of Object.entries(effects)) {
       const all = { ...neutral, ...values };
-      if (pass === 'shared') all.uTexel = [1 / size, 1 / size];
+      if ('uTexel' in all) all.uTexel = [1 / size, 1 / size];
       jobs.push({ name: `${pass}_${name}`, vert, frag, uniforms: plan(uniforms, all, textures, size, size) });
     }
   };
   add('composite', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_TEXTURES, COMPOSITE_EFFECTS);
   add('shared', 'shared_fx_frag.glsl', SHARED_FX_NEUTRAL, SHARED_FX_TEXTURES, SHARED_FX_EFFECTS);
+  add('hdr', 'bloom_down_frag.glsl', BLOOM_DOWN_NEUTRAL, HDR_TEXTURES, { bloom_prefilter: {}, bloom_down: { uPrefilter: 0 } });
+  add('hdr', 'bloom_up_frag.glsl', BLOOM_UP_NEUTRAL, HDR_TEXTURES, { bloom_up: {} });
+  add('hdr', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_TEXTURES, { tonemap: {}, tonemap_bloom: { uBloomStrength: 0.5 } });
   return jobs;
 }
 

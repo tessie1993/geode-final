@@ -250,13 +250,15 @@ GLuint Renderer::applySharedEffects(float dt) {
 }
 
 void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt) {
-    // The composite draws into the No-flash limiter's candidate target, and the limiter draws the
-    // frame that is shown. Only if its targets cannot be made does the composite go straight out.
+    // The composite draws into the HDR target, the final pass blooms and tonemaps it into the No-flash
+    // limiter's candidate target, and the limiter draws the frame that is shown. Only if the HDR
+    // target cannot be made does the composite draw (and dither) the final picture itself, and only if
+    // the limiter's targets cannot be made does the final picture go straight out.
+    const bool hdr = hdrPass_.ensureComposite(width_, height_);
     const bool limited = noFlash_.bindCandidate(width_, height_);
-    if (!limited) {
-        glBindFramebuffer(GL_FRAMEBUFFER, targetFbo);
-        glViewport(0, 0, width_, height_);
-    }
+    const GLuint finalFbo = limited ? noFlash_.candidateFbo() : targetFbo;
+    glBindFramebuffer(GL_FRAMEBUFFER, hdr ? hdrPass_.compositeFbo() : finalFbo);
+    glViewport(0, 0, width_, height_);
     glDisable(GL_BLEND);
     CompositePass::Inputs& in = compositeInputs_;
     in.texA = sceneTex;
@@ -314,8 +316,11 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.underlayTex = compositePass_.underlayTexOrZero();
     in.underlayBlend = compositePass_.underlayBlendMode();
     in.underlayAmount = compositePass_.underlayAmount();
+    in.dither = !hdr;
     compositePass_.draw(in);
-    if (limited) noFlash_.present(dt, targetFbo, quadVao_);
+    if (hdr) hdrPass_.resolve(tone::bloomFor(p.bloom, thermalTierInfo(thermal_.tier()).optionalPasses), finalFbo, quadVao_);
+    // The offscreen Render waits for each frame's own measurement, so every frame it writes is the one asked for.
+    if (limited) noFlash_.present(dt, targetFbo, quadVao_, thermal_.offscreen());
     // W00: overlay is its own draw call, over whatever composite() just wrote to targetFbo, so it
     // never enters postFx/transitions/Layers and comes out identical live, in the wallpaper and in
     // the offscreen export.

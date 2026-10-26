@@ -523,7 +523,8 @@ void main() {
     // smooth ramp in the app - plasma, aurora, solar, glow falloffs, the fluid
     // pressure field - banded visibly on an OLED panel in a dark room without
     // it. uDither is 0 when the mask could not be loaded, making this an exact
-    // no-op rather than a failure.
+    // no-op rather than a failure, and 0 whenever the composite draws into the
+    // HDR target: the final tonemap pass (tonemap_frag) dithers there instead.
     col += (texture(uNoise, gl_FragCoord.xy / 64.0).r - 0.5) * uDither;
     fragColor = vec4(col, 1.0);
 }
