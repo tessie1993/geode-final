@@ -26,6 +26,22 @@ float gain(float value) { return std::isfinite(value) ? std::max(value, 0.0f) : 
 
 float seconds(float dt) { return std::isfinite(dt) && dt > 0.0f ? dt : 0.0f; }
 
+Border sanitizedBorder(const Border& border) {
+    Border out;
+    out.size = held(border.size, 0.0f, kMaxBorderSize, 0.0f);
+    for (size_t c = 0; c < 3; ++c) out.color[c] = held(border.color[c], 0.0f, 1.0f, 1.0f);
+    out.alpha = unit(border.alpha);
+    return out;
+}
+
+Streaks sanitizedStreaks(const Streaks& streaks) {
+    Streaks out;
+    out.amount = unit(streaks.amount);
+    for (size_t c = 0; c < 3; ++c) out.color[c] = held(streaks.color[c], 0.0f, 1.0f, 1.0f);
+    out.cells = std::clamp(streaks.cells, kMinStreakCells, kMaxStreakCells);
+    return out;
+}
+
 }  // namespace
 
 WarpSpec sanitized(const WarpSpec& spec) {
@@ -42,6 +58,9 @@ WarpSpec sanitized(const WarpSpec& spec) {
     out.warp = held(spec.warp, 0.0f, kMaxWarp, 0.0f);
     for (size_t c = 0; c < 3; ++c) out.tint[c] = held(spec.tint[c], 0.0f, 1.0f, 1.0f);
     out.react = held(spec.react, 0.0f, kMaxReact, 0.0f);
+    out.outer = sanitizedBorder(spec.outer);
+    out.inner = sanitizedBorder(spec.inner);
+    out.streaks = sanitizedStreaks(spec.streaks);
     return out;
 }
 
@@ -95,6 +114,37 @@ Affine sourceMap(float zoomPerSecond, float rotatePerSecond, const std::array<fl
     return out;
 }
 
+float paintPerFrame(float alpha, float dt) {
+    const float t = seconds(dt);
+    const float a = unit(alpha);
+    if (t == 0.0f || a == 0.0f) return 0.0f;
+    if (a == 1.0f) return 1.0f;
+    return 1.0f - std::pow(1.0f - a, t);
+}
+
+float paintFade(float age) {
+    const float t = held(age / kPaintFadeSeconds, 0.0f, 1.0f, 0.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
+Paint borderPaint(const Border& raw, float dt, float age) {
+    const Border border = sanitizedBorder(raw);
+    Paint out;
+    out.color = border.color;
+    out.size = border.size;
+    if (border.size > 0.0f) out.cover = paintPerFrame(border.alpha, dt) * paintFade(age);
+    return out;
+}
+
+Paint streakPaint(const Streaks& raw, float dt, float age) {
+    const Streaks streaks = sanitizedStreaks(raw);
+    Paint out;
+    out.color = streaks.color;
+    out.size = 1.0f / static_cast<float>(streaks.cells);
+    out.cover = paintPerFrame(streaks.amount, dt) * paintFade(age);
+    return out;
+}
+
 std::array<float, 2> apply(const Affine& affine, const std::array<float, 2>& p) {
     const auto& m = affine.map;
     return {m[0] * p[0] + m[2] * p[1] + affine.shift[0], m[1] * p[0] + m[3] * p[1] + affine.shift[1]};
@@ -118,6 +168,10 @@ Step Motion::step(const WarpSpec& raw, const Drive& drive, float dt) {
     const float kept = perFrame(keptPerSecond(spec.decay, gain(drive.decay)), t);
     for (size_t c = 0; c < 3; ++c) out.keep[c] = kept * perFrame(spec.tint[c], t);
     out.floor = kFloorPerSecond * t;
+    age_ = std::min(age_ + t, kPaintFadeSeconds);
+    out.outer = borderPaint(spec.outer, t, age_);
+    out.inner = borderPaint(spec.inner, t, age_);
+    out.streaks = streakPaint(spec.streaks, t, age_);
     return out;
 }
 

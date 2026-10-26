@@ -9,10 +9,12 @@ import dev.geode.feature.studio.api.EditCut
 import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.FrameSize
+import dev.geode.feature.studio.core.Loudness
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderPlan
 import kotlinx.coroutines.CancellationException
@@ -25,7 +27,8 @@ import kotlinx.coroutines.launch
 /**
  * The Edit pipeline as the render queue's [EditEngine] (#318): the clip editor's cut, or the Timeline's
  * composition with its transitions from [shaders], made by Media3 Transformer at the queued format and
- * saved, then handed back as an Edit's video. A cut is loop-safe when Settings' Export preferences say
+ * saved, then handed back as an Edit's video. A clip with a loudness target (a Short, #329) is measured
+ * with [levels] and its sound levelled to it. A cut is loop-safe when Settings' Export preferences say
  * so ([loopSafe]). Transformer cannot pause, so an Edit runs to its end once started; cancelling it stops
  * Transformer and leaves no file.
  */
@@ -33,6 +36,7 @@ import kotlinx.coroutines.launch
 class MediaEditEngine(
     private val context: Context,
     private val shaders: TransitionShaders,
+    private val levels: SoundLevels = SoundLevels.None,
     private val loopSafe: () -> Boolean,
 ) : EditEngine {
     override suspend fun export(
@@ -84,6 +88,7 @@ class MediaEditEngine(
         return when (val cut = job.cut) {
             is EditCut.OneClip -> {
                 val source = cut.source
+                val gainDb = gainOf(job, source.file)
                 val result =
                     exporter.export(
                         Uri.parse(source.file),
@@ -91,6 +96,8 @@ class MediaEditEngine(
                         cut.edit,
                         name,
                         format.codec,
+                        sourceSize = FrameSize(source.width, source.height),
+                        audioGainDb = gainDb,
                         onProgress = rendering,
                     )
                 endOf(result, job.name, frameOf(cut), progress)
@@ -113,6 +120,16 @@ class MediaEditEngine(
                 }
             }
         }
+    }
+
+    /** The gain that brings [file]'s sound to [job]'s loudness target; 0 without one, or when it cannot be measured. */
+    private suspend fun gainOf(
+        job: EditJob,
+        file: String,
+    ): Double {
+        if (job.loudness == RenderLoudness.LEAVE_AS_IS) return 0.0
+        val level = levels.measure(file) ?: return 0.0
+        return Loudness.gainDb(job.loudness, level.lufs, level.truePeakDbtp)
     }
 
     /** The clip reframed to its shape at its size, or as shot. */

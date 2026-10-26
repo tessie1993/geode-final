@@ -473,7 +473,7 @@ class SettingsCodecTest {
         val stored = SettingsCodec.encode(SettingsValues())
 
         assertEquals(1.0f, stored["gui_text_scale"])
-        assertEquals("WATER", stored["gui_element"])
+        assertEquals(null, stored["gui_element"])
         assertEquals("0,0,0,0,0,0,0,0,0,0", stored["band_levels"])
         assertEquals(-1, stored["preset"])
         assertEquals(60, stored["export_fps"])

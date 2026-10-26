@@ -12,11 +12,13 @@
 #include "geode/viz/AudioInputs.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/render/ImageDecoder.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/FrameRate.hpp"
 #include "geode/viz/SharedInputs.hpp"
 #include "geode/viz/StyleInputs.hpp"
+#include "geode/viz/StylePacks.hpp"
 
 namespace geode::viz {
 
@@ -28,6 +30,15 @@ struct ShaderFeedback {
     std::string fragment;
 };
 
+// One image a shader Style ships in its pack ("textures", #391): decoded, with the sampler the shader reads
+// it by and the wrap and filter the pack chose.
+struct ShaderImage {
+    std::string uniform;
+    packs::TextureWrap wrap = packs::TextureWrap::Repeat;
+    packs::TextureFilter filter = packs::TextureFilter::Linear;
+    Image image;
+};
+
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
@@ -37,9 +48,10 @@ public:
 
     // `inputs`: the shared Style inputs the pack declares (StyleInputs.hpp); only these are made and bound.
     // `feedback`: the warp layer, when the pack opts into it; the Style then reads the warped picture as
-    // its previous frame and what it draws is kept.
+    // its previous frame and what it draws is kept. `images`: the pack's own images, at most
+    // packs::kMaxTextures, each bound to its sampler on a unit of its own.
     ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt);
+                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt, std::vector<ShaderImage> images = {});
     ~ShaderScene() override;
 
     const std::string& id() const override { return id_; }
@@ -161,6 +173,9 @@ private:
     // The shared inputs the pack declares: their clocks and their textures (lib_inputs.glsl).
     void uploadInputs();
     GLuint inputTexture(inputs::Input input);
+    // The pack's own images (#391): made at init(), bound each frame on units above the shared inputs'.
+    void createImages();
+    void uploadImages();
     // After the draw: keeps this frame for the next one, as the previous frame and the blur levels the
     // pack declares, then binds the draw target again. `source` holds the frame: the draw target, or the
     // kept picture of a Style with feedback.
@@ -286,6 +301,12 @@ private:
     std::array<Framebuffer, kBlurChain> blur_{Framebuffer("styleBlur0"), Framebuffer("styleBlur1"), Framebuffer("styleBlur2"),
                                               Framebuffer("styleBlur3")};
     int blurBuilt_ = 0;
+
+    // ---- the pack's own images ("textures", #391) ---------------------------
+    // The first unit they take: above the audio, flow, palette and the shared inputs' (3..11).
+    static constexpr GLint kFirstImageUnit = 12;
+    std::vector<ShaderImage> images_;
+    std::array<Texture, packs::kMaxTextures> imageTex_{};
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;

@@ -71,20 +71,33 @@ fun interface EditEngine {
 
 /**
  * Where the Timeline's cut is kept between visits (#318): `:app` keeps it as the old editor did, in
- * `files/editor`, so a cut made before the move opens as it was. [load] is null when there is none.
+ * `files/editor`, so a cut made before the move opens as it was, and so do the old editor's other
+ * projects (#347), by their names. A null name is the Timeline's own cut. [load] is null when there is
+ * none.
  */
 interface EditDrafts {
-    suspend fun load(): EditorProject?
+    suspend fun load(name: String?): EditorProject?
 
-    suspend fun save(project: EditorProject)
+    suspend fun save(
+        project: EditorProject,
+        name: String?,
+    )
+
+    /** The names of the cuts kept besides the Timeline's own: the old editor's other projects (#347). */
+    suspend fun names(): List<String>
 
     companion object {
         /** Keeps nothing: the Timeline always opens empty. */
         val None: EditDrafts =
             object : EditDrafts {
-                override suspend fun load(): EditorProject? = null
+                override suspend fun load(name: String?): EditorProject? = null
 
-                override suspend fun save(project: EditorProject) = Unit
+                override suspend fun save(
+                    project: EditorProject,
+                    name: String?,
+                ) = Unit
+
+                override suspend fun names(): List<String> = emptyList()
             }
     }
 }
@@ -114,6 +127,26 @@ interface EditVideos {
                     folder: String,
                 ): String = error("no copies")
             }
+    }
+}
+
+/** A file's sound as measured (#329): its integrated loudness and its true peak. */
+data class SoundLevel(
+    val lufs: Double,
+    val truePeakDbtp: Double,
+)
+
+/**
+ * Measures the sound of a video file (#329), so an Edit with a loudness target, a Short at the Shorts
+ * preset, is levelled to it. `:app` fills it with its loudness meter. Null when the file has no sound
+ * that can be measured.
+ */
+fun interface SoundLevels {
+    suspend fun measure(file: String): SoundLevel?
+
+    companion object {
+        /** Measures nothing: no Edit is levelled. */
+        val None: SoundLevels = SoundLevels { null }
     }
 }
 

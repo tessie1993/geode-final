@@ -173,6 +173,9 @@
     <string name="customize_property_trails">Trails</string>
     <string name="customize_property_trail_zoom">Trail zoom</string>
     <string name="customize_property_trail_warp">Trail warp</string>
+    <string name="customize_property_echo_copy">Echo copy</string>
+    <string name="customize_property_echo_copy_zoom">Echo copy zoom</string>
+    <string name="customize_property_echo_copy_flip">Echo copy flip</string>
     <string name="customize_property_grain">Grain</string>
     <string name="customize_property_vignette">Vignette</string>
     <string name="customize_property_chromatic">Chromatic split</string>
@@ -434,6 +437,9 @@
     <string name="customize_help_property_trails">How much of each frame lingers into the next.</string>
     <string name="customize_help_property_trail_zoom">Makes the trails zoom in or out as they fade.</string>
     <string name="customize_help_property_trail_warp">Makes the trails swirl as they fade.</string>
+    <string name="customize_help_property_echo_copy">Mixes a zoomed, flipped copy of the picture over it, for mirror symmetry and depth.</string>
+    <string name="customize_help_property_echo_copy_zoom">How much larger the echo copy is. Below 1 it is smaller and tiles.</string>
+    <string name="customize_help_property_echo_copy_flip">Flips the echo copy: none, left to right, top to bottom, or both. Changes fade gently.</string>
     <string name="customize_help_property_grain">Film grain over the picture.</string>
     <string name="customize_help_property_vignette">Darkens the corners.</string>
     <string name="customize_help_property_chromatic">Splits the colours at the edges, like a cheap lens.</string>

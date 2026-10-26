@@ -4,6 +4,7 @@
     <string name="edit_section">Edit</string>
     <string name="edit_open_video">Cut a video…</string>
     <string name="edit_open_cut">Timeline</string>
+    <string name="edit_earlier_cuts">Cuts from the earlier editor</string>
     <string name="edit_this_video">Edit this video</string>
     <string name="edit_reading">Opening the video…</string>
     <string name="edit_loading_cut">Opening your cut…</string>
@@ -162,4 +163,26 @@
     <string name="edit_autocut_as_markers">Add as markers</string>
     <string name="edit_autocut_as_clips">Cut the visual lane</string>
     <string name="edit_autocut_explainer">Cuts follow the hits the player actually played, not a tempo grid. Suggestions become ordinary markers or clips you can drag, trim and delete.</string>
+    <!-- Make Short (#328) -->
+    <string name="short_title">Make Short</string>
+    <string name="short_explainer">A Short is a vertical 9:16 video under a minute, made at the TikTok and Shorts preset: 1080p, 30 fps and −14 LUFS.</string>
+    <string name="short_section">Section</string>
+    <string name="short_section_summary">%1$s – %2$s · %3$s long</string>
+    <string name="short_limit">Pick up to 59 seconds: a Short is always under a minute.</string>
+    <string name="short_crop">Frame</string>
+    <string name="short_crop_across">Slide the 9:16 frame left or right</string>
+    <string name="short_crop_down">Slide the 9:16 frame up or down</string>
+    <string name="short_redraw_title">Sharper Short</string>
+    <string name="short_redraw">Draw it again at 9:16</string>
+    <string name="short_redraw_hint">Makes the Short from the song and look again, sharp at full size, instead of cropping this video.</string>
+    <string name="short_project">Save to</string>
+    <string name="short_make">Make Short</string>
+    <string name="short_make_note">The Short waits in the queue, then appears in the Project, linked to this video.</string>
+    <!-- Export as (#328) -->
+    <string name="export_as_title">Export as…</string>
+    <string name="export_as_redraw">Geode draws this Render again from its song, look and settings at the new shape and quality.</string>
+    <string name="export_as_crop">Geode crops and trims this video to the new shape.</string>
+    <string name="export_as_preset">Shape and quality</string>
+    <string name="export_as_project">Save to</string>
+    <string name="export_as_go">Export</string>
 </resources>

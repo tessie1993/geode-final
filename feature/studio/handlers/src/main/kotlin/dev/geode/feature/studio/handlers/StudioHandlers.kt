@@ -3,6 +3,7 @@ package dev.geode.feature.studio.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderJob
 import dev.geode.feature.studio.api.RenderPhase
@@ -13,6 +14,7 @@ import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.core.EditWork
+import dev.geode.feature.studio.core.OLD_VIDEOS_PROJECT
 import dev.geode.feature.studio.core.RecordingWork
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderEta
@@ -35,6 +37,22 @@ import java.util.concurrent.ConcurrentHashMap
 /** The feature name failures are reported under. */
 const val STUDIO = "studio"
 
+/** The name the import of the old Studio's videos is marked done under (#347). */
+internal const val OLD_VIDEOS_IMPORT = "old-studio-videos"
+
+/**
+ * The old Studio's exports in `Movies/Geode` (#347), which Studio imports once after the upgrade. [list]
+ * may throw; the import is then tried again next start.
+ */
+fun interface OldVideos {
+    suspend fun list(): List<NewVideo>
+
+    companion object {
+        /** No old Studio: nothing to import. */
+        val None: OldVideos = OldVideos { emptyList() }
+    }
+}
+
 /** The video files the user's Projects hold. */
 fun interface VideoFiles {
     /** Deletes [file]; false when it could not. */
@@ -44,8 +62,8 @@ fun interface VideoFiles {
 /**
  * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
  * > Default paths, the [files] of deleted videos, the wall clock that stamps a new Project and times a
- * Render, what the [renders] need (#338), the [recorder] of the live Visual (#317), and what the
- * editors need ([edits], #318).
+ * Render, what the [renders] need (#338), the [recorder] of the live Visual (#317), what the editors need
+ * ([edits], #318), and the old Studio's videos to import once ([oldVideos], #347).
  */
 class StudioSources(
     val storage: StudioStorage,
@@ -55,6 +73,7 @@ class StudioSources(
     val renders: RenderSources,
     val recorder: LiveRecorder = LiveRecorder.None,
     val edits: EditTools = EditTools(),
+    val oldVideos: OldVideos = OldVideos.None,
 )
 
 /**
@@ -124,8 +143,53 @@ class StudioHandlers(
             is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
             is RecordingWork -> recordings.run(work, results)
             is EditWork -> edits.run(work, results)
+            StudioWork.ImportOldVideos -> importOldVideos(results)
+            is StudioWork.FinishRender -> finish(work, results)
         }
     }
+
+    /**
+     * Reads the song's synced lyrics when the finished Render wants captions (#329); lyrics that cannot be
+     * read are none, and the cards are still made.
+     */
+    private suspend fun finish(
+        work: StudioWork.FinishRender,
+        results: Results<StudioEvent>,
+    ) {
+        val track = work.render.tracks.singleOrNull()
+        val lyrics =
+            if (work.render.extras.captions && track != null) attempt { sources.renders.lyrics.cues(track) }.orEmpty() else emptyList()
+        results.report(StudioEvent.FinishReady(work.render, work.video, lyrics))
+    }
+
+    /**
+     * Brings the old Studio's videos that the library does not hold yet into a Project of their own, once
+     * (#347): Renders and Recordings Studio made are saved to `Movies/Geode` too, and are already there.
+     * The import is marked done with what it brought, even nothing, so the videos appear once.
+     */
+    private suspend fun importOldVideos(results: Results<StudioEvent>) {
+        val imported =
+            attempt {
+                if (storage.imported(OLD_VIDEOS_IMPORT)) return@attempt Imported(null)
+                val known = storage.videos().mapTo(HashSet()) { it.file }
+                val found =
+                    sources.oldVideos
+                        .list()
+                        .filter { it.file !in known }
+                        .distinctBy { it.file }
+                Imported(storage.import(OLD_VIDEOS_IMPORT, OLD_VIDEOS_PROJECT, sources.now(), found))
+            }
+        val brought = imported?.videos
+        when {
+            imported == null -> results.report(StudioEvent.Failed(StudioFailure.IMPORT_OLD_VIDEOS))
+            brought != null -> results.report(StudioEvent.OldVideosImported(brought.project, brought.videos))
+        }
+    }
+
+    /** What an import came to: [videos] null when there was nothing to bring, or it was done before. */
+    private class Imported(
+        val videos: ImportedVideos?,
+    )
 
     /** Freezes the look once, then saves the Renders with it: only a saved Render waits in the queue. */
     private suspend fun queue(

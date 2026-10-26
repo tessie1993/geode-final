@@ -17,6 +17,7 @@ import dev.geode.feature.studio.handlers.edit.AndroidEditVideos
 import dev.geode.feature.studio.handlers.edit.EditDrafts
 import dev.geode.feature.studio.handlers.edit.EditTools
 import dev.geode.feature.studio.handlers.edit.MediaEditEngine
+import dev.geode.feature.studio.handlers.edit.SoundLevels
 import dev.geode.feature.studio.handlers.edit.TransitionShaders
 import kotlinx.coroutines.flow.Flow
 
@@ -24,16 +25,15 @@ import kotlinx.coroutines.flow.Flow
 private const val OLD_STUDIO_PATH = "Movies/Geode"
 
 /**
- * The old Studio's exports in `Movies/Geode`, read from the phone's media index. Studio never reads
- * them itself: the switch-over (#17) imports them once (owner decision on #21) by sending
- * [dev.geode.feature.studio.api.StudioCommand.AddVideos] with what [list] finds, and marks the import
- * done so it is not repeated.
+ * The old Studio's exports in `Movies/Geode`, read from the phone's media index. Studio's handlers
+ * import them once after the upgrade (owner decision on #21, #347), leaving out what the library holds
+ * already, and mark the import done so it is not repeated.
  */
 class OldStudioVideos(
     private val resolver: ContentResolver,
-) {
-    /** Reads the media index: call it off the main thread. */
-    fun list(): List<NewVideo> {
+) : OldVideos {
+    /** Reads the media index: the handlers call it off the main thread. */
+    override suspend fun list(): List<NewVideo> {
         val projection =
             arrayOf(
                 MediaStore.Video.Media._ID,
@@ -91,8 +91,10 @@ class AndroidVideoFiles(
  * Studio's sources on the phone, for `:app` to wire (#17): the save folder and the Renders' settings
  * come from [settings]; `:app` fills the [looks] and the [engine] Renders are made with (#338, #316),
  * the [recorder] of the live Visual (#317), and says whether the app is [inFront] of the person (#28).
- * The editors (#318) export through the Edit pipeline here, with the GL Transitions `:app` reads from
- * the engine ([transitions]), and keep the Timeline's cut in the [drafts] `:app` keeps.
+ * The old Studio's videos are imported once from the phone's media index (#347). The editors (#318)
+ * export through the Edit pipeline here, with the GL Transitions `:app` reads from the engine
+ * ([transitions]), and keep the Timeline's cut in the [drafts] `:app` keeps. A Render's captions come
+ * from the songs' [lyrics] and a Short's sound is levelled with the [levels] `:app` measures (#329).
  */
 @OptIn(UnstableApi::class)
 fun androidStudioSources(
@@ -104,15 +106,18 @@ fun androidStudioSources(
     recorder: LiveRecorder = LiveRecorder.None,
     transitions: TransitionShaders = TransitionShaders { null },
     drafts: EditDrafts = EditDrafts.None,
+    lyrics: RenderLyrics = RenderLyrics.None,
+    levels: SoundLevels = SoundLevels.None,
 ): StudioSources =
     StudioSources(
         storage = RoomStudioStorage(StudioDatabase.open(context).dao()),
         saveFolder = saveFolderOf(settings),
         files = AndroidVideoFiles(context),
         now = { Millis(System.currentTimeMillis()) },
-        renders = RenderSources(renderSettingsOf(settings), looks, engine, inFront),
+        renders = RenderSources(renderSettingsOf(settings), looks, engine, inFront, lyrics),
         recorder = recorder,
-        edits = EditTools(drafts, AndroidEditVideos(context), MediaEditEngine(context, transitions) { loopSafe(settings) }),
+        edits = EditTools(drafts, AndroidEditVideos(context), MediaEditEngine(context, transitions, levels) { loopSafe(settings) }),
+        oldVideos = OldStudioVideos(context.contentResolver),
     )
 
 /** Settings' loop-safe length for exports, off until Settings are read. */

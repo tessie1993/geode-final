@@ -14,7 +14,8 @@ import dev.geode.kernel.Results
 import kotlinx.coroutines.CancellationException
 
 /**
- * Carries out the editors' work (#318): reading a picked video, keeping the Timeline's cut, and saving
+ * Carries out the editors' work (#318): reading a picked video, keeping the Timeline's cut (one write at a
+ * time, the newest winning, and read back only after the writes before it), and saving
  * an Edit's export to the render queue. With Settings' Copy, the Edit's videos are copied into the Save
  * folder first and the Edit points at the copies; with Reference nothing is copied. An Edit is queued
  * with no look: it is cut from videos, never drawn. Every failure is caught here and reported by name.
@@ -24,25 +25,37 @@ internal class EditHandlers(
 ) {
     private val tools: EditTools get() = sources.edits
 
+    // Every save of a cut goes through its writer, one at a time and the newest winning.
+    private val writers = HashMap<String?, CutWriter<EditorProject>>()
+
     suspend fun run(
         work: EditWork,
         results: Results<StudioEvent>,
     ) {
         when (work) {
             is EditWork.ReadSource -> results.report(EditEvent.SourceRead(attempt { tools.videos.read(work.file) }))
-            EditWork.LoadCut -> load(results)
+            is EditWork.LoadCut -> load(work.name, results)
             is EditWork.SaveCut ->
-                if (attempt { tools.drafts.save(work.project) } == null) results.report(StudioEvent.Failed(StudioFailure.SAVE_CUT))
+                if (attempt { writerOf(work.name).offer(work.revision, work.project) } == null) {
+                    results.report(StudioEvent.Failed(StudioFailure.SAVE_CUT))
+                }
+            EditWork.ListCuts -> results.report(EditEvent.CutsListed(attempt { tools.drafts.names() }.orEmpty()))
             is EditWork.QueueEdit -> queue(work, results)
         }
     }
 
-    /** The saved cut, or an empty one when there is none; one that cannot be read is reported too. */
-    private suspend fun load(results: Results<StudioEvent>) {
-        val loaded = attempt { Loaded(tools.drafts.load()) }
+    /** The cut kept as [name], or an empty one when there is none; one that cannot be read is reported too. */
+    private suspend fun load(
+        name: String?,
+        results: Results<StudioEvent>,
+    ) {
+        val loaded = attempt { writerOf(name).read { Loaded(tools.drafts.load(name)) } }
         if (loaded == null) results.report(StudioEvent.Failed(StudioFailure.LOAD_CUT))
-        results.report(EditEvent.CutLoaded(loaded?.project ?: EditorProject()))
+        results.report(EditEvent.CutLoaded(loaded?.project ?: EditorProject(), name))
     }
+
+    private fun writerOf(name: String?): CutWriter<EditorProject> =
+        synchronized(writers) { writers.getOrPut(name) { CutWriter { tools.drafts.save(it, name) } } }
 
     private suspend fun queue(
         work: EditWork.QueueEdit,

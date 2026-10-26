@@ -185,21 +185,25 @@ class VisualsHandlers(
         for (file in files) {
             when (val planned = MilkdropFiles.plan(kind, listOf(read(file, kind)), present).single()) {
                 is Planned.Refuse -> broken += planned.broken
-                is Planned.Write ->
-                    if (written(kind, planned)) {
-                        imported += planned.shown
-                        present += planned.stored
-                        if (kind == MilkdropKind.PRESETS) {
-                            playback[planned.shown] = MilkdropChecks.playback(planned.bytes.toString(Charsets.ISO_8859_1), held)
-                        }
-                    } else {
+                is Planned.Write -> {
+                    if (!written(kind, planned)) {
                         broken += BrokenFile(planned.picked, MilkdropImportProblem.NOT_SAVED)
+                        continue
                     }
+                    imported += planned.shown
+                    present += planned.stored
+                    if (kind == MilkdropKind.PRESETS) playback[planned.shown] = playbackOf(planned, held)
+                }
             }
         }
         val (milks, textures) = listing()
         return VisualsEvent.MilkdropImported(ImportReport(kind, imported, broken, playback), milks, textures)
     }
+
+    private fun playbackOf(
+        planned: Planned.Write,
+        held: List<String>,
+    ): PresetPlayback = MilkdropChecks.playback(planned.bytes.toString(Charsets.ISO_8859_1), held)
 
     /** [uri] as picked; one that cannot be read, whatever the reason, is [PickedFile.Unreadable]. */
     @Suppress("TooGenericExceptionCaught", "SwallowedException")

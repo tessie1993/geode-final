@@ -59,12 +59,14 @@ sealed interface EditCut {
 
 /**
  * An Edit the render queue exports (#318): its [name], its [cut], and whether its sources were copied
- * beside it when it was saved ([sources]). Its video lands in its Render's Project as an Edit.
+ * beside it when it was saved ([sources]). Its video lands in its Render's Project as an Edit. Its sound
+ * is levelled to [loudness] (#329): a Short's to the Shorts preset's -14 LUFS.
  */
 data class EditJob(
     val name: String,
     val cut: EditCut,
     val sources: EditSources,
+    val loudness: RenderLoudness = RenderLoudness.LEAVE_AS_IS,
 )
 
 /**
@@ -87,13 +89,29 @@ sealed interface EditSession {
     data object LoadingCut : EditSession
 
     /**
+     * Make Short on [video] (#328): its [source], with [edit] holding the section (under
+     * [Shorts.LIMIT_MS]) and where the 9:16 crop sits. [canRedraw] when the video is a Render that can be
+     * drawn again at 9:16 from its remembered setup, and [redraw] when the person chose that over the
+     * crop.
+     */
+    data class Short(
+        val video: VideoId,
+        val source: EditSource,
+        val edit: ClipEdit,
+        val canRedraw: Boolean = false,
+        val redraw: Boolean = false,
+    ) : EditSession
+
+    /**
      * The Timeline on [history]'s present cut, with its undo and redo, the playhead at [playheadMs], and
-     * why the last change was refused ([refused]), until the next one is made.
+     * why the last change was refused ([refused]), until the next one is made. [name] is the earlier
+     * editor's cut it was opened on (#347), kept under that name; null for the Timeline's own cut.
      */
     data class Cut(
         val history: EditorHistory,
         val playheadMs: Long = 0L,
         val refused: EditError? = null,
+        val name: String? = null,
     ) : EditSession {
         val project: EditorProject get() = history.present
     }
@@ -122,6 +140,32 @@ sealed interface EditCommand : StudioCommand {
 
     /** Opens the Timeline on its saved cut. */
     data object OpenCut : EditCommand
+
+    /** Opens Make Short on [video], a Render or Recording in the library (#328). */
+    data class MakeShort(
+        val video: VideoId,
+    ) : EditCommand
+
+    /**
+     * Make Short's section is now [startMs] to [endMs] of the source, the crop sits at [cropX] across and
+     * [cropY] down (0..1), and [redraw] says whether a Render is drawn again rather than cropped. A
+     * section outside the source, under [Shorts.SHORTEST_MS] or of [Shorts.LIMIT_MS] or longer is refused.
+     */
+    data class ChangeShort(
+        val startMs: Long,
+        val endMs: Long,
+        val cropX: Float = Shorts.CENTRE,
+        val cropY: Float = Shorts.CENTRE,
+        val redraw: Boolean = false,
+    ) : EditCommand
+
+    /**
+     * Opens the Timeline on [name], one of the cuts the earlier editor kept ([StudioState.savedCuts],
+     * #347); its changes are kept under that name.
+     */
+    data class OpenSavedCut(
+        val name: String,
+    ) : EditCommand
 
     /** A new lane of [kind], named [name], under the others. */
     data class AddLane(
@@ -251,7 +295,8 @@ sealed interface EditCommand : StudioCommand {
 
     /**
      * Queues the open Edit for export into [project], or the default Project: it waits in the render
-     * queue like a Render and lands in the library as an Edit. The editor stays open.
+     * queue like a Render and lands in the library as an Edit. A Short lands in [project], or in its
+     * source's Project, as a Short at the Shorts preset (#328). The editor stays open.
      */
     data class Export(
         val project: ProjectId? = null,

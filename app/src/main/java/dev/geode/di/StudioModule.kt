@@ -24,10 +24,12 @@ import dev.geode.playback.PlaybackEngine
 import dev.geode.render.scene.SceneIds
 import dev.geode.studio.AppEditDrafts
 import dev.geode.studio.AppRenderLooks
+import dev.geode.studio.AppRenderLyrics
 import dev.geode.studio.AppTransitionShaders
 import dev.geode.studio.LiveVisualRecorder
 import dev.geode.studio.NativeRenderEngine
 import dev.geode.studio.RenderAlerts
+import dev.geode.studio.TrackLoudness
 import dev.geode.ui.LiveVisualPresence
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -91,6 +93,9 @@ object StudioModule {
                 recorder,
                 transitions = AppTransitionShaders(application),
                 drafts = AppEditDrafts(EditorProjectStore(application), Dispatchers.IO),
+                // A Render's captions come from the song's own synced lyrics, never from online (#329).
+                lyrics = AppRenderLyrics(application, Dispatchers.IO),
+                levels = TrackLoudness(application),
             )
         return studioStore(sources, runtime).also { studio ->
             val scope = application.geodeContainer.appScope

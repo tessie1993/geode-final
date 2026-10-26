@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.ui
 
+import android.content.ClipData
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,9 +12,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -26,9 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -37,10 +43,12 @@ import androidx.compose.ui.window.DialogProperties
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
+import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderJob
 import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
+import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderProblem
@@ -48,6 +56,7 @@ import dev.geode.feature.studio.api.RenderQuality
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.StudioCommand
+import kotlinx.coroutines.launch
 
 /**
  * The render queue (#338, #325): each Track, or each playlist with its overall progress, with how far
@@ -175,8 +184,9 @@ private fun problemText(problem: RenderProblem): String =
 
 /**
  * The Render setup (#22, #316, #325): a Track or a playlist, the look, a platform preset or the shape,
- * size, frame rate, quality and codec by hand, the length, and the Project; then Render queues it.
- * Stateless: the route keeps the [draft] (ADR-0003).
+ * size, frame rate, quality and codec by hand, the length, the extras (#329) and the Project; then Render
+ * queues it. A playlist's chapters can be copied or saved as files ([onSaveChapters]). Stateless: the
+ * route keeps the [draft] (ADR-0003).
  */
 @Composable
 fun RenderSetupDialog(
@@ -186,6 +196,7 @@ fun RenderSetupDialog(
     onDraft: (RenderDraft) -> Unit,
     onRender: () -> Unit,
     onDismiss: () -> Unit,
+    onSaveChapters: (ChapterFile) -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxWidth().padding(StudioDimens.padding), shape = MaterialTheme.shapes.large) {
@@ -203,6 +214,8 @@ fun RenderSetupDialog(
                 }
                 MilkdropPicker(draft, choices, onDraft)
                 FormatPicker(draft, onDraft)
+                ExtrasPicker(draft, onDraft)
+                if (draft.spec.tracks.size > 1) PlaylistChapters(draft, onSaveChapters)
                 ProjectPicker(draft, projects, onDraft)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.studio_cancel)) }
@@ -413,6 +426,77 @@ private fun SectionFields(
     Note(stringResource(R.string.studio_render_section_note))
 }
 
+/**
+ * The extras (#329): lyric captions and title and end cards, made as an Edit of the finished Render so
+ * the Visual stays clean, and the loudness target the preset or Settings set.
+ */
+@Composable
+internal fun ExtrasPicker(
+    draft: RenderDraft,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    val extras = draft.spec.extras
+    val set = { changed: RenderExtras -> onDraft(draft.copy(spec = draft.spec.copy(extras = changed))) }
+    Heading(stringResource(R.string.studio_render_extras))
+    Check(stringResource(R.string.studio_render_captions), extras.captions) { set(extras.copy(captions = it)) }
+    Note(stringResource(R.string.studio_render_captions_note))
+    Check(stringResource(R.string.studio_render_title_card), extras.titleCard) { set(extras.copy(titleCard = it)) }
+    Check(stringResource(R.string.studio_render_end_card), extras.endCard) { set(extras.copy(endCard = it)) }
+    Note(stringResource(R.string.studio_render_cards_note))
+    Note(stringResource(R.string.studio_render_loudness, loudnessLabel(extras.loudness)))
+}
+
+/** A playlist's chapters, one per song where it starts (#329), to copy into a description or save as a file. */
+@Composable
+private fun PlaylistChapters(
+    draft: RenderDraft,
+    onSave: (ChapterFile) -> Unit,
+) {
+    val text = chapterText(draft.spec.tracks, ChapterFile.DESCRIPTION)
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val label = stringResource(R.string.studio_render_chapters)
+    Heading(label)
+    Note(stringResource(R.string.studio_render_chapters_note))
+    Text(text.trimEnd(), style = MaterialTheme.typography.bodySmall)
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        TextButton(onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(label, text))) } }) {
+            Text(stringResource(R.string.studio_render_chapters_copy))
+        }
+        ChapterFile.entries.forEach { file ->
+            TextButton(onClick = { onSave(file) }) { Text(stringResource(R.string.studio_render_chapters_save, file.extension)) }
+        }
+    }
+}
+
+@Composable
+private fun loudnessLabel(loudness: RenderLoudness): String =
+    stringResource(
+        when (loudness) {
+            RenderLoudness.LEAVE_AS_IS -> R.string.studio_render_loudness_as_is
+            RenderLoudness.MINUS_14_LUFS -> R.string.studio_render_loudness_14
+            RenderLoudness.MINUS_11_LUFS -> R.string.studio_render_loudness_11
+        },
+    )
+
+@Composable
+private fun Check(
+    text: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange)
+            .padding(vertical = StudioDimens.gap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Text(text, Modifier.padding(start = StudioDimens.gap))
+    }
+}
+
 @Composable
 private fun ProjectPicker(
     draft: RenderDraft,
@@ -469,7 +553,7 @@ private fun Note(text: String) {
 }
 
 @Composable
-private fun presetLabel(preset: RenderPreset?): String =
+internal fun presetLabel(preset: RenderPreset?): String =
     stringResource(
         when (preset) {
             RenderPreset.TIKTOK_AND_SHORTS -> R.string.studio_preset_tiktok

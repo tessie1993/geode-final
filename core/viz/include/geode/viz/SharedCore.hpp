@@ -16,7 +16,7 @@ enum class Shared : uint8_t {
     Speed, AudioDrive, Turbulence,
     Detail, Glow,
     Kaleidoscope, Symmetry, Mirror,
-    Trails, TrailZoom, TrailWarp,
+    Trails, TrailZoom, TrailWarp, EchoCopy, EchoCopyZoom, EchoCopyFlip,
     Grain, Vignette, Chromatic, Scanlines, Fisheye, SoftFocus, MotionBlur,
     Warp, Ripple, Twist, Tile,
     Glitch, Pixelate, Posterize, Solarize,
@@ -25,7 +25,7 @@ enum class Shared : uint8_t {
     Anaglyph,
     LayerOpacity, LayerInfluence, LayerSwap,
 };
-constexpr size_t kSharedCount = 65;
+constexpr size_t kSharedCount = 68;
 
 // ExtraKind's size and MACRO_COUNT in :feature:customization:api.
 constexpr size_t kExtraCount = 23;

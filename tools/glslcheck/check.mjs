@@ -154,9 +154,18 @@ function shaderPacks() {
     if (manifest.family !== 'shader') continue;
     const feedback = manifest.feedback;
     const warp = !feedback ? null : feedback.shader ? path.join(STYLES, id, feedback.shader) : path.join(SHADERS, 'feedback_warp_frag.glsl');
-    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp });
+    const images = (manifest.textures ?? []).map((t) => ({
+      key: `${id}/${t.name}`, uniform: imageUniform(t.name), file: path.join(STYLES, id, t.file),
+      wrap: t.wrap ?? 'repeat', filter: t.filter ?? 'linear',
+    }));
+    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp, images });
   }
   return out;
+}
+
+// The sampler a Style's own image is read by (packs::textureUniform, #391): fold_ramp -> uImageFoldRamp.
+function imageUniform(name) {
+  return 'uImage' + name.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 }
 
 // A shader file's name as a compile error gives it: styles/<id>/<file> or shaders/<file>.
@@ -276,6 +285,7 @@ const FEEDBACK_VALUES = {
   uFbGrid: [32, 24], uFbMap: [0.995, -0.002, 0.002, 0.995], uFbShift: [0, 0], uFbStretch: [1, 1], uFbCenter: [0.5, 0.5],
   uFbAspect: 1, uFbWarp: 0.0025, uFbPhase: 3.7, uFbTexel: [0, 0], uFbDt: 1 / 60, uFbKeep: [0.987, 0.985, 0.983],
   uFbFloor: 1 / 256 / 60, uFbHalf: 0, uFbStep: 1 / 255, uFbSeed: 2220,
+  uFbOuter: [1, 1, 1, 0], uFbOuterSize: 0, uFbInner: [1, 1, 1, 0], uFbInnerSize: 0, uFbStreak: [1, 1, 1, 0], uFbStreakCell: 1 / 16,
 };
 const FEEDBACK_TEXTURES = { uFbPrev: 'history' };
 
@@ -394,7 +404,7 @@ function layerEffects() {
 
 const SHARED_FX_NEUTRAL = {
   uTexel: [0, 0], uAspect: 1, uTime: 12.5, uSoftFocus: 0, uParticles: 0, uParticleKind: 0, uParticleSize: 1,
-  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0,
+  uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0, uEchoCopy: 0, uEchoCopyZoom: 1, uEchoCopyFlip: [1, 1],
 };
 const SHARED_FX_TEXTURES = { uScene: 'scene', uHistory: 'history' };
 
@@ -404,6 +414,9 @@ const SHARED_FX_EFFECTS = {
   motion_blur: { uMotionKeep: 0.6 },
   trails: { uEchoKeep: 0.9 },
   echo: { uEchoKeep: 0.9, uEchoZoom: 0.5, uEchoWarp: 1 },
+  echo_copy_mirror: { uEchoCopy: 0.5, uEchoCopyFlip: [-1, 1] },
+  echo_copy_flip_both_zoomed: { uEchoCopy: 0.5, uEchoCopyZoom: 1.6, uEchoCopyFlip: [-1, -1] },
+  echo_copy_tiled: { uEchoCopy: 0.4, uEchoCopyZoom: 0.5, uEchoCopyFlip: [1, -1] },
   particles_motes: { uParticles: 0.8, uParticleKind: 0 },
   particles_sparks: { uParticles: 0.8, uParticleKind: 1 },
   particles_dust: { uParticles: 0.8, uParticleKind: 2 },
@@ -422,11 +435,11 @@ function layerJobs(registry, size) {
   }));
 }
 // One frame of a warp stage: the motion grid (feedback_warp_vert.glsl) and `file`'s fragment.
-function warpJob(name, file, registry, size) {
+function warpJob(name, file, registry, size, extra = {}) {
   const vert = fs.readFileSync(path.join(SHADERS, 'feedback_warp_vert.glsl'), 'utf8');
   const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, sourceName(file));
   const [columns, rows] = feedbackGrid();
-  const values = { ...FEEDBACK_VALUES, uFbGrid: [columns, rows], uFbTexel: [1 / size, 1 / size] };
+  const values = { ...FEEDBACK_VALUES, uFbGrid: [columns, rows], uFbTexel: [1 / size, 1 / size], ...extra };
   const uniforms = plan([...parseUniforms(vert), ...parseUniforms(frag)], values, FEEDBACK_TEXTURES, size, size);
   return { name, vert, frag, uniforms, vertices: columns * rows * 6 };
 }
@@ -557,6 +570,14 @@ function effectJobs(registry, size) {
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
   jobs.push(warpJob('feedback_warp_shared', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size));
+  // What the warp paints into the loop (lib_feedback's fbPaint): the borders (#363), and the streaks
+  // along a motion field that grows and turns fast enough to show them everywhere but the centre (#386).
+  jobs.push(warpJob('feedback_warp_borders', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size, {
+    uFbOuter: [1, 0.8, 0.5, 0.6], uFbOuterSize: 0.03, uFbInner: [0.3, 0.6, 1, 0.4], uFbInnerSize: 0.02,
+  }));
+  jobs.push(warpJob('feedback_warp_streaks', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size, {
+    uFbMap: [0.99, -0.008, 0.008, 0.99], uFbStreak: [0.6, 0.9, 1, 1], uFbStreakCell: 1 / 12,
+  }));
   jobs.push(...settleJobs(registry));
   return jobs;
 }
@@ -819,9 +840,12 @@ function buildJobs(args, registry, styles, renderIds) {
     const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;
+    // The Style's own images, each bound to its sampler as the engine binds it.
+    const images = packs.get(id).images;
+    const textures = { ...SHADER_TEXTURES, ...Object.fromEntries(images.map((image) => [image.uniform, image.key])) };
     const job = {
-      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs,
-      uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size),
+      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs, images,
+      uniforms: plan(parseUniforms(frag), values, textures, args.size, args.size),
     };
     if (args.resize) {
       job.name = `${id} resized`;
@@ -880,6 +904,11 @@ async function runOnce(args, getPage) {
   if (jobs.length) {
     const page = await getPage();
     for (const job of jobs) {
+      for (const image of job.images ?? []) {
+        const png = fs.readFileSync(image.file).toString('base64');
+        const loaded = await page.call('__packImage', { key: image.key, png, wrap: image.wrap, filter: image.filter });
+        if (loaded.error) throw new Error(`${job.name}: image ${path.basename(image.file)}: ${loaded.error}`);
+      }
       const entry = job.frames ? '__renderFeedback' : job.resizeWidth ? '__renderResized' : '__render';
       const r = await page.call(entry, { ...job, width: args.size, height: args.size });
       if (job.frames && !r.error) judgeSettle(job, r);
