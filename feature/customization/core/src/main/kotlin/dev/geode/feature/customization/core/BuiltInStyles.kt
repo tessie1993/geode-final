@@ -312,6 +312,7 @@ object BuiltInStyles {
             shader("reef_glide", true, listOf(generic(FOG))),
             shader("cloud_deck", true, listOf(generic(FOG))),
             shader("gyro_core", true, listOf(generic(SPIN), generic(FOG))),
+            shader("endless_stacks", true, listOf(generic(FOG))),
         )
 
     private fun life(
