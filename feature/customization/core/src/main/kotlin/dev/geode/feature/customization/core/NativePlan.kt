@@ -65,6 +65,8 @@ object NativePlan {
     const val KIND_HIT_ENVELOPE: Float = 1f
     const val KIND_STEP_SEQUENCER: Float = 2f
     const val KIND_RANDOM_DRIFT: Float = 3f
+    const val KIND_TOGGLE_ON_BEAT: Float = 4f
+    const val KIND_RANDOM_ON_BEAT: Float = 5f
     const val START_ON_SOUND: Float = 1f
     const val START_BY_HAND: Float = 2f
 
@@ -86,6 +88,10 @@ object NativePlan {
 
     /** A target's floats in a slot: its kind, its index and its field. */
     private const val TARGET_FLOATS = 3
+
+    /** Where in a Modulator slot its attack and its step count go. */
+    private const val ATTACK_AT = 5
+    private const val STEP_COUNT_AT = 8 + MAX_STEPS
 
     /** [value] of [property] as a fraction 0..1 of its range; its default's fraction when not a number. */
     fun fraction(
@@ -157,6 +163,23 @@ object NativePlan {
 
         fun skipTo(position: Int) {
             at = position
+        }
+
+        /**
+         * A beat Modulator in the slot at [slot] (Modulators.hpp): its glide where an envelope's attack
+         * goes and its beats between changes where a sequencer's step count goes, so the plan keeps its size.
+         */
+        fun onBeat(
+            slot: Int,
+            kind: Float,
+            everyBeats: Int,
+            glide: Millis,
+        ) {
+            put(kind)
+            skipTo(slot + ATTACK_AT)
+            put(glide)
+            skipTo(slot + STEP_COUNT_AT)
+            put(everyBeats.coerceIn(1, MAX_STEPS).toFloat())
         }
     }
 
@@ -264,6 +287,8 @@ object NativePlan {
                     w.skipTo(at + 2)
                     w.put(shape.period)
                 }
+                is ModulatorShape.ToggleOnBeat -> w.onBeat(at, KIND_TOGGLE_ON_BEAT, shape.everyBeats, shape.glide)
+                is ModulatorShape.RandomOnBeat -> w.onBeat(at, KIND_RANDOM_ON_BEAT, shape.everyBeats, shape.glide)
             }
             w.skipTo(at + 10 + MAX_STEPS)
             when (val start = m.start) {

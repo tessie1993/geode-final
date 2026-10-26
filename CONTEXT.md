@@ -99,7 +99,7 @@ A link from one Sound signal or Modulator to one target: a property of the Visua
 _Avoid_: Modulation, route, mapping, LFO target
 
 **Modulator**:
-A generated value that moves targets the way a Sound signal does: an LFO wave, a hit envelope, a step sequencer or a smooth random drift. Each one has its own start setting, and it does not run until it is linked to something. Not a Sound signal, because it is not measured from the audio.
+A generated value that moves targets the way a Sound signal does: an LFO wave, a hit envelope, a step sequencer, a smooth random drift, a toggle on the beat or a random value on the beat. Each one has its own start setting, and it does not run until it is linked to something. Not a Sound signal, because it is not measured from the audio.
 _Avoid_: LFO (only one kind), oscillator
 
 **Automation**:

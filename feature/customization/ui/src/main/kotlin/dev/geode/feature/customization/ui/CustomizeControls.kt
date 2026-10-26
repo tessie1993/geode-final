@@ -442,6 +442,8 @@ internal fun ModulatorPicture(
                         is ModulatorShape.Lfo -> { time -> waveAt(shape.wave, time * PICTURE_CYCLES) }
                         is ModulatorShape.HitEnvelope -> { time -> envelopeAt(shape.attack, shape.release, time) }
                         is ModulatorShape.RandomDrift -> ::driftAt
+                        is ModulatorShape.ToggleOnBeat -> { time -> toggleAt(shape.everyBeats, time) }
+                        is ModulatorShape.RandomOnBeat -> { time -> randomOnBeatAt(shape.everyBeats, time) }
                         is ModulatorShape.StepSequencer -> { _ -> 0f }
                     }
                 val path = Path()

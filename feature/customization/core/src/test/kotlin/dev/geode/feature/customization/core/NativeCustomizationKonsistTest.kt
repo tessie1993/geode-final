@@ -136,6 +136,22 @@ class NativeCustomizationKonsistTest {
     }
 
     @Test
+    fun `the engine's Modulator kinds are at the places NativePlan writes`() {
+        val kinds = nativeEnum(read("core/viz/include/geode/viz/Modulators.hpp"), "ModulatorKind")
+        val written =
+            mapOf(
+                "Lfo" to 0f,
+                "HitEnvelope" to NativePlan.KIND_HIT_ENVELOPE,
+                "StepSequencer" to NativePlan.KIND_STEP_SEQUENCER,
+                "RandomDrift" to NativePlan.KIND_RANDOM_DRIFT,
+                "ToggleOnBeat" to NativePlan.KIND_TOGGLE_ON_BEAT,
+                "RandomOnBeat" to NativePlan.KIND_RANDOM_ON_BEAT,
+            )
+        assertEquals(written.keys.toList(), kinds)
+        written.forEach { (kind, place) -> assertEquals(kind, kinds.indexOf(kind).toFloat(), place, 0f) }
+    }
+
+    @Test
     fun `the engine's Layer 2 modes are the model's, in the same order`() {
         val header = read("core/viz/include/geode/viz/Layers.hpp")
         assertEquals(LayerBlend.entries.map { camel(it.name) }, nativeEnum(header, "Blend"))

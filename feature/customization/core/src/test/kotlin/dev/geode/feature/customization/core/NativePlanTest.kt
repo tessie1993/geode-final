@@ -215,6 +215,44 @@ class NativePlanTest {
     }
 
     @Test
+    fun `carries the beat Modulators and their links to a Macro like the others`() {
+        val toggle = ModulatorId(1)
+        val random = ModulatorId(2)
+        val beats =
+            Customization(
+                style = Fixtures.JULIA,
+                shared = emptyMap(),
+                extras = emptyMap(),
+                macros = emptyList(),
+                signals = emptyMap(),
+                modulators =
+                    listOf(
+                        Modulator(toggle, ModulatorShape.ToggleOnBeat(everyBeats = 4, glide = Millis(250)), rate = 2f),
+                        Modulator(random, ModulatorShape.RandomOnBeat(everyBeats = MAX_STEPS + 3, glide = Millis(80))),
+                    ),
+                reactions =
+                    listOf(
+                        Reaction(ReactionId(1), ReactionSource.Generated(toggle), Target.MacroSlot(0), amount = 0.4f),
+                        Reaction(ReactionId(2), ReactionSource.Generated(random), Target.MacroSlot(5)),
+                    ),
+            )
+        val floats = NativePlan.encode(beats)
+        val first = floats.subList(modulatorsAt, modulatorsAt + MODULATOR_FLOATS)
+        assertEquals(listOf(NativePlan.KIND_TOGGLE_ON_BEAT, 0f, 0f, 0f, 0f, 0.25f, 0f, 0f), first.subList(0, 8))
+        assertEquals(listOf(4f, 0f, 0f, 0f, 0f, 2f, 1f, 1f), first.subList(8 + MAX_STEPS, MODULATOR_FLOATS))
+        val second = floats.subList(modulatorsAt + MODULATOR_FLOATS, modulatorsAt + 2 * MODULATOR_FLOATS)
+        assertEquals(listOf(NativePlan.KIND_RANDOM_ON_BEAT, 0f, 0f, 0f, 0f, 0.08f), second.subList(0, 6))
+        assertEquals(MAX_STEPS.toFloat(), second[8 + MAX_STEPS])
+        assertEquals(2f, second.last())
+        val links = floats.subList(reactionsAt, reactionsAt + 2 * REACTION_FLOATS)
+        assertEquals(listOf(NativePlan.SOURCE_MODULATOR, 0f, NativePlan.TARGET_MACRO, 0f, 0f, 0.4f), links.subList(0, 6))
+        assertEquals(
+            listOf(NativePlan.SOURCE_MODULATOR, 1f, NativePlan.TARGET_MACRO, 5f, 0f),
+            links.subList(REACTION_FLOATS, REACTION_FLOATS + 5),
+        )
+    }
+
+    @Test
     fun `carries every Macro link with its Macro`() {
         assertEquals(
             listOf(1f, NativePlan.TARGET_SHARED, SharedProperty.GLOW.ordinal.toFloat(), 0f, 0.8f, 0.2f),
