@@ -13,12 +13,12 @@ namespace geode::bridge {
 inline constexpr uint32_t kSnapshotMagic = 0x31534347u;  // "GCS1"
 inline constexpr uint16_t kSnapshotVersion = 1;
 inline constexpr size_t kSnapshotHeaderBytes = 12;
-inline constexpr size_t kSnapshotPayloadBytes = 16329;
+inline constexpr size_t kSnapshotPayloadBytes = 16353;
 inline constexpr size_t kSnapshotWireBytes = kSnapshotHeaderBytes + kSnapshotPayloadBytes;
 inline constexpr size_t kSnapshotParamsCount = 132;
 inline constexpr size_t kSnapshotLfoCount = 24;
 inline constexpr size_t kSnapshotAdsrCount = 20;
-inline constexpr size_t kSnapshotPlanCount = 3901;
+inline constexpr size_t kSnapshotPlanCount = 3907;
 
 // The Customization as the engine reads it: sent whole, only when it changes (ADR-0004), and picked up by the drawing and audio threads at the start of their next frame.
 struct CustomizationSnapshot {

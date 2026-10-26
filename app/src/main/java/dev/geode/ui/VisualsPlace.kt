@@ -7,22 +7,30 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassEdge
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.core.IgnoredControls
@@ -34,6 +42,7 @@ import dev.geode.feature.customization.ui.LookChip
 import dev.geode.feature.customization.ui.ModulatorsAutomationRoute
 import dev.geode.feature.customization.ui.PresetChip
 import dev.geode.feature.visuals.api.PresetShare
+import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.feature.visuals.ui.MilkdropRoute
 import dev.geode.feature.visuals.ui.PresetsRoute
@@ -80,7 +89,12 @@ fun VisualsPlace(
             }
             VisualsPage.TABS ->
                 Column(Modifier.fillMaxSize()) {
-                    PrimaryTabRow(selectedTabIndex = tab.ordinal) {
+                    // Over the live Visual: matte glass until the engine frosts it (#349).
+                    PrimaryTabRow(
+                        selectedTabIndex = tab.ordinal,
+                        modifier = Modifier.glassSurface(GlassKind.BAR, RectangleShape, GlassBackdrop.Visual, GlassEdge.NONE),
+                        containerColor = Color.Transparent,
+                    ) {
                         VisualsTab.entries.forEach { entry ->
                             Tab(selected = entry == tab, onClick = { tab = entry }, text = { Text(stringResource(entry.label)) })
                         }
@@ -88,7 +102,11 @@ fun VisualsPlace(
                     when (tab) {
                         VisualsTab.STYLE -> {
                             VisualsRoute(shell.visuals, onEnterFullScreen = onEnterFullScreen, modifier = Modifier.weight(1f))
-                            TextButton(onClick = { page = VisualsPage.MILKDROP }) { Text(stringResource(R.string.visuals_milkdrop)) }
+                            GlassButton(
+                                onClick = { page = VisualsPage.MILKDROP },
+                                filled = false,
+                                modifier = Modifier.padding(GlassSpacing.Small),
+                            ) { Text(stringResource(R.string.visuals_milkdrop)) }
                         }
                         VisualsTab.CUSTOMIZE ->
                             CustomizePanel(shell, onHide = { tab = VisualsTab.STYLE }, onBrowsePresets = { page = VisualsPage.PRESETS })
@@ -120,7 +138,7 @@ fun CustomizePanel(
         onShare = { shareCustomization(context, it) },
         onHide = onHide,
         modifier = modifier,
-        looks = visuals.styles.map { LookChip(it.id, it.name) },
+        looks = visuals.styles.map { LookChip(it.id, it.name, canBeLayer = it.group != StyleGroup.MILKDROP) },
         presets =
             visuals.presets
                 ?.saved

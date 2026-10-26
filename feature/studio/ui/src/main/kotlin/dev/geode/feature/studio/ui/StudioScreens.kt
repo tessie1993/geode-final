@@ -18,9 +18,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -47,6 +48,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
+import dev.geode.design.glass.GlassLoading
+import dev.geode.design.glass.GlassMessage
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.Shape
@@ -64,19 +67,20 @@ fun ThumbnailPlaceholder(
     modifier: Modifier,
 ) {
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-        Icon(Icons.Filled.Movie, contentDescription = video.name, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Rounded.Movie, contentDescription = video.name, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 /**
- * The library's first page: every Project with its ⋮ menu, New Project, and a reminder when no save
- * folder or no default Project is chosen. Stateless (ADR-0003).
+ * The library's first page: every Project with its ⋮ menu, New Project, Render and the render queue
+ * (#316), and a reminder when no save folder or no default Project is chosen. Stateless (ADR-0003).
  */
 @Composable
 fun ProjectListScreen(
     model: ProjectListModel,
     onAction: (StudioAction) -> Unit,
     modifier: Modifier = Modifier,
+    queue: RenderQueueModel = RenderQueueModel(emptyList(), canClear = false, visualsOff = false, projects = emptyList()),
 ) {
     var naming by remember { mutableStateOf(false) }
     Column(
@@ -89,13 +93,27 @@ fun ProjectListScreen(
                 Modifier.weight(StudioDimens.FILL),
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Button(onClick = { naming = true }, enabled = !model.loading) { Text(stringResource(R.string.studio_new_project)) }
+            OutlinedButton(onClick = { onAction(StudioAction.OpenRender) }, enabled = !model.loading && !queue.visualsOff) {
+                Text(stringResource(R.string.studio_render))
+            }
+            Button(onClick = { naming = true }, enabled = !model.loading, modifier = Modifier.padding(start = StudioDimens.gap)) {
+                Text(stringResource(R.string.studio_new_project))
+            }
         }
+        if (queue.visualsOff) Note(stringResource(R.string.studio_render_visuals_off))
+        RenderQueue(queue, onAction)
         if (model.folderMissing) FolderMissing(onAction)
         if (model.noDefault) Note(stringResource(R.string.studio_no_default))
         when {
-            model.loading -> Text(stringResource(R.string.studio_loading))
-            model.projects.isEmpty() -> Text(stringResource(R.string.studio_no_projects))
+            model.loading -> GlassLoading(label = stringResource(R.string.studio_loading))
+            model.projects.isEmpty() ->
+                GlassMessage(
+                    title = stringResource(R.string.studio_no_projects),
+                    body = stringResource(R.string.studio_no_projects_hint),
+                    icon = Icons.Rounded.VideoLibrary,
+                    actionLabel = stringResource(R.string.studio_new_project),
+                    onAction = { naming = true },
+                )
             else -> {
                 val all = model.projects.map { it.project }
                 val default =
@@ -174,7 +192,7 @@ private fun ProjectMenu(
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.studio_more)) }
+        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem(stringResource(R.string.studio_rename)) {
                 menu = false
@@ -364,7 +382,11 @@ fun ProjectScreen(
             }
         }
         if (model.videos.isEmpty()) {
-            Text(stringResource(R.string.studio_no_videos))
+            GlassMessage(
+                title = stringResource(R.string.studio_no_videos),
+                body = stringResource(R.string.studio_no_videos_hint),
+                icon = Icons.Rounded.Movie,
+            )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
                 items(model.videos, key = { it.id.value }) { video ->
@@ -436,7 +458,7 @@ private fun MoveMenu(
     var menu by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.studio_more)) }
+        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem(stringResource(R.string.studio_move), enabled = others.isNotEmpty()) {
                 menu = false
@@ -466,7 +488,7 @@ private fun MenuItem(
 @Composable
 private fun BackButton(onAction: (StudioAction) -> Unit) {
     IconButton(onClick = { onAction(StudioAction.Back) }) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.studio_back))
+        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.studio_back))
     }
 }
 

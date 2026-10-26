@@ -12,6 +12,7 @@ out vec4 fragColor;
 // block/aband/awave/view() first, then the palette, then grade() - which calls
 // pal() and so must come after it.
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -20,6 +21,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // ===========================================================================
@@ -525,14 +527,16 @@ void main() {
     // against the pitch inside a listening session. The pitch stays under 0.35
     // rad, which is also what keeps the world up vector well away from the
     // view direction so the basis below can never degenerate.
-    float yaw = uTime * 0.037;
-    float pitch = 0.34 * sin(uTime * 0.0231);
+    float yaw = uXSpinTime * 0.037;
+    float pitch = 0.34 * uXOrbit * sin(uTime * 0.0231);
     float camR = KIFS_CAM_R - KIFS_CAM_PUSH * bassA;
     vec3 ro = vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw)) * camR;
     vec3 fwd = normalize(-ro);
     vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), fwd));
     vec3 up = cross(fwd, right);
-    vec3 rd = normalize(right * uv.x + up * uv.y + fwd * KIFS_FOCAL);
+    // Tilt looks around a little (lib_gravity): the ray turned in camera space, the identity when off.
+    vec3 look = tiltLook(vec3(uv, KIFS_FOCAL));
+    vec3 rd = normalize(right * look.x + up * look.y + fwd * look.z);
 
     // ---- the fold set, built once per fragment ----------------------------
 
@@ -559,7 +563,7 @@ void main() {
 
     // Bass subdivides the interior more finely; the silhouette does not move,
     // because the cell below is set by the centre and not by this.
-    gScale = KIFS_SCALE_BASE + KIFS_SCALE_BASS * bassA + KIFS_SCALE_DRIFT * sin(uTime * 0.0273);
+    gScale = KIFS_SCALE_BASE * (1.0 + 0.15 * (uXScale - 1.0)) + KIFS_SCALE_BASS * bassA + KIFS_SCALE_DRIFT * sin(uTime * 0.0273);
 
     gZMirror = max(KIFS_ZM_BASE + KIFS_ZM_SWING * sin(uTime * KIFS_ZM_RATE) - 0.16 * bassA, KIFS_ZM_FLOOR);
 
@@ -628,7 +632,8 @@ void main() {
     // recovering an index from it needs the tempo, which is not uploaded. The
     // lurch in foldAngle above is the continuous form of the same gesture.
     float iterBeat = step(0.30, hit * clamp(uBeatResponse, 0.0, 2.0));
-    gIters = mix(5.0, 7.0, clamp((uSteps - 64.0) / 64.0, 0.0, 1.0)) + iterBeat;
+    gIters = clamp((mix(5.0, 7.0, clamp((uSteps - 64.0) / 64.0, 0.0, 1.0)) + iterBeat) * uXComplexity, 1.0,
+                   float(KIFS_MAX_ITERS));
 
     // ---- march ------------------------------------------------------------
     //

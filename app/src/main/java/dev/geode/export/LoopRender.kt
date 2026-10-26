@@ -10,13 +10,13 @@ import android.util.Log
 import android.view.Surface
 import dev.geode.analysis.BarTrim
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.render.AdsrConfig
-import dev.geode.render.LfoConfig
+import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.feature.customization.api.Customization
+import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
 import dev.geode.render.scene.GlUtil
-import dev.geode.render.scene.SceneParams
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -160,21 +160,38 @@ data class TimeOfDayDrift(
     }
 }
 
-/** One palette position along the drift, and the parameter change that realises it. */
+/**
+ * One palette position along the drift, and the Customization change that realises it: the Shared
+ * core's hue shift and temperature, which the plan hands the engine like any other value (#337).
+ */
 data class DriftStop(
     val index: Int,
     val hueOffset: Float,
     val warmthOffset: Float,
 ) {
-    fun applyTo(params: SceneParams): SceneParams =
-        params.copy(
-            colorShift = wrapTurn(params.colorShift + hueOffset),
-            temperature = (params.temperature + warmthOffset).coerceIn(-1f, 1f),
+    fun applyTo(customization: Customization): Customization {
+        if (hueOffset == 0f && warmthOffset == 0f) return customization
+        val hue = customization.shared[SharedProperty.HUE_SHIFT] ?: SharedProperty.HUE_SHIFT.default
+        val warmth = customization.shared[SharedProperty.TEMPERATURE] ?: SharedProperty.TEMPERATURE.default
+        val temperature = SharedProperty.TEMPERATURE
+        return customization.copy(
+            shared =
+                customization.shared +
+                    mapOf(
+                        SharedProperty.HUE_SHIFT to wrapTurn(hue + hueOffset),
+                        temperature to (warmth + warmthOffset).coerceIn(temperature.min, temperature.max),
+                    ),
         )
+    }
 
     private fun wrapTurn(value: Float): Float {
         val fraction = value - kotlin.math.floor(value)
         return fraction.coerceIn(0f, 1f)
+    }
+
+    companion object {
+        /** No drift: the look as it is. */
+        val NONE: DriftStop = DriftStop(0, 0f, 0f)
     }
 }
 
@@ -239,13 +256,9 @@ class LoopRender(
         sceneFactory: SceneFactory,
         aspect: ExportAspect,
         spec: LoopSpec,
-        sceneParams: SceneParams,
+        look: (DriftStop) -> CustomizationSnapshot,
         drift: TimeOfDayDrift = TimeOfDayDrift.None,
         loopStartMs: Long = 0L,
-        lfoConfigs: List<LfoConfig> = emptyList(),
-        adsrConfigs: List<AdsrConfig> = emptyList(),
-        reducedMotion: Boolean = false,
-        paramsAt: ((Long) -> SceneParams)? = null,
         codec: ExportCodec = ExportCodec.H264,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
@@ -267,13 +280,9 @@ class LoopRender(
                     choice = choice,
                     spec = budgeted,
                     requestedCrossfadeMs = spec.crossfadeMs,
-                    sceneParams = sceneParams,
+                    look = look,
                     drift = drift,
                     loopStartMs = start,
-                    lfoConfigs = lfoConfigs,
-                    adsrConfigs = adsrConfigs,
-                    reducedMotion = reducedMotion,
-                    paramsAt = paramsAt,
                 ),
                 onProgress,
                 isCancelled,
@@ -288,13 +297,10 @@ class LoopRender(
         val choice: EncoderChoice,
         val spec: LoopSpec,
         val requestedCrossfadeMs: Long,
-        val sceneParams: SceneParams,
+        /** The look for each drift stop, as the engine reads it. */
+        val look: (DriftStop) -> CustomizationSnapshot,
         val drift: TimeOfDayDrift,
         val loopStartMs: Long,
-        val lfoConfigs: List<LfoConfig>,
-        val adsrConfigs: List<AdsrConfig>,
-        val reducedMotion: Boolean,
-        val paramsAt: ((Long) -> SceneParams)?,
     )
 
     private data class EncoderChoice(
@@ -487,12 +493,8 @@ class LoopRender(
         job: RenderJob,
         stop: DriftStop,
         sourceFrames: Int,
-    ): OffscreenSceneRenderer {
-        // Keyframed parameters drift with the stop they are rendered for, so an automated hue
-        // still lands on top of this stop's palette rather than resetting it every repeat.
-        val driftedParamsAt: ((Long) -> SceneParams)? =
-            job.paramsAt?.let { source -> { timeMs: Long -> stop.applyTo(source(timeMs)) } }
-        return OffscreenSceneRenderer(
+    ): OffscreenSceneRenderer =
+        OffscreenSceneRenderer(
             context = context,
             sceneFactory = job.sceneFactory,
             timeline = job.timeline,
@@ -503,14 +505,9 @@ class LoopRender(
                     fps = job.choice.fps,
                     totalFrames = sourceFrames,
                     rangeStartMs = job.loopStartMs,
-                    baseParams = stop.applyTo(job.sceneParams),
-                    lfoConfigs = job.lfoConfigs,
-                    adsrConfigs = job.adsrConfigs,
-                    reducedMotion = job.reducedMotion,
-                    paramsAt = driftedParamsAt,
+                    look = job.look(stop),
                 ),
         )
-    }
 
     private fun discard(
         rendered: List<RenderedLoop>,

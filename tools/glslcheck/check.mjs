@@ -11,7 +11,10 @@
 // registered names are PARSED OUT OF THAT FILE (kIncludes), the line pattern
 // is the same anchored `//#include <name>`, and an unknown name is a hard
 // error - so a library added to the app without registering it fails here
-// the same way it fails on the phone.
+// the same way it fails on the phone. The assembly is the one in
+// core/util/ShaderAssembly.cpp: `#line` directives number each file as its own
+// source string and a closing `// geode-sources:` comment names them, so a
+// compile error names the author's file and line, not the assembled source.
 //
 // Uniform values mirror ShaderScene::uploadParams / uploadMotion / uploadTouch
 // with SceneParams defaults and a mid-loudness audio frame. Every uniform the
@@ -30,13 +33,25 @@
 //   node check.mjs --fluid-display               # every SHADING/BLOOM/SUNRAYS x LOOK variant
 //   node check.mjs --all --resize                # each style's picture across a scene-target resize
 //   node check.mjs --effects --out out/effects   # one frame per Shared core effect
+//   node check.mjs --layers --out out/layers     # one frame per Layer 2 blend mode and influence
+//   node check.mjs --all --glslang               # every Style's GLSL ES through glslangValidator
+//   node check.mjs --glslang-self-test           # glslang still fails on planted violations
+//   node check.mjs --shader kifs --glslang --watch --push   # the authoring loop (docs/style-packs.md)
+//
+// --glslang checks the selected Styles with glslang (glslangValidator, a CI-only tool that never ships)
+// instead of rendering them: strict GLSL ES 3.00, beside what ANGLE over SwiftShader accepts.
+// --watch runs the selected checks again whenever a Style pack or a shared shader changes.
+// --push copies each selected Style's pack, once it passes, into the debug app's Style lab folder with
+// adb, where the running app reloads it within about a second.
 //
 // --resize draws one frame into a scene target, resizes the target to RESIZE_SCALE of its size the
 // way Framebuffer::resizePreserving does (a linear blit into the new target, never a clear), and
 // writes what the resized target holds: the picture the renderer's next frame starts from. It fails
 // when that picture is darker than KEEP_FRACTION of the one before the resize.
 
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { launch } from '../shaderpreview/lib/cdp.mjs';
@@ -65,22 +80,58 @@ function parseIncludeRegistry() {
 }
 
 const INCLUDE_LINE = /^[ \t]*\/\/#include[ \t]+(\w+)[ \t]*$/;
+const VERSION_LINE = /^[ \t]*#[ \t]*version/;
+const SOURCES_TAG = '// geode-sources:';
 
-function resolveIncludes(source, registry) {
-  const out = [];
-  for (const rawLine of source.split('\n')) {
-    const line = rawLine.replace(/\r$/, '');
-    const m = line.match(INCLUDE_LINE);
-    if (!m) {
-      out.push(rawLine);
-      continue;
-    }
-    if (!registry.includes(m[1])) throw new Error(`unknown shader include '${m[1]}'`);
-    const file = path.join(SHADERS, `${m[1]}.glsl`);
-    if (!fs.existsSync(file)) throw new Error(`missing shader include '${m[1]}'`);
-    out.push(fs.readFileSync(file, 'utf8'));
-  }
-  return out.join('\n');
+// core/util/ShaderAssembly.cpp's assemble(): `source`, read from `file` (the name a compile error
+// gives), with each include replaced by its library, recursively, `#line` directives around each
+// library and after the `#version` line, and the sources comment last.
+function resolveIncludes(source, registry, file) {
+  const files = [file];
+  const open = [];
+  const expand = (text, index) => {
+    const out = [];
+    text.split('\n').forEach((rawLine, i) => {
+      const line = rawLine.replace(/\r$/, '');
+      const m = line.match(INCLUDE_LINE);
+      if (!m) {
+        out.push(rawLine);
+        if (VERSION_LINE.test(line)) out.push(`#line ${i + 2} ${index}`);
+        return;
+      }
+      const where = ` (${files[index]}:${i + 1})`;
+      if (!registry.includes(m[1])) throw new Error(`unknown shader include '${m[1]}'${where}`);
+      if (open.includes(m[1])) throw new Error(`circular shader include '${m[1]}'${where}`);
+      const libFile = `shaders/${m[1]}.glsl`;
+      const libPath = path.join(SHADERS, `${m[1]}.glsl`);
+      if (!fs.existsSync(libPath)) throw new Error(`missing shader include '${m[1]}'${where}`);
+      let libIndex = files.indexOf(libFile);
+      if (libIndex < 0) libIndex = files.push(libFile) - 1;
+      open.push(m[1]);
+      out.push(`#line 1 ${libIndex}`, expand(fs.readFileSync(libPath, 'utf8'), libIndex), `#line ${i + 2} ${index}`);
+      open.pop();
+    });
+    return out.join('\n');
+  };
+  const body = expand(source, 0);
+  return `${body}\n${SOURCES_TAG} ${files.map((f, i) => `${i}=${f}`).join(' ')}\n`;
+}
+
+// core/util/ShaderAssembly.cpp's remapLog(): each log line's first "<n>:<line>" location, at the
+// start or after a blank, named by the file `assembled` numbers n.
+function remapLog(log, assembled) {
+  const tag = assembled.lastIndexOf(SOURCES_TAG);
+  if (tag < 0) return log;
+  const files = assembled
+    .slice(tag + SOURCES_TAG.length)
+    .split('\n')[0]
+    .trim()
+    .split(/\s+/)
+    .map((entry) => entry.slice(entry.indexOf('=') + 1));
+  return log
+    .split('\n')
+    .map((line) => line.replace(/(^|[ \t])(\d+)(?=:\d)/, (all, lead, n) => (Number(n) < files.length ? lead + files[Number(n)] : all)))
+    .join('\n');
 }
 
 // id -> shader file of every shader Style, in the packs' index order.
@@ -135,6 +186,7 @@ const SHADER_VALUES = {
   uBeatPhase: 0.3, uDriftX: 0, uDriftY: 0, uShake: 0, uTile: 1, uTwist: 0, uTemperature: 0, uSolarize: 0,
   uTouchAnchor: [0, 0, 0, 0], uTouchPoints: [0, 0, 0, 0], uTouchCount: 0, uTouchGesture: 0, uTouchAxis: [0, 0],
   uTouchSpin: 0,
+  uGravity: [0, 0, 0], uTilt: [0, 0], uTiltWeight: 0,
   uSteps: 96, uFxOff: 0,
   uPalLutMix: 0, uPalLutRow: 0.5,
   uBassSmooth: 0.5, uMidSmooth: 0.4, uTrebleSmooth: 0.3, uEnergySmooth: 0.45, uSwell: 0.5, uSpike: 0.15,
@@ -144,6 +196,7 @@ const SHADER_VALUES = {
   uXScale: 1, uXCount: 1, uXSize: 1, uXThickness: 1, uXFlight: 1, uXSpin: 1, uXOrbit: 1, uXSwirl: 1, uXDrift: 1,
   uXComplexity: 1, uXEdge: 1, uXFog: 1, uXDecay: 1, uXViscosity: 1, uXGrowth: 1, uXSpread: 1, uXForce: 1, uXReach: 1,
   uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
+  uXFlightTime: 37.0, uXSpinTime: 37.0, uXDriftTime: 37.0,
   uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
 };
 
@@ -186,7 +239,7 @@ function plan(uniforms, values, textures, width, height) {
 // effects that run before it (SharedFxPass), with 'history' standing in for the last frame.
 
 const COMPOSITE_NEUTRAL = {
-  uDither: 0, uRatio: 1, uProgress: 1, uStyle: 0, uLayerMix: 0.5, uBlendMode: 0, uTime: 12.5, uBeat: 0.4,
+  uDither: 0, uRatio: 1, uProgress: 1, uStyle: 0, uTime: 12.5, uBeat: 0.4,
   uChroma: 0, uVignette: 0, uScanline: 0, uGrain: 0, uGlitch: 0, uFisheye: 0,
   uGateA: [1, 1, 1, 1], uGateB: [1, 1, 1, 1],
   uPostWarp: 0, uPostRipple: 0, uPostSymmetry: 6, uPostKaleido: 0, uPostPixelate: 0, uPostTile: 1, uPostTwist: 0,
@@ -196,8 +249,13 @@ const COMPOSITE_NEUTRAL = {
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
   uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
+  // Layer 2 off (presence 0); --layers turns it on.
+  uGateL: [1, 1, 1, 1], uCamGateL: [1, 1], uLayerPresence: 0, uLayerBlend: 0, uLayerOpacity: 0.6, uLayerInfluence: 0,
+  uLayerAmount: 0.7, uLayerSwap: 0,
 };
-const COMPOSITE_TEXTURES = { uTexA: 'scene', uTexB: 'scene', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white' };
+const COMPOSITE_TEXTURES = {
+  uTexA: 'scene', uTexB: 'scene', uTexL: 'history', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white',
+};
 
 const COMPOSITE_EFFECTS = {
   neutral: {},
@@ -228,6 +286,29 @@ const COMPOSITE_EFFECTS = {
   camera_shake: { uCamShake: [0.02, -0.015, 0.02] },
 };
 
+// Layer 2 (lib_layers.glsl, Layers.hpp): one frame per blend mode and per influence, the stand-in
+// picture of Layer 1 ('scene') with another ('history') laid over it, plus the swap and a transition
+// running under Layer 2. The mode names and ordinals are layer::Blend's and layer::Influence's.
+const LAYER_BLENDS = ['normal', 'add', 'screen', 'lighten', 'multiply', 'overlay', 'soft_light', 'difference', 'exclusion',
+  'luminosity'];
+const LAYER_INFLUENCES = ['none', 'bend', 'swirl', 'cut_out', 'tint', 'outline'];
+
+function layerEffects() {
+  const on = { uLayerPresence: 1 };
+  const out = {};
+  // Difference and Exclusion at their No-flash cap, as the engine holds them.
+  LAYER_BLENDS.forEach((name, blend) => {
+    out[`blend_${name}`] = { ...on, uLayerBlend: blend, uLayerOpacity: blend === 7 || blend === 8 ? 0.25 : 0.6 };
+  });
+  LAYER_INFLUENCES.forEach((name, influence) => {
+    out[`influence_${name}`] = { ...on, uLayerBlend: 2, uLayerInfluence: influence };
+  });
+  out.swap_hard_light = { ...on, uLayerBlend: 5, uLayerSwap: 1 };
+  out.half_faded = { ...on, uLayerBlend: 0, uLayerPresence: 0.5, uLayerSwap: 0.5 };
+  out.under_a_fade = { ...on, uLayerBlend: 2, uStyle: 1, uProgress: 0.5, uLayerInfluence: 1 };
+  return out;
+}
+
 const SHARED_FX_NEUTRAL = {
   uTexel: [0, 0], uAspect: 1, uTime: 12.5, uSoftFocus: 0, uParticles: 0, uParticleKind: 0, uParticleSize: 1,
   uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0,
@@ -246,6 +327,17 @@ const SHARED_FX_EFFECTS = {
   particles_bubbles: { uParticles: 0.8, uParticleKind: 3, uParticleSize: 1.5 },
 };
 
+function layerJobs(registry, size) {
+  const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
+  const frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, 'composite_frag.glsl'), 'utf8'), registry);
+  const uniforms = parseUniforms(frag);
+  return Object.entries(layerEffects()).map(([name, values]) => ({
+    name: `layer_${name}`,
+    vert,
+    frag,
+    uniforms: plan(uniforms, { ...COMPOSITE_NEUTRAL, ...values }, COMPOSITE_TEXTURES, size, size),
+  }));
+}
 // The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
 // level and a plain one), its upsample, and the final tonemap (highlight roll-off) with and without bloom. The
 // stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
@@ -273,16 +365,32 @@ const LENS_EFFECTS = {
 };
 const DOF_NEUTRAL = { uTexel: [0, 0], uAperture: 0.8, uFocus: 0.3, uMaxRadius: 4, uSamples: 24 };
 const PARTICLES_NEUTRAL = {
-  uPhase: 12.5, uTail: 0.3, uEmission: 0.9, uSize: 1.5, uKind: 0, uAspect: 1, uPixel: 0,
+  uPhase: 12.5, uTail: 0.8, uEmission: 0.9, uSize: 1.5, uKind: 0, uAspect: 1, uPixel: 0,
   uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uTint: [1, 0.9, 0.8],
 };
 const PARTICLE_INSTANCES = 900;
+
+// The tile-friendly frame (core/viz/TileFrame.hpp, #311): the outgoing Style of a transition drawn at
+// half size and read by the composite's fade, slide, zoom and melt; the tonemap reading a smaller
+// scene target directly when the composite is skipped; and the No-flash limiter's last pass
+// upscaling a frame drawn below the output, shown as it is and damped.
+const COMPOSITE_HALF_TEXTURES = { ...COMPOSITE_TEXTURES, uTexB: 'scene_half' };
+const COMPOSITE_FROM_HALF = {
+  fade_from_half: { uStyle: 1, uProgress: 0.5 },
+  melt_from_half: { uStyle: 2, uProgress: 0.5 },
+  slide_from_half: { uStyle: 3, uProgress: 0.5 },
+  zoom_from_half: { uStyle: 4, uProgress: 0.5 },
+  fade_from_half_under_layer: { uStyle: 1, uProgress: 0.5, uLayerPresence: 1 },
+};
+const HDR_HALF_TEXTURES = { ...HDR_TEXTURES, uScene: 'scene_half' };
+const NOFLASH_MIX_NEUTRAL = { uAmount: 1 };
+const NOFLASH_MIX_TEXTURES = { uShown: 'history', uNext: 'scene_half' };
 
 function effectJobs(registry, size) {
   const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
   const jobs = [];
   const add = (pass, file, neutral, textures, effects) => {
-    const frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, file), 'utf8'), registry);
+    const frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, file), 'utf8'), registry, `shaders/${file}`);
     const uniforms = parseUniforms(frag);
     for (const [name, values] of Object.entries(effects)) {
       const all = { ...neutral, ...values };
@@ -306,6 +414,9 @@ function effectJobs(registry, size) {
     const uniforms = plan([...parseUniforms(pvert), ...parseUniforms(pfrag)], all, {}, size, size);
     jobs.push({ name: `lens_${name}`, vert: pvert, frag: pfrag, uniforms, instances: PARTICLE_INSTANCES, vertices: 6 });
   }
+  add('tile', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_HALF_TEXTURES, COMPOSITE_FROM_HALF);
+  add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
+  add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
   return jobs;
 }
 
@@ -318,7 +429,10 @@ function withKeywords(src, defines) {
 }
 
 function parseArgs(argv) {
-  const a = { size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, effects: false, out: null, time: null };
+  const a = {
+    size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, effects: false, layers: false, out: null, time: null,
+    glslang: false, glslangSelfTest: false, watch: false, push: false, pkg: DEBUG_PACKAGE,
+  };
   for (let i = 0; i < argv.length; i++) {
     const v = argv[i];
     if (v === '--list') a.list = true;
@@ -326,6 +440,12 @@ function parseArgs(argv) {
     else if (v === '--fluid-display') a.fluidDisplay = true;
     else if (v === '--resize') a.resize = true;
     else if (v === '--effects') a.effects = true;
+    else if (v === '--layers') a.layers = true;
+    else if (v === '--glslang') a.glslang = true;
+    else if (v === '--glslang-self-test') a.glslangSelfTest = true;
+    else if (v === '--watch') a.watch = true;
+    else if (v === '--push') a.push = true;
+    else if (v === '--package') a.pkg = argv[++i];
     else if (v === '--shader') a.shaders.push(argv[++i]);
     else if (v === '--size') a.size = Number(argv[++i]);
     else if (v === '--out') a.out = argv[++i];
@@ -335,32 +455,121 @@ function parseArgs(argv) {
   return a;
 }
 
-function report(name, r) {
+function report(name, r, frag) {
   const status = r.error ? 'FAIL' : 'ok  ';
   const stats = r.error
-    ? r.error
+    ? remapLog(r.error, frag)
     : `mean ${r.meanLuma.toFixed(3)} max ${r.maxLuma.toFixed(3)} black ${r.fracBlack.toFixed(3)} blown ${r.fracBlown.toFixed(3)}` +
       (r.glError ? ` glError ${r.glError}` : '') + (r.dropped.length ? ` dropped[${r.dropped.join(',')}]` : '');
   console.log(`${status} ${name.padEnd(28)} ${stats}`);
   return !r.error;
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const registry = parseIncludeRegistry();
-  const styles = shaderStyles();
-  const ids = [...styles.keys()];
-  if (args.list) {
-    console.log(ids.join('\n'));
-    return;
+// ---- glslang -----------------------------------------------------------------
+//
+// glslangValidator reads the assembled source the app would compile (the stage from the .frag
+// extension, the profile from `#version 300 es`) and fails on anything the GLSL ES 3.00
+// specification does not allow, which ANGLE over SwiftShader may let through. CI installs it
+// (glslang-tools); nothing of it ships.
+
+const GLSLANG = process.env.GLSLANG_VALIDATOR || 'glslangValidator';
+
+function glslangCheck(styles, ids, registry) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'glslcheck-'));
+  let allOk = true;
+  try {
+    for (const id of ids) {
+      const file = styles.get(id);
+      const name = path.relative(path.dirname(STYLES), file).split(path.sep).join('/');
+      let ok = false;
+      let detail = '';
+      try {
+        const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
+        const tmp = path.join(dir, `${id}.frag`);
+        fs.writeFileSync(tmp, frag);
+        const run = spawnSync(GLSLANG, [tmp], { encoding: 'utf8' });
+        if (run.error) throw new Error(`cannot run ${GLSLANG}: ${run.error.message}`);
+        ok = run.status === 0;
+        const log = `${run.stdout}${run.stderr}`.split(tmp).join(name).split('\n')
+          .filter((line) => line.trim() && line.trim() !== name).join('\n');
+        detail = remapLog(log, frag);
+      } catch (e) {
+        detail = e.message;
+      }
+      console.log(`${ok ? 'ok  ' : 'FAIL'} ${`${id} glslang`.padEnd(28)} ${ok ? '' : detail.split('\n').join('\n     ')}`.trimEnd());
+      allOk = ok && allOk;
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
+  return allOk;
+}
+
+// Proves the glslang check still fails on what the GLSL ES 3.00 specification forbids, and still
+// names the planted file and line: one clean shader must pass and each planted violation must fail.
+const GLSLANG_PLANTED = {
+  clean: { line: 0, body: 'out vec4 fragColor;\nvoid main() { fragColor = vec4(1.0); }' },
+  'int to float': { line: 5, body: 'out vec4 fragColor;\nvoid main() {\n  float x = 1;\n  fragColor = vec4(x);\n}' },
+  'ES 2 texture2D': { line: 6, body: 'uniform sampler2D uTex;\nout vec4 fragColor;\nvoid main() {\n  fragColor = texture2D(uTex, vec2(0.5));\n}' },
+  'gl_FragColor': { line: 4, body: 'void main() {\n  gl_FragColor = vec4(1.0);\n}' },
+};
+
+function glslangSelfTest() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'glslcheck-self-'));
+  let allOk = true;
+  try {
+    for (const [name, planted] of Object.entries(GLSLANG_PLANTED)) {
+      const file = `styles/planted/${name.replace(/\W+/g, '_')}.glsl`;
+      const frag = resolveIncludes(`#version 300 es\nprecision highp float;\n${planted.body}\n`, [], file);
+      const tmp = path.join(dir, 'planted.frag');
+      fs.writeFileSync(tmp, frag);
+      const run = spawnSync(GLSLANG, [tmp], { encoding: 'utf8' });
+      if (run.error) throw new Error(`cannot run ${GLSLANG}: ${run.error.message}`);
+      const log = remapLog(`${run.stdout}${run.stderr}`, frag);
+      const ok = planted.line === 0 ? run.status === 0 : run.status !== 0 && log.includes(`${file}:${planted.line}:`);
+      console.log(`${ok ? 'ok  ' : 'FAIL'} glslang self-test: ${name}${ok ? '' : `\n${log}`}`);
+      allOk = ok && allOk;
+    }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  return allOk;
+}
+
+// ---- pushing to the debug app's Style lab ------------------------------------
+//
+// The debug build watches <external files>/stylelab/<id>/ (DebugStyleLab.kt) and reloads a Style
+// whose manifest or shader there changed (core/viz/RendererStyleLab.cpp). The shell user can write
+// that folder, so a push needs no permission on the app's side.
+
+const DEBUG_PACKAGE = 'dev.geode.debug';
+
+function adb(args) {
+  const run = spawnSync('adb', args, { encoding: 'utf8' });
+  if (run.error) throw new Error(`cannot run adb: ${run.error.message}`);
+  if (run.status !== 0) throw new Error(`adb ${args.join(' ')}: ${(run.stderr || run.stdout).trim()}`);
+}
+
+function pushStyles(ids, pkg) {
+  const lab = `/sdcard/Android/data/${pkg}/files/stylelab`;
+  for (const id of ids) {
+    const folder = path.join(STYLES, id);
+    const remote = `${lab}/${id}`;
+    adb(['shell', 'mkdir', '-p', remote]);
+    for (const entry of fs.readdirSync(folder)) adb(['push', path.join(folder, entry), `${remote}/${entry}`]);
+    console.log(`push ${id.padEnd(28)} ${remote}`);
+  }
+}
+
+// ---- one run -----------------------------------------------------------------
+
+function buildJobs(args, registry, styles, renderIds) {
   const jobs = [];
   const quadVert = fs.readFileSync(path.join(SHADERS, 'quad_vert.glsl'), 'utf8');
-  const targets = args.all ? ids : args.shaders;
-  for (const id of targets) {
+  for (const id of renderIds) {
     const file = styles.get(id);
-    if (!file || !fs.existsSync(file)) throw new Error(`no such fragment style: ${id}`);
-    const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry);
+    const name = path.relative(path.dirname(STYLES), file).split(path.sep).join('/');
+    const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;
     const job = { name: id, vert: quadVert, frag, uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size) };
@@ -394,15 +603,32 @@ async function main() {
     }
   }
   if (args.effects) jobs.push(...effectJobs(registry, args.size));
-  if (!jobs.length) throw new Error('nothing to do: --shader <id>, --all, --fluid-display or --effects');
+  if (args.layers) jobs.push(...layerJobs(registry, args.size));
+  return jobs;
+}
 
-  const browser = await launch();
+// The selected Style ids, each checked against the packs as they are now.
+function selectedIds(args, styles) {
+  const ids = args.all ? [...styles.keys()] : args.shaders;
+  for (const id of ids) {
+    const file = styles.get(id);
+    if (!file || !fs.existsSync(file)) throw new Error(`no such fragment style: ${id}`);
+  }
+  return ids;
+}
+
+async function runOnce(args, getPage) {
+  const registry = parseIncludeRegistry();
+  const styles = shaderStyles();
+  const ids = selectedIds(args, styles);
   let allOk = true;
-  try {
-    const page = await browser.openPage(pathToFileURL(path.join(HERE, 'page.html')).href);
+  if (args.glslang) allOk = glslangCheck(styles, ids, registry) && allOk;
+  const jobs = buildJobs(args, registry, styles, args.glslang ? [] : ids);
+  if (jobs.length) {
+    const page = await getPage();
     for (const job of jobs) {
       const r = await page.call(job.resizeWidth ? '__renderResized' : '__render', { ...job, width: args.size, height: args.size });
-      allOk = report(job.name, r) && allOk;
+      allOk = report(job.name, r, job.frag) && allOk;
       if (args.out && r.png) {
         const dest = jobs.length === 1 ? args.out : path.join(args.out, `${job.name.replace(/[^\w]+/g, '_')}.png`);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -410,13 +636,73 @@ async function main() {
       }
     }
     for (const line of page.drainConsole()) console.log(`  [page] ${line}`);
-  } finally {
-    await browser.close();
   }
-  process.exit(allOk ? 0 : 1);
+  if (args.push && allOk) pushStyles(ids, args.pkg);
+  return allOk;
 }
 
-main().catch((e) => {
-  console.error(e.message);
-  process.exit(2);
-});
+// Resolves on the next change under the packs or the shared shaders, after edits settle.
+function nextChange() {
+  return new Promise((resolve) => {
+    const watchers = [];
+    let timer = null;
+    const settle = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        for (const w of watchers) w.close();
+        resolve();
+      }, 150);
+    };
+    for (const dir of [STYLES, SHADERS]) watchers.push(fs.watch(dir, { recursive: true }, settle));
+  });
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.list) {
+    console.log([...shaderStyles().keys()].join('\n'));
+    return;
+  }
+  if (args.glslangSelfTest) {
+    process.exitCode = glslangSelfTest() ? 0 : 1;
+    return;
+  }
+  if (!args.all && !args.shaders.length && !args.fluidDisplay && !args.effects && !args.layers) {
+    throw new Error('nothing to do: --shader <id>, --all, --fluid-display, --effects or --layers');
+  }
+  let browser = null;
+  let page = null;
+  const getPage = async () => {
+    if (!page) {
+      browser = await launch();
+      page = await browser.openPage(pathToFileURL(path.join(HERE, 'page.html')).href);
+    }
+    return page;
+  };
+  try {
+    if (!args.watch) {
+      const ok = await runOnce(args, getPage);
+      process.exitCode = ok ? 0 : 1;
+      return;
+    }
+    for (;;) {
+      try {
+        const ok = await runOnce(args, getPage);
+        console.log(ok ? '-- all passed; watching for changes' : '-- failures above; watching for changes');
+      } catch (e) {
+        console.log(`-- ${e.message}; watching for changes`);
+      }
+      await nextChange();
+      console.log('');
+    }
+  } finally {
+    if (browser) await browser.close();
+  }
+}
+
+main()
+  .then(() => process.exit(process.exitCode ?? 0))
+  .catch((e) => {
+    console.error(e.message);
+    process.exit(2);
+  });

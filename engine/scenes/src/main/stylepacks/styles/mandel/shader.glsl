@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -159,7 +160,7 @@ vec3 grade(vec3 col) {
 // Mandelbrot dive: pair with Endless zoom for an infinite descent.
 void main() {
     vec2 uv = view() * 1.3;
-    vec2 c = uv + vec2(-0.743643, 0.131825);
+    vec2 c = uv + vec2(-0.743643 + 0.5 * uXCenterX, 0.131825 + 0.5 * uXCenterY);
     vec2 z = vec2(0.0);
     float iter = 0.0;
     const float maxIter = 80.0;
@@ -170,7 +171,7 @@ void main() {
     }
     float f = iter / maxIter;
     float smoothF = f + uBass * 0.1;
-    vec3 col = pal(smoothF * 2.0 + uTime * 0.02) * (0.2 + f * 1.4 + aband(f) * 0.7);
+    vec3 col = pal(smoothF * 2.0 + uXDriftTime * 0.02) * (0.2 + f * 1.4 + aband(f) * 0.7);
     if (iter >= maxIter - 1.0) col *= 0.1;
     fragColor = vec4(grade(col), 1.0);
 }

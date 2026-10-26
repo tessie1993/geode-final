@@ -62,7 +62,6 @@ target_link_libraries(geode_library PUBLIC tag)
 
 geode_core_library(geode_viz viz
     ${GEODE_VIZ_PURE_SOURCES}
-    viz/TouchField.cpp
     viz/Transition.cpp
     viz/CompositeGrade.cpp
     viz/SharedCamera.cpp
@@ -76,6 +75,7 @@ geode_core_library(geode_viz viz
     viz/SceneRegistry.cpp
     viz/Renderer.cpp
     viz/RendererFrame.cpp
+    viz/RendererStyleLab.cpp
     viz/scenes/ShaderScene.cpp
     viz/BlueNoise.cpp
     viz/Overlays.cpp
@@ -108,6 +108,8 @@ geode_core_library(geode_api api
     api/geode_tags_api.cpp
     api/geode_player_api.cpp
     api/geode_snapshot_api.cpp
+    api/geode_feed_api.cpp
+    api/Feed.cpp
 )
 target_link_libraries(geode_api
     PUBLIC geode_api_types

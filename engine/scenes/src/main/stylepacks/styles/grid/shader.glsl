@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -162,14 +163,14 @@ void main() {
     vec3 col = vec3(0.0);
     if (uv.y < 0.0) {
         float pz = 1.0 / (-uv.y + 0.05);
-        vec2 g = vec2(uv.x * pz, pz + uTime * (2.0 + uBass * 6.0));
-        float line = max(exp(-abs(fract(g.x) - 0.5) * 24.0), exp(-abs(fract(g.y) - 0.5) * 24.0));
+        vec2 g = vec2(uv.x * pz, pz + uXFlightTime * (2.0 + uBass * 6.0));
+        float line = max(exp(-abs(fract(g.x) - 0.5) * 24.0 * xm(uXEdge)), exp(-abs(fract(g.y) - 0.5) * 24.0 * xm(uXEdge)));
         float h = aband(fract(abs(g.x) * 0.12));
         col = pal(0.75) * line * exp(-pz * 0.12) * (0.5 + h * 1.4);
     } else {
-        float sunR = 0.35 + uBass * uBeatResponse * 0.1;
+        float sunR = 0.35 * xm(uXSize) + uBass * uBeatResponse * 0.1;
         float d = length(uv - vec2(0.0, 0.28));
-        float sun = smoothstep(sunR, sunR - 0.02, d) * step(fract(uv.y * 24.0 + uTime * 0.5), 0.8);
+        float sun = smoothstep(sunR, sunR - 0.02, d) * step(fract(uv.y * xcount(24.0) + uTime * 0.5), 0.8);
         col = pal(uv.y * 0.6) * sun + pal(0.05) * exp(-d * 3.0) * 0.4;
     }
     fragColor = vec4(grade(col), 1.0);

@@ -7,6 +7,7 @@ import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.CustomizationState
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Layer
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorParameter
@@ -41,11 +42,16 @@ internal val EFFECT_TOGGLES: List<SharedProperty> =
         SharedProperty.ANAGLYPH,
     )
 
-/** One Style the look picker strip offers. Which Styles, and their names, come from the place that opens Customize. */
+/**
+ * One Style the look picker strip offers. Which Styles, and their names, come from the place that opens
+ * Customize, which also says whether the Style [canBeLayer]: MilkDrop cannot, its one engine being the
+ * MilkDrop preset the person picked.
+ */
 @Immutable
 data class LookChip(
     val style: SceneId,
     val name: String,
+    val canBeLayer: Boolean = true,
 )
 
 /** One saved preset the preset row offers for this Style. */
@@ -187,8 +193,22 @@ data class CustomizeModel(
     val automations: Automations,
     /** The A/B compare slots that keep a Customization to switch to. */
     val kept: Set<CompareSlot> = emptySet(),
+    /** Layer 2, a second Style laid over this one; its opacity, influence and swap are in [shared]. */
+    val layer: Layer = Layer.OFF,
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
+
+    /** The looks Layer 2 can show: every look but the Style itself and those that cannot be a layer. */
+    val layerLooks: List<LookChip>
+        get() = looks.filter { it.canBeLayer && it.style != style }
+
+    /** Whether some look is left out of Layer 2's picker, which the Layers section then explains. */
+    val someLookCannotBeLayer: Boolean
+        get() = looks.any { !it.canBeLayer }
+
+    /** The name Layer 2's Style is shown by, or null while Layer 2 is off. */
+    val layerName: String?
+        get() = layer.style?.let { id -> looks.firstOrNull { it.style == id }?.name ?: id.value }
 }
 
 /**
@@ -265,5 +285,6 @@ fun CustomizationState.toCustomizeModel(
                 },
         automations = customization.automations,
         kept = compare.keys,
+        layer = customization.layer,
     )
 }

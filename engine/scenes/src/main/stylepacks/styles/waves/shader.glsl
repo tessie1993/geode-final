@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -160,13 +161,15 @@ vec3 grade(vec3 col) {
 void main() {
     vec2 uv = view();
     vec3 col = vec3(0.0);
-    for (int i = 0; i < 5; i++) {
+    float ribbons = xcount(5.0);
+    for (int i = 0; i < 10; i++) {
+        if (float(i) >= ribbons) break;
         float fi = float(i);
-        float offset = (fi - 2.0) * 0.34;
+        float offset = (fi - (ribbons - 1.0) * 0.5) * 0.34 * xm(uXScale);
         float x = clamp(uv.x * 0.5 + 0.5, 0.0, 1.0);
         float w = (awave(fract(x + fi * 0.13 + uTime * 0.02)) - 0.5) * (0.6 + uEnergy * 1.3);
         float d = abs(uv.y - offset - w * (0.5 + fi * 0.12));
-        float line = exp(-d * (36.0 + fi * 18.0));
+        float line = exp(-d * (36.0 + fi * 18.0) / xm(uXThickness));
         col += pal(fi * 0.2 + x * 0.35) * line * (0.5 + uBass * uBeatResponse * 0.6);
     }
     fragColor = vec4(grade(col), 1.0);

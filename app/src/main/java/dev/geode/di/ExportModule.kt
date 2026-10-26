@@ -9,18 +9,21 @@ import dagger.hilt.components.SingletonComponent
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.data.EditorProjectStore
 import dev.geode.data.ExportDefaults
+import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.export.DriftStop
+import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.currentQueue
+import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.settings.api.SettingsState
 import dev.geode.geodeContainer
 import dev.geode.playback.toUri
-import dev.geode.render.AdsrConfig
-import dev.geode.render.LfoConfig
-import dev.geode.render.scene.SceneParams
 import dev.geode.ui.EditorController
 import dev.geode.ui.ExportController
 import dev.geode.ui.GuiPrefs
 import dev.geode.ui.SettingsForOldScreens
 import dev.geode.ui.TrackAnalysisController
+import dev.geode.visuals.EngineSnapshots
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -63,14 +66,18 @@ object ExportModule {
             storeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1)),
         ).also { it.open() }
 
-    /** Exports the song Playback has loaded, with Settings' export defaults and the project's keyframes. */
+    /**
+     * Exports the song Playback has loaded, with Settings' export defaults and the current
+     * Customization, frozen as the export starts (#337).
+     */
     @Provides
     @Singleton
     fun provideExportController(
         application: Application,
         analysis: TrackAnalysisController,
-        editor: EditorController,
         settings: SettingsForOldScreens,
+        values: Settings,
+        customization: CustomizationFeature,
         playback: Playback,
     ): ExportController =
         ExportController(
@@ -98,13 +105,11 @@ object ExportModule {
 
                 override val exportDefaults: ExportDefaults get() = settings.exportDefaults()
 
-                override val sceneParams: SceneParams get() = SceneParams.DEFAULT
-
-                override fun lfoConfigs(): List<LfoConfig> = emptyList()
-
-                override fun adsrConfigs(): List<AdsrConfig> = emptyList()
-
-                override fun keyframes() = editor.state.value.project.keyframes
+                override fun look(drift: DriftStop): CustomizationSnapshot =
+                    EngineSnapshots.forRender(
+                        drift.applyTo(customization.state.value.current),
+                        (values.state.value as? SettingsState.Ready)?.values,
+                    )
             },
         )
 }

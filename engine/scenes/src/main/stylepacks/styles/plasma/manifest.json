@@ -3,5 +3,9 @@
   "id": "plasma",
   "label": "Plasma",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 }
+  ]
 }

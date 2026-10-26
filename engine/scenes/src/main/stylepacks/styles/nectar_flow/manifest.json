@@ -4,5 +4,9 @@
   "label": "Nectar Flow",
   "family": "shader",
   "shader": "shader.glsl",
-  "detail": "march"
+  "detail": "march",
+  "extras": [
+    { "name": "complexity", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ]
 }

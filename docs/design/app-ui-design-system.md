@@ -1,58 +1,34 @@
-# App UI design system: water, forest and stone
+# App UI design system: frosted glass
 
-This is the brief for the new **App UI** (the app's own screens and controls). It never applies to the **Visual**, which the engine draws, and the App UI never reacts to the music (`CONTEXT.md`). Everything here lives in the `:design` module as named tokens and shared components (ADR-0005).
+This is the brief for the **App UI** (the app's own screens and controls). It never applies to the **Visual**, which the engine draws, and the App UI never reacts to the music (`CONTEXT.md`). Everything here lives in the `:design` module, package `dev.geode.design.glass`, as named tokens and shared components (ADR-0005).
 
 ## Direction
 
-"Nature meets life": a brand-new design system with **water as the main element**, set among forest and stone. Frosted stone glass, natural shapes and floating assets.
-
-## Quality bar
-
-Always high end. References come only from top-tier work: Dribbble's featured designers, Behance's featured case studies, shipped apps on Mobbin, Awwwards, and Apple Design Award winners. Assets are art-directed and hand-crafted or professionally rendered, such as rendered stones, water and leaves, photographic or painterly textures, and carefully drawn vector icons. Low-quality procedural art (noise blobs, generated filler shapes, clip-art) is never used.
-
-## Tools and sources
-
-- **Assets are made with top-tier AI image generators**, not Blender. The first choice is Nano Banana (Gemini's image model, free tier); the alternatives are FLUX.1 Krea and Qwen-Image. Each asset is generated on a plain background, edited, given a transparent background, and exported. The owner reviews every asset sheet before anything ships. Each asset's model, prompt and the model's licence terms are recorded in an asset manifest.
-- **Textures** may also use CC0 scans from Poly Haven.
-- **Post-processing** (background removal, cropping, compositing, export to WebP at each screen density) uses ImageMagick and similar free tools.
+The owner's words (#265, 2026-10-25): "not 3D but simple: classic frosted, translucent, matte glass — thoughtful and meaningful", then "classic, working, user friendly" and "nice and friendly". Frosted glass replaced the Element skins (#333); this reverses #102/#180's "no glass, no live blur" rule. The technique, cost and legibility numbers come from the #270 research.
 
 ## Decided
 
-- **Themes:** three, chosen in Settings. Each theme has a dark version (the default) and a light version.
+- **One look, light or dark.** Settings > Theme: Match phone (the default), Dark or Light. Night glass is slate over blue-black; day glass is white over pale mist (`GlassPalettes`).
+- **The material.** A backdrop, clamped toward the theme's base so only 35% of it shows, then a glass tint, a 4% grain (overlay-blended, so contrast is unchanged) and a 1 dp edge that catches the light at the top (`glassSurface`).
 
-  | Theme | Dark | Light ("sunlit meadow") |
-  |---|---|---|
-  | **Deep forest + stone** (default) | near-black pine green base, slate and granite glass, moss accent, warm amber highlights | warm cream and soft green |
-  | **Night forest + bioluminescence** | green-black, glowing teal and firefly-yellow accents | its daylight counterpart in the same spirit |
-  | **Earth + lichen** | umber and basalt, pale lichen green and rust accents | its daylight counterpart in the same spirit |
+  | Kind | Blur (live) | Tint | Matte |
+  |---|---|---|---|
+  | Card | 24 dp | 0.60 | 0.94 |
+  | Bar | 32 dp | 0.60 (or the person's Bar opacity, never less) | 0.94 |
+  | Sheet | 40 dp | 0.65 | 0.96 |
 
-- **Mode:** dark by default; light is a choice in Settings.
-- **Water is the main element:** rippling surfaces, flowing transitions, and dew on glass. Where you touch, a soft ripple spreads through the glass.
-- **Glass:** frosted stone glass. Blurred panels with a faint stone grain and a soft inner glow, like polished river stone you can half see through; their edges catch a little light.
-- **Shapes:** pebble shapes. Buttons, cards and sheets have soft, slightly irregular river-stone outlines, never perfect rectangles, with consistent tap sizes.
-- **Floating assets:** leaves, pebbles, spores, droplets and light motes drift slowly behind screens, with gentle parallax. Settings offers *drifting* (the default), *still* or *off*, and battery saver switches them to *still*.
-- **Icons:** a custom organic set of hand-drawn-feeling line icons, with water, leaf and stone motifs where natural. They are drawn as vectors in `:design`.
-- **Motion:** organic and springy, as if things settle onto water and moss: soft springs, gentle overshoot and slow fades. Android's "remove animations" setting is respected.
-- **Haptics:** fluid and watery (droplets, ripples), and they can be switched off in Settings.
-- **Typography:** Fraunces for display and Figtree for body text, both under the SIL Open Font License and bundled as font files (the app has no internet permission, so Android's downloadable fonts are not used). Fraunces' softness axis rounds its letters like water-worn stone. Each screen has one expressive headline, and everything else stays quiet with generous space.
-- **Glass layering:** frosted panels sit at most one or two layers deep over the living backdrop, never glass on glass.
-- **Navigation:** a bottom bar with Player, Library, Visuals and Studio; Settings sits behind an icon. Landscape and tablets use a side navigation rail.
-- **Player:** the live Visual fills the background, with track info and controls on a soft gradient at the bottom. A tap hides the controls for full screen.
-- **Library, per theme** (each one keeps a grid/list toggle and a dense list for big libraries):
-  - **Deep forest + stone: Stream.** Albums float down a gently curving stream. It is a flowing single column of large artwork that drifts slightly as you scroll, with water caustics under the cards.
-  - **Night forest: Moonlit pond.** Artwork floats in a grid on dark water, with soft mirror reflections beneath. The playing album glows like a lily lantern.
-  - **Earth + lichen: Terraced pools.** Stepped horizontal rows, like rice-terrace pools, each holding one category. Water spills between the levels as you scroll.
-- **Glass over the Visual:** the Visual is a GL surface that can't be blurred, so the Player uses a soft gradient over it. Frosted glass goes on the bottom bar, sheets and Library.
-- **Effects by Android version:**
-  - **13 and later:** full glass, with shader ripples.
-  - **12:** blur only, and a pre-rendered ring stands in for the ripple.
-- **Glass and text:** glass that carries text stays at least about 88% opaque, rising over bright backdrops, so text meets WCAG AA. The research gives contrast-checked colour values for each theme.
-- **Live blur:** at most two live blurred surfaces on screen. Library cards use artwork blurred in advance.
-- **Floating assets are high-end generated images.** Each is art-directed per theme with consistent lighting, generated with a top-tier image model and finished by hand. They come at three depth layers with focus blur baked in, with at most about 12 on screen. The owner reviews every asset before it ships.
-- **Icons are commissioned from an icon designer.** We write the brief and the asset spec.
+- **What sits behind the glass.** The playing song's art, blurred once and clamped, behind Home and the plain player (`ArtworkBackdrop`). A calm, still backdrop of soft colour fields behind Music, Studio and Settings (`CalmBackdrop`). The live Visual behind the Visuals tab and full-screen mode.
+- **Live blur only where it earns it.** The Bar (with the mini-player on the same slab) and sheets frost the page live through Haze 2.0.1 (`GlassSource`); everything still is baked. At most two live blurs per screen. Glass never sits inside the content it frosts, and the live Visual is never a Compose source.
+- **Glass over the live Visual.** Compose cannot see the Visual (a GL surface), so glass over it is matte until the engine frosts it (#349). Such glass reports where it is through `VisualFrost` (geometry only, never audio) and fades in and out, never slides.
+- **Tiers.** Full (live and baked blur), Calm (baked only: battery saver, thermal status moderate or worse, or Visuals off) and Matte (no translucency: Reduce transparency, Android's high-contrast text or medium/high contrast, or a low-RAM device). Android gives apps no reduce-transparency setting, so Geode has its own (`GlassTiers`).
+- **Legibility.** Every text role keeps WCAG AA (4.5:1) on every ground it can sit on: the base, each kind of glass over the worst clamped backdrop (white in dark, black in light), matte glass over the worst raw backdrop, and the calm backdrop's fields; control outlines keep 3:1. The person's accent intensity, text colour, background dim and bar opacity are adjusted so this always holds (`GlassContrastRules`, `GlassStyle`).
+- **Classic controls.** Material 3 shapes and behaviour: a bottom navigation bar (a rail on wide screens) with every place labelled, plain top bars, lists, chips, switches, sliders, sheets and dialogs, at least 48 dp to touch. Icons come from Material's one rounded set. Type is Inter on Material's own scale; the person's text size scales it. Corners follow Settings' corner choice.
+- **Friendly states.** Empty, loading and error states show a short title, one helpful line and at most one action (`GlassMessage`, `GlassLoading`, `GlassNotice`). Notices float over anything and are read out politely.
+- **Motion.** Calm fades and Material's own motion; reduced motion (the app's switch or Android's "remove animations") snaps everything to its end.
+- **Never** glass on glass more than two layers deep, refraction or 3D ("not 3D").
 
 ## Open
 
-- The commissioned icon set. The brief to send to the designer is `icon-brief.md`.
+- The engine frost of the live Visual (#349).
 
-Research and references: `research-high-end-references.md`.
+Research and references: the #270 research note, `research-high-end-references.md`.

@@ -3,5 +3,10 @@
   "id": "ring",
   "label": "Ring",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "thickness", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 }
+  ]
 }

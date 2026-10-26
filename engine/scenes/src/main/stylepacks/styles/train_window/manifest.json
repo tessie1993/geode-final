@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "id": "train_window",
+  "label": "Train Window",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 1.0
+}

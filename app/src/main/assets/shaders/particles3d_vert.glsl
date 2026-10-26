@@ -38,15 +38,15 @@ const float kSpan = 12.0;
 // none sits still at the vanishing point.
 const float kSpread = 7.0;
 const float kClearance = 0.12;
-// The widths in pixels at size 1, far and near; the thinnest any streak draws.
-const float kFarWidth = 1.3;
-const float kNearWidth = 3.2;
-const float kMinWidth = 1.2;
+// The half-widths in pixels at size 1, far and near; the thinnest any streak draws.
+const float kFarWidth = 0.9;
+const float kNearWidth = 2.2;
+const float kMinWidth = 1.0;
 // The longest streak, in half-heights: past it the tail is cut, not the head.
 const float kMaxLength = 0.7;
 // The peak brightness (encoded) of a streak and of a spark: above 1, so bloom catches them.
-const float kStreakGain = 1.6;
-const float kSparkGain = 2.4;
+const float kStreakGain = 1.2;
+const float kSparkGain = 1.8;
 // How far the emission ramps a particle in, as a share of the hash range.
 const float kRamp = 0.15;
 // The depth over which a particle fades in at the far end and out at the near plane.

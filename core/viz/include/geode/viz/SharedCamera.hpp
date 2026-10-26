@@ -4,6 +4,7 @@
 
 #include "geode/viz/Normaliser.hpp"
 #include "geode/viz/SharedCore.hpp"
+#include "geode/viz/StyleExtras.hpp"
 
 namespace geode::viz {
 
@@ -101,23 +102,6 @@ private:
     float travelSpeed_ = 0.0f;
     float shake_ = 0.0f;
     std::array<float, 4> wobble_{};
-};
-
-// A Style's Extras in their native units, for its renderer: what its pack declares (the default, or
-// the Customization's value once a plan is live), and a neutral value for every Extra it does not.
-struct ExtraValues {
-    std::array<float, mod::kExtraCount> value{};
-    std::array<bool, mod::kExtraCount> declared{};
-
-    // No Extra declared: every multiplier at 1, the centres at 0, variant 0.
-    static ExtraValues neutral();
-    // The neutral value of one Extra.
-    static float neutralOf(mod::Extra extra);
-
-    float operator[](mod::Extra extra) const { return value[static_cast<size_t>(extra)]; }
-    bool has(mod::Extra extra) const { return declared[static_cast<size_t>(extra)]; }
-    // A multiplier Extra, never below `floor` (a Style's scale or count must not reach 0).
-    float multiplier(mod::Extra extra, float floor = 0.05f) const;
 };
 
 }  // namespace geode::viz

@@ -1,12 +1,11 @@
 package dev.geode.feature.settings.ui
 
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
-import dev.geode.design.element.ElementTheme
-import dev.geode.feature.settings.api.AmbientMode
+import dev.geode.design.glass.CalmBackdrop
+import dev.geode.design.glass.GlassTheme
 import dev.geode.feature.settings.api.Argb
-import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.FolderSettings
@@ -14,6 +13,7 @@ import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.LookSettings
 import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.ThemeMode
 
 // Previews of every section (ADR-0003). The sample values are made
 // up for the previews; the real ones come from Settings.
@@ -46,43 +46,32 @@ internal fun previewModel(
     values: SettingsValues? = previewValues,
 ): SettingsScreenModel = SettingsScreenModel(section, values, previewFontColors, PREVIEW_VERSION)
 
-/** Settings in the Element of [values], as the app's root draws it; Water while they load. */
+/** Settings on glass over the calm backdrop, as the app's root draws it, in [values]' theme mode. */
 @Composable
 internal fun SettingsPreview(
     section: SettingsSection,
     values: SettingsValues? = previewValues,
 ) {
-    val element = values?.look?.element ?: Element.Default
-    ElementTheme(element.tokens()) { SettingsScreen(previewModel(section, values), onAction = {}) }
+    GlassTheme(dark = values?.look?.themeMode != ThemeMode.LIGHT) {
+        Box {
+            CalmBackdrop()
+            SettingsScreen(previewModel(section, values), onAction = {})
+        }
+    }
 }
-
-/** The Theme section with [element] chosen, drawn in it. */
-@Composable
-internal fun SettingsThemeElementPreview(element: Element) =
-    SettingsPreview(SettingsSection.THEME, previewValues.copy(look = LookSettings(element = element)))
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
 internal fun SettingsThemePreview() = SettingsPreview(SettingsSection.THEME)
 
-/** The Theme section's Home group, below the fold of [SettingsThemePreview], with Still chosen. */
-@Preview(widthDp = PREVIEW_WIDTH_DP)
-@Composable
-internal fun SettingsThemeHomePreview() {
-    MaterialTheme { HomeGroup(AmbientMode.STILL, change = {}) }
-}
-
+/** The Theme section in the light glass, with Reduce transparency on. */
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
-internal fun SettingsThemeWoodPreview() = SettingsThemeElementPreview(Element.WOOD)
-
-@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
-@Composable
-internal fun SettingsThemeStonePreview() = SettingsThemeElementPreview(Element.STONE)
-
-@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
-@Composable
-internal fun SettingsThemeBioluminescencePreview() = SettingsThemeElementPreview(Element.BIOLUMINESCENCE)
+internal fun SettingsThemeLightPreview() =
+    SettingsPreview(
+        SettingsSection.THEME,
+        previewValues.copy(look = LookSettings(themeMode = ThemeMode.LIGHT, reduceTransparency = true)),
+    )
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable

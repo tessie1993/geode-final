@@ -5,14 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,40 +26,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.semantics.Role
+import dev.geode.design.glass.GlassCard
+import dev.geode.design.glass.GlassSectionHeader
+import dev.geode.design.glass.GlassSize
 
 /** Multiplies a fraction for showing it as a percentage. */
 internal const val PERCENT = 100
 
-/** A titled group of settings on a raised surface. */
+/** A titled group of settings on a glass card. */
 @Composable
 internal fun SettingsGroup(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Surface(
-        shape = RoundedCornerShape(SettingsDimens.groupCorner),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            Modifier.padding(SettingsDimens.groupPadding),
-            verticalArrangement = Arrangement.spacedBy(SettingsDimens.rowGap),
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            content()
-        }
+    GlassCard(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(SettingsDimens.rowGap)) {
+        GlassSectionHeader(title)
+        content()
     }
 }
 
+/** A setting that is on or off. The whole row is the switch, at least a touch target tall. */
 @Composable
 internal fun SwitchRow(
     label: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = checked, onCheckedChange = onChange)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = GlassSize.TapTarget)
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

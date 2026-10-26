@@ -129,7 +129,7 @@ void LifeScene::draw(float timeSeconds) {
     beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
     kick_ = std::max(kick_ - dt * 5.0f, 0.0f);
     if (hit * p.beatResponse > kBeatThreshold) {
-        kick_ = (0.4f + 0.6f * std::clamp(hit, 0.0f, 1.5f)) * drive;
+        kick_ = (0.4f + 0.6f * std::clamp(hit, 0.0f, 1.5f)) * drive * force_;
         kickAngle_ += kGoldenAngle;
         kickX_ = 0.5f + 0.32f * std::cos(kickAngle_);
         kickY_ = 0.5f + 0.32f * std::sin(kickAngle_);

@@ -81,11 +81,24 @@ object PresetUpgrade {
         val oldDefault: Double,
     )
 
-    /** An old field that maps onto one Extra, with the old default. */
+    /**
+     * An old field that maps onto one Extra, with the old default. An Extra is a multiplier of the
+     * Style's own amount (style-packs.md), so the old value becomes its ratio to the old default; a
+     * [loss] (a damping, where 1 keeps everything) becomes the ratio of what it loses; with no old
+     * default (a variant) the value carries over as it is.
+     */
     private data class ExtraField(
         val kind: ExtraKind,
         val oldDefault: Double,
-    )
+        val loss: Boolean = false,
+    ) {
+        fun native(value: Double): Double =
+            when {
+                loss -> (1.0 - value) / (1.0 - oldDefault)
+                oldDefault == 0.0 -> value
+                else -> value / oldDefault
+            }
+    }
 
     private val SHARED_NUMBERS: Map<String, SharedField> =
         mapOf(
@@ -153,14 +166,14 @@ object PresetUpgrade {
             "fluidSplatRadius" to ExtraField(ExtraKind.SIZE, OLD_FLUID_RADIUS),
             "fluidSplatForce" to ExtraField(ExtraKind.FORCE, 1.0),
             "waterWaveSpeed" to ExtraField(ExtraKind.DRIFT, 1.0),
-            "waterDamping" to ExtraField(ExtraKind.VISCOSITY, OLD_WATER_DAMPING),
+            "waterDamping" to ExtraField(ExtraKind.VISCOSITY, OLD_WATER_DAMPING, loss = true),
             "waterRippleStrength" to ExtraField(ExtraKind.FORCE, 1.0),
             "waterDepth" to ExtraField(ExtraKind.FOG, OLD_WATER_DEPTH),
             "waterFlow" to ExtraField(ExtraKind.SWIRL, OLD_WATER_FLOW),
             "cymaticsModes" to ExtraField(ExtraKind.COUNT, OLD_CYMATICS_MODES),
             "cymaticsScale" to ExtraField(ExtraKind.SCALE, OLD_CYMATICS_SCALE),
             "cymaticsLine" to ExtraField(ExtraKind.THICKNESS, 1.0),
-            "cymaticsRing" to ExtraField(ExtraKind.EDGE, OLD_CYMATICS_RING),
+            "cymaticsRing" to ExtraField(ExtraKind.DECAY, OLD_CYMATICS_RING),
             "cymaticsSwirl" to ExtraField(ExtraKind.SWIRL, OLD_CYMATICS_SWIRL),
             "cymaticsFlow" to ExtraField(ExtraKind.DRIFT, OLD_CYMATICS_FLOW),
             "cymaticsFill" to ExtraField(ExtraKind.SIZE, OLD_CYMATICS_FILL),
@@ -319,7 +332,8 @@ object PresetUpgrade {
             used += key
             val spec = manifest?.extras?.firstOrNull { it.kind == field.kind }
             if (spec != null && value != field.oldDefault) {
-                values[field.kind] = Rules.unit(((value - spec.nativeMin) / (spec.nativeMax - spec.nativeMin)).toFloat())
+                val native = field.native(value)
+                values[field.kind] = Rules.unit(((native - spec.nativeMin) / (spec.nativeMax - spec.nativeMin)).toFloat())
             }
         }
         return start.copy(extras = values)

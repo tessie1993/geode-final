@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.LibraryAdd
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.LibraryAdd
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -28,8 +28,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.GlassSpacing
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
@@ -50,8 +50,8 @@ fun MilkdropScreen(
 ) {
     LazyColumn(
         modifier.fillMaxSize(),
-        contentPadding = PaddingValues(ForestSpacing.Large),
-        verticalArrangement = Arrangement.spacedBy(ForestSpacing.Medium),
+        contentPadding = PaddingValues(GlassSpacing.Large),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.Medium),
     ) {
         item { Header(model.canImport, onAction) }
         if (model.importing) item { ShelfHint(R.string.milkdrop_importing) }
@@ -75,8 +75,8 @@ private fun Header(
     onAction: (MilkdropAction) -> Unit,
 ) {
     Column(
-        Modifier.fillMaxWidth().glass().padding(ForestSpacing.Large),
-        verticalArrangement = Arrangement.spacedBy(ForestSpacing.Medium),
+        Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.Medium),
     ) {
         Text(stringResource(R.string.milkdrop_title), style = MaterialTheme.typography.headlineMedium)
         Text(
@@ -85,13 +85,13 @@ private fun Header(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
-            verticalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
+            horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
+            verticalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
         ) {
-            ImportButton(R.string.milkdrop_import_presets, Icons.Filled.LibraryAdd, canImport) {
+            ImportButton(R.string.milkdrop_import_presets, Icons.Rounded.LibraryAdd, canImport) {
                 onAction(MilkdropAction.Pick(MilkdropKind.PRESETS))
             }
-            ImportButton(R.string.milkdrop_import_textures, Icons.Filled.Image, canImport) {
+            ImportButton(R.string.milkdrop_import_textures, Icons.Rounded.Image, canImport) {
                 onAction(MilkdropAction.Pick(MilkdropKind.TEXTURES))
             }
         }
@@ -105,9 +105,9 @@ private fun ImportButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    FilledTonalButton(onClick = onClick, enabled = enabled, shape = ForestShapes.Button) {
+    FilledTonalButton(onClick = onClick, enabled = enabled) {
         Icon(icon, contentDescription = null)
-        Text(stringResource(label), Modifier.padding(start = ForestSpacing.Small))
+        Text(stringResource(label), Modifier.padding(start = GlassSpacing.Small))
     }
 }
 
@@ -116,7 +116,7 @@ private fun Report(
     report: ImportReport,
     onAction: (MilkdropAction) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().glass().padding(ForestSpacing.Large), verticalArrangement = Arrangement.spacedBy(ForestSpacing.Small)) {
+    Column(Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large), verticalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
         val count = report.imported.size
         val headline =
             when {
@@ -143,7 +143,7 @@ private fun Report(
                 )
                 Text(
                     stringResource(broken.problem.label),
-                    Modifier.padding(start = ForestSpacing.Medium),
+                    Modifier.padding(start = GlassSpacing.Medium),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -161,7 +161,7 @@ private fun ShelfTitle(
 ) {
     Text(
         stringResource(text),
-        modifier = Modifier.padding(top = ForestSpacing.Small, start = ForestSpacing.Small),
+        modifier = Modifier.padding(top = GlassSpacing.Small, start = GlassSpacing.Small),
         style = MaterialTheme.typography.titleMedium,
     )
 }
@@ -172,7 +172,7 @@ private fun ShelfHint(
 ) {
     Text(
         stringResource(text),
-        modifier = Modifier.fillMaxWidth().glass().padding(ForestSpacing.Large),
+        modifier = Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
@@ -183,9 +183,9 @@ private fun MilkdropPresetRow(preset: MilkdropPreset) {
     Column(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = ForestSpacing.TapTarget)
+            .heightIn(min = GlassSize.TapTarget)
             .glass()
-            .padding(horizontal = ForestSpacing.Large, vertical = ForestSpacing.Small),
+            .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalArrangement = Arrangement.Center,
     ) {
         Text(preset.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -204,15 +204,15 @@ private fun TextureRow(name: String) {
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = ForestSpacing.TapTarget)
+            .heightIn(min = GlassSize.TapTarget)
             .glass()
-            .padding(horizontal = ForestSpacing.Large, vertical = ForestSpacing.Small),
+            .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Filled.Image, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Rounded.Image, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Text(
             name,
-            Modifier.padding(start = ForestSpacing.Medium),
+            Modifier.padding(start = GlassSpacing.Medium),
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

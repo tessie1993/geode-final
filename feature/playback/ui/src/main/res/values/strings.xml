@@ -19,6 +19,7 @@
     <!-- The queue and the listening tools (#35). -->
     <string name="playback_queue_title">Queue</string>
     <string name="playback_queue_empty">The queue is empty</string>
+    <string name="playback_queue_empty_hint">Songs you play from Music line up here.</string>
     <string name="playback_queue_track_detail">%1$s · %2$s</string>
     <string name="playback_now_playing">Now playing</string>
     <string name="playback_shuffle_on">Shuffle is on</string>
@@ -52,6 +53,6 @@
     <string name="playback_loop_clear">Clear the loop</string>
     <string name="playback_bookmarks_title">Bookmarks</string>
     <string name="playback_bookmarks_add">Bookmark this spot</string>
-    <string name="playback_bookmarks_empty">No bookmarks yet</string>
+    <string name="playback_bookmarks_empty">No bookmarks yet. Bookmark a spot to come back to it.</string>
     <string name="playback_action_remove_bookmark">Delete the bookmark</string>
 </resources>

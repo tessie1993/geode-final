@@ -6,6 +6,13 @@
   "shader": "shader.glsl",
   "renderScale": 0.75,
   "detail": "march",
+  "extras": [
+    { "name": "flight", "min": 0, "max": 2, "default": 1 },
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "thickness", "min": 0, "max": 2, "default": 1 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
   "effects": ["motes"],
   "tiers": {
     "eased": {"steps": 0.85},

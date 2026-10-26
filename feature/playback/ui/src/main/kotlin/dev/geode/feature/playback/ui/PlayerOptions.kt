@@ -1,11 +1,11 @@
 package dev.geode.feature.playback.ui
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOn
-import androidx.compose.material.icons.filled.RepeatOneOn
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.ShuffleOn
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOn
+import androidx.compose.material.icons.rounded.RepeatOneOn
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.ShuffleOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -21,9 +21,9 @@ internal fun ShuffleButton(
 ) {
     IconButton(onClick = onClick) {
         if (on) {
-            Icon(Icons.Filled.ShuffleOn, stringResource(R.string.playback_shuffle_on), tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Rounded.ShuffleOn, stringResource(R.string.playback_shuffle_on), tint = MaterialTheme.colorScheme.primary)
         } else {
-            Icon(Icons.Filled.Shuffle, stringResource(R.string.playback_shuffle_off))
+            Icon(Icons.Rounded.Shuffle, stringResource(R.string.playback_shuffle_off))
         }
     }
 }
@@ -36,11 +36,11 @@ internal fun RepeatButton(
 ) {
     IconButton(onClick = onClick) {
         when (mode) {
-            RepeatMode.OFF -> Icon(Icons.Filled.Repeat, stringResource(R.string.playback_repeat_off))
+            RepeatMode.OFF -> Icon(Icons.Rounded.Repeat, stringResource(R.string.playback_repeat_off))
             RepeatMode.ALL ->
-                Icon(Icons.Filled.RepeatOn, stringResource(R.string.playback_repeat_all), tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.RepeatOn, stringResource(R.string.playback_repeat_all), tint = MaterialTheme.colorScheme.primary)
             RepeatMode.ONE ->
-                Icon(Icons.Filled.RepeatOneOn, stringResource(R.string.playback_repeat_one), tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.RepeatOneOn, stringResource(R.string.playback_repeat_one), tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

@@ -30,7 +30,8 @@ namespace geode::viz {
 class MilkdropScene : public Scene {
 public:
     MilkdropScene(std::string id, ProgramLoader loader, SceneHost host)
-        : id_(std::move(id)), loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
+        : id_(std::move(id)), loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f),
+          stereo_(static_cast<size_t>(kEnginePcmSamples) * 2, 0.0f) {}
     ~MilkdropScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -43,9 +44,12 @@ public:
     void draw(float timeSeconds) override;
     void release() override;
     void acceptPcm(const float* samples, int count) override;
+    // The frame's window as projectM wants it: both channels, so wave modes that split left and right show two.
+    void acceptStereoPcm(const float* interleaved, int frames) override;
     void queueMilkPreset(const std::string& path) override;
     void reloadMilkPreset() override;
     void setMilkTextureDir(const std::string& dir) override;
+    void setDrawTarget(GLuint fbo, int width, int height) override;
 
 private:
     static constexpr double kLoadDebounceSeconds = 0.4;
@@ -55,6 +59,10 @@ private:
     static constexpr double kCreateRetrySeconds = 2.0;
     static constexpr int kDiagFrames = 90;
     static constexpr int kDiagWarmup = 20;
+    // How many frames after the engine is made or a preset loads projectM's leftover GL errors are
+    // read: that is when a preset's pipeline raises them. Reading glGetError every frame would make a
+    // threaded driver wait for its queue each time (#311).
+    static constexpr int kErrorCheckFrames = 8;
     static constexpr int kPcmCapacity = 8192;
     static constexpr int kEnginePcmSamples = 576;
     static constexpr float kTwoPi = 6.2831853f;
@@ -87,6 +95,9 @@ private:
     SceneHost host_;
     std::vector<float> pcm_;
     int pcmCount_ = 0;
+    // This frame's stereo window; preferred over the mono samples when a frame brings both.
+    std::vector<float> stereo_;
+    int stereoFrames_ = 0;
     Engine engine_;
     int width_ = 0;
     int height_ = 0;
@@ -120,6 +131,12 @@ private:
     int diagFrames_ = 0;
     bool diagDone_ = false;
     bool reportedEngineGlError_ = false;
+    int errorChecksLeft_ = 0;
+    // The renderer's target for this draw (Scene::setDrawTarget); asked of the driver until handed.
+    bool drawTargetHanded_ = false;
+    GLuint drawFbo_ = 0;
+    int drawWidth_ = 0;
+    int drawHeight_ = 0;
     std::mutex presetLock_;
     std::string pendingPresetPath_;
     std::string lastPresetPath_;

@@ -32,19 +32,23 @@ public:
     void release();
     // The format of the composite and bloom targets, from the next allocation on.
     void setTargetFormat(Framebuffer::Format format);
-    // Makes the composite target at the output size. False when it cannot be made in RGBA16F (no
+    // Makes the composite target at the frame size (tile::frameSize). False when it cannot be made in RGBA16F (no
     // program, no memory, or no half-float targets here); the composite then draws straight into the
     // final target, dithered there.
     bool ensureComposite(int width, int height);
     GLuint compositeFbo() const { return composite_.fbo(); }
-    // Blooms and tonemaps the composite into `targetFbo` at the output size, leaving it bound, with the
-    // lens effects' glare when it is on (it needs the bloom chain, so it is off while bloom is).
-    void resolve(const tone::BloomSettings& bloom, GLuint targetFbo, GLuint quadVao, const lens::Glare& glare = {});
+    GLuint compositeTex() const { return composite_.tex(); }
+    // Blooms and tonemaps `source` (the composite, or the scene target itself when the composite
+    // would not change it; TileFrame.hpp) into `targetFbo`, drawn at targetWidth x targetHeight and
+    // left bound, with the lens effects' glare when it is on (it needs the bloom chain, so it is off
+    // while bloom is). The bloom chain, and so the glare, follow the size ensureComposite() was given.
+    void resolve(const tone::BloomSettings& bloom, GLuint source, GLuint targetFbo, int targetWidth, int targetHeight,
+                 GLuint quadVao, const lens::Glare& glare = {});
 
 private:
     // Draws the bloom chain, and the glare between its way down and its way up; returns how many
     // levels it holds (0 when there is none this frame).
-    int drawBloom(const tone::BloomSettings& bloom, const lens::Glare& glare, GLuint quadVao);
+    int drawBloom(const tone::BloomSettings& bloom, const lens::Glare& glare, GLuint source, GLuint quadVao);
     // Draws the glare from the chain's quarter-size level into lens_; false when it cannot.
     bool drawGlare(const lens::Glare& glare, int levels);
     static GLuint createBlackTexture();

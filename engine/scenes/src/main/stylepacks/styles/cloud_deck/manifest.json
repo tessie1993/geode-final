@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "cloud_deck",
+  "label": "Cloud Deck",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.7,
+  "extras": [
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ]
+}

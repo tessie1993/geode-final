@@ -5,8 +5,8 @@ import dev.geode.kernel.Feature
 
 /**
  * Studio as everything outside it sees it (ADR-0003, ADR-0005): the Projects, the videos inside them,
- * the default Project and the save folder, and the Commands that change them (#21). Rendering,
- * recording, editing and Shorts add to this feature (#22–#26).
+ * the default Project and the save folder, the render queue, and the Commands that change them (#21,
+ * #338). Recording, editing and Shorts add to this feature (#23–#26).
  */
 typealias Studio = Feature<StudioState, StudioCommand, StudioFact>
 
@@ -114,6 +114,10 @@ sealed interface SaveFolder {
  * The library. [loading] until the saved library is read; Commands sent meanwhile wait in [pending]
  * and are carried out, in order, once it is. [projects] are the newest first. [defaultProject] is the
  * Project the user chose for videos that arrive without one; null when none is chosen.
+ *
+ * [renders] is the render queue (#338): what waits and runs, oldest first, and what finished since the
+ * app started. [visualsOff] is Settings' Visuals off, while which no Render can be made (#196).
+ * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -122,11 +126,35 @@ data class StudioState(
     val defaultProject: ProjectId? = null,
     val saveFolder: SaveFolder = SaveFolder.Unknown,
     val pending: List<StudioCommand> = emptyList(),
+    val renders: List<RenderJob> = emptyList(),
+    val visualsOff: Boolean = false,
+    val renderFormat: RenderFormat = RenderFormat(),
+    val renderExtras: RenderExtras = RenderExtras(),
 ) {
     fun videosIn(project: ProjectId): List<Video> = videos.filter { it.project == project }
 
     /** Whether Studio's first-run step should be shown: Settings are read and no save folder is picked. */
     val needsSetup: Boolean get() = saveFolder == SaveFolder.NotChosen
+
+    /** The Render being made now, if any: the queue makes one at a time. */
+    val runningRender: RenderJob? get() = renders.firstOrNull { it.status is RenderStatus.Running }
+
+    /**
+     * How far the Renders queued together as [batch] (a playlist's tracks) have got, 0..1: a waiting
+     * one counts as not started, and a finished, failed or cancelled one as done. 0 for no Renders.
+     */
+    fun batchProgress(batch: RenderId): Float {
+        val inBatch = renders.filter { it.batch == batch }
+        if (inBatch.isEmpty()) return 0f
+        return inBatch.sumOf { it.progressPart().toDouble() }.toFloat() / inBatch.size
+    }
+
+    private fun RenderJob.progressPart(): Float =
+        when (val now = status) {
+            RenderStatus.Queued -> 0f
+            is RenderStatus.Running -> now.progress
+            RenderStatus.Done, RenderStatus.Cancelled, is RenderStatus.Failed -> 1f
+        }
 }
 
 /** What deleting a Project does with the videos still in it. Nothing is ever deleted silently. */
@@ -177,6 +205,23 @@ sealed interface StudioCommand {
         val videos: List<NewVideo>,
         val project: ProjectId? = null,
     ) : StudioCommand
+
+    /**
+     * Queues the Render [spec] describes (#338): one Render per track, or one for a whole playlist,
+     * into the chosen Project, or the default one. The look is frozen as it is queued. Refused, with
+     * a word on the banner, while Visuals off is on or when there is no Project for it.
+     */
+    data class QueueRender(
+        val spec: RenderSpec,
+    ) : StudioCommand
+
+    /** Cancels [renders]: a waiting one never starts, and a running one stops and leaves no file. */
+    data class CancelRenders(
+        val renders: Set<RenderId>,
+    ) : StudioCommand
+
+    /** Takes the finished, failed and cancelled Renders off the queue; their videos stay where they are. */
+    data object ClearFinishedRenders : StudioCommand
 }
 
 /** One-off facts Studio owns. */

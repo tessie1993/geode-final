@@ -16,15 +16,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.QueueMusic
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,7 +86,7 @@ private fun Artwork(modifier: Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            Icons.Filled.MusicNote,
+            Icons.Rounded.MusicNote,
             contentDescription = null,
             modifier = Modifier.size(PlayerDimens.artworkIcon),
             tint = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -151,7 +152,7 @@ private fun Transport(
     ) {
         IconButton(onClick = { onAction(PlayerAction.Previous) }, enabled = hasTrack && model.canGoPrevious) {
             Icon(
-                Icons.Filled.SkipPrevious,
+                Icons.Rounded.SkipPrevious,
                 stringResource(R.string.playback_action_previous),
                 Modifier.size(PlayerDimens.sideIcon),
             )
@@ -164,7 +165,7 @@ private fun Transport(
             PlayPauseIcon(model.meantToPlay, Modifier.size(PlayerDimens.mainIcon))
         }
         IconButton(onClick = { onAction(PlayerAction.Next) }, enabled = hasTrack && model.canGoNext) {
-            Icon(Icons.Filled.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.sideIcon))
+            Icon(Icons.Rounded.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.sideIcon))
         }
     }
 }
@@ -182,20 +183,20 @@ private fun Options(
             IconButton(onClick = { onAction(PlayerAction.ToggleFavourite) }, enabled = model.track != null) {
                 if (favourite) {
                     Icon(
-                        Icons.Filled.Favorite,
+                        Icons.Rounded.Favorite,
                         stringResource(R.string.playback_action_unfavourite),
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 } else {
-                    Icon(Icons.Filled.FavoriteBorder, stringResource(R.string.playback_action_favourite))
+                    Icon(Icons.Rounded.FavoriteBorder, stringResource(R.string.playback_action_favourite))
                 }
             }
         }
         IconButton(onClick = { onAction(PlayerAction.OpenQueue) }) {
-            Icon(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.playback_action_open_queue))
+            Icon(Icons.AutoMirrored.Rounded.QueueMusic, stringResource(R.string.playback_action_open_queue))
         }
         IconButton(onClick = { onAction(PlayerAction.OpenTools) }) {
-            Icon(Icons.Filled.Tune, stringResource(R.string.playback_action_open_tools))
+            Icon(Icons.Rounded.Tune, stringResource(R.string.playback_action_open_tools))
         }
     }
 }
@@ -206,9 +207,9 @@ private fun PlayPauseIcon(
     modifier: Modifier,
 ) {
     if (meantToPlay) {
-        Icon(Icons.Filled.Pause, stringResource(R.string.playback_action_pause), modifier)
+        Icon(Icons.Rounded.Pause, stringResource(R.string.playback_action_pause), modifier)
     } else {
-        Icon(Icons.Filled.PlayArrow, stringResource(R.string.playback_action_play), modifier)
+        Icon(Icons.Rounded.PlayArrow, stringResource(R.string.playback_action_play), modifier)
     }
 }
 
@@ -251,7 +252,8 @@ fun MiniPlayer(
 ) {
     val track = model.track ?: return
     val openLabel = stringResource(R.string.playback_action_open_player)
-    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
+    // Clear: the mini-player sits on the glass the shell gives it (the Bar's slab, Home's card).
+    Surface(modifier.fillMaxWidth(), color = Color.Transparent) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -262,7 +264,7 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    Icons.Filled.MusicNote,
+                    Icons.Rounded.MusicNote,
                     contentDescription = null,
                     modifier = Modifier.size(PlayerDimens.miniIcon),
                     tint = MaterialTheme.colorScheme.primary,
@@ -282,7 +284,7 @@ fun MiniPlayer(
                     PlayPauseIcon(model.meantToPlay, Modifier.size(PlayerDimens.miniIcon))
                 }
                 IconButton(onClick = { onAction(PlayerAction.Next) }, enabled = model.canGoNext) {
-                    Icon(Icons.Filled.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.miniIcon))
+                    Icon(Icons.Rounded.SkipNext, stringResource(R.string.playback_action_next), Modifier.size(PlayerDimens.miniIcon))
                 }
             }
             LinearProgressIndicator(

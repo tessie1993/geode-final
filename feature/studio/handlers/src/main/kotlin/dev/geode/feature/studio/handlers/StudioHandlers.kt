@@ -3,11 +3,17 @@ package dev.geode.feature.studio.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.studio.api.RenderId
+import dev.geode.feature.studio.api.RenderJob
+import dev.geode.feature.studio.api.RenderPhase
+import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.core.RenderEnd
+import dev.geode.feature.studio.core.RenderEta
 import dev.geode.feature.studio.core.StudioEvent
 import dev.geode.feature.studio.core.StudioFailure
 import dev.geode.feature.studio.core.StudioReducer
@@ -21,6 +27,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import java.util.concurrent.ConcurrentHashMap
 
 /** The feature name failures are reported under. */
 const val STUDIO = "studio"
@@ -33,13 +40,15 @@ fun interface VideoFiles {
 
 /**
  * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
- * > Default paths, the [files] of deleted videos, and the wall clock that stamps a new Project.
+ * > Default paths, the [files] of deleted videos, the wall clock that stamps a new Project and times a
+ * Render, and what the [renders] need (#338).
  */
 class StudioSources(
     val storage: StudioStorage,
     val saveFolder: Flow<SaveFolder>,
     val files: VideoFiles,
     val now: () -> Millis,
+    val renders: RenderSources,
 )
 
 /**
@@ -59,13 +68,17 @@ fun saveFolderOf(settings: Settings): Flow<SaveFolder> =
 
 /**
  * Carries out Studio's work (ADR-0005): the Projects, videos and default Project in Studio's
- * database, the save folder from Settings, and the files of deleted videos. Every failure is caught
- * here and reported as a named event.
+ * database, the save folder from Settings, the files of deleted videos, and the Renders (#338): each
+ * look is frozen as it is queued, each Render is saved before it waits, and the engine makes one at a
+ * time as the reducer asks. Every failure is caught here and reported as a named event.
  */
 class StudioHandlers(
     private val sources: StudioSources,
 ) : EffectRunner<StudioWork, StudioEvent> {
     private val storage get() = sources.storage
+
+    // The Renders asked to stop; the engine reads it from its own thread.
+    private val stopping: MutableSet<RenderId> = ConcurrentHashMap.newKeySet()
 
     override suspend fun run(
         work: StudioWork,
@@ -74,7 +87,9 @@ class StudioHandlers(
         when (work) {
             StudioWork.Load ->
                 guarded(results, StudioFailure.LOAD) {
-                    results.report(StudioEvent.Loaded(storage.projects(), storage.videos(), storage.defaultProject()))
+                    results.report(
+                        StudioEvent.Loaded(storage.projects(), storage.videos(), storage.defaultProject(), storage.unfinishedRenders()),
+                    )
                 }
             StudioWork.FollowSaveFolder -> sources.saveFolder.collect { results.report(StudioEvent.SaveFolderChanged(it)) }
             is StudioWork.CreateProject ->
@@ -90,7 +105,52 @@ class StudioHandlers(
                 guarded(results, StudioFailure.ADD_VIDEOS) {
                     results.report(StudioEvent.VideosAdded(work.project, storage.addVideos(work.project, work.videos)))
                 }
+            StudioWork.FollowRenderSettings -> sources.renders.settings.collect { results.report(StudioEvent.RenderSettingsChanged(it)) }
+            is StudioWork.QueueRenders -> queue(work, results)
+            is StudioWork.Render -> render(work.render, results)
+            is StudioWork.StopRender -> stopping += work.render
+            is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
         }
+    }
+
+    /** Freezes the look once, then saves the Renders with it: only a saved Render waits in the queue. */
+    private suspend fun queue(
+        work: StudioWork.QueueRenders,
+        results: Results<StudioEvent>,
+    ) {
+        val first = work.renders.firstOrNull() ?: return
+        val look = attempt { sources.renders.looks.freeze(first.look) }
+        if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
+        guarded(results, StudioFailure.QUEUE_RENDER) {
+            results.report(StudioEvent.RendersQueued(storage.queueRenders(work.renders, look, sources.now())))
+        }
+    }
+
+    /**
+     * Makes [job]'s video with its frozen look. A saved Render is kept, so it can be made again; a
+     * cancelled or failed one is forgotten, as it left no video. However it ends, the reducer hears.
+     */
+    private suspend fun render(
+        job: RenderJob,
+        results: Results<StudioEvent>,
+    ) {
+        val progress = RenderProgressReporter(job.id, results, sources.now)
+        val end =
+            attempt {
+                val look = storage.lookOf(job.id)
+                if (look == null) {
+                    RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
+                } else {
+                    sources.renders.engine.render(job, look, progress::report) { job.id in stopping }
+                }
+            } ?: RenderEnd.Failed(RenderProblem.ENGINE_FAILED)
+        stopping -= job.id
+        val kept =
+            attempt {
+                if (end is RenderEnd.Saved) storage.renderSaved(job.id, end.video.file) else storage.forgetRender(job.id)
+            }
+        if (kept == null) results.report(StudioEvent.Failed(StudioFailure.SAVE))
+        results.report(StudioEvent.RenderEnded(job.id, end))
     }
 
     private suspend fun delete(
@@ -140,5 +200,36 @@ fun studioStore(
         toEvent = StudioEvent::Command,
         runner = StudioHandlers(sources),
         runtime = runtime,
-        start = listOf(Perform(StudioWork.Load), Perform(StudioWork.FollowSaveFolder)),
+        start = listOf(Perform(StudioWork.Load), Perform(StudioWork.FollowSaveFolder), Perform(StudioWork.FollowRenderSettings)),
     )
+
+/**
+ * Hands a running Render's progress to the reducer with the time left: on every new phase, and
+ * otherwise only each [STEP] of the way, so a long Render does not send an event every frame.
+ */
+internal class RenderProgressReporter(
+    private val render: RenderId,
+    private val results: Results<StudioEvent>,
+    private val now: () -> Millis,
+) {
+    private val eta = RenderEta()
+    private var phase: RenderPhase? = null
+    private var reported = 0f
+
+    @Synchronized
+    fun report(
+        phase: RenderPhase,
+        progress: Float,
+    ) {
+        val clamped = progress.coerceIn(0f, 1f)
+        val secondsLeft = eta.sample(clamped, now().value)
+        if (phase == this.phase && clamped - reported < STEP && clamped < 1f) return
+        this.phase = phase
+        reported = clamped
+        results.report(StudioEvent.RenderProgress(render, phase, clamped, secondsLeft))
+    }
+
+    private companion object {
+        const val STEP = 0.005f
+    }
+}

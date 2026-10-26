@@ -35,6 +35,7 @@ GLuint DofPass::apply(const lens::Dof& dof, GLuint sceneTex, int width, int heig
     // Redrawn whole every frame, so a resize keeps nothing.
     if (!target_.ensure(width, height)) return sceneTex;
     glBindFramebuffer(GL_FRAMEBUFFER, target_.fbo());
+    target_.discardContents();
     glViewport(0, 0, width, height);
     glDisable(GL_BLEND);
     glUseProgram(program_);

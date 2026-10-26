@@ -40,6 +40,7 @@ uniform float uTime;
 uniform float uAniso;        // vertical sensing bias for frost-like growth
 uniform float uInit;         // 1 = write a fresh random population and stop
 uniform float uSpeciesMix;   // fraction of agents born as species B
+uniform vec3 uFall;          // tilt: xy = in-plane down (faded near flat, 0 = no tilt), z = largest nudge, radians
 
 // ---- the finger as a spore fall --------------------------------------------
 //
@@ -157,6 +158,11 @@ void main() {
             // instead of every newborn setting off on the same bearing.
             heading = atan(off.y, off.x + 1e-5);
         }
+    }
+
+    // Tilt (#315): lean toward down by at most uFall.z, nothing at all with no tilt.
+    if (uFall.x != 0.0 || uFall.y != 0.0) {
+        heading += uFall.z * length(uFall.xy) * sin(atan(uFall.y, uFall.x) - heading);
     }
 
     if (uSnap > 0.0) heading = floor(heading / uSnap + 0.5) * uSnap;

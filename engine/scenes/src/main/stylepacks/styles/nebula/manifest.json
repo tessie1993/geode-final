@@ -6,6 +6,11 @@
   "shader": "shader.glsl",
   "renderScale": 0.75,
   "detail": "march",
+  "extras": [
+    { "name": "fog", "min": 0, "max": 2, "default": 1 },
+    { "name": "complexity", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 }
+  ],
   "lens": {
     "godRays": {"amount": 0.4, "source": [0.5, 0.5], "length": 0.6, "decay": 0.94}
   },

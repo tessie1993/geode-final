@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cstdint>
 #include <random>
 #include <vector>
 
@@ -22,6 +23,10 @@ struct Splat {
     float g;
     float b;
 };
+
+// What a Render seeds the Fluid and Water Styles' randomness with (#339): the same Render gives the same
+// frames, while the live Visual draws a fresh seed each session.
+inline constexpr std::uint32_t kRenderSeed = 0x6E0DE5u;
 
 // Port of FluidEmitters.kt: the beat, stirrer, suction, sparkle and pump splats for one frame.
 class Emitters {
@@ -49,6 +54,9 @@ public:
 
     float beatEnv() const { return beatEnv_; }
     float bassEnv() const { return bassEnv_; }
+
+    // Starts the splats' random choices over from [value]; until then they follow a random seed.
+    void seed(std::uint32_t value) { rng_.seed(value); }
 
     void applyParams(const SceneParams& p);
     void tick(const GeodeFeatureFrame& f, float dt, float aspect, float baseHue, float hueSpan, std::vector<Splat>& out);

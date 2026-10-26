@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -160,8 +161,8 @@ void main() {
     vec2 p = view();
     float r = length(p);
     float t = uTime;
-    float wave = sin(r * (24.0 + uBass * 14.0) - t * 5.0) * exp(-r * 1.6);
-    vec2 c2 = vec2(sin(t * 0.4), cos(t * 0.3)) * 0.5;
+    float wave = sin(r * (24.0 * xm(uXScale) + uBass * 14.0) - t * 5.0) * exp(-r * 1.6);
+    vec2 c2 = vec2(sin(t * 0.4), cos(t * 0.3)) * 0.5 * uXOrbit;
     float r2 = length(p - c2);
     wave += sin(r2 * 30.0 - t * 6.0) * exp(-r2 * 2.2) * uMid * 2.0;
     float ring = exp(-abs(r - fract(t * 0.7) * 1.6) * 14.0) * uBeat * uBeatResponse * 1.5;

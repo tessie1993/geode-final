@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "gyro_core",
+  "label": "Gyro Core",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.65,
+  "detail": "march",
+  "extras": [
+    { "name": "spin", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ]
+}

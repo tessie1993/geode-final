@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "id": "dune_sea",
+  "label": "Dune Sea",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.65,
+  "detail": "march",
+  "extras": [
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ]
+}

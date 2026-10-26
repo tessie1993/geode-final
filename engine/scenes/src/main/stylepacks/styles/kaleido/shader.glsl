@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -164,8 +165,8 @@ void main() {
     float r = length(uv);
     a = abs(mod(a, 6.2831 / seg) - 3.1415 / seg);
     uv = vec2(cos(a), sin(a)) * r;
-    float f = sin(uv.x * 7.0 + uTime) * cos(uv.y * 7.0 - uTime * 0.8)
-        + aband(fract(r + uTime * 0.05)) * 1.2;
+    float f = sin(uv.x * 7.0 * xm(uXScale) + uTime) * cos(uv.y * 7.0 * xm(uXScale) - uTime * 0.8)
+        + aband(fract(r + uXDriftTime * 0.05)) * 1.2;
     vec3 col = pal(f * 0.3 + r * 0.4) * (0.3 + f * 0.5 + uBass * 0.6);
     col *= smoothstep(1.6, 0.2, r);
     fragColor = vec4(grade(col), 1.0);

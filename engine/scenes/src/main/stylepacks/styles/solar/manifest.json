@@ -4,6 +4,11 @@
   "label": "Solar",
   "family": "shader",
   "shader": "shader.glsl",
+  "extras": [
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 }
+  ],
   "lens": {
     "threshold": 0.8,
     "godRays": {"amount": 0.55, "source": [0.5, 0.5], "length": 0.75, "decay": 0.95},

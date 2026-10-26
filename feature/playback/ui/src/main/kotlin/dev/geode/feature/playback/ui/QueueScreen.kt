@@ -12,11 +12,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import dev.geode.design.glass.GlassMessage
 import dev.geode.feature.playback.api.Track
 
 /**
@@ -47,11 +49,11 @@ fun QueueScreen(
             QueueHeader(model, onAction)
             HorizontalDivider()
             if (model.tracks.isEmpty()) {
-                Box(Modifier.fillMaxSize().padding(PlayerDimens.gutter), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(R.string.playback_queue_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    GlassMessage(
+                        title = stringResource(R.string.playback_queue_empty),
+                        body = stringResource(R.string.playback_queue_empty_hint),
+                        icon = Icons.AutoMirrored.Rounded.QueueMusic,
                     )
                 }
             } else {
@@ -98,14 +100,14 @@ private fun QueueRow(
     ) {
         if (current) {
             Icon(
-                Icons.Filled.PlayArrow,
+                Icons.Rounded.PlayArrow,
                 stringResource(R.string.playback_now_playing),
                 Modifier.size(PlayerDimens.miniIcon),
                 tint = MaterialTheme.colorScheme.primary,
             )
         } else {
             Icon(
-                Icons.Filled.MusicNote,
+                Icons.Rounded.MusicNote,
                 contentDescription = null,
                 modifier = Modifier.size(PlayerDimens.miniIcon),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -129,13 +131,13 @@ private fun QueueRow(
             )
         }
         IconButton(onClick = { onAction(QueueAction.MoveUp(index)) }, enabled = index > 0) {
-            Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.playback_action_move_up))
+            Icon(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.playback_action_move_up))
         }
         IconButton(onClick = { onAction(QueueAction.MoveDown(index)) }, enabled = index < model.tracks.lastIndex) {
-            Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.playback_action_move_down))
+            Icon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.playback_action_move_down))
         }
         IconButton(onClick = { onAction(QueueAction.Remove(index)) }, enabled = !current) {
-            Icon(Icons.Filled.Close, stringResource(R.string.playback_action_remove))
+            Icon(Icons.Rounded.Close, stringResource(R.string.playback_action_remove))
         }
     }
 }

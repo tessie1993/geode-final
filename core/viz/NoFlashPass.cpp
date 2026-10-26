@@ -54,7 +54,8 @@ void NoFlashPass::release() {
 }
 
 bool NoFlashPass::ensureSlot(Slot& slot, int width, int height) {
-    if (!slot.frame.ensure(width, height)) return false;
+    // A slot holds the frame pending or shown, so a new size keeps its picture.
+    if (!slot.frame.resizePreserving(width, height) || slot.frame.width() != width || slot.frame.height() != height) return false;
     if (slot.pbo != 0) return true;
     glGenBuffers(1, &slot.pbo);
     glBindBuffer(GL_PIXEL_PACK_BUFFER, slot.pbo);
@@ -68,12 +69,6 @@ bool NoFlashPass::bindCandidate(int width, int height) {
     const bool ready = ensureSlot(slotA_, width, height) && ensureSlot(slotB_, width, height) && ensureSlot(slotC_, width, height) &&
                        ensureSlot(slotD_, width, height) && grid_.ensure(noflash::kGridColumns, noflash::kGridRows);
     if (!ready) return false;
-    // New targets hold nothing that was shown or is pending, so the limiter starts again from the next frame.
-    if (width != width_ || height != height_) {
-        limiter_.reset();
-        schedule_.reset();
-        for (Slot* slot : {&slotA_, &slotB_, &slotC_, &slotD_}) dropFence(*slot);
-    }
     width_ = width;
     height_ = height;
     glBindFramebuffer(GL_FRAMEBUFFER, candidate_->frame.fbo());
@@ -119,9 +114,10 @@ void NoFlashPass::dropFence(Slot& slot) {
     slot.fence = nullptr;
 }
 
-void NoFlashPass::drawMix(GLuint fbo, GLuint shownTex, GLuint nextTex, float amount, GLuint quadVao) {
+void NoFlashPass::drawMix(GLuint fbo, int width, int height, GLuint shownTex, GLuint nextTex, float amount, GLuint quadVao) {
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glViewport(0, 0, width_, height_);
+    Framebuffer::discardBound(fbo);
+    glViewport(0, 0, width, height);
     glDisable(GL_BLEND);
     glUseProgram(mixProgram_);
     glActiveTexture(GL_TEXTURE0);
@@ -137,21 +133,21 @@ void NoFlashPass::drawMix(GLuint fbo, GLuint shownTex, GLuint nextTex, float amo
     glActiveTexture(GL_TEXTURE0);
 }
 
-void NoFlashPass::show(Slot*& next, float dt, GLuint targetFbo, GLuint quadVao) {
+void NoFlashPass::show(Slot*& next, float dt, GLuint targetFbo, int targetWidth, int targetHeight, GLuint quadVao) {
     lastAmount_ = limiter_.step(dt, LumaGrid::fromReadback(readback_));
     if (lastAmount_ < 1.0f) {
         // The damped frame becomes the next frame's crossfade source.
-        drawMix(spare_->frame.fbo(), shown_->frame.tex(), next->frame.tex(), lastAmount_, quadVao);
-        drawMix(targetFbo, shown_->frame.tex(), next->frame.tex(), lastAmount_, quadVao);
+        drawMix(spare_->frame.fbo(), width_, height_, shown_->frame.tex(), next->frame.tex(), lastAmount_, quadVao);
+        drawMix(targetFbo, targetWidth, targetHeight, shown_->frame.tex(), next->frame.tex(), lastAmount_, quadVao);
         std::swap(shown_, spare_);
     } else {
         // Shown as it is: the frame itself becomes the history, with no copy.
-        drawMix(targetFbo, shown_->frame.tex(), next->frame.tex(), lastAmount_, quadVao);
+        drawMix(targetFbo, targetWidth, targetHeight, shown_->frame.tex(), next->frame.tex(), lastAmount_, quadVao);
         std::swap(shown_, next);
     }
 }
 
-void NoFlashPass::present(float dt, GLuint targetFbo, GLuint quadVao, bool synchronous) {
+void NoFlashPass::present(float dt, GLuint targetFbo, int targetWidth, int targetHeight, GLuint quadVao, bool synchronous) {
     measure(*candidate_, quadVao);
     const DelayedPresent::Step step = schedule_.onCandidate(dt, synchronous);
     // A frame whose measurement cannot be read is never shown unjudged: the last frame is held.
@@ -160,20 +156,20 @@ void NoFlashPass::present(float dt, GLuint targetFbo, GLuint quadVao, bool synch
         case DelayedPresent::Action::MeasureAndShow:
             if (step.droppedPending) dropFence(*pending_);
             if (readMeasurement(*candidate_)) {
-                show(candidate_, step.dt, targetFbo, quadVao);
+                show(candidate_, step.dt, targetFbo, targetWidth, targetHeight, quadVao);
             } else {
-                drawMix(targetFbo, heldTex, heldTex, 1.0f, quadVao);
+                drawMix(targetFbo, targetWidth, targetHeight, heldTex, heldTex, 1.0f, quadVao);
             }
             return;
         case DelayedPresent::Action::ShowPending:
             if (readMeasurement(*pending_)) {
-                show(pending_, step.dt, targetFbo, quadVao);
+                show(pending_, step.dt, targetFbo, targetWidth, targetHeight, quadVao);
             } else {
-                drawMix(targetFbo, heldTex, heldTex, 1.0f, quadVao);
+                drawMix(targetFbo, targetWidth, targetHeight, heldTex, heldTex, 1.0f, quadVao);
             }
             break;
         case DelayedPresent::Action::HoldShown:
-            drawMix(targetFbo, heldTex, heldTex, 1.0f, quadVao);
+            drawMix(targetFbo, targetWidth, targetHeight, heldTex, heldTex, 1.0f, quadVao);
             break;
     }
     // This frame's candidate waits as the pending frame; the slot it replaces is free to draw into.

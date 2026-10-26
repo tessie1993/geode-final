@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -159,11 +160,11 @@ vec3 grade(vec3 col) {
 // Circular spectrum: bands radiate from a bass-pulsing core.
 void main() {
     vec2 uv = view();
-    float angle = fract(atan(uv.y, uv.x) / 6.2831 + 0.5 + uTime * 0.02);
+    float angle = fract(atan(uv.y, uv.x) / 6.2831 + 0.5 + uXSpinTime * 0.02);
     float r = length(uv);
     float band = aband(abs(angle * 2.0 - 1.0));
-    float inner = 0.35 + uBass * uBeatResponse * 0.12;
-    float spike = inner + band * 0.5;
+    float inner = 0.35 * xm(uXSize) + uBass * uBeatResponse * 0.12;
+    float spike = inner + band * 0.5 * uXThickness;
     float ring = smoothstep(spike + 0.02, spike, r) * smoothstep(inner - 0.02, inner, r);
     float core = exp(-r * 5.0) * (0.4 + uBass);
     float wave = awave(angle) * exp(-abs(r - inner + 0.08) * 20.0);

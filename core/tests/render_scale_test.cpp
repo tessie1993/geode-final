@@ -229,6 +229,42 @@ TEST(RenderSize, QualityNeverDropsBelowTheFloor) {
     EXPECT_FLOAT_EQ(scale::totalScale(in), scale::kMinQualityScale);
 }
 
+TEST(RenderSize, LayerTwoDrawsBothPicturesAtThreeQuartersOfTheSofterStyle) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 1440;
+    in.surfaceHeight = 3200;
+    in.styleScale = 1.0f;
+    in.layered = true;
+    in.layerStyleScale = 1.0f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.75f);
+    in.layerStyleScale = 0.8f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.6f);
+    in.styleScale = 0.9f;
+    in.layerStyleScale = 1.0f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.675f);
+    in.layered = false;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.9f);
+}
+
+TEST(RenderSize, LayerTwoKeepsTheQualityFloorAndLeavesRendersAlone) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 1440;
+    in.surfaceHeight = 3200;
+    in.styleScale = 0.5f;
+    in.layered = true;
+    in.layerStyleScale = 0.5f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), scale::kMinQualityScale);
+    in.offscreen = true;
+    EXPECT_EQ(scale::renderSize(in), (scale::RenderSize{1440, 3200}));
+}
+
+TEST(LayeredStyleScale, IsTheStyleScaleWithoutLayerTwo) {
+    EXPECT_FLOAT_EQ(scale::layeredStyleScale(0.8f, false, 0.5f), 0.8f);
+    EXPECT_FLOAT_EQ(scale::layeredStyleScale(0.8f, true, 0.5f), 0.5f * scale::kLayeredRenderScale);
+    EXPECT_FLOAT_EQ(scale::layeredStyleScale(0.6f, true, 0.9f), 0.6f * scale::kLayeredRenderScale);
+    EXPECT_FLOAT_EQ(scale::kLayeredRenderScale, 0.75f);
+}
+
 TEST(RenderSize, NeverZero) {
     scale::ScaleInputs in;
     in.surfaceWidth = 0;

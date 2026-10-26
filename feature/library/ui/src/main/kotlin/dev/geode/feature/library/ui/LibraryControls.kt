@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -143,7 +143,7 @@ private fun MenuChip(
             selected = selected,
             onClick = { open = true },
             label = { Text(label) },
-            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+            trailingIcon = { Icon(Icons.Rounded.ArrowDropDown, contentDescription = null) },
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             content { open = false }
@@ -160,7 +160,7 @@ private fun Choice(
     DropdownMenuItem(
         text = { Text(label) },
         onClick = onClick,
-        trailingIcon = { if (chosen) Icon(Icons.Filled.Check, contentDescription = null) },
+        trailingIcon = { if (chosen) Icon(Icons.Rounded.Check, contentDescription = null) },
     )
 }
 
