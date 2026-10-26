@@ -13,16 +13,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
 import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Studio's own database (ADR-0004): the Projects, the videos in them with only the common fields
- * (#21), and the user's default Project. The render queue (#22) adds its tables here.
+ * (#21), the user's default Project, and since version 2 the Renders: the queue, and each finished
+ * Render's choices and frozen look so it can be made again (#338, #327).
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`.
  */
 @Database(
-    entities = [ProjectEntity::class, VideoEntity::class, StudioChoiceEntity::class],
+    entities = [ProjectEntity::class, VideoEntity::class, StudioChoiceEntity::class, RenderEntity::class],
     version = StudioDatabase.VERSION,
     exportSchema = false,
 )
@@ -30,11 +32,11 @@ abstract class StudioDatabase : RoomDatabase() {
     abstract fun dao(): StudioDao
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
         const val NAME = "studio.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = emptyArray()
+        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders)
 
         fun open(
             context: Context,
@@ -44,6 +46,17 @@ abstract class StudioDatabase : RoomDatabase() {
                 .databaseBuilder(context, StudioDatabase::class.java, name)
                 .apply { MIGRATIONS.forEach { addMigrations(it) } }
                 .build()
+    }
+}
+
+/** Version 2 (#338): the Renders, queued and finished. */
+object AddRenders : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `renders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`batch` INTEGER NOT NULL, `spec` TEXT NOT NULL, `look` TEXT NOT NULL, `videoFile` TEXT, " +
+                "`queuedAtMs` INTEGER NOT NULL)",
+        )
     }
 }
 
@@ -79,6 +92,21 @@ data class StudioChoiceEntity(
         const val ONLY_ROW = 0
     }
 }
+
+/**
+ * One Render (#338). [spec] is its choices in [RenderSpecFormat]; [look] its frozen look; [batch] the
+ * first Render queued with it. [videoFile] is the video once it is made: a Render without one has not
+ * finished, and resumes after a restart.
+ */
+@Entity(tableName = "renders")
+data class RenderEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val batch: Long,
+    val spec: String,
+    val look: String,
+    val videoFile: String?,
+    val queuedAtMs: Long,
+)
 
 @Dao
 abstract class StudioDao {
@@ -151,4 +179,36 @@ abstract class StudioDao {
 
     @Query("UPDATE choices SET defaultProjectId = NULL WHERE defaultProjectId = :id")
     protected abstract suspend fun clearDefault(id: Long)
+
+    @Insert
+    protected abstract suspend fun insertRenders(rows: List<RenderEntity>): List<Long>
+
+    @Query("UPDATE renders SET batch = :batch WHERE id IN (:ids)")
+    protected abstract suspend fun setBatch(
+        ids: List<Long>,
+        batch: Long,
+    )
+
+    /** Saves [rows] as one batch, named after the first of them, together; returns their ids in order. */
+    @Transaction
+    open suspend fun queueRenders(rows: List<RenderEntity>): List<Long> {
+        val ids = insertRenders(rows)
+        if (ids.isNotEmpty()) setBatch(ids, ids.first())
+        return ids
+    }
+
+    @Query("SELECT * FROM renders WHERE videoFile IS NULL ORDER BY id")
+    abstract suspend fun unfinishedRenders(): List<RenderEntity>
+
+    @Query("SELECT look FROM renders WHERE id = :id")
+    abstract suspend fun lookOf(id: Long): String?
+
+    @Query("UPDATE renders SET videoFile = :file WHERE id = :id")
+    abstract suspend fun renderSaved(
+        id: Long,
+        file: String,
+    )
+
+    @Query("DELETE FROM renders WHERE id = :id")
+    abstract suspend fun forgetRender(id: Long)
 }

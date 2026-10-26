@@ -1,6 +1,7 @@
-// Studio's handlers (ADR-0005): the Projects and their videos in Studio's own Room database
-// (ADR-0004, shared with the #22 render queue), the save folder followed through Settings' :api,
-// the files of deleted videos, and the old Studio's videos for the switch-over (#17) to import once.
+// Studio's handlers (ADR-0005): the Projects, their videos and the render queue in Studio's own Room
+// database (ADR-0004), the save folder and the Renders' settings followed through Settings' :api, the
+// ports `:app` fills to freeze a Render's look and make its video (#338), the files of deleted videos,
+// and the old Studio's videos for the switch-over (#17) to import once.
 plugins {
     id("geode.feature-handlers")
     id("com.google.devtools.ksp")
@@ -31,6 +32,8 @@ dependencies {
     ksp(libs.room.compiler)
     implementation(libs.documentfile)
     implementation(libs.kotlinx.coroutines.core)
+    // The real org.json for the Renders' format: the android.jar stub only returns defaults in unit tests.
+    testImplementation(libs.org.json)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }
