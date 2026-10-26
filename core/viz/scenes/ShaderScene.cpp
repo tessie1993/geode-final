@@ -215,6 +215,7 @@ void ShaderScene::draw(float timeSeconds) {
     glUniform1i(uniforms_.loc("uFxOff"), static_cast<GLint>(quality_.effectsOff));
     uploadMotion();
     uploadTouch();
+    uploadGravity();
     uploadCamera();
     uploadExtras();
     glBindVertexArray(vao_);
@@ -305,6 +306,13 @@ void ShaderScene::uploadTouch() {
     glUniform1i(uniforms_.loc("uTouchGesture"), touchField_ ? touchField_->gesture() : TouchField::kGestureNone);
     glUniform2f(uniforms_.loc("uTouchAxis"), touchField_ ? touchField_->axisX() : 0.0f, touchField_ ? touchField_->axisY() : 0.0f);
     set1f("uTouchSpin", touchField_ ? touchField_->spin() : 0.0f);
+}
+
+void ShaderScene::uploadGravity() {
+    const GravityField* g = gravityField_;
+    glUniform3f(uniforms_.loc("uGravity"), g ? g->x() : 0.0f, g ? g->y() : 0.0f, g ? g->z() : 0.0f);
+    glUniform2f(uniforms_.loc("uTilt"), g ? g->tiltX() : 0.0f, g ? g->tiltY() : 0.0f);
+    set1f("uTiltWeight", g ? g->weight() : 0.0f);
 }
 
 void ShaderScene::uploadCamera() {

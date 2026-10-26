@@ -36,6 +36,7 @@ public:
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
+    void setGravityField(const GravityField* field) override { gravityField_ = field; }
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
     void setQuality(const quality::Budget& budget) override { quality_ = budget; }
@@ -127,6 +128,8 @@ private:
     void uploadParams();
     void uploadMotion();
     void uploadTouch();
+    // uGravity, uTilt and uTiltWeight (lib_gravity.glsl): exact zeros with no reading.
+    void uploadGravity();
     // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_scene_uniforms.glsl).
     void uploadCamera();
     void uploadExtras();
@@ -199,6 +202,7 @@ private:
     float flowStrength_ = 0.0f;
     GLuint paletteLutTex_ = 0;
     const TouchField* touchField_ = nullptr;
+    const GravityField* gravityField_ = nullptr;
     std::array<float, TouchField::kPointStride> touchAnchor_{};
     std::array<float, TouchField::kMaxPoints * TouchField::kPointStride> touchPoints_{};
 

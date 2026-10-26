@@ -162,6 +162,7 @@ internal object SettingsCodec {
             touchSmearStrength = float(K.TOUCH_SMEAR_STRENGTH, default.touchSmearStrength),
             touchTransform = boolean(K.TOUCH_TRANSFORM, default.touchTransform),
             reducedMotion = boolean(K.REDUCED_MOTION, false) || string(K.LEGACY_SAFETY_CHOICE) == LEGACY_REDUCED_MOTION,
+            tilt = enum(K.TILT, default.tilt),
             startLook = startLook(string(K.START_LOOK)),
         )
     }
@@ -293,6 +294,7 @@ internal object SettingsCodec {
             K.TOUCH_SMEAR_STRENGTH to behavior.touchSmearStrength,
             K.TOUCH_TRANSFORM to behavior.touchTransform,
             K.REDUCED_MOTION to behavior.reducedMotion,
+            K.TILT to behavior.tilt.name,
             K.EXPORT_QUALITY to export.quality.name,
             K.EXPORT_FPS to export.frameRate.fps,
             K.EXPORT_RATIO to export.ratio.name,

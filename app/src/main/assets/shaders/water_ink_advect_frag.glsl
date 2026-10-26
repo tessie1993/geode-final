@@ -19,6 +19,7 @@ uniform sampler2D uHeight;   // R = height, G = velocity
 uniform highp vec2 uInvRes;
 uniform float uDt;
 uniform float uFlow;         // slope -> uv/s transport gain
+uniform vec2 uRunoff;        // tilt: downhill drift, uv/s; 0 = no tilt
 uniform float uKeep;         // per-frame survival factor (0..1)
 out vec4 fragColor;
 
@@ -34,6 +35,8 @@ void main() {
     // water moving rather than as a colour ramp sliding sideways.
     float rise = texture(uHeight, vUv).y;
     vec2 vel = -grad * uFlow * (1.0 + 0.35 * clamp(rise, -2.0, 2.0));
+    // Tilt (#315): the ink runs downhill. Skipped with no tilt, so the pass is unchanged.
+    if (uRunoff.x != 0.0 || uRunoff.y != 0.0) vel += uRunoff;
     vec2 src = clamp(vUv - vel * uDt, uInvRes * 0.5, 1.0 - uInvRes * 0.5);
     fragColor = texture(uInk, src) * uKeep;
 }

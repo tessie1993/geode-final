@@ -152,7 +152,15 @@ ExtraValues Renderer::extrasFor(const std::string& sceneId, const mod::NativeFra
 }
 
 void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {
-    scene.setCamera(camera_.pose());
+    if (gravityField_.idle()) {
+        scene.setCamera(camera_.pose());
+    } else {
+        // Tilt turns the camera of a Style that moves one (uCamRot), never the finished picture: a
+        // small look on top of the orbit, at most a few degrees and never a roll.
+        CameraPose pose = camera_.pose();
+        pose.rotation = gravity::multiply(pose.rotation, gravity::lookRotation(gravityField_.tiltX(), gravityField_.tiltY()));
+        scene.setCamera(pose);
+    }
     scene.setExtras(extras);
     scene.setQuality(qualityFor(scene.id()));
 }
@@ -405,10 +413,12 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
 
 void Renderer::stepOverlays(Scene& scene, const SceneParams& p, float dt) {
     if (overlays_.wantsFlow(p, scene.isFluid())) overlays_.stepFlow(gainAdjusted(frameFeatures_, p), dt, p);
-    smearing_ = overlays_.smearing(monotonicSeconds());
+    const float smear = touchSmear_.load(std::memory_order_relaxed);
+    smearing_ = smear > 0.0f && overlays_.smearing(monotonicSeconds());
     // Stepped once per frame ahead of every draw so each scene reads the same anchor.
     touchField_.step(dt);
-    overlays_.drainTouchStrokes(scene);
+    gravityField_.step(dt, reducedMotion_.load(std::memory_order_relaxed));
+    overlays_.drainTouchStrokes(scene, smear);
     rippleOverlayOn_ = overlays_.rippleOverlayActive(p, smearing_, scene.isWater());
     if (rippleOverlayOn_) overlays_.stepRippleOverlay(gainAdjusted(frameFeatures_, p), p, dt);
 }
