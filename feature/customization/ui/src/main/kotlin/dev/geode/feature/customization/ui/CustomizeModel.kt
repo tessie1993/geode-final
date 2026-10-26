@@ -16,6 +16,7 @@ import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.ValueKind
@@ -155,6 +156,16 @@ data class SliderRow(
     }
 }
 
+/** One Sound signal's trim (#301): how strongly that signal drives every Reaction, in every Style. */
+@Immutable
+data class TrimRow(
+    val signal: SoundSignal,
+    val trim: SignalTrim,
+)
+
+/** The signals Customize offers a trim for, in the order it lists them: bass, mid, treble and beat. */
+val TRIMMED_SIGNALS: List<SoundSignal> = listOf(SoundSignal.BASS, SoundSignal.MID, SoundSignal.TREBLE, SoundSignal.BEAT)
+
 /** One link of the link list, with its [live] meter. */
 @Immutable
 data class LinkRow(
@@ -209,6 +220,8 @@ data class CustomizeModel(
     val styleFolders: List<StyleFolderChip> = emptyList(),
     /** Layer 2, a second Style laid over this one; its opacity, influence and swap are in [shared]. */
     val layer: Layer = Layer.OFF,
+    /** The trims of [TRIMMED_SIGNALS], in that order. */
+    val trims: List<TrimRow> = emptyList(),
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 
@@ -305,5 +318,6 @@ fun CustomizationState.toCustomizeModel(
         canGoForward = stylesForward.isNotEmpty(),
         styleFolders = styleFolders,
         layer = customization.layer,
+        trims = TRIMMED_SIGNALS.map { TrimRow(it, customization.signals[it] ?: SignalTrim.NEUTRAL) },
     )
 }

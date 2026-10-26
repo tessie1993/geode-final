@@ -27,7 +27,7 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   #274), utfcpp, KISS FFT, Oboe, Dagger and Hilt, the AndroidX, Kotlin, Guava,
   Okio, protobuf-lite and Checker Framework libraries the app pulls in, and
   the Hash without Sine shader hash. projectM is described as the modified
-  library it is; its four patches ship inside the app
+  library it is; its six patches ship inside the app
   (`assets/third_party/projectm/`); projectm-eval is MIT, not LGPL; the
   gl-transitions BSD notices and the colour maps' MIT notice are quoted in
   full; the stale woscope entry is gone; the MPL-1.1 and Apache-2.0 texts are
@@ -35,6 +35,41 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   CI check (`tools/ci/check_notices.py`) keeps it so, along with the shipped
   patches, every submodule and every shipped dependency group. Dependency
   review now also fails on a licence outside the permissive allow list.
+- **One Sensitivity for every Style, MilkDrop included (#301).** Settings,
+  Audio, Analysis has a Sensitivity (-12 to +24 dB, stored in
+  `visual_sensitivity_db`): a gain on the Visual's audio feed before the
+  analysis and every Style read it, so it reaches projectM's PCM too and
+  quiet music reacts like loud music. Customize, Advanced has a new Sound
+  section that trims bass, mid, treble and beat one by one (the existing
+  per-signal trims, which ride with the Customization and carry across
+  Style changes).
+
+- **MilkDrop presets react the way they were written (#296).** Two projectM
+  patches: `projectm-v4.1.8-stereo-beats.patch` (upstream `494269e`) takes
+  bass, mid and treble from both channels now that Geode feeds stereo, and
+  `projectm-v4.1.8-loudness.patch` holds the loudness followers and reads a
+  neutral 1.0 in silence, starts them from the first real value and times
+  their warm-up in seconds, so a return from the background, a Render start
+  or a resume after a pause no longer spikes (stock: about 20x on a new
+  engine at 60 Hz, 11x after a 10 s pause). The patch also makes
+  `projectm_set_beat_sensitivity` work, and the Style's beat response now
+  drives it: 1 reacts as written, 0 holds still, 2 doubles every swing.
+  Each frame projectM gets the loudest 576-frame window of the audio heard
+  since the last frame, so no kick falls between frames at 30-60 fps.
+  Renders still feed projectM the features' waveform; real PCM for Renders
+  is not done yet.
+
+- **The Visual lands on the beat you hear (#295).** Each Visual frame now
+  reads the audio heard at the moment it reaches the screen, from
+  Choreographer's frame timeline (API 33+) or two refreshes after its vsync,
+  instead of the moment it starts drawing. Geode's own player times its
+  output with the stream's timestamps; an output that gives none is read its
+  buffer plus what its route is known to add (about 200 ms on Bluetooth,
+  80 ms on LE Audio, 10-25 ms wired, USB and speaker), with the route taken
+  from the connected devices. A new Picture sync setting (Audio, Analysis,
+  ±300 ms) moves the player's picture against the music for anything left
+  over. Live input is never moved, and nothing is ever drawn ahead of the
+  newest audio.
 
 - **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
   feed, Freeze reactions is held in the engine: every Style, MilkDrop

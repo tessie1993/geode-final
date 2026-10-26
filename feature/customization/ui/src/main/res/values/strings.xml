@@ -36,6 +36,10 @@
     <string name="customize_section_extras">Style Extras</string>
     <string name="customize_section_macros">Macros</string>
     <string name="customize_section_layers">Layers</string>
+    <string name="customize_section_sound">Sound</string>
+    <string name="customize_trims_help">How strongly each sound drives every reaction, in any Style. Settings\' Sensitivity turns all of the sound up or down, MilkDrop included.</string>
+    <string name="customize_trim_value">×%1$.2f</string>
+    <string name="customize_trim_reset">Put %1$s back to ×1</string>
 
     <!-- Reactions -->
     <string name="customize_links_list">List</string>

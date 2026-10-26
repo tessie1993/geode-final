@@ -14,6 +14,17 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
 - `tools/projectm-v4.1.8-plasma-mediump.patch` carries upstream master commit `0227b7a`: the plasma
   transition's noise overflowed at mediump precision on mobile GPUs, and the Visual uses blended
   transitions.
+- `tools/projectm-v4.1.8-stereo-beats.patch` carries upstream master commit `494269e`: bass, mid and
+  treble come from both channels rather than the left alone. Geode feeds projectM stereo (#276), so
+  music panned right reacts as strongly as music panned left.
+- `tools/projectm-v4.1.8-loudness.patch` fixes the loudness followers behind bass, mid and treble
+  (#296). Below a silence floor (about -90 dBFS) the followers hold and read a neutral 1.0, the
+  averages start from the first real value, and the fast warm-up lasts 50/30 s of audio rather than 50
+  frames. Geode recreates the engine on every trip to the background and every Render start or stop,
+  which stock replays as a 20x (60 Hz) to 46x (144 Hz) spike on the first frame, and a pause decays
+  the long average until resuming spikes (11x after 10 s). It also makes `projectm_set_beat_sensitivity`
+  work: stock stores it and reads it nowhere; now 1.0 leaves the values as measured, 0 holds them at
+  1.0 and 2.0 doubles every swing away from 1.0.
 - `tools/projectm-eval-render-clock.patch`, applied inside `vendor/projectm-eval`, lets the seeded
   instance feed the expression `rand()` too. The build therefore always uses the vendored
   projectm-eval, never a system one.

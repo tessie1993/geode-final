@@ -134,6 +134,12 @@ fun previewCommand(
     value: Float,
 ): CustomizationCommand? = if (learning != null) null else sliderCommand(target, value)?.let(CustomizationCommand::Preview)
 
+/** A signal's trim set to [gain] (#301), its floor kept. */
+fun trimCommand(
+    row: TrimRow,
+    gain: Float,
+): CustomizationCommand.TrimSignal = CustomizationCommand.TrimSignal(row.signal, row.trim.copy(gain = gain))
+
 /** The toggle flipped: an effect turned off goes back to its minimum; one turned on to its on value. */
 fun EffectToggle.toggled(): CustomizationCommand.SetShared {
     val onValue = if (property.kind == ValueKind.SWITCH) property.max else EFFECT_ON_VALUES[property] ?: property.max

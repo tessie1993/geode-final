@@ -118,6 +118,14 @@ class VisualizerRenderer(
     private var attachedFeed: VisualFeed? = null
 
     /**
+     * When each frame is expected on screen (#295): the pacer that asks for the frames. With a [feed],
+     * the frame draws the audio heard at that moment, so the picture lands on the beat being heard
+     * rather than one or two refreshes early. Null draws the audio heard as the frame starts.
+     */
+    @Volatile
+    var presentation: FramePresentation? = null
+
+    /**
      * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
      * takes its parameters and Modulators from them, so [sceneParams] and the LFO and envelope
      * configs are not sent.
@@ -238,6 +246,7 @@ class VisualizerRenderer(
         val workStart = System.nanoTime()
         nativeViz.setScene(requestedSceneId)
         syncNativeState()
+        nativeViz.setPresentTime(presentation?.expectedPresentNanos() ?: 0L)
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
         nativeViz.pollError(onShaderError)
         nativeViz.takeMilkPresetLoaded()?.let { path ->

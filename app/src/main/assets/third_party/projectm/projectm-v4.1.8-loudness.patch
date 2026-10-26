@@ -1,0 +1,185 @@
+diff --git a/src/api/include/projectM-4/parameters.h b/src/api/include/projectM-4/parameters.h
+index 1467458..a80bcbf 100644
+--- a/src/api/include/projectM-4/parameters.h
++++ b/src/api/include/projectM-4/parameters.h
+@@ -48,7 +48,8 @@ PROJECTM_EXPORT void projectm_set_texture_search_paths(projectm_handle instance,
+ /**
+  * @brief Sets the beat sensitivity.
+  *
+- * The beat sensitivity to be used.
++ * How far bass, mid and treble (and their attenuated values) swing away from 1.0: 1.0 leaves them as
++ * measured, 0.0 holds them at 1.0, 2.0 doubles every swing. Clamped to 0.0..2.0.
+  *
+  * @param instance The projectM instance handle.
+  * @param sensitivity The sensitivity setting.
+diff --git a/src/libprojectM/Audio/Loudness.cpp b/src/libprojectM/Audio/Loudness.cpp
+index 2139c92..5bcba36 100644
+--- a/src/libprojectM/Audio/Loudness.cpp
++++ b/src/libprojectM/Audio/Loudness.cpp
+@@ -1,5 +1,6 @@
+ #include "Loudness.hpp"
+ 
++#include <algorithm>
+ #include <cmath>
+ 
+ namespace libprojectM {
+@@ -16,6 +17,11 @@ void Loudness::Update(const std::array<float, SpectrumSamples>& spectrumSamples,
+     UpdateBandAverage(secondsSinceLastFrame, frame);
+ }
+ 
++void Loudness::SetResponse(float response)
++{
++    m_response = std::isfinite(response) ? std::min(std::max(response, 0.0f), 2.0f) : 1.0f;
++}
++
+ auto Loudness::CurrentRelative() const -> float
+ {
+     return m_currentRelative;
+@@ -38,16 +44,40 @@ void Loudness::SumBand(const std::array<float, SpectrumSamples>& spectrumSamples
+     }
+ }
+ 
+-void Loudness::UpdateBandAverage(double secondsSinceLastFrame, uint32_t frame)
++void Loudness::UpdateBandAverage(double secondsSinceLastFrame, uint32_t /*frame*/)
+ {
++    // Silence: hold the averages where they are and read neutral. Without this a new engine reads about
++    // 20x on its first frame (current over a long average starting at zero), and music coming back after
++    // a pause spikes by as much as the pause decayed the long average (11x after 10 s).
++    if (m_current < SilenceFloor)
++    {
++        m_currentRelative = 1.0f;
++        m_averageRelative = 1.0f;
++        return;
++    }
++
++    // The first real value starts both averages, so the relative values start at 1.0.
++    if (!m_primed)
++    {
++        m_average = m_current;
++        m_longAverage = m_current;
++        m_primed = true;
++    }
++
+     float rate = AdjustRateToFps(m_current > m_average ? 0.2f : 0.5f, secondsSinceLastFrame);
+     m_average = m_average * rate + m_current * (1.0f - rate);
+ 
+-    rate = AdjustRateToFps(frame < 50 ? 0.9f : 0.992f, secondsSinceLastFrame);
++    rate = AdjustRateToFps(m_audibleSeconds < WarmUpSeconds ? 0.9f : 0.992f, secondsSinceLastFrame);
+     m_longAverage = m_longAverage * rate + m_current * (1.0f - rate);
++    m_audibleSeconds += std::max(secondsSinceLastFrame, 0.0);
+ 
+-    m_currentRelative = std::fabs(m_longAverage) < 0.001f ? 1.0f : m_current / m_longAverage;
+-    m_averageRelative = std::fabs(m_longAverage) < 0.001f ? 1.0f : m_average / m_longAverage;
++    m_currentRelative = std::fabs(m_longAverage) < 0.001f ? 1.0f : Respond(m_current / m_longAverage);
++    m_averageRelative = std::fabs(m_longAverage) < 0.001f ? 1.0f : Respond(m_average / m_longAverage);
++}
++
++auto Loudness::Respond(float relative) const -> float
++{
++    return std::max(0.0f, 1.0f + m_response * (relative - 1.0f));
+ }
+ 
+ auto Loudness::AdjustRateToFps(float rate, double secondsSinceLastFrame) -> float
+diff --git a/src/libprojectM/Audio/Loudness.hpp b/src/libprojectM/Audio/Loudness.hpp
+index 55f3baf..cb23f79 100644
+--- a/src/libprojectM/Audio/Loudness.hpp
++++ b/src/libprojectM/Audio/Loudness.hpp
+@@ -46,6 +46,13 @@ public:
+      */
+     void Update(const std::array<float, SpectrumSamples>& spectrumSamples, double secondsSinceLastFrame, uint32_t frame);
+ 
++    /**
++     * @brief Scales how far the relative values swing away from 1.0.
++     * 1.0 leaves them as measured, 0.0 holds them at 1.0, 2.0 doubles every swing. Never below 0.
++     * @param response The response, clamped to 0.0..2.0.
++     */
++    void SetResponse(float response);
++
+     /**
+      * @brief Returns the current frame's unattenuated loudness relative to the previous frame.
+      * This value will revolve around 1.0, with <0.7 being very silent and >1.3 very loud audio.
+@@ -83,6 +90,26 @@ private:
+      */
+     static auto AdjustRateToFps(float rate, double secondsSinceLastFrame) -> float;
+ 
++    /**
++     * @brief Applies the response to a relative value.
++     * @param relative The value relative to the long-term average.
++     * @return 1.0 plus the response times the swing, never below 0.
++     */
++    auto Respond(float relative) const -> float;
++
++    /**
++     * Band sums below this are silence: digital zeros or a source far below any music (about -90 dBFS).
++     * The followers hold during silence and the relative values read 1.0, so a pause neither drags the
++     * long-term average down nor makes the music spike when it comes back.
++     */
++    static constexpr float SilenceFloor{0.01f};
++
++    /**
++     * The time the long-term average follows quickly after its first real value: the 50 frames stock
++     * MilkDrop counted at its 30 fps, as time, so the warm-up lasts as long at any frame rate.
++     */
++    static constexpr double WarmUpSeconds{50.0 / 30.0};
++
+     Band m_band{Band::Bass}; //!< The frequency band to use for this instance.
+ 
+     float m_current{};     //!< The current frame's sum of all frequency strengths in the current band.
+@@ -91,6 +118,10 @@ private:
+ 
+     float m_currentRelative{1.0f}; //!< The relative loudness value to the previous frame.
+     float m_averageRelative{1.0f}; //!< The attenuated relative loudness value.
++
++    float m_response{1.0f};      //!< How far the relative values swing (see SetResponse()).
++    bool m_primed{false};        //!< Whether the averages have started from a real (non-silent) value.
++    double m_audibleSeconds{0.0}; //!< Seconds of non-silent audio the averages have followed.
+ };
+ 
+ } // namespace Audio
+diff --git a/src/libprojectM/Audio/PCM.cpp b/src/libprojectM/Audio/PCM.cpp
+index fbf41e9..b926a74 100755
+--- a/src/libprojectM/Audio/PCM.cpp
++++ b/src/libprojectM/Audio/PCM.cpp
+@@ -74,6 +74,13 @@ void PCM::UpdateFrameAudioData(double secondsSinceLastFrame, uint32_t frame)
+ 
+ }
+ 
++void PCM::SetBeatSensitivity(float sensitivity)
++{
++    m_bass.SetResponse(sensitivity);
++    m_middles.SetResponse(sensitivity);
++    m_treble.SetResponse(sensitivity);
++}
++
+ auto PCM::GetFrameAudioData() const -> FrameAudioData
+ {
+     FrameAudioData data{};
+diff --git a/src/libprojectM/Audio/PCM.hpp b/src/libprojectM/Audio/PCM.hpp
+index 602e249..9a70b1b 100755
+--- a/src/libprojectM/Audio/PCM.hpp
++++ b/src/libprojectM/Audio/PCM.hpp
+@@ -72,6 +72,12 @@ public:
+      */
+     PROJECTM_EXPORT auto GetFrameAudioData() const -> FrameAudioData;
+ 
++    /**
++     * @brief Sets how far bass, mid and treble (and their attenuated values) swing away from 1.0.
++     * @param sensitivity 1.0 as measured, 0.0 holds them at 1.0, 2.0 doubles every swing.
++     */
++    void SetBeatSensitivity(float sensitivity);
++
+ private:
+     template<
+         int signalAmplitude,
+diff --git a/src/libprojectM/ProjectM.cpp b/src/libprojectM/ProjectM.cpp
+index afdf2cf..fb2a1f6 100644
+--- a/src/libprojectM/ProjectM.cpp
++++ b/src/libprojectM/ProjectM.cpp
+@@ -313,6 +313,7 @@ auto ProjectM::PresetLocked() const -> bool
+ void ProjectM::SetBeatSensitivity(float sensitivity)
+ {
+     m_beatSensitivity = std::min(std::max(0.0f, sensitivity), 2.0f);
++    m_audioStorage.SetBeatSensitivity(m_beatSensitivity);
+ }
+ 
+ auto ProjectM::GetBeatSensitivity() const -> float

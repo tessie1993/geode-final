@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <utility>
 
 #include "CompositeGrade.hpp"
@@ -51,10 +52,15 @@ float Renderer::beginFrame(double timeSeconds) {
 }
 
 void Renderer::latchFramePcm() {
-    framePcmFrames_ = std::exchange(pendingPcmFrames_, 0);
+    frameSpanFrames_ = std::exchange(pendingPcmFrames_, 0);
+    frameSpanFresh_ = std::exchange(pendingPcmFresh_, 0);
+    std::copy(pendingPcm_.begin(), pendingPcm_.begin() + static_cast<std::ptrdiff_t>(frameSpanFrames_) * 2, frameSpan_.begin());
+    // The window is the newest kPcmWindowFrames of the span.
+    framePcmFrames_ = std::min(frameSpanFrames_, kPcmWindowFrames);
+    const int first = frameSpanFrames_ - framePcmFrames_;
     for (int i = 0; i < framePcmFrames_; ++i) {
-        const float left = pendingPcm_[static_cast<size_t>(2 * i)];
-        const float right = pendingPcm_[static_cast<size_t>(2 * i + 1)];
+        const float left = frameSpan_[static_cast<size_t>(2 * (first + i))];
+        const float right = frameSpan_[static_cast<size_t>(2 * (first + i) + 1)];
         framePcm_[static_cast<size_t>(2 * i)] = left;
         framePcm_[static_cast<size_t>(2 * i + 1)] = right;
         framePcmMono_[static_cast<size_t>(i)] = 0.5f * (left + right);
@@ -247,6 +253,7 @@ void Renderer::deliverPcm(Scene& scene) {
     if (framePcmFrames_ <= 0) return;
     scene.acceptPcm(framePcmMono_.data(), framePcmFrames_);
     scene.acceptStereoPcm(framePcm_.data(), framePcmFrames_);
+    scene.acceptPcmSpan(frameSpan_.data(), frameSpanFrames_, frameSpanFresh_);
 }
 
 void Renderer::bindSecondaryTarget(const Framebuffer& target) {
