@@ -25,7 +25,7 @@ class ControlHelpTest {
     @Test
     fun `a tap on a slider's name shows its help, and another hides it`() {
         compose.setContent {
-            ValueSlider(row, label = "Speed", onSet = {}, onReactTo = {}, help = targetHelp(row.target))
+            ValueSlider(row, label = "Speed", onSet = {}, onPreview = {}, onReset = {}, onReactTo = {}, help = targetHelp(row.target))
         }
         val help = "How fast the Style moves by itself."
         compose.onNodeWithText(help).assertDoesNotExist()

@@ -429,7 +429,7 @@ class CustomizationReducerTest {
                     fresh,
                     command(CustomizationCommand.ChooseStyle(ocean)),
                     Next(
-                        CustomizationState(onOcean, undo = listOf(julia)),
+                        CustomizationState(onOcean, undo = listOf(julia), stylesBack = listOf(julia)),
                         listOf(publish(onOcean), Emit(CustomizationFact.StyleChanged(ocean))),
                     ),
                 ),
@@ -438,7 +438,7 @@ class CustomizationReducerTest {
                     CustomizationState(onOcean),
                     command(CustomizationCommand.ChooseStyle(reef)),
                     Next(
-                        CustomizationState(onReef, undo = listOf(onOcean)),
+                        CustomizationState(onReef, undo = listOf(onOcean), stylesBack = listOf(onOcean)),
                         listOf(publish(onReef), Emit(CustomizationFact.StyleChanged(reef))),
                     ),
                 ),

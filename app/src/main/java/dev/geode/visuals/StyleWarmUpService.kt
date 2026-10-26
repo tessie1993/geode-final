@@ -75,17 +75,27 @@ class StyleWarmUpService : JobService() {
         for (style in StyleWarmUp.order(viz.sceneIds(), SceneIds.MILKDROP)) {
             if (stopped) return false
             if (!viz.setScene(style)) continue
-            if (style == SceneIds.MILKDROP) {
-                for (preset in presets) {
-                    if (stopped) return false
-                    viz.loadMilkPreset(preset.path)
-                    draw()
-                }
-            } else {
+            if (style != SceneIds.MILKDROP) {
                 draw()
+            } else if (!warmPresets(viz, presets, draw)) {
+                return false
             }
             // One Style built at a time: what is warm is the cache, not the scenes.
             viz.releaseScenes()
+        }
+        return true
+    }
+
+    /** Draws each preset in turn into the MilkDrop scene; false when the job was stopped part way. */
+    private fun warmPresets(
+        viz: NativeViz,
+        presets: List<File>,
+        draw: () -> Unit,
+    ): Boolean {
+        for (preset in presets) {
+            if (stopped) return false
+            viz.loadMilkPreset(preset.path)
+            draw()
         }
         return true
     }
