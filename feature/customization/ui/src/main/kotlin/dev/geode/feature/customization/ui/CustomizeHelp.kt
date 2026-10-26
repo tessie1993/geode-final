@@ -80,6 +80,7 @@ internal fun propertyHelp(property: SharedProperty): String =
             SharedProperty.GAMMA -> R.string.customize_help_property_gamma
             SharedProperty.TEMPERATURE -> R.string.customize_help_property_temperature
             SharedProperty.INVERT -> R.string.customize_help_property_invert
+            SharedProperty.ANAGLYPH -> R.string.customize_help_property_anaglyph
         },
     )
 
