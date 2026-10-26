@@ -42,14 +42,17 @@ internal val previewValues =
     )
 
 internal fun previewModel(
-    section: SettingsSection,
+    section: SettingsSection?,
     values: SettingsValues? = previewValues,
 ): SettingsScreenModel = SettingsScreenModel(section, values, previewFontColors, PREVIEW_VERSION)
 
-/** Settings on glass over the calm backdrop, as the app's root draws it, in [values]' theme mode. */
+/**
+ * Settings on glass over the calm backdrop, as the app's root draws it, in [values]' theme mode, open on
+ * [section], or on the list of sections when it is null.
+ */
 @Composable
 internal fun SettingsPreview(
-    section: SettingsSection,
+    section: SettingsSection?,
     values: SettingsValues? = previewValues,
 ) {
     GlassTheme(dark = values?.look?.themeMode != ThemeMode.LIGHT) {
@@ -59,6 +62,11 @@ internal fun SettingsPreview(
         }
     }
 }
+
+/** The list of sections Settings opens on. */
+@Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
+@Composable
+internal fun SettingsListPreview() = SettingsPreview(null)
 
 @Preview(widthDp = PREVIEW_WIDTH_DP, heightDp = PREVIEW_HEIGHT_DP)
 @Composable
