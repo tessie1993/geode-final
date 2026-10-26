@@ -307,6 +307,7 @@ object BuiltInStyles {
             shader("hyper_lattice", true, emptyList()),
             shader("dew_macro", true, emptyList()),
             shader("monolith_plain", true, emptyList()),
+            shader("spiral_descent", true, emptyList()),
         )
 
     private fun life(
