@@ -12,6 +12,8 @@ void FluidScene::init() {
     sim_.onShaderError = [this](const std::string& m) { host_.onShaderError(m); };
     sim_.create();
     choreography_.reset();
+    // A Render repeats from its seed; the live Visual keeps the random one it was built with (#339).
+    if (host_.rendering && host_.rendering()) emitters_.seed(fluid::kRenderSeed);
     if (sim_.available()) {
         look_.create(sim_.texFormats(), style_.look);
         appliedTier_ = -1;
