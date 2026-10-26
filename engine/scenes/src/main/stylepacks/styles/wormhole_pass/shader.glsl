@@ -134,7 +134,7 @@ vec3 tonemap(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
 
     // ---- where in the journey ----------------------------------------------------
     float journey = uTime + uCamTravel * 0.5;

@@ -317,7 +317,7 @@ vec3 pcEnv(vec3 r, vec3 low, vec3 high) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float bassA = min(uBassSmooth, 1.3);
     float trebA = min(uTrebleSmooth, 1.3);
 

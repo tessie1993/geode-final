@@ -245,7 +245,7 @@ const SHADER_VALUES = {
   uXComplexity: 1, uXEdge: 1, uXFog: 1, uXDecay: 1, uXViscosity: 1, uXGrowth: 1, uXSpread: 1, uXForce: 1, uXReach: 1,
   uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
   uXFlightTime: 37.0, uXSpinTime: 37.0, uXDriftTime: 37.0,
-  uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
+  uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0], uCamLens: [0, 0],
   // The shared Style inputs' clocks (lib_inputs.glsl): 37 s into a visit at 60 fps.
   uFrame: 2220, uFrameDt: 1 / 60, uVisitRand: [0.31, 0.72, 0.18, 0.55], uStyleAge: 37.0, uBarPhase: 0.4, uBarConfidence: 0.8,
   // The feature bus (lib_scene_features, FeatureBus.hpp) mid-song: a trusted bar, a section and a drop
@@ -341,7 +341,7 @@ const COMPOSITE_NEUTRAL = {
   uPostPalTint: 0, uPostPalBase: 0, uPostPalSpan: 1,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
-  uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
+  uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0], uCamRoll: 0,
   // Layer 2 off (presence 0); --layers turns it on.
   uGateL: [1, 1, 1, 1], uCamGateL: [1, 1], uLayerPresence: 0, uLayerBlend: 0, uLayerOpacity: 0.6, uLayerInfluence: 0,
   uLayerAmount: 0.7, uLayerSwap: 0,
@@ -379,6 +379,7 @@ const COMPOSITE_EFFECTS = {
   camera_travel: { uCamDive: [0.4, 0] },
   camera_endless_zoom: { uCamDive: [0, 0.7] },
   camera_shake: { uCamShake: [0.02, -0.015, 0.02] },
+  camera_roll: { uCamRoll: 0.6 },
 };
 
 // Layer 2 (lib_layers.glsl, Layers.hpp): one frame per blend mode and per influence, the stand-in

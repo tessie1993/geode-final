@@ -87,6 +87,9 @@ internal fun propertyName(property: SharedProperty): String =
             SharedProperty.DRIFT_Y -> R.string.customize_property_drift_y
             SharedProperty.ENDLESS_ZOOM -> R.string.customize_property_endless_zoom
             SharedProperty.DIVE_SPEED -> R.string.customize_property_dive_speed
+            SharedProperty.FIELD_OF_VIEW -> R.string.customize_property_field_of_view
+            SharedProperty.ROLL -> R.string.customize_property_roll
+            SharedProperty.SPEED_RAMP -> R.string.customize_property_speed_ramp
             SharedProperty.PALETTE -> R.string.customize_property_palette
             SharedProperty.PALETTE_2 -> R.string.customize_property_palette_2
             SharedProperty.PALETTE_MIX -> R.string.customize_property_palette_mix

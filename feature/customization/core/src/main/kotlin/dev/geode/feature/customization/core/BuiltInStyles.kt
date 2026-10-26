@@ -216,9 +216,10 @@ object BuiltInStyles {
             shader("chroma_orb", false, listOf(react(BASS, SIZE, 0.3f))),
             shader("mandala_dome", false, listOf(react(BASS, SCALE, 0.2f), react(TREBLE, SharedProperty.HUE_SHIFT, 0.1f))),
             shader("bead_vortex", false, listOf(react(BASS, SWIRL, 0.3f))),
-            shader("merkaba_grid", false, listOf(react(LEVEL, SharedProperty.WARP, 0.15f))),
-            shader("spiral_eye", false, listOf(react(BASS, THICKNESS, 0.2f))),
-            shader("blacklight_bloom", false, listOf(react(BASS, SCALE, 0.2f))),
+            // Spiral Eye, Blacklight Bloom and Merkaba Grid fly a camera of their own through their worlds (#335).
+            shader("merkaba_grid", true, listOf(react(LEVEL, SharedProperty.WARP, 0.15f), react(LEVEL, SharedProperty.SPEED_RAMP, 0.25f))),
+            shader("spiral_eye", true, listOf(react(BASS, THICKNESS, 0.2f))),
+            shader("blacklight_bloom", true, listOf(react(BASS, SCALE, 0.2f), react(HIT, SharedProperty.FIELD_OF_VIEW, 0.2f))),
             shader("fractal_temple", true, listOf(react(LEVEL, SharedProperty.TRAVEL, 0.2f))),
             shader("curl_bloom", true, listOf(react(BASS, SIZE, 0.2f))),
             shader("nectar_flow", true, listOf(react(BASS, FOG, 0.2f))),

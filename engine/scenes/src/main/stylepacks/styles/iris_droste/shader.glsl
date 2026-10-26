@@ -124,7 +124,7 @@ float irOpening(float k, float a) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float bassA = min(uBassSmooth, 1.3);
     float trebA = min(uTrebleSmooth, 1.3);
     gScale = 0.25 + 0.75 * clamp(uXScale, 0.0, 2.0);

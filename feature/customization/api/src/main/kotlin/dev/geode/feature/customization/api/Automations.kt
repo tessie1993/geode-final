@@ -134,6 +134,9 @@ enum class CameraMoveKind(
     PUSH_IN(mapOf(SharedProperty.PUSH_IN to 1f)),
     PULL_OUT(mapOf(SharedProperty.ZOOM to -1f)),
     ZOOM_PUNCH(mapOf(SharedProperty.ZOOM to 1f)),
+
+    /** The lens springs wide on the beat and settles back: a FOV punch. */
+    FOV_PUNCH(mapOf(SharedProperty.FIELD_OF_VIEW to 1f)),
     ORBIT(mapOf(SharedProperty.ORBIT_YAW to 1f), setOf(SharedProperty.ORBIT_YAW)),
     ROLL(mapOf(SharedProperty.ROTATION to 1f), setOf(SharedProperty.ROTATION)),
     TRAVEL_CURVE(mapOf(SharedProperty.DRIFT_X to 1f, SharedProperty.TRAVEL to 1f), setOf(SharedProperty.DRIFT_X)),
@@ -142,6 +145,9 @@ enum class CameraMoveKind(
     PAN(mapOf(SharedProperty.DRIFT_X to 1f), setOf(SharedProperty.DRIFT_X)),
     SWAY(mapOf(SharedProperty.SWAY to 1f)),
     SHAKE(mapOf(SharedProperty.SHAKE to 1f)),
+
+    /** The flight surges on the beat, ramping in and easing off. */
+    SPEED_RAMP(mapOf(SharedProperty.SPEED_RAMP to 1f)),
 }
 
 /**

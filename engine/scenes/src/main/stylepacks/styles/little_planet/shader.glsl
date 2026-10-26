@@ -183,7 +183,7 @@ vec3 tonemap(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
 
     gSunDir = normalize(vec3(cos(LP_SUN_AZ), LP_SUN_EL, sin(LP_SUN_AZ)));
     gSkyLow = mix(vec3(1.0, 0.76, 0.55), pal(0.08), 0.3) * 0.8;

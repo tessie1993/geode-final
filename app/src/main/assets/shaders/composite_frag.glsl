@@ -155,12 +155,15 @@ uniform float uUnderlayAmount;
 // uTexA/uTexB (only the Styles whose renderer has none). Push-in magnifies, the orbit tilts the picture
 // plane in perspective (radians, x yaw, y pitch), uCamDive holds the 0..1 phases of a dive through the
 // picture (x travel, y endless zoom), and the shake (xy offset, z roll) moves every picture alike.
-// Every one of them is 0 at the Camera's starting values, and then nothing here runs.
+// uCamRoll is the Camera's roll (radians), turning the picture about its centre; a narrowed lens
+// arrives folded into uCamPush (CameraPose::flatPush). Every one of them is 0 at the Camera's
+// starting values, and then nothing here runs.
 uniform vec4 uCamGate;
 uniform float uCamPush;
 uniform vec2 uCamTilt;
 uniform vec3 uCamShake;
 uniform vec2 uCamDive;
+uniform float uCamRoll;
 
 float compHash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -228,6 +231,11 @@ vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
     // bounded wobble (CameraRig): never a jump.
     if (abs(uCamShake.x) + abs(uCamShake.y) + abs(uCamShake.z) > 0.000001) {
         c = mat2(cos(uCamShake.z), -sin(uCamShake.z), sin(uCamShake.z), cos(uCamShake.z)) * c - uCamShake.xy;
+    }
+    if (cam && abs(uCamRoll) > 0.0001) {
+        // Turned in the picture's true proportions, so the roll never shears it.
+        vec2 r = mat2(cos(uCamRoll), -sin(uCamRoll), sin(uCamRoll), cos(uCamRoll)) * vec2(c.x * uRatio, c.y);
+        c = vec2(r.x / uRatio, r.y);
     }
     if (cam && uCamPush > 0.0001) c /= 1.0 + uCamPush * 0.6;
     if (cam && abs(uCamTilt.x) + abs(uCamTilt.y) > 0.0001) {

@@ -165,7 +165,8 @@ tile::CompositeLook CompositePass::lookOf(const Inputs& inputs) {
     look.gate = inputs.gateA;
     look.camMoves = inputs.cameraGate[0];
     look.camEndless = inputs.cameraGate[2];
-    look.camPush = cam.push;
+    look.camPush = cam.flatPush();
+    look.camRoll = cam.roll;
     look.camTiltYaw = cam.tiltYaw;
     look.camTiltPitch = cam.tiltPitch;
     look.camShakeX = cam.shakeX;
@@ -297,7 +298,8 @@ void CompositePass::uploadGradeUniforms(UniformCache& p, const Inputs& inputs) {
 void CompositePass::uploadCameraUniforms(UniformCache& p, const Inputs& inputs) {
     const CameraPose& cam = inputs.camera;
     glUniform4fv(p.loc("uCamGate"), 1, inputs.cameraGate.data());
-    glUniform1f(p.loc("uCamPush"), cam.push);
+    glUniform1f(p.loc("uCamPush"), cam.flatPush());
+    glUniform1f(p.loc("uCamRoll"), cam.roll);
     glUniform2f(p.loc("uCamTilt"), cam.tiltYaw, cam.tiltPitch);
     glUniform3f(p.loc("uCamShake"), cam.shakeX, cam.shakeY, cam.shakeRoll);
     glUniform2f(p.loc("uCamDive"), cam.travelDive, cam.endlessDive);
