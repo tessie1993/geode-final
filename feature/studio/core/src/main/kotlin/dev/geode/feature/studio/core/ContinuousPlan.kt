@@ -73,7 +73,7 @@ object ContinuousPlan {
         tracks: List<RenderTrack>,
         join: TrackJoin,
     ): Millis {
-        val chapters = Chapters.of(tracks, join.crossfade)
+        val chapters = Chapters.of(tracks, join.crossfade, join.gap)
         return chapters.lastOrNull()?.let { Millis(it.endMs) } ?: tracks.firstOrNull()?.length ?: Millis.ZERO
     }
 

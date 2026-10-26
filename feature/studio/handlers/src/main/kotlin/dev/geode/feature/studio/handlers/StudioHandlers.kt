@@ -150,16 +150,18 @@ class StudioHandlers(
     }
 
     /**
-     * Reads the song's synced lyrics when the finished Render wants captions (#329); lyrics that cannot be
-     * read are none, and the cards are still made.
+     * Reads each song's synced lyrics when the finished Render wants captions (#329), every track's for a
+     * continuous video (#326); lyrics that cannot be read are none, and the cards are still made.
      */
     private suspend fun finish(
         work: StudioWork.FinishRender,
         results: Results<StudioEvent>,
     ) {
-        val track = work.render.tracks.singleOrNull()
+        val wanted = work.render.extras.captions
         val lyrics =
-            if (work.render.extras.captions && track != null) attempt { sources.renders.lyrics.cues(track) }.orEmpty() else emptyList()
+            work.render.tracks.map { track ->
+                if (wanted) attempt { sources.renders.lyrics.cues(track) }.orEmpty() else emptyList()
+            }
         results.report(StudioEvent.FinishReady(work.render, work.video, lyrics))
     }
 

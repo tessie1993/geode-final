@@ -172,7 +172,7 @@ fun StudioRoute(
             },
             onDismiss = { draft = null },
             onSaveChapters = { file ->
-                chapters = chapterText(open.spec.tracks, file, open.spec.join.crossfade)
+                chapters = chapterText(open.spec.tracks, file, open.spec.join)
                 chapterSavers.getValue(file).launch("geode_chapters_${System.currentTimeMillis()}.${file.extension}")
             },
         )

@@ -122,9 +122,26 @@ fun renderSettingsOf(values: SettingsValues): RenderSettings {
         RenderExtras(loudnessOf(export.loudness)),
         values.background.renders,
         sourcesOf(export.editSources),
-        TrackJoin(values.playback.crossfade.coerceIn(Millis.ZERO, MAX_JOIN_CROSSFADE), curveOf(values.playback.crossfadeCurve)),
+        joinOf(values),
     )
 }
+
+/**
+ * How a continuous video joins its tracks, as the Playback settings join them (#326): with their crossfade
+ * and its curve; with none, gaplessly, or parted by the gap Playback leaves when gapless is off.
+ */
+private fun joinOf(values: SettingsValues): TrackJoin {
+    val playback = values.playback
+    val crossfade = playback.crossfade.coerceIn(Millis.ZERO, MAX_JOIN_CROSSFADE)
+    val gap = if (!playback.gapless && crossfade == Millis.ZERO) PLAYBACK_GAP else Millis.ZERO
+    return TrackJoin(crossfade, curveOf(playback.crossfadeCurve), gap)
+}
+
+/**
+ * The gap Playback leaves between tracks when gapless and the crossfade are both off: nothing is opened
+ * ahead, so the next track starts on the player's next look at the engine, one poll (`NativePlayer.POLL_MS`).
+ */
+private val PLAYBACK_GAP = Millis(200)
 
 /** The longest crossfade a continuous video joins with: the longest Playback plays (`MAX_CROSSFADE`). */
 private val MAX_JOIN_CROSSFADE = Millis(12_000)

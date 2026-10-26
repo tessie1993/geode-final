@@ -103,4 +103,13 @@ class ChaptersTest {
         val short = tide.copy(length = Millis(6_000))
         assertEquals(listOf(0L, 212_000L), Chapters.of(listOf(night, short), Millis(12_000)).map { it.startMs })
     }
+
+    @Test
+    fun `without gapless each song starts after the short gap Playback leaves`() {
+        val gapped = Chapters.of(listOf(night, tide, blank), gap = Millis(200))
+        assertEquals(listOf(0L, 215_200L, 402_900L), gapped.map { it.startMs })
+        assertEquals(listOf(215_200L, 187_700L, 3_600_000L), gapped.map { it.durationMs })
+        // A crossfade leaves no gap.
+        assertEquals(listOf(0L, 211_000L), Chapters.of(listOf(night, tide), Millis(4_000), Millis(200)).map { it.startMs })
+    }
 }

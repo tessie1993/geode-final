@@ -62,6 +62,7 @@ class ContinuousPlanTest {
     fun `the video is as long as the joined playlist`() {
         assertEquals(Millis(402_000), ContinuousPlan.lengthOf(listOf(night, tide), TrackJoin()))
         assertEquals(Millis(398_000), ContinuousPlan.lengthOf(listOf(night, tide), TrackJoin(Millis(4_000))))
+        assertEquals(Millis(402_200), ContinuousPlan.lengthOf(listOf(night, tide), TrackJoin(gap = Millis(200))))
         assertEquals(Millis(215_000), ContinuousPlan.lengthOf(listOf(night), TrackJoin(Millis(4_000))))
         assertEquals(Millis.ZERO, ContinuousPlan.lengthOf(emptyList(), TrackJoin()))
     }

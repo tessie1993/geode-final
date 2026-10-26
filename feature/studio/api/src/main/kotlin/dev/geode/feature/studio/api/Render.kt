@@ -134,12 +134,14 @@ enum class FadeCurve {
 }
 
 /**
- * How one continuous video's tracks join (#326): the Playback settings' crossfade, its [crossfade] length
- * (none joins them gaplessly) and its [curve]. Kept with the Render, so making it again joins them the same.
+ * How one continuous video's tracks join (#326), as the Playback settings join them: the crossfade, its
+ * [crossfade] length and its [curve]; with none, tracks join gaplessly, or parted by [gap] when gapless is
+ * off, the silence Playback leaves between them. Kept with the Render, so making it again joins them the same.
  */
 data class TrackJoin(
     val crossfade: Millis = Millis.ZERO,
     val curve: FadeCurve = FadeCurve.EQUAL_POWER,
+    val gap: Millis = Millis.ZERO,
 )
 
 /** The loudness a Render's sound is levelled to (#329): measured over the Track, then a gain applied. */
@@ -157,8 +159,8 @@ enum class RenderLoudness {
  * What a Render adds to the sound and beside the Visual (#329): its [loudness] target, which the preset
  * sets; and, made as an Edit of the finished Render (they belong to Edits, never to the Visual), the
  * song's synced lyrics as [captions] when it has them in a local `.lrc` file or its own tags, and a
- * [titleCard] and [endCard] with the song and artist. Kept with the Render, so making it again applies
- * them again.
+ * [titleCard] and [endCard] with the song and artist; one continuous video (#326) gets them for each
+ * track. Kept with the Render, so making it again applies them again.
  */
 data class RenderExtras(
     val loudness: RenderLoudness = RenderLoudness.LEAVE_AS_IS,

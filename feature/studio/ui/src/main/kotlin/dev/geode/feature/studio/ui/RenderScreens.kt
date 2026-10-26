@@ -326,10 +326,10 @@ private fun PlaylistModePicker(
     if (!draft.continuous) return Note(stringResource(R.string.studio_render_one_per_track))
     val seconds = draft.spec.join.crossfade.value / MILLIS_PER_SECOND
     val join =
-        if (draft.spec.join.crossfade.value > 0) {
-            pluralStringResource(R.plurals.studio_render_join_crossfade, seconds.toInt(), seconds)
-        } else {
-            stringResource(R.string.studio_render_join_gapless)
+        when {
+            draft.spec.join.crossfade.value > 0 -> pluralStringResource(R.plurals.studio_render_join_crossfade, seconds.toInt(), seconds)
+            draft.spec.join.gap.value > 0 -> stringResource(R.string.studio_render_join_gap)
+            else -> stringResource(R.string.studio_render_join_gapless)
         }
     Note(stringResource(R.string.studio_render_continuous_note, join))
 }
@@ -510,7 +510,7 @@ private fun PlaylistChapters(
     draft: RenderDraft,
     onSave: (ChapterFile) -> Unit,
 ) {
-    val text = chapterText(draft.spec.tracks, ChapterFile.DESCRIPTION, draft.spec.join.crossfade)
+    val text = chapterText(draft.spec.tracks, ChapterFile.DESCRIPTION, draft.spec.join)
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val label = stringResource(R.string.studio_render_chapters)

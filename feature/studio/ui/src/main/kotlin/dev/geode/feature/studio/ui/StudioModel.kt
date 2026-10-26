@@ -75,7 +75,7 @@ data class VideoModel(
      */
     fun chapters(file: ChapterFile): String {
         val made = video.madeWith?.takeIf { it.continuous } ?: return ""
-        return chapterText(made.tracks, file, made.join.crossfade)
+        return chapterText(made.tracks, file, made.join)
     }
 }
 

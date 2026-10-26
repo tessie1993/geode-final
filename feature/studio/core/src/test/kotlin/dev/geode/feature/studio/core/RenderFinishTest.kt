@@ -20,6 +20,7 @@ import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.api.edit.ClipContent
 import dev.geode.feature.studio.api.edit.EditorProject
@@ -46,6 +47,9 @@ class RenderFinishTest {
             SubtitleCue(58_000L, 62_000L, "Into the dawn"),
         )
     private val captions = RenderExtras(captions = true)
+    private val tide = RenderTrack(TrackId("content://media/7"), "Low Tide", Millis(40_000))
+    private val tideLyrics = listOf(SubtitleCue(1_000L, 3_000L, "Wave"), SubtitleCue(10_000L, 12_000L, "Sea"))
+    private val playlistVideo = video.copy(name = "Night Drive · Low Tide", length = Millis(100_000))
     private val cards = RenderExtras(titleCard = true, endCard = true)
 
     /** Each text clip on [lane] as (start, end, text). */
@@ -209,9 +213,11 @@ class RenderFinishTest {
     }
 
     @Test
-    fun `a Render without extras, a playlist's continuous video and an Edit are not finished`() {
+    fun `a Render without extras and an Edit are not finished, and a continuous video is`() {
         assertTrue(finishes(ended(job(RenderExtras(RenderLoudness.MINUS_14_LUFS)))).isEmpty())
-        assertTrue(finishes(ended(job(cards, listOf(night, night)))).isEmpty())
+        assertTrue(finishes(ended(job(cards, emptyList()))).isEmpty())
+        val joined = job(cards, listOf(night, tide))
+        assertEquals(listOf(joined), finishes(ended(joined)).map { it.render })
         val edit = job(cards).copy(edit = EditJob("cut", EditCut.Cut(EditorProject()), EditSources.REFERENCE))
         assertTrue(finishes(ended(edit)).isEmpty())
     }
@@ -245,12 +251,115 @@ class RenderFinishTest {
         )
         assertEquals(
             Next<StudioState, StudioEffect>(ready),
-            StudioReducer.reduce(ready, StudioEvent.FinishReady(job(cards, listOf(night, night)), video, emptyList())),
+            StudioReducer.reduce(
+                ready,
+                StudioEvent.FinishReady(job(captions, listOf(night, tide)), playlistVideo, listOf(emptyList(), emptyList())),
+            ),
+        )
+        assertEquals(
+            Next<StudioState, StudioEffect>(ready),
+            StudioReducer.reduce(ready, StudioEvent.FinishReady(job(cards, emptyList()), video, emptyList())),
         )
         val gone = ready.copy(projects = emptyList(), defaultProject = null)
         assertEquals(
             Next(gone, listOf(ReportFailure(NO_PROJECT_REFUSAL))),
             StudioReducer.reduce(gone, StudioEvent.FinishReady(job(cards), video, emptyList())),
         )
+    }
+
+    @Test
+    fun `a continuous video gets each track's cards at its own start and end`() {
+        val cut = RenderFinish.playlistCutOf(playlistVideo, listOf(night, tide), TrackJoin(), cards, emptyList())
+        assertEquals(
+            listOf(
+                Triple(0L, 4_000L, "Night Drive — The Neon"),
+                Triple(56_000L, 60_000L, "Night Drive — The Neon"),
+                Triple(60_000L, 64_000L, "Low Tide"),
+                Triple(96_000L, 100_000L, "Low Tide"),
+            ),
+            texts(cut, "lane-3"),
+        )
+        assertEquals(100_000L, checkNotNull(cut).timeline.durationMs)
+        assertFalse(RenderFinish.hasCaptions(cut))
+    }
+
+    @Test
+    fun `a continuous video's captions are each track's lyrics, timed from where it starts and clear of its cards`() {
+        val cut =
+            RenderFinish.playlistCutOf(
+                playlistVideo,
+                listOf(night, tide),
+                TrackJoin(),
+                cards.copy(captions = true),
+                listOf(lyrics, tideLyrics),
+            )
+        assertEquals(
+            listOf(
+                Triple(4_000L, 5_000L, "Lights on the road"),
+                Triple(12_500L, 16_000L, "We drive all night"),
+                Triple(70_000L, 72_000L, "Sea"),
+            ),
+            texts(cut, "lane-2"),
+        )
+        assertTrue(RenderFinish.hasCaptions(checkNotNull(cut)))
+    }
+
+    @Test
+    fun `with a crossfade or a gap each track starts where its chapter does`() {
+        val crossfaded =
+            RenderFinish.playlistCutOf(
+                playlistVideo,
+                listOf(night, tide),
+                TrackJoin(Millis(4_000)),
+                RenderExtras(titleCard = true),
+                emptyList(),
+            )
+        assertEquals(listOf(0L, 56_000L), texts(crossfaded, "lane-3").map { it.first })
+        val gapped =
+            RenderFinish.playlistCutOf(
+                playlistVideo,
+                listOf(night, tide),
+                TrackJoin(gap = Millis(200)),
+                captions,
+                listOf(emptyList(), tideLyrics),
+            )
+        assertEquals(listOf(Triple(61_200L, 63_200L, "Wave"), Triple(70_200L, 72_200L, "Sea")), texts(gapped, "lane-2"))
+    }
+
+    @Test
+    fun `a continuous video with nothing to add, no length, or tracks past its end adds nothing there`() {
+        assertNull(RenderFinish.playlistCutOf(playlistVideo, listOf(night, tide), TrackJoin(), captions, emptyList()))
+        assertNull(
+            RenderFinish.playlistCutOf(playlistVideo.copy(length = Millis.ZERO), listOf(night, tide), TrackJoin(), cards, emptyList()),
+        )
+        assertNull(RenderFinish.playlistCutOf(playlistVideo, emptyList(), TrackJoin(), cards, emptyList()))
+        val one = RenderFinish.playlistCutOf(video, listOf(night), TrackJoin(), cards, emptyList())
+        assertEquals(listOf(0L, 56_000L), texts(one, "lane-3").map { it.first })
+        // The video came out shorter than the playlist: the second track's cards are left out.
+        val short =
+            RenderFinish.playlistCutOf(
+                playlistVideo.copy(length = Millis(60_000)),
+                listOf(night, tide),
+                TrackJoin(),
+                cards,
+                emptyList(),
+            )
+        assertEquals(listOf("Night Drive — The Neon", "Night Drive — The Neon"), texts(short, "lane-3").map { it.third })
+    }
+
+    @Test
+    fun `a continuous video's extras Edit is queued with every track's captions and cards`() {
+        val joined = job(cards, listOf(night, tide))
+        val next = StudioReducer.reduce(ready, StudioEvent.FinishReady(joined, playlistVideo, listOf(lyrics, tideLyrics)))
+        val cut =
+            checkNotNull(RenderFinish.playlistCutOf(playlistVideo, listOf(night, tide), TrackJoin(), cards, listOf(lyrics, tideLyrics)))
+        val queued =
+            next.effects
+                .filterIsInstance<Perform<*>>()
+                .map { it.work }
+                .filterIsInstance<EditWork.QueueEdit>()
+                .single()
+        assertEquals(EditCut.Cut(cut), queued.render.edit?.cut)
+        assertEquals("Night Drive · Low Tide with cards", queued.render.edit?.name)
     }
 }

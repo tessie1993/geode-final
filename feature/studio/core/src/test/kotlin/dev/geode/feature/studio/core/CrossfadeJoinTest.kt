@@ -18,9 +18,10 @@ class CrossfadeJoinTest {
         channels: Int = 1,
         curve: FadeCurve = FadeCurve.LINEAR,
         block: Int = CrossfadeJoin.BLOCK_FRAMES,
+        gap: Int = 0,
     ): CrossfadeJoin {
         this.channels = channels
-        return CrossfadeJoin(fade, channels, curve, block) { samples, frames -> heard.addAll(samples.take(frames * channels)) }
+        return CrossfadeJoin(fade, channels, curve, block, gap) { samples, frames -> heard.addAll(samples.take(frames * channels)) }
     }
 
     private fun CrossfadeJoin.track(
@@ -177,5 +178,26 @@ class CrossfadeJoinTest {
         assertHeard(1f, 1f, 1f, 5f / 6f + 0.5f, 0.5f, 0.5f / 6f + 2.5f, 5f, 5f, 5f)
         assertEquals(listOf(0L, 3L, 5L), joined.starts)
         assertEquals(listOf(0L, 3L, 1L), joined.overlaps)
+    }
+
+    @Test
+    fun `without gapless the tracks are parted by silence`() {
+        val joined = join(fade = 0, channels = 2, gap = 2)
+        joined.track(1f, -1f, 2f, -2f)
+        joined.track(3f, -3f)
+        joined.finish()
+        assertHeard(1f, -1f, 2f, -2f, 0f, 0f, 0f, 0f, 3f, -3f)
+        assertEquals(listOf(0L, 4L), joined.starts)
+        assertEquals(listOf(0L, 0L), joined.overlaps)
+    }
+
+    @Test
+    fun `a crossfade leaves no gap, and nothing comes before the first track`() {
+        val joined = join(fade = 2, gap = 3)
+        joined.track(1f, 1f, 1f, 1f, 1f, 1f)
+        joined.track(3f, 3f, 3f, 3f, expected = 4L)
+        joined.finish()
+        assertHeard(1f, 1f, 1f, 1f, 1.5f, 2.5f, 3f, 3f)
+        assertEquals(listOf(0L, 4L), joined.starts)
     }
 }

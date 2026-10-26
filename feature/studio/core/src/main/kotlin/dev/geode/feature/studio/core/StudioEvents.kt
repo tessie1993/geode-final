@@ -106,7 +106,7 @@ sealed interface StudioEvent {
     data class FinishReady(
         val render: RenderJob,
         val video: NewVideo,
-        val lyrics: List<SubtitleCue>,
+        val lyrics: List<List<SubtitleCue>>,
     ) : StudioEvent
 }
 

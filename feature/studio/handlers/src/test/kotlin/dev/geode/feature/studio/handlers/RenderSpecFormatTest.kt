@@ -96,6 +96,8 @@ class RenderSpecFormatTest {
                 trackLooks = listOf(calm, RenderLook.Current),
                 join = TrackJoin(Millis(6_000), FadeCurve.SMOOTH),
             )
+        val gapped = render.copy(join = TrackJoin(gap = Millis(200)))
+        assertEquals(gapped, RenderSpecFormat.decode(RenderSpecFormat.encode(gapped)))
 
         assertEquals(render, RenderSpecFormat.decode(RenderSpecFormat.encode(render)))
     }
@@ -111,7 +113,7 @@ class RenderSpecFormatTest {
         assertEquals(emptyList<RenderLook>(), read.trackLooks)
         assertEquals(TrackJoin(), read.join)
 
-        val odd = old.put("join", JSONObject().put("crossfadeMs", -5).put("curve", "WOBBLE"))
+        val odd = old.put("join", JSONObject().put("crossfadeMs", -5).put("curve", "WOBBLE").put("gapMs", -1))
         assertEquals(TrackJoin(Millis.ZERO, FadeCurve.EQUAL_POWER), RenderSpecFormat.decode(odd.toString()).join)
     }
 

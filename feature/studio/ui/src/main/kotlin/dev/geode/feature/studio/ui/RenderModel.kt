@@ -17,6 +17,7 @@ import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 
@@ -149,14 +150,14 @@ data class RenderDraft(
 
 /**
  * The chapters of a video of [tracks], one song after another (#329), as [file]'s text: one per song at
- * the moment it starts, fading in over the one before by [crossfade] (#326). Empty for a single Track.
+ * the moment it starts, as the tracks [join] (#326). Empty for a single Track.
  */
 fun chapterText(
     tracks: List<RenderTrack>,
     file: ChapterFile,
-    crossfade: Millis = Millis.ZERO,
+    join: TrackJoin = TrackJoin(),
 ): String {
-    val chapters = Chapters.of(tracks, crossfade)
+    val chapters = Chapters.of(tracks, join.crossfade, join.gap)
     if (chapters.isEmpty()) return ""
     return when (file) {
         ChapterFile.DESCRIPTION -> Chapters.description(chapters)

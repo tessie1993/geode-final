@@ -16,6 +16,7 @@ import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.api.edit.EditorProject
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.ReportFailure
@@ -180,14 +181,15 @@ internal object RenderQueue {
     private fun StudioState.replacing(job: RenderJob): StudioState = copy(renders = renders.map { if (it.id == job.id) job else it })
 
     /**
-     * Its extras for a finished Render of one Track that has any (#329): the lyrics are read, then the
-     * captions and cards are made as an Edit of its video. An Edit's export has none of its own.
+     * Its extras for a finished Render that has any (#329), of one Track or one continuous video of a
+     * playlist (#326): the lyrics are read, then the captions and cards are made as an Edit of its video.
+     * An Edit's export has none of its own.
      */
     private fun finishing(
         job: RenderJob,
         video: NewVideo,
     ): List<StudioEffect> =
-        if (job.edit == null && job.tracks.size == 1 && job.extras.finishing) {
+        if (job.edit == null && job.tracks.isNotEmpty() && job.extras.finishing) {
             listOf(Perform(StudioWork.FinishRender(job, video)))
         } else {
             emptyList()
@@ -202,13 +204,25 @@ internal object RenderQueue {
         event: StudioEvent.FinishReady,
     ): Next<StudioState, StudioEffect> {
         val render = event.render
-        val track = render.tracks.singleOrNull() ?: return Next(state)
-        val cut = RenderFinish.cutOf(event.video, track, render.length, render.extras, event.lyrics) ?: return Next(state)
+        val cut = finishCutOf(render, event) ?: return Next(state)
         val into = state.projectFor(render.project) ?: return Next(state, listOf(ReportFailure(NO_PROJECT_REFUSAL)))
         val name = RenderFinish.nameOf(event.video.name, render.extras, RenderFinish.hasCaptions(cut))
         val job = EditJob(name, EditCut.Cut(cut), EditSources.REFERENCE)
         // The Render's sound was levelled already; the Edit keeps it as it is.
         return Edits.queueEdit(state, job, render.format, RenderExtras(), into, MadeFrom(event.video.file, VideoKind.EDIT))
+    }
+
+    /**
+     * The Edit with [render]'s captions and cards: of its one Track, or of every track of a continuous video
+     * inside the one video (#326); null when there is nothing to add, or nothing was rendered.
+     */
+    private fun finishCutOf(
+        render: RenderJob,
+        event: StudioEvent.FinishReady,
+    ): EditorProject? {
+        val track = render.tracks.singleOrNull()
+        if (track != null) return RenderFinish.cutOf(event.video, track, render.length, render.extras, event.lyrics.firstOrNull().orEmpty())
+        return RenderFinish.playlistCutOf(event.video, render.tracks, render.join, render.extras, event.lyrics)
     }
 
     /**

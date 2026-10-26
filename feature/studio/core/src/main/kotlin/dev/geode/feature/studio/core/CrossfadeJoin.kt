@@ -9,7 +9,7 @@ import kotlin.math.sin
  * One continuous video's sound (#326): its tracks, decoded one after another, joined as the Playback
  * settings join them. With a crossfade of [fadeFrames], each track fades in over the end of the one before
  * it as that one fades out, along [curve], the way Playback's mixer crosses them; with none they follow one
- * another gaplessly. A crossfade never takes more than half of either track (see
+ * another gaplessly, or parted by [gapFrames] of silence when Playback would leave a gap. A crossfade never takes more than half of either track (see
  * [dev.geode.feature.studio.api.Chapters.overlap]), so no track is ever heard with two others.
  *
  * The sound streams through: the newest [fadeFrames] of the track being written are held back until it is
@@ -23,6 +23,7 @@ class CrossfadeJoin(
     private val channels: Int,
     private val curve: FadeCurve,
     blockSize: Int = BLOCK_FRAMES,
+    private val gapFrames: Int = 0,
     private val out: (samples: FloatArray, frames: Int) -> Unit,
 ) {
     private val pending = FloatArray(blockSize.coerceAtLeast(1) * channels)
@@ -42,6 +43,7 @@ class CrossfadeJoin(
     private var started = false
     private var trackFrames = 0L
     private val frame = FloatArray(channels)
+    private val silence = FloatArray(channels)
 
     private val trackStarts = ArrayList<Long>()
     private val trackOverlaps = ArrayList<Long>()
@@ -65,6 +67,8 @@ class CrossfadeJoin(
         val shared = if (expectedFrames > 0) minOf(tailLength.toLong(), expectedFrames / 2).toInt() else tailLength
         // The part of the tail that is not crossfaded plays out as it was.
         for (i in 0 until tailLength - shared) emit(tail, i * channels)
+        // Tracks that do not overlap are parted by the gap, if any; nothing comes before the first.
+        if (started && shared == 0) repeat(gapFrames) { emit(silence, 0) }
         tailFirst = tailLength - shared
         overlap = shared
         tailDone = 0
@@ -119,7 +123,6 @@ class CrossfadeJoin(
 
     /** The rest of the track before's tail, faded out over silence: the current track ended inside it. */
     private fun fadeTailAlone() {
-        val silence = FloatArray(channels)
         while (tailDone < overlap) {
             mixed(silence, 0)
             hold(frame, 0)

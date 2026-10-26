@@ -22,12 +22,14 @@ data class TrackChapter(
 object Chapters {
     /**
      * One chapter per track of [tracks] in order, each named after its song and artist; none for a single
-     * track. With a [crossfade], each song starts that long before the one before it ends (see [overlap]),
-     * and each chapter runs until the next one starts, so the chapters tile the video.
+     * track. With a [crossfade], each song starts that long before the one before it ends (see [overlap]);
+     * songs that do not overlap are parted by [gap], the silence Playback leaves without gapless. Each
+     * chapter runs until the next one starts, so the chapters tile the video.
      */
     fun of(
         tracks: List<RenderTrack>,
         crossfade: Millis = Millis.ZERO,
+        gap: Millis = Millis.ZERO,
     ): List<TrackChapter> {
         if (tracks.size < 2) return emptyList()
         val lengths = tracks.map { it.length.value.coerceAtLeast(0L) }
@@ -36,7 +38,9 @@ object Chapters {
             val length = lengths[index]
             val next = lengths.getOrNull(index + 1)
             val shared = if (next == null) 0L else overlap(crossfade, Millis(length), Millis(next)).value
-            TrackChapter(start, length - shared, titleOf(track, index)).also { start += length - shared }
+            val parted = if (next != null && shared == 0L) gap.value.coerceAtLeast(0L) else 0L
+            val runs = length - shared + parted
+            TrackChapter(start, runs, titleOf(track, index)).also { start += runs }
         }
     }
 

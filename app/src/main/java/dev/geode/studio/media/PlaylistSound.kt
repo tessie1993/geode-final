@@ -19,7 +19,8 @@ import java.nio.ByteOrder
 
 /**
  * One continuous video's sound (#326): its tracks decoded one after another, each levelled by its own gain
- * (#329), brought to the first track's sample rate, and joined as the Playback settings join them
+ * (#329), brought to the first track's sample rate, and joined as the Playback settings join them, crossfaded,
+ * gapless or parted by Playback's gap
  * ([CrossfadeJoin]), into one stereo AIFF file in the app's cache. The Render then reads that file as it
  * reads a Track: its analysis, the sound its scenes hear, and the sound muxed beside the video. Where each
  * track starts in it, and how long it overlaps the one before, come back with it for the chapters and the
@@ -155,7 +156,8 @@ class PlaylistSound(
             joiner?.let { return it }
             rate = firstRate
             val fade = (join.crossfade.value * rate / MILLIS_PER_SECOND).toInt()
-            return CrossfadeJoin(fade, CHANNELS, join.curve, out = ::write).also { joiner = it }
+            val gap = (join.gap.value * rate / MILLIS_PER_SECOND).toInt()
+            return CrossfadeJoin(fade, CHANNELS, join.curve, gapFrames = gap, out = ::write).also { joiner = it }
         }
 
         /** Writes [frames] of joined stereo sound as 16-bit big-endian samples, as AIFF keeps them. */

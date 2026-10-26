@@ -825,6 +825,12 @@ class StudioStoreTest {
         )
         assertEquals(Millis.ZERO, renderSettingsOf(SettingsValues(playback = PlaybackSettings(crossfade = Millis(-1)))).join.crossfade)
         assertEquals(TrackJoin(), renderSettingsOf(SettingsValues()).join)
+        // Without gapless, the gap Playback leaves; a crossfade leaves none.
+        assertEquals(Millis(200), renderSettingsOf(SettingsValues(playback = PlaybackSettings(gapless = false))).join.gap)
+        assertEquals(
+            TrackJoin(Millis(3_000)),
+            renderSettingsOf(SettingsValues(playback = PlaybackSettings(gapless = false, crossfade = Millis(3_000)))).join,
+        )
     }
 
     @Test

@@ -209,6 +209,7 @@ class RenderModelTest {
     @Test
     fun `a continuous video's chapters start where each track fades in`() {
         val tracks = listOf(PreviewStudio.night, PreviewStudio.tide)
-        assertEquals("0:00 Midnight City\n4:00 Teardrop\n", chapterText(tracks, ChapterFile.DESCRIPTION, Millis(4_000)))
+        assertEquals("0:00 Midnight City\n4:00 Teardrop\n", chapterText(tracks, ChapterFile.DESCRIPTION, TrackJoin(Millis(4_000))))
+        assertEquals("0:00 Midnight City\n4:04 Teardrop\n", chapterText(tracks, ChapterFile.DESCRIPTION, TrackJoin(gap = Millis(200))))
     }
 }

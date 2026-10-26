@@ -93,10 +93,15 @@ internal object RenderSpecFormat {
         )
     }
 
-    private fun join(join: TrackJoin): JSONObject = JSONObject().put(CROSSFADE_MS, join.crossfade.value).put(CURVE, join.curve.name)
+    private fun join(join: TrackJoin): JSONObject =
+        JSONObject().put(CROSSFADE_MS, join.crossfade.value).put(CURVE, join.curve.name).put(GAP_MS, join.gap.value)
 
     private fun joinOf(o: JSONObject): TrackJoin =
-        TrackJoin(Millis(o.optLong(CROSSFADE_MS).coerceAtLeast(0L)), enumOr(o.optString(CURVE), FadeCurve.EQUAL_POWER))
+        TrackJoin(
+            Millis(o.optLong(CROSSFADE_MS).coerceAtLeast(0L)),
+            enumOr(o.optString(CURVE), FadeCurve.EQUAL_POWER),
+            Millis(o.optLong(GAP_MS).coerceAtLeast(0L)),
+        )
 
     private fun madeFrom(made: MadeFrom): JSONObject = JSONObject().put(FILE, made.file).put(KIND, made.kind.name)
 
@@ -235,4 +240,5 @@ internal object RenderSpecFormat {
     private const val JOIN = "join"
     private const val CROSSFADE_MS = "crossfadeMs"
     private const val CURVE = "curve"
+    private const val GAP_MS = "gapMs"
 }
