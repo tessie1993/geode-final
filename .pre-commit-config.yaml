@@ -74,10 +74,10 @@ repos:
         files: '(^gradle/.*\.toml$|\.gradle\.kts$)'
         require_serial: true
       - id: ktlint
-        name: Check staged app/engine Kotlin with Gradle ktlint
+        name: Check staged module Kotlin with Gradle ktlint
         language: python
         entry: python tools/hooks/check_kotlin.py
-        files: '^(app|engine)/.*\.kts?$'
+        files: '^(app|engine|arch|design|feature)/.*\.kts?$'
         require_serial: true
       - id: native-dependency-pins
         name: Check changed native submodule pins

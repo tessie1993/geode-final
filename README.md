@@ -132,7 +132,6 @@ portability, not device checks.
 - [CHANGELOG.md](CHANGELOG.md) — version history, newest first.
 - [docs/AUDIO_CHAIN.md](docs/AUDIO_CHAIN.md) — where playback audio goes and
   which stages the visuals see.
-- [docs/PARAM_MATRIX.md](docs/PARAM_MATRIX.md) — param × scene-family matrix.
 - [docs/VISUAL_STYLE_RESEARCH.md](docs/VISUAL_STYLE_RESEARCH.md) — design
   rationale and the style catalogue.
 - [docs/DEVICE_CHECKS.md](docs/DEVICE_CHECKS.md) — on-device checklist.

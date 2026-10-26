@@ -13,7 +13,7 @@ Issues and specs for this repo live as GitHub issues on `tessie1993/geode-final`
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
+**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; the triage skill reads this flag.)_
 
 When set to `yes`, PRs run through the same labels and states as issues, read with `pull_request_read`.
 
@@ -29,7 +29,7 @@ Read the issue with its comments.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+Used by the wayfinder skill, where installed. The **map** is a single issue with **child** issues as tickets.
 
 - **Map**: a single issue labelled `wayfinder:map`, holding the Destination / Notes / Decisions-so-far / Not-yet-specified / Out-of-scope body.
 - **Child ticket**: a GitHub sub-issue of the map: create it, then `sub_issue_write` with `method: add` and the child's numeric id. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.

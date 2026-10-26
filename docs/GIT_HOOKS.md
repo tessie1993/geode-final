@@ -47,7 +47,7 @@ pre-commit deliberately refuses to overwrite that configuration.
 | clang-format 21.1.8 | Changed first-party C/C++ sources and headers, using [.clang-format](../.clang-format) |
 | Cppcheck (Python wheel 1.5.3) | Changed C/C++ files: bug, performance, and portability diagnostics; C++20 and each native library's public `core/<lib>/include` directory |
 | cmake-lint 0.6.13 | Changed CMake files, using [.cmake-format.yaml](../.cmake-format.yaml) |
-| Kotlin ktlint | Changed Kotlin sources/scripts under `app/` and `engine/`, using the existing Gradle plugin and Android rules |
+| Kotlin ktlint | Changed Kotlin sources/scripts under `app/`, `engine/`, `arch/`, `design/` and `feature/`, using the existing Gradle plugin and Android rules |
 | Gradle dependencies | Catalog syntax, exact release versions, version/bundle references, and literal Gradle dependency/plugin versions |
 | Native dependencies | When `.gitmodules` or `third_party/` gitlinks change, check that declarations and staged submodule revisions agree |
 
@@ -59,7 +59,7 @@ violations. There is no repository-wide reformat as part of installation.
 
 The Kotlin bridge uses the same staged-file filter as
 [ktlint-gradle's own hook](https://github.com/JLLeitschuh/ktlint-gradle/blob/v14.2.0/plugin/src/main/kotlin/org/jlleitschuh/gradle/ktlint/GitHook.kt).
-Root/build-logic Kotlin scripts are outside the current app/engine lint scope;
+Root/build-logic Kotlin scripts are outside the module lint scope;
 their dependency literals are still checked. Keep the bridge compatible when
 upgrading the ktlint Gradle plugin.
 
@@ -71,11 +71,6 @@ dependencies. Native pins use the Git index; they need no submodule checkout.
 Full Android lint, Detekt, unit tests, and native compilation remain in the
 existing build/CI workflow. Cppcheck, clang-format, and cmake-lint do not replace a C++
 compiler or clang-tidy with an Android compilation database.
-
-The initial checkout declares projectM, kissfft, TagLib, and Oboe in `.gitmodules`
-but has no corresponding tracked gitlinks. The full native pin audit will flag
-these until the correct revisions are restored. Ordinary commits are unaffected;
-the native pin hook runs its validation when those dependency paths change.
 
 ## Tool selection
 
@@ -126,12 +121,13 @@ started manually with **Run workflow** after the workflow exists on the default
 branch. It needs no hook installation on a contributor's machine. The existing
 Android workflow continues to run its build and quality checks independently.
 
-The smoke job uses Ubuntu 24.04, Python 3.12.14, commit-pinned setup actions,
-pre-commit 4.7.0 from `requirements.txt`, and PyYAML 6.0.3. It validates the
-configuration and Python syntax, runs the offline regression tests, and installs
-the actual environments specified by `.pre-commit-config.yaml`. A fresh,
-job-local cache makes environment installation part of each run. These are
-tool/version pins, not a hash-locked transitive dependency or runner image lock.
+The smoke job's runner image, Python version and setup actions are pinned in the
+workflow file; pre-commit and PyYAML in `tools/hooks/requirements.txt` and
+`requirements-smoke.txt`. It validates the configuration and Python syntax, runs
+the offline regression tests, and installs the actual environments specified by
+`.pre-commit-config.yaml`. A fresh, job-local cache makes environment
+installation part of each run. These are tool/version pins, not a hash-locked
+transitive dependency or runner image lock.
 
 `smoke_pre_commit.py` copies the unchanged hook configuration and checker scripts
 into disposable Git repositories. It exercises:
@@ -154,7 +150,7 @@ reformat source files, initialize native submodules, or run a full native pin au
 
 This is smoke coverage of representative fixtures, **not** repository-wide lint,
 an Android/native build, dependency resolution, cross-platform certification, or
-a complete end-to-end Kotlin check. Full Kotlin checks remain in `android.yml`.
+a complete end-to-end Kotlin check. Full Kotlin checks remain in `ci.yml`.
 
 To reproduce in a disposable environment (POSIX; use `Scripts/python.exe` on
 Windows for the offline tests; the smoke fixtures target the Linux CI runner):
