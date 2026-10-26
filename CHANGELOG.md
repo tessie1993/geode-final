@@ -11,6 +11,14 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **No more tear across the middle of shader Styles (#456).** Morph's polar
+  remap used the raw angle, which jumps by a full turn on the left half of
+  the middle line, so any Morph above 0 split the picture there. It now
+  uses a continuous function of the angle, in the shared `view()` and in
+  the classic Styles' own copies. Solar's rays read the spectrum mirrored
+  about the vertical, so its 16 kHz and 30 Hz ends no longer meet on that
+  line.
+
 - **Scope and Waves are removed (#456).** The owner cut both Styles; their
   packs, their built-in Reactions and Extras and their ids go. A stored
   preset or setting naming either loads as the default Style. The feedback

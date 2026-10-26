@@ -156,7 +156,7 @@ void main() {
     float ang = atan(uv.y, uv.x);
     float core = 0.26 * xm(uXSize) + uBass * uBeatResponse * 0.1;
     float sunEdge = smoothstep(core + 0.02, core - 0.02, r);
-    float rays = pow(max(0.0, sin(ang * xcount(8.0) + uTime)), 3.0) * aband(fract(ang / 6.2831853 + 0.5));
+    float rays = pow(max(0.0, sin(ang * xcount(8.0) + uTime)), 3.0) * aband(abs(ang) / 3.14159265);
     float corona = exp(-(r - core) * 3.5 * xm(uXEdge)) * step(core, r) * (0.35 + rays + uBass);
     float flicker = 0.9 + 0.1 * sin(uTime * 9.0 + r * 20.0) * uTreble;
     vec3 col = pal(0.06 + r * 0.3) * (sunEdge * (1.1 + uBeat * uBeatResponse * 0.5) + corona) * flicker;

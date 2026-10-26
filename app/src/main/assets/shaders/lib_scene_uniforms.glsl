@@ -165,11 +165,13 @@ vec2 view() {
     uv += 1.0 - 2.0 * abs(2.0 * driftPhase - 1.0);
     uv += uShake * uBeat * 0.03 * vec2(sin(uTime * 91.7), cos(uTime * 77.3));
     // Morph: blend the plane toward a polar remap (angle,radius swap), a
-    // smooth geometric metamorphosis that works on any scene.
+    // smooth geometric metamorphosis that works on any scene. The angle enters
+    // as -cos(ma), not ma itself: atan jumps by 2pi across the left half of the
+    // middle line, and a raw angle tore the picture there.
     if (uMorph > 0.001) {
         float mr = length(uv);
         float ma = atan(uv.y, uv.x);
-        vec2 polar = vec2(ma / 3.14159, (mr - 0.7) * 1.6);
+        vec2 polar = vec2(-cos(ma), (mr - 0.7) * 1.6);
         uv = mix(uv, polar, uMorph * (0.6 + 0.15 * sin(uTime * 0.31)));
     }
     float a = uRotation + uSway * 0.35 * sin(uTime * 0.7);
