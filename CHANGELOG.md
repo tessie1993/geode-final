@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Vortex Forge (#323).** A new Style: fire and smoke shells spiralling
+  down a funnel into a white-hot core, seen from above and circled slowly by
+  its own camera, with far stars, god rays and star streaks from the core and
+  the 3D particle layer streaming past. Its spiral never winds up: the shells
+  are read in a log-polar frame that slides inward, so they drain into the
+  core forever. Drops and arrivals throw a spark burst (the Surge and Change
+  Reactions push its Force Extra, rising over the No-flash rise and settling
+  over 1.6 s): many more sparks fly out of the core and the shells are blown
+  outward, without brightening the frame. Its variant turns the smoke into a
+  blue galaxy.
+
 - **Shared Style inputs (#312).** A shader Style can declare, in its
   manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D
   noise, a 32³ noise volume and the blue-noise mask), its previous frame,
