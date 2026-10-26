@@ -129,6 +129,11 @@ public:
     const std::vector<FamilySchema>& families() const { return families_; }
     const std::vector<PackProblem>& problems() const { return problems_; }
 
+    // The debug build's Style lab (geode/viz/StyleLab.hpp; defined in StyleLab.cpp): replaces Style `id`
+    // with the pack `manifestText` declares, read as if from folder `id`. The problem, and no change,
+    // when no Style has that id or the text is not a valid manifest for it.
+    std::optional<PackProblem> replace(const std::string& id, const std::string& manifestText);
+
 private:
     std::vector<FamilySchema> families_;
     std::vector<StylePack> styles_;

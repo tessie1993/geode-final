@@ -345,6 +345,13 @@ void ShaderScene::compilePendingIfAny() {
     host_.onShaderError("");
 }
 
+#ifdef GEODE_STYLE_HOT_RELOAD
+void ShaderScene::replaceFragment(std::string fragment) {
+    std::lock_guard<std::mutex> lock(pendingLock_);
+    pendingFragment_ = std::move(fragment);
+}
+#endif
+
 void ShaderScene::release() {
     if (program_ != 0) glDeleteProgram(program_);
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);

@@ -11,6 +11,15 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Fast Style authoring loop (#284).** Shaders are assembled with `#line`
+  directives, so a compile error names the Style's file and line
+  (`styles/kifs/shader.glsl:12`) on the phone, in the render check and in
+  glslang. Debug builds reload a Style's shader and manifest pushed with adb
+  to their Style lab folder within about a second, keeping the last good
+  shader when a new one fails; release builds compile no hot-reload path.
+  CI checks every Style with glslang (GLSL ES 3.00, CI only), and
+  `tools/glslcheck/check.mjs --watch --push` re-checks and pushes on every
+  save. See docs/style-packs.md, "Authoring loop".
 
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings

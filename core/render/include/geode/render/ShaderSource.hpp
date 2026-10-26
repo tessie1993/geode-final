@@ -3,10 +3,11 @@
 
 #include <optional>
 #include <string>
-#include <vector>
 
 namespace geode::viz {
 
+// Shader sources from the APK, assembled by geode/util/ShaderAssembly.hpp: includes resolved, and
+// `#line` directives in, so a compile error names the file and line the author wrote.
 class ShaderSource {
 public:
     explicit ShaderSource(AAssetManager* assets) : assets_(assets) {}
@@ -17,15 +18,10 @@ public:
     // against shaders/; nullopt when the asset is missing.
     std::optional<std::string> loadAsset(const std::string& path, std::string* error) const;
     std::optional<std::string> readAsset(const std::string& path) const;
-    std::optional<std::string> resolveIncludes(const std::string& source, std::string* error) const;
+    // Resolves the //#include lines of `source`, reported as `file` in compile errors, against shaders/.
+    std::optional<std::string> resolveIncludes(const std::string& file, const std::string& source, std::string* error) const;
 
 private:
-    static bool isIncludeName(const std::string& name);
-    // Recurses into an included lib's own //#include lines; `visited` guards
-    // against a cycle between lib_* files.
-    std::optional<std::string> resolveIncludes(const std::string& source, std::string* error,
-                                                std::vector<std::string>& visited) const;
-
     AAssetManager* assets_;
 };
 

@@ -74,6 +74,7 @@ geode_core_library(geode_viz viz
     viz/SceneRegistry.cpp
     viz/Renderer.cpp
     viz/RendererFrame.cpp
+    viz/RendererStyleLab.cpp
     viz/scenes/ShaderScene.cpp
     viz/BlueNoise.cpp
     viz/Overlays.cpp

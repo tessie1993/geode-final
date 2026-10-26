@@ -39,6 +39,12 @@ public:
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
     bool ownsCamera() const override { return ownsCamera_; }
 
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // The Style lab (debug builds only): compiles `fragment` at the next draw through the pending
+    // fragment, and keeps drawing the last shader that compiled when it does not.
+    void replaceFragment(std::string fragment);
+#endif
+
 private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
     static constexpr float kTwoPi = 6.2831853f;

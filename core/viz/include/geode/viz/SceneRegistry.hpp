@@ -1,5 +1,7 @@
 #pragma once
+#include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,10 +28,24 @@ public:
     // Builds an uninitialised scene; nullptr for an id native code cannot draw.
     std::unique_ptr<Scene> create(const std::string& id, const std::string& quadVert) const;
 
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // The Style lab (debug builds only, geode/viz/StyleLab.hpp): from now on Style `id` is the pack
+    // `manifest` declares and draws `shader`, each when given. False, with the reason in `error` and
+    // nothing changed, for an id no pack declares or a manifest that is not valid for it.
+    bool reload(const std::string& id, const std::optional<std::string>& manifest, const std::optional<std::string>& shader,
+                std::string* error);
+    // The assembled fragment shader a shader Style draws now: the lab's, else the APK's.
+    std::optional<std::string> fragment(const packs::StylePack& pack, std::string* error) const;
+#endif
+
 private:
     ProgramLoader loader_;
     SceneHost host_;
     packs::StylePackRegistry packs_;
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Style id -> the shader text the lab pushed for it, includes unresolved.
+    std::map<std::string, std::string> labShaders_;
+#endif
 };
 
 }  // namespace geode::viz
