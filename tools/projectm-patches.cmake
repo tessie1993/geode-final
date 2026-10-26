@@ -29,6 +29,9 @@
 #                                              use (spectrum and waveform textures, pointer, clock,
 #                                              tanh and friends, random slots above 15), plus
 #                                              projectm_set_pointer and a shader fallback callback (#306).
+#   projectm-v4.1.8-milkdrop3-extras.patch     the larger presets MilkDrop 3 writes: 16 custom waves and
+#                                              16 custom shapes (MilkDrop 2: 4 each), and q1 to q64
+#                                              (MilkDrop 2: q32) in the equations and the shaders (#389).
 #   projectm-eval-render-clock.patch           (in vendor/projectm-eval) lets the seeded instance feed
 #                                              the expression rand() as well.
 #
@@ -80,7 +83,8 @@ set(GEODE_PROJECTM_PATCHES
     texture-pool
     lean-frame
     program-cache
-    shader-extras)
+    shader-extras
+    milkdrop3-extras)
 
 # Patches the projectM checkout at projectm_dir and keeps the build on the patched, vendored
 # projectm-eval (a system-installed one would not carry the patch).

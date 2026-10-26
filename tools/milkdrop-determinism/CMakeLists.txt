@@ -54,6 +54,8 @@ add_test(NAME milkdrop_presets_run_as_written
 # Our own presets using every shader name and intrinsic tools/projectm-v4.1.8-shader-extras.patch adds
 # (the names BeatDrop-era presets read: get_fft, get_wave, mouse, sysTime, aspect_sd...; tanh and
 # friends; a sampler_state block and a declaration with code after it on its line) keep their shaders.
+# extras_milkdrop3_banks.milk (tools/projectm-v4.1.8-milkdrop3-extras.patch) is lit only by custom wave 9
+# and custom shape 14 and composited through q64, so it is black unless the MilkDrop 3 slots and q banks work.
 add_test(NAME milkdrop_preset_smoke_runs_the_shader_extras
     COMMAND milkdrop_preset_smoke
         "${CMAKE_CURRENT_SOURCE_DIR}/fixtures"

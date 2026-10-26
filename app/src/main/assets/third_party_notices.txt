@@ -119,6 +119,9 @@ patches applied at build time, in this order:
                                              more HLSL intrinsics (also in
                                              the vendored hlslparser), and a
                                              shader fallback callback
+  projectm-v4.1.8-milkdrop3-extras.patch     MilkDrop 3's larger presets:
+                                             16 custom waves, 16 custom
+                                             shapes and q1 to q64
   projectm-eval-render-clock.patch           (applied to the bundled
                                              projectm-eval) lets the seeded
                                              instance feed rand() as well

@@ -11,6 +11,13 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **MilkDrop 3 presets play in full (#389).** Geode's projectM
+  (`projectm-v4.1.8-milkdrop3-extras.patch`) now runs the larger presets
+  MilkDrop 3 writes: up to 16 custom waves and 16 custom shapes, and the
+  variables `q1` to `q64` in the equations and the shaders. MilkDrop 2
+  presets are unchanged. projectM 4.2 itself is not tagged yet, so the
+  engine stays on 4.1.8 with Geode's patches.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio

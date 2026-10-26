@@ -48,6 +48,11 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
   texture slots up to `rand99` are accepted. `projectm_set_shader_fallback_event_callback` reports a
   preset shader that fell back to the plain warp or composite. Written from the documented behaviour
   only; no BeatDrop code.
+- `tools/projectm-v4.1.8-milkdrop3-extras.patch` plays the larger presets MilkDrop 3 writes (#389):
+  16 custom waves and 16 custom shapes instead of 4 each (`wavecode_4` to `wavecode_15`,
+  `shapecode_4` to `shapecode_15` and their code), and `q1` to `q64` instead of `q32`, carried from the
+  per-frame equations to the waves, shapes, per-pixel equations and both shaders (`_qi` to `_qp`).
+  MilkDrop 2 presets play as before; the extra slots are off unless a preset enables them.
 - `tools/projectm-eval-render-clock.patch`, applied inside `vendor/projectm-eval`, lets the seeded
   instance feed the expression `rand()` too. The build therefore always uses the vendored
   projectm-eval, never a system one.
@@ -56,6 +61,10 @@ The root `CMakeLists.txt` includes `tools/projectm-patches.cmake` and links `lib
 `projectM` target. LGPL-2.1: the patches are the corresponding source of the modification.
 Run `git submodule update --init --recursive` after cloning or pulling; the app build then compiles it per ABI.
 `checkNativePageAlignment` in `app/build.gradle.kts` still checks every packaged `.so` for 16 KB alignment.
+
+projectM 4.2 is not tagged yet (upstream master already calls itself 4.2.0). When it is, the
+submodule moves to that tag and the patches upstream now carries (the FBO render, the frame-time
+clock, `0227b7a`, `494269e`) drop out of the chain.
 
 CI builds the same patched copy on the host (`tools/milkdrop-determinism`) and checks that two
 Renders of the same input are byte-identical (`docs/ci.md`).

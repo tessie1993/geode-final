@@ -1,0 +1,90 @@
+diff --git a/src/libprojectM/MilkdropPreset/Constants.hpp b/src/libprojectM/MilkdropPreset/Constants.hpp
+index 7662e376..11e7d7e9 100644
+--- a/src/libprojectM/MilkdropPreset/Constants.hpp
++++ b/src/libprojectM/MilkdropPreset/Constants.hpp
+@@ -7,11 +7,11 @@
+ namespace libprojectM {
+ namespace MilkdropPreset {
+ 
+-static constexpr int QVarCount = 32; //!< Number of Q variables available.
++static constexpr int QVarCount = 64; //!< Number of Q variables available (32 in MilkDrop 2, 64 in MilkDrop 3).
+ static constexpr int TVarCount = 8; //!< Number of T variables available.
+ 
+-static constexpr int CustomWaveformCount = 4; //!< Number of custom waveforms (expression-driven) which can be used in a preset.
+-static constexpr int CustomShapeCount = 4; //!< Number of custom shapes (expression-driven) which can be used in a preset.
++static constexpr int CustomWaveformCount = 16; //!< Number of custom waveforms (expression-driven) which can be used in a preset (4 in MilkDrop 2, 16 in MilkDrop 3).
++static constexpr int CustomShapeCount = 16; //!< Number of custom shapes (expression-driven) which can be used in a preset (4 in MilkDrop 2, 16 in MilkDrop 3).
+ 
+ static constexpr int WaveformMaxPoints = 512; //!< Maximum number of waveform points.
+ 
+diff --git a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+index 817ea859..0e645d58 100644
+--- a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
++++ b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+@@ -300,7 +300,7 @@ void MilkdropShader::LoadVariables(const PresetState& presetState, const PerFram
+     m_shader.SetUniformMat3x4("rot_rand3", tempMatrices[22]);
+     m_shader.SetUniformMat3x4("rot_rand4", tempMatrices[23]);
+ 
+-    // set program uniform "_q[a-h]" values (_qa.x, _qa.y, _qa.z, _qa.w, _qb.x, _qb.y ... ) alias q[1-32]
++    // set program uniform "_q[a-p]" values (_qa.x, _qa.y, _qa.z, _qa.w, _qb.x, _qb.y ... ) alias q[1-64]
+     for (int i = 0; i < QVarCount; i += 4)
+     {
+         std::string varName = "_q";
+diff --git a/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc b/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc
+index 397a0cb8..45723750 100644
+--- a/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc
++++ b/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc
+@@ -34,6 +34,14 @@ uniform float4   _qe;           // q vars
+ uniform float4   _qf;           // q vars
+ uniform float4   _qg;           // q vars
+ uniform float4   _qh;           // q vars bank 8 [q29-q32]
++uniform float4   _qi;           // q vars bank 9 [q33-q36] (MilkDrop 3)
++uniform float4   _qj;           // q vars bank 10 [q37-q40] (MilkDrop 3)
++uniform float4   _qk;           // q vars bank 11 [q41-q44] (MilkDrop 3)
++uniform float4   _ql;           // q vars bank 12 [q45-q48] (MilkDrop 3)
++uniform float4   _qm;           // q vars bank 13 [q49-q52] (MilkDrop 3)
++uniform float4   _qn;           // q vars bank 14 [q53-q56] (MilkDrop 3)
++uniform float4   _qo;           // q vars bank 15 [q57-q60] (MilkDrop 3)
++uniform float4   _qp;           // q vars bank 16 [q61-q64] (MilkDrop 3)
+ 
+ // note: in general, don't use the current time w/the *dynamic* rotations!
+ 
+@@ -118,6 +126,38 @@ uniform float4x3 rot_rand4;
+ #define q30 _qh.y
+ #define q31 _qh.z
+ #define q32 _qh.w
++#define q33 _qi.x
++#define q34 _qi.y
++#define q35 _qi.z
++#define q36 _qi.w
++#define q37 _qj.x
++#define q38 _qj.y
++#define q39 _qj.z
++#define q40 _qj.w
++#define q41 _qk.x
++#define q42 _qk.y
++#define q43 _qk.z
++#define q44 _qk.w
++#define q45 _ql.x
++#define q46 _ql.y
++#define q47 _ql.z
++#define q48 _ql.w
++#define q49 _qm.x
++#define q50 _qm.y
++#define q51 _qm.z
++#define q52 _qm.w
++#define q53 _qn.x
++#define q54 _qn.y
++#define q55 _qn.z
++#define q56 _qn.w
++#define q57 _qo.x
++#define q58 _qo.y
++#define q59 _qo.z
++#define q60 _qo.w
++#define q61 _qp.x
++#define q62 _qp.y
++#define q63 _qp.z
++#define q64 _qp.w
+ 
+ #define aspect   _c0
+ 

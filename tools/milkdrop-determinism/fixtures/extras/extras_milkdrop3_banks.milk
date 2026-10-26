@@ -1,0 +1,123 @@
+MILKDROP_PRESET_VERSION=201
+[preset00]
+PSVERSION=2
+PSVERSION_WARP=2
+PSVERSION_COMP=2
+fRating=3.000
+fGammaAdj=1.850
+fDecay=0.990
+fVideoEchoZoom=1.000
+fVideoEchoAlpha=0.000
+nVideoEchoOrientation=0
+nWaveMode=2
+bAdditiveWaves=0
+bWaveDots=0
+bWaveThick=1
+bModWaveAlphaByVolume=0
+bMaximizeWaveColor=1
+bTexWrap=1
+bDarkenCenter=0
+bRedBlueStereo=0
+bBrighten=0
+bDarken=0
+bSolarize=0
+bInvert=0
+fWaveAlpha=0.000
+fWaveScale=1.600
+fWaveSmoothing=0.750
+fWaveParam=0.000
+fModWaveAlphaStart=0.750
+fModWaveAlphaEnd=0.950
+fWarpAnimSpeed=1.000
+fWarpScale=1.000
+fZoomExponent=1.000
+fShader=0.000
+zoom=1.000
+rot=0.000
+cx=0.500
+cy=0.500
+dx=0.000
+dy=0.000
+warp=0.010
+sx=1.000
+sy=1.000
+wave_r=0.650
+wave_g=0.650
+wave_b=0.650
+wave_x=0.500
+wave_y=0.500
+ob_size=0.005
+ob_r=0.000
+ob_g=0.000
+ob_b=0.000
+ob_a=0.000
+ib_size=0.150
+ib_r=0.100
+ib_g=0.100
+ib_b=0.100
+ib_a=0.000
+nMotionVectorsX=48.000
+nMotionVectorsY=36.000
+mv_dx=0.000
+mv_dy=0.000
+mv_l=0.900
+mv_r=1.000
+mv_g=1.000
+mv_b=1.000
+mv_a=0.000
+wavecode_9_enabled=1
+wavecode_9_samples=256
+wavecode_9_sep=0
+wavecode_9_bSpectrum=0
+wavecode_9_bUseDots=0
+wavecode_9_bDrawThick=1
+wavecode_9_bAdditive=0
+wavecode_9_scaling=1.000
+wavecode_9_smoothing=0.500
+wavecode_9_r=0.400
+wavecode_9_g=0.800
+wavecode_9_b=1.000
+wavecode_9_a=1.000
+wave_9_per_frame1=a = q36;
+wave_9_per_point1=x = sample;
+wave_9_per_point2=y = 0.3 + 0.1*q40*sin(sample*6.283 + time) + 0.05*value1;
+shapecode_14_enabled=1
+shapecode_14_sides=5
+shapecode_14_additive=0
+shapecode_14_thickOutline=1
+shapecode_14_textured=0
+shapecode_14_num_inst=1
+shapecode_14_x=0.500
+shapecode_14_y=0.600
+shapecode_14_rad=0.200
+shapecode_14_ang=0.000
+shapecode_14_r=1.000
+shapecode_14_g=0.600
+shapecode_14_b=0.200
+shapecode_14_a=1.000
+shapecode_14_r2=0.600
+shapecode_14_g2=0.200
+shapecode_14_b2=0.800
+shapecode_14_a2=1.000
+shapecode_14_border_r=1.000
+shapecode_14_border_g=1.000
+shapecode_14_border_b=1.000
+shapecode_14_border_a=0.500
+shape_14_per_frame1=ang = q50;
+shape_14_per_frame2=x = 0.5 + 0.2*sin(q50*1.3);
+shape_14_per_frame3=rad = 0.15 + 0.05*q40;
+per_frame_1=q33 = 1;
+per_frame_2=q36 = 1;
+per_frame_3=q40 = 0.5 + 0.5*sin(time*1.1);
+per_frame_4=q48 = 0.5 + 0.25*bass_att;
+per_frame_5=q50 = time*0.6;
+per_frame_6=q64 = 1;
+per_frame_7=wave_a = 0;
+warp_1=`shader_body
+warp_2=`{
+warp_3=`    ret = tex2D(sampler_main, uv).xyz * 0.9 * q33 + 0.001 * float3(q48, q57, q61);
+warp_4=`}
+comp_1=`shader_body
+comp_2=`{
+comp_3=`    ret = tex2D(sampler_main, uv).xyz * q64;
+comp_4=`}
