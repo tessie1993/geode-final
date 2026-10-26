@@ -1,6 +1,8 @@
 package dev.geode.feature.visuals.handlers
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.visuals.api.BrokenFile
 import dev.geode.feature.visuals.api.ImportReport
@@ -8,6 +10,9 @@ import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
+import dev.geode.feature.visuals.api.PresetPlayback
+import dev.geode.feature.visuals.api.StyleEntry
+import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.core.MilkdropFiles
 import dev.geode.feature.visuals.core.PickedFile
@@ -35,10 +40,11 @@ class MilkdropStoreTest {
 
     private val folder = FakeMilkdropFolder(presets = listOf("aurora_veil.milk", "beach.milk"), textures = listOf("clouds.png"))
     private val failures = mutableListOf<FeatureFailure>()
+    private val customization = FakeCustomization(milk)
 
     private fun store(picked: PickedFiles = FakePickedFiles(emptyMap())) =
         visualsStore(
-            FakeCustomization(milk),
+            customization,
             FakeVisualsStorage(),
             FakePresetFiles(),
             listOf(manifest(milk, StyleFamily.MILKDROP)),
@@ -55,6 +61,39 @@ class MilkdropStoreTest {
         val visuals = store()
 
         assertEquals(MilkdropShelf(listOf(aurora, own("beach"), tidal), listOf("clouds.png")), visuals.state.value.milkdrop)
+    }
+
+    @Test
+    fun `every preset is a Style of its own, chosen through Customization`() {
+        val visuals = store()
+        val beach = MilkdropStyles.of("beach.milk")
+
+        assertEquals(
+            listOf(
+                StyleEntry(MilkdropStyles.of("aurora_veil.milk"), "Aurora Veil", StyleGroup.MILKDROP),
+                StyleEntry(beach, "beach", StyleGroup.MILKDROP),
+                StyleEntry(MilkdropStyles.of("tidal_drift.milk"), "Tidal Drift", StyleGroup.MILKDROP),
+            ),
+            visuals.state.value.styles,
+        )
+        visuals.send(VisualsCommand.Choose(beach))
+
+        assertEquals(listOf<CustomizationCommand>(CustomizationCommand.ChooseStyle(beach)), customization.sent)
+        assertEquals(beach, visuals.state.value.current)
+    }
+
+    @Test
+    fun `an imported preset is a Style as soon as it is in`() {
+        val picked = FakePickedFiles(mapOf("content://1" to PickedFile.Read("Ocean.milk", preset)))
+        val visuals = store(picked)
+
+        visuals.send(VisualsCommand.ImportMilkdrop(MilkdropKind.PRESETS, listOf("content://1")))
+
+        assertEquals(
+            StyleEntry(MilkdropStyles.of("Ocean.milk"), "Ocean", StyleGroup.MILKDROP),
+            visuals.state.value.styles
+                .single { it.name == "Ocean" },
+        )
     }
 
     @Test
@@ -88,6 +127,7 @@ class MilkdropStoreTest {
                         BrokenFile("6", MilkdropImportProblem.UNREADABLE),
                         BrokenFile("content://7", MilkdropImportProblem.UNREADABLE),
                     ),
+                playback = mapOf("Ocean" to PresetPlayback.Full, "Zen" to PresetPlayback.Full),
             ),
             shelf.lastImport,
         )
@@ -96,6 +136,33 @@ class MilkdropStoreTest {
         assertEquals(setOf("aurora_veil.milk", "beach.milk", "Ocean.milk", "Zen.milk"), folder.stored.getValue(MilkdropKind.PRESETS).keys)
         assertEquals(List(7) { MilkdropFiles.MAX_PRESET_BYTES }, picked.limits)
         assertEquals(emptyList<FeatureFailure>(), failures)
+    }
+
+    @Test
+    fun `each imported preset is reported with how it will play beside the textures held`() {
+        fun shader(code: String) = "[preset00]\nwarp_1=`shader_body { $code }\n".toByteArray()
+        val picked =
+            FakePickedFiles(
+                mapOf(
+                    "content://1" to PickedFile.Read("Sky.milk", shader("ret = tex2D(sampler_clouds, uv).xyz;")),
+                    "content://2" to PickedFile.Read("Moss.milk", shader("ret = tex2D(sampler_fw_moss, uv).xyz;")),
+                    "content://3" to PickedFile.Read("Frexp.milk", shader("ret = frexp(uv.xyy, e);")),
+                ),
+            )
+        val visuals = store(picked)
+
+        visuals.send(VisualsCommand.ImportMilkdrop(MilkdropKind.PRESETS, listOf("content://1", "content://2", "content://3")))
+
+        assertEquals(
+            mapOf(
+                "Sky" to PresetPlayback.Full,
+                "Moss" to PresetPlayback.MissingTextures(listOf("moss")),
+                "Frexp" to PresetPlayback.WithoutShader(listOf("frexp")),
+            ),
+            visuals.state.value.milkdrop
+                ?.lastImport
+                ?.playback,
+        )
     }
 
     @Test
@@ -189,5 +256,42 @@ class MilkdropStoreTest {
                 ?.lastImport
                 ?.imported,
         )
+    }
+
+    @Test
+    fun `the person's own preset and a texture are deleted from the folder and the lists`() {
+        val visuals = store()
+
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "beach.milk"))
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.TEXTURES, "clouds.png"))
+
+        assertEquals(setOf("aurora_veil.milk"), folder.stored.getValue(MilkdropKind.PRESETS).keys)
+        assertEquals(emptySet<String>(), folder.stored.getValue(MilkdropKind.TEXTURES).keys)
+        assertEquals(MilkdropShelf(listOf(aurora, tidal), emptyList()), visuals.state.value.milkdrop)
+        assertNull(
+            visuals.state.value.styles
+                .firstOrNull { it.id == MilkdropStyles.of("beach.milk") },
+        )
+        assertEquals(emptyList<FeatureFailure>(), failures)
+    }
+
+    @Test
+    fun `a preset Geode ships is never deleted`() {
+        val visuals = store()
+
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "aurora_veil.milk"))
+
+        assertEquals(setOf("aurora_veil.milk", "beach.milk"), folder.stored.getValue(MilkdropKind.PRESETS).keys)
+    }
+
+    @Test
+    fun `a delete that fails is reported and the lists stay`() {
+        val visuals = store()
+        folder.failDelete += "beach.milk"
+
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "beach.milk"))
+
+        assertEquals(MilkdropShelf(listOf(aurora, own("beach"), tidal), listOf("clouds.png")), visuals.state.value.milkdrop)
+        assertEquals(listOf(FeatureFailure(VISUALS_FEATURE, WorkFailure.MILKDROP_NOT_DELETED.message)), failures)
     }
 }

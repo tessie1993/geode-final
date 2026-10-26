@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
@@ -357,6 +358,16 @@ class NativePlanTest {
         assertEquals(StyleHash.of(Fixtures.JULIA).toFloat(), plan.last())
         val tunnel = NativePlan.encode(customization.copy(style = Fixtures.TUNNEL))
         assertEquals(StyleHash.of(Fixtures.TUNNEL).toFloat(), tunnel.last())
+    }
+
+    @Test
+    fun `names a MilkDrop preset's Style as the MilkDrop scene that draws it`() {
+        val milk = StyleHash.of(SceneId("milkdrop")).toFloat()
+        val preset = NativePlan.encode(customization.copy(style = MilkdropStyles.of("Ocean.milk")))
+        assertEquals(milk, preset.last())
+        val layered =
+            NativePlan.encode(customization.copy(layer = Layer(MilkdropStyles.of("Ocean.milk"), LayerBlend.SCREEN, LayerInfluence.NONE)))
+        assertEquals(milk, layered[layerAt])
     }
 
     @Test

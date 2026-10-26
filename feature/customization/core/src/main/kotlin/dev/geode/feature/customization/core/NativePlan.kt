@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Cadence
@@ -54,7 +55,8 @@ object NativePlan {
 
     /**
      * The Style the Customization is for ([StyleHash]), last: the engine keeps a Customization off the
-     * Style it draws until a change of Style to its own Style starts (#309).
+     * Style it draws until a change of Style to its own Style starts (#309). A MilkDrop preset's Style is
+     * named as the MilkDrop scene that draws it (#305), as is Layer 2's.
      */
     const val STYLE_FLOATS: Int = 1
 
@@ -327,10 +329,11 @@ object NativePlan {
         }
 
         w.skipTo(linksAt + MAX_MACRO_LINKS * MACRO_LINK_FLOATS + MAX_AUTOMATIONS * AUTOMATION_FLOATS)
-        w.put(layer.style?.let { StyleHash.of(it).toFloat() } ?: 0f)
+        // The engine draws a MilkDrop preset's Style (#305) as its MilkDrop scene, so the plan names that.
+        w.put(layer.style?.let { StyleHash.of(MilkdropStyles.scene(it)).toFloat() } ?: 0f)
         w.put(layer.blend.ordinal.toFloat())
         w.put(layer.influence.ordinal.toFloat())
-        w.put(StyleHash.of(customization.style).toFloat())
+        w.put(StyleHash.of(MilkdropStyles.scene(customization.style)).toFloat())
         return w.out.asList()
     }
 }

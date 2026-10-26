@@ -89,8 +89,8 @@ Lesser General Public License v2.1 (LGPL-2.1):
   Copyright (C)2003-2019 projectM Team
 
 Geode ships a MODIFIED copy. It is built from the projectM v4.1.8 release
-(tag v4.1.8, commit 4967dc003e5206d7df3ff447287f7609c47d2343) with six
-patches applied at build time:
+(tag v4.1.8, commit 4967dc003e5206d7df3ff447287f7609c47d2343) with ten
+patches applied at build time, in this order:
 
   projectm-v4.1.8-render-fbo-backport.patch  renders into a caller's
                                              framebuffer (backported from
@@ -107,6 +107,18 @@ patches applied at build time:
                                              silence and warm up over seconds
                                              of audio; beat sensitivity is
                                              honoured
+  projectm-v4.1.8-texture-pool.patch         noise textures made once per
+                                             engine; hidden folders skipped;
+                                             random textures picked evenly
+  projectm-v4.1.8-lean-frame.patch           skips the motion vectors' u/v
+                                             map when none are shown
+  projectm-v4.1.8-program-cache.patch        hooks that cache linked programs
+                                             and translated preset shaders
+  projectm-v4.1.8-shader-extras.patch        spectrum, waveform, pointer and
+                                             clock inputs for preset shaders,
+                                             more HLSL intrinsics (also in
+                                             the vendored hlslparser), and a
+                                             shader fallback callback
   projectm-eval-render-clock.patch           (applied to the bundled
                                              projectm-eval) lets the seeded
                                              instance feed rand() as well
@@ -135,7 +147,7 @@ third_party/projectm/vendor), so their notices belong here too:
 
   hlslparser (https://github.com/Unknownworlds/hlslparser) - Copyright (c)
   2013-2014 Unknown Worlds Entertainment, Inc. Licensed under the MIT
-  License.
+  License. Modified by projectm-v4.1.8-shader-extras.patch above.
 
   SOIL2 (https://github.com/SpartanJ/SOIL2), the texture loader. The copy
   vendored in projectM v4.1.8 carries per-file notices rather than a licence

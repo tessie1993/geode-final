@@ -23,8 +23,8 @@
 #
 # projectM's public headers come from the exact commit the submodule pins,
 # fetched sparsely (one network round trip, ~2 MB), with the repo's own
-# patches applied to them (render-fbo backport, then render clock) - the same
-# patches tools/projectm-patches.cmake applies at configure time.
+# header changes of the repo's own patches applied to them, in the order
+# tools/projectm-patches.cmake applies them at configure time.
 #
 #   tools/hostlink/hostlink.sh            # exit 0 on a clean link
 #   HOSTLINK_KEEP=1 tools/hostlink/hostlink.sh   # keep the work dir
@@ -42,8 +42,10 @@ if [[ ! -d "$WORK/pm" ]]; then
   git -C "$WORK/pm" sparse-checkout set src/api/include >/dev/null
   git -C "$WORK/pm" fetch -q --depth 1 origin "$PM_COMMIT"
   git -C "$WORK/pm" checkout -q FETCH_HEAD
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-fbo-backport.patch"
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-clock.patch"
+  # Every patch that changes a public header, in the order tools/projectm-patches.cmake applies them.
+  for patch in render-fbo-backport render-clock loudness program-cache shader-extras; do
+    git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-$patch.patch"
+  done
 fi
 cp "$WORK/pm/src/api/include/projectM-4/"*.h "$WORK/inc/projectM-4/"
 printf '#pragma once\n#define PROJECTM_EXPORT\n' > "$WORK/inc/projectM-4/projectM_export.h"

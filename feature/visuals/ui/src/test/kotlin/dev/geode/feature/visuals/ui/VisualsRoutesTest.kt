@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -21,7 +22,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
@@ -139,6 +142,30 @@ class VisualsRoutesTest {
         assertTrue(picker.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false))
         assertEquals(listOf("image/*", "application/octet-stream"), picker.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.toList())
         assertEquals(listOf<VisualsCommand>(VisualsCommand.DismissImportReport), milkdrop.sent)
+    }
+
+    @Test
+    fun `the preset playing can be loaded again, and the person's own deleted once confirmed`() {
+        val milkdrop = RecordingVisuals(PreviewStates.milkdrop.copy(current = MilkdropStyles.of("Beach at dusk.milk")))
+        var reloads = 0
+        compose.setContent { MilkdropRoute(milkdrop, onReload = { reloads++ }) }
+
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription("Delete Beach at dusk"))
+        compose.onNodeWithContentDescription("Load Beach at dusk again from its file").performClick()
+        compose.onNodeWithContentDescription("Delete Beach at dusk").performClick()
+        compose.onNodeWithText("Delete").performClick()
+
+        assertEquals(1, reloads)
+        assertEquals(listOf<VisualsCommand>(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "Beach at dusk.milk")), milkdrop.sent)
+    }
+
+    @Test
+    fun `a preset Geode ships has no delete, and without the engine there is no reload`() {
+        compose.setContent { MilkdropRoute(RecordingVisuals(PreviewStates.milkdrop.copy(current = MilkdropStyles.of("aurora_veil.milk")))) }
+
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Aurora Veil"))
+        compose.onNodeWithContentDescription("Delete Aurora Veil").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Load Aurora Veil again from its file").assertDoesNotExist()
     }
 
     @Test

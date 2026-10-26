@@ -21,6 +21,7 @@ import dev.geode.playback.PlaybackEngine
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
 import dev.geode.studio.LiveVisualSource
+import dev.geode.visuals.StyleTargets
 
 /**
  * Binds the one live Visual to its sources (#17). Customization reaches it through the plan alone:
@@ -86,7 +87,11 @@ fun LiveVisualBindings(
         view.visualizerRenderer.transitionSeed = seed
         view.visualizerRenderer.transitionId = behavior.transitionLook.id
     }
-    LaunchedEffect(style) { view.visualizerRenderer.requestedSceneId = style }
+    // A MilkDrop preset's own Style is the MilkDrop scene playing that preset (#305).
+    LaunchedEffect(style) {
+        val target = StyleTargets.of(style, StyleTargets.milkFolder(context))
+        view.visualizerRenderer.requestStyle(target.scene, target.milkPreset?.path)
+    }
     LaunchedEffect(behavior.reducedMotion) { view.visualizerRenderer.reducedMotion = behavior.reducedMotion }
     // The fingers themselves reach the engine through the host (VisualizerCanvasHost); this is only
     // whether a Style that does not draw their strokes itself shows them as the shared smear.

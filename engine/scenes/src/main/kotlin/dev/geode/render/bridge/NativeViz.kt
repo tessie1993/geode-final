@@ -35,6 +35,9 @@ class NativeViz(
     private val cacheDir: String = context.cacheDir.absolutePath
     private val milkTextureDir: String = File(context.filesDir, "milk/textures").absolutePath
 
+    // Changes with every install of the app, so its shader cache can tell an update (ShaderCacheStamp).
+    private val install: String = File(context.applicationInfo.sourceDir).lastModified().toString()
+
     // Written on the GL thread (surfaceCreated) and read from the main and GL threads. Every call uses
     // the handle under the read lock and create()/destroy() swap it under the write lock, so destroy()
     // waits for a call in flight instead of freeing the renderer under it, and two threads racing on a
@@ -52,6 +55,7 @@ class NativeViz(
         lock.write {
             if (handle == 0L) {
                 verifyLayouts()
+                ShaderCacheStamp.forgetIfStale(File(cacheDir), install)
                 val created = GeodeNative.vizCreate(assets, cacheDir)
                 if (created != 0L) GeodeNative.vizSetMilkTextureDir(created, milkTextureDir)
                 handle = created

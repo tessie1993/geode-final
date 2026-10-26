@@ -47,6 +47,7 @@ import dev.geode.render.offscreen.RenderSwitch
 import dev.geode.render.offscreen.StyleSwitches
 import dev.geode.render.scene.SceneIds
 import dev.geode.visuals.EngineSnapshots
+import dev.geode.visuals.StyleTargets
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -96,7 +97,7 @@ class NativeRenderEngine(
         if (isCancelled()) return RenderEnd.Cancelled
         val format = job.format
         val frame = RenderPlan.frameOf(format)
-        val scene = StyleScene(customization.style, milkdropPathOf(customization, job))
+        val scene = sceneOf(customization, job)
         RenderPlan.longFormOf(job.length, track.length)?.let { longForm ->
             val drawn = LongFormDrawing(track, uri, timeline, scene, customization, values, format)
             return renderLongForm(longForm, drawn, progress, isCancelled)
@@ -213,7 +214,9 @@ class NativeRenderEngine(
         return StyleSwitches {
             switcher.next()?.let { switched ->
                 val transition = switched.automations.style?.transition ?: StyleSwitching.DEFAULT_TRANSITION
-                RenderSwitch(switched.style, EngineSnapshots.forRender(switched, values), transition)
+                // A MilkDrop preset's own Style switches to the MilkDrop scene with that preset (#305).
+                val target = StyleTargets.of(switched.style, milkFolder)
+                RenderSwitch(target.scene, EngineSnapshots.forRender(switched, values), transition, target.milkPreset?.path)
             }
         }
     }
@@ -366,6 +369,23 @@ class NativeRenderEngine(
         RingLog.note(TAG, "the Render's MilkDrop preset is no longer in the MilkDrop folder: $file")
         return null
     }
+
+    /**
+     * The Style a Render draws first: a MilkDrop preset's own Style (#305) is the MilkDrop scene with that
+     * preset loaded before the first frame; any other Style draws with the Render's MilkDrop preset, if
+     * it has one, for when it is or switches to MilkDrop.
+     */
+    private fun sceneOf(
+        customization: Customization,
+        job: RenderJob,
+    ): StyleScene {
+        val target = StyleTargets.of(customization.style, milkFolder)
+        val preset = target.milkPreset ?: return StyleScene(target.scene, milkdropPathOf(customization, job))
+        return StyleScene(target.scene, preset.path.takeIf { preset.isFile })
+    }
+
+    /** The app's MilkDrop folder, where a MilkDrop preset's own Style finds its file. */
+    private val milkFolder: File get() = StyleTargets.milkFolder(context)
 
     /** The Style a Render draws, and the MilkDrop preset it loads first when that Style is MilkDrop. */
     private class StyleScene(

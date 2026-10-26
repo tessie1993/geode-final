@@ -1,11 +1,14 @@
 package dev.geode.feature.visuals.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.feature.visuals.api.BrokenFile
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.MilkdropShelf
+import dev.geode.feature.visuals.api.StyleEntry
+import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsState
 import dev.geode.feature.visuals.core.Fixtures.command
@@ -27,11 +30,16 @@ class MilkdropReducerTest {
     private val presets = listOf(aurora)
     private val textures = listOf("clouds.png")
 
-    private val listed = ready.copy(milkdrop = MilkdropShelf(presets, textures))
-    private val importing = ready.copy(milkdrop = MilkdropShelf(presets, textures, importing = true))
+    // Every preset is a Style of its own (#305), in place of the plain MilkDrop Style.
+    private val auroraStyle = StyleEntry(MilkdropStyles.of("aurora_veil.milk"), "Aurora Veil", StyleGroup.MILKDROP)
+    private val mineStyle = StyleEntry(MilkdropStyles.of("mine.milk"), "mine", StyleGroup.MILKDROP)
+    private val others = ready.styles.filterNot { it.group == StyleGroup.MILKDROP }
+
+    private val listed = ready.copy(styles = others + auroraStyle, milkdrop = MilkdropShelf(presets, textures))
+    private val importing = listed.copy(milkdrop = MilkdropShelf(presets, textures, importing = true))
     private val report =
         ImportReport(MilkdropKind.PRESETS, listOf("mine"), listOf(BrokenFile("bad.milk", MilkdropImportProblem.NOT_A_PRESET)))
-    private val reported = ready.copy(milkdrop = MilkdropShelf(presets, textures, lastImport = report))
+    private val reported = listed.copy(milkdrop = MilkdropShelf(presets, textures, lastImport = report))
 
     private val picked = listOf("content://picked/1", "content://picked/2")
     private val importPresets = command(VisualsCommand.ImportMilkdrop(MilkdropKind.PRESETS, picked))
@@ -84,7 +92,18 @@ class MilkdropReducerTest {
                 "the import finishes",
                 importing,
                 VisualsEvent.MilkdropImported(report, listOf(aurora, mine), textures),
-                same(ready.copy(milkdrop = MilkdropShelf(listOf(aurora, mine), textures, importing = false, lastImport = report))),
+                same(
+                    listed.copy(
+                        styles = others + auroraStyle + mineStyle,
+                        milkdrop = MilkdropShelf(listOf(aurora, mine), textures, importing = false, lastImport = report),
+                    ),
+                ),
+            ),
+            Row(
+                "an empty folder lists no preset Styles and keeps the plain one",
+                ready,
+                VisualsEvent.MilkdropListed(emptyList(), emptyList()),
+                same(ready.copy(milkdrop = MilkdropShelf())),
             ),
             // Dismissing the report.
             Row("dismiss the report", reported, command(VisualsCommand.DismissImportReport), same(listed)),

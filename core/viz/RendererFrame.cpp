@@ -8,6 +8,7 @@
 #include "CompositeGrade.hpp"
 #include "SharedParams.hpp"
 #include "geode/viz/LiveSignal.hpp"
+#include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/StyleProfiles.hpp"
 #include "geode/render/Quad.hpp"
 
@@ -77,6 +78,11 @@ Scene* Renderer::resolveActiveScene(float dt) {
         std::lock_guard<std::mutex> lock(stateLock_);
         requestedId = requestedSceneId_;
     }
+    // A Style shown for the first time is built on the frame it is first asked for (its programs compiled,
+    // or read back from the binary cache), and its change can start on a later frame only, so the compile
+    // never lands in the transition's first frame, the most visible one (#304). A Render does not wait: its
+    // frames are counted, so it changes exactly as the gate says.
+    const bool prepared = builtScene(requestedId) != nullptr;
     Scene* requested = sceneFor(requestedId);
     sceneJustSwitched_ = false;
     inheritTrails_ = false;
@@ -99,6 +105,8 @@ Scene* Renderer::resolveActiveScene(float dt) {
         compositePass_.warmTransition(transition::kSafeLooks[static_cast<size_t>(pendingLookSlot_)]);
         switchGate_.arm();
     }
+    // The frame that built the new Style only arms the wait; the downbeat is listened for from the next.
+    if (!prepared && !thermal_.offscreen()) return activeScene_;
     if (switchGate_.step(frameFeatures_, dt)) startTransition(requested);
     return activeScene_;
 }
@@ -457,13 +465,16 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.fx = fx;
     in.gateA = grade::gateFor(activeScene_->family()).toVec4();
     Scene* other = outgoingScene_ ? outgoingScene_ : activeScene_;
+    // A Style's own zoom, crossfaded with the transition so it never jumps when the picture changes.
+    in.fx.zoom *= milkdrop::crossfadedZoom(activeScene_->pictureZoom(), other->pictureZoom(), progress, outgoingScene_ != nullptr);
     in.gateB = grade::gateFor(other->family()).toVec4();
     // The Camera's flat moves for every picture whose Style does not move a camera of its own, and the
-    // flat endless zoom for the ones whose renderer has none.
+    // flat endless zoom for the ones whose renderer has none (the fluid family, and MilkDrop since its
+    // post pass went into the composite, #303).
     in.camera = camera_.pose();
-    in.cameraGate = {activeScene_->ownsCamera() ? 0.0f : 1.0f, other->ownsCamera() ? 0.0f : 1.0f,
-                     activeScene_->family() == SceneFamily::Fluid ? 1.0f : 0.0f,
-                     other->family() == SceneFamily::Fluid ? 1.0f : 0.0f};
+    const auto flatZoom = [](const Scene* s) { return s->family() == SceneFamily::Fluid || s->family() == SceneFamily::Milkdrop; };
+    in.cameraGate = {activeScene_->ownsCamera() ? 0.0f : 1.0f, other->ownsCamera() ? 0.0f : 1.0f, flatZoom(activeScene_) ? 1.0f : 0.0f,
+                     flatZoom(other) ? 1.0f : 0.0f};
     // Layer 2, with its own gate and Camera pair like the two pictures above.
     Scene* layerPicture = layerScene_ ? layerScene_ : activeScene_;
     in.texL = layerTexture();

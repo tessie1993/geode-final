@@ -11,6 +11,77 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Reload the MilkDrop preset that is playing (#382).** On the MilkDrop
+  screen, the preset the Visual shows has a reload button that loads it
+  again from its file, so a fix made to an imported preset can be checked
+  right away.
+
+- **Delete imported MilkDrop presets and textures (#360).** The MilkDrop
+  screen has a bin button on each of the person's own presets and on every
+  texture, behind a confirmation. A deleted preset also leaves Favourites,
+  Recent, folders and its Style switching mark, and if the Visual was
+  showing it, moves on to the Style listed next to it. Presets Geode ships cannot be deleted. Texture
+  links are rebuilt after every delete.
+
+- **MilkDrop accepts BeatDrop-style shader extras (#306).** Geode's projectM
+  (`projectm-v4.1.8-shader-extras.patch`, written from the documented
+  behaviour) now runs preset shaders that read the spectrum and waveform
+  (`get_fft`, `get_wave` and their variants), the pointer (`mouse`, fed from
+  touch), the clock (`sysTime`, `sysDate`; a fixed day in a Render) and
+  `aspect_sd`, that call `tanh`, `sinh`, `cosh`, `radians`, `degrees` or
+  `trunc`, or that ask for random textures above `rand15`. The import report
+  only warns about the few calls still missing, and projectM now tells the
+  app when it drops a shader.
+
+- **Visuals compile before the switch (#304).** projectM's programs now go to
+  Geode's `ProgramBinaryCache`, and its HLSL-to-GLSL translations are kept
+  beside them (`projectm-v4.1.8-program-cache.patch`), so a MilkDrop preset
+  seen before loads without translating or compiling. A Style shown for the
+  first time is built on the frame it is asked for, and its change (which
+  waits for the downbeat, #309) can start only after that, so the compile
+  never lands in the transition's first frame. While the phone is idle and charging, a
+  warm-up job draws every Style and loads every MilkDrop preset offscreen
+  once (`StyleWarmUpService`), again after an app update, a new GPU driver or
+  new presets. The cache survives restarts, starts over with a new driver,
+  and is emptied after an app update (`ShaderCacheStamp`).
+
+- **MilkDrop follows the quality scale at about half the memory traffic
+  (#303).** MilkDrop's engine buffer is now the scene target's size, so it
+  follows Visual quality and the thermal tiers like every family, held to
+  1.6 megapixels live (`kMilkdropMaxMegapixels`; Renders draw at the export
+  size). projectM draws its frame straight onto the scene target and the
+  composite grades it, palette tint included: Geode's own copy and
+  `pm_post_frag` are gone. `projectm-v4.1.8-lean-frame.patch` stops writing
+  the motion vectors' u/v map for presets that show none. Estimated from the
+  passes, at 1080x2400: about 135-150 MB of memory traffic per frame before
+  (2.6 MP x ~52-58 bytes a pixel), about 64-74 MB after (1.6 MP x ~40-46).
+  projectM's two y-flip copies stay: removing them means redrawing every
+  preset pass upside down, which the CI cannot check by eye.
+
+- **Our own starter textures for MilkDrop (#307).** Geode ships 24 textures
+  of its own, drawn from integer hashes by `tools/milk_textures/generate.py`
+  (about 0.9 MB in all) under the names presets ask for most (`worms`,
+  `clouds`, `pic`, `manyfish`, `sunrise`, `cells`, `seaweed`, `lichen`,
+  `rose`, `grad3`, `grad16`, `heart` and more), so imported packs find them on
+  a fresh install. `MilkStarterPack` installs them once beside the presets,
+  never over a texture of the same name. A new projectM patch
+  (`projectm-v4.1.8-texture-pool.patch`) makes the noise textures once per
+  engine instead of on every preset switch (a seeded engine makes them from
+  its seed, so Renders stay frame-exact), skips the hidden link folders when
+  scanning, and draws random textures from each file once.
+
+- **Every MilkDrop preset is a Style (#305).** Each `.milk` in the MilkDrop
+  folder, the ones Geode ships and the person's own, is listed as a Style of
+  its own in the Visuals tab's MilkDrop group and plays through Customization
+  like every Style (`milkdrop:<file>`, `MilkdropStyles`), with the Shared
+  core, in the live Visual, Recordings and Renders. A tap on a preset in the
+  MilkDrop screen shows it. The presets Geode ships are installed into the
+  folder again, and texture links are rebuilt after every import. Each
+  imported preset's report says whether it plays as written, plays without
+  its shader (naming what our projectM cannot translate), or misses textures
+  (naming them). An older preset saved with a MilkDrop preset opens on that
+  preset's Style.
+
 - **Feedback warp layer for shader Styles (#321).** A shader Style can
   declare `feedback` in its manifest and be drawn as a loop, as MilkDrop
   draws every preset: its last picture is carried through a coarse motion
@@ -143,7 +214,7 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   #274), utfcpp, KISS FFT, Oboe, Dagger and Hilt, the AndroidX, Kotlin, Guava,
   Okio, protobuf-lite and Checker Framework libraries the app pulls in, and
   the Hash without Sine shader hash. projectM is described as the modified
-  library it is; its six patches ship inside the app
+  library it is; its ten patches ship inside the app
   (`assets/third_party/projectm/`); projectm-eval is MIT, not LGPL; the
   gl-transitions BSD notices and the colour maps' MIT notice are quoted in
   full; the stale woscope entry is gone; the MPL-1.1 and Apache-2.0 texts are

@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
@@ -56,6 +57,11 @@ class CustomizationReducerTest {
     private val withHand: Customization = Edits.addModulator(julia, byHand)
     private val bassToZoom =
         Reaction(ReactionId(0), ReactionSource.Sound(SoundSignal.BASS), Target.Shared(SharedProperty.ZOOM), amount = 0.5f)
+
+    private val ocean = MilkdropStyles.of("Ocean.milk")
+    private val reef = MilkdropStyles.of("Reef.milk")
+    private val onOcean: Customization = Edits.switchStyle(julia, styles.manifestOf(JULIA), styles.manifestOf(ocean))
+    private val onReef: Customization = Edits.switchStyle(onOcean, styles.manifestOf(ocean), styles.manifestOf(reef))
 
     private val fresh = CustomizationState(julia)
     private val withUndo = CustomizationState(zoomed, undo = listOf(julia))
@@ -417,6 +423,30 @@ class CustomizationReducerTest {
                     fresh,
                     command(CustomizationCommand.ChooseStyle(SceneId("nope"))),
                     Next(fresh, listOf(ReportFailure("no Style named nope"))),
+                ),
+                Row(
+                    "choose a MilkDrop preset's own Style",
+                    fresh,
+                    command(CustomizationCommand.ChooseStyle(ocean)),
+                    Next(
+                        CustomizationState(onOcean, undo = listOf(julia)),
+                        listOf(publish(onOcean), Emit(CustomizationFact.StyleChanged(ocean))),
+                    ),
+                ),
+                Row(
+                    "choose one MilkDrop preset after another",
+                    CustomizationState(onOcean),
+                    command(CustomizationCommand.ChooseStyle(reef)),
+                    Next(
+                        CustomizationState(onReef, undo = listOf(onOcean)),
+                        listOf(publish(onReef), Emit(CustomizationFact.StyleChanged(reef))),
+                    ),
+                ),
+                Row(
+                    "a Style named like a MilkDrop preset with no file is unknown",
+                    fresh,
+                    command(CustomizationCommand.ChooseStyle(MilkdropStyles.of(""))),
+                    Next(fresh, listOf(ReportFailure("no Style named milkdrop:"))),
                 ),
                 Row(
                     "save a preset with the ticked parts",
