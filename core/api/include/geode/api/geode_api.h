@@ -158,6 +158,10 @@ GEODE_API void        geode_viz_set_touch_smear(geode_viz*, int on, float streng
 GEODE_API void        geode_viz_set_gravity(geode_viz*, float x, float y, float z);
 GEODE_API void        geode_viz_load_milk_preset(geode_viz*, const char* path);
 GEODE_API void        geode_viz_reload_milk_preset(geode_viz*);
+/* Start over (#400): a fresh copy of the Style drawn fades in over it, reseeded, its clocks and kept frames
+ * new; MilkDrop loads its preset again instead. Carried out on the next frame, once any change of Style
+ * under way has finished. */
+GEODE_API void        geode_viz_start_over(geode_viz*);
 GEODE_API void        geode_viz_set_milk_texture_dir(geode_viz*, const char* dir);
 #ifdef GEODE_STYLE_HOT_RELOAD
 /* Debug builds only: the Style lab folder, <dir>/<id>/, whose packs reload without a restart; "" stops. */

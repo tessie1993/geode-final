@@ -75,6 +75,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/FeatureBus.cpp
     viz/DisplayEvents.cpp
     viz/StyleTransition.cpp
+    viz/StartOver.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
     viz/TileFrame.cpp

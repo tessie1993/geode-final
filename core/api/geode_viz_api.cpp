@@ -166,6 +166,10 @@ void geode_viz_reload_milk_preset(geode_viz* v) {
     if (v) v->renderer.reloadMilkPreset();
 }
 
+void geode_viz_start_over(geode_viz* v) {
+    if (v) v->renderer.startOver();
+}
+
 void geode_viz_set_milk_texture_dir(geode_viz* v, const char* dir) {
     if (v && dir) v->renderer.setMilkTextureDir(dir);
 }

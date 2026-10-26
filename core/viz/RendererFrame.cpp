@@ -43,6 +43,7 @@ float Renderer::beginFrame(double timeSeconds) {
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
         frameTransitionSeed_ = transitionSeed_;
+        if (std::exchange(startOverAsked_, false)) startOver_.ask();
     }
     featureBus_.step(frameFeatures_, dt);
     frameBus_ = reducedMotion_.load(std::memory_order_relaxed) ? featurebus::calmed(featureBus_.values(), safety::kReducedMotionScale)
@@ -123,6 +124,75 @@ void Renderer::startTransition(Scene* next) {
     sceneJustSwitched_ = true;
     inheritTrails_ = true;
     next->beginVisit();
+}
+
+void Renderer::resolveStartOver() {
+    releaseRetired();
+    // A fresh copy no longer asked for, or built for a Style that is no longer drawn, is let go.
+    if (freshScene_ && (!startOver_.asked() || activeScene_ == nullptr || freshScene_->id() != activeScene_->id())) {
+        freshScene_->release();
+        freshScene_.reset();
+    }
+    startover::Frame frame;
+    frame.drawing = activeScene_ != nullptr;
+    frame.milkdrop = frame.drawing && activeScene_->family() == SceneFamily::Milkdrop;
+    frame.changing = outgoingScene_ != nullptr || switchGate_.waiting();
+    frame.built = freshScene_ != nullptr;
+    switch (startOver_.step(frame)) {
+        case startover::Step::None:
+            return;
+        case startover::Step::ReloadPreset:
+            activeScene_->reloadMilkPreset();
+            return;
+        case startover::Step::Build:
+            freshScene_ = buildScene(activeScene_->id());
+            if (!freshScene_) startOver_.drop();
+            return;
+        case startover::Step::Fade:
+            fadeToFresh();
+            return;
+    }
+}
+
+void Renderer::fadeToFresh() {
+    Scene* const old = activeScene_;
+    const auto drawn = std::find_if(scenes_.begin(), scenes_.end(), [old](const auto& entry) { return entry.second.get() == old; });
+    if (drawn == scenes_.end()) {
+        freshScene_->release();
+        freshScene_.reset();
+        return;
+    }
+    retiredScene_ = std::move(drawn->second);
+    drawn->second = std::move(freshScene_);
+    Scene* const fresh = drawn->second.get();
+    // The old copy fades out as a change of Style's outgoing picture does, keeping its trails, in the
+    // plain crossfade; the fresh copy starts from a clear picture and a forgotten echo (#309, #400).
+    outgoingScene_ = old;
+    outgoingParams_ = lastFinalParams_;
+    frameLook_ = transition::kSafeLooks[static_cast<size_t>(transition::kFadeSlot)];
+    transitionProgress_.start(startover::fadeSeconds(frameTransitionDurationMs_));
+    if (layerScene_ == old) layerScene_ = nullptr;
+    if (layerDrawn_ == old) layerDrawn_ = nullptr;
+    activeScene_ = fresh;
+    sceneJustSwitched_ = true;
+    inheritTrails_ = false;
+    fresh->beginVisit();
+}
+
+void Renderer::releaseRetired() {
+    if (!retiredScene_ || outgoingScene_ == retiredScene_.get()) return;
+    if (layerScene_ == retiredScene_.get()) layerScene_ = nullptr;
+    if (layerDrawn_ == retiredScene_.get()) layerDrawn_ = nullptr;
+    retiredScene_->release();
+    retiredScene_.reset();
+}
+
+void Renderer::releaseStartOver() {
+    startOver_.drop();
+    if (freshScene_) freshScene_->release();
+    freshScene_.reset();
+    if (retiredScene_) retiredScene_->release();
+    retiredScene_.reset();
 }
 
 SceneParams Renderer::resolveParams(float dt) {
@@ -542,7 +612,9 @@ void Renderer::wireFlow(Scene& target, const SceneParams& p) {
 
 void Renderer::render(double timeSeconds, GLuint targetFbo) {
     const float dt = beginFrame(timeSeconds);
-    Scene* scene = resolveActiveScene(dt);
+    resolveActiveScene(dt);
+    resolveStartOver();
+    Scene* scene = activeScene_;
     resolveLayer(dt);
     updateRenderSize(dt, scene);
     if (!scene || !ensureTargets()) {

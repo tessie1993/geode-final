@@ -95,6 +95,11 @@ void Renderer::reloadMilkPreset() {
     milkReloadRequested_ = true;
 }
 
+void Renderer::startOver() {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    startOverAsked_ = true;
+}
+
 void Renderer::setMilkTextureDir(const std::string& dir) {
     std::lock_guard<std::mutex> lock(stateLock_);
     milkTextureDir_ = dir;
@@ -411,6 +416,8 @@ void Renderer::applyRenderSize(scale::RenderSize size) {
     for (auto& entry : scenes_) {
         entry.second->resize(renderWidth_, renderHeight_);
     }
+    if (freshScene_) freshScene_->resize(renderWidth_, renderHeight_);
+    if (retiredScene_) retiredScene_->resize(renderWidth_, renderHeight_);
     overlays_.resize(renderWidth_, renderHeight_);
 }
 
@@ -431,6 +438,8 @@ uint32_t Renderer::requestedStyle() const {
 }
 
 void Renderer::cut() {
+    // A cut starts from a clear picture: a Start over waiting is forgotten, and its copies go next frame.
+    startOver_.drop();
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     switchGate_.cancel();
@@ -485,6 +494,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
 void Renderer::releaseScenes() {
     for (auto& entry : scenes_) entry.second->release();
     scenes_.clear();
+    releaseStartOver();
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     switchGate_.cancel();

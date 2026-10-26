@@ -176,6 +176,10 @@ class NativeViz(
         live { h -> GeodeNative.vizReloadMilkPreset(h) }
     }
 
+    fun startOver() {
+        live { h -> GeodeNative.vizStartOver(h) }
+    }
+
     /** The preset MilkDrop last compiled, handed out once; null until the next one. */
     fun takeMilkPresetLoaded(): String? = liveOr(null) { h -> GeodeNative.vizTakeMilkPresetLoaded(h) }
 

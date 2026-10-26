@@ -239,6 +239,13 @@ class VisualizerRenderer(
     fun reloadCurrentMilkPreset() = nativeViz.reloadMilkPreset()
 
     /**
+     * Starts the Style drawn over from its beginning (#400): a fresh copy of it, its simulations reseeded
+     * and its clocks and kept frames new, fades in over the old one; a MilkDrop preset loads again from
+     * its file, blending as a change of preset does.
+     */
+    fun startOver() = nativeViz.startOver()
+
+    /**
      * Draws [scene] from the next frame on and, when [milkPreset] (a `.milk` file's path) is given, has
      * the MilkDrop scene play it: a MilkDrop preset's own Style (#305). The preset is handed over on the
      * GL thread, in the same frame as the scene.

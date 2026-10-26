@@ -319,6 +319,8 @@ object GeodeNative {
 
     external fun vizReloadMilkPreset(handle: Long): Int
 
+    external fun vizStartOver(handle: Long): Int
+
     external fun vizSetMilkTextureDir(
         handle: Long,
         dir: String,

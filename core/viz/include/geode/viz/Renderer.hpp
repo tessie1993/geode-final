@@ -34,6 +34,7 @@
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
+#include "geode/viz/StartOver.hpp"
 #include "geode/viz/StyleTransition.hpp"
 #include "geode/viz/SharedInputs.hpp"
 #include "geode/render/ShaderSource.hpp"
@@ -79,6 +80,9 @@ public:
     void setTouchSmear(bool on, float strength);
     void loadMilkPreset(const std::string& path);
     void reloadMilkPreset();
+    // Start over (#400): the Style drawn begins again on a later frame, once any change of Style under
+    // way has finished (startover::Request). A fresh copy fades in over it; MilkDrop reloads its preset.
+    void startOver();
     void setMilkTextureDir(const std::string& dir);
     // The path of the preset the MilkDrop scene last compiled, handed out once.
     std::string takeMilkPresetLoaded();
@@ -153,6 +157,15 @@ private:
     Scene* resolveActiveScene(float dt);
     // Starts the change from the drawn Style to `next`, in the look chosen when it was asked for.
     void startTransition(Scene* next);
+    // Start over (#400) this frame: builds the fresh copy of the Style drawn, or starts its fade, or has
+    // MilkDrop load its preset again, as startover::Request says.
+    void resolveStartOver();
+    // The fresh copy takes the drawn copy's place in the scene table, and the drawn copy fades out over it.
+    void fadeToFresh();
+    // Lets the copy a Start over replaced go once it is no longer the outgoing picture.
+    void releaseRetired();
+    // Lets both copies of a Start over go: the scenes are being let go.
+    void releaseStartOver();
     // Draws the outgoing Style into its target, which keeps its trails from the scene target (#309).
     void drawOutgoing(const SceneParams& p, float dt);
     SceneParams resolveParams(float dt);
@@ -295,6 +308,13 @@ private:
     std::string lastMilkPreset_;
     std::string milkPresetRequest_;
     bool milkReloadRequested_ = false;
+    // Start over (#400): asked from any thread under stateLock_, handed to startOver_ in beginFrame.
+    bool startOverAsked_ = false;
+    startover::Request startOver_;
+    // The fresh copy of the Style drawn, built a frame before its fade starts, and the copy it replaced,
+    // kept while it fades out as the outgoing picture.
+    std::unique_ptr<Scene> freshScene_;
+    std::unique_ptr<Scene> retiredScene_;
     std::string milkTextureDir_;
     bool milkTextureDirDirty_ = false;
     std::string milkPresetLoaded_;

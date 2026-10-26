@@ -201,6 +201,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizReloadMilkPreset(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizStartOver(JNIEnv* env, jobject, jlong handle) {
+    return vizCall(env, "vizStartOver", handle, [](geode_viz* v) {
+        geode_viz_start_over(v);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetMilkTextureDir(JNIEnv* env, jobject, jlong handle, jstring dir) {
     return vizCall(env, "vizSetMilkTextureDir", handle, [&](geode_viz* v) {
         Utf8Chars path(env, dir);
