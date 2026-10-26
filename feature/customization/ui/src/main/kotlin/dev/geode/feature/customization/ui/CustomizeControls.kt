@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -127,7 +128,7 @@ private fun valueText(
  * One slider of the Advanced view. It follows the finger and sets the value when let go, so one drag
  * is one undo step. A switch for on/off properties. A long-press on its name offers "React to…". A
  * row the current Style does not use is greyed out and says so (#365). Its − and + take fine steps,
- * and coarse ones on a long-press (#392).
+ * and coarse ones on a long-press (#392). A tap on its name shows its one-line [help] (#393).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -136,17 +137,25 @@ internal fun ValueSlider(
     label: String,
     onSet: (Float) -> Unit,
     onReactTo: () -> Unit,
+    help: String? = null,
 ) {
     var held by remember(row.value) { mutableFloatStateOf(row.value) }
+    var explained by remember { mutableStateOf(false) }
     val colors = LocalForestColors.current
     val reactTo = stringResource(R.string.customize_react_to)
+    val explain = stringResource(R.string.customize_explain)
     val enabled = !row.ignored
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .alpha(if (enabled) 1f else IGNORED_ALPHA)
-                .combinedClickable(onClick = {}, onLongClick = onReactTo, onLongClickLabel = reactTo),
+                .combinedClickable(
+                    onClickLabel = explain,
+                    onLongClickLabel = reactTo,
+                    onLongClick = onReactTo,
+                    onClick = { explained = !explained },
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -170,6 +179,7 @@ internal fun ValueSlider(
                 NudgeButton(up = true, enabled = enabled) { nudge(true, it) }
             }
         }
+        if (explained && help != null) HelpLine(help)
         if (row.kind != ValueKind.SWITCH) {
             Slider(
                 value = held,
@@ -188,6 +198,17 @@ internal fun ValueSlider(
             )
         }
     }
+}
+
+/** A control's one-line help (#393), shown under its name. */
+@Composable
+internal fun HelpLine(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = LocalForestColors.current.textSecondary,
+        modifier = Modifier.padding(bottom = ForestSpacing.ExtraSmall),
+    )
 }
 
 /**
