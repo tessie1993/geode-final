@@ -8,4 +8,6 @@ dependencies {
     // and blurs it. Kept behind :design's own GlassSource, so no screen sees Haze's types.
     implementation(libs.haze)
     implementation(libs.haze.blur)
+    // Back brings a lowered peek panel back (#412).
+    implementation(libs.activity.compose)
 }

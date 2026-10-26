@@ -18,10 +18,10 @@ import kotlin.random.Random
  * `:app` shows it as the Visuals tab's Customize sub-tab and as a sheet over full-screen mode (#17).
  *
  * [onShare] shares the current Customization as a preset file or code through the share sheet (the
- * app stays offline), and [onHide] leaves the Visual alone once the panel is swiped away. [looks],
- * [presets] and [live] are what the opening place offers: the look picker's Styles, this Style's saved
- * presets, and the engine's live values when it has them. [ignored] are the controls the current
- * Style leaves alone, greyed out (#365). [onBrowsePresets] opens the Presets browser (#144), which the
+ * app stays offline), and [onHide] leaves the Visual alone once the panel is swiped down past its
+ * peek bar (#412). [looks], [presets] and [live] are what the opening place offers: the look picker's
+ * Styles, this Style's saved presets, and the engine's live values when it has them. [ignored] are the
+ * controls the current Style leaves alone, greyed out (#365). [onBrowsePresets] opens the Presets browser (#144), which the
  * Visuals feature keeps. While it is open, Style switching waits (#282).
  */
 @Composable

@@ -11,7 +11,10 @@
     <string name="customize_share">Share</string>
     <string name="customize_open_advanced">Advanced</string>
     <string name="customize_back">Back</string>
-    <string name="customize_handle">Drag up for more controls, down to hide</string>
+    <string name="customize_handle">Drag down to watch the Visual, up for more controls</string>
+    <string name="customize_peek">Lower Customize to watch the Visual</string>
+    <string name="customize_peek_expand">Show Customize</string>
+    <string name="customize_peek_hint">Your changes show live on the Visual. Tap or drag up to bring Customize back.</string>
 
     <!-- Basic view -->
     <string name="customize_macros">Macros</string>

@@ -9,4 +9,6 @@ plugins {
 dependencies {
     implementation(libs.compose.material.icons.extended)
     implementation(libs.lifecycle.runtime.compose)
+    // The peek test presses Back through the activity's dispatcher (#412).
+    testImplementation(libs.activity.compose)
 }

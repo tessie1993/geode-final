@@ -17,9 +17,6 @@ internal object CustomizeDimens {
     val handleWidth = GlassSpacing.Section + GlassSpacing.ExtraSmall
     val handleHeight = GlassSpacing.ExtraSmall
 
-    /** How far the handle must be dragged before the sheet grows, shrinks or hides. */
-    val dragThreshold = GlassSize.TapTarget
-
     /** How far a link must be swiped before it is removed. */
     val swipeThreshold = 96.dp
 

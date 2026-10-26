@@ -170,7 +170,8 @@ private fun AutomationPanel(shell: ShellViewModel) {
 /**
  * Customize over the live Visual, as the Visuals tab and the sheet over full-screen mode show it: its
  * look picker offers the Visuals feature's Styles and its preset row this Style's saved presets. The
- * controls this Style's family ignores, as its Style pack declares them, are greyed out (#365).
+ * controls this Style's family ignores, as its Style pack declares them, are greyed out (#365). Both
+ * hosts get its drag down to a peek bar, to watch the Visual while changing it (#412).
  */
 @Composable
 fun CustomizePanel(

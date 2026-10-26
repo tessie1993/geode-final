@@ -1,10 +1,8 @@
 package dev.geode.feature.customization.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -12,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,28 +33,35 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.PeekPanel
+import dev.geode.design.glass.PeekState
 import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.peekDrag
+import dev.geode.design.glass.rememberPeekState
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.Target
+import kotlinx.coroutines.launch
 
 /**
  * The sections of the Advanced view (#12), in the order its tabs show them. Modulators have their own
@@ -122,8 +128,13 @@ sealed interface CustomizePage {
  * The Visual itself is drawn by the place that opens Customize, behind this panel; nothing here is
  * ever drawn into a Render or Recording.
  *
- * Stateless: it shows [model] and reports everything the person does to [onAction]. Which page is open
- * and Learn mode are App UI state kept here; [start] is the page it opens on.
+ * A drag down on its handle, or on its list once that is at the top, lowers it to a slim peek bar so
+ * the Visual shows in full (#412). The bar keeps the last control touched, to nudge while watching;
+ * a tap on it, a drag up or Back brings the panel back, and a drag down past it hides Customize.
+ *
+ * Stateless: it shows [model] and reports everything the person does to [onAction]. Which page is open,
+ * Learn mode, whether the panel is lowered and the control touched last are App UI state kept here;
+ * [start] is the page it opens on.
  */
 @Composable
 fun CustomizeScreen(
@@ -134,7 +145,15 @@ fun CustomizeScreen(
 ) {
     var page by remember { mutableStateOf(start) }
     var learning by remember { mutableStateOf<ReactionSource?>(null) }
-    val send = { command: CustomizationCommand -> onAction(CustomizeAction.Send(command)) }
+    var touched by remember { mutableStateOf<Target?>(null) }
+    val peek = rememberPeekState()
+    // Above the panel, which is not drawn while it rests on its peek bar, so coming back keeps the place.
+    val scroll = rememberScrollState()
+    val tracked = { action: CustomizeAction ->
+        if (action is CustomizeAction.Send) touchedTarget(action.command)?.let { touched = it }
+        onAction(action)
+    }
+    val send = { command: CustomizationCommand -> tracked(CustomizeAction.Send(command)) }
     val panel =
         PanelState(
             model = model,
@@ -143,7 +162,9 @@ fun CustomizeScreen(
             open = { page = it },
             learn = { learning = it },
             send = send,
-            onAction = onAction,
+            onAction = tracked,
+            peek = peek,
+            scroll = scroll,
         )
     BoxWithConstraints(modifier.fillMaxSize()) {
         if (maxWidth > maxHeight) {
@@ -154,19 +175,43 @@ fun CustomizeScreen(
                     .width(CustomizeDimens.sidePanelWidth)
                     .padding(GlassSpacing.Small),
             ) {
-                Panel(panel, side = true)
+                PeekablePanel(panel, touched, side = true, Modifier.fillMaxHeight())
             }
         } else {
+            val basic = page == CustomizePage.Basic
             val sheet =
-                if (page == CustomizePage.Basic) {
+                if (basic) {
                     Modifier.heightIn(max = maxHeight * BASIC_SHEET_FRACTION)
                 } else {
                     Modifier.fillMaxHeight(FULL_SHEET_FRACTION)
                 }
             Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().then(sheet)) {
-                Panel(panel, side = false)
+                // The full sheet keeps its height, so its peek bar still sits at the bottom.
+                PeekablePanel(panel, touched, side = false, if (basic) Modifier else Modifier.fillMaxHeight())
             }
         }
+    }
+}
+
+/**
+ * The panel, lowered by a drag to a peek bar that shows the control [touched] last (#412). A drag down
+ * past the bar hides Customize, as the handle's drag down used to.
+ */
+@Composable
+private fun PeekablePanel(
+    panel: PanelState,
+    touched: Target?,
+    side: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    PeekPanel(
+        state = panel.peek,
+        expandLabel = stringResource(R.string.customize_peek_expand),
+        peekBar = { PeekControl(panel, touched) },
+        modifier = modifier,
+        onDismiss = { panel.onAction(CustomizeAction.Hide) },
+    ) {
+        Panel(panel, side)
     }
 }
 
@@ -179,6 +224,10 @@ internal class PanelState(
     val learn: (ReactionSource?) -> Unit,
     val send: (CustomizationCommand) -> Unit,
     val onAction: (CustomizeAction) -> Unit,
+    /** Whether the panel is lowered to its peek bar (#412). */
+    val peek: PeekState,
+    /** Where the panel's page is scrolled to. */
+    val scroll: ScrollState,
 ) {
     /** A slider moved: linked to the learning source in Learn mode, otherwise set. */
     fun slide(
@@ -212,14 +261,14 @@ private fun Panel(
         modifier = Modifier.fillMaxWidth().glassSurface(GlassKind.SHEET, shape, GlassBackdrop.Visual),
     ) {
         Column(Modifier.padding(horizontal = GlassSpacing.Large)) {
-            if (!side) DragHandle(panel)
+            DragHandle(panel)
             TopBar(panel)
             val learning = panel.learning
             if (learning != null) LearningBanner(sourceName(learning, panel.model), onCancel = { panel.learn(null) })
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(panel.scroll)
                     .padding(bottom = GlassSpacing.ExtraLarge),
             ) {
                 when (val page = panel.page) {
@@ -236,30 +285,31 @@ private fun Panel(
 }
 
 /**
- * The sheet's handle: drag it up for the Advanced view, down for the basic view, and down again to hide
- * the panel and leave the Visual alone.
+ * The panel's handle: drag it down to lower the panel to its peek bar and watch the Visual (#412), or
+ * up from the basic view for the Advanced view. Screen readers get lowering it as an action.
  */
 @Composable
 private fun DragHandle(panel: PanelState) {
-    var dragged by remember { mutableFloatStateOf(0f) }
-    val threshold = with(LocalDensity.current) { CustomizeDimens.dragThreshold.toPx() }
     val description = stringResource(R.string.customize_handle)
+    val lower = stringResource(R.string.customize_peek)
+    val scope = rememberCoroutineScope()
     Box(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = GlassSpacing.Small)
-            .semantics { contentDescription = description }
-            .draggable(
-                rememberDraggableState { dragged += it },
-                Orientation.Vertical,
-                onDragStopped = {
-                    when {
-                        dragged < -threshold && panel.page == CustomizePage.Basic ->
-                            panel.open(CustomizePage.Advanced(AdvancedSection.REACTIONS))
-                        dragged > threshold && panel.page == CustomizePage.Basic -> panel.onAction(CustomizeAction.Hide)
-                        dragged > threshold -> panel.open(CustomizePage.Basic)
-                    }
-                    dragged = 0f
+            .height(GlassSize.TapTarget)
+            .semantics {
+                contentDescription = description
+                customActions =
+                    listOf(
+                        CustomAccessibilityAction(lower) {
+                            scope.launch { panel.peek.peek() }
+                            true
+                        },
+                    )
+            }.peekDrag(
+                panel.peek,
+                onPullUp = {
+                    if (panel.page == CustomizePage.Basic) panel.open(CustomizePage.Advanced(AdvancedSection.REACTIONS))
                 },
             ),
         contentAlignment = Alignment.Center,
