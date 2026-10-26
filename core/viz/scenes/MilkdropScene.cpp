@@ -44,6 +44,51 @@ void MilkdropScene::onPresetSwitchFailed(const char* presetFilename, const char*
     GEODE_LOGE(kTag, "preset switch failed: %s", self->lastError_.c_str());
 }
 
+bool MilkdropScene::loadProgram(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !vertexSource || !fragmentSource) return false;
+    const auto key = cache->keyFor(vertexSource, fragmentSource);
+    if (!key) return false;
+    if (cache->loadInto(*key, program)) return true;
+    // Compiled from source next: asked to keep its binary, which only a hint before linking ensures.
+    cache->markRetrievable(program);
+    return false;
+}
+
+void MilkdropScene::storeProgram(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !vertexSource || !fragmentSource) return;
+    if (const auto key = cache->keyFor(vertexSource, fragmentSource)) cache->store(*key, program);
+}
+
+const char* MilkdropScene::lookupText(const char* key, size_t keyLength, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !key) return nullptr;
+    auto text = cache->loadText(std::string(key, keyLength));
+    if (!text) return nullptr;
+    self->keptText_ = std::move(*text);
+    return self->keptText_.c_str();
+}
+
+void MilkdropScene::storeText(const char* key, size_t keyLength, const char* text, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !key || !text) return;
+    cache->storeText(std::string(key, keyLength), text);
+}
+
+MilkdropScene::CachesInUse::CachesInUse(MilkdropScene* scene) {
+    projectm_opengl_set_shader_caches(&loadProgram, &storeProgram, &lookupText, &storeText, scene);
+}
+
+// Cleared again, so nothing compiled later on this thread reaches a scene that may be gone by then.
+MilkdropScene::CachesInUse::~CachesInUse() {
+    projectm_opengl_set_shader_caches(nullptr, nullptr, nullptr, nullptr, nullptr);
+}
+
 double MilkdropScene::nowSeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
@@ -291,6 +336,8 @@ void MilkdropScene::draw(float timeSeconds) {
     const int targetHeight = drawTargetHanded_ ? drawHeight_ : height_;
     // Reset before the engine as well as after: projectM assumes default GL state and restores little.
     resetFrameState();
+    // Making the engine and loading a preset compile shaders: from the caches when they hold them.
+    const CachesInUse caches(this);
     const double now = nowSeconds();
     ensureEngine(now);
     if (!engine_) return;

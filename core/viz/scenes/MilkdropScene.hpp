@@ -75,6 +75,21 @@ private:
     using Engine = std::unique_ptr<std::remove_pointer_t<projectm_handle>, EngineDeleter>;
 
     static void onPresetSwitchFailed(const char* presetFilename, const char* message, void* userData);
+    // projectM's shader caches (projectm_opengl_set_shader_caches, tools/projectm-v4.1.8-program-cache.patch),
+    // over the renderer's ProgramBinaryCache: the linked programs as binaries, the translated text as
+    // files, so a preset seen before loads without translating or compiling (#304).
+    static bool loadProgram(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData);
+    static void storeProgram(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData);
+    static const char* lookupText(const char* key, size_t keyLength, void* userData);
+    static void storeText(const char* key, size_t keyLength, const char* text, void* userData);
+    // Points projectM's caches on this thread at this scene for as long as it lives (the length of a draw).
+    class CachesInUse {
+    public:
+        explicit CachesInUse(MilkdropScene* scene);
+        ~CachesInUse();
+        CachesInUse(const CachesInUse&) = delete;
+        CachesInUse& operator=(const CachesInUse&) = delete;
+    };
     static double nowSeconds();
     void ensureEngine(double now);
     // Re-queues the preset the scene last had on screen and clears the load debounce, so a
@@ -132,6 +147,8 @@ private:
     std::string pendingPresetPath_;
     std::string lastPresetPath_;
     std::string sharedTextureDir_;
+    // The text lookupText handed projectM last; it must outlive the call.
+    std::string keptText_;
     std::mutex errorLock_;
     std::string lastError_;
     // The last message written to logcat, so a preset that fails on every frame it is retried

@@ -113,6 +113,16 @@
         </activity>
 
         <!--
+          The Style warm-up (#304): while the phone is idle and charging, every Style is drawn once
+          offscreen so its programs are in the binary cache before anyone switches to it. Only the
+          system may start it.
+        -->
+        <service
+            android:name=".visuals.StyleWarmUpService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!--
           The visualizer as a live wallpaper: the same renderer, on the style
           and parameters the app was last left showing. It reacts to what the
           app is playing and breathes on its own the rest of the time.

@@ -23,6 +23,11 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
   written during the warp) whenever the preset shows no motion vectors, which is most of them (#303).
   `MilkdropScene` also has projectM draw its frame straight onto the scene target, graded by the
   composite, instead of through a copy and a post pass of its own.
+- `tools/projectm-v4.1.8-program-cache.patch` adds `projectm_opengl_set_shader_caches`: per-thread
+  hooks asked before every program is compiled and every preset shader is translated from HLSL, and
+  handed each result. `MilkdropScene` points them at the renderer's `ProgramBinaryCache` (binaries per
+  driver, translated text for all) for the length of each draw, so a preset seen before loads without
+  translating or compiling (#304).
 - `tools/projectm-eval-render-clock.patch`, applied inside `vendor/projectm-eval`, lets the seeded
   instance feed the expression `rand()` too. The build therefore always uses the vendored
   projectm-eval, never a system one.

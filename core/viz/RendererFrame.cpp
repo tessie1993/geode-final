@@ -67,8 +67,13 @@ Scene* Renderer::resolveActiveScene() {
         std::lock_guard<std::mutex> lock(stateLock_);
         requestedId = requestedSceneId_;
     }
+    // A Style shown for the first time is built on this frame (its programs compiled, or read back from
+    // the binary cache) and switched to on the next, so the compile never lands in the transition's
+    // first frame, the most visible one (#304). A Render switches at once: its frames are counted.
+    const bool prepared = builtScene(requestedId) != nullptr;
     Scene* requested = sceneFor(requestedId);
     sceneJustSwitched_ = false;
+    if (requested && !prepared && activeScene_ && requested != activeScene_ && !thermal_.offscreen()) return activeScene_;
     if (requested && requested != activeScene_) {
         lastTimeS_ = frameNowS_;
         const bool cuts = TransitionCatalog::builtIn(frameTransitionId_) == TransitionStyle::Cut;

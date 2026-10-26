@@ -15,6 +15,9 @@
 #                                              file with the same chance.
 #   projectm-v4.1.8-lean-frame.patch           a preset that shows no motion vectors does not write
 #                                              their u/v map every frame (#303).
+#   projectm-v4.1.8-program-cache.patch        projectm_opengl_set_shader_caches: per-thread hooks that
+#                                              keep linked programs and translated preset shaders, so
+#                                              a preset seen before loads without either (#304).
 #   projectm-eval-render-clock.patch           (in vendor/projectm-eval) lets the seeded instance feed
 #                                              the expression rand() as well.
 #
@@ -63,6 +66,7 @@ function(geode_patch_projectm projectm_dir)
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-plasma-mediump.patch")
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-texture-pool.patch")
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-lean-frame.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-program-cache.patch")
     geode_apply_patch("${projectm_dir}/vendor/projectm-eval" "${GEODE_PROJECTM_PATCH_DIR}/projectm-eval-render-clock.patch")
     set(ENABLE_SYSTEM_PROJECTM_EVAL OFF CACHE BOOL "" FORCE)
 endfunction()

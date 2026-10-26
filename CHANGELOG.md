@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Visuals compile before the switch (#304).** projectM's programs now go to
+  Geode's `ProgramBinaryCache`, and its HLSL-to-GLSL translations are kept
+  beside them (`projectm-v4.1.8-program-cache.patch`), so a MilkDrop preset
+  seen before loads without translating or compiling. A Style shown for the
+  first time is built a frame before the switch, so the compile never lands
+  in the transition's first frame. While the phone is idle and charging, a
+  warm-up job draws every Style and loads every MilkDrop preset offscreen
+  once (`StyleWarmUpService`), again after an app update, a new GPU driver or
+  new presets. The cache survives restarts, starts over with a new driver,
+  and is emptied after an app update (`ShaderCacheStamp`).
+
 - **MilkDrop follows the quality scale at about half the memory traffic
   (#303).** MilkDrop's engine buffer is now the scene target's size, so it
   follows Visual quality and the thermal tiers like every family, held to
