@@ -305,6 +305,7 @@ object BuiltInStyles {
     private val worldShaders: List<StyleManifest> =
         listOf(
             shader("canyon_run", true, listOf(generic(TURN), generic(FOG))),
+            shader("lantern_river", true, listOf(generic(SIZE), generic(FOG))),
         )
 
     private fun life(
