@@ -6,6 +6,7 @@
 #include "CompositeGrade.hpp"
 #include "SharedParams.hpp"
 #include "geode/viz/LiveSignal.hpp"
+#include "geode/viz/StyleProfiles.hpp"
 #include "geode/render/Quad.hpp"
 
 namespace geode::viz {
@@ -36,8 +37,6 @@ float Renderer::beginFrame(double timeSeconds) {
         std::lock_guard<std::mutex> lock(stateLock_);
         frameFeatures_ = features_;
         frameCustomization_ = requestedCustomization_;
-        frameLayerMix_ = layerMix_;
-        frameLayerBlend_ = layerBlend_;
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
     }
@@ -91,12 +90,19 @@ SceneParams Renderer::resolveParams(float dt) {
     const auto& lfoValues = lfo_.tick(dt, frameFeatures_, envRate_.data(), envDepth_.data());
     SceneParams p = lfo_.apply(displayedParams_, lfoValues);
     p = AdsrEngine::apply(p, adsr_.configs, envValues);
+    // Layer 2 draws its own Style as its pack tunes it, not Layer 1's Customization: the two pictures
+    // then move each on their own instead of in lockstep. The Camera and the composite's Shared core
+    // still apply to both.
+    layerParams_ = p;
     const bool reducedMotion = reducedMotion_.load(std::memory_order_relaxed);
     applyCustomization(p, dt, reducedMotion);
     p = safety::apply(p, reducedMotion);
+    layerParams_ = safety::apply(layerParams_, reducedMotion);
     if (!thermalTierInfo(thermal_.tier()).optionalPasses) {
         p.flowEnabled = false;
         p.rippleOverlayEnabled = false;
+        layerParams_.flowEnabled = false;
+        layerParams_.rippleOverlayEnabled = false;
     }
     lastFinalParams_ = p;
     postRotationAngle_ = grade::integrateRotation(postRotationAngle_, p.rotation, dt);
@@ -165,18 +171,44 @@ quality::Budget Renderer::qualityFor(const std::string& sceneId) const {
     return budgets[static_cast<size_t>(thermal_.tier())];
 }
 
-void Renderer::resolveLayerScene() {
-    std::string layerId;
-    std::string requestedId;
-    {
-        std::lock_guard<std::mutex> lock(stateLock_);
-        layerId = layerSceneId_;
-        requestedId = requestedSceneId_;
+void Renderer::resolveLayer(float dt) {
+    layer::Request request;
+    if (frameCustomization_) {
+        const mod::Evaluated& evaluated = *frameCustomization_;
+        request.spec = evaluated.layer;
+        request.opacity = evaluated[mod::Shared::LayerOpacity];
+        request.amount = evaluated[mod::Shared::LayerInfluence];
+        request.swap = evaluated[mod::Shared::LayerSwap];
     }
-    layerScene_ = nullptr;
-    if (outgoingScene_ || layerId.empty() || layerId == requestedId) return;
-    Scene* layer = sceneFor(layerId);
-    if (layer && layer != activeScene_) layerScene_ = layer;
+    const std::string activeId = activeScene_ != nullptr ? activeScene_->id() : std::string();
+    if (!canBeLayer(layerStyleId(request.spec.style), activeId)) request.spec.style = layer::kNoStyle;
+    // At the hottest thermal tier the second Style is the first thing let go, slowly. A Render never
+    // adapts (ADR-0005), so it keeps Layer 2.
+    if (thermal_.tier() == ThermalTier::Minimal && !thermal_.offscreen() && request.spec.style != layer::kNoStyle) {
+        request.spec.style = layer::kNoStyle;
+        request.cooling = true;
+    }
+    // A Style that stops being drawable as Layer 2 (it became the active one) still fades out: its
+    // scene is then Layer 1's, and its picture is read from there (layerTexture).
+    frameLayer_ = layerMixer_.step(request, dt);
+    layerScene_ = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+}
+
+const std::string& Renderer::layerStyleId(uint32_t name) {
+    static const std::string kNone;
+    if (name == layer::kNoStyle) return kNone;
+    // The packs never change while the renderer lives, so the names are worked out once.
+    if (layerIds_.empty()) {
+        for (const std::string& id : registry_.availableIds()) layerIds_.emplace(layer::styleHash(id), id);
+    }
+    const auto found = layerIds_.find(name);
+    return found == layerIds_.end() ? kNone : found->second;
+}
+
+bool Renderer::canBeLayer(const std::string& id, const std::string& activeId) const {
+    if (id.empty() || id == activeId) return false;
+    const packs::StylePack* pack = registry_.pack(id);
+    return pack != nullptr && pack->family != styles::family::kMilkdrop;
 }
 
 bool Renderer::ensureTargets() {
@@ -184,9 +216,13 @@ bool Renderer::ensureTargets() {
     if (!fboA_.resizePreserving(renderWidth_, renderHeight_)) return false;
     if (fboA_.width() != renderWidth_ || fboA_.height() != renderHeight_) return false;
     if (!fboB_.resizePreserving(renderWidth_, renderHeight_) || fboB_.width() != renderWidth_ || fboB_.height() != renderHeight_) {
-        layerScene_ = nullptr;
         outgoingScene_ = nullptr;
         outgoingParams_.reset();
+    }
+    // Layer 2's own target is made when it draws (drawLayerTarget) and let go once it has gone.
+    if (layerScene_ == nullptr && fboL_.ok()) {
+        fboL_.release();
+        layerDrawn_ = nullptr;
     }
     return true;
 }
@@ -213,15 +249,6 @@ void Renderer::bindSecondaryTarget() {
 
 float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
     float progress = 1.0f;
-    if (layerScene_) {
-        bindSecondaryTarget();
-        wireFlow(*layerScene_, p);
-        prepareScene(*layerScene_, extrasFor(layerScene_->id(), nullptr));
-        layerScene_->setParams(p);
-        deliverPcm(*layerScene_);
-        layerScene_->update(gainAdjusted(frameFeatures_, p), dt);
-        layerScene_->draw(timeSeconds_);
-    }
     if (outgoingScene_) {
         progress = std::clamp(static_cast<float>((frameNowS_ - transitionStartS_) * 1000.0 / frameTransitionDurationMs_), 0.0f, 1.0f);
         if (progress >= 1.0f) {
@@ -237,7 +264,41 @@ float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
             outgoingScene_->draw(timeSeconds_);
         }
     }
+    // After the outgoing picture, which may have just ended: Layer 2 keeps going through a transition.
+    drawLayerTarget(p, dt);
     return progress;
+}
+
+void Renderer::drawLayerTarget(const SceneParams& p, float dt) {
+    if (layerScene_ == nullptr || layerScene_ == activeScene_ || layerScene_ == outgoingScene_) return;
+    if (!fboL_.resizePreserving(renderWidth_, renderHeight_) || fboL_.width() != renderWidth_ || fboL_.height() != renderHeight_) {
+        layerScene_ = nullptr;
+        return;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, fboL_.fbo());
+    glViewport(0, 0, renderWidth_, renderHeight_);
+    // A Style that keeps its last frame (Curl Flow) keeps it as Layer 2 too, but never another's.
+    const SceneParams& own = layerParams_;
+    const float keep = layerScene_->trailRetention(own);
+    if (keep > 0.0f && layerDrawn_ == layerScene_) {
+        trailPass_.apply(own, keep, timeSeconds_, dt, fboL_, quadVao_, renderWidth_, renderHeight_);
+    } else {
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    layerDrawn_ = layerScene_;
+    wireFlow(*layerScene_, p);
+    prepareScene(*layerScene_, extrasFor(layerScene_->id(), nullptr));
+    layerScene_->setParams(own);
+    deliverPcm(*layerScene_);
+    layerScene_->update(gainAdjusted(frameFeatures_, own), dt);
+    layerScene_->draw(timeSeconds_);
+}
+
+GLuint Renderer::layerTexture() const {
+    if (layerScene_ == nullptr) return 0;
+    if (layerScene_ == activeScene_) return fboA_.tex();
+    if (layerScene_ == outgoingScene_) return fboB_.tex();
+    return fboL_.tex();
 }
 
 void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
@@ -304,9 +365,6 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.rippleStrength = rippleOn ? std::clamp(rippleStrength, 0.0f, 1.0f) : 0.0f;
     in.rippleSpecular = rippleOn ? std::clamp(p.rippleOverlaySpecular, 0.0f, 1.0f) : 0.0f;
     in.progress = progress;
-    in.layerMix = safety::layerMix(frameLayerMix_, blendModeFromOrdinal(frameLayerBlend_));
-    in.blendOrdinal = frameLayerBlend_;
-    in.hasLayer = layerScene_ != nullptr;
     in.hasOutgoing = outgoingScene_ != nullptr;
     in.transitionId = frameTransitionId_;
     in.transitionStyle = safety::transitionStyle(TransitionCatalog::builtIn(frameTransitionId_).value_or(TransitionStyle::Fade));
@@ -321,7 +379,7 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.quadVao = quadVao_;
     in.fx = fx;
     in.gateA = grade::gateFor(activeScene_->family()).toVec4();
-    Scene* other = layerScene_ ? layerScene_ : outgoingScene_ ? outgoingScene_ : activeScene_;
+    Scene* other = outgoingScene_ ? outgoingScene_ : activeScene_;
     in.gateB = grade::gateFor(other->family()).toVec4();
     // The Camera's flat moves for every picture whose Style does not move a camera of its own, and the
     // flat endless zoom for the ones whose renderer has none.
@@ -329,6 +387,12 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.cameraGate = {activeScene_->ownsCamera() ? 0.0f : 1.0f, other->ownsCamera() ? 0.0f : 1.0f,
                      activeScene_->family() == SceneFamily::Fluid ? 1.0f : 0.0f,
                      other->family() == SceneFamily::Fluid ? 1.0f : 0.0f};
+    // Layer 2, with its own gate and Camera pair like the two pictures above.
+    Scene* layerPicture = layerScene_ ? layerScene_ : activeScene_;
+    in.texL = layerTexture();
+    in.layer = frameLayer_;
+    in.gateL = grade::gateFor(layerPicture->family()).toVec4();
+    in.cameraGateL = {layerPicture->ownsCamera() ? 0.0f : 1.0f, layerPicture->family() == SceneFamily::Fluid ? 1.0f : 0.0f};
     // W00: read this frame's latched underlay straight from CompositePass (it owns the texture -
     // see CompositePass.hpp), the same way uFlow/uRipple above are read from Overlays.
     in.underlayTex = compositePass_.underlayTexOrZero();
@@ -371,6 +435,7 @@ void Renderer::wireFlow(Scene& target, const SceneParams& p) {
 void Renderer::render(double timeSeconds, GLuint targetFbo) {
     const float dt = beginFrame(timeSeconds);
     Scene* scene = resolveActiveScene();
+    resolveLayer(dt);
     updateRenderSize(dt, scene);
     if (!scene || !ensureTargets()) {
         glBindFramebuffer(GL_FRAMEBUFFER, targetFbo);
@@ -380,7 +445,6 @@ void Renderer::render(double timeSeconds, GLuint targetFbo) {
         return;
     }
     const SceneParams p = resolveParams(dt);
-    resolveLayerScene();
     stepOverlays(*scene, p, dt);
     const float progress = drawSecondaryTargets(p, dt);
     drawSceneTarget(*scene, p, dt);

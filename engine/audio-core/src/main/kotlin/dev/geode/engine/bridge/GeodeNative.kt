@@ -269,13 +269,6 @@ object GeodeNative {
         on: Boolean,
     ): Int
 
-    external fun vizSetLayer(
-        handle: Long,
-        sceneId: String,
-        mix: Float,
-        blendMode: Int,
-    ): Int
-
     external fun vizSetTransition(
         handle: Long,
         id: String,

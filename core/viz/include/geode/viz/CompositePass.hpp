@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "geode/viz/Layers.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/render/Texture.hpp"
@@ -34,7 +35,6 @@ namespace geode::viz {
 // null clears it explicitly, matching every other Renderer setter.
 class CompositePass {
 public:
-    static constexpr int kStyleLayer = 6;
     static constexpr float kDitherAmount = 1.0f / 255.0f;
 
     struct Inputs {
@@ -48,9 +48,6 @@ public:
         float rippleStrength = 0.0f;
         float rippleSpecular = 0.0f;
         float progress = 1.0f;
-        float layerMix = 0.5f;
-        int blendOrdinal = 0;
-        bool hasLayer = false;
         bool hasOutgoing = false;
         TransitionStyle transitionStyle = TransitionStyle::Fade;
         std::string transitionId = "fade";
@@ -69,6 +66,12 @@ public:
         // zoom for A and B (their renderer has none).
         CameraPose camera;
         std::array<float, 4> cameraGate{};
+        // Layer 2 (Layers.hpp): its picture, gate and Camera pair (x flat moves, y flat endless zoom),
+        // and this frame's mix. A presence of 0 is no Layer 2: the composite then draws as without one.
+        GLuint texL = 0;
+        std::array<float, 4> gateL{};
+        std::array<float, 2> cameraGateL{};
+        viz::layer::Mix layer;
         // W00: underlay, read each frame from CompositePass's own latched texture (see the class
         // comment above) via underlayTexOrZero()/underlayBlendMode()/underlayAmount().
         GLuint underlayTex = 0;
@@ -113,6 +116,7 @@ private:
     void uploadFrameUniforms(UniformCache& p, const Inputs& inputs, const TransitionCatalog::Def* definition);
     void uploadGradeUniforms(UniformCache& p, const Inputs& inputs);
     void uploadCameraUniforms(UniformCache& p, const Inputs& inputs);
+    void uploadLayerUniforms(UniformCache& p, const Inputs& inputs);
 
     TransitionPrograms transitions_;
     const ShaderSource& assets_;

@@ -33,6 +33,7 @@
 //   node check.mjs --fluid-display               # every SHADING/BLOOM/SUNRAYS x LOOK variant
 //   node check.mjs --all --resize                # each style's picture across a scene-target resize
 //   node check.mjs --effects --out out/effects   # one frame per Shared core effect
+//   node check.mjs --layers --out out/layers     # one frame per Layer 2 blend mode and influence
 //   node check.mjs --all --glslang               # every Style's GLSL ES through glslangValidator
 //   node check.mjs --glslang-self-test           # glslang still fails on planted violations
 //   node check.mjs --shader kifs --glslang --watch --push   # the authoring loop (docs/style-packs.md)
@@ -237,7 +238,7 @@ function plan(uniforms, values, textures, width, height) {
 // effects that run before it (SharedFxPass), with 'history' standing in for the last frame.
 
 const COMPOSITE_NEUTRAL = {
-  uDither: 0, uRatio: 1, uProgress: 1, uStyle: 0, uLayerMix: 0.5, uBlendMode: 0, uTime: 12.5, uBeat: 0.4,
+  uDither: 0, uRatio: 1, uProgress: 1, uStyle: 0, uTime: 12.5, uBeat: 0.4,
   uChroma: 0, uVignette: 0, uScanline: 0, uGrain: 0, uGlitch: 0, uFisheye: 0,
   uGateA: [1, 1, 1, 1], uGateB: [1, 1, 1, 1],
   uPostWarp: 0, uPostRipple: 0, uPostSymmetry: 6, uPostKaleido: 0, uPostPixelate: 0, uPostTile: 1, uPostTwist: 0,
@@ -247,8 +248,13 @@ const COMPOSITE_NEUTRAL = {
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
   uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
+  // Layer 2 off (presence 0); --layers turns it on.
+  uGateL: [1, 1, 1, 1], uCamGateL: [1, 1], uLayerPresence: 0, uLayerBlend: 0, uLayerOpacity: 0.6, uLayerInfluence: 0,
+  uLayerAmount: 0.7, uLayerSwap: 0,
 };
-const COMPOSITE_TEXTURES = { uTexA: 'scene', uTexB: 'scene', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white' };
+const COMPOSITE_TEXTURES = {
+  uTexA: 'scene', uTexB: 'scene', uTexL: 'history', uNoise: 'noise', uFlow: 'flow', uRipple: 'flow', uUnderlay: 'white',
+};
 
 const COMPOSITE_EFFECTS = {
   neutral: {},
@@ -279,6 +285,29 @@ const COMPOSITE_EFFECTS = {
   camera_shake: { uCamShake: [0.02, -0.015, 0.02] },
 };
 
+// Layer 2 (lib_layers.glsl, Layers.hpp): one frame per blend mode and per influence, the stand-in
+// picture of Layer 1 ('scene') with another ('history') laid over it, plus the swap and a transition
+// running under Layer 2. The mode names and ordinals are layer::Blend's and layer::Influence's.
+const LAYER_BLENDS = ['normal', 'add', 'screen', 'lighten', 'multiply', 'overlay', 'soft_light', 'difference', 'exclusion',
+  'luminosity'];
+const LAYER_INFLUENCES = ['none', 'bend', 'swirl', 'cut_out', 'tint', 'outline'];
+
+function layerEffects() {
+  const on = { uLayerPresence: 1 };
+  const out = {};
+  // Difference and Exclusion at their No-flash cap, as the engine holds them.
+  LAYER_BLENDS.forEach((name, blend) => {
+    out[`blend_${name}`] = { ...on, uLayerBlend: blend, uLayerOpacity: blend === 7 || blend === 8 ? 0.25 : 0.6 };
+  });
+  LAYER_INFLUENCES.forEach((name, influence) => {
+    out[`influence_${name}`] = { ...on, uLayerBlend: 2, uLayerInfluence: influence };
+  });
+  out.swap_hard_light = { ...on, uLayerBlend: 5, uLayerSwap: 1 };
+  out.half_faded = { ...on, uLayerBlend: 0, uLayerPresence: 0.5, uLayerSwap: 0.5 };
+  out.under_a_fade = { ...on, uLayerBlend: 2, uStyle: 1, uProgress: 0.5, uLayerInfluence: 1 };
+  return out;
+}
+
 const SHARED_FX_NEUTRAL = {
   uTexel: [0, 0], uAspect: 1, uTime: 12.5, uSoftFocus: 0, uParticles: 0, uParticleKind: 0, uParticleSize: 1,
   uEchoKeep: 0, uEchoZoom: 0, uEchoWarp: 0, uMotionKeep: 0,
@@ -297,6 +326,17 @@ const SHARED_FX_EFFECTS = {
   particles_bubbles: { uParticles: 0.8, uParticleKind: 3, uParticleSize: 1.5 },
 };
 
+function layerJobs(registry, size) {
+  const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
+  const frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, 'composite_frag.glsl'), 'utf8'), registry);
+  const uniforms = parseUniforms(frag);
+  return Object.entries(layerEffects()).map(([name, values]) => ({
+    name: `layer_${name}`,
+    vert,
+    frag,
+    uniforms: plan(uniforms, { ...COMPOSITE_NEUTRAL, ...values }, COMPOSITE_TEXTURES, size, size),
+  }));
+}
 // The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
 // level and a plain one), its upsample, and the final tonemap (highlight roll-off) with and without bloom. The
 // stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
@@ -335,7 +375,7 @@ function withKeywords(src, defines) {
 
 function parseArgs(argv) {
   const a = {
-    size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, effects: false, out: null, time: null,
+    size: 240, shaders: [], all: false, list: false, fluidDisplay: false, resize: false, effects: false, layers: false, out: null, time: null,
     glslang: false, glslangSelfTest: false, watch: false, push: false, pkg: DEBUG_PACKAGE,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -345,6 +385,7 @@ function parseArgs(argv) {
     else if (v === '--fluid-display') a.fluidDisplay = true;
     else if (v === '--resize') a.resize = true;
     else if (v === '--effects') a.effects = true;
+    else if (v === '--layers') a.layers = true;
     else if (v === '--glslang') a.glslang = true;
     else if (v === '--glslang-self-test') a.glslangSelfTest = true;
     else if (v === '--watch') a.watch = true;
@@ -507,6 +548,7 @@ function buildJobs(args, registry, styles, renderIds) {
     }
   }
   if (args.effects) jobs.push(...effectJobs(registry, args.size));
+  if (args.layers) jobs.push(...layerJobs(registry, args.size));
   return jobs;
 }
 
@@ -570,8 +612,8 @@ async function main() {
     process.exitCode = glslangSelfTest() ? 0 : 1;
     return;
   }
-  if (!args.all && !args.shaders.length && !args.fluidDisplay && !args.effects) {
-    throw new Error('nothing to do: --shader <id>, --all, --fluid-display or --effects');
+  if (!args.all && !args.shaders.length && !args.fluidDisplay && !args.effects && !args.layers) {
+    throw new Error('nothing to do: --shader <id>, --all, --fluid-display, --effects or --layers');
   }
   let browser = null;
   let page = null;

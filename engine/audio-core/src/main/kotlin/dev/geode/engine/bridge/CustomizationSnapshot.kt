@@ -68,12 +68,12 @@ data class CustomizationSnapshot(
         const val MAGIC: Int = 0x31534347
         const val VERSION: Short = 1
         const val HEADER_BYTES: Int = 12
-        const val PAYLOAD_BYTES: Int = 16329
+        const val PAYLOAD_BYTES: Int = 16353
         const val WIRE_BYTES: Int = HEADER_BYTES + PAYLOAD_BYTES
         const val PARAMS_COUNT: Int = 132
         const val LFO_COUNT: Int = 24
         const val ADSR_COUNT: Int = 20
-        const val PLAN_COUNT: Int = 3901
+        const val PLAN_COUNT: Int = 3907
         private const val RESERVED: Short = 0
         private const val FLAG_ON: Byte = 1
         private const val FLAG_OFF: Byte = 0

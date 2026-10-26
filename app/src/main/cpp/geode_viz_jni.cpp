@@ -131,16 +131,6 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetReducedMotion(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetLayer(JNIEnv* env, jobject, jlong handle, jstring sceneId, jfloat mix,
-                                                     jint blendMode) {
-    return vizCall(env, "vizSetLayer", handle, [&](geode_viz* v) {
-        Utf8Chars id(env, sceneId);
-        geode_viz_set_layer(v, id.get() ? id.get() : "", mix, blendMode);
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetTransition(JNIEnv* env, jobject, jlong handle, jstring id, jlong durationMs) {
     return vizCall(env, "vizSetTransition", handle, [&](geode_viz* v) {
         Utf8Chars name(env, id);

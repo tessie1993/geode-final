@@ -106,10 +106,6 @@ void geode_viz_set_reduced_motion(geode_viz* v, int on) {
     if (v) v->renderer.setReducedMotion(on != 0);
 }
 
-void geode_viz_set_layer(geode_viz* v, const char* scene_id, float mix, int blend_mode) {
-    if (v) v->renderer.setLayer(text(scene_id), mix, blend_mode);
-}
-
 void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms) {
     if (v) v->renderer.setTransition(text(id), duration_ms);
 }

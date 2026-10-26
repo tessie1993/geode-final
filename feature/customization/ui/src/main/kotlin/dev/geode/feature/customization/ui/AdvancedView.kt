@@ -63,7 +63,7 @@ internal fun AdvancedView(
         AdvancedSection.REACTIONS -> ReactionsSection(panel, page)
         AdvancedSection.CAMERA -> SliderGroup(panel, panel.model.shared.getValue(SharedGroup.CAMERA))
         AdvancedSection.EFFECTS ->
-            panel.model.shared.filterKeys { it != SharedGroup.CAMERA }.forEach { (group, rows) ->
+            panel.model.shared.filterKeys { it != SharedGroup.CAMERA && it != SharedGroup.LAYERS }.forEach { (group, rows) ->
                 SectionTitle(groupName(group))
                 SliderGroup(panel, rows)
             }
@@ -74,6 +74,7 @@ internal fun AdvancedView(
                 SliderGroup(panel, panel.model.extras)
             }
         AdvancedSection.MACROS -> MacrosSection(panel, page.macro)
+        AdvancedSection.LAYERS -> LayersSection(panel)
     }
     TextButton(onClick = { panel.send(CustomizationCommand.ResetToStyle) }, modifier = Modifier.padding(top = ForestSpacing.Large)) {
         Text(stringResource(R.string.customize_reset))
@@ -89,6 +90,7 @@ internal fun sectionName(section: AdvancedSection): String =
             AdvancedSection.EFFECTS -> R.string.customize_section_effects
             AdvancedSection.EXTRAS -> R.string.customize_section_extras
             AdvancedSection.MACROS -> R.string.customize_section_macros
+            AdvancedSection.LAYERS -> R.string.customize_section_layers
         },
     )
 
@@ -104,7 +106,7 @@ internal fun QuietText(text: String) {
 
 /** Sliders that set their value, link in Learn mode, and offer "React to…" on a long-press. */
 @Composable
-private fun SliderGroup(
+internal fun SliderGroup(
     panel: PanelState,
     rows: List<SliderRow>,
 ) {

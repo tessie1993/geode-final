@@ -34,6 +34,7 @@ import dev.geode.feature.customization.ui.LookChip
 import dev.geode.feature.customization.ui.ModulatorsAutomationRoute
 import dev.geode.feature.customization.ui.PresetChip
 import dev.geode.feature.visuals.api.PresetShare
+import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.feature.visuals.ui.MilkdropRoute
 import dev.geode.feature.visuals.ui.PresetsRoute
@@ -120,7 +121,7 @@ fun CustomizePanel(
         onShare = { shareCustomization(context, it) },
         onHide = onHide,
         modifier = modifier,
-        looks = visuals.styles.map { LookChip(it.id, it.name) },
+        looks = visuals.styles.map { LookChip(it.id, it.name, canBeLayer = it.group != StyleGroup.MILKDROP) },
         presets =
             visuals.presets
                 ?.saved

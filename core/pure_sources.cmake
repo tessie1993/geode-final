@@ -51,6 +51,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Lfo.cpp
     viz/Adsr.cpp
     viz/VisualSafety.cpp
+    viz/Layers.cpp
     viz/FlashLimiter.cpp
     viz/ToneMap.cpp
     viz/Reactions.cpp

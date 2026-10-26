@@ -75,15 +75,6 @@ class VisualizerRenderer(
     @Volatile
     var reactionsHeld: Boolean = false
 
-    @Volatile
-    var layerSceneId: SceneId? = null
-
-    @Volatile
-    var layerMix: Float = 0.5f
-
-    @Volatile
-    var layerBlend: BlendMode = BlendMode.SCREEN
-
     /** The built-in style behind [transitionId], kept for the settings model; the renderer reads the id. */
     @Volatile
     var transitionStyle: TransitionStyle = TransitionStyle.FADE
@@ -252,7 +243,6 @@ class VisualizerRenderer(
         nativeViz.setFeatures(signalHold.frame(displayEvents.frame(featureSource() ?: features)))
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
-        nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
         // The rate the pacer actually draws at, the thermal frame cap included, so the load scale and
         // the hint session judge each frame against the time it really has.
