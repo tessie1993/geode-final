@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cmath>
 
 #include "geode/util/Log.hpp"
@@ -12,7 +13,6 @@ namespace {
 constexpr const char* kTag = "GeodeRenderer";
 constexpr int kPaletteSize = 256;
 constexpr int kPaletteRows = 5;
-constexpr int kPcmCapacity = 512 * 8;
 // The strongest smear Settings offers (BehaviorSettings.TOUCH_SMEAR_STRENGTH).
 constexpr float kMaxTouchSmear = 2.0f;
 }  // namespace
@@ -26,9 +26,7 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
                           [this] { return thermal_.pacedFps(); },
                           [this](const std::string& path) { notePresetLoaded(path); },
                           [this] { return thermal_.offscreen(); }}),
-      compositePass_(assets_, &programCache_),
-      pcm_(kPcmCapacity, 0.0f),
-      pcmDeliverScratch_(kPcmCapacity, 0.0f) {
+      compositePass_(assets_, &programCache_) {
     programCache_.install(cacheDir_);
 }
 
@@ -65,12 +63,10 @@ void Renderer::beginParamMorph(float seconds) {
     morphRemainSec_ = seconds * 3.0f;
 }
 
-void Renderer::pushPcm(const float* samples, int count) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    const int n = std::min(count, kPcmCapacity);
-    if (n <= 0) return;
-    std::copy(samples + (count - n), samples + count, pcm_.begin());
-    pcmCount_ = n;
+void Renderer::setFramePcm(const float* stereo, int frames) {
+    const int n = stereo ? std::clamp(frames, 0, kPcmWindowFrames) : 0;
+    std::copy(stereo, stereo + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
+    pendingPcmFrames_ = n;
 }
 
 double Renderer::monotonicSeconds() {
@@ -138,7 +134,7 @@ void Renderer::applyMilkRequests() {
 
 // Any thread. Copies the pixel buffer under stateLock_ into the retained overlay buffer; the
 // actual GL upload (and the ARGB->RGBA conversion) happens on the GL thread in
-// applyOverlayUploads(), matching pushPcm()'s copy-now/convert-later split.
+// applyOverlayUploads(): copy now, convert later.
 void Renderer::setOverlayRgba(const uint32_t* pixels, int width, int height) {
     std::lock_guard<std::mutex> lock(stateLock_);
     if (pixels == nullptr || width <= 0 || height <= 0) {

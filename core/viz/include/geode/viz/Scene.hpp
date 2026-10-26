@@ -30,7 +30,10 @@ public:
     virtual void draw(float timeSeconds) = 0;
     virtual void release() = 0;
 
+    // This frame's audio window, as mono and as interleaved stereo; both come every frame the Visual has
+    // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
+    virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/audio/feed/FeedRing.hpp"
 #include "geode/audio/player/Deck.hpp"
 #include "geode/audio/player/SpscRing.hpp"
 
@@ -26,8 +27,9 @@ struct RetiredDsp {
     uint64_t readyAt = 0;          // safe once callbacks_ has advanced past this value
 };
 
-// Drains the current deck, joins the next one gaplessly or through a crossfade, then applies volume, the
-// DSP chain and the analysis tap. render() runs on the audio thread and never blocks or allocates; the
+// Drains the current deck, joins the next one gaplessly or through a crossfade, hands the mix to the
+// Visual's audio feed, then applies volume and the DSP chain. The feed gets the music as it is, so
+// neither the volume nor the equalizer changes the Visual. render() runs on the audio thread and never blocks or allocates; the
 // engine thread reaches it through the command ring and takes retired decks back from the retired ring.
 class Mixer {
 public:
@@ -58,6 +60,13 @@ public:
     // (Player::reconcile already does).
     void reclaimDsp(bool streamRunning);
     void setVolume(float volume) { volume_.store(volume, std::memory_order_relaxed); }
+    // Any thread. The feed the mix goes to (null for none) and the output rate it runs at. The feed must
+    // outlive every render() that can still see it: in practice, the player.
+    void setFeed(feed::FeedRing* ring) { feed_.store(ring, std::memory_order_release); }
+    void setFeedRate(int rateHz) { feedRate_.store(rateHz, std::memory_order_relaxed); }
+    // Engine thread: tells the feed whether the output plays, and how far ahead of the speaker the mix runs.
+    void setFeedRunning(bool running);
+    void setFeedDelay(int64_t delayNs);
 
     // Audio thread: frames <= kMaxRenderFrames.
     void render(float* stereo, size_t frames);
@@ -65,7 +74,6 @@ public:
     // Any thread.
     Deck* currentDeck() const { return current_.load(std::memory_order_acquire); }
     bool ended() const { return ended_.load(std::memory_order_acquire); }
-    size_t readTap(float* stereo, size_t frames) { return tap_.pop(stereo, frames * kChannels) / kChannels; }
 
 private:
     void applyCommands();
@@ -77,7 +85,8 @@ private:
 
     SpscRing<DeckCommand> commands_{64};
     SpscRing<Deck*> retired_{64};
-    SpscRing<float> tap_;
+    std::atomic<feed::FeedRing*> feed_{nullptr};
+    std::atomic<int> feedRate_{0};
     std::vector<float> scratch_;
     std::atomic<Deck*> current_{nullptr};
     std::atomic<Deck*> next_{nullptr};

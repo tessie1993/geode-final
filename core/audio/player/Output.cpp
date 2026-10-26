@@ -87,6 +87,12 @@ bool Output::pause() {
     return paused;
 }
 
+double Output::latencyMillis() {
+    if (!isOpen() || !running()) return -1.0;
+    const auto latency = stream_->calculateLatencyMillis();
+    return latency ? latency.value() : -1.0;
+}
+
 bool Output::settle(oboe::StreamState leaving, oboe::StreamState wanted) {
     oboe::StreamState next = oboe::StreamState::Unknown;
     stream_->waitForStateChange(leaving, &next, kStateTimeoutNs);

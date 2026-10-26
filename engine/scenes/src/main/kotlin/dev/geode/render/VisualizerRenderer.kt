@@ -6,11 +6,11 @@ import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
 import dev.geode.analysis.SignalHold
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
-import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import javax.microedition.khronos.egl.EGLConfig
@@ -92,12 +92,16 @@ class VisualizerRenderer(
     @Volatile
     var onMilkPresetLoaded: (String) -> Unit = {}
 
+    /**
+     * The live sound: while set, the native renderer reads the features heard now and the stereo
+     * window for the scenes straight from this feed at the start of each frame, on the GL thread, and
+     * [features] is not sent. Null draws [features].
+     */
     @Volatile
-    var pcmProvider: () -> PcmChunk? = { null }
+    var feed: VisualFeed? = null
 
-    /** The live sound's features, read on the GL thread every frame; [features] while it has none. */
-    @Volatile
-    var featureSource: () -> AudioFeatures? = { null }
+    // GL thread only: the feed the native renderer is attached to now.
+    private var attachedFeed: VisualFeed? = null
 
     /**
      * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
@@ -201,6 +205,7 @@ class VisualizerRenderer(
         nativeViz.surfaceCreated()
         styleLab?.attach(appContext, nativeViz)
         attachedSnapshots = null
+        attachedFeed = null
         nativeParams = null
         nativeLfo = null
         nativeAdsr = null
@@ -238,9 +243,19 @@ class VisualizerRenderer(
             nativeAdsr = null
         }
         if (wanted == null) syncSceneParams()
+        val live = feed
+        if (live !== attachedFeed) {
+            nativeViz.attachFeed(live)
+            attachedFeed = live
+        }
         val held = reactionsHeld
         signalHold.held = held
-        nativeViz.setFeatures(signalHold.frame(displayEvents.frame(featureSource() ?: features)))
+        if (live == null) {
+            nativeViz.setFeatures(signalHold.frame(displayEvents.frame(features)))
+        } else {
+            // The feed's frames are held natively, with the audio window MilkDrop is fed, so it holds too.
+            nativeViz.setReactionsHeld(held)
+        }
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
         nativeViz.setTransition(transitionId, transitionDuration)
@@ -257,8 +272,6 @@ class VisualizerRenderer(
             nativeViz.setFrameLoad(FramePacer.activeStats())
             ThermalGovernor.frameCapFps = nativeViz.frameCapFps()
         }
-        // Read even while held, so the samples of the hold are skipped rather than queued for after it.
-        pcmProvider()?.let { chunk -> if (!held) nativeViz.pushPcm(chunk.data, chunk.count) }
     }
 
     private fun syncSceneParams() {

@@ -49,6 +49,7 @@ namespace geode::viz {
 class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
+    static constexpr int kPcmWindowFrames = 576;
 
     Renderer(AAssetManager* assets, std::string cacheDir);
     ~Renderer();
@@ -63,7 +64,6 @@ public:
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
     // The phone's down in screen space, latest-wins (GravityField); 0, 0, 0 says there is none.
     void submitGravity(float x, float y, float z) { gravityField_.submit(x, y, z); }
-    void pushPcm(const float* samples, int count);
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
     // The person's "smear the Visual with a finger" (Settings): whether a Style that does not draw the
     // strokes itself gets them as the shared ripple smear, and how strongly. Off until set.
@@ -101,6 +101,10 @@ public:
 #endif
 
     // GL thread.
+    // The next frame's audio window, interleaved stereo (at most kPcmWindowFrames): handed to every scene
+    // that frame and then dropped, so no window is ever drawn twice. Without one, the scenes fall back to
+    // the features' waveform.
+    void setFramePcm(const float* stereo, int frames);
     void onSurfaceCreated();
     void surfaceChanged(int width, int height);
     bool setScene(const std::string& sceneId);
@@ -161,6 +165,7 @@ private:
     quality::Budget qualityFor(const std::string& sceneId) const;
     void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
+    void latchFramePcm();
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
     void wireFlow(Scene& target, const SceneParams& p);
     void applyMilkRequests();
@@ -226,11 +231,14 @@ private:
     scale::FrameLoad frameLoad_;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
-    std::vector<float> pcm_;
-    // Never cleared, by design: the scenes keep drawing the last waveform
-    // between pushes.
-    int pcmCount_ = 0;
-    std::vector<float> pcmDeliverScratch_;
+    // The audio window setFramePcm handed over for the next frame, and the one this frame draws: latched in
+    // beginFrame, so every scene of a frame gets the same window and the next frame gets none unless a new
+    // one comes.
+    std::array<float, kPcmWindowFrames * 2> pendingPcm_{};
+    int pendingPcmFrames_ = 0;
+    std::array<float, kPcmWindowFrames * 2> framePcm_{};
+    std::array<float, kPcmWindowFrames> framePcmMono_{};
+    int framePcmFrames_ = 0;
     // W00: overlay/underlay layers. Retained (not just "pending") so a surface recreation can
     // re-arm the dirty flag and re-upload; see onSurfaceCreated() and applyOverlayUploads().
     // Empty = cleared.
