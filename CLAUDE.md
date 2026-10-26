@@ -37,4 +37,4 @@ Rules scoped to a part of the tree live in `.claude/rules/` and load when a matc
 
 ## Builds and tests
 
-Never run Gradle, CMake or tests locally. One PR per issue; read `git diff --stat` before pushing and drop anything the issue did not ask for. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it. What each check gates and the mutation floors: `docs/ci.md`.
+Never run Gradle, CMake or tests locally. One PR per issue; read `git diff --stat` before pushing and drop anything the issue did not ask for. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Which jobs a PR runs is chosen from the files it changes (`docs/ci.md`, "Which checks run"); a job that runs, runs in full, mutation tests included. `[ci-full]` in the head commit's message runs everything. What each check gates and the mutation floors: `docs/ci.md`.
