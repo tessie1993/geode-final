@@ -177,6 +177,12 @@ vec3 edgeLight(vec3 p, vec3 lo, vec3 hi, float seed) {
     return gEdgeCol * line * (gEdgeRest + 1.6 * pulse);
 }
 
+/** Soft rolloff toward white, applied before grade() so its controls keep their meaning. */
+vec3 filmic(vec3 c) {
+    c = max(c, 0.0) * 1.2;
+    return c * (1.0 + c * 0.25) / (1.0 + c);
+}
+
 // A finger steers the look toward where it is held; on release the look
 // glides home as the touch fades. Untouched, the ray comes back as it went in.
 vec3 steerLook(vec3 rd) {
@@ -308,5 +314,5 @@ void main() {
         col += gEdgeCol * min(touchWake(uv), 3.0) * 0.04;
     }
     col *= 0.76 + 0.24 * smoothstep(2.2, 0.4, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(filmic(col)), 1.0);
 }

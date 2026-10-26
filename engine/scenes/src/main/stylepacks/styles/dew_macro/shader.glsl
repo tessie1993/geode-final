@@ -222,6 +222,12 @@ vec3 dropColor(vec3 ro, vec3 rd, vec4 drop, float tc, float miss, float b) {
     return mix(through, refl, fresnel) + mix(pal(0.85), vec3(1.0), 0.6) * glint;
 }
 
+/** Soft rolloff toward white, applied before grade() so its controls keep their meaning. */
+vec3 filmic(vec3 c) {
+    c = max(c, 0.0) * 1.2;
+    return c * (1.0 + c * 0.25) / (1.0 + c);
+}
+
 // A finger steers the look toward where it is held; on release the look
 // glides home as the touch fades. Untouched, the ray comes back as it went in.
 vec3 steerLook(vec3 rd) {
@@ -316,5 +322,5 @@ void main() {
         col += pal(0.8) * min(touchWake(uv), 3.0) * 0.035;
     }
     col *= 0.74 + 0.26 * smoothstep(2.2, 0.4, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(filmic(col)), 1.0);
 }

@@ -132,6 +132,12 @@ vec3 lampNear(vec3 p) {
     return vec3(cos(a), 0.0, sin(a)) * (SD_RW - 0.16) + vec3(0.0, h, 0.0);
 }
 
+/** Soft rolloff toward white, applied before grade() so its controls keep their meaning. */
+vec3 filmic(vec3 c) {
+    c = max(c, 0.0) * 1.2;
+    return c * (1.0 + c * 0.25) / (1.0 + c);
+}
+
 // A finger steers the look toward where it is held; on release the look
 // glides home as the touch fades. Untouched, the ray comes back as it went in.
 vec3 steerLook(vec3 rd) {
@@ -230,6 +236,11 @@ void main() {
             albedo = vec3(0.12, 0.1, 0.09);
         }
         col = albedo * (sky * mix(pal(0.55), vec3(1.0), 0.75) * 0.6 + lampCol * lamp) * ao;
+        // A rim of daylight on edges turned away from the lens, and the worn
+        // stone's sheen toward the nearest lamp.
+        float rim = pow(clamp(1.0 + dot(rd, n), 0.0, 1.0), 4.0);
+        col += mix(pal(0.55), vec3(1.0), 0.7) * rim * 0.12 * ao;
+        col += lampCol * pow(max(dot(reflect(rd, n), toLamp / dl), 0.0), 24.0) * 0.18 * gLampLevel / (1.0 + 0.35 * dl * dl);
         if (mat == 0.0) {
             // The steps' lit nosings and the light strip along the well's edge:
             // the lines that draw the spiral all the way down.
@@ -284,5 +295,5 @@ void main() {
         col += stripCol * min(touchWake(uv), 3.0) * 0.04;
     }
     col *= 0.72 + 0.28 * smoothstep(2.2, 0.4, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(filmic(col)), 1.0);
 }
