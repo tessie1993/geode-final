@@ -317,6 +317,9 @@ TEST(FeedbackRates, TheMusicSpeedsTheMotionWithinItsBounds) {
     EXPECT_FLOAT_EQ(feedback::motionScale(spec, drive), 0.0f);
     drive.speed = kNan;
     EXPECT_FLOAT_EQ(feedback::motionScale(spec, drive), 1.5f);
+    // A broken react lets the music do nothing.
+    spec.react = kNan;
+    EXPECT_FLOAT_EQ(feedback::motionScale(spec, drive), 1.0f);
 }
 
 // ---- a second of the warp --------------------------------------------------------------------------
