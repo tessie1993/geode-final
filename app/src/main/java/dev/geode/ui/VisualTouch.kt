@@ -97,7 +97,8 @@ class VisualTouch(
         xs[slot] = x
         ys[slot] = y
         publish()
-        if (slot == 0 && dt > 0f && (dx != 0f || dy != 0f)) {
+        val moved = dx != 0f || dy != 0f
+        if (slot == 0 && dt > 0f && moved) {
             stroke(x / width, y / height, dx / width, dy / height, dt, strength.coerceIn(0f, 1f))
         }
         return live
