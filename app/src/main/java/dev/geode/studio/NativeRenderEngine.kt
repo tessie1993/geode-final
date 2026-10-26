@@ -8,6 +8,7 @@ import dev.geode.analysis.AnalysisCache
 import dev.geode.analysis.AnalysisProfile
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.analysis.OfflineAnalyzer
+import dev.geode.analysis.SongMap
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.export.ExportAspect
@@ -186,8 +187,9 @@ class NativeRenderEngine(
         }
 
     /**
-     * The Track's whole-song analysis with Settings' beat tuning, from the cache when it holds one. The
-     * beat's shortest gap keeps the live Visual's floor, so a Render never pulses faster than live.
+     * The Track's whole-song analysis with Settings' beat tuning, from the cache when it holds one, laid
+     * out by its Song map. The beat's shortest gap keeps the live Visual's floor, so a Render never
+     * pulses faster than live.
      */
     private suspend fun analyse(
         uri: Uri,
@@ -205,7 +207,10 @@ class NativeRenderEngine(
                         .also { AnalysisCache.save(context, uri, it, AnalysisProfile.RENDER) }
             }
         onProgress(1f)
-        return analysed.withBeatSensitivity(sensitivity, gap)
+        // The whole track is known before the first frame: the Song map puts hits, bars, sections and
+        // builds where the music has them (#320). The live Visual has no such map and no lookahead.
+        val tuned = analysed.withBeatSensitivity(sensitivity, gap)
+        return SongMap.of(tuned).choreographed(tuned)
     }
 
     /**
