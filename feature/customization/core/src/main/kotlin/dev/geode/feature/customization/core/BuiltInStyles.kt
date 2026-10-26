@@ -313,6 +313,7 @@ object BuiltInStyles {
             shader("cloud_deck", true, listOf(generic(FOG))),
             shader("gyro_core", true, listOf(generic(SPIN), generic(FOG))),
             shader("endless_stacks", true, listOf(generic(FOG))),
+            shader("dune_sea", true, listOf(generic(FOG))),
         )
 
     private fun life(
