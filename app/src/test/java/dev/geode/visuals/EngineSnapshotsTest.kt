@@ -9,7 +9,6 @@ import dev.geode.feature.customization.core.NativePlan
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.render.VisualSafety
 import dev.geode.render.bridge.SceneParamsCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -45,14 +44,27 @@ class EngineSnapshotsTest {
         val snapshot = EngineSnapshots.of(customization, settings)
         assertTrue(snapshot.reducedMotion)
         assertEquals(BeatTuning.clampSensitivity(2f), snapshot.soundSensitivity)
-        assertEquals(VisualSafety.beatMinIntervalMs(400f), snapshot.soundRefractoryMs)
+        assertEquals(400f, snapshot.soundRefractoryMs)
     }
 
     @Test
-    fun `before Settings load their defaults apply, and the beat never flashes too fast`() {
+    fun `a beat gap shorter than the flash limit reaches the detection as chosen, within Settings' range`() {
+        fun gapFor(ms: Float): Float {
+            val settings = SettingsValues(analysis = AnalysisSettings(beatMinIntervalMs = ms))
+            return EngineSnapshots.of(customization, settings).soundRefractoryMs
+        }
+        assertEquals(BeatTuning.INTERVAL_MS_MIN, gapFor(BeatTuning.INTERVAL_MS_MIN))
+        assertEquals(250f, gapFor(250f))
+        assertEquals(BeatTuning.INTERVAL_MS_MIN, gapFor(50f))
+        assertEquals(BeatTuning.INTERVAL_MS_MAX, gapFor(5_000f))
+    }
+
+    @Test
+    fun `before Settings load their defaults apply`() {
         val snapshot = EngineSnapshots.of(customization, null)
         assertFalse(snapshot.reducedMotion)
-        assertTrue(snapshot.soundRefractoryMs >= VisualSafety.beatMinIntervalMs(0f))
+        assertEquals(AnalysisSettings().beatMinIntervalMs, snapshot.soundRefractoryMs)
+        assertEquals(BeatTuning.clampSensitivity(AnalysisSettings().beatSensitivity), snapshot.soundSensitivity)
         assertEquals(0, snapshot.revision)
     }
 

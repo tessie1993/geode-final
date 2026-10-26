@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <memory>
 #include <vector>
 
@@ -80,11 +81,10 @@ private:
 
     void silenceOutputs();
     void toDb(const float* power, float* out) const;
-    void smooth(const float* source, float dtSeconds);
-    float rmsOf(const float* samples) const;
+    void smooth(const float* source, float* state, float* out, int count, float dtSeconds) const;
+    float rmsOf(const float* samples, float mean) const;
     float normalizedCentroid() const;
     float macroEnergyOf(float level, float dtSeconds);
-    float mean(const std::vector<float>& values, int from, int to) const;
 
     int bandCount_;
     int fftSize_;
@@ -97,6 +97,8 @@ private:
     std::vector<float> bandPower_;
     std::vector<float> bandDb_;
     std::vector<float> bandNormalized_;
+    std::vector<float> drumLevels_;
+    std::vector<float> floorPower_;
     std::vector<float> whitened_;
     AdaptiveRange range_;
     AdaptiveWhitening whitening_;
@@ -111,6 +113,9 @@ private:
     HarmonicBalance harmonic_;
     std::vector<float> bands_;
     std::vector<float> smoothingState_;
+    // Bass, mid and treble on the shared scale, and the attack and release's state for each.
+    std::array<float, 3> groups_{};
+    std::array<float, 3> groupState_{};
     float attackSeconds_ = 0.02f;
     float releaseSeconds_ = 0.15f;
     float rms_ = 0.0f;

@@ -6,7 +6,6 @@ import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.core.NativePlan
 import dev.geode.feature.settings.api.SettingsValues
-import dev.geode.render.VisualSafety
 import dev.geode.render.bridge.SceneParamsCodec
 import dev.geode.render.scene.SceneParams
 
@@ -63,7 +62,9 @@ object EngineSnapshots {
             adsr = noEnvelope,
             plan = NativePlan.encode(customization, switchingHeld),
             soundSensitivity = BeatTuning.clampSensitivity(values.analysis.beatSensitivity),
-            soundRefractoryMs = VisualSafety.beatMinIntervalMs(values.analysis.beatMinIntervalMs),
+            // The gap the person chose between beats, not the flash limit: detection hears every beat, and the
+            // No-flash rule bounds what the Visual draws from them, every frame (core/viz/FlashLimiter).
+            soundRefractoryMs = BeatTuning.clampIntervalMs(values.analysis.beatMinIntervalMs),
             soundAttackSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_ATTACK),
             soundReleaseSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_DECAY),
         )
