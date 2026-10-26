@@ -81,6 +81,23 @@ float Progress::step(float dt, float kick) {
     return shown_;
 }
 
+bool LookHold::offer(uint32_t style, uint32_t drawn) {
+    holding_ = style != 0U && drawn != 0U && style != drawn;
+    style_ = style;
+    unasked_ = 0.0f;
+    held_ = 0.0f;
+    return !holding_;
+}
+
+bool LookHold::step(uint32_t drawn, uint32_t requested, float dt) {
+    if (!holding_) return false;
+    const float span = std::max(dt, 0.0f);
+    unasked_ = requested == style_ ? 0.0f : unasked_ + span;
+    held_ += span;
+    if (drawn == style_ || unasked_ >= kRequestGraceSeconds || held_ >= kMaxHoldSeconds) holding_ = false;
+    return !holding_;
+}
+
 float ease(float progress) {
     const float x = std::clamp(progress, 0.0f, 1.0f);
     return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);

@@ -123,6 +123,10 @@ public:
     bool setScene(const std::string& sceneId);
     void warmTransition(const std::string& id);
     void cut();
+    // The Style drawn as Layer 1 after the last frame and the one asked for now, as layer::styleHash
+    // names (layer::kNoStyle for none): what transition::LookHold weighs a Customization against.
+    uint32_t drawnStyle() const;
+    uint32_t requestedStyle() const;
     void render(double timeSeconds, GLuint targetFbo);
     void releaseScenes();
     const GlProfile& profile() const { return profile_; }

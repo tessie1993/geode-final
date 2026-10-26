@@ -34,6 +34,11 @@ struct geode_viz {
     bool hasPlan = false;
     geode::viz::mod::ReactionGraph graph;
     double lastFrameSeconds = -1.0;
+    // A Customization for a Style not drawn yet, held until a change of Style to it starts (#309), and
+    // the time of the last frame it was weighed at. Drawing thread only.
+    geode::viz::transition::LookHold lookHold;
+    geode::bridge::CustomizationSnapshot heldLook;
+    double lastHoldSeconds = -1.0;
     // The graph's stylesDue after the last frame, for geode_viz_styles_due on any thread.
     std::atomic<uint32_t> stylesDue{0};
     // The live sound this Visual reads at the start of each frame; null when it is handed features instead.
@@ -313,11 +318,8 @@ void geode_viz_cut(geode_viz* v) {
     if (v) v->renderer.cut();
 }
 
-// The drawing thread's side of the hand-off: the newest Customization, if a new one came, before the frame.
-static void applySnapshot(geode_viz* v) {
-    geode_snapshots* attached = v->snapshots.load(std::memory_order_acquire);
-    if (!attached || !attached->exchange.refresh(geode::bridge::SnapshotReader::Draw)) return;
-    const geode::bridge::CustomizationSnapshot& snapshot = attached->exchange.current(geode::bridge::SnapshotReader::Draw);
+// A Customization's look onto the Visual: its parameters, its Modulators and its plan.
+static void applyLook(geode_viz* v, const geode::bridge::CustomizationSnapshot& snapshot) {
     geode_viz_set_params(v, snapshot.params.data(), static_cast<int>(snapshot.params.size()));
     geode_viz_set_reduced_motion(v, snapshot.reducedMotion ? 1 : 0);
     for (int slot = 0; slot < GEODE_LFO_SLOTS; ++slot) {
@@ -332,6 +334,26 @@ static void applySnapshot(geode_viz* v) {
         v->stylesDue.store(0, std::memory_order_relaxed);
         v->renderer.setCustomization(nullptr);
     }
+}
+
+// The drawing thread's side of the hand-off: the newest Customization, if a new one came, before the
+// frame. One for another Style than the one drawn waits until a change of Style to it starts (#309),
+// so the drawn Style keeps its own look while the change waits for its downbeat (transition::LookHold).
+static void applySnapshot(geode_viz* v, double timeSeconds) {
+    const auto dt = v->lastHoldSeconds < 0.0 ? 0.0f : static_cast<float>(timeSeconds - v->lastHoldSeconds);
+    v->lastHoldSeconds = timeSeconds;
+    geode_snapshots* attached = v->snapshots.load(std::memory_order_acquire);
+    if (attached && attached->exchange.refresh(geode::bridge::SnapshotReader::Draw)) {
+        const geode::bridge::CustomizationSnapshot& snapshot = attached->exchange.current(geode::bridge::SnapshotReader::Draw);
+        const uint32_t style = geode::viz::mod::planStyle(snapshot.plan.data(), snapshot.plan.size());
+        if (v->lookHold.offer(style, v->renderer.drawnStyle())) {
+            applyLook(v, snapshot);
+        } else {
+            v->heldLook = snapshot;
+        }
+        return;
+    }
+    if (v->lookHold.step(v->renderer.drawnStyle(), v->renderer.requestedStyle(), dt)) applyLook(v, v->heldLook);
 }
 
 // The Customization's Reactions, Modulators, Macro links and Automations for this frame, handed to
@@ -398,7 +420,7 @@ GeodeStatus geode_viz_attach_feed(geode_viz* v, geode_feed* f) {
 
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {
     if (!v) return;
-    applySnapshot(v);
+    applySnapshot(v, time_seconds);
     readFeed(v);
     evaluateCustomization(v, time_seconds);
     v->renderer.render(time_seconds, target_fbo);
