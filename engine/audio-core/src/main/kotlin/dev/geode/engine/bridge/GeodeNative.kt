@@ -293,6 +293,12 @@ object GeodeNative {
         points: Int,
     ): Int
 
+    external fun vizSetTouchSmear(
+        handle: Long,
+        on: Boolean,
+        strength: Float,
+    ): Int
+
     external fun vizQueueTouchStroke(
         handle: Long,
         nx: Float,

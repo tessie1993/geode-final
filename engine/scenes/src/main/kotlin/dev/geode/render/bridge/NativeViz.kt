@@ -138,6 +138,13 @@ class NativeViz(
         live { h -> GeodeNative.vizSetTouch(h, xy, n) }
     }
 
+    fun setTouchSmear(
+        on: Boolean,
+        strength: Float,
+    ) {
+        live { h -> GeodeNative.vizSetTouchSmear(h, on, strength) }
+    }
+
     fun queueTouchStroke(
         nx: Float,
         ny: Float,

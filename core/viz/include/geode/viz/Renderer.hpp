@@ -55,6 +55,9 @@ public:
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
     void pushPcm(const float* samples, int count);
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
+    // The person's "smear the Visual with a finger" (Settings): whether a Style that does not draw the
+    // strokes itself gets them as the shared ripple smear, and how strongly. Off until set.
+    void setTouchSmear(bool on, float strength);
     void loadMilkPreset(const std::string& path);
     void reloadMilkPreset();
     void setMilkTextureDir(const std::string& dir);
@@ -176,6 +179,7 @@ private:
     std::string transitionId_ = "fade";
     int64_t transitionDurationMs_ = 1200;
     std::atomic<bool> reducedMotion_{false};
+    std::atomic<float> touchSmear_{0.0f};
     scale::FrameLoad frameLoad_;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;

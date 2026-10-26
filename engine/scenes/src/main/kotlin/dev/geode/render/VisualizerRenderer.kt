@@ -56,6 +56,17 @@ class VisualizerRenderer(
     @Volatile
     var reducedMotion: Boolean = false
 
+    /**
+     * Settings' "smear the Visual with a finger": whether a Style that does not draw the finger's
+     * strokes itself (Water does) shows them as the shared ripple smear. Off by default, as in Settings.
+     */
+    @Volatile
+    var touchSmear: Boolean = false
+
+    /** How strongly the smear answers a stroke; Settings' smear strength. */
+    @Volatile
+    var touchSmearStrength: Float = 1f
+
     @Volatile
     var layerSceneId: SceneId? = null
 
@@ -204,6 +215,7 @@ class VisualizerRenderer(
         if (wanted == null) syncSceneParams()
         nativeViz.setFeatures(displayEvents.frame(featureSource() ?: features))
         nativeViz.setReducedMotion(reducedMotion)
+        nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
         nativeViz.setPacedFps(ThermalGovernor.pacedFps)

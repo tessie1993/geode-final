@@ -324,10 +324,11 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
 
 void Renderer::stepOverlays(Scene& scene, const SceneParams& p, float dt) {
     if (overlays_.wantsFlow(p, scene.isFluid())) overlays_.stepFlow(gainAdjusted(frameFeatures_, p), dt, p);
-    smearing_ = overlays_.smearing(monotonicSeconds());
+    const float smear = touchSmear_.load(std::memory_order_relaxed);
+    smearing_ = smear > 0.0f && overlays_.smearing(monotonicSeconds());
     // Stepped once per frame ahead of every draw so each scene reads the same anchor.
     touchField_.step(dt);
-    overlays_.drainTouchStrokes(scene);
+    overlays_.drainTouchStrokes(scene, smear);
     rippleOverlayOn_ = overlays_.rippleOverlayActive(p, smearing_, scene.isWater());
     if (rippleOverlayOn_) overlays_.stepRippleOverlay(gainAdjusted(frameFeatures_, p), p, dt);
 }

@@ -44,6 +44,9 @@ public:
     // The fluid scene runs its own flow field; the water scene owns the ripples and the touch smears.
     virtual bool isFluid() const { return false; }
     virtual bool isWater() const { return false; }
+    // True when the Style draws the finger's strokes itself (Water's ripples); every other Style gets
+    // them as the shared ripple smear, and only while the person has that smear on.
+    virtual bool ownsTouchStrokes() const { return isWater(); }
     virtual void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
         (void) nx; (void) ny; (void) ndx; (void) ndy; (void) dt; (void) strength;
     }

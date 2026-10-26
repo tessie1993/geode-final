@@ -13,6 +13,8 @@ constexpr const char* kTag = "GeodeRenderer";
 constexpr int kPaletteSize = 256;
 constexpr int kPaletteRows = 5;
 constexpr int kPcmCapacity = 512 * 8;
+// The strongest smear Settings offers (BehaviorSettings.TOUCH_SMEAR_STRENGTH).
+constexpr float kMaxTouchSmear = 2.0f;
 }  // namespace
 
 Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
@@ -84,6 +86,11 @@ double Renderer::monotonicSeconds() {
 
 void Renderer::queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
     overlays_.queueTouchStroke(nx, ny, ndx, ndy, dt, strength, monotonicSeconds());
+}
+
+void Renderer::setTouchSmear(bool on, float strength) {
+    const float s = std::isfinite(strength) ? std::clamp(strength, 0.0f, kMaxTouchSmear) : 0.0f;
+    touchSmear_.store(on ? s : 0.0f, std::memory_order_relaxed);
 }
 
 void Renderer::loadMilkPreset(const std::string& path) {
