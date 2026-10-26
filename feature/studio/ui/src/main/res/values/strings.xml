@@ -2,7 +2,8 @@
 <resources>
     <string name="studio_title">Studio</string>
     <string name="studio_loading">Reading your Projects…</string>
-    <string name="studio_no_projects">No Projects yet. Create one to group your videos.</string>
+    <string name="studio_no_projects">No Projects yet</string>
+    <string name="studio_no_projects_hint">A Project keeps your Renders, Recordings and Edits together.</string>
     <string name="studio_no_default">No default Project. Videos made without a Project will ask where to go; choose one with ⋮ › Make default.</string>
     <string name="studio_folder_missing">Studio has no folder to save videos to yet.</string>
     <string name="studio_new_project">New Project</string>
@@ -37,7 +38,8 @@
         <item quantity="one">%d video</item>
         <item quantity="other">%d videos</item>
     </plurals>
-    <string name="studio_no_videos">No videos here yet.</string>
+    <string name="studio_no_videos">No videos here yet</string>
+    <string name="studio_no_videos_hint">Make a Render or record the Visual, and it lands here.</string>
     <string name="studio_all">All</string>
     <string name="studio_kind_render">Renders</string>
     <string name="studio_kind_recording">Recordings</string>

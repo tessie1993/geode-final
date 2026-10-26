@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -212,7 +212,7 @@ private fun ClipPreview(
         )
         if (!playing) {
             Icon(
-                Icons.Filled.PlayArrow,
+                Icons.Rounded.PlayArrow,
                 contentDescription = pauseHint,
                 tint = Color.White.copy(alpha = 0.85f),
                 modifier = Modifier.zIndex(1f).size(44.dp),
