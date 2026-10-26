@@ -192,6 +192,25 @@ object Edits {
     }
 
     /**
+     * [target] back to the Style's own starting value ([manifest]): a Shared core property, an Extra
+     * the Style has, or a Macro's value. A Modulator's field has no starting value of its own.
+     */
+    fun resetValue(
+        customization: Customization,
+        manifest: StyleManifest,
+        target: Target,
+    ): Customization {
+        val start = Defaults.customization(manifest)
+        return when (target) {
+            is Target.Shared -> setShared(customization, target.property, start.shared.getValue(target.property))
+            is Target.Extra -> start.extras[target.kind]?.let { setExtra(customization, target.kind, it) } ?: customization
+            is Target.MacroSlot ->
+                start.macros.getOrNull(target.index)?.let { setMacro(customization, target.index, it.value) } ?: customization
+            is Target.ModulatorField -> customization
+        }
+    }
+
+    /**
      * Moves to the Style [to]. Its own parts (Extras, Macros, Reactions, Modulators) start from its
      * defaults. The Shared core starts from its defaults too, except where the person changed a value
      * away from the old Style's ([from]) default: that change carries over, as do the Sound trims,

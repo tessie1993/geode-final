@@ -21,9 +21,10 @@ enum class Shared : uint8_t {
     Glitch, Pixelate, Posterize, Solarize,
     Particles, ParticleKind, ParticleSize,
     Saturation, Brightness, Intensity, Contrast, Gamma, Temperature, Invert,
+    Anaglyph,
     LayerOpacity, LayerInfluence, LayerSwap,
 };
-constexpr size_t kSharedCount = 61;
+constexpr size_t kSharedCount = 62;
 
 // ExtraKind's size and MACRO_COUNT in :feature:customization:api.
 constexpr size_t kExtraCount = 23;

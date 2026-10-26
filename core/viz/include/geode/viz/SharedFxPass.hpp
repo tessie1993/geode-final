@@ -21,6 +21,11 @@ public:
 
     bool create(const ShaderSource& assets, ProgramBinaryCache* cache, const std::string& fadeVert, std::string* error);
     void release();
+    // The format of its targets (the scene target's, so the effects keep the picture's headroom).
+    void setTargetFormat(Framebuffer::Format format) {
+        frameA_.setFormat(format);
+        frameB_.setFormat(format);
+    }
     // Draws the effects over `sceneTex` and returns the texture to composite, or `sceneTex` itself
     // when the pass cannot run (no program, or no memory for its targets).
     GLuint apply(const SharedEffects& fx, GLuint sceneTex, int width, int height, float dt, float timeSeconds, GLuint quadVao);

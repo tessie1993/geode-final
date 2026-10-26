@@ -45,6 +45,12 @@ enum class PresetPart(
  * A saved preset: only the [parts] the person ticked are filled in, the rest are empty. [version]
  * is the format it was written in; [style] is the Style it was made on. [layer] is kept with
  * [PresetPart.LAYERS].
+ *
+ * Two things ride along that this version does not apply (ADR-0004), so writing the preset again
+ * never loses them:
+ * - [milkdrop]: the MilkDrop preset an older Geode saved with it (version 1's `milkPreset`);
+ * - [unread]: what this version could not read in its file, the parts a newer Geode added, as that
+ *   file's own JSON text. Null when it read everything; otherwise some parts need a newer Geode.
  */
 data class Preset(
     val version: Int,
@@ -58,4 +64,6 @@ data class Preset(
     val modulators: List<Modulator> = emptyList(),
     val signals: Map<SoundSignal, SignalTrim> = emptyMap(),
     val layer: Layer? = null,
+    val milkdrop: String? = null,
+    val unread: String? = null,
 )

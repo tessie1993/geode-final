@@ -21,7 +21,7 @@ set(GEODE_LINK_OPTIONS
     -Wl,-z,common-page-size=16384
     $<$<CONFIG:Release>:-flto>)
 
-# projectM is the stock v4.1.7 submodule plus Geode's patches (render into a caller's FBO, the render
+# projectM is the stock v4.1.8 submodule plus Geode's patches (render into a caller's FBO, the render
 # clock and seed), applied here so the submodule stays pinned to the tag. See tools/projectm-patches.cmake.
 include(tools/projectm-patches.cmake)
 set(GEODE_PROJECTM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/projectm")

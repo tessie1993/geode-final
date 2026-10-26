@@ -44,7 +44,8 @@ ModulatorSpec saw(float periodSeconds) {
 }
 
 TEST(SharedCore, TheTableFollowsTheKotlinModel) {
-    EXPECT_EQ(kSharedCount, 61u);
+    EXPECT_EQ(kSharedCount, 62u);
+    EXPECT_STREQ(spec(Shared::Anaglyph).name, "ANAGLYPH");
     EXPECT_STREQ(spec(Shared::LayerSwap).name, "LAYER_SWAP");
     EXPECT_TRUE(spec(Shared::LayerOpacity).luminous);
     EXPECT_EQ(spec(Shared::LayerInfluence).initial, 0.5f);

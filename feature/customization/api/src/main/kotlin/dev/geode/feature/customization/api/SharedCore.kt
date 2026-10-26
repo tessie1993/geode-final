@@ -138,6 +138,12 @@ enum class SharedProperty(
     TEMPERATURE(SharedGroup.COLOUR_GRADING, -1f, 1f, 0f),
     INVERT(SharedGroup.COLOUR_GRADING, 0f, 1f, 0f, ValueKind.SWITCH, luminous = true),
 
+    /**
+     * Red/blue anaglyph 3D for red/cyan glasses (#388), with depth read from the picture's brightness.
+     * Each eye keeps the picture's brightness and the switch fades in and out, so it never flashes.
+     */
+    ANAGLYPH(SharedGroup.LENS, 0f, 1f, 0f, ValueKind.SWITCH, luminous = true),
+
     /** How strongly Layer 2 is laid over Layer 1; held lower by the flashing blend modes ([LayerBlend.maxOpacity]). */
     LAYER_OPACITY(SharedGroup.LAYERS, 0f, 1f, 0.5f, luminous = true),
 

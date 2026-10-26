@@ -18,6 +18,7 @@
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
 #include "geode/viz/Layers.hpp"
+#include "geode/viz/HdrPass.hpp"
 #include "geode/viz/Lfo.hpp"
 #include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
@@ -38,7 +39,8 @@
 
 namespace geode::viz {
 
-// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> target.
+// Port of VisualizerRenderer.kt's frame graph: scene pass -> trail -> composite -> bloom and tonemap ->
+// No-flash limiter -> target. Everything before the tonemap is HDR (ToneMap.hpp).
 class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -139,6 +141,8 @@ private:
     ExtraValues extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const;
     // Hands a scene this frame's Camera and its Extras before it draws.
     void prepareScene(Scene& scene, const ExtraValues& extras);
+    // What the settled thermal tier lets the Style spend, as its pack declares (#286).
+    quality::Budget qualityFor(const std::string& sceneId) const;
     void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);
@@ -165,6 +169,8 @@ private:
     SharedFxPass sharedFx_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
+    // HDR: the composite's target, the bloom and the tonemap (highlight roll-off) into the No-flash candidate.
+    HdrPass hdrPass_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;
@@ -248,6 +254,8 @@ private:
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
     SharedEffects frameEffects_;
+    // The red/blue anaglyph's faded mix (sharedfx::anaglyphMix), stepped once per composite.
+    float anaglyphMix_ = 0.0f;
     std::optional<mod::Evaluated> frameCustomization_;
     CameraRig camera_;
     // The active Style's Extras this frame.

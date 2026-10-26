@@ -516,6 +516,24 @@ vec2 dmtTunnelPath(float z) {
  */
 const float DMT_TUNNEL_LIP = 1.0 + 0.62;
 
+/**
+ * The period of dmtTunnelPath, 2000 pi: every frequency in it (0.21, 0.043,
+ * 0.17, 0.031) is a whole number of thousandths, so each sine repeats exactly
+ * over this distance, and the lean is linear, so wrapping shifts the whole path
+ * sideways at once and the camera riding it sees no change. A style flying
+ * down the path can wrap its distance here and keep full float precision.
+ */
+const float DMT_FLIGHT_WRAP = 6283.1853;
+
+/**
+ * The camera's distance down the path, integrated on the CPU (ShaderScene) at
+ * 1.4 units per second of uTime plus 9 per unit of uFlowPhase and wrapped at
+ * DMT_FLIGHT_WRAP. `uFlowPhase * 9.0 + uTime * 1.4` reaches tens of thousands
+ * within two hours, where a float no longer resolves the beads on a rod and
+ * the walls shimmer; this stays below the wrap for good.
+ */
+uniform float uFlight;
+
 /** Straightens the bent tunnel: a point in world space to the straight tube's frame. */
 vec3 dmtTunnelWarp(vec3 p) {
     return vec3(p.xy - dmtTunnelPath(p.z), p.z);

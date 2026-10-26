@@ -197,6 +197,8 @@ void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
 
+float geode_viz_frame_cap_fps(geode_viz* v) { return v ? v->renderer.thermal().frameCapFps() : 0.0f; }
+
 void geode_viz_set_quality_ceiling(geode_viz* v, float ceiling) {
     if (v) v->renderer.thermal().setQualityCeiling(ceiling);
 }

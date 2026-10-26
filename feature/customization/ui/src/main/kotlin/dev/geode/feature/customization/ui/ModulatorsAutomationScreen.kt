@@ -159,6 +159,7 @@ private fun ModulatorCard(
             range = Modulator.MIN_RATE..Modulator.MAX_RATE,
             text = { stringResource(R.string.customize_rate_value, it) },
             onSet = { update(modulator.copy(rate = it)) },
+            help = stringResource(R.string.customize_help_rate),
         )
         HeldSlider(
             label = stringResource(R.string.customize_depth),
@@ -166,6 +167,7 @@ private fun ModulatorCard(
             range = 0f..1f,
             text = { stringResource(R.string.customize_percent, percentOf(it)) },
             onSet = { update(modulator.copy(depth = it)) },
+            help = stringResource(R.string.customize_help_depth),
         )
     }
 }

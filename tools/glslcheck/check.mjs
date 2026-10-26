@@ -136,10 +136,11 @@ const SHADER_VALUES = {
   uBeatPhase: 0.3, uDriftX: 0, uDriftY: 0, uShake: 0, uTile: 1, uTwist: 0, uTemperature: 0, uSolarize: 0,
   uTouchAnchor: [0, 0, 0, 0], uTouchPoints: [0, 0, 0, 0], uTouchCount: 0, uTouchGesture: 0, uTouchAxis: [0, 0],
   uTouchSpin: 0,
-  uSteps: 96,
+  uSteps: 96, uFxOff: 0,
   uPalLutMix: 0, uPalLutRow: 0.5,
   uBassSmooth: 0.5, uMidSmooth: 0.4, uTrebleSmooth: 0.3, uEnergySmooth: 0.45, uSwell: 0.5, uSpike: 0.15,
   uMoveDir: [0.8, 0.6], uSpawnSeed: 0.37, uSpawnAge: 4.0, uFormPhase: 0.62, uFlowPhase: 12.5,
+  uEnergyPhase: 16.6, uFlight: 164.3,
   uFlowStrength: 0,
   uXScale: 1, uXCount: 1, uXSize: 1, uXThickness: 1, uXFlight: 1, uXSpin: 1, uXOrbit: 1, uXSwirl: 1, uXDrift: 1,
   uXComplexity: 1, uXEdge: 1, uXFog: 1, uXDecay: 1, uXViscosity: 1, uXGrowth: 1, uXSpread: 1, uXForce: 1, uXReach: 1,
@@ -192,7 +193,7 @@ const COMPOSITE_NEUTRAL = {
   uPostWarp: 0, uPostRipple: 0, uPostSymmetry: 6, uPostKaleido: 0, uPostPixelate: 0, uPostTile: 1, uPostTwist: 0,
   uPostMirror: 0, uPostBloom: 0, uPostPosterize: 0, uPostInvert: 0, uPostDriftX: 0, uPostDriftY: 0, uPostSway: 0,
   uPostShake: 0, uPostTemp: 0, uPostSolarize: 0, uPostZoom: 1, uPostRotation: 0, uPostSat: 1, uPostBright: 1,
-  uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0,
+  uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0, uPostAnaglyph: 0,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
   uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
@@ -225,6 +226,7 @@ const COMPOSITE_EFFECTS = {
   temperature: { uPostTemp: 0.8 },
   solarize: { uPostSolarize: 1 },
   invert: { uPostInvert: 1 },
+  anaglyph: { uPostAnaglyph: 1 },
   camera_push_in: { uCamPush: 0.8 },
   camera_orbit: { uCamTilt: [0.4, -0.3] },
   camera_travel: { uCamDive: [0.4, 0] },
@@ -284,6 +286,13 @@ function layerJobs(registry, size) {
     uniforms: plan(uniforms, { ...COMPOSITE_NEUTRAL, ...values }, COMPOSITE_TEXTURES, size, size),
   }));
 }
+// The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
+// level and a plain one), its upsample, and the final tonemap (highlight roll-off) with and without bloom. The
+// stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
+const BLOOM_DOWN_NEUTRAL = { uTexel: [0, 0], uPrefilter: 1, uCurve: [0.6, 0.5] };
+const BLOOM_UP_NEUTRAL = { uTexel: [0, 0] };
+const TONEMAP_NEUTRAL = { uBloomStrength: 0, uCeiling: 2.0, uDither: 1 / 255 };
+const HDR_TEXTURES = { uSource: 'scene', uScene: 'scene', uBloom: 'history', uNoise: 'noise' };
 
 function effectJobs(registry, size) {
   const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
@@ -293,12 +302,15 @@ function effectJobs(registry, size) {
     const uniforms = parseUniforms(frag);
     for (const [name, values] of Object.entries(effects)) {
       const all = { ...neutral, ...values };
-      if (pass === 'shared') all.uTexel = [1 / size, 1 / size];
+      if ('uTexel' in all) all.uTexel = [1 / size, 1 / size];
       jobs.push({ name: `${pass}_${name}`, vert, frag, uniforms: plan(uniforms, all, textures, size, size) });
     }
   };
   add('composite', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_TEXTURES, COMPOSITE_EFFECTS);
   add('shared', 'shared_fx_frag.glsl', SHARED_FX_NEUTRAL, SHARED_FX_TEXTURES, SHARED_FX_EFFECTS);
+  add('hdr', 'bloom_down_frag.glsl', BLOOM_DOWN_NEUTRAL, HDR_TEXTURES, { bloom_prefilter: {}, bloom_down: { uPrefilter: 0 } });
+  add('hdr', 'bloom_up_frag.glsl', BLOOM_UP_NEUTRAL, HDR_TEXTURES, { bloom_up: {} });
+  add('hdr', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_TEXTURES, { tonemap: {}, tonemap_bloom: { uBloomStrength: 0.5 } });
   return jobs;
 }
 

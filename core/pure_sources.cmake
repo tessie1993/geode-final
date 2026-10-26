@@ -52,6 +52,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/VisualSafety.cpp
     viz/Layers.cpp
     viz/FlashLimiter.cpp
+    viz/ToneMap.cpp
     viz/Reactions.cpp
     viz/Modulators.cpp
     viz/SharedCore.cpp
@@ -59,6 +60,8 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/PlanCodec.cpp
     viz/Normaliser.cpp
     viz/SharedEffects.cpp
+    viz/FrameRate.cpp
+    viz/QualityTiers.cpp
     viz/BeatEnvelope.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp

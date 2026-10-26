@@ -45,6 +45,12 @@ declares the parameters its renderer reads from the Style it draws:
 A parameter without a `default` must be set by every Style of the family. The C++ profiles read exactly
 these keys; a host test fails if a key and a profile field drift apart.
 
+A family may also list, under `ignores`, the Shared core properties its renderer never reads, named as
+presets name them: MilkDrop paces itself and takes raw sound, so it has
+`"ignores": ["SPEED", "AUDIO_DRIVE", …]`. Customize greys those controls out on the family's Styles,
+and any Macro that moves only them (#365). Only the Kotlin side reads it; the Customization tests
+check every name is a real property.
+
 ## `manifest.json`
 
 ```json
@@ -76,6 +82,8 @@ these keys; a host test fails if a key and a profile field drift apart.
 | `extras` | no | The Style's own controls, declared generically: `name`, `min`, `max`, `default`. One name is one control with one range on every Style that has it, which CI checks across packs. |
 | `macros` | no | Default Macros, at most 6 (the shared set): `name` and `links`, each a `target` and an `amount` in −1…1. |
 | `reactions` | no | Default Reactions: a Sound `signal` (0–1) moving a `target` by an `amount` in −1…1, with `riseMs`, `fallMs` (≥ 0) and a `curve` (`linear`, `ease_in`, `ease_out`, `smooth`). |
+| `effects` | no | The Style's costly effects the hot thermal tiers may switch off, at most 8 lower-case names. The shader reads effect *i* (its position in the list) with `fxOn(i)` from `lib_scene_uniforms`. |
+| `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 
 No Style ships Extras, Macros or Reactions yet; their shapes are fixed here so the Customization work
 (#39, #40, #54) fills them in as data.

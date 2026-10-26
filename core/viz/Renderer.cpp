@@ -271,7 +271,18 @@ void Renderer::onSurfaceCreated() {
     fboA_.release();
     fboB_.release();
     fboL_.release();
+    hdrPass_.release();
     compositePass_.releaseStaleTextures();
+    // The HDR targets (ToneMap.hpp) are RGBA16F where this device proved it renders and blends them.
+    const FormatProbe half = profile_.report.probeOf(ProbedFormat::RGBA16F);
+    const Framebuffer::Format hdrFormat =
+        half.renderable() && half.blendsAdditively ? Framebuffer::Format::Rgba16F : Framebuffer::Format::Rgba8;
+    fboA_.setFormat(hdrFormat);
+    fboB_.setFormat(hdrFormat);
+    fboL_.setFormat(hdrFormat);
+    trailPass_.setTargetFormat(hdrFormat);
+    sharedFx_.setTargetFormat(hdrFormat);
+    hdrPass_.setTargetFormat(hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
@@ -299,6 +310,7 @@ void Renderer::onSurfaceCreated() {
     if (!trailPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!sharedFx_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!compositePass_.create(*fadeVert, &error)) fail(error);
+    if (!hdrPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!noFlash_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
 
     // Port of CyclicPalettes.createTexture: five 256-entry RGB rows.

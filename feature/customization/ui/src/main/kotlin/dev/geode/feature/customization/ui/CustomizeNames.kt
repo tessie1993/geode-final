@@ -133,6 +133,7 @@ internal fun propertyName(property: SharedProperty): String =
             SharedProperty.GAMMA -> R.string.customize_property_gamma
             SharedProperty.TEMPERATURE -> R.string.customize_property_temperature
             SharedProperty.INVERT -> R.string.customize_property_invert
+            SharedProperty.ANAGLYPH -> R.string.customize_property_anaglyph
             SharedProperty.LAYER_OPACITY -> R.string.customize_property_layer_opacity
             SharedProperty.LAYER_INFLUENCE -> R.string.customize_property_layer_influence
             SharedProperty.LAYER_SWAP -> R.string.customize_property_layer_swap

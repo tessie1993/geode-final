@@ -264,6 +264,11 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetPacedFps(JNIEnv* env, jobject, jl
     });
 }
 
+JNIEXPORT jfloat JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizFrameCapFps(JNIEnv* env, jobject, jlong handle) {
+    return valueCall(env, "vizFrameCapFps", jfloat{0.0f}, [&]() -> jfloat { return geode_viz_frame_cap_fps(vizOf(handle)); });
+}
+
 JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetFrameLoad(JNIEnv* env, jobject, jlong handle, jint frames, jfloat p95Ms) {
     return vizCall(env, "vizSetFrameLoad", handle, [&](geode_viz* v) {

@@ -175,7 +175,7 @@ void CompositePass::bindTextures(UniformCache& p, const Inputs& inputs) {
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, noiseTex_);
     glUniform1i(p.loc("uNoise"), 4);
-    glUniform1f(p.loc("uDither"), noiseTex_ != 0 ? kDitherAmount : 0.0f);
+    glUniform1f(p.loc("uDither"), inputs.dither && noiseTex_ != 0 ? kDitherAmount : 0.0f);
     // W00: underlay, see the class comment in CompositePass.hpp.
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, inputs.underlayTex);
@@ -231,6 +231,7 @@ void CompositePass::uploadGradeUniforms(UniformCache& p, const Inputs& inputs) {
     glUniform1f(p.loc("uPostGamma"), fx.gamma);
     glUniform1f(p.loc("uPostHue"), fx.colorShift + inputs.postCyclePhase);
     glUniform1f(p.loc("uPostPulse"), grade::pulseAmount(fx.pulse, inputs.postBeatPulse));
+    glUniform1f(p.loc("uPostAnaglyph"), inputs.anaglyph);
 }
 
 void CompositePass::uploadCameraUniforms(UniformCache& p, const Inputs& inputs) {
