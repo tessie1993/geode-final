@@ -406,6 +406,16 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetReactionsHeld(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetFramePcm(JNIEnv* env, jobject, jlong handle, jfloatArray stereo, jint frames) {
+    return vizCall(env, "vizSetFramePcm", handle, [&](geode_viz* v) {
+        FloatElements data(env, stereo);
+        if (!data.get() || frames < 0 || data.length() < static_cast<jsize>(frames) * 2) return GEODE_STATUS_INVALID_ARGUMENT;
+        geode_viz_set_frame_pcm(v, data.get(), static_cast<int>(frames));
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizAttachSnapshots(JNIEnv* env, jobject, jlong handle, jlong snapshots) {
     return vizCall(env, "vizAttachSnapshots", handle, [&](geode_viz* v) {
         return geode_viz_attach_snapshots(v, reinterpret_cast<geode_snapshots*>(snapshots));

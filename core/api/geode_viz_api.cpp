@@ -353,6 +353,11 @@ static void readFeed(geode_viz* v) {
     v->features = shown;
 }
 
+void geode_viz_set_frame_pcm(geode_viz* v, const float* stereo, int frames) {
+    if (!v || !stereo || frames <= 0) return;
+    v->renderer.setFramePcm(stereo, std::min(frames, GEODE_FEED_WINDOW_FRAMES));
+}
+
 void geode_viz_set_reactions_held(geode_viz* v, int held) {
     if (v) v->reactionsHeld.store(held != 0, std::memory_order_release);
 }

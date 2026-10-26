@@ -463,6 +463,13 @@ object GeodeNative {
         feed: Long,
     ): Int
 
+    /** The next frame's audio window, [frames] interleaved stereo frames of [stereo], for a Visual reading no feed (#342). */
+    external fun vizSetFramePcm(
+        handle: Long,
+        stereo: FloatArray,
+        frames: Int,
+    ): Int
+
     /** Freeze reactions (#366) for a Visual reading a feed: its features and audio window hold still. */
     external fun vizSetReactionsHeld(
         handle: Long,

@@ -12,6 +12,7 @@ import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.audio.TrackPcm
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
@@ -280,6 +281,7 @@ class VideoExporter(
         var eglRef: EncoderSurface? = null
         var rendererRef: OffscreenSceneRenderer? = null
         var audioFeedRef: AudioFeed? = null
+        var pcmRef: TrackPcm? = null
         var muxerStarted = false
         var muxerStopped = false
         try {
@@ -319,11 +321,14 @@ class VideoExporter(
             val totalFrames = (exportDurationUs * fps / 1_000_000L).toInt().coerceAtLeast(1)
             val frameDurationNs = 1_000_000_000L / fps
 
+            // The track decoded in step with the frames, so the scenes hear the real sound (#342).
+            val pcm = TrackPcm(context, job.audioUri).also { pcmRef = it }
             val renderer =
                 OffscreenSceneRenderer(
                     context = context,
                     sceneFactory = job.sceneFactory,
                     timeline = timeline,
+                    pcm = pcm,
                     spec =
                         OffscreenRenderSpec(
                             width = aspect.width,
@@ -410,6 +415,7 @@ class VideoExporter(
             return exportDurationUs / MICROS_PER_MILLI
         } finally {
             bestEffort(TAG, "rendererRef?.release()") { rendererRef?.release() }
+            bestEffort(TAG, "pcmRef?.close()") { pcmRef?.close() }
             bestEffort(TAG, "audioFeedRef?.close()") { audioFeedRef?.close() }
             if (muxerStarted && !muxerStopped) runCatching { muxerRef?.stop() }
             bestEffort(TAG, "muxerRef?.release()") { muxerRef?.release() }

@@ -199,6 +199,10 @@ GEODE_API GeodeStatus geode_viz_attach_feed(geode_viz*, geode_feed*);
 /* Freeze reactions (#366), for a Visual reading a feed: while held, each frame gets the features as they
  * stood when the hold began, with no event firing, and the scenes the same audio window. Any thread. */
 GEODE_API void        geode_viz_set_reactions_held(geode_viz*, int held);
+/* The next frame's audio window for the scenes, interleaved stereo, at most GEODE_FEED_WINDOW_FRAMES frames:
+ * what a Render, which reads no feed, hands over from its own decode of the track (#342), the same window
+ * an attached feed gives the live Visual. Drawing thread only; it holds for the next frame alone. */
+GEODE_API void        geode_viz_set_frame_pcm(geode_viz*, const float* stereo, int frames);
 GEODE_API void        geode_viz_render(geode_viz*, double time_seconds, uint32_t target_fbo);
 GEODE_API void        geode_viz_release_scenes(geode_viz*);
 

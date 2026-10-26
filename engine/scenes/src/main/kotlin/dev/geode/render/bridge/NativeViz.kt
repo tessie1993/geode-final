@@ -178,6 +178,17 @@ class NativeViz(
         live { h -> NativeFailures.check(GeodeNative.vizAttachFeed(h, feed?.handle ?: 0L), "vizAttachFeed") }
     }
 
+    /**
+     * GL thread: the next frame's audio window for the scenes, [frames] interleaved stereo frames of
+     * [stereo] (#342). A Render hands over its own decode of the track this way, as a feed does live.
+     */
+    fun setFramePcm(
+        stereo: FloatArray,
+        frames: Int,
+    ) {
+        live { h -> NativeFailures.check(GeodeNative.vizSetFramePcm(h, stereo, frames), "vizSetFramePcm") }
+    }
+
     /** Freeze reactions (#366) on the features and audio window read from an attached feed. */
     fun setReactionsHeld(held: Boolean) {
         live { h -> GeodeNative.vizSetReactionsHeld(h, held) }

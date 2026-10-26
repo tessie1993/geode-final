@@ -29,12 +29,26 @@ data class OffscreenRenderSpec(
 )
 
 /**
+ * The sound a Render hands its scenes each frame (#342): the window of the track, interleaved stereo,
+ * that ends at [timeUs]. Fills [out] and returns how many stereo frames it wrote (0 when there is none).
+ * Asked in the order the frames are drawn.
+ */
+fun interface FramePcm {
+    fun windowAt(
+        timeUs: Long,
+        out: FloatArray,
+    ): Int
+}
+
+/**
  * Draws an analysed track to a GL target, one frame at a time, through its own native renderer.
  *
  * Callers own the EGL context, the surface and whatever they do with the rendered frames; the
  * scene, its simulations and the Customization's evaluation live inside `libgeode.so`. The renderer
  * has its own snapshot exchange, separate from the live Visual's (ADR-0004: a Render is its own
- * engine instance), and hands it the Render's look once. Not thread-safe, and every call must happen
+ * engine instance), and hands it the Render's look once. With [pcm], every frame also hands the
+ * scenes the real sound heard at that moment (#342), as the live Visual's feed does, so projectM, the
+ * shader PCM row and the simulations' strikes react to it. Not thread-safe, and every call must happen
  * on the thread holding the GL context.
  */
 class OffscreenSceneRenderer(
@@ -42,9 +56,11 @@ class OffscreenSceneRenderer(
     private val sceneFactory: SceneFactory,
     private val timeline: FeatureTimeline,
     private val spec: OffscreenRenderSpec,
+    private val pcm: FramePcm? = null,
 ) {
     private var native: NativeViz? = null
     private var snapshots: NativeSnapshots? = null
+    private val window = FloatArray(PCM_WINDOW_FRAMES * 2)
 
     /** Builds the native renderer, its scene and its look; must run with the target GL context current. */
     fun prepare() {
@@ -86,6 +102,10 @@ class OffscreenSceneRenderer(
         val features =
             timeline.featuresAround(start + frameStartMs(frame), start + halfwayBeforeMs(frame), start + halfwayBeforeMs(frame + 1))
         viz.setFeatures(features)
+        pcm?.let { sound ->
+            val frames = sound.windowAt(start * MICROS_PER_MILLI + frame * MICROS_PER_SECOND / spec.fps, window)
+            if (frames > 0) viz.setFramePcm(window, frames)
+        }
         // The render clock is exact: frame k is drawn k / fps seconds in, so every step is one frame
         // long, where whole milliseconds would alternate 16 and 17 ms at 60 fps.
         viz.render(frame.toDouble() / spec.fps, targetFbo)
@@ -109,5 +129,10 @@ class OffscreenSceneRenderer(
     private companion object {
         const val TAG = "OffscreenSceneRenderer"
         const val MILLIS_PER_SECOND = 1_000L
+        const val MICROS_PER_MILLI = 1_000L
+        const val MICROS_PER_SECOND = 1_000_000L
+
+        /** The stereo window each frame hands the scenes: the engine's GEODE_FEED_WINDOW_FRAMES. */
+        const val PCM_WINDOW_FRAMES = 576
     }
 }
