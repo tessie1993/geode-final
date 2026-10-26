@@ -5,15 +5,16 @@ namespace geode::analysis {
 
 // Picks onsets from an onset-strength curve, causally: a value is an onset when it clears the adaptive
 // threshold, beats the hops just before it, and comes at least the refractory time after the last onset.
-// The threshold is the window's median plus sensitivity spreads, and never under kMedianFloor times the
-// median, so stationary noise (whose peaks stay near its median) does not fire; an onset must also reach
-// kMinOnset, so a curve that is all but silent does not fire on its own crumbs.
+// The threshold is the window's median plus `sensitivity` spreads, and never under the median times
+// 1 + kMedianFloorPerSensitivity x sensitivity (2.5 at the default 3), so stationary noise, whose peaks stay
+// near its median, does not fire, and the sensitivity still decides on dense music where the median rules.
+// An onset must also reach kMinOnset, so a curve that is all but silent does not fire on its own crumbs.
 class OnsetPeakPicker {
 public:
     static constexpr float kSpreadFloorFraction = 0.05f;
     static constexpr float kMinSpread = 1e-6f;
     static constexpr float kNumericFloor = 1e-6f;
-    static constexpr float kMedianFloor = 2.5f;
+    static constexpr float kMedianFloorPerSensitivity = 0.5f;
     static constexpr float kMinOnset = 0.01f;
     static constexpr float kPeakMemorySeconds = 8.0f;
 

@@ -57,6 +57,27 @@ TEST(OnsetPeakPicker, SteadyNoiseUnderTwoAndAHalfTimesItsMedianNeverFires) {
     EXPECT_EQ(picker.strength(), 1.0f);
 }
 
+TEST(OnsetPeakPicker, TheSensitivityDecidesEvenWhereTheMedianFloorRules) {
+    // Dense onsets around 1.1 (median 1.2): the floor is the median times 1 + sensitivity / 2.
+    auto dense = [](float sensitivity) {
+        OnsetPeakPicker picker(kHopRate, 1.5f, sensitivity, 0.1f);
+        for (int i = 0; i < 90; i++) picker.accept(i % 2 == 0 ? 1.0f : 1.2f);
+        return picker;
+    };
+    OnsetPeakPicker keen = dense(1.5f);
+    EXPECT_TRUE(keen.accept(2.3f));
+    EXPECT_NEAR(keen.threshold(), 2.1f, 1e-4f);
+    OnsetPeakPicker usual = dense(3.0f);
+    EXPECT_FALSE(usual.accept(2.3f));
+    OnsetPeakPicker strict = dense(1.5f);
+    strict.setSensitivity(8.0f);
+    EXPECT_EQ(strict.sensitivity(), 8.0f);
+    EXPECT_FALSE(strict.accept(5.9f));
+    EXPECT_NEAR(strict.threshold(), 6.0f, 1e-4f);
+    for (int i = 0; i < 8; i++) strict.accept(i % 2 == 0 ? 1.0f : 1.2f);
+    EXPECT_TRUE(strict.accept(6.2f));
+}
+
 TEST(OnsetPeakPicker, AnAllButSilentCurveDoesNotFire) {
     OnsetPeakPicker picker(kHopRate);
     for (int i = 0; i < 30; i++) picker.accept(0.0f);

@@ -29,7 +29,7 @@ bool OnsetPeakPicker::accept(float onset, bool eligible) {
 
     const float med = median();
     const float spread = std::max(std::max(deviation(med), med * kSpreadFloorFraction), kMinSpread);
-    threshold_ = std::max(med + sensitivity_ * spread, med * kMedianFloor);
+    threshold_ = std::max(med + sensitivity_ * spread, med * (1.0f + kMedianFloorPerSensitivity * sensitivity_));
 
     // Hops since the last onset, this one included: an onset `refractoryFrames` hops after the last is allowed,
     // so onsets can come exactly the refractory time apart and never closer.
