@@ -2,6 +2,7 @@ package dev.geode.feature.settings.ui
 
 import android.app.Application
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -46,6 +47,7 @@ class SettingsRouteTest {
 
     private val settings = RecordingSettings()
 
+    @Composable
     private fun route() =
         SettingsRoute(settings, fontColors = previewFontColors, appVersion = "1.8.0", onStartTutorial = {}, onSetLiveWallpaper = {})
 
