@@ -232,6 +232,78 @@ TEST(StyleManifest, RejectsBadInputs) {
     }
 }
 
+TEST(StyleManifest, ReadsTheFeedbackItDeclares) {
+    std::vector<packs::PackProblem> problems;
+    const auto pack = manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"],
+        "feedback": {"decay": 0.8, "zoom": 1.2, "rotate": -0.3, "flow": [0.1, -0.2], "stretch": [1.1, 0.9], "warp": 0.4,
+                     "tint": [1, 0.9, 0.7], "center": [0.4, 0.6], "react": 0.5, "shader": "warp.glsl"}})", problems);
+    ASSERT_TRUE(pack.has_value()) << (problems.empty() ? "" : problems.front().detail);
+    const geode::viz::feedback::WarpSpec& warp = pack->feedback;
+    EXPECT_TRUE(warp.on);
+    EXPECT_FLOAT_EQ(warp.decay, 0.8f);
+    EXPECT_FLOAT_EQ(warp.zoom, 1.2f);
+    EXPECT_FLOAT_EQ(warp.rotate, -0.3f);
+    EXPECT_FLOAT_EQ(warp.flow[0], 0.1f);
+    EXPECT_FLOAT_EQ(warp.flow[1], -0.2f);
+    EXPECT_FLOAT_EQ(warp.stretch[0], 1.1f);
+    EXPECT_FLOAT_EQ(warp.stretch[1], 0.9f);
+    EXPECT_FLOAT_EQ(warp.warp, 0.4f);
+    EXPECT_FLOAT_EQ(warp.tint[2], 0.7f);
+    EXPECT_FLOAT_EQ(warp.center[0], 0.4f);
+    EXPECT_FLOAT_EQ(warp.center[1], 0.6f);
+    EXPECT_FLOAT_EQ(warp.react, 0.5f);
+    EXPECT_EQ(pack->feedbackShaderPath, "styles/x/warp.glsl");
+    // Every part is optional, and a value out of range is held to it.
+    const auto plain = manifest("y", R"({"version": 1, "id": "y", "label": "Y", "family": "shader", "inputs": ["previous_frame"],
+        "feedback": {"decay": 3}})", problems);
+    ASSERT_TRUE(plain.has_value());
+    EXPECT_TRUE(plain->feedback.on);
+    EXPECT_FLOAT_EQ(plain->feedback.decay, geode::viz::feedback::kMaxDecay);
+    EXPECT_FLOAT_EQ(plain->feedback.zoom, 1.0f);
+    EXPECT_TRUE(plain->feedbackShaderPath.empty());
+    // Without it, a Style has no loop.
+    const auto none = manifest("z", R"({"version": 1, "id": "z", "label": "Z", "family": "shader"})", problems);
+    ASSERT_TRUE(none.has_value());
+    EXPECT_FALSE(none->feedback.on);
+    EXPECT_TRUE(none->feedbackShaderPath.empty());
+    EXPECT_TRUE(problems.empty());
+}
+
+TEST(StyleManifest, RejectsBadFeedback) {
+    const char* bad[] = {
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": 0.5})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "feedback": {"decay": 0.5}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "plate", "parameters": {"mode": 1}, "feedback": {"decay": 0.5}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"decay": "slow"}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"flow": [0.1]}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"tint": [1, 1]}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"react": [1]}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"shader": ""}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"shader": 3}})",
+    };
+    for (const char* text : bad) {
+        std::vector<packs::PackProblem> problems;
+        EXPECT_FALSE(manifest("x", text, problems)) << text;
+        EXPECT_EQ(onlyError(problems), packs::PackError::BadValue) << text;
+    }
+}
+
+TEST(ShippedStylePacks, EveryFeedbackStyleNamesAWarpStageThatShips) {
+    const auto registry = shipped();
+    int looped = 0;
+    for (const packs::StylePack& pack : registry.styles()) {
+        if (!pack.feedback.on) {
+            EXPECT_TRUE(pack.feedbackShaderPath.empty()) << pack.id;
+            continue;
+        }
+        ++looped;
+        EXPECT_EQ(pack.family, std::string(styles::family::kShader)) << pack.id;
+        if (!pack.feedbackShaderPath.empty()) EXPECT_TRUE(readShipped(pack.feedbackShaderPath).has_value()) << pack.feedbackShaderPath;
+    }
+    // At least one shipping Style draws through the loop, so the warp path runs on every device.
+    EXPECT_GE(looped, 1);
+}
+
 // ---- families and the index ----------------------------------------------------------------------
 
 TEST(StyleFamilies, ReadsTypesRangesAndDefaults) {

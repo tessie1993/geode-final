@@ -6,7 +6,8 @@
 namespace geode::viz {
 
 // Port of RenderTarget.kt: one colour texture behind one FBO, cleared to opaque black on creation. The
-// texture is RGBA8 unless the owner asks for RGBA16F (the Visual's HDR targets); a target whose RGBA16F
+// texture is RGBA8 unless the owner asks for RGBA16F (the Visual's HDR targets) or RGB10_A2 (a feedback
+// loop's buffer where half floats do not render: ten bits a channel, two of alpha); a target whose
 // allocation is incomplete on this driver falls back to RGBA8 and stays there until asked again.
 //
 // Two ways to change its size. ensure() reallocates and clears to black: for a target whose old
@@ -15,7 +16,7 @@ namespace geode::viz {
 // or feed the next frame (the scene and trail buffers).
 class Framebuffer {
 public:
-    enum class Format { Rgba8, Rgba16F };
+    enum class Format { Rgba8, Rgba16F, Rgb10A2 };
 
     explicit Framebuffer(std::string label, Format format = Format::Rgba8) : label_(std::move(label)), format_(format) {}
     ~Framebuffer() { release(); }

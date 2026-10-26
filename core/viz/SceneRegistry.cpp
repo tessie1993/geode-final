@@ -45,6 +45,17 @@ std::optional<std::string> fragmentOf(const packs::StylePack& pack, const Shader
     return assets.loadAsset(pack.shaderPath, error);
 }
 
+// The feedback warp's stage for a pack that opts into it (FeedbackWarp.hpp): the shared motion grid,
+// and the pack's own warp fragment or the shared one.
+std::optional<ShaderFeedback> feedbackOf(const packs::StylePack& pack, const ShaderSource& assets, std::string* error) {
+    const auto vertex = assets.load("feedback_warp_vert.glsl", error);
+    if (!vertex) return std::nullopt;
+    const auto fragment =
+        pack.feedbackShaderPath.empty() ? assets.load("feedback_warp_frag.glsl", error) : assets.loadAsset(pack.feedbackShaderPath, error);
+    if (!fragment) return std::nullopt;
+    return ShaderFeedback{pack.feedback, *vertex, *fragment};
+}
+
 std::unique_ptr<Scene> buildShader(const Build& b) {
     std::string error;
     const auto fragment = fragmentOf(b.pack, b.loader.assets, b.labShader, &error);
@@ -52,7 +63,15 @@ std::unique_ptr<Scene> buildShader(const Build& b) {
         b.host.onShaderError(error);
         return nullptr;
     }
-    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs);
+    std::optional<ShaderFeedback> feedback;
+    if (b.pack.feedback.on) {
+        feedback = feedbackOf(b.pack, b.loader.assets, &error);
+        if (!feedback) {
+            b.host.onShaderError(error);
+            return nullptr;
+        }
+    }
+    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs, std::move(feedback));
 }
 
 // One renderer per family. A Style is a pack naming one of these; nothing here names a Style.
