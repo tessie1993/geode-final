@@ -59,6 +59,7 @@ import dev.geode.feature.studio.api.edit.EditorProject
 import dev.geode.feature.studio.api.edit.Lane
 import dev.geode.feature.studio.api.edit.LaneId
 import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.feature.studio.api.edit.Timeline
 import dev.geode.feature.studio.core.NewRender
 import dev.geode.feature.studio.core.RenderEnd
@@ -812,6 +813,55 @@ class StudioStoreTest {
         assertEquals(recording.id, sibling.source)
         assertEquals(RenderAspect.R1_1, (editEngine.exported.single().cut as EditCut.OneClip).edit.ratio)
         assertEquals(storage.videosById.getValue(sibling.id).source, recording.id)
+    }
+
+    @Test
+    fun `a finished Render with extras becomes an Edit with its captions and cards, linked to it`() {
+        val (_, trip) = renderingStore()
+        val lyrics = SubtitleCue(5_000L, 9_000L, "Lights on the road")
+        val studioWithLyrics =
+            studioStore(
+                StudioSources(
+                    storage,
+                    saveFolderOf(settings),
+                    files,
+                    { Millis(500) },
+                    RenderSources(renderSettingsOf(settings), looks, engine, lyrics = RenderLyrics { listOf(lyrics) }),
+                    edits = EditTools(drafts, editVideos, editEngine),
+                    oldVideos = oldVideos,
+                ),
+                inPlaceRuntime(failures = failures),
+            )
+        val extras = RenderExtras(captions = true, titleCard = true)
+
+        studioWithLyrics.send(
+            StudioCommand.QueueRender(RenderSpec(listOf(night.copy(artist = "The Neon")), project = trip, extras = extras)),
+        )
+
+        val render =
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.RENDER }
+        val finished =
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.EDIT }
+        assertEquals(render.id, finished.source)
+        assertEquals(trip, finished.project)
+        assertEquals("Night Drive with lyrics and cards", finished.name)
+        val cut = (editEngine.exported.single().cut as EditCut.Cut).project
+        val texts =
+            cut.timeline.lanes
+                .filter { it.kind == LaneKind.Text }
+                .flatMap { it.clips }
+                .map { (it.content as ClipContent.Text).text }
+        assertEquals(listOf("Lights on the road", "Night Drive — The Neon"), texts)
+        assertEquals(
+            extras,
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.RENDER }
+                .madeWith
+                ?.extras,
+        )
+        assertTrue(failures.isEmpty())
     }
 
     private fun editingTake(sources: EditSources): Studio {

@@ -13,7 +13,7 @@ import dev.geode.feature.visuals.api.PresetShelf
  * What the Render setup offers (#316, #325, #341), read from the features that own it: the Library's
  * songs, by title, and its playlists, in their own order, the presets the person saved, and the
  * MilkDrop presets, built-in and imported, as Visuals lists them. A playlist keeps only the songs the
- * Library still has.
+ * Library still has. Each song's artist goes on a Render's title and end cards (#329).
  */
 fun renderChoicesOf(
     library: LibraryState,
@@ -22,7 +22,7 @@ fun renderChoicesOf(
 ): RenderChoices {
     val tracks =
         library.songs.map { song ->
-            RenderTrack(song.id, song.title.ifBlank { song.path.substringAfterLast('/') }, song.duration)
+            RenderTrack(song.id, song.title.ifBlank { song.path.substringAfterLast('/') }, song.duration, song.artist)
         }
     val byId = tracks.associateBy { it.id }
     val playlists =

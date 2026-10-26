@@ -124,7 +124,7 @@ enum class PlaylistMode {
     ONE_CONTINUOUS_VIDEO,
 }
 
-/** The loudness a Render's sound is levelled to. The Render carries it; levelling it is #26. */
+/** The loudness a Render's sound is levelled to (#329): measured over the Track, then a gain applied. */
 enum class RenderLoudness {
     LEAVE_AS_IS,
 
@@ -135,16 +135,32 @@ enum class RenderLoudness {
     MINUS_11_LUFS,
 }
 
-/** What a Render adds to the Visual and the sound (#26): only the loudness target so far. */
+/**
+ * What a Render adds to the sound and beside the Visual (#329): its [loudness] target, which the preset
+ * sets; and, made as an Edit of the finished Render (they belong to Edits, never to the Visual), the
+ * song's synced lyrics as [captions] when it has them in a local `.lrc` file or its own tags, and a
+ * [titleCard] and [endCard] with the song and artist. Kept with the Render, so making it again applies
+ * them again.
+ */
 data class RenderExtras(
     val loudness: RenderLoudness = RenderLoudness.LEAVE_AS_IS,
-)
+    val captions: Boolean = false,
+    val titleCard: Boolean = false,
+    val endCard: Boolean = false,
+) {
+    /** Whether the finished Render is made into an Edit with captions or cards. */
+    val finishing: Boolean get() = captions || titleCard || endCard
+}
 
-/** A Track as a Render needs it: its id, its [title] for the video's name, and its [length]. */
+/**
+ * A Track as a Render needs it: its id, its [title] for the video's name, its [length], and its
+ * [artist] for the title and end cards (#329), blank when it is not known.
+ */
 data class RenderTrack(
     val id: TrackId,
     val title: String,
     val length: Millis,
+    val artist: String = "",
 )
 
 /**

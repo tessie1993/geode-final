@@ -62,4 +62,21 @@ class LoudnessTest {
         assertEquals(0.0, gain(minus14, -20.0, -1.05), 0.0)
         assertEquals(0.1, gain(minus14, -20.0, -1.1), 1e-9)
     }
+
+    @Test
+    fun `a gain in dB is a factor on the samples`() {
+        assertEquals(1.0, Loudness.factorOf(0.0), 1e-12)
+        assertEquals(10.0, Loudness.factorOf(20.0), 1e-9)
+        assertEquals(0.5011872336, Loudness.factorOf(-6.0), 1e-9)
+    }
+
+    @Test
+    fun `a scaled sample rounds and clips at the 16-bit range rather than wrapping`() {
+        assertEquals(200.toShort(), Loudness.scaled(100, 2.0))
+        assertEquals((-150).toShort(), Loudness.scaled(-300, 0.5))
+        assertEquals(51.toShort(), Loudness.scaled(101, 0.5))
+        assertEquals(Short.MAX_VALUE, Loudness.scaled(20_000, 2.0))
+        assertEquals(Short.MIN_VALUE, Loudness.scaled(-20_000, 2.0))
+        assertEquals(Short.MAX_VALUE, Loudness.scaled(Short.MAX_VALUE, 1.0))
+    }
 }

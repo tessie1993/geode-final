@@ -147,4 +147,19 @@
     <string name="studio_share">Share</string>
     <string name="studio_share_title">Share video</string>
     <string name="studio_made_from">Made from %1$s</string>
+    <!-- A Render's extras (#329) -->
+    <string name="studio_render_extras">Extras</string>
+    <string name="studio_render_captions">Lyric captions</string>
+    <string name="studio_render_captions_note">From the song\'s own synced lyrics: an .lrc file beside it or its tags. Songs without them get no captions.</string>
+    <string name="studio_render_title_card">Title card</string>
+    <string name="studio_render_end_card">End card</string>
+    <string name="studio_render_cards_note">The song and artist show over the first and last few seconds. Captions and cards are added as an Edit of the finished Render, so the Render itself stays clean.</string>
+    <string name="studio_render_loudness">Loudness: %1$s</string>
+    <string name="studio_render_loudness_as_is">as mixed</string>
+    <string name="studio_render_loudness_14">levelled to −14 LUFS</string>
+    <string name="studio_render_loudness_11">levelled to −11 LUFS</string>
+    <string name="studio_render_chapters">Chapters</string>
+    <string name="studio_render_chapters_note">One chapter per song, where it starts when the playlist plays through. Copy them into a video description, or save them as a file.</string>
+    <string name="studio_render_chapters_copy">Copy</string>
+    <string name="studio_render_chapters_save">Save .%1$s</string>
 </resources>

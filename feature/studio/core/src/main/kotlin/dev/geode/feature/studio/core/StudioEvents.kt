@@ -22,6 +22,7 @@ import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
+import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.kernel.Effect
 
 /** Everything Studio's reducer handles: Commands, and what its handlers find out. */
@@ -95,6 +96,16 @@ sealed interface StudioEvent {
     data class OldVideosImported(
         val project: Project,
         val videos: List<Video>,
+    ) : StudioEvent
+
+    /**
+     * What a finished [render]'s extras need was read (#329): its saved [video], and the song's synced
+     * [lyrics] in its own time (empty without captions, or when it has none).
+     */
+    data class FinishReady(
+        val render: RenderJob,
+        val video: NewVideo,
+        val lyrics: List<SubtitleCue>,
     ) : StudioEvent
 }
 
@@ -285,6 +296,16 @@ sealed interface StudioWork {
      * [StudioEvent.OldVideosImported].
      */
     data object ImportOldVideos : StudioWork
+
+    /**
+     * Read the song's synced lyrics, from a local `.lrc` file or its own tags, when the finished [render]
+     * wants captions, so its extras are made as an Edit of its [video] (#329); they come back in
+     * [StudioEvent.FinishReady].
+     */
+    data class FinishRender(
+        val render: RenderJob,
+        val video: NewVideo,
+    ) : StudioWork
 }
 
 typealias StudioEffect = Effect<StudioWork, StudioEvent, StudioFact>

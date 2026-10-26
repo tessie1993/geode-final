@@ -174,7 +174,7 @@ class LoopExtend(
      * The caller keeps ownership of [reel]: the same loops can be extended again to a different
      * length or soundtrack without rendering anything a second time. With [maxDurationUs] the video
      * stops there even when [audio] runs longer (a Studio Render of N minutes, #346); 0 runs it to the
-     * end of [audio].
+     * end of [audio]. [gainDb] levels the sound to the Render's loudness target (#329).
      */
     @Suppress("ReturnCount")
     suspend fun extend(
@@ -186,11 +186,12 @@ class LoopExtend(
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
         maxDurationUs: Long = 0L,
+        gainDb: Double = 0.0,
     ): Result =
         withContext(Dispatchers.Default) {
             if (reel.loops.isEmpty()) return@withContext Result.Failed("There is no rendered loop to extend.")
             val soundtrack =
-                when (val built = transcode(audio, onProgress, isCancelled)) {
+                when (val built = transcode(audio, onProgress, isCancelled, gainDb)) {
                     is AudioBuild.Ready -> built.soundtrack
                     is AudioBuild.Failed -> return@withContext Result.Failed(built.message)
                 }
@@ -345,6 +346,7 @@ class LoopExtend(
         audio: LongFormAudio,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
+        gainDb: Double,
     ): AudioBuild {
         val clips = audio.clips
         val transcoder = AudioTranscoder(context)
@@ -354,7 +356,13 @@ class LoopExtend(
             runCatching {
                 clips.forEachIndexed { index, clip ->
                     val result =
-                        transcoder.transcode(uri = clip.uri, maxDurationMs = 0L, startMs = 0L, isCancelled = isCancelled) { progress ->
+                        transcoder.transcode(
+                            uri = clip.uri,
+                            maxDurationMs = 0L,
+                            startMs = 0L,
+                            gainDb = gainDb,
+                            isCancelled = isCancelled,
+                        ) { progress ->
                             onProgress(AUDIO_PROGRESS_SPAN * (index + progress) / clips.size)
                         }
                     done += TranscodedClip(clip, result, startUs)

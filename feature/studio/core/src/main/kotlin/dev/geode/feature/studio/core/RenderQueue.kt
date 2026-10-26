@@ -1,7 +1,12 @@
 package dev.geode.feature.studio.core
 
+import dev.geode.feature.studio.api.EditCut
+import dev.geode.feature.studio.api.EditJob
+import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
+import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderJob
@@ -10,6 +15,7 @@ import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.api.VideoId
+import dev.geode.feature.studio.api.VideoKind
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.ReportFailure
@@ -127,7 +133,9 @@ internal object RenderQueue {
                     // A Render's video keeps the setup it was made from, so it can be made again (#327);
                     // an Edit's is cut from videos, and has none.
                     val madeWith = if (job.edit == null) job.toNewRender().toSpec() else null
-                    addVideos(done, listOf(linked(state, job, end.video).copy(madeWith = madeWith)), job.project)
+                    val video = linked(state, job, end.video).copy(madeWith = madeWith)
+                    val added = addVideos(done, listOf(video), job.project)
+                    Next(added.state, added.effects + finishing(job, video))
                 }
                 is RenderEnd.Failed ->
                     Next(
@@ -162,6 +170,38 @@ internal object RenderQueue {
     }
 
     private fun StudioState.replacing(job: RenderJob): StudioState = copy(renders = renders.map { if (it.id == job.id) job else it })
+
+    /**
+     * Its extras for a finished Render of one Track that has any (#329): the lyrics are read, then the
+     * captions and cards are made as an Edit of its video. An Edit's export has none of its own.
+     */
+    private fun finishing(
+        job: RenderJob,
+        video: NewVideo,
+    ): List<StudioEffect> =
+        if (job.edit == null && job.tracks.size == 1 && job.extras.finishing) {
+            listOf(Perform(StudioWork.FinishRender(job, video)))
+        } else {
+            emptyList()
+        }
+
+    /**
+     * Queues the Edit that adds a finished Render's captions and cards (#329), into the Render's Project,
+     * at its format, linked to its video; nothing when there is nothing to add.
+     */
+    fun finish(
+        state: StudioState,
+        event: StudioEvent.FinishReady,
+    ): Next<StudioState, StudioEffect> {
+        val render = event.render
+        val track = render.tracks.singleOrNull() ?: return Next(state)
+        val cut = RenderFinish.cutOf(event.video, track, render.length, render.extras, event.lyrics) ?: return Next(state)
+        val into = state.projectFor(render.project) ?: return Next(state, listOf(ReportFailure(NO_PROJECT_REFUSAL)))
+        val name = RenderFinish.nameOf(event.video.name, render.extras, RenderFinish.hasCaptions(cut))
+        val job = EditJob(name, EditCut.Cut(cut), EditSources.REFERENCE)
+        // The Render's sound was levelled already; the Edit keeps it as it is.
+        return Edits.queueEdit(state, job, render.format, RenderExtras(), into, MadeFrom(event.video.file, VideoKind.EDIT))
+    }
 
     /**
      * [video] as what [job] was made as (#328, #329): a Short, sibling or finishing Edit takes its kind

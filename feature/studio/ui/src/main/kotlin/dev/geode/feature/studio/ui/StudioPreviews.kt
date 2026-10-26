@@ -1,6 +1,7 @@
 package dev.geode.feature.studio.ui
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
@@ -233,4 +234,13 @@ internal fun ShortRedrawPreview() =
 internal fun ExportAsPreview() =
     PreviewTheme {
         ExportAsDialog(checkNotNull(PreviewStudio.state.toVideoModel(VideoId(2)))) {}
+    }
+
+@Preview(name = "Render extras: lyric captions and cards")
+@Composable
+internal fun RenderExtrasPreview() =
+    PreviewTheme {
+        val draft = RenderDraft.startingFrom(PreviewStudio.state).track(PreviewStudio.night)
+        val extras = draft.copy(spec = draft.spec.copy(extras = RenderExtras(captions = true, titleCard = true, endCard = true)))
+        Column { ExtrasPicker(extras, onDraft = {}) }
     }

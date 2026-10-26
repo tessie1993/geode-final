@@ -58,6 +58,7 @@ class StudioExporter(
         codec: RenderCodec = RenderCodec.H264,
         destination: Uri? = null,
         sourceSize: FrameSize? = null,
+        audioGainDb: Double = 0.0,
         onProgress: (Float) -> Unit,
     ): Result {
         val lut = edit.lutUri?.let { uri -> withContext(Dispatchers.IO) { CubeLut.load(context, uri) } }
@@ -71,7 +72,7 @@ class StudioExporter(
             EditedMediaItem
                 .Builder(item)
                 .setRemoveAudio(edit.mute)
-                .setEffects(Effects(emptyList(), edit.videoEffects(lut, sourceSize)))
+                .setEffects(Effects(listOfNotNull(GainProcessor.forGain(audioGainDb)), edit.videoEffects(lut, sourceSize)))
                 .apply { edit.speedProvider()?.let { setSpeed(it) } }
                 .build()
         val composition = Composition.Builder(EditedMediaItemSequence.Builder().addItem(edited).build()).build()

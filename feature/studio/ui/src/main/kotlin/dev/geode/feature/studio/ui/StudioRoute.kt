@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -31,6 +32,7 @@ import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** The size thumbnails are asked for. */
@@ -104,6 +106,15 @@ fun StudioRoute(
     val pickVideo = rememberVideoPicker { studio.send(it) }
     val context = LocalContext.current
     val shareTitle = stringResource(R.string.studio_share_title)
+    val scope = rememberCoroutineScope()
+    var chapters by remember { mutableStateOf("") }
+    val chapterSavers =
+        ChapterFile.entries.associateWith { file ->
+            rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(file.mimeType)) { uri: Uri? ->
+                val text = chapters
+                if (uri != null && text.isNotEmpty()) scope.launch { saveText(context, uri, text) }
+            }
+        }
 
     LaunchedEffect(studio) {
         studio.events.collect { fact ->
@@ -156,6 +167,10 @@ fun StudioRoute(
                 draft = null
             },
             onDismiss = { draft = null },
+            onSaveChapters = { file ->
+                chapters = chapterText(open.spec.tracks, file)
+                chapterSavers.getValue(file).launch("geode_chapters_${System.currentTimeMillis()}.${file.extension}")
+            },
         )
     }
 }
@@ -178,6 +193,17 @@ private fun share(
 }
 
 private const val VIDEO_TYPE = "video/mp4"
+
+/** Writes [text] to the document [uri] the person picked; a file that cannot be written stays as it was. */
+private suspend fun saveText(
+    context: Context,
+    uri: Uri,
+    text: String,
+) {
+    withContext(Dispatchers.IO) {
+        runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) } }
+    }
+}
 
 /** The video's own thumbnail, or the stored one; the placeholder until it loads or when there is none. */
 @Composable

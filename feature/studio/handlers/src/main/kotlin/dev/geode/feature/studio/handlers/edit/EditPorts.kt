@@ -130,6 +130,26 @@ interface EditVideos {
     }
 }
 
+/** A file's sound as measured (#329): its integrated loudness and its true peak. */
+data class SoundLevel(
+    val lufs: Double,
+    val truePeakDbtp: Double,
+)
+
+/**
+ * Measures the sound of a video file (#329), so an Edit with a loudness target, a Short at the Shorts
+ * preset, is levelled to it. `:app` fills it with its loudness meter. Null when the file has no sound
+ * that can be measured.
+ */
+fun interface SoundLevels {
+    suspend fun measure(file: String): SoundLevel?
+
+    companion object {
+        /** Measures nothing: no Edit is levelled. */
+        val None: SoundLevels = SoundLevels { null }
+    }
+}
+
 /** What Studio's Edits need beyond its storage (#318): the Timeline's [drafts], the [videos] and the [engine]. */
 class EditTools(
     val drafts: EditDrafts = EditDrafts.None,

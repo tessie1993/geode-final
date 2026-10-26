@@ -17,6 +17,8 @@ import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderSize
+import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderSettings
 import kotlinx.coroutines.flow.Flow
@@ -60,14 +62,30 @@ fun interface RenderEngine {
 }
 
 /**
- * What Studio's Renders need beyond its storage: Settings' choices for them, the look, the engine, and
- * whether the app is in front of the person ([inFront], #28), which `:app` follows.
+ * A Track's synced lyrics as captions in the song's own time (#329), for a Render's captions. `:app`
+ * reads them from an `.lrc` file beside the Track or its own tags, never from anywhere online. Empty
+ * when it has none; it may throw.
+ */
+fun interface RenderLyrics {
+    suspend fun cues(track: RenderTrack): List<SubtitleCue>
+
+    companion object {
+        /** No lyrics anywhere: a Render's captions add nothing. */
+        val None: RenderLyrics = RenderLyrics { emptyList() }
+    }
+}
+
+/**
+ * What Studio's Renders need beyond its storage: Settings' choices for them, the look, the engine,
+ * whether the app is in front of the person ([inFront], #28), which `:app` follows, and the songs'
+ * [lyrics] for captions (#329).
  */
 class RenderSources(
     val settings: Flow<RenderSettings>,
     val looks: RenderLooks,
     val engine: RenderEngine,
     val inFront: Flow<Boolean> = flowOf(true),
+    val lyrics: RenderLyrics = RenderLyrics.None,
 )
 
 /** Settings' Visuals off and Export preferences as Studio's Renders read them, through Settings' interface. */

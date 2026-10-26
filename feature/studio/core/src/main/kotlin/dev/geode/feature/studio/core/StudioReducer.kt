@@ -77,6 +77,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioEvent.RendersQueued -> RenderQueue.queued(state, event.renders)
             is StudioEvent.RenderProgress -> RenderQueue.progress(state, event)
             is StudioEvent.RenderEnded -> RenderQueue.ended(state, event)
+            is StudioEvent.FinishReady -> RenderQueue.finish(state, event)
             is RecordingEvent -> Recordings.event(state, event)
             is EditEvent -> Edits.event(state, event)
         }
