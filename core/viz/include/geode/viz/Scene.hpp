@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/FeatureBus.hpp"
 #include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/QualityTiers.hpp"
@@ -42,6 +43,9 @@ public:
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // The music's structure, rhythm, timbre and space this frame (FeatureBus.hpp), handed over with the
+    // Camera: shader Styles read it as lib_scene_features' uniforms, the other families through featuremap.
+    virtual void setFeatureBus(const FeatureValues& values) { (void) values; }
     // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
     virtual void setQuality(const quality::Budget& budget) { (void) budget; }
     // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just

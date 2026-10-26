@@ -67,6 +67,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/FrameRate.cpp
     viz/QualityTiers.cpp
     viz/BeatEnvelope.cpp
+    viz/FeatureBus.cpp
     viz/DisplayEvents.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp

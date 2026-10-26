@@ -39,6 +39,7 @@ public:
     void setGravityField(const GravityField* field) override { gravityField_ = field; }
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
+    void setFeatureBus(const FeatureValues& values) override { features_ = values; }
     void setQuality(const quality::Budget& budget) override { quality_ = budget; }
     bool ownsCamera() const override { return ownsCamera_; }
 
@@ -133,6 +134,8 @@ private:
     // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_style.glsl).
     void uploadCamera();
     void uploadExtras();
+    // The feature bus as lib_scene_features.glsl's uniforms (kFeatureUniforms).
+    void uploadFeatures();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -208,6 +211,7 @@ private:
 
     CameraPose camera_;
     ExtraValues extras_ = ExtraValues::neutral();
+    FeatureValues features_;
     // uXFlightTime, uXSpinTime and uXDriftTime: the clocks the rate Extras run.
     std::array<float, 3> rateClocks_{};
     // The compiled Style reads uCamRot: it moves a camera of its own.

@@ -15,6 +15,7 @@
 #include "geode/viz/Adsr.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
+#include "geode/viz/FeatureBus.hpp"
 #include "geode/viz/GravityField.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
@@ -303,6 +304,10 @@ private:
     double frameNowS_ = 0.0;
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
+    // The one feature bus every scene of a frame reads, stepped once per frame from frameFeatures_.
+    FeatureBus featureBus_;
+    // What the scenes get this frame: the bus, its hits calmed under Reduce motion.
+    FeatureValues frameBus_;
     SharedEffects frameEffects_;
     // The red/blue anaglyph's faded mix (sharedfx::anaglyphMix), stepped once per composite.
     float anaglyphMix_ = 0.0f;

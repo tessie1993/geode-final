@@ -50,6 +50,7 @@ public:
     void reloadMilkPreset() override;
     void setMilkTextureDir(const std::string& dir) override;
     void setDrawTarget(GLuint fbo, int width, int height) override;
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
 
 private:
     static constexpr double kLoadDebounceSeconds = 0.4;
@@ -113,6 +114,7 @@ private:
     milkdrop::MeshSize appliedMesh_{0, 0};
     int appliedFps_ = 0;
     float lastDt_ = 0.0f;
+    FeatureValues bus_;
     bool rendering_ = false;
     // Whether the engine has loaded a preset since it was created: a Render's first preset is a
     // hard cut, since the unseeded idle preset it would blend from differs from run to run.

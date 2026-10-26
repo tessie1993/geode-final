@@ -229,6 +229,7 @@ void ShaderScene::draw(float timeSeconds) {
     uploadGravity();
     uploadCamera();
     uploadExtras();
+    uploadFeatures();
     glBindVertexArray(vao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
@@ -336,6 +337,11 @@ void ShaderScene::uploadCamera() {
 void ShaderScene::uploadExtras() {
     for (size_t e = 0; e < mod::kExtraCount; ++e) set1f(kExtraUniforms[e], extras_.value[e]);
     for (size_t r = 0; r < kRateUniforms.size(); ++r) set1f(kRateUniforms[r], rateClocks_[r]);
+}
+
+void ShaderScene::uploadFeatures() {
+    const auto values = uniformValues(features_);
+    for (size_t u = 0; u < kFeatureUniforms.size(); ++u) set1f(kFeatureUniforms[u], values[u]);
 }
 
 void ShaderScene::set1f(const char* name, float value) {
