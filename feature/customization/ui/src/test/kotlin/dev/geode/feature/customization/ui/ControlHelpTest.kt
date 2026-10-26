@@ -1,6 +1,7 @@
 package dev.geode.feature.customization.ui
 
 import android.app.Application
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -40,7 +41,10 @@ class ControlHelpTest {
     @Test
     fun `a held slider shows its help the same way`() {
         compose.setContent {
-            HeldSlider(label = "Rate", value = 1f, range = 0f..2f, text = { "$it" }, onSet = {}, help = "How fast the Modulator runs.")
+            // In a column, as every screen lays it out: its label, help and slider are three rows.
+            Column {
+                HeldSlider(label = "Rate", value = 1f, range = 0f..2f, text = { "$it" }, onSet = {}, help = "How fast the Modulator runs.")
+            }
         }
         compose.onNodeWithText("How fast the Modulator runs.").assertDoesNotExist()
 
