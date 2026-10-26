@@ -187,6 +187,7 @@ class VisualizerRenderer(
         ThermalGovernor.attach(appContext)
         frameHint.open(pacedFps())
         nativeViz.surfaceCreated()
+        styleLab?.attach(appContext, nativeViz)
         attachedSnapshots = null
         nativeParams = null
         nativeLfo = null

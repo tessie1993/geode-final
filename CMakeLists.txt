@@ -51,6 +51,14 @@ add_subdirectory(third_party/taglib)
 
 add_subdirectory(third_party/oboe)
 
+# The Style lab (docs/style-packs.md, "Authoring loop"): Style packs pushed with adb reload without a
+# restart. Only the debug build type turns it on (app/build.gradle.kts); a release build compiles no
+# hot-reload path. Set for every target below, so each one sees the same class layouts.
+option(GEODE_STYLE_HOT_RELOAD "Build the Style lab's hot reload (debug builds only)" OFF)
+if(GEODE_STYLE_HOT_RELOAD)
+    add_compile_definitions(GEODE_STYLE_HOT_RELOAD=1)
+endif()
+
 add_subdirectory(core)
 
 add_library(geode SHARED

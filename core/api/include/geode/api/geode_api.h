@@ -152,6 +152,10 @@ GEODE_API void        geode_viz_queue_touch_stroke(geode_viz*, float nx, float n
 GEODE_API void        geode_viz_load_milk_preset(geode_viz*, const char* path);
 GEODE_API void        geode_viz_reload_milk_preset(geode_viz*);
 GEODE_API void        geode_viz_set_milk_texture_dir(geode_viz*, const char* dir);
+#ifdef GEODE_STYLE_HOT_RELOAD
+/* Debug builds only: the Style lab folder, <dir>/<id>/, whose packs reload without a restart; "" stops. */
+GEODE_API void        geode_viz_set_style_lab(geode_viz*, const char* dir);
+#endif
 /* The preset MilkDrop last compiled successfully, once; returns the full length, 0 when none is pending. */
 GEODE_API size_t      geode_viz_take_milk_preset_loaded(geode_viz*, char* out, size_t capacity);
 GEODE_API void        geode_viz_push_pcm(geode_viz*, const float* mono, int count);
