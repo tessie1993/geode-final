@@ -307,6 +307,7 @@ object BuiltInStyles {
             shader("canyon_run", true, listOf(generic(TURN), generic(FOG))),
             shader("lantern_river", true, listOf(generic(SIZE), generic(FOG))),
             shader("ringed_giant", true, listOf(generic(SIZE))),
+            shader("crystal_shaft", true, listOf(generic(FOG))),
         )
 
     private fun life(
