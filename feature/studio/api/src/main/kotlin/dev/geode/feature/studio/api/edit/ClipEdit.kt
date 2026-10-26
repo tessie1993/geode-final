@@ -68,7 +68,9 @@ enum class ClipLook(
 /**
  * One clip's edit (#318): its trim, look, grade, LUT, gamma, speed, rotation, reframe, mute and
  * caption, as data. The Media3 effects that carry it out are Studio's handlers'. [ratio] reframes
- * to a shape at [quality]'s size; null keeps the clip as shot.
+ * to a shape at [quality]'s size; null keeps the clip as shot. The reframe's crop sits at [cropX]
+ * across (0 at the left edge, 1 at the right) and [cropY] down (0 at the top), centred unless moved
+ * (Make Short, #328).
  */
 data class ClipEdit(
     val startMs: Long = 0L,
@@ -90,6 +92,8 @@ data class ClipEdit(
     val gammaRed: Float = 1f,
     val gammaGreen: Float = 1f,
     val gammaBlue: Float = 1f,
+    val cropX: Float = CENTRED,
+    val cropY: Float = CENTRED,
 ) {
     val hasGamma: Boolean get() = gammaRed != 1f || gammaGreen != 1f || gammaBlue != 1f
 
@@ -120,9 +124,12 @@ data class ClipEdit(
             lutUri == null &&
             !hasGamma
 
-    private companion object {
+    companion object {
+        /** Where a crop sits until it is moved: the middle of the picture. */
+        const val CENTRED: Float = 0.5f
+
         /** The slowest a speed divides by, so a zero speed never stretches a clip without end. */
-        const val MIN_SPEED = 0.01f
+        private const val MIN_SPEED = 0.01f
     }
 }
 

@@ -83,7 +83,9 @@ class IgnoredControlsTest {
         val names = lists.flatMap { list -> Regex("\"([^\"]*)\"").findAll(list).map { it.groupValues[1] }.toList() }
         val known = SharedProperty.entries.map { it.name }.toSet()
         assertEquals(emptyList<String>(), names.filterNot { it in known })
-        val milkDrop = Regex("\"name\"\\s*:\\s*\"milkdrop\",\\s*\"ignores\"\\s*:\\s*\\[[^\\]]*\"SPEED\"")
+        // Its reactivity profile (#319) may sit between the name and the ignores.
+        val milkDrop =
+            Regex("\"name\"\\s*:\\s*\"milkdrop\",(\\s*\"reactivity\"\\s*:\\s*\\{[^}]*},)?\\s*\"ignores\"\\s*:\\s*\\[[^\\]]*\"SPEED\"")
         assertTrue("MilkDrop paces itself and takes raw sound", milkDrop.containsMatchIn(families))
     }
 

@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.ui
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -14,12 +15,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.ProjectId
@@ -29,6 +32,7 @@ import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** The size thumbnails are asked for. */
@@ -100,6 +104,17 @@ fun StudioRoute(
     var filter by rememberSaveable { mutableStateOf<VideoKind?>(null) }
     val pickFolder = rememberSaveFolderPicker(onSaveFolderPicked)
     val pickVideo = rememberVideoPicker { studio.send(it) }
+    val context = LocalContext.current
+    val shareTitle = stringResource(R.string.studio_share_title)
+    val scope = rememberCoroutineScope()
+    var chapters by remember { mutableStateOf("") }
+    val chapterSavers =
+        ChapterFile.entries.associateWith { file ->
+            rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(file.mimeType)) { uri: Uri? ->
+                val text = chapters
+                if (uri != null && text.isNotEmpty()) scope.launch { saveText(context, uri, text) }
+            }
+        }
 
     LaunchedEffect(studio) {
         studio.events.collect { fact ->
@@ -125,6 +140,7 @@ fun StudioRoute(
             StudioAction.OpenRender -> draft = RenderDraft.startingFrom(state)
             is StudioAction.RenderAgain ->
                 draft = state.videos.firstOrNull { it.id == action.video }?.let { RenderDraft.again(it, state) }
+            is StudioAction.Share -> share(context, action.video, shareTitle)
             StudioAction.Back -> if (video != null) video = null else project = null
         }
     }
@@ -151,7 +167,41 @@ fun StudioRoute(
                 draft = null
             },
             onDismiss = { draft = null },
+            onSaveChapters = { file ->
+                chapters = chapterText(open.spec.tracks, file)
+                chapterSavers.getValue(file).launch("geode_chapters_${System.currentTimeMillis()}.${file.extension}")
+            },
         )
+    }
+}
+
+/**
+ * Hands [video] to the system's share sheet with a read grant for its file (#328); Geode itself posts
+ * nothing anywhere and stays offline. A phone with nothing to share to does nothing.
+ */
+private fun share(
+    context: Context,
+    video: Video,
+    title: String,
+) {
+    val send =
+        Intent(Intent.ACTION_SEND)
+            .setType(VIDEO_TYPE)
+            .putExtra(Intent.EXTRA_STREAM, Uri.parse(video.file))
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    runCatching { context.startActivity(Intent.createChooser(send, title)) }
+}
+
+private const val VIDEO_TYPE = "video/mp4"
+
+/** Writes [text] to the document [uri] the person picked; a file that cannot be written stays as it was. */
+private suspend fun saveText(
+    context: Context,
+    uri: Uri,
+    text: String,
+) {
+    withContext(Dispatchers.IO) {
+        runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) } }
     }
 }
 

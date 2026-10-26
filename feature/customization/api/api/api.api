@@ -883,6 +883,13 @@ public final class dev/geode/feature/customization/api/ModulatorParameter : java
 }
 
 public abstract interface class dev/geode/feature/customization/api/ModulatorShape {
+	public static final field Companion Ldev/geode/feature/customization/api/ModulatorShape$Companion;
+	public static final field MAX_EVERY_BEATS I
+}
+
+public final class dev/geode/feature/customization/api/ModulatorShape$Companion {
+	public static final field MAX_EVERY_BEATS I
+	public final fun getDEFAULT_GLIDE-CmsKos8 ()J
 }
 
 public final class dev/geode/feature/customization/api/ModulatorShape$HitEnvelope : dev/geode/feature/customization/api/ModulatorShape {
@@ -929,6 +936,20 @@ public final class dev/geode/feature/customization/api/ModulatorShape$RandomDrif
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/customization/api/ModulatorShape$RandomOnBeat : dev/geode/feature/customization/api/ModulatorShape {
+	public synthetic fun <init> (IJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (IJLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2-CmsKos8 ()J
+	public final fun copy-Z95vogQ (IJ)Ldev/geode/feature/customization/api/ModulatorShape$RandomOnBeat;
+	public static synthetic fun copy-Z95vogQ$default (Ldev/geode/feature/customization/api/ModulatorShape$RandomOnBeat;IJILjava/lang/Object;)Ldev/geode/feature/customization/api/ModulatorShape$RandomOnBeat;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEveryBeats ()I
+	public final fun getGlide-CmsKos8 ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/customization/api/ModulatorShape$StepSequencer : dev/geode/feature/customization/api/ModulatorShape {
 	public synthetic fun <init> (Ljava/util/List;JZILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public synthetic fun <init> (Ljava/util/List;JZLkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -941,6 +962,20 @@ public final class dev/geode/feature/customization/api/ModulatorShape$StepSequen
 	public final fun getBeatSync ()Z
 	public final fun getStepLength-CmsKos8 ()J
 	public final fun getSteps ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/customization/api/ModulatorShape$ToggleOnBeat : dev/geode/feature/customization/api/ModulatorShape {
+	public synthetic fun <init> (IJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (IJLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2-CmsKos8 ()J
+	public final fun copy-Z95vogQ (IJ)Ldev/geode/feature/customization/api/ModulatorShape$ToggleOnBeat;
+	public static synthetic fun copy-Z95vogQ$default (Ldev/geode/feature/customization/api/ModulatorShape$ToggleOnBeat;IJILjava/lang/Object;)Ldev/geode/feature/customization/api/ModulatorShape$ToggleOnBeat;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEveryBeats ()I
+	public final fun getGlide-CmsKos8 ()J
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }

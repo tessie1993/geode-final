@@ -36,6 +36,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
+import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderSpec
@@ -58,6 +59,7 @@ import dev.geode.feature.studio.api.edit.EditorProject
 import dev.geode.feature.studio.api.edit.Lane
 import dev.geode.feature.studio.api.edit.LaneId
 import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.feature.studio.api.edit.Timeline
 import dev.geode.feature.studio.core.NewRender
 import dev.geode.feature.studio.core.RenderEnd
@@ -100,6 +102,7 @@ class StudioStoreTest {
     private val drafts = FakeEditDrafts()
     private val editVideos = FakeEditVideos()
     private val editEngine = FakeEditEngine()
+    private val oldVideos = FakeOldVideos()
 
     private fun store() =
         studioStore(
@@ -110,6 +113,7 @@ class StudioStoreTest {
                 { Millis(500) },
                 RenderSources(renderSettingsOf(settings), looks, engine),
                 edits = EditTools(drafts, editVideos, editEngine),
+                oldVideos = oldVideos,
             ),
             inPlaceRuntime(failures = failures),
         )
@@ -320,6 +324,87 @@ class StudioStoreTest {
         studio.send(StudioCommand.SetDefaultProject(gigs.id))
 
         assertEquals(3, failures.count { it.message == "Could not save the change to the Studio library" })
+    }
+
+    @Test
+    fun `the old Studio's videos come once into a Project of their own, without the library's own`() {
+        val trip = Project(ProjectId(50), "Trip", Millis(1))
+        storage.projectsById[trip.id] = trip
+        val rendered = Video(VideoId(51), trip.id, VideoKind.RENDER, "night.mp4", "content://media/1", null, Millis(9), 1920, 1080, "")
+        storage.videosById[rendered.id] = rendered
+        val old = NewVideo(VideoKind.RENDER, "old.mp4", "content://media/2", null, Millis(5_000), 1080, 1920, "")
+        oldVideos.found = listOf(NewVideo(VideoKind.RENDER, "night.mp4", "content://media/1", null, Millis(9), 1920, 1080, ""), old, old)
+
+        val studio = store()
+
+        val earlier =
+            studio.state.value.projects
+                .single { it.name == "Earlier videos" }
+        assertEquals(
+            listOf("content://media/2"),
+            studio.state.value
+                .videosIn(earlier.id)
+                .map { it.file },
+        )
+        assertEquals(Millis(500), earlier.createdAt)
+
+        val again = store()
+        assertEquals(
+            1,
+            again.state.value.projects
+                .count { it.name == "Earlier videos" },
+        )
+        assertEquals(2, again.state.value.videos.size)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `with no old Studio videos no Project is made, and the import is done`() {
+        store()
+
+        assertTrue(storage.projectsById.isEmpty())
+        assertEquals(setOf("old-studio-videos"), storage.imports)
+    }
+
+    @Test
+    fun `an old Studio import that fails is reported and tried again next start`() {
+        oldVideos.broken = true
+        oldVideos.found = listOf(NewVideo(VideoKind.RENDER, "old.mp4", "content://media/2", null, Millis(5_000), 1080, 1920, ""))
+        store()
+        assertEquals(listOf("Could not bring the earlier Studio's videos into the library"), failures.map { it.message })
+        assertTrue(storage.imports.isEmpty())
+
+        oldVideos.broken = false
+        val studio = store()
+
+        assertEquals(
+            listOf("old.mp4"),
+            studio.state.value.videos
+                .map { it.name },
+        )
+    }
+
+    @Test
+    fun `the earlier editor's cuts are listed and open in the Timeline, each kept under its name`() {
+        settings.ready(null)
+        val gig = EditorProject(Timeline(listOf(Lane(LaneId("lane-1"), LaneKind.Media, "Media 1"))))
+        drafts.named["Gig"] = gig
+        val studio = store()
+        assertEquals(listOf("Gig"), studio.state.value.savedCuts)
+
+        studio.send(EditCommand.OpenSavedCut("Gig"))
+        assertEquals(EditSession.Cut(EditorHistory(gig), name = "Gig"), studio.state.value.edit)
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+
+        assertEquals(
+            2,
+            drafts.named["Gig"]
+                ?.timeline
+                ?.lanes
+                ?.size,
+        )
+        assertEquals(null, drafts.kept)
+        assertTrue(failures.isEmpty())
     }
 
     @Test
@@ -684,8 +769,102 @@ class StudioStoreTest {
         )
     }
 
+    @Test
+    fun `a Short of a Recording is cropped through the queue and lands as a Short linked to it`() {
+        settings.ready(FolderUri("content://tree/videos"))
+        val (studio, trip) = projectWithTake()
+        val recording =
+            studio.state.value.videos
+                .single()
+
+        studio.send(EditCommand.MakeShort(recording.id))
+        studio.send(EditCommand.ChangeShort(500L, 3_500L, cropX = 0.5f, cropY = 0.25f))
+        studio.send(EditCommand.Export())
+
+        val job = editEngine.exported.single()
+        assertEquals("take Short", job.name)
+        assertEquals(RenderLoudness.MINUS_14_LUFS, job.loudness)
+        val cut = job.cut as EditCut.OneClip
+        assertEquals(RenderAspect.R9_16, cut.edit.ratio)
+        assertEquals(0.25f, cut.edit.cropY)
+        val short =
+            studio.state.value.videos
+                .single { it.kind == VideoKind.SHORT }
+        assertEquals(trip, short.project)
+        assertEquals(recording.id, short.source)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `Export as keeps the link to its source through the queue`() {
+        settings.ready(FolderUri("content://tree/videos"))
+        val (studio, trip) = projectWithTake()
+        val recording =
+            studio.state.value.videos
+                .single()
+
+        studio.send(StudioCommand.ExportAs(recording.id, RenderPreset.SQUARE, trip))
+
+        val sibling =
+            studio.state.value.videos
+                .last()
+        assertEquals(VideoKind.RECORDING, sibling.kind)
+        assertEquals(recording.id, sibling.source)
+        assertEquals(RenderAspect.R1_1, (editEngine.exported.single().cut as EditCut.OneClip).edit.ratio)
+        assertEquals(storage.videosById.getValue(sibling.id).source, recording.id)
+    }
+
+    @Test
+    fun `a finished Render with extras becomes an Edit with its captions and cards, linked to it`() {
+        val (_, trip) = renderingStore()
+        val lyrics = SubtitleCue(5_000L, 9_000L, "Lights on the road")
+        val studioWithLyrics =
+            studioStore(
+                StudioSources(
+                    storage,
+                    saveFolderOf(settings),
+                    files,
+                    { Millis(500) },
+                    RenderSources(renderSettingsOf(settings), looks, engine, lyrics = RenderLyrics { listOf(lyrics) }),
+                    edits = EditTools(drafts, editVideos, editEngine),
+                    oldVideos = oldVideos,
+                ),
+                inPlaceRuntime(failures = failures),
+            )
+        val extras = RenderExtras(captions = true, titleCard = true)
+
+        studioWithLyrics.send(
+            StudioCommand.QueueRender(RenderSpec(listOf(night.copy(artist = "The Neon")), project = trip, extras = extras)),
+        )
+
+        val render =
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.RENDER }
+        val finished =
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.EDIT }
+        assertEquals(render.id, finished.source)
+        assertEquals(trip, finished.project)
+        assertEquals("Night Drive with lyrics and cards", finished.name)
+        val cut = (editEngine.exported.single().cut as EditCut.Cut).project
+        val texts =
+            cut.timeline.lanes
+                .filter { it.kind == LaneKind.Text }
+                .flatMap { it.clips }
+                .map { (it.content as ClipContent.Text).text }
+        assertEquals(listOf("Lights on the road", "Night Drive — The Neon"), texts)
+        assertEquals(
+            extras,
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.RENDER }
+                .madeWith
+                ?.extras,
+        )
+        assertTrue(failures.isEmpty())
+    }
+
     /** A store with the take in its default Project, the clip editor open on it, and [sources] chosen. */
-    private fun editingTake(sources: EditSources): Studio {
+    private fun editingTake(sources: SettingsEditSources): Studio {
         settings.ready(FolderUri("content://tree/videos"), export = ExportSettings(editSources = sources))
         val (studio, _) = projectWithTake()
         studio.send(
@@ -1029,8 +1208,20 @@ private class FakeStudioStorage : StudioStorage {
     ): List<Video> {
         ensureWorking()
         return videos.map {
-            Video(VideoId(nextId++), project, it.kind, it.name, it.file, it.thumbnail, it.length, it.width, it.height, it.song, it.madeWith)
-                .also { video -> videosById[video.id] = video }
+            Video(
+                VideoId(nextId++),
+                project,
+                it.kind,
+                it.name,
+                it.file,
+                it.thumbnail,
+                it.length,
+                it.width,
+                it.height,
+                it.song,
+                it.madeWith,
+                it.source,
+            ).also { video -> videosById[video.id] = video }
         }
     }
 
@@ -1075,21 +1266,61 @@ private class FakeStudioStorage : StudioStorage {
         ensureWorking()
         rendersById.remove(render)
     }
-}
 
-/** Keeps the Timeline's cut in memory, or throws when [broken]. */
-private class FakeEditDrafts : EditDrafts {
-    var kept: EditorProject? = null
-    var broken = false
+    val imports = mutableSetOf<String>()
 
-    override suspend fun load(): EditorProject? {
-        check(!broken) { "no draft" }
-        return kept
+    override suspend fun imported(name: String): Boolean {
+        ensureWorking()
+        return name in imports
     }
 
-    override suspend fun save(project: EditorProject) {
+    override suspend fun import(
+        name: String,
+        projectName: String,
+        createdAt: Millis,
+        videos: List<NewVideo>,
+    ): ImportedVideos? {
+        ensureWorking()
+        imports += name
+        if (videos.isEmpty()) return null
+        val project = Project(ProjectId(nextId++), projectName, createdAt).also { projectsById[it.id] = it }
+        return ImportedVideos(project, addVideos(project.id, videos))
+    }
+}
+
+/** The old Studio's videos, or a failure while [broken]. */
+private class FakeOldVideos : OldVideos {
+    var found: List<NewVideo> = emptyList()
+    var broken = false
+
+    override suspend fun list(): List<NewVideo> {
+        check(!broken) { "no media index" }
+        return found
+    }
+}
+
+/** Keeps the Timeline's cut, and the earlier editor's cuts in [named], in memory, or throws when [broken]. */
+private class FakeEditDrafts : EditDrafts {
+    var kept: EditorProject? = null
+    val named = mutableMapOf<String, EditorProject>()
+    var broken = false
+
+    override suspend fun load(name: String?): EditorProject? {
         check(!broken) { "no draft" }
-        kept = project
+        return if (name == null) kept else named[name]
+    }
+
+    override suspend fun save(
+        project: EditorProject,
+        name: String?,
+    ) {
+        check(!broken) { "no draft" }
+        if (name == null) kept = project else named[name] = project
+    }
+
+    override suspend fun names(): List<String> {
+        check(!broken) { "no drafts" }
+        return named.keys.sorted()
     }
 }
 

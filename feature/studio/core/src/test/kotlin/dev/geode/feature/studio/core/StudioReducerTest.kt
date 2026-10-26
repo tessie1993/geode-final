@@ -32,6 +32,8 @@ class StudioReducerTest {
     private val take = NewVideo(VideoKind.RECORDING, "take.mp4", "content://videos/take.mp4", null, Millis(4_000), 1080, 1920, "Teardrop")
     private val saved = Video(VideoId(7), gigs.id, take.kind, take.name, take.file, null, take.length, take.width, take.height, take.song)
     private val folder = SaveFolder.Chosen("content://tree/videos")
+    private val earlier = Project(ProjectId(3), OLD_VIDEOS_PROJECT, Millis(30))
+    private val old = video(8, earlier, "content://media/external/video/media/80")
 
     private val loading = StudioState()
     private val ready =
@@ -80,12 +82,16 @@ class StudioReducerTest {
                 loading,
                 StudioEvent.Loaded(listOf(trip, gigs), listOf(beach, dunes, stage), gigs.id),
                 ready,
+                Perform(StudioWork.ImportOldVideos),
+                Perform(EditWork.ListCuts),
             ),
             row(
                 "the save folder known before the library is kept",
                 loading.copy(saveFolder = folder),
                 StudioEvent.Loaded(listOf(trip), listOf(beach), null),
                 StudioState(loading = false, projects = listOf(trip), videos = listOf(beach), saveFolder = folder),
+                Perform(StudioWork.ImportOldVideos),
+                Perform(EditWork.ListCuts),
             ),
             row(
                 "what waited runs in order once the library is read",
@@ -94,6 +100,15 @@ class StudioReducerTest {
                 ready.copy(projects = listOf(trip.copy(name = "Holiday"), gigs)),
                 Perform(StudioWork.RenameProject(trip.id, "Holiday")),
                 Perform(StudioWork.AddVideos(gigs.id, listOf(take))),
+                Perform(StudioWork.ImportOldVideos),
+                Perform(EditWork.ListCuts),
+            ),
+            row(
+                "the old Studio's videos arrive in their own new Project, newest first",
+                ready,
+                StudioEvent.OldVideosImported(earlier, listOf(old)),
+                ready.copy(projects = listOf(earlier, trip, gigs), videos = listOf(beach, dunes, stage, old)),
+                Emit(StudioFact.VideosAdded(earlier.id, listOf(old.id))),
             ),
             row(
                 "an unreadable library shows empty, reports, and still runs what waited",
@@ -327,6 +342,7 @@ class StudioReducerTest {
         val wordings = StudioFailure.entries.map(::describe)
         assertEquals(StudioFailure.entries.size, wordings.toSet().size)
         assertEquals("Could not save the change to the Studio library", describe(StudioFailure.SAVE))
+        assertEquals("Could not bring the earlier Studio's videos into the library", describe(StudioFailure.IMPORT_OLD_VIDEOS))
         assertEquals("Could not add the new videos to the Studio library", describe(StudioFailure.ADD_VIDEOS))
         assertEquals("Some video files could not be deleted", describe(StudioFailure.DELETE_FILES))
     }

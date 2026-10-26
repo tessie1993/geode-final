@@ -25,8 +25,10 @@ import copy
 import json
 import math
 import re
+import struct
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -46,7 +48,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "inputs", "lens", "particles3d", "feedback", "reactivity",
+    "effects", "tiers", "inputs", "lens", "particles3d", "feedback", "reactivity", "textures",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -168,6 +170,18 @@ FEEDBACK_PARTS = {"outer": FEEDBACK_BORDER, "inner": FEEDBACK_BORDER, "streaks":
 FEEDBACK_EXTRAS = {"decay", "flight", "spin", "drift", "swirl"}
 FEEDBACK_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_feedback[ \t]*$", re.MULTILINE)
 FEEDBACK_SETTLES = re.compile(r"\b(fbSettle|fbWarp)\s*\(")
+# The images a shader Style ships in its own pack (#391, geode/viz/StylePacks.hpp): at most four PNGs beside
+# the manifest, 8 bits a channel and at most 1024 pixels a side, each sampled by the shader as uImage<Name>
+# with the wrap and filter the pack chose. The shader declares each sampler itself and reads it, and
+# samples no image the pack does not ship.
+MAX_TEXTURES = 4
+MAX_TEXTURE_SIDE = 1024
+TEXTURE_KEYS = {"name", "file", "wrap", "filter"}
+TEXTURE_WRAPS = {"repeat", "mirror", "clamp"}
+TEXTURE_FILTERS = {"linear", "nearest", "mipmap"}
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+PNG_COLOUR_TYPES = {0, 2, 3, 4, 6}
+IMAGE_UNIFORM = re.compile(r"\buImage[A-Z]\w*")
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -342,6 +356,24 @@ def extra_convention(name: str) -> tuple[int, int, int]:
 
 def extra_uniform(name: str) -> str:
     return "uX" + "".join(part.capitalize() for part in name.split("_"))
+
+
+def texture_uniform(name: str) -> str:
+    """The sampler a shader reads the pack image `name` by (packs::textureUniform): fold_ramp -> uImageFoldRamp."""
+    return "uImage" + "".join(part[:1].upper() + part[1:] for part in name.split("_"))
+
+
+def png_problem(path: Path) -> str | None:
+    """Why the file at `path` is not a PNG the engine takes, or None when it is one."""
+    data = path.read_bytes()
+    if len(data) < 33 or not data.startswith(PNG_SIGNATURE) or data[12:16] != b"IHDR":
+        return "is not a PNG"
+    width, height, depth, colour, _, _, interlace = struct.unpack(">IIBBBBB", data[16:29])
+    if not (1 <= width <= MAX_TEXTURE_SIDE and 1 <= height <= MAX_TEXTURE_SIDE):
+        return f"is {width}x{height}; an image is at most {MAX_TEXTURE_SIDE} pixels a side"
+    if depth != 8 or colour not in PNG_COLOUR_TYPES or interlace not in (0, 1):
+        return "is not a PNG of 8 bits a channel"
+    return None
 
 
 def strip_comments(source: str) -> str:
@@ -595,6 +627,7 @@ def check_manifest(
     warp = check_feedback(manifest, family, folder, where, report)
     if warp is not None:
         expected.add(warp)
+    expected.update(check_textures(manifest, family, folder, shader_file, where, report))
     if files != expected:
         report.error(where, f"the folder holds {sorted(files)}, expected {sorted(expected)}")
     if "renderScale" in manifest:
@@ -687,6 +720,51 @@ def check_feedback(manifest: dict, family: str, folder: Path, where: str, report
     if not FEEDBACK_SETTLES.search(strip_comments(source)):
         report.error(where, f"the warp stage {name} hands what it keeps to fbSettle() (or keeps fbWarp())")
     return name
+
+
+def check_textures(manifest: dict, family: str, folder: Path, shader: Path | None, where: str, report: Report) -> list[str]:
+    """The images the Style ships (#391); returns their file names, which belong in its folder."""
+    declared = manifest.get("textures", [])
+    if not isinstance(declared, list) or len(declared) > MAX_TEXTURES or not all(isinstance(t, dict) for t in declared):
+        report.error(where, f'"textures" must be a list of at most {MAX_TEXTURES} images')
+        return []
+    if declared and family != SHADER_FAMILY:
+        report.error(where, f'family "{family}" draws with its own shaders; only a shader Style ships "textures"')
+    files: list[str] = []
+    uniforms: set[str] = set()
+    for texture in declared:
+        name = texture.get("name")
+        if not isinstance(name, str) or not NAME_PATTERN.match(name):
+            report.error(where, 'an image needs a "name" of lowercase letters, digits and _, starting with a letter')
+            continue
+        if texture_uniform(name) in uniforms:
+            report.error(where, f'image "{name}" is declared twice')
+        uniforms.add(texture_uniform(name))
+        unknown = set(texture) - TEXTURE_KEYS
+        if unknown:
+            report.error(where, f'image "{name}" may hold only {sorted(TEXTURE_KEYS)}, not {sorted(unknown)}')
+        if texture.get("wrap", "repeat") not in TEXTURE_WRAPS:
+            report.error(where, f'image "{name}" "wrap" must be one of {sorted(TEXTURE_WRAPS)}')
+        if texture.get("filter", "linear") not in TEXTURE_FILTERS:
+            report.error(where, f'image "{name}" "filter" must be one of {sorted(TEXTURE_FILTERS)}')
+        file = texture.get("file")
+        if not is_text(file) or "/" in file or not (folder / file).is_file():
+            report.error(where, f'image "{name}" needs "file": a file in the Style\'s own folder')
+            continue
+        files.append(file)
+        problem = png_problem(folder / file)
+        if problem:
+            report.error(where, f'image "{name}" ({file}) {problem}')
+    if shader is not None:
+        code = strip_comments(shader.read_text(encoding="utf-8"))
+        for uniform in sorted(uniforms):
+            if not re.search(rf"\buniform\s+(?:(?:highp|mediump|lowp)\s+)?sampler2D\s+{uniform}\s*;", code):
+                report.error(where, f"the shader declares no sampler for its image: uniform sampler2D {uniform};")
+            elif len(re.findall(rf"\b{uniform}\b", code)) < 2:
+                report.error(where, f"the shader declares {uniform} but never samples it")
+        for uniform in sorted(set(IMAGE_UNIFORM.findall(code)) - uniforms):
+            report.error(where, f'the shader samples {uniform}, an image "textures" does not declare')
+    return files
 
 
 def check_lens(manifest: dict, family: str, where: str, report: Report) -> None:
@@ -845,6 +923,7 @@ GOOD_MANIFESTS = {
             "depthOfField": {"aperture": 0.5, "focus": 0.4},
         },
         "particles3d": {"kind": "sparks", "amount": 0.7, "count": 1, "speed": 1.2, "size": 1, "tint": [1, 0.8, 0.6]},
+        "textures": [{"name": "fold_ramp", "file": "ramp.png", "wrap": "mirror", "filter": "mipmap"}],
         "reactivity": {"macro": ["energy"], "micro": ["spectrum"]},
     },
     "drum": {
@@ -864,11 +943,26 @@ GOOD_MANIFESTS = {
 
 
 GOOD_SHADER = (
-    "//#include lib_style\n//#include lib_inputs\n"
+    "//#include lib_style\n//#include lib_inputs\nuniform highp sampler2D uImageFoldRamp;\n"
     "vec2 view() { return vec2(uBeat * uBass); }\n"
     "float aband(float x) { return texture(uAudioTex, vec2(x, 0.25)).r; }\n"
-    "void main() { float s = uXScale + fbmVol(vec3(uFrame), 3) + aband(0.5) * uEnergy; }\n"
+    "void main() { float s = uXScale + fbmVol(vec3(uFrame), 3) + aband(0.5) * uEnergy + texture(uImageFoldRamp, vUv).r; }\n"
 )
+
+
+def make_png(width: int, height: int, depth: int = 8) -> bytes:
+    """A grey PNG of the given size, for the self-test."""
+    row = b"\x00" + bytes(width * depth // 8)
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+
+    header = struct.pack(">IIBBBBB", width, height, depth, 0, 0, 0, 0)
+    return PNG_SIGNATURE + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(row * height)) + chunk(b"IEND", b"")
+
+
+GOOD_PNG = make_png(4, 4)
+ORB_FILES = ["shader.glsl", ("ramp.png", GOOD_PNG)]
 LOOP_SHADER = "//#include lib_inputs\nvoid main() { vec3 c = texture(uPrevFrame, vUv).rgb * uTreble; }\n"
 LOOP_WARP = "//#include lib_feedback\nvoid main() { fragColor = vec4(fbSettle(fbFetch(vSrc)), 1.0); }\n"
 LOOP_FILES = [("shader.glsl", LOOP_SHADER), ("warp.glsl", LOOP_WARP)]
@@ -886,7 +980,10 @@ def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str
         # A file name, holding a shader that reads the good tree's Extra, (name, its source), or a list of those.
         for entry in shader if isinstance(shader, list) else [shader]:
             name, source = entry if isinstance(entry, tuple) else (entry, GOOD_SHADER)
-            (styles / style_id / name).write_text(source)
+            if isinstance(source, bytes):
+                (styles / style_id / name).write_bytes(source)
+            else:
+                (styles / style_id / name).write_text(source)
     return styles
 
 
@@ -894,7 +991,7 @@ def run_case(mutate) -> list[str]:
     families = copy.deepcopy(GOOD_FAMILIES)
     manifests = copy.deepcopy(GOOD_MANIFESTS)
     index = list(manifests)
-    shaders = {"orb": "shader.glsl", "loop": list(LOOP_FILES)}
+    shaders = {"orb": list(ORB_FILES), "loop": list(LOOP_FILES)}
     mutate(families, index, manifests, shaders)
     with tempfile.TemporaryDirectory() as tmp:
         return check(write_tree(Path(tmp), families, index, manifests, shaders))
@@ -1000,6 +1097,26 @@ def self_test() -> int:
         "warp Extra on a Style without feedback": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 1},
                                                                              {"name": "decay", "min": 0, "max": 2, "default": 1}]),
         "stray file beside a feedback Style": lambda f, i, m, s: s.update({"loop": list(LOOP_FILES) + [("notes.glsl", "")]}),
+        "textures not a list": setter(["orb", "textures"], {"name": "fold_ramp", "file": "ramp.png"}),
+        "too many textures": setter(["orb", "textures"], [{"name": f"t{n}", "file": "ramp.png"} for n in range(MAX_TEXTURES + 1)]),
+        "textures on a non-shader family": lambda f, i, m, s: (
+            m["drum"].update({"textures": [{"name": "dust", "file": "dust.png"}]}), s.update({"drum": [("dust.png", GOOD_PNG)]})),
+        "texture with a bad name": setter(["orb", "textures", 0, "name"], "FoldRamp"),
+        "texture named twice": setter(["orb", "textures"], [{"name": "fold_ramp", "file": "ramp.png"}] * 2),
+        "texture file missing": setter(["orb", "textures", 0, "file"], "none.png"),
+        "texture file outside the folder": setter(["orb", "textures", 0, "file"], "../ramp.png"),
+        "texture with an unknown wrap": setter(["orb", "textures", 0, "wrap"], "tile"),
+        "texture with an unknown filter": setter(["orb", "textures", 0, "filter"], "cubic"),
+        "texture with an unknown key": setter(["orb", "textures", 0, "srgb"], True),
+        "texture that is not a PNG": lambda f, i, m, s: s.update({"orb": ["shader.glsl", ("ramp.png", b"GIF89a" + bytes(40))]}),
+        "texture too large": lambda f, i, m, s: s.update({"orb": ["shader.glsl", ("ramp.png", make_png(MAX_TEXTURE_SIDE + 1, 1))]}),
+        "texture of 16 bits a channel": lambda f, i, m, s: s.update({"orb": ["shader.glsl", ("ramp.png", make_png(4, 4, 16))]}),
+        "texture the shader declares no sampler for": lambda f, i, m, s: s.update(
+            {"orb": [("shader.glsl", GOOD_SHADER.replace("uniform highp sampler2D uImageFoldRamp;", "")), ("ramp.png", GOOD_PNG)]}),
+        "texture the shader never samples": lambda f, i, m, s: s.update(
+            {"orb": [("shader.glsl", GOOD_SHADER.replace(" + texture(uImageFoldRamp, vUv).r", "")), ("ramp.png", GOOD_PNG)]}),
+        "shader sampling an image the pack does not ship": lambda f, i, m, s: s.update(
+            {"orb": [("shader.glsl", GOOD_SHADER + "float d() { return texture(uImageDust, vUv).r; }\n"), ("ramp.png", GOOD_PNG)]}),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),

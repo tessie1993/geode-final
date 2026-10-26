@@ -127,6 +127,8 @@ class VideoExporter(
         val supersample: Float = 1f,
         /** The look's Style switching, replayed frame by frame (#343); none keeps one Style throughout. */
         val switches: StyleSwitches? = null,
+        /** The gain that levels the sound to the Render's loudness target (#329); 0 leaves it as mixed. */
+        val gainDb: Double = 0.0,
     )
 
     sealed interface Result {
@@ -136,8 +138,8 @@ class VideoExporter(
             val lengthMs: Long,
             /**
              * How the finished file's loudness compares to [loudnessTarget], or null when it could
-             * not be measured (e.g. no audio track). Geode cannot yet apply the resulting gain — see
-             * [measureLoudness] — so this is read-only telemetry for now, not an applied correction.
+             * not be measured (e.g. no audio track): read-only telemetry. A Studio Render levels its
+             * sound before it is encoded instead, with [Job.gainDb] (#329).
              */
             val loudnessAdvice: LoudnessAdvice? = null,
         ) : Result
@@ -241,11 +243,9 @@ class VideoExporter(
      * built to measure "the thing that will actually be uploaded", and by the time [encodeInto]
      * has run, the AAC track already lives inside a container [LoudnessMeter] can open directly —
      * unlike [AudioTranscoder]'s intermediate `.bin`, which is a raw elementary stream with no
-     * container framing for [android.media.MediaExtractor] to parse. Geode does not yet have
-     * anywhere upstream to apply the resulting gain: [AudioTranscoder] owns the only PCM Geode
-     * ever holds for this file, and turning [LoudnessAdvice.gainDb] into an actual correction
-     * means scaling samples inside its decode loop, which this unit does not touch. So today this
-     * only reports what a platform would do to the file as exported.
+     * container framing for [android.media.MediaExtractor] to parse. It only reports what a
+     * platform would do to the file as exported; a Studio Render applies its gain upstream, in
+     * [AudioTranscoder]'s decode loop, from the Track measured before encoding ([Job.gainDb], #329).
      *
      * A file the encoder just finished writing successfully is not allowed to be reported as a
      * failed export over a problem in this purely-informational re-read, so any exception here is
@@ -312,6 +312,7 @@ class VideoExporter(
                         uri = job.audioUri,
                         maxDurationMs = range?.durationMs ?: 0L,
                         startMs = rangeStartMs,
+                        gainDb = job.gainDb,
                         isCancelled = isCancelled,
                     ) { onProgress(it * 0.1f) }
                     .also { aacRef = it }

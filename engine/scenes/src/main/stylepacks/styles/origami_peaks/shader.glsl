@@ -13,12 +13,20 @@ out vec4 fragColor;
 //#include lib_touch
 //#include lib_camera
 
+// The paper every facet is folded from: an image this Style ships in its own pack (manifest "textures",
+// tools/style_textures/generate.py), tiling and mipmapped.
+uniform highp sampler2D uImagePaper;
+
 // Origami Peaks: a high flyover of faceted mountains at dawn. The range is a
 // triangulated heightfield - every facet flat, every ridge a crease - lit by a
 // low pink sun with long soft shadows, with mist lying in the valleys. The
 // camera glides high and banks through long curves; the music folds the
 // ridges, and the facets hinge like paper as their corners rise and fall.
 //
+// The paper is laid flat on the ground plane, OP_PAPER_SCALE repeats per cell.
+#define OP_PAPER_SCALE 0.35
+#define OP_PAPER_TEXELS 256.0
+
 // ---- a piecewise-flat terrain -------------------------------------------------------
 //
 // Heights live only on the vertices of a square grid split along one
@@ -192,6 +200,11 @@ void main() {
         float snow = smoothstep(4.6, 5.6, p.y + 0.8 * n.y);
         vec3 rock = mix(mix(pal(0.08), vec3(0.55, 0.5, 0.5), 0.78), mix(pal(0.3), vec3(0.42), 0.78), 0.5 + 0.5 * sin(dot(a.xz, vec2(1.7, 2.3))));
         vec3 albedo = mix(rock * 0.55, vec3(0.92, 0.94, 1.0), snow);
+        // The paper's grain, at the mip level this pixel covers: chosen by hand from the hit distance, as
+        // the hit is found in a loop where the implicit derivatives are not defined.
+        float footprint = hitT * 1.5 / (uResolution.y * 1.25) * OP_PAPER_SCALE * OP_PAPER_TEXELS;
+        float grain = textureLod(uImagePaper, p.xz * OP_PAPER_SCALE, log2(max(footprint, 1.0))).r;
+        albedo *= 1.0 + 1.6 * (grain - 0.95);
         // Valleys are darker: what the sky can see of them.
         float ao = clamp(0.4 + 0.12 * p.y, 0.4, 1.0);
         vec3 sunTint = mix(pal(0.92), vec3(1.0), 0.45) * 1.9;

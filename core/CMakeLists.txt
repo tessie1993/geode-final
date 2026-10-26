@@ -29,10 +29,12 @@ geode_core_library(geode_render render
     render/ProgramBinaryCache.cpp
     render/Program.cpp
     render/Texture.cpp
+    render/ImageDecoder.cpp
     render/Framebuffer.cpp
     render/Quad.cpp
 )
-target_link_libraries(geode_render PUBLIC GLESv3 EGL android PRIVATE geode_util)
+# jnigraphics: the platform's image decoder (AImageDecoder), for the images Style packs ship (#391).
+target_link_libraries(geode_render PUBLIC GLESv3 EGL android jnigraphics PRIVATE geode_util)
 
 geode_core_library(geode_analysis analysis
     ${GEODE_ANALYSIS_PURE_SOURCES}
@@ -125,4 +127,4 @@ endforeach()
 add_library(geode_core INTERFACE)
 target_link_libraries(geode_core INTERFACE
     geode_api geode_viz geode_render geode_analysis geode_audio geode_library geode_bridge geode_util
-    kissfft::kissfft projectM tag oboe mediandk GLESv3 EGL log android)
+    kissfft::kissfft projectM tag oboe mediandk GLESv3 EGL log android jnigraphics)

@@ -154,9 +154,18 @@ function shaderPacks() {
     if (manifest.family !== 'shader') continue;
     const feedback = manifest.feedback;
     const warp = !feedback ? null : feedback.shader ? path.join(STYLES, id, feedback.shader) : path.join(SHADERS, 'feedback_warp_frag.glsl');
-    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp });
+    const images = (manifest.textures ?? []).map((t) => ({
+      key: `${id}/${t.name}`, uniform: imageUniform(t.name), file: path.join(STYLES, id, t.file),
+      wrap: t.wrap ?? 'repeat', filter: t.filter ?? 'linear',
+    }));
+    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp, images });
   }
   return out;
+}
+
+// The sampler a Style's own image is read by (packs::textureUniform, #391): fold_ramp -> uImageFoldRamp.
+function imageUniform(name) {
+  return 'uImage' + name.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 }
 
 // A shader file's name as a compile error gives it: styles/<id>/<file> or shaders/<file>.
@@ -830,9 +839,12 @@ function buildJobs(args, registry, styles, renderIds) {
     const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;
+    // The Style's own images, each bound to its sampler as the engine binds it.
+    const images = packs.get(id).images;
+    const textures = { ...SHADER_TEXTURES, ...Object.fromEntries(images.map((image) => [image.uniform, image.key])) };
     const job = {
-      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs,
-      uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size),
+      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs, images,
+      uniforms: plan(parseUniforms(frag), values, textures, args.size, args.size),
     };
     if (args.resize) {
       job.name = `${id} resized`;
@@ -891,6 +903,11 @@ async function runOnce(args, getPage) {
   if (jobs.length) {
     const page = await getPage();
     for (const job of jobs) {
+      for (const image of job.images ?? []) {
+        const png = fs.readFileSync(image.file).toString('base64');
+        const loaded = await page.call('__packImage', { key: image.key, png, wrap: image.wrap, filter: image.filter });
+        if (loaded.error) throw new Error(`${job.name}: image ${path.basename(image.file)}: ${loaded.error}`);
+      }
       const entry = job.frames ? '__renderFeedback' : job.resizeWidth ? '__renderResized' : '__render';
       const r = await page.call(entry, { ...job, width: args.size, height: args.size });
       if (job.frames && !r.error) judgeSettle(job, r);
