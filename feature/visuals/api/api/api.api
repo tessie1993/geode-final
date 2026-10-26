@@ -64,19 +64,25 @@ public final class dev/geode/feature/visuals/api/ImportProblem : java/lang/Enum 
 }
 
 public final class dev/geode/feature/visuals/api/ImportReport {
-	public fun <init> (Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)V
-	public synthetic fun <init> (Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/visuals/api/PackLimit;)V
+	public synthetic fun <init> (Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/visuals/api/PackLimit;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ldev/geode/feature/visuals/api/MilkdropKind;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4 ()Ljava/util/Map;
-	public final fun copy (Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)Ldev/geode/feature/visuals/api/ImportReport;
-	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/ImportReport;Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/ImportReport;
+	public final fun component5 ()Ljava/util/List;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()Ldev/geode/feature/visuals/api/PackLimit;
+	public final fun copy (Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/visuals/api/PackLimit;)Ldev/geode/feature/visuals/api/ImportReport;
+	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/ImportReport;Ldev/geode/feature/visuals/api/MilkdropKind;Ljava/util/List;Ljava/util/List;Ljava/util/Map;Ljava/util/List;Ljava/util/List;Ldev/geode/feature/visuals/api/PackLimit;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/ImportReport;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getBroken ()Ljava/util/List;
 	public final fun getImported ()Ljava/util/List;
 	public final fun getKind ()Ldev/geode/feature/visuals/api/MilkdropKind;
 	public final fun getPlayback ()Ljava/util/Map;
+	public final fun getSkipped ()Ljava/util/List;
+	public final fun getStopped ()Ldev/geode/feature/visuals/api/PackLimit;
+	public final fun getTextures ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -101,6 +107,14 @@ public final class dev/geode/feature/visuals/api/MilkdropKind : java/lang/Enum {
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
 	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/visuals/api/MilkdropKind;
 	public static fun values ()[Ldev/geode/feature/visuals/api/MilkdropKind;
+}
+
+public final class dev/geode/feature/visuals/api/MilkdropPackType : java/lang/Enum {
+	public static final field FOLDER Ldev/geode/feature/visuals/api/MilkdropPackType;
+	public static final field ZIP Ldev/geode/feature/visuals/api/MilkdropPackType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/visuals/api/MilkdropPackType;
+	public static fun values ()[Ldev/geode/feature/visuals/api/MilkdropPackType;
 }
 
 public final class dev/geode/feature/visuals/api/MilkdropPreset {
@@ -137,6 +151,22 @@ public final class dev/geode/feature/visuals/api/MilkdropShelf {
 	public final fun getTextures ()Ljava/util/List;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/PackLimit : java/lang/Enum {
+	public static final field ENTRIES Ldev/geode/feature/visuals/api/PackLimit;
+	public static final field SIZE Ldev/geode/feature/visuals/api/PackLimit;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/visuals/api/PackLimit;
+	public static fun values ()[Ldev/geode/feature/visuals/api/PackLimit;
+}
+
+public final class dev/geode/feature/visuals/api/PackProblem : java/lang/Enum {
+	public static final field NOT_MILKDROP Ldev/geode/feature/visuals/api/PackProblem;
+	public static final field UNSAFE_PATH Ldev/geode/feature/visuals/api/PackProblem;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/visuals/api/PackProblem;
+	public static fun values ()[Ldev/geode/feature/visuals/api/PackProblem;
 }
 
 public final class dev/geode/feature/visuals/api/PresetFolderPath {
@@ -258,6 +288,19 @@ public final class dev/geode/feature/visuals/api/SavedPreset {
 	public final fun getFolder-z03dg5U ()Ljava/lang/String;
 	public final fun getId-6unTwu0 ()Ljava/lang/String;
 	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/SkippedEntry {
+	public fun <init> (Ljava/lang/String;Ldev/geode/feature/visuals/api/PackProblem;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ldev/geode/feature/visuals/api/PackProblem;
+	public final fun copy (Ljava/lang/String;Ldev/geode/feature/visuals/api/PackProblem;)Ldev/geode/feature/visuals/api/SkippedEntry;
+	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/SkippedEntry;Ljava/lang/String;Ldev/geode/feature/visuals/api/PackProblem;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/SkippedEntry;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getProblem ()Ldev/geode/feature/visuals/api/PackProblem;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -456,6 +499,19 @@ public final class dev/geode/feature/visuals/api/VisualsCommand$ImportMilkdrop :
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFiles ()Ljava/util/List;
 	public final fun getKind ()Ldev/geode/feature/visuals/api/MilkdropKind;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$ImportMilkdropPack : dev/geode/feature/visuals/api/VisualsCommand {
+	public fun <init> (Ldev/geode/feature/visuals/api/MilkdropPackType;Ljava/lang/String;)V
+	public final fun component1 ()Ldev/geode/feature/visuals/api/MilkdropPackType;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ldev/geode/feature/visuals/api/MilkdropPackType;Ljava/lang/String;)Ldev/geode/feature/visuals/api/VisualsCommand$ImportMilkdropPack;
+	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/VisualsCommand$ImportMilkdropPack;Ldev/geode/feature/visuals/api/MilkdropPackType;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$ImportMilkdropPack;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getType ()Ldev/geode/feature/visuals/api/MilkdropPackType;
+	public final fun getUri ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
