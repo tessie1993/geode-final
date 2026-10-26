@@ -19,9 +19,10 @@ import dev.geode.util.bestEffort
 import kotlinx.coroutines.flow.filterIsInstance
 
 /**
- * Export-finished alerts (#22, #28): when a Render's video lands in its Project, a notification on the
- * Renders' channel says so, with Open and Share. Settings' Export preferences can turn them off. The
- * alert is the system's notification, so a person who refused notifications simply gets none.
+ * Export-finished alerts (#22, #28): when a Render's video, or an Edit exported through the render
+ * queue (#318), lands in its Project, a notification on the Renders' channel says so, with Open and
+ * Share. Settings' Export preferences can turn them off. The alert is the system's notification, so a
+ * person who refused notifications simply gets none.
  */
 class RenderAlerts(
     private val context: Context,
@@ -34,7 +35,7 @@ class RenderAlerts(
             if (!wanted()) return@collect
             val ids = added.videos.toSet()
             studio.state.value.videos
-                .filter { it.id in ids && it.kind == VideoKind.RENDER }
+                .filter { it.id in ids && it.kind in ALERTED }
                 .forEach { video -> bestEffort(TAG, "alert(video)") { alert(video) } }
         }
     }
@@ -83,6 +84,9 @@ class RenderAlerts(
 
     private companion object {
         const val TAG = "RenderAlerts"
+
+        /** The videos the render queue makes. */
+        val ALERTED = setOf(VideoKind.RENDER, VideoKind.EDIT)
         const val VIDEO_MIME = "video/mp4"
 
         // Apart from the progress notification's id; each video gets its own alert, and Share its own request.
