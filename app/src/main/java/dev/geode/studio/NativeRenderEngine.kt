@@ -12,15 +12,6 @@ import dev.geode.analysis.OfflineAnalyzer
 import dev.geode.analysis.SongMap
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
-import dev.geode.export.ExportAspect
-import dev.geode.export.ExportCodec
-import dev.geode.export.ExportRange
-import dev.geode.export.LongFormAudio
-import dev.geode.export.LoopExtend
-import dev.geode.export.LoopRender
-import dev.geode.export.LoopSpec
-import dev.geode.export.MixClip
-import dev.geode.export.VideoExporter
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.core.BuiltInStyles
@@ -28,7 +19,6 @@ import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.studio.api.NewVideo
-import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderJob
 import dev.geode.feature.studio.api.RenderPhase
@@ -46,6 +36,14 @@ import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.RenderSwitch
 import dev.geode.render.offscreen.StyleSwitches
 import dev.geode.render.scene.SceneIds
+import dev.geode.studio.media.ExportAspect
+import dev.geode.studio.media.ExportRange
+import dev.geode.studio.media.LongFormAudio
+import dev.geode.studio.media.LoopExtend
+import dev.geode.studio.media.LoopRender
+import dev.geode.studio.media.LoopSpec
+import dev.geode.studio.media.MixClip
+import dev.geode.studio.media.VideoExporter
 import dev.geode.visuals.EngineSnapshots
 import dev.geode.visuals.StyleTargets
 import kotlinx.coroutines.CancellationException
@@ -118,7 +116,7 @@ class NativeRenderEngine(
                 fps = format.fps,
                 range = section?.let { ExportRange(it.start.value, it.length.value) },
                 switches = switchesOf(customization, context, values),
-                codec = codecOf(format),
+                codec = format.codec,
                 supersample = RenderPlan.supersampleOf(format),
                 gainDb = gainDb,
             )
@@ -160,7 +158,7 @@ class NativeRenderEngine(
                 aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
                 spec = LoopSpec.of(longForm.loop.value, fps = format.fps, bpm = drawn.timeline.bpm),
                 look = { stop -> EngineSnapshots.forRender(stop.applyTo(drawn.customization), drawn.values) },
-                codec = codecOf(format),
+                codec = format.codec,
                 onProgress = { progress(RenderPhase.RENDERING, ANALYSIS_SHARE + it * LOOP_SHARE) },
                 isCancelled = isCancelled,
                 audioUri = drawn.uri,
@@ -320,8 +318,6 @@ class NativeRenderEngine(
             height = height,
             song = track.title,
         )
-
-    private fun codecOf(format: RenderFormat): ExportCodec = if (format.codec == RenderCodec.HEVC) ExportCodec.HEVC else ExportCodec.H264
 
     /**
      * The Track's whole-song analysis with Settings' beat tuning, from the cache when it holds one, laid

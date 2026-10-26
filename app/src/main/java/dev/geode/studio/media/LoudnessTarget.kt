@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 import java.util.Locale
 import kotlin.math.abs

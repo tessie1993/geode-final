@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 data class ExportRange(
     val startMs: Long,

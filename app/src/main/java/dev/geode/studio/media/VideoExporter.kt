@@ -1,10 +1,9 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 import android.content.ContentValues
 import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
-import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.media.MediaMuxer
 import android.net.Uri
@@ -14,6 +13,7 @@ import android.provider.MediaStore
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.audio.TrackPcm
 import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
@@ -23,74 +23,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 
-enum class ExportCodec(
-    val mimeType: String,
-) {
-    H264(MediaFormat.MIMETYPE_VIDEO_AVC),
-    HEVC(MediaFormat.MIMETYPE_VIDEO_HEVC),
-    ;
-
-    /** This codec when the device has an encoder for it, otherwise H.264, which every device has. */
-    fun available(): ExportCodec = if (this == H264 || hasEncoder(mimeType)) this else H264
-
-    companion object {
-        fun hasEncoder(mimeType: String): Boolean =
-            MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
-                info.isEncoder && info.supportedTypes.any { it.equals(mimeType, ignoreCase = true) }
-            }
-    }
-}
-
-enum class ExportQuality(
-    val shortSide: Int,
-    val bitRate: Int,
-) {
-    HD720(720, 6_000_000),
-    FHD1080(1080, 12_000_000),
-    UHD4K(2160, 40_000_000),
-}
-
-enum class ExportRatio(
-    val label: String,
-    val wRatio: Int,
-    val hRatio: Int,
-) {
-    R16_9("16:9", 16, 9),
-    R9_16("9:16", 9, 16),
-    R1_1("1:1", 1, 1),
-    R4_5("4:5", 4, 5),
-    R4_3("4:3", 4, 3),
-    R21_9("21:9", 21, 9),
-}
-
+/** A Render's frame: its size in pixels and the bit rate it is encoded at. */
 class ExportAspect(
     val width: Int,
     val height: Int,
     val bitRate: Int,
-) {
-    companion object {
-        fun of(
-            quality: ExportQuality,
-            ratio: ExportRatio,
-        ): ExportAspect {
-            val short = quality.shortSide
-            val landscape = ratio.wRatio >= ratio.hRatio
-            var longSide = (short.toLong() * maxOf(ratio.wRatio, ratio.hRatio) / minOf(ratio.wRatio, ratio.hRatio)).toInt()
-            var shortSide = short
-            if (longSide > MAX_AVC_DIM) {
-                shortSide = (short.toLong() * MAX_AVC_DIM / longSide).toInt()
-                longSide = MAX_AVC_DIM
-            }
-            val w = if (landscape) longSide else shortSide
-            val h = if (landscape) shortSide else longSide
-            return ExportAspect(even(w), even(h), quality.bitRate)
-        }
-
-        private const val MAX_AVC_DIM = 4096
-
-        private fun even(v: Int): Int = if (v % 2 == 0) v else v + 1
-    }
-}
+)
 
 class VideoExporter(
     private val context: Context,
@@ -122,7 +60,7 @@ class VideoExporter(
         val fps: Int = FPS,
         val range: ExportRange? = null,
         val loopSafe: Boolean = false,
-        val codec: ExportCodec = ExportCodec.H264,
+        val codec: RenderCodec = RenderCodec.H264,
         /** How many times over the scene is drawn before it is brought to the frame (#345). */
         val supersample: Float = 1f,
         /** The look's Style switching, replayed frame by frame (#343); none keeps one Style throughout. */
@@ -293,7 +231,7 @@ class VideoExporter(
             val requestedFpsBounded = job.fps.coerceIn(FRAME_RATES)
             // The requested codec at the requested rate first, then its reduced form, then the same pair on H.264.
             val attempts =
-                listOf(job.codec.available(), ExportCodec.H264).distinct().flatMap { c ->
+                listOf(job.codec.available(), RenderCodec.H264).distinct().flatMap { c ->
                     listOf(EncoderAttempt(c, requestedFpsBounded, aspect.bitRate), EncoderAttempt(c, 30, aspect.bitRate * 2 / 3))
                 }
             val (encoder, fps) = openEncoder(aspect, attempts)
@@ -445,7 +383,7 @@ class VideoExporter(
     }
 
     private class EncoderAttempt(
-        val codec: ExportCodec,
+        val codec: RenderCodec,
         val fps: Int,
         val bitRate: Int,
     )

@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 class RenderEta(
     private val windowSeconds: Float = 12f,

@@ -18,9 +18,11 @@ import dev.geode.engine.types.TrackId
 import dev.geode.feature.playback.api.LoadReason
 import dev.geode.feature.playback.api.PlayMark
 import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.Queue
 import dev.geode.feature.playback.api.Track
+import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.playback.core.BUFFERING_GRACE
 import dev.geode.feature.playback.handlers.PlaybackClocks
 import dev.geode.feature.playback.handlers.playbackStore
@@ -29,32 +31,25 @@ import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.kernel.FakeClock
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
-import dev.geode.ui.OldScreenPlayback
-import dev.geode.ui.QueueTrack
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /**
  * The Playback slice of the switch-over (#17): the one app-scoped Playback store is what every screen
- * plays through, the old screens included, so moving between places never restarts the music.
+ * plays through, so moving between places never restarts the music.
  *
- * Playback is built as `:app` builds it, over the audio adapter's fake. The old screens reach it through
- * [OldScreenPlayback], exactly as they do in the app; the places are Playback's own routes and stand-ins
- * moved between the way navigation moves between them, with the one live Visual hosted outside every
- * place. The plain Application keeps Robolectric away from GeodeApp, which loads the engine.
+ * Playback is built as `:app` builds it, over the audio adapter's fake, and is sent its Commands as the
+ * App UI sends them; the places are Playback's own routes and stand-ins moved between the way navigation
+ * moves between them, with the one live Visual hosted outside every place. The plain Application keeps
+ * Robolectric away from GeodeApp, which loads the engine.
  *
- * It also pins the three playback bugs #17 folds in, through the path the old screens now take.
+ * It also pins the three playback bugs #17 folds in.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
 class PlaybackJourneyRobolectricTest {
@@ -70,14 +65,9 @@ class PlaybackJourneyRobolectricTest {
     private val audio = FakeAudioAdapter()
     private val playback: Playback =
         playbackStore(audio, MemoryPlaybackStorage(), PlaybackClocks({ clock.now }, { clock.now }), inPlaceRuntime(clock, failures))
-    private val oldScreens =
-        OldScreenPlayback(playback, RuntimeEnvironment.getApplication(), CoroutineScope(UnconfinedTestDispatcher()))
-
     private val place: MutableState<Place> = mutableStateOf(Place.PLAYER)
     private var visualStarted = 0
     private var visualStopped = 0
-
-    private fun queued(vararg tracks: Track) = tracks.map { QueueTrack(it.id, it.title, it.artist, it.duration) }
 
     private fun heard(
         at: Long,
@@ -85,7 +75,7 @@ class PlaybackJourneyRobolectricTest {
     ) = PlaybackMark(Millis.ZERO, Millis(at), moving)
 
     private fun playA() {
-        oldScreens.playFrom(queued(a, b), a.id)
+        playback.send(PlaybackCommand.Play(listOf(a, b), 0))
         audio.announce(PlaybackAnnouncement.TrackChanged(a.id, heard(1, moving = false)))
         audio.announce(PlaybackAnnouncement.Started(heard(5, moving = true)))
     }
@@ -114,13 +104,21 @@ class PlaybackJourneyRobolectricTest {
     }
 
     @Test
-    fun `the old screens show Playback's queue, and their buttons reach Playback`() {
+    fun `the queue shown is Playback's, and Next reaches Playback`() {
         playA()
 
-        assertEquals(queued(a, b), oldScreens.queue.value.tracks)
-        assertEquals(0, oldScreens.queue.value.index)
+        assertEquals(
+            listOf(a, b),
+            playback.state.value.player.currentQueue
+                ?.tracks,
+        )
+        assertEquals(
+            0,
+            playback.state.value.player.currentQueue
+                ?.index,
+        )
 
-        oldScreens.next()
+        playback.send(PlaybackCommand.Next)
         assertEquals(b, (playback.state.value.player as PlayerState.Loading).queue.current)
         // A load is always followed by whether to play once it opens, as Playback's own store tests pin.
         assertEquals(listOf("load(${b.id}, ${Millis.ZERO})", "setPlaying(true)"), audio.calls.takeLast(2))
@@ -138,15 +136,17 @@ class PlaybackJourneyRobolectricTest {
         assertTrue("it gives way to Paused", playback.state.value.player is PlayerState.Paused)
         assertEquals(
             false,
-            oldScreens.queue.value.tracks
-                .isEmpty(),
+            playback.state.value.player.currentQueue
+                ?.tracks
+                .isNullOrEmpty(),
         )
     }
 
     @Test
     fun `bug 2 - a pause while a song opens wins over the open`() {
-        oldScreens.playFrom(queued(a, b), a.id)
-        oldScreens.togglePlayPause()
+        playback.send(PlaybackCommand.Play(listOf(a, b), 0))
+        // The play button while the song opens to play.
+        playback.send(PlaybackCommand.Pause)
         // The open that was in flight finishes, and the player starts as it was first asked to.
         audio.announce(PlaybackAnnouncement.Started(heard(3, moving = true)))
         audio.announce(PlaybackAnnouncement.TrackChanged(a.id, heard(4, moving = false)))

@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 import android.content.Context
 import android.media.MediaCodec
@@ -15,6 +15,7 @@ import dev.geode.audio.TrackPcm
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
@@ -261,7 +262,7 @@ class LoopRender(
         look: (DriftStop) -> CustomizationSnapshot,
         drift: TimeOfDayDrift = TimeOfDayDrift.None,
         loopStartMs: Long = 0L,
-        codec: ExportCodec = ExportCodec.H264,
+        codec: RenderCodec = RenderCodec.H264,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
         audioUri: Uri? = null,
@@ -320,7 +321,7 @@ class LoopRender(
     private data class EncoderChoice(
         val fps: Int,
         val bitRate: Int,
-        val codec: ExportCodec,
+        val codec: RenderCodec,
     )
 
     private sealed interface StopOutcome {
@@ -553,10 +554,10 @@ class LoopRender(
     private fun negotiate(
         aspect: ExportAspect,
         fps: Int,
-        codec: ExportCodec,
+        codec: RenderCodec,
     ): EncoderChoice? {
         val candidates =
-            listOf(codec.available(), ExportCodec.H264).distinct().flatMap { c ->
+            listOf(codec.available(), RenderCodec.H264).distinct().flatMap { c ->
                 listOf(
                     EncoderChoice(fps.coerceIn(LoopSpec.MIN_FPS, LoopSpec.MAX_FPS), aspect.bitRate, c),
                     EncoderChoice(FALLBACK_FPS, aspect.bitRate * 2 / 3, c),

@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The legacy app code is gone (#334).** The old player session and
+  screens, their settings plumbing, the old export and loop-render dialogs
+  and their controller, the export presets and the legacy quality, ratio
+  and codec enums are deleted, with their tests and strings. What Studio's
+  Renders still use — the encoder, the loop render and extender, loudness,
+  chapters — now lives under `studio/media`, and the render service is
+  `studio/RenderService`. The Timeline's auto-cut reads the playing song's
+  analysis when a Render has already made one, instead of an export that no
+  longer exists. Importing earlier videos and v1 editor projects is
+  unchanged.
+
 - **Multi-pass Styles (#332).** A shader Style can declare `multipass` and the
   engine draws it in passes: its camera into a tiny target, an optional coarse
   prepass that lets each ray start near its surface, the march at half the

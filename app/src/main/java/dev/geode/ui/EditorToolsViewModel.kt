@@ -34,13 +34,10 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.R
-import dev.geode.editor.transientEnvelopeOf
 import dev.geode.engine.types.Millis
-import dev.geode.export.ChapterFormat
-import dev.geode.export.ChapterMarkers
-import dev.geode.export.ChapterWriteResult
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.edit.ClipEdit
 import dev.geode.feature.studio.api.edit.MarkerSet
@@ -55,7 +52,13 @@ import dev.geode.feature.studio.handlers.edit.videoEffects
 import dev.geode.feature.studio.ui.ChapterFile
 import dev.geode.feature.studio.ui.ChapterWrite
 import dev.geode.feature.studio.ui.EditorTools
+import dev.geode.playback.meantToPlay
+import dev.geode.playback.positionAt
 import dev.geode.render.TransitionCatalog
+import dev.geode.studio.media.ChapterFormat
+import dev.geode.studio.media.ChapterMarkers
+import dev.geode.studio.media.ChapterWriteResult
+import dev.geode.studio.transientEnvelopeOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -75,7 +78,7 @@ class EditorToolsViewModel
     @Inject
     constructor(
         private val application: Application,
-        private val analysis: TrackAnalysisController,
+        private val analysis: PlayingSongAnalysis,
         private val lyrics: LyricsController,
         private val playback: Playback,
         private val customization: CustomizationFeature,
@@ -87,8 +90,8 @@ class EditorToolsViewModel
 
         override fun playbackPositionMs(): Long? {
             val player = playback.state.value.player
-            if (!OldScreenModels.meantToPlay(player)) return null
-            return OldScreenModels.positionAt(player, Millis(SystemClock.elapsedRealtime())).value
+            if (!player.meantToPlay) return null
+            return player.positionAt(Millis(SystemClock.elapsedRealtime())).value
         }
 
         override fun lyricCues(): List<SubtitleCue>? =
@@ -136,8 +139,7 @@ class EditorToolsViewModel
 
         /** The playing track's length, for placing lyric captions along it. */
         private fun trackDurationMs(): Long =
-            OldScreenModels
-                .queueOf(playback.state.value.player)
+            playback.state.value.player.currentQueue
                 ?.current
                 ?.duration
                 ?.value ?: 0L
