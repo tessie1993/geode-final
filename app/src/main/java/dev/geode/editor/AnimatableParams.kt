@@ -1,11 +1,11 @@
 package dev.geode.editor
 
 import dev.geode.R
-import dev.geode.feature.studio.core.edit.ClipEdit
-import dev.geode.feature.studio.core.edit.ClipParams
-import dev.geode.feature.studio.core.edit.ParamId
-import dev.geode.feature.studio.core.edit.ParamKind
-import dev.geode.feature.studio.core.edit.ParamValue
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipParams
+import dev.geode.feature.studio.api.edit.ParamId
+import dev.geode.feature.studio.api.edit.ParamKind
+import dev.geode.feature.studio.api.edit.ParamValue
 import dev.geode.render.scene.CymaticsMath
 import dev.geode.render.scene.MarchBudget
 import dev.geode.render.scene.ParamKeys

@@ -1,4 +1,4 @@
-package dev.geode.feature.studio.core.edit
+package dev.geode.feature.studio.api.edit
 
 /**
  * Undo as "keep the previous value": every edit pushes the whole [EditorProject], because a ripple

@@ -22,9 +22,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.design.glass.GlassButton
-import dev.geode.feature.studio.core.edit.EditError
-import dev.geode.feature.studio.core.edit.LaneKind
-import dev.geode.feature.studio.core.edit.TapInSession
+import dev.geode.feature.studio.api.edit.EditError
+import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.TapInSession
 
 /** Back, title, undo/redo and zoom. */
 @Composable

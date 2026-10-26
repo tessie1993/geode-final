@@ -4,7 +4,7 @@ import android.text.SpannableString
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.StaticOverlaySettings
 import androidx.media3.effect.TextOverlay
-import dev.geode.feature.studio.core.edit.SubtitleCue
+import dev.geode.feature.studio.api.edit.SubtitleCue
 
 /**
  * Captions that change with time: the cue spanning the frame, or a blank when none does. Cue times

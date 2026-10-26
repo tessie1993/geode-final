@@ -1,15 +1,4 @@
-package dev.geode.editor
-
-import dev.geode.analysis.AudioFeatures
-import dev.geode.analysis.FeatureTimeline
-import dev.geode.feature.studio.core.edit.Clip
-import dev.geode.feature.studio.core.edit.ClipContent
-import dev.geode.feature.studio.core.edit.ClipId
-import dev.geode.feature.studio.core.edit.MIN_CLIP_DURATION_MS
-import dev.geode.feature.studio.core.edit.Marker
-import dev.geode.feature.studio.core.edit.MarkerColour
-import dev.geode.feature.studio.core.edit.MarkerId
-import dev.geode.feature.studio.core.edit.MarkerOrigin
+package dev.geode.feature.studio.api.edit
 
 /*
  * Auto-cut — Product Spec §9.
@@ -67,25 +56,13 @@ data class TransientEnvelope(
     val isEmpty: Boolean get() = timesMs.isEmpty()
 
     val durationMs: Long get() = timesMs.lastOrNull() ?: 0L
-
-    companion object {
-        /** Read an offline analysis into an envelope, taking one measured channel from each frame. */
-        fun from(
-            timeline: FeatureTimeline,
-            source: TransientSource = TransientSource.TRANSIENT,
-        ): TransientEnvelope =
-            TransientEnvelope(
-                timesMs = timeline.frames.map { it.timeMs },
-                strength = timeline.frames.map { source.read(it.features) },
-            )
-    }
 }
 
 data class AutoCutSettings(
     /**
-     * Which channel to build the envelope from — see [TransientEnvelope.from]. Detection itself
-     * reads the envelope it is handed; this is kept here so the choice round-trips with the rest
-     * of the settings and comes back attached to the suggestions it produced.
+     * Which channel the envelope is built from (`:app` reads it from the Track's analysis). Detection
+     * itself reads the envelope it is handed; this is kept here so the choice round-trips with the
+     * rest of the settings and comes back attached to the suggestions it produced.
      */
     val source: TransientSource = TransientSource.TRANSIENT,
     /** 0 keeps only the hits that tower over the mix, 1 takes almost every rise. */
@@ -252,25 +229,6 @@ object AutoCut {
     private const val MIN_HEADROOM = 1e-3f
 }
 
-private fun TransientSource.read(features: AudioFeatures): Float =
-    when (this) {
-        TransientSource.TRANSIENT -> features.transient
-        TransientSource.SPECTRAL_FLUX -> features.flux
-        TransientSource.ONSET -> features.onset
-        TransientSource.KICK -> features.kick
-        TransientSource.SNARE -> features.snare
-        TransientSource.HAT -> features.hat
-    }
-
-private fun TransientEnvelope.indicesIn(
-    fromMs: Long,
-    untilMs: Long,
-): IntRange {
-    val first = timesMs.indexOfFirst { it >= fromMs }
-    val last = timesMs.indexOfLast { it < untilMs }
-    return if (first < 0 || last < first) IntRange.EMPTY else first..last
-}
-
 /** Frame spacing, taken as a median so a single ragged gap cannot skew the window sizes. */
 private fun TransientEnvelope.medianHopMs(): Long {
     val gaps = timesMs.zipWithNext { a, b -> b - a }.filter { it > 0L }.sorted()
@@ -332,9 +290,3 @@ private fun MutableList<TransientHit>.offer(
         louderThanLast && clearOfPrevious -> set(lastIndex, candidate)
     }
 }
-
-private fun lerp(
-    from: Float,
-    to: Float,
-    fraction: Float,
-): Float = from + (to - from) * fraction

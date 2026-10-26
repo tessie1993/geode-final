@@ -28,8 +28,8 @@ import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.RenderPlan
-import dev.geode.feature.studio.core.edit.ClipEdit
-import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.EditorProject
 import dev.geode.feature.studio.handlers.edit.EditOutput
 import dev.geode.feature.studio.handlers.edit.ProjectComposition
 import dev.geode.feature.studio.handlers.edit.StudioExporter

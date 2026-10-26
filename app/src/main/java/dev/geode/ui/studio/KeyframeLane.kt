@@ -16,12 +16,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import dev.geode.feature.studio.core.edit.Keyframe
-import dev.geode.feature.studio.core.edit.KeyframeId
-import dev.geode.feature.studio.core.edit.KeyframeTrack
-import dev.geode.feature.studio.core.edit.SnapContext
-import dev.geode.feature.studio.core.edit.SnapMode
-import dev.geode.feature.studio.core.edit.SnapTarget
+import dev.geode.feature.studio.api.edit.Keyframe
+import dev.geode.feature.studio.api.edit.KeyframeId
+import dev.geode.feature.studio.api.edit.KeyframeTrack
+import dev.geode.feature.studio.api.edit.SnapContext
+import dev.geode.feature.studio.api.edit.SnapMode
+import dev.geode.feature.studio.api.edit.SnapTarget
 import kotlin.math.abs
 
 private data class KeyDrag(

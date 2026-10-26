@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import dev.geode.R
 import dev.geode.design.glass.GlassButton
 import dev.geode.design.glass.GlassSheet
-import dev.geode.feature.studio.core.edit.ClipTransition
+import dev.geode.feature.studio.api.edit.ClipTransition
 import dev.geode.render.TransitionCatalog
 
 /** Picks the GL Transition a clip opens with, and how long it runs; "None" clears it. */

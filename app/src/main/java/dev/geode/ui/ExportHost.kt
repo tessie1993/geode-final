@@ -67,8 +67,8 @@ import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.core.RenderPlan
-import dev.geode.feature.studio.core.edit.ClipEdit
-import dev.geode.feature.studio.core.edit.ClipLook
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipLook
 import dev.geode.feature.studio.handlers.edit.CubeLut
 import dev.geode.feature.studio.handlers.edit.clipping
 import dev.geode.feature.studio.handlers.edit.videoEffects

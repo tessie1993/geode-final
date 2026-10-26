@@ -4,12 +4,12 @@ import android.net.Uri
 import dev.geode.editor.TransientEnvelope
 import dev.geode.editor.TransientSource
 import dev.geode.export.StudioClip
-import dev.geode.feature.studio.core.edit.ClipId
-import dev.geode.feature.studio.core.edit.EditResult
-import dev.geode.feature.studio.core.edit.EditorProject
-import dev.geode.feature.studio.core.edit.KeyframeId
-import dev.geode.feature.studio.core.edit.MarkerId
-import dev.geode.feature.studio.core.edit.SubtitleCue
+import dev.geode.feature.studio.api.edit.ClipId
+import dev.geode.feature.studio.api.edit.EditResult
+import dev.geode.feature.studio.api.edit.EditorProject
+import dev.geode.feature.studio.api.edit.KeyframeId
+import dev.geode.feature.studio.api.edit.MarkerId
+import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.render.scene.SceneParams
 
 /** Everything the timeline UI needs from the session, so the composables stay free of the view model. */

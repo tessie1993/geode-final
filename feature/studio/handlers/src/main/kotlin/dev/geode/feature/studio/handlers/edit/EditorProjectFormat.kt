@@ -1,55 +1,70 @@
-package dev.geode.data
+package dev.geode.feature.studio.handlers.edit
 
-import dev.geode.engine.types.SceneId
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderSize
-import dev.geode.feature.studio.core.edit.BezierCurve
-import dev.geode.feature.studio.core.edit.Clip
-import dev.geode.feature.studio.core.edit.ClipContent
-import dev.geode.feature.studio.core.edit.ClipEdit
-import dev.geode.feature.studio.core.edit.ClipId
-import dev.geode.feature.studio.core.edit.ClipLook
-import dev.geode.feature.studio.core.edit.ClipTransition
-import dev.geode.feature.studio.core.edit.EaseShape
-import dev.geode.feature.studio.core.edit.EditorProject
-import dev.geode.feature.studio.core.edit.Interpolation
-import dev.geode.feature.studio.core.edit.Keyframe
-import dev.geode.feature.studio.core.edit.KeyframeId
-import dev.geode.feature.studio.core.edit.KeyframeSheet
-import dev.geode.feature.studio.core.edit.KeyframeTrack
-import dev.geode.feature.studio.core.edit.Lane
-import dev.geode.feature.studio.core.edit.LaneId
-import dev.geode.feature.studio.core.edit.LaneKind
-import dev.geode.feature.studio.core.edit.Marker
-import dev.geode.feature.studio.core.edit.MarkerColour
-import dev.geode.feature.studio.core.edit.MarkerId
-import dev.geode.feature.studio.core.edit.MarkerOrigin
-import dev.geode.feature.studio.core.edit.MarkerSet
-import dev.geode.feature.studio.core.edit.OverlayBlend
-import dev.geode.feature.studio.core.edit.ParamId
-import dev.geode.feature.studio.core.edit.ParamValue
-import dev.geode.feature.studio.core.edit.Timeline
-import dev.geode.render.scene.SceneCapabilities
+import dev.geode.feature.studio.api.edit.BezierCurve
+import dev.geode.feature.studio.api.edit.Clip
+import dev.geode.feature.studio.api.edit.ClipContent
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipId
+import dev.geode.feature.studio.api.edit.ClipLook
+import dev.geode.feature.studio.api.edit.ClipTransition
+import dev.geode.feature.studio.api.edit.EaseShape
+import dev.geode.feature.studio.api.edit.EditorProject
+import dev.geode.feature.studio.api.edit.Interpolation
+import dev.geode.feature.studio.api.edit.Keyframe
+import dev.geode.feature.studio.api.edit.KeyframeId
+import dev.geode.feature.studio.api.edit.KeyframeSheet
+import dev.geode.feature.studio.api.edit.KeyframeTrack
+import dev.geode.feature.studio.api.edit.Lane
+import dev.geode.feature.studio.api.edit.LaneId
+import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.Marker
+import dev.geode.feature.studio.api.edit.MarkerColour
+import dev.geode.feature.studio.api.edit.MarkerId
+import dev.geode.feature.studio.api.edit.MarkerOrigin
+import dev.geode.feature.studio.api.edit.MarkerSet
+import dev.geode.feature.studio.api.edit.OverlayBlend
+import dev.geode.feature.studio.api.edit.ParamId
+import dev.geode.feature.studio.api.edit.ParamValue
+import dev.geode.feature.studio.api.edit.Timeline
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** The on-disk shape of an [EditorProject]. Variants carry a "type"/"kind" tag; unknown tags fail the read. */
-internal object EditorProjectJson {
+/**
+ * The saved shape of an [EditorProject] (#318): the Timeline's draft in `files/editor`, and an Edit's
+ * cut as the render queue keeps it until it is exported. Variants carry a "type"/"kind" tag; unknown
+ * tags fail the read. Versioned JSON (ADR-0004).
+ */
+object EditorProjectFormat {
     const val VERSION = 1
 
-    fun toJson(project: EditorProject): String =
+    fun toJson(project: EditorProject): String = toObject(project).toString(2)
+
+    /** [project] as a JSON object, to nest in another saved format. */
+    fun toObject(project: EditorProject): JSONObject =
         JSONObject()
             .put("version", VERSION)
             .put("timeline", timeline(project.timeline))
             .put("markers", JSONArray(project.markers.markers.map(::marker)))
             .put("keyframes", JSONArray(project.keyframes.tracks.map(::track)))
-            .toString(2)
 
-    fun fromJson(json: String): EditorProject {
-        val o = JSONObject(json)
+    /**
+     * Reads a project saved by [toJson]. [scene] maps a saved Style id to one this version draws (a
+     * retired Style to the default); `:app` passes the engine's mapping, which Studio may not reach.
+     */
+    fun fromJson(
+        json: String,
+        scene: (String) -> String = { it },
+    ): EditorProject = fromObject(JSONObject(json), scene)
+
+    fun fromObject(
+        o: JSONObject,
+        scene: (String) -> String = { it },
+    ): EditorProject {
         require(o.optInt("version", VERSION) <= VERSION) { "editor project from a newer app" }
         return EditorProject(
-            timeline = timeline(o.getJSONObject("timeline")),
+            timeline = timeline(o.getJSONObject("timeline"), scene),
             markers = MarkerSet().addAll(o.optJSONArray("markers").items(::marker)),
             keyframes = KeyframeSheet().withTracks(o.optJSONArray("keyframes").items(::track)),
         )
@@ -60,8 +75,10 @@ internal object EditorProjectJson {
             .put("durationMs", t.durationMs)
             .put("lanes", JSONArray(t.lanes.map(::lane)))
 
-    private fun timeline(o: JSONObject): Timeline =
-        Timeline(lanes = o.optJSONArray("lanes").items(::lane), durationMs = o.optLong("durationMs", 0L))
+    private fun timeline(
+        o: JSONObject,
+        scene: (String) -> String,
+    ): Timeline = Timeline(lanes = o.optJSONArray("lanes").items { lane(it, scene) }, durationMs = o.optLong("durationMs", 0L))
 
     private fun lane(l: Lane): JSONObject =
         JSONObject()
@@ -72,14 +89,17 @@ internal object EditorProjectJson {
             .put("locked", l.locked)
             .put("clips", JSONArray(l.clips.map(::clip)))
 
-    private fun lane(o: JSONObject): Lane =
+    private fun lane(
+        o: JSONObject,
+        scene: (String) -> String,
+    ): Lane =
         Lane(
             id = LaneId(o.getString("id")),
             kind = laneKind(o.getString("kind")),
             name = o.optString("name", ""),
             muted = o.optBoolean("muted", false),
             locked = o.optBoolean("locked", false),
-        ).withClips(o.optJSONArray("clips").items(::clip))
+        ).withClips(o.optJSONArray("clips").items { clip(it, scene) })
 
     private fun clip(c: Clip): JSONObject =
         JSONObject()
@@ -93,10 +113,13 @@ internal object EditorProjectJson {
             .putOpt("transition", c.transition?.let(::transition))
             .put("content", content(c.content))
 
-    private fun clip(o: JSONObject): Clip =
+    private fun clip(
+        o: JSONObject,
+        scene: (String) -> String,
+    ): Clip =
         Clip(
             id = ClipId(o.getString("id")),
-            content = content(o.getJSONObject("content")),
+            content = content(o.getJSONObject("content"), scene),
             startMs = o.getLong("startMs"),
             durationMs = o.getLong("durationMs"),
             sourceInMs = o.optLong("sourceInMs", 0L),
@@ -131,11 +154,14 @@ internal object EditorProjectJson {
             is ClipContent.Audio -> JSONObject().put("type", "audio").put("uri", c.uri).put("gainDb", c.gainDb.toDouble())
         }
 
-    private fun content(o: JSONObject): ClipContent =
+    private fun content(
+        o: JSONObject,
+        scene: (String) -> String,
+    ): ClipContent =
         when (val type = o.getString("type")) {
             "scene" ->
                 ClipContent.Scene(
-                    SceneCapabilities.storedOrDefault(SceneId(o.getString("sceneId"))).value,
+                    scene(o.getString("sceneId")),
                     o.stringOrNull("presetId"),
                     o.stringOrNull("milkPath"),
                 )
@@ -152,7 +178,7 @@ internal object EditorProjectJson {
             else -> throw IllegalArgumentException("unknown clip content: $type")
         }
 
-    private fun clipEdit(e: ClipEdit): JSONObject =
+    fun clipEdit(e: ClipEdit): JSONObject =
         JSONObject()
             .put("startMs", e.startMs)
             .put("endMs", e.endMs)
@@ -174,7 +200,7 @@ internal object EditorProjectJson {
             .put("gammaGreen", e.gammaGreen.toDouble())
             .put("gammaBlue", e.gammaBlue.toDouble())
 
-    private fun clipEdit(o: JSONObject): ClipEdit =
+    fun clipEdit(o: JSONObject): ClipEdit =
         ClipEdit(
             startMs = o.optLong("startMs", 0L),
             endMs = o.optLong("endMs", 0L),
