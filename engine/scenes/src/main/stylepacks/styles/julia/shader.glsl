@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -166,8 +167,9 @@ void main() {
     // delta-speed, which after ten minutes is several radians and a different
     // fractal. No built-in scene shader reads uSpeed; it stays declared for the
     // in-app GLSL editor, where a user shader may want the raw slider value.
-    float t = uTime * 0.15;
-    vec2 c = vec2(-0.745 + 0.11 * cos(t) + uBass * 0.08, 0.186 + 0.11 * sin(t * 1.3) + uMid * 0.05);
+    float t = uXDriftTime * 0.15;
+    vec2 c = vec2(-0.745 + 0.25 * uXCenterX + 0.11 * uXOrbit * cos(t) + uBass * 0.08,
+                  0.186 + 0.25 * uXCenterY + 0.11 * uXOrbit * sin(t * 1.3) + uMid * 0.05);
     vec2 z = uv;
     float iter = 0.0;
     const float maxIter = 64.0;

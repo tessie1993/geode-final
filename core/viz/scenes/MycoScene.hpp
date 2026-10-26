@@ -18,7 +18,7 @@ namespace geode::viz {
 class MycoScene : public Scene {
 public:
     MycoScene(const styles::MycoStyle& style, ProgramLoader loader, SceneHost host)
-        : id_(style.id), style_(style), loader_(loader), host_(std::move(host)) {}
+        : id_(style.id), base_(style), style_(style), loader_(loader), host_(std::move(host)) {}
     ~MycoScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -31,6 +31,8 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    // REACH, TURN, DRIFT (the agents' speed), DECAY and FORCE (the deposit) move the agents' own rates.
+    void setExtras(const ExtraValues& values) override { style_ = extras::apply(base_, values); }
 
 private:
     static constexpr int kTrailRes = 384;
@@ -44,6 +46,8 @@ private:
     bool ensureBuffers();
 
     std::string id_;
+    // The Style as its pack tunes it, and as its Extras move it this frame.
+    styles::MycoStyle base_;
     styles::MycoStyle style_;
     ProgramLoader loader_;
     SceneHost host_;

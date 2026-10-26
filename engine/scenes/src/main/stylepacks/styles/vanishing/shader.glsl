@@ -12,6 +12,7 @@ out vec4 fragColor;
 // block/aband/awave/view() first, then the palette, then grade() - which calls
 // pal() and so must come after it.
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -612,7 +613,7 @@ void main() {
     // because the stack and the hue are both periodic at BAND_CYCLE.
     // A spike re-aims the fall rather than surging it: uFlowPhase only advances,
     // so a loud passage descends faster and never jumps a band.
-    gFall = mod(uTime * FALL_RATE + uFlowPhase * FALL_SURGE + FALL_SURGE * bassAmt * 0.3, BAND_CYCLE) + pull;
+    gFall = mod(uXFlightTime * FALL_RATE + uFlowPhase * FALL_SURGE + FALL_SURGE * bassAmt * 0.3, BAND_CYCLE) + pull;
     // Mids steer: they set how hard the stack spirals, which is the direction
     // the corridor screws away in.
     gSpiral = clamp(
@@ -620,8 +621,8 @@ void main() {
         -SPIRAL_MAX,
         SPIRAL_MAX
     );
-    gSpin = uTime * SPIN_W + spin;
-    gHole = HOLE_BASE + HOLE_SWING * energyAmt;
+    gSpin = uXSpinTime * SPIN_W + spin;
+    gHole = (HOLE_BASE + HOLE_SWING * energyAmt) * (1.0 + 0.1 * (uXSize - 1.0));
     gReliefAmp = RELIEF_IDLE + RELIEF_TREBLE * trebAmt;
     gReliefPhase = uTime * RELIEF_PHASE_W;
 
@@ -693,7 +694,7 @@ void main() {
         vec3 p = ro + rd * satT;
         col = dmtSatelliteColor(p, rd, HUE_BASE + 0.35 + 0.08 * midAmt, trebAmt, satCount, SAT_ORBIT, SAT_RADIUS, SAT_PERIOD);
         float kSat = log(max(length(p), R_MIN));
-        float fade = 1.0 - exp(-(satT * FOG_T + max(0.0, -kSat) * FOG_K));
+        float fade = 1.0 - exp(-(satT * FOG_T + max(0.0, -kSat) * FOG_K) * uXFog);
         col = mix(col, backdrop, fade);
     } else if (hitT > 0.0) {
         vec3 p = ro + rd * hitT;
@@ -742,7 +743,7 @@ void main() {
         // as infinite; the outward one pushes the shell enclosing the viewer
         // back into being a frame rather than a wall.
         float fade = 1.0 - exp(
-            -(hitT * FOG_T + max(0.0, -kHit) * FOG_K + max(0.0, kHit) * FOG_OUT)
+            -(hitT * FOG_T + max(0.0, -kHit) * FOG_K + max(0.0, kHit) * FOG_OUT) * uXFog
         );
         // Below the sub-pixel floor the march stops on whichever shell it
         // grazed and the 4-tap normal there is quantization noise. Rather than

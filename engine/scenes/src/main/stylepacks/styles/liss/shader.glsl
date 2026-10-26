@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -161,12 +162,14 @@ void main() {
     vec2 uv = view();
     float md = 10.0;
     float bright = 0.0;
-    for (float i = 0.0; i < 64.0; i++) {
-        float s = i / 64.0;
-        vec2 p = vec2(awave(s) * 2.0 - 1.0, awave(fract(s + 0.25)) * 2.0 - 1.0) * 0.75;
+    float points = xcount(64.0);
+    for (float i = 0.0; i < 128.0; i++) {
+        if (i >= points) break;
+        float s = i / points;
+        vec2 p = vec2(awave(s) * 2.0 - 1.0, awave(fract(s + 0.25)) * 2.0 - 1.0) * 0.75 * xm(uXScale);
         float d = length(uv - p);
         md = min(md, d);
-        bright += exp(-d * 30.0) * 0.12;
+        bright += exp(-d * 30.0 / xm(uXSize)) * 0.12;
     }
     vec3 col = pal(md * 2.0 + uEnergy) * (exp(-md * 40.0) + bright * (0.4 + uMid));
     float grid = (step(abs(uv.x), 0.002) + step(abs(uv.y), 0.002)) * 0.15;

@@ -19,7 +19,7 @@ namespace geode::viz {
 class LifeScene : public Scene {
 public:
     LifeScene(const styles::LifeStyle& style, ProgramLoader loader, SceneHost host)
-        : id_(style.id), style_(style), loader_(loader), host_(std::move(host)) {}
+        : id_(style.id), base_(style), style_(style), loader_(loader), host_(std::move(host)) {}
     ~LifeScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -32,6 +32,11 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    // GROWTH and SPREAD move the rule's own rates, VARIANT the look, FORCE how hard a hit kicks the field.
+    void setExtras(const ExtraValues& values) override {
+        style_ = extras::apply(base_, values);
+        force_ = values.multiplier(mod::Extra::Force, 0.0f);
+    }
 
 private:
     static constexpr int kSimRes = 288;
@@ -48,7 +53,10 @@ private:
     void census(fluid::DoubleFbo& field, GLint restoreFbo);
 
     std::string id_;
+    // The Style as its pack tunes it, and as its Extras move it this frame.
+    styles::LifeStyle base_;
     styles::LifeStyle style_;
+    float force_ = 1.0f;
     ProgramLoader loader_;
     SceneHost host_;
     SceneParams params_;

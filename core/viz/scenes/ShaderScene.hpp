@@ -111,7 +111,7 @@ private:
     void uploadParams();
     void uploadMotion();
     void uploadTouch();
-    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_scene_uniforms.glsl).
+    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_style.glsl).
     void uploadCamera();
     void uploadExtras();
     void set1f(const char* name, float value);
@@ -184,6 +184,8 @@ private:
 
     CameraPose camera_;
     ExtraValues extras_ = ExtraValues::neutral();
+    // uXFlightTime, uXSpinTime and uXDriftTime: the clocks the rate Extras run.
+    std::array<float, 3> rateClocks_{};
     // The compiled Style reads uCamRot: it moves a camera of its own.
     bool ownsCamera_ = false;
 

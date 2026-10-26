@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -163,8 +164,10 @@ void main() {
     float a = atan(uv.y, uv.x);
     float r = length(uv) + 0.001;
     vec3 col = vec3(0.0);
-    float t = uTime * (0.5 + uEnergy * 2.5 + uBeat * uBeatResponse * 0.8);
-    for (float layer = 0.0; layer < 3.0; layer++) {
+    float t = uXFlightTime * (0.5 + uEnergy * 2.5 + uBeat * uBeatResponse * 0.8);
+    float layers = xcount(3.0);
+    for (float layer = 0.0; layer < 6.0; layer++) {
+        if (layer >= layers) break;
         float cell = floor(a * (40.0 + layer * 20.0) / 6.2831);
         float h = hash(vec2(cell, layer));
         float d = fract(h * 7.0 + t * (0.3 + h * 0.7) - r);

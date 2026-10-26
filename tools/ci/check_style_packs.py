@@ -6,10 +6,14 @@ shader Style, its fragment shader. styles/index.json lists the Styles in picker 
 styles/families.json declares each family's parameters with their types and ranges. Both the Kotlin
 side (StylePacks.kt) and the native side (geode/viz/StylePacks.hpp) read these files; this check holds
 them to the format, plus the rules that span packs (every folder listed exactly once, an Extra name
-meaning the same range on every Style).
+meaning the same range on every Style, every Extra a shader Style declares read by its shader).
 
-    python3 tools/ci/check_style_packs.py               # check the repository
-    python3 tools/ci/check_style_packs.py --self-test   # prove the check catches violations
+The packs are the one source of a Style's Extras. The Kotlin side lists them in a generated file
+(PackExtras.kt in :feature:customization:core), which this check holds to the packs.
+
+    python3 tools/ci/check_style_packs.py                 # check the repository
+    python3 tools/ci/check_style_packs.py --self-test     # prove the check catches violations
+    python3 tools/ci/check_style_packs.py --write-kotlin  # regenerate PackExtras.kt from the packs
 """
 
 from __future__ import annotations
@@ -24,6 +28,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 STYLES = ROOT / "engine" / "scenes" / "src" / "main" / "stylepacks" / "styles"
+PACK_EXTRAS_KT = (
+    ROOT / "feature" / "customization" / "core" / "src" / "main" / "kotlin" / "dev" / "geode" / "feature" / "customization" / "core"
+    / "PackExtras.kt"
+)
 
 FORMAT_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -38,6 +46,18 @@ MAX_MACROS = 6
 MIN_AMOUNT = -1.0
 MAX_AMOUNT = 1.0
 REACTION_CURVES = {"linear", "ease_in", "ease_out", "smooth"}
+# The Extras (ExtraKind in :feature:customization:api, Extra in geode/viz/SharedCore.hpp), in order. One
+# name is one control with one range on every Style (docs/style-packs.md): a multiplier 0..2 of the
+# Style's own amount, except the centres (offsets -1..1) and the variant (a whole number 0..9). Its
+# default is its neutral value, so a Style draws exactly as its pack tunes it until it is Customized.
+EXTRA_NAMES = [
+    "scale", "count", "size", "thickness", "flight", "spin", "orbit", "swirl", "drift", "complexity", "edge", "fog",
+    "decay", "viscosity", "growth", "spread", "force", "reach", "turn", "hold", "variant", "center_x", "center_y",
+]
+OFFSET_EXTRAS = {"center_x": (-1, 1, 0), "center_y": (-1, 1, 0), "variant": (0, 9, 0)}
+MULTIPLIER_EXTRA = (0, 2, 1)
+STYLE_HELPERS = {"count": "xcount", "variant": "xvariant"}
+STYLE_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_style[ \t]*$", re.MULTILINE)
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -164,6 +184,34 @@ def check_amount(entry: dict, where: str, report: Report) -> None:
         report.error(where, f'"amount" must be a number in [{MIN_AMOUNT}, {MAX_AMOUNT}]')
 
 
+def extra_convention(name: str) -> tuple[int, int, int]:
+    return OFFSET_EXTRAS.get(name, MULTIPLIER_EXTRA)
+
+
+def extra_uniform(name: str) -> str:
+    return "uX" + "".join(part.capitalize() for part in name.split("_"))
+
+
+def strip_comments(source: str) -> str:
+    return re.sub(r"//[^\n]*", "", re.sub(r"/\*.*?\*/", "", source, flags=re.DOTALL))
+
+
+def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report) -> None:
+    names = [e["name"] for e in manifest.get("extras", []) if isinstance(e, dict) and isinstance(e.get("name"), str)]
+    if not names:
+        return
+    source = shader.read_text(encoding="utf-8")
+    if not STYLE_INCLUDE.search(source):
+        report.error(where, "a shader Style with Extras includes lib_style (//#include lib_style)")
+    code = strip_comments(source)
+    for name in names:
+        # A rate Extra (flight, spin, drift) may be read through its clock, uX<Name>Time, and the count and
+        # the variant through lib_style's xcount() and xvariant().
+        helper = STYLE_HELPERS.get(name)
+        if not re.search(rf"\b{extra_uniform(name)}(Time)?\b", code) and not (helper and re.search(rf"\b{helper}\s*\(", code)):
+            report.error(where, f'extra "{name}" is declared but the shader never reads {extra_uniform(name)}')
+
+
 def check_extras(manifest: dict, where: str, report: Report, extra_ranges: dict[str, tuple[float, float, str]]) -> None:
     names: set[str] = set()
     for extra in check_list(manifest, "extras", where, report):
@@ -174,10 +222,18 @@ def check_extras(manifest: dict, where: str, report: Report, extra_ranges: dict[
         if name in names:
             report.error(where, f'extra "{name}" is declared twice')
         names.add(name)
+        if name not in EXTRA_NAMES:
+            report.error(where, f'extra "{name}" is not one of the Extras {EXTRA_NAMES}')
+            continue
         lo, hi, default = extra.get("min"), extra.get("max"), extra.get("default")
         if not all(is_number(v) for v in (lo, hi, default)) or not lo <= default <= hi:
             report.error(where, f'extra "{name}" needs numbers "min" <= "default" <= "max"')
             continue
+        want_lo, want_hi, neutral = extra_convention(name)
+        if (lo, hi) != (want_lo, want_hi):
+            report.error(where, f'extra "{name}" has range [{lo}, {hi}]; every Style gives it [{want_lo}, {want_hi}]')
+        if default != neutral:
+            report.error(where, f'extra "{name}" defaults to {default}, not its neutral {neutral}: the Style would not draw as tuned')
         # Extras are generic: one name is one control, with one range, on every Style that has it.
         seen = extra_ranges.setdefault(name, (lo, hi, where))
         if (seen[0], seen[1]) != (lo, hi):
@@ -250,6 +306,7 @@ def check_manifest(
             report.error(where, 'a shader Style needs "shader": a file in its own folder')
         else:
             expected.add(shader)
+            check_shader_reads(manifest, folder / shader, where, report)
     elif "shader" in manifest:
         report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
     if files != expected:
@@ -289,6 +346,62 @@ def check(styles: Path) -> list[str]:
     return report.errors
 
 
+# ---- the Kotlin listing ---------------------------------------------------------------------------
+
+KOTLIN_SINGLE_LINE = 120
+
+
+def kotlin_number(value: float) -> str:
+    number = float(value)
+    return f"{int(number)}f" if number.is_integer() else f"{number!r}f"
+
+
+def kotlin_extras(styles: Path) -> str:
+    """PackExtras.kt as the packs under `styles` declare their Extras."""
+    ids = json.loads((styles / INDEX_FILE).read_text(encoding="utf-8"))["styles"]
+    kinds: set[str] = set()
+    families: set[str] = set()
+    entries: list[str] = []
+    for style_id in ids:
+        manifest = json.loads((styles / style_id / MANIFEST_FILE).read_text(encoding="utf-8"))
+        extras = manifest.get("extras", [])
+        if not extras:
+            continue
+        family = manifest["family"].upper()
+        families.add(family)
+        args = [f'"{style_id}"', family]
+        for extra in extras:
+            kind = extra["name"].upper()
+            kinds.add(kind)
+            args.append(f'extra({kind}, {kotlin_number(extra["min"])}, {kotlin_number(extra["max"])}, {kotlin_number(extra["default"])})')
+        line = f"            pack({', '.join(args)}),"
+        if len(line) <= KOTLIN_SINGLE_LINE:
+            entries.append(line)
+        else:
+            entries.append("            pack(\n" + "".join(f"                {arg},\n" for arg in args) + "            ),")
+    imports = sorted(
+        [f"import dev.geode.feature.customization.api.ExtraKind.{kind}" for kind in kinds]
+        + [f"import dev.geode.feature.customization.api.StyleFamily.{family}" for family in families]
+    )
+    return (
+        "// Generated by tools/ci/check_style_packs.py --write-kotlin from the Style packs' \"extras\"\n"
+        "// (engine/scenes/src/main/stylepacks/styles/<id>/manifest.json). Do not edit it: change the packs and\n"
+        "// run the script again. CI fails when this file and the packs disagree.\n"
+        "package dev.geode.feature.customization.core\n\n"
+        + "\n".join(imports)
+        + "\n\n"
+        "/**\n"
+        " * Every Style pack that declares Extras, in the packs' order, with its family and its Extras: the one\n"
+        " * source of a Style's own controls, which the engine reads from the same files.\n"
+        " */\n"
+        "internal object PackExtras {\n"
+        "    val styles: List<PackStyle> =\n"
+        "        listOf(\n"
+        + "\n".join(entries)
+        + "\n        )\n}\n"
+    )
+
+
 # ---- self-test ------------------------------------------------------------------------------------
 
 GOOD_FAMILIES = {
@@ -301,15 +414,18 @@ GOOD_FAMILIES = {
 GOOD_MANIFESTS = {
     "orb": {
         "version": 1, "id": "orb", "label": "Orb", "family": "shader", "shader": "shader.glsl", "renderScale": 0.75,
-        "detail": "march", "extras": [{"name": "density", "min": 0, "max": 2, "default": 1}],
-        "macros": [{"name": "energy", "links": [{"target": "density", "amount": 0.5}]}],
-        "reactions": [{"signal": "bass", "target": "density", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
+        "detail": "march", "extras": [{"name": "scale", "min": 0, "max": 2, "default": 1}],
+        "macros": [{"name": "energy", "links": [{"target": "scale", "amount": 0.5}]}],
+        "reactions": [{"signal": "bass", "target": "scale", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
     },
     "drum": {"version": 1, "id": "drum", "label": "Drum", "family": "plate", "parameters": {"mode": 2}},
 }
 
 
-def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, str]) -> Path:
+GOOD_SHADER = "//#include lib_style\nvoid main() { float s = uXScale; }\n"
+
+
+def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
     styles = root / "styles"
     styles.mkdir()
     (styles / FAMILIES_FILE).write_text(json.dumps(families))
@@ -317,8 +433,10 @@ def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str
     for style_id, manifest in manifests.items():
         (styles / style_id).mkdir()
         (styles / style_id / MANIFEST_FILE).write_text(json.dumps(manifest))
-    for style_id, name in shaders.items():
-        (styles / style_id / name).write_text("void main() {}\n")
+    for style_id, shader in shaders.items():
+        # A file name, holding a shader that reads the good tree's Extra, or (name, its source).
+        name, source = shader if isinstance(shader, tuple) else (shader, GOOD_SHADER)
+        (styles / style_id / name).write_text(source)
     return styles
 
 
@@ -368,8 +486,13 @@ def self_test() -> int:
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),
         "required parameter missing": setter(["drum", "parameters"], {}),
-        "extra default outside range": setter(["orb", "extras"], [{"name": "density", "min": 0, "max": 1, "default": 3}]),
-        "extra range differs between Styles": setter(["drum", "extras"], [{"name": "density", "min": 0, "max": 5, "default": 1}]),
+        "extra default outside range": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 3}]),
+        "extra range differs between Styles": setter(["drum", "extras"], [{"name": "scale", "min": 0, "max": 5, "default": 1}]),
+        "extra that is no Extra": setter(["orb", "extras"], [{"name": "density", "min": 0, "max": 2, "default": 1}]),
+        "extra off its one range": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 3, "default": 1}]),
+        "extra not starting neutral": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 1.5}]),
+        "extra the shader never reads": setter(["orb", "extras"], [{"name": "fog", "min": 0, "max": 2, "default": 1}]),
+        "shader Extras without lib_style": lambda f, i, m, s: s.update({"orb": ("shader.glsl", "void main() { float s = uXScale; }\n")}),
         "too many Macros": setter(["orb", "macros"], [{"name": f"m{n}", "links": []} for n in range(MAX_MACROS + 1)]),
         "Macro amount out of range": setter(["orb", "macros"], [{"name": "energy", "links": [{"target": "x", "amount": 2}]}]),
         "Reaction with negative rise": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": -1, "fallMs": 0, "curve": "linear"}]),
@@ -392,6 +515,16 @@ def main() -> int:
     if "--self-test" in sys.argv[1:]:
         return self_test()
     errors = check(STYLES)
+    if not errors:
+        listing = kotlin_extras(STYLES)
+        if "--write-kotlin" in sys.argv[1:]:
+            PACK_EXTRAS_KT.write_text(listing, encoding="utf-8")
+            print(f"wrote {PACK_EXTRAS_KT.relative_to(ROOT)}")
+        elif not PACK_EXTRAS_KT.is_file() or PACK_EXTRAS_KT.read_text(encoding="utf-8") != listing:
+            errors.append(
+                f"{PACK_EXTRAS_KT.relative_to(ROOT)}: not what the packs declare; run "
+                "python3 tools/ci/check_style_packs.py --write-kotlin and commit it"
+            )
     if errors:
         print(f"style pack check failed ({len(errors)}):")
         for error in errors:

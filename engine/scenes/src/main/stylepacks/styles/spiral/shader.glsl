@@ -128,6 +128,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -153,8 +154,8 @@ void main() {
     vec2 uv = view();
     float r = length(uv) + 1e-4;
     float ang = atan(uv.y, uv.x);
-    float arms = 2.0 + floor(uMorph * 4.0);
-    float sp = ang * arms + log(r) * (5.0 + uBass * uBeatResponse * 5.0) - uTime * 1.8;
+    float arms = xcount(2.0);
+    float sp = ang * arms + log(r) * (5.0 * xm(uXThickness) + uBass * uBeatResponse * 5.0) - uXSpinTime * 1.8;
     float v = 0.5 + 0.5 * sin(sp);
     v = pow(v, 3.0 - uEnergy * 1.6);
     float fade = exp(-r * 0.8);

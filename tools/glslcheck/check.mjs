@@ -143,6 +143,7 @@ const SHADER_VALUES = {
   uXScale: 1, uXCount: 1, uXSize: 1, uXThickness: 1, uXFlight: 1, uXSpin: 1, uXOrbit: 1, uXSwirl: 1, uXDrift: 1,
   uXComplexity: 1, uXEdge: 1, uXFog: 1, uXDecay: 1, uXViscosity: 1, uXGrowth: 1, uXSpread: 1, uXForce: 1, uXReach: 1,
   uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
+  uXFlightTime: 37.0, uXSpinTime: 37.0, uXDriftTime: 37.0,
   uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
 };
 

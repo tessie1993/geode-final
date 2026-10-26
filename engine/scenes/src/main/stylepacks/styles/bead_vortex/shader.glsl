@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -81,8 +82,8 @@ void main() {
     float spin = travel * 0.12;
     vec3 light = normalize(vec3(0.35, 0.55, 0.75));
 
-    vec2 front = vec2(fract((a + 1.1 * depth + spin) / BV_TAU), depth * 3.0 + travel * 0.8);
-    vec2 back = vec2(fract((a - 0.8 * depth - spin * 0.6) / BV_TAU + 0.37), depth * 4.2 + travel * 1.1);
+    vec2 front = vec2(fract((a + 1.1 * depth * uXSwirl + spin) / BV_TAU), depth * 3.0 + travel * 0.8);
+    vec2 back = vec2(fract((a - 0.8 * depth * uXSwirl - spin * 0.6) / BV_TAU + 0.37), depth * 4.2 + travel * 1.1);
     Strand f = strands(front, 24.0, beadPulse, light);
     Strand b = strands(back, 36.0, beadPulse, light);
     b.col *= 0.6;

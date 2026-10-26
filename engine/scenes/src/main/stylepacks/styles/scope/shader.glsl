@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -161,9 +162,9 @@ void main() {
     vec2 uv = view();
     float x = clamp(uv.x * 0.5 + 0.5, 0.0, 1.0);
     float w = (awave(x) * 2.0 - 1.0) * (0.5 + uEnergy);
-    float d = abs(uv.y - w * 0.6);
-    float line = exp(-d * 60.0) + exp(-d * 12.0) * 0.35;
-    float grid = (step(fract(uv.x * 4.0), 0.01) + step(fract(uv.y * 4.0), 0.02)) * 0.06;
+    float d = abs(uv.y - w * 0.6 * uXScale);
+    float line = exp(-d * 60.0 / xm(uXThickness)) + exp(-d * 12.0 / xm(uXThickness)) * 0.35;
+    float grid = (step(fract(uv.x * xcount(4.0)), 0.01) + step(fract(uv.y * xcount(4.0)), 0.02)) * 0.06;
     vec3 col = pal(x * 0.5 + uEnergy * 0.3) * line + vec3(grid);
     fragColor = vec4(grade(col), 1.0);
 }

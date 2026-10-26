@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -161,9 +162,9 @@ void main() {
     vec2 uv = view();
     float angle = atan(uv.y, uv.x) / 6.2831 + 0.5;
     float radius = length(uv) + 0.0001;
-    float depth = 0.3 / radius + uTime * (0.6 + uEnergy * 2.0) + uBeat * uBeatResponse * 0.25;
-    float band = aband(fract(angle + depth * 0.05));
-    float rings = smoothstep(0.35, 0.9, fract(depth * 2.0));
+    float depth = 0.3 / radius + uXFlightTime * (0.6 + uEnergy * 2.0) + uBeat * uBeatResponse * 0.25;
+    float band = aband(fract(angle + depth * 0.05 * uXSpin));
+    float rings = smoothstep(0.35, 0.9, fract(depth * 2.0 * xm(uXScale)));
     float wave = awave(fract(angle * 2.0));
     vec3 col = pal(depth * 0.15) * (0.15 + band * 1.6) * rings;
     col += pal(0.6) * wave * uTreble * 0.6;

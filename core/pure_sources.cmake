@@ -63,6 +63,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/RenderScale.cpp
     viz/StylePacks.cpp
     viz/StyleProfiles.cpp
+    viz/StyleExtras.cpp
     viz/ThermalGovernor.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/SimGrid.cpp

@@ -12,6 +12,7 @@ out vec4 fragColor;
 // block/aband/awave/view() first, then the palette, then grade() - which calls
 // pal() and so must come after it.
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -523,7 +524,7 @@ void main() {
     float beatEnv = clamp(uSpike, 0.0, 1.0);
 
     float radius = NEB_RADIUS * (1.0 + NEB_BASS_INFLATE * bass);
-    float extinction = NEB_EXTINCTION * (1.0 + NEB_BASS_EXTINCT * bass);
+    float extinction = NEB_EXTINCTION * (1.0 + NEB_BASS_EXTINCT * bass) * xm(uXFog);
     // Self-shadowing tracks extinction: bass that thickens the medium has to
     // darken its interior too, or the cloud gets denser and brighter at once
     // and stops reading as a volume.
@@ -545,7 +546,7 @@ void main() {
     // that integrating exists to prevent. With every audio uniform at zero
     // this drift and this tumble are the whole animation, and they are what
     // keeps a silent screen alive.
-    vec3 drift = vec3(0.031, -0.047, 0.019) * uTime;
+    vec3 drift = vec3(0.031, -0.047, 0.019) * uXDriftTime;
     mat3 volumeRot = rotY(NEB_TUMBLE_Y * uTime + NEB_MID_STEER * mid) * rotX(NEB_TUMBLE_X * uTime);
 
     // ---- the fingers, hoisted out of the march ----------------------------
@@ -679,6 +680,7 @@ void main() {
         // changing the brightness and no seam appears where the count steps.
         float lod = clamp((t - tNear) / max(span, 1e-3), 0.0, 1.0);
         int oct = NEB_MAX_OCTAVES - int(lod * float(NEB_MAX_OCTAVES - NEB_MIN_OCTAVES) + 0.5);
+        oct = clamp(int(float(oct) * uXComplexity + 0.5), 1, FBM3_MAX_OCTAVES);
         float f = fbm3(q, oct);
 
         // ---- how much medium is here --------------------------------------

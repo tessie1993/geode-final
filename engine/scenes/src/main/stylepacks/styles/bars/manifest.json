@@ -3,5 +3,10 @@
   "id": "bars",
   "label": "Bars",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "thickness", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 }
+  ]
 }

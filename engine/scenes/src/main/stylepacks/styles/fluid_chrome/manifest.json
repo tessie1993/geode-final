@@ -12,5 +12,12 @@
     "splatForce": 0.8,
     "bloom": 0.6,
     "hueOffset": 0.5
-  }
+  },
+  "extras": [
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "viscosity", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ]
 }

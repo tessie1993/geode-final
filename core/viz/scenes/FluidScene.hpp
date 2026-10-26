@@ -17,6 +17,7 @@ class FluidScene : public FluidSceneBase {
 public:
     FluidScene(const styles::FluidStyle& style, ProgramLoader loader, SceneHost host)
         : FluidSceneBase(style.id, kTimeWrapSeconds, loader, std::move(host)),
+          base_(style),
           style_(style),
           sim_(loader_),
           look_(loader_),
@@ -31,6 +32,12 @@ public:
     void release() override;
     GLuint velocityTexture() const override { return sim_.available() ? sim_.velocityTex() : 0; }
     bool isFluid() const override { return true; }
+    // SWIRL the curl, VISCOSITY the velocity's dissipation, DECAY how long the dye lasts, SIZE and FORCE
+    // the splats.
+    void setExtras(const ExtraValues& values) override {
+        FluidSceneBase::setExtras(values);
+        style_ = extras::apply(base_, values);
+    }
 
 protected:
     GeodeFeatureFrame idleFeatures(float dt) override;
@@ -41,6 +48,8 @@ private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
     static constexpr float kIdleWrapSeconds = 628.31853f;
 
+    // The Style as its pack tunes it, and as its Extras move it this frame.
+    styles::FluidStyle base_;
     styles::FluidStyle style_;
     fluid::FluidSim sim_;
     fluid::Look look_;

@@ -66,7 +66,8 @@ void WaterScene::queueIdleRain(float dt) {
     const float x = (nextFloat() * 2.0f - 1.0f) * sim_.aspect() * 0.85f;
     const float y = nextFloat() * 2.0f - 1.0f;
     hue::rgb(hue::base(params_.paletteBase()) + 0.12f * nextFloat(), 0.5f, rgb_.data());
-    sim_.queueDrop(x, y * 0.85f, 0.05f, 0.28f * std::clamp(params_.waterRippleStrength, 0.0f, 2.0f), rgb_[0], rgb_[1], rgb_[2]);
+    const float ripple = std::clamp(params_.waterRippleStrength * extras_.multiplier(mod::Extra::Force, 0.0f), 0.0f, 2.0f);
+    sim_.queueDrop(x, y * 0.85f, 0.05f, 0.28f * ripple, rgb_[0], rgb_[1], rgb_[2]);
 }
 
 void WaterScene::queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
@@ -99,8 +100,10 @@ void WaterScene::draw(float timeSeconds) {
     saveGlState();
     autoQualityTick();
 
-    sim_.waveSpeed = 1.2f * std::clamp(p.waterWaveSpeed, 0.2f, 2.0f);
-    sim_.damping = std::clamp(p.waterDamping, 0.9f, 0.999f);
+    // DRIFT the waves' speed, VISCOSITY the damping, FORCE the ripples, FOG the depth and SWIRL the flow,
+    // each inside the range the ripple solver is stable in.
+    sim_.waveSpeed = 1.2f * std::clamp(p.waterWaveSpeed * extras_.multiplier(mod::Extra::Drift, 0.0f), 0.2f, 2.0f);
+    sim_.damping = std::clamp(extras::damped(p.waterDamping, extras_[mod::Extra::Viscosity]), 0.9f, 0.999f);
     sim_.inkFlow = std::clamp(p.waterLiquidFlow, 0.0f, 4.0f);
     sim_.inkDissipation = std::clamp(p.waterLiquidFade, 0.0f, 2.0f);
 
@@ -111,7 +114,7 @@ void WaterScene::draw(float timeSeconds) {
     const float simDt = std::clamp(lastDt_, 0.0f, 1.0f / 30.0f);
     choreography_.tick(f, simDt, sim_.aspect());
     const float pcmKick = std::clamp(pcmStrike_, 0.0f, 1.0f);
-    const float rippleStrength = std::clamp(p.waterRippleStrength, 0.0f, 2.0f);
+    const float rippleStrength = std::clamp(p.waterRippleStrength * extras_.multiplier(mod::Extra::Force, 0.0f), 0.0f, 2.0f);
     const float catchRadius = fluid::water::catchWellRadius(p.fluidCatchRadius);
     const float baseHue = hue::base(p.paletteBase());
     emitters_.tick(f, simDt, sim_.aspect(), baseHue, hue::range(p.hueRange), splats_);
@@ -138,9 +141,9 @@ void WaterScene::draw(float timeSeconds) {
     glUniform1f(display_.loc("uTime"), time_);
     glUniform1f(display_.loc("uBaseHue"), baseHue);
     glUniform1f(display_.loc("uHueSpan"), hue::span(p.hueRange, p.paletteRange()));
-    glUniform1f(display_.loc("uDepth"), std::clamp(p.waterDepth, 0.0f, 1.0f));
+    glUniform1f(display_.loc("uDepth"), std::clamp(p.waterDepth * extras_.multiplier(mod::Extra::Fog, 0.0f), 0.0f, 1.0f));
     glUniform1f(display_.loc("uSpecular"), std::clamp(p.waterSpecular, 0.0f, 1.0f));
-    glUniform1f(display_.loc("uFlowDrift"), std::clamp(p.waterFlow, 0.0f, 1.0f));
+    glUniform1f(display_.loc("uFlowDrift"), std::clamp(p.waterFlow * extras_.multiplier(mod::Extra::Swirl, 0.0f), 0.0f, 1.0f));
     glUniform1f(display_.loc("uRefract"), 0.9f);
     glUniform1f(display_.loc("uTreble"), std::clamp(f.treble + pcmKick * 0.5f, 0.0f, 2.0f));
     glUniform1f(display_.loc("uBrightness"), fluid::water::kDisplayBrightness);

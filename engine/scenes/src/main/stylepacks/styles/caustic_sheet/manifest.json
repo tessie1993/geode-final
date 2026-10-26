@@ -16,5 +16,16 @@
     "hueOffset": -0.22,
     "hueSpan": 0.5,
     "modeCap": 4
-  }
+  },
+  "extras": [
+    { "name": "variant", "min": 0, "max": 9, "default": 0 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "thickness", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ]
 }

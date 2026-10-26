@@ -32,6 +32,10 @@ constexpr std::array<const char*, mod::kExtraCount> kExtraUniforms = {
     "uXForce", "uXReach",      "uXTurn", "uXHold",      "uXVariant", "uXCenterX",   "uXCenterY",
 };
 
+// The rate Extras and their clocks (lib_style.glsl): uTime's own step, run at the rate each one sets.
+constexpr std::array<mod::Extra, 3> kRateExtras = {mod::Extra::Flight, mod::Extra::Spin, mod::Extra::Drift};
+constexpr std::array<const char*, 3> kRateUniforms = {"uXFlightTime", "uXSpinTime", "uXDriftTime"};
+
 // Shortest signed distance from `from` to `to` on a unit-period circle.
 float wrappedDelta(float from, float to, float period) {
     const float half = period * 0.5f;
@@ -145,6 +149,11 @@ void ShaderScene::stepMotion(float hit, float dt) {
 void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     const SceneParams& p = params_;
     shaderTime_ = std::fmod(shaderTime_ + p.speed * dt, kTimeWrapSeconds);
+    // Integrated like shaderTime_, so moving a rate Extra changes the pace and never jumps the
+    // picture; at the neutral 1 each clock is shaderTime_ exactly.
+    for (size_t r = 0; r < kRateExtras.size(); ++r) {
+        rateClocks_[r] = std::fmod(rateClocks_[r] + p.speed * dt * extras_.multiplier(kRateExtras[r], 0.0f), kTimeWrapSeconds);
+    }
     rotationAngle_ = std::fmod(rotationAngle_ + p.rotation * dt, kTwoPi);
     zoomPhase_ = p.endlessZoom ? std::fmod(zoomPhase_ + p.endlessZoomSpeed * dt, 1.0f) : 0.0f;
     if (p.colorCycle) cyclePhase_ = std::fmod(cyclePhase_ + p.cycleSpeed * dt, 1.0f);
@@ -309,6 +318,7 @@ void ShaderScene::uploadCamera() {
 
 void ShaderScene::uploadExtras() {
     for (size_t e = 0; e < mod::kExtraCount; ++e) set1f(kExtraUniforms[e], extras_.value[e]);
+    for (size_t r = 0; r < kRateUniforms.size(); ++r) set1f(kRateUniforms[r], rateClocks_[r]);
 }
 
 void ShaderScene::set1f(const char* name, float value) {

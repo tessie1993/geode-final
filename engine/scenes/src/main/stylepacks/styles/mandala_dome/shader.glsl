@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -146,7 +147,7 @@ void main() {
 
     // The flat field: a plane receding toward the top, drifting slowly.
     float persp = 1.0 / (1.15 - 0.35 * m.y);
-    vec2 field = m * persp * 3.1 * breathe + flowOffset(0.5);
+    vec2 field = m * persp * 3.1 * breathe * xm(uXScale) + flowOffset(0.5);
     vec3 col = tapestry(fluidWarp(field, 0.9, 0.07), glow, split);
     col *= 0.7 + 0.3 * persp;
 

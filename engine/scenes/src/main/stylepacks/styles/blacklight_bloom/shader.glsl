@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -109,7 +110,7 @@ void main() {
     // The fold scale is what decides how deep the repeat reads. Kept inside
     // 1.28..1.42: past that the iteration outruns the trap and the tapestry
     // turns to noise.
-    float scale = 1.30 + 0.10 * swell;
+    float scale = (1.30 + 0.10 * swell) * xm(uXScale);
     float split = 0.014 + 0.016 * clamp(treb, 0.0, 1.0);
 
     // The plane, advected through the curl field so the whole tapestry

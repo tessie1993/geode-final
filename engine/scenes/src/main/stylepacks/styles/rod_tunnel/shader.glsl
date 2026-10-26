@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -72,6 +73,8 @@ const float ROD_LIFE_PERIOD = 11.0;
 const float ROD_STEP = 0.6 / (DMT_TUNNEL_LIP * ROD_BEAD_LIP);
 
 float gTwist;
+float gStrands;
+float gRodRadius;
 float gCellA;
 float gCellZ;
 float gBeadDepth;
@@ -90,19 +93,19 @@ float map(vec3 p) {
     p = dmtTunnelWarp(p);
     float rad = length(p.xy);
     float ang = atan(p.y, p.x) + p.z * gTwist;
-    float sector = ROD_TAU / ROD_STRANDS;
+    float sector = ROD_TAU / gStrands;
     gCellA = floor(ang / sector);
     ang = mod(ang, sector) - 0.5 * sector;
     gCellZ = floor(p.z / ROD_CELL);
     float z = mod(p.z, ROD_CELL) - 0.5 * ROD_CELL;
-    vec3 q = vec3(ROD_RADIUS - rad, ang * ROD_RADIUS, z);
+    vec3 q = vec3(gRodRadius - rad, ang * gRodRadius, z);
     // The cell's own life. The seed is the cell's hash, so each rod's clock
     // is unrelated to its neighbours'; the radius follows the envelope and a
     // dead cell returns the empty capsule's distance, which is a valid lower
     // bound for a cell that holds nothing.
     gLife = dmtLife(hash11(gCellA * 7.13 + gCellZ * 3.71), ROD_LIFE_PERIOD);
     float beads = gBeadDepth * ROD_BEAD_AMP * sin(q.z * ROD_BEAD_FREQ);
-    float r = (0.14 + beads) * gLife;
+    float r = (0.14 + beads) * gLife * xm(uXThickness);
     return sdCapsule(q, vec3(0.0, 0.0, -0.4), vec3(0.0, 0.0, 0.4), r);
 }
 
@@ -121,6 +124,8 @@ void main() {
     float hit = uSpike;
 
     gTwist = 0.25 + 0.55 * midA;
+    gStrands = xcount(ROD_STRANDS);
+    gRodRadius = ROD_RADIUS * xm(uXScale);
     // Rod to pearls and back: a triangle of uFormPhase, so the morph is deep
     // in the middle of the ring and smooth at both ends, and glides because
     // uFormPhase does.
@@ -130,7 +135,7 @@ void main() {
     // Multiplying a running clock by a loudness-dependent rate does not speed the
     // camera up, it teleports it: at t=60s a rate moving 1.4 -> 3.6 jumps the
     // viewpoint 132 units down the tube in one frame. uFlowPhase only ever advances.
-    float fly = uFlowPhase * 9.0 + uTime * 1.4;
+    float fly = uFlowPhase * 9.0 + uXFlightTime * 1.4;
     // A slow roll, so the horizon of the tube turns as it banks.
     float roll = uTime * 0.08 + 0.25 * sin(uTime * 0.031);
     vec3 ro;
@@ -184,7 +189,7 @@ void main() {
         col = dmtShade(n, rd, hue, band * 2.0 + cellZ * 0.15, 0.85 + 0.15 * life, thin, trebA);
         // Young rods glow as they arrive, dying ones as they leave.
         col += pal(hue + 0.4) * (1.0 - life) * 0.35;
-        col = mix(col, sky, 1.0 - exp(-hitT * ROD_FOG));
+        col = mix(col, sky, 1.0 - exp(-hitT * ROD_FOG * uXFog));
     } else {
         col = sky;
         // The halo off the nearest rod the ray slid past.

@@ -5,5 +5,10 @@
   "family": "shader",
   "shader": "shader.glsl",
   "renderScale": 0.75,
-  "detail": "march"
+  "detail": "march",
+  "extras": [
+    { "name": "complexity", "min": 0, "max": 2, "default": 1 },
+    { "name": "thickness", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ]
 }
