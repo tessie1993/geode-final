@@ -42,8 +42,10 @@ void Mixer::setFeedRunning(bool running) {
     if (feed::FeedRing* ring = feed_.load(std::memory_order_acquire)) ring->setRunning(feed::FeedSource::Player, running);
 }
 
-void Mixer::setFeedDelay(int64_t delayNs) {
-    if (feed::FeedRing* ring = feed_.load(std::memory_order_acquire)) ring->setPresentation(feed::FeedSource::Player, delayNs, 1.0f);
+void Mixer::setFeedDelay(int64_t delayNs, bool measured) {
+    if (feed::FeedRing* ring = feed_.load(std::memory_order_acquire)) {
+        ring->setPresentation(feed::FeedSource::Player, delayNs, 1.0f, measured);
+    }
 }
 
 // geode_player_set_dsp hands the installed chain to the player, which destroys it "at player

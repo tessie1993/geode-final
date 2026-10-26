@@ -31,43 +31,54 @@ vec3 ptHsv2rgb(vec3 c) {
     return c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y);
 }
 
-// --- 2D SDF primitives (Inigo Quilez, iquilezles.org/articles/distfunctions2d)
+// --- 2D signed distances, written for Geode from first principles: each shape folds the plane by
+// its symmetry into one wedge and measures the distance to that wedge's single edge.
 float ptSdCircle(vec2 p, float r) {
     return length(p) - r;
 }
 
+/** A box of half-size b whose corners are rounded by r. */
 float ptSdRoundedBox(vec2 p, vec2 b, float r) {
-    vec2 q = abs(p) - b + r;
-    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+    vec2 d = abs(p) - (b - r);
+    float outside = length(max(d, 0.0));
+    float inside = min(max(d.x, d.y), 0.0);
+    return outside + inside - r;
+}
+
+/** Signed distance from q to the segment a-b, negative on the side the origin lies on. */
+float ptSdEdge(vec2 q, vec2 a, vec2 b) {
+    vec2 e = b - a;
+    vec2 w = q - a;
+    float h = clamp(dot(w, e) / dot(e, e), 0.0, 1.0);
+    float side = e.x * w.y - e.y * w.x;
+    return length(w - e * h) * (side > 0.0 ? -1.0 : 1.0);
+}
+
+/** A regular n-gon with apothem r, an edge facing +y. */
+float ptSdPolygon(vec2 p, float r, float n) {
+    float wedge = 3.141593 / n;
+    // Angle from +y, folded into the half-wedge either side of one edge's normal.
+    float a = abs(mod(atan(p.x, p.y) + wedge, 2.0 * wedge) - wedge);
+    vec2 q = length(p) * vec2(cos(a), sin(a));
+    float halfEdge = r * tan(wedge);
+    return ptSdEdge(q, vec2(r, -halfEdge), vec2(r, halfEdge));
 }
 
 float ptSdHexagon(vec2 p, float r) {
-    const vec3 k = vec3(-0.866025404, 0.5, 0.577350269);
-    p = abs(p);
-    p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
-    p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
-    return length(p) * sign(p.y);
+    return ptSdPolygon(p, r, 6.0);
 }
 
-float ptSdStar(vec2 p, float r, float n, float m) {
-    float an = 3.141593 / n;
-    float en = 3.141593 / m;
-    vec2 acs = vec2(cos(an), sin(an));
-    vec2 ecs = vec2(cos(en), sin(en));
-    float bn = mod(atan(p.x, p.y), 2.0 * an) - an;
-    p = length(p) * vec2(cos(bn), abs(sin(bn)));
-    p -= r * acs;
-    p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);
-    return length(p) * sign(p.x);
+/** An n-pointed star: tips at radius r, the valleys between them at radius r * inner. */
+float ptSdStar(vec2 p, float r, float n, float inner) {
+    float wedge = 3.141593 / n;
+    float a = abs(mod(atan(p.x, p.y) + wedge, 2.0 * wedge) - wedge);
+    vec2 q = length(p) * vec2(cos(a), sin(a));
+    return ptSdEdge(q, vec2(r, 0.0), r * inner * vec2(cos(wedge), sin(wedge)));
 }
 
+/** A plus sign: two crossed boxes of half-size b (long, thin). */
 float ptSdCross(vec2 p, vec2 b) {
-    p = abs(p);
-    p = (p.y > p.x) ? p.yx : p.xy;
-    vec2 q = p - b;
-    float k = max(q.y, q.x);
-    vec2 w = (k > 0.0) ? q : vec2(b.y - p.x, -k);
-    return sign(k) * length(max(w, 0.0));
+    return min(ptSdRoundedBox(p, b, 0.0), ptSdRoundedBox(p, b.yx, 0.0));
 }
 
 /** Signed distance to the selected shape's surface (index = SceneParams.particleShape). */
@@ -78,7 +89,7 @@ float ptShapeField(vec2 p, float shape) {
         // Ring: an annulus around the circle instead of an exp() band.
         return abs(ptSdCircle(p, PT_SHAPE_R * 0.84)) - PT_SHAPE_R * 0.17;
     } else if (shape < 2.5) {
-        return ptSdStar(p, PT_SHAPE_R * 1.06, 5.0, 2.6);
+        return ptSdStar(p, PT_SHAPE_R * 1.06, 5.0, 0.48);
     } else if (shape < 3.5) {
         return ptSdRoundedBox(p, vec2(PT_SHAPE_R * 0.80), PT_SHAPE_R * 0.26);
     } else if (shape < 4.5) {

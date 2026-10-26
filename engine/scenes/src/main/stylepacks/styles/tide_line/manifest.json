@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "id": "waterline",
+  "id": "tide_line",
   "label": "Waterline",
   "family": "shader",
   "shader": "shader.glsl",

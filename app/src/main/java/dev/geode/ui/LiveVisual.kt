@@ -12,11 +12,13 @@ import androidx.lifecycle.compose.currentStateAsState
 import dev.geode.RingLog
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.customization.handlers.StyleCues
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.playback.PlaybackEngine
+import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
 
 /**
@@ -24,9 +26,11 @@ import dev.geode.render.VisualizerView
  * the renderer is attached to the [snapshots] exchange, which Customization's store publishes to
  * (ADR-0002, ADR-0004). The sound never passes through the main thread or Kotlin: the renderer is
  * attached to the engine's one audio feed, and each frame it reads the features heard now and the
- * stereo window natively, on its own thread. Only the Style to draw, the Visual behaviours from
- * Settings (reduce motion, the finger smear) and the [surface]'s quality and frame rate are handed
- * over from here, when they change.
+ * stereo window natively, on its own thread. Only the Style to draw, how long a change of Style
+ * crossfades (Style switching's transition while it is on, #282), the Visual behaviours from Settings
+ * (reduce motion, the finger smear) and the [surface]'s quality and frame rate are handed over from
+ * here, when they change. The engine's word that Style switching is due goes back to Customization as
+ * [styleCues].
  *
  * The analysis runs only while the Visual is [shown] and the app is started (#298): on another tab,
  * behind the lock screen or with the screen off it sleeps, and it catches up within a frame of the
@@ -37,18 +41,21 @@ fun LiveVisualBindings(
     view: VisualizerView,
     customization: CustomizationFeature,
     snapshots: NativeSnapshots,
+    styleCues: StyleCues,
     settings: Settings,
     surface: VisualSurface,
     shown: Boolean,
 ) {
     val context = LocalContext.current
-    DisposableEffect(view, snapshots) {
+    DisposableEffect(view, snapshots, styleCues) {
         val renderer = view.visualizerRenderer
         val session = PlaybackEngine.acquireForUi(context)
         renderer.snapshots = snapshots
         renderer.feed = session.feed
         renderer.onShaderError = { error -> error?.let { RingLog.note(TAG, "shader: $it") } }
+        renderer.onStyleDue = styleCues::raise
         onDispose {
+            renderer.onStyleDue = {}
             renderer.feed = null
             PlaybackEngine.releaseUi()
         }
@@ -63,6 +70,11 @@ fun LiveVisualBindings(
     }
     val state by customization.state.collectAsStateWithLifecycle()
     val style = state.current.style
+    val transition =
+        state.current.automations.style
+            ?.transition ?: VisualizerRenderer.DEFAULT_TRANSITION
+    // The crossfade's length goes first, so the change of Style it is for already uses it.
+    LaunchedEffect(transition) { view.visualizerRenderer.transitionDuration = transition }
     LaunchedEffect(style) { view.visualizerRenderer.requestedSceneId = style }
     val values by settings.state.collectAsStateWithLifecycle()
     val behavior = (values as? SettingsState.Ready)?.values?.behavior ?: BehaviorSettings()

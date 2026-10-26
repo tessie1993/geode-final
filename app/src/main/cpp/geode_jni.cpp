@@ -400,6 +400,21 @@ Java_dev_geode_engine_bridge_GeodeNative_feedSetPresentation(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetRoute(JNIEnv* env, jobject, jlong handle, jint route) {
+    return feedCall(env, "feedSetRoute", handle, [&](geode_feed* f) { geode_feed_set_route(f, route); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetUserOffset(JNIEnv* env, jobject, jlong handle, jlong offsetUs) {
+    return feedCall(env, "feedSetUserOffset", handle, [&](geode_feed* f) { geode_feed_set_user_offset(f, offsetUs); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetGain(JNIEnv* env, jobject, jlong handle, jfloat gainDb) {
+    return feedCall(env, "feedSetGain", handle, [&](geode_feed* f) { geode_feed_set_gain(f, gainDb); });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_feedSetWindowGain(JNIEnv* env, jobject, jlong handle, jint source, jfloat gain) {
     return feedCall(env, "feedSetWindowGain", handle, [&](geode_feed* f) { geode_feed_set_window_gain(f, source, gain); });
 }

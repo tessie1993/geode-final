@@ -7,23 +7,28 @@
 #include <string>
 #include <vector>
 
+#include "geode/render/Framebuffer.hpp"
 #include "geode/render/Program.hpp"
 #include "geode/viz/AudioInputs.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/FrameRate.hpp"
+#include "geode/viz/SharedInputs.hpp"
+#include "geode/viz/StyleInputs.hpp"
 
 namespace geode::viz {
 
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
-    // uAudioTex: the shared audio inputs (AudioInputs, lib_audio.glsl).
+    // uAudioTex: the shared audio inputs (AudioInputs, lib_scene_uniforms.glsl).
     static constexpr int kAudioTexWidth = AudioInputs::kWidth;
     static constexpr int kAudioTexRows = AudioInputs::kRows;
 
-    ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host);
+    // `inputs`: the shared Style inputs the pack declares (StyleInputs.hpp); only these are made and bound.
+    ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
+                inputs::Set inputs = 0);
     ~ShaderScene() override;
 
     const std::string& id() const override { return id_; }
@@ -43,6 +48,9 @@ public:
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
     void setQuality(const quality::Budget& budget) override { quality_ = budget; }
+    void setSharedInputs(SharedInputs* shared) override;
+    void beginVisit() override;
+    void setDrawTarget(GLuint fbo, int width, int height) override;
     bool ownsCamera() const override { return ownsCamera_; }
 
 #ifdef GEODE_STYLE_HOT_RELOAD
@@ -136,6 +144,13 @@ private:
     // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_style.glsl).
     void uploadCamera();
     void uploadExtras();
+    // The shared inputs the pack declares: their clocks and their textures (lib_inputs.glsl).
+    void uploadInputs();
+    GLuint inputTexture(inputs::Input input);
+    // After the draw: keeps this frame for the next one, as the previous frame and the blur levels the
+    // pack declares, then binds the draw target again.
+    void captureHistory();
+    void releaseHistory();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -213,6 +228,24 @@ private:
     std::array<float, 3> rateClocks_{};
     // The compiled Style reads uCamRot: it moves a camera of its own.
     bool ownsCamera_ = false;
+
+    // ---- the shared Style inputs (StyleInputs.hpp) -------------------------
+    static constexpr int kBlurChain = 4;
+    inputs::Set inputs_ = 0;
+    SharedInputs* sharedInputs_ = nullptr;
+    // The Render seed's in a Render, the live clock's otherwise, mixed with the Style id (init()).
+    std::uint32_t visitSeed_ = 0;
+    inputs::VisitClock visitClock_;
+    inputs::BarClock barClock_;
+    // The target this draw goes to (setDrawTarget), which the history copies.
+    GLuint drawFbo_ = 0;
+    int drawWidth_ = 0;
+    int drawHeight_ = 0;
+    Framebuffer previous_{"stylePrevious"};
+    // The bloom chain's sizes (tone::bloomLevels): 1/2, then blur1..3 at 1/4, 1/8 and 1/16.
+    std::array<Framebuffer, kBlurChain> blur_{Framebuffer("styleBlur0"), Framebuffer("styleBlur1"), Framebuffer("styleBlur2"),
+                                              Framebuffer("styleBlur3")};
+    int blurBuilt_ = 0;
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;

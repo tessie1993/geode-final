@@ -26,6 +26,9 @@ class VisualizerRenderer(
     context: Context,
 ) : GLSurfaceView.Renderer {
     companion object {
+        /** How long a change of Style crossfades when Style switching does not say. */
+        val DEFAULT_TRANSITION: Millis = Millis(1200L)
+
         /** The floats a parameter fade must never glide, and why. */
         val NOT_FADED: Map<String, String> =
             mapOf(
@@ -79,8 +82,12 @@ class VisualizerRenderer(
     @Volatile
     var transitionStyle: TransitionStyle = TransitionStyle.FADE
 
+    /**
+     * How long a change of Style crossfades: [DEFAULT_TRANSITION], or Style switching's own transition
+     * while it is on (#282).
+     */
     @Volatile
-    var transitionDuration: Millis = Millis(1200L)
+    var transitionDuration: Millis = DEFAULT_TRANSITION
 
     @Volatile
     var transitionId: String = TransitionStyle.FADE.name.lowercase()
@@ -93,6 +100,13 @@ class VisualizerRenderer(
     var onMilkPresetLoaded: (String) -> Unit = {}
 
     /**
+     * The engine heard the moment Style switching waits for (#282): called on the GL thread, at most
+     * once a frame, each time the engine's count of due switches rises.
+     */
+    @Volatile
+    var onStyleDue: () -> Unit = {}
+
+    /**
      * The live sound: while set, the native renderer reads the features heard now and the stereo
      * window for the scenes straight from this feed at the start of each frame, on the GL thread, and
      * [features] is not sent. Null draws [features].
@@ -102,6 +116,14 @@ class VisualizerRenderer(
 
     // GL thread only: the feed the native renderer is attached to now.
     private var attachedFeed: VisualFeed? = null
+
+    /**
+     * When each frame is expected on screen (#295): the pacer that asks for the frames. With a [feed],
+     * the frame draws the audio heard at that moment, so the picture lands on the beat being heard
+     * rather than one or two refreshes early. Null draws the audio heard as the frame starts.
+     */
+    @Volatile
+    var presentation: FramePresentation? = null
 
     /**
      * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
@@ -132,6 +154,9 @@ class VisualizerRenderer(
 
     // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
     private val displayEvents = DisplayEvents()
+
+    // GL thread only: the engine's count of due Style switches after the last frame.
+    private var stylesDue = 0
 
     // GL thread only: after displayEvents, so the events that fire during a hold are never replayed.
     private val signalHold = SignalHold()
@@ -221,12 +246,17 @@ class VisualizerRenderer(
         val workStart = System.nanoTime()
         nativeViz.setScene(requestedSceneId)
         syncNativeState()
+        nativeViz.setPresentTime(presentation?.expectedPresentNanos() ?: 0L)
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
         nativeViz.pollError(onShaderError)
         nativeViz.takeMilkPresetLoaded()?.let { path ->
             lastMilkPreset = path
             onMilkPresetLoaded(path)
         }
+        // A drop is a fresh start (a new plan, or none): only a rise is a switch.
+        val due = nativeViz.stylesDue()
+        if (due > stylesDue) onStyleDue()
+        stylesDue = due
         frameHint.report(System.nanoTime() - workStart)
     }
 

@@ -59,15 +59,30 @@ data class Folder(
 )
 
 /**
+ * How the person marked a Style for automatic Style switching (#308): Love comes round more often,
+ * Never not at all. Kept in the library, never in a preset file.
+ */
+enum class StyleMark {
+    LOVE,
+    NORMAL,
+    NEVER,
+}
+
+/**
  * The person's own way of finding Styles, kept between launches: [favourites] (the latest first),
- * [recent] (the Styles the Visual showed lately, the latest first, at most [RECENT_LIMIT]) and their
- * [folders]. It may name a Style this version no longer has; the Visuals tab leaves those out.
+ * [recent] (the Styles the Visual showed lately, the latest first, at most [RECENT_LIMIT]), their
+ * [folders], and their [marks] (a Style with none is Normal). It may name a Style this version no
+ * longer has; the Visuals tab leaves those out.
  */
 data class StyleLibrary(
     val favourites: List<SceneId> = emptyList(),
     val recent: List<SceneId> = emptyList(),
     val folders: List<Folder> = emptyList(),
+    val marks: Map<SceneId, StyleMark> = emptyMap(),
 ) {
+    /** How [style] is marked: Normal when it is not. */
+    fun markOf(style: SceneId): StyleMark = marks[style] ?: StyleMark.NORMAL
+
     /** The folders directly inside [parent], or at the top when it is null, in the order they were made. */
     fun foldersIn(parent: FolderId?): List<Folder> = folders.filter { it.parent == parent }
 
@@ -108,6 +123,12 @@ sealed interface VisualsCommand {
     data class SetFavourite(
         val style: SceneId,
         val favourite: Boolean,
+    ) : VisualsCommand
+
+    /** Marks [style] Love, Normal or Never for automatic Style switching (#308). */
+    data class SetMark(
+        val style: SceneId,
+        val mark: StyleMark,
     ) : VisualsCommand
 
     /** Makes a folder named [name] inside [parent] (the top when null). A blank name makes nothing. */

@@ -66,7 +66,8 @@ public:
     void setFeedRate(int rateHz) { feedRate_.store(rateHz, std::memory_order_relaxed); }
     // Engine thread: tells the feed whether the output plays, and how far ahead of the speaker the mix runs.
     void setFeedRunning(bool running);
-    void setFeedDelay(int64_t delayNs);
+    // `measured` is false when the delay is only the output buffer, the stream giving no timestamp.
+    void setFeedDelay(int64_t delayNs, bool measured);
 
     // Audio thread: frames <= kMaxRenderFrames.
     void render(float* stereo, size_t frames);

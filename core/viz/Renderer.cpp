@@ -63,10 +63,13 @@ void Renderer::beginParamMorph(float seconds) {
     morphRemainSec_ = seconds * 3.0f;
 }
 
-void Renderer::setFramePcm(const float* stereo, int frames) {
-    const int n = stereo ? std::clamp(frames, 0, kPcmWindowFrames) : 0;
-    std::copy(stereo, stereo + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
+void Renderer::setFramePcm(const float* stereo, int frames, int fresh) {
+    const int n = stereo ? std::clamp(frames, 0, kPcmSpanFrames) : 0;
+    // The newest frames of a longer span, which is where the audio heard is.
+    const std::ptrdiff_t skip = stereo ? static_cast<std::ptrdiff_t>(frames - n) * 2 : 0;
+    std::copy(stereo + skip, stereo + skip + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
     pendingPcmFrames_ = n;
+    pendingPcmFresh_ = std::clamp(fresh, 0, n);
 }
 
 double Renderer::monotonicSeconds() {
@@ -277,6 +280,9 @@ void Renderer::onSurfaceCreated() {
     fboOut_.release();
     fboL_.release();
     hdrPass_.release();
+    sharedInputs_.release();
+    dofPass_.release();
+    particlePass_.release();
     compositePass_.releaseStaleTextures();
     // The HDR targets (ToneMap.hpp) are RGBA16F where this device proved it renders and blends them.
     const FormatProbe half = profile_.report.probeOf(ProbedFormat::RGBA16F);
@@ -289,6 +295,8 @@ void Renderer::onSurfaceCreated() {
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);
     hdrPass_.setTargetFormat(hdrFormat);
+    sharedInputs_.attach(&assets_, &hdrPass_, hdrFormat);
+    dofPass_.setTargetFormat(hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
@@ -317,6 +325,8 @@ void Renderer::onSurfaceCreated() {
     if (!sharedFx_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!compositePass_.create(*fadeVert, &error)) fail(error);
     if (!hdrPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
+    if (!dofPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
+    if (!particlePass_.create(assets_, &programCache_, &error)) fail(error);
     if (!noFlash_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
 
     // Port of CyclicPalettes.createTexture: five 256-entry RGB rows.
@@ -453,6 +463,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
     scene->setGravityField(&gravityField_);
+    scene->setSharedInputs(&sharedInputs_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);

@@ -398,10 +398,26 @@ Java_dev_geode_engine_bridge_GeodeNative_vizAttachFeed(JNIEnv* env, jobject, jlo
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetPresentTime(JNIEnv* env, jobject, jlong handle, jlong presentNs) {
+    return vizCall(env, "vizSetPresentTime", handle, [&](geode_viz* v) {
+        geode_viz_set_present_time(v, presentNs);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetReactionsHeld(JNIEnv* env, jobject, jlong handle, jboolean held) {
     return vizCall(env, "vizSetReactionsHeld", handle, [&](geode_viz* v) {
         geode_viz_set_reactions_held(v, held ? 1 : 0);
         return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizStylesDue(JNIEnv* env, jobject, jlong handle) {
+    // Kotlin's Int holds the count: past 2^31 it wraps to 0, which the host takes as a fresh start.
+    return valueCall(env, "vizStylesDue", jint{0}, [&]() -> jint {
+        return static_cast<jint>(geode_viz_styles_due(vizOf(handle)) & 0x7fffffffu);
     });
 }
 

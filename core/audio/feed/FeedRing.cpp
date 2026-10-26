@@ -26,6 +26,7 @@ FeedRing::FeedRing(size_t capacityFrames)
         delayNs_[i].store(0, std::memory_order_relaxed);
         speed_[i].store(1.0f, std::memory_order_relaxed);
         windowGain_[i].store(1.0f, std::memory_order_relaxed);
+        measured_[i].store(true, std::memory_order_relaxed);
     }
 }
 
@@ -59,11 +60,25 @@ void FeedRing::setRunning(FeedSource source, bool running) {
     if (running && !was) measureFresh_.store(true, std::memory_order_relaxed);
 }
 
-void FeedRing::setPresentation(FeedSource source, int64_t delayNs, float speed) {
+void FeedRing::setPresentation(FeedSource source, int64_t delayNs, float speed, bool measured) {
     const size_t i = indexOf(source);
     if (i == 0) return;
     delayNs_[i].store(std::clamp<int64_t>(delayNs, 0, kMaxDelayNs), std::memory_order_relaxed);
     speed_[i].store(std::isfinite(speed) && speed > 0.0f ? speed : 1.0f, std::memory_order_relaxed);
+    measured_[i].store(measured, std::memory_order_relaxed);
+}
+
+void FeedRing::setRoute(OutputRoute route) {
+    route_.store(static_cast<int>(route), std::memory_order_relaxed);
+}
+
+void FeedRing::setGainDb(float db) {
+    const float clamped = std::isfinite(db) ? std::clamp(db, kMinGainDb, kMaxGainDb) : 0.0f;
+    gain_.store(std::pow(10.0f, clamped / 20.0f), std::memory_order_relaxed);
+}
+
+void FeedRing::setUserOffset(int64_t offsetNs) {
+    userOffsetNs_.store(heard::clampUserOffsetNs(offsetNs), std::memory_order_relaxed);
 }
 
 void FeedRing::setWindowGain(FeedSource source, float gain) {
@@ -121,7 +136,7 @@ size_t FeedRing::write(FeedSource source, const float* interleaved, size_t frame
     return frames;
 }
 
-ReadPoint FeedRing::locate(int64_t nowNs) const {
+ReadPoint FeedRing::locate(int64_t nowNs, int64_t aheadNs) const {
     ReadPoint point;
     const FeedSource source = selected();
     const size_t i = indexOf(source);
@@ -132,18 +147,23 @@ ReadPoint FeedRing::locate(int64_t nowNs) const {
     point.rateHz = rate_.load(std::memory_order_acquire);
     point.end = std::max(w, point.begin);
     if (!running_[i].load(std::memory_order_acquire) || w <= point.begin || point.rateHz <= 0) return point;
-    const int64_t delay = delayNs_[i].load(std::memory_order_relaxed);
+    // What sits between the write point and the speaker: the source's own delay, and what its route adds
+    // when the source could not measure that delay.
+    const int64_t unmeasured = measured_[i].load(std::memory_order_relaxed) ? 0 : heard::routeFallbackNs(route());
+    const int64_t buffered = delayNs_[i].load(std::memory_order_relaxed) + unmeasured;
     const int64_t age = std::max<int64_t>(nowNs - lastWriteNs_.load(std::memory_order_relaxed), 0);
-    if (age > packetNs_.load(std::memory_order_relaxed) + delay) return point;
+    if (age > packetNs_.load(std::memory_order_relaxed) + buffered) return point;
     point.live = true;
+    const int64_t offset = source == FeedSource::Player ? userOffsetNs_.load(std::memory_order_relaxed) : 0;
+    const int64_t delay = buffered + offset;
     if (delay <= 0) return point;
     // The newest frame minus what sits between the write point and the speaker, moved on by the time
-    // since that write at the speed the frames are heard. Never past the newest frame, never further
-    // back than the ring safely holds.
+    // since that write (and on to the moment asked for) at the speed the frames are heard. Never past
+    // the newest frame, never further back than the ring safely holds.
     const double framesPerSecond = point.rateHz * static_cast<double>(speed_[i].load(std::memory_order_relaxed));
     const double maxBehind = static_cast<double>(capacity_ - 2 * kMaxWriteFrames);
     const double behind = std::min(static_cast<double>(delay) * framesPerSecond / kNsPerSecond, maxBehind);
-    const double ahead = static_cast<double>(age) * framesPerSecond / kNsPerSecond;
+    const double ahead = static_cast<double>(age + std::max<int64_t>(aheadNs, 0)) * framesPerSecond / kNsPerSecond;
     const double heard = static_cast<double>(w) - behind + ahead;
     const double first = static_cast<double>(point.begin);
     point.end = heard >= static_cast<double>(w) ? w : heard <= first ? point.begin : static_cast<uint64_t>(heard);
@@ -167,6 +187,7 @@ uint64_t FeedRing::resumeFrom(int64_t nowNs, uint64_t lookbackFrames) const {
 size_t FeedRing::copyRange(uint64_t from, size_t frames, float* out) const {
     if (!out || frames == 0) return 0;
     const uint64_t w = written_.load(std::memory_order_acquire);
+    const float gain = gain_.load(std::memory_order_relaxed);
     for (size_t i = 0; i < frames; ++i) {
         const uint64_t index = from + i;
         float* dst = out + i * kChannels;
@@ -176,8 +197,8 @@ size_t FeedRing::copyRange(uint64_t from, size_t frames, float* out) const {
             continue;
         }
         const float* src = samples_.data() + (index & mask_) * kChannels;
-        dst[0] = src[0];
-        dst[1] = src[1];
+        dst[0] = src[0] * gain;
+        dst[1] = src[1] * gain;
     }
     // Checked after the copy: anything the writer reached while it ran is not trusted.
     const uint64_t after = written_.load(std::memory_order_acquire) + kMaxWriteFrames;

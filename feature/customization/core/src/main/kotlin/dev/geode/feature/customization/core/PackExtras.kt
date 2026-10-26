@@ -660,7 +660,7 @@ internal object PackExtras {
             pack("toy_town", SHADER, extra(SCALE, 0f, 2f, 1f), extra(SIZE, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
             pack("loop_coaster", SHADER, extra(FOG, 0f, 2f, 1f)),
             pack("penrose_climb", SHADER, extra(SCALE, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
-            pack("waterline", SHADER, extra(SCALE, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
+            pack("tide_line", SHADER, extra(SCALE, 0f, 2f, 1f), extra(FOG, 0f, 2f, 1f)),
             pack(
                 "warp_drive",
                 SHADER,

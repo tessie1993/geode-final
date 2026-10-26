@@ -28,8 +28,13 @@ import dev.geode.kernel.ReportFailure
  * - Setting the Automations is the person's edit; what the Automations do by themselves, Style
  *   switching's moves ([CustomizationEvent.StyleDue]), is live and stays out of the history. They are
  *   kept across a change of Style and a reset to Style, and never saved in a preset.
- * - The Visualizer styles `:app` hands in are kept beside the history, not in it, as are A/B
- *   compare's slots; switching to a slot is an edit.
+ * - Hold, and Customize being open, hold Style switching (#282): a due switch is passed over, and the
+ *   engine is told, so its spacing starts again once both let go.
+ * - Every change of Style, however it came, leaves the Style it left on the trail of Styles seen
+ *   ([MAX_STYLES_SEEN] of them); back and forward walk it live, outside the history, the current
+ *   Automations kept.
+ * - The Visualizer styles and the Style library's marks and Favourites `:app` hands in are kept
+ *   beside the history, not in it, as are A/B compare's slots; switching to a slot is an edit.
  * - Layer 2 is edited like everything else and carries over to the next Style; it turns off when the
  *   Style it shows becomes the Style itself.
  * - A change of Style is announced as [CustomizationFact.StyleChanged].
@@ -42,6 +47,14 @@ class CustomizationReducer(
     override fun reduce(
         state: CustomizationState,
         event: CustomizationEvent,
+    ): Next<CustomizationState, CustomizationEffect> {
+        val next = step(state, event)
+        return if (walksTrail(event)) next else seen(state, next)
+    }
+
+    private fun step(
+        state: CustomizationState,
+        event: CustomizationEvent,
     ): Next<CustomizationState, CustomizationEffect> =
         when (event) {
             is CustomizationEvent.Command -> command(if (endsPreview(event.command)) settled(state) else state, event.command)
@@ -49,6 +62,22 @@ class CustomizationReducer(
             is CustomizationEvent.WorkFailed -> Next(state, listOf(ReportFailure(event.failure.message)))
             CustomizationEvent.StyleDue -> autoSwitch(settled(state))
         }
+
+    /** Whether [event] walks the trail of Styles seen, rather than adds to it. */
+    private fun walksTrail(event: CustomizationEvent): Boolean =
+        event is CustomizationEvent.Command &&
+            (event.command == CustomizationCommand.StyleBack || event.command == CustomizationCommand.StyleForward)
+
+    /** [next], with the Style [before] showed added to the trail of Styles seen when the Style changed. */
+    private fun seen(
+        before: CustomizationState,
+        next: Next<CustomizationState, CustomizationEffect>,
+    ): Next<CustomizationState, CustomizationEffect> {
+        val left = before.current
+        if (next.state.current.style == left.style) return next
+        val back = (next.state.stylesBack + left).takeLast(MAX_STYLES_SEEN)
+        return next.copy(state = next.state.copy(stylesBack = back, stylesForward = emptyList()))
+    }
 
     /** Whether [command] settles a drag before it is handled: anything but a preview and the value edits a drag ends with. */
     private fun endsPreview(command: CustomizationCommand): Boolean = command !is CustomizationCommand.Preview && !previewable(command)
@@ -82,7 +111,7 @@ class CustomizationReducer(
         val current = state.current
         val next = command(state, edit).state.current
         if (next == current) return Next(state)
-        return Next(state.copy(current = next, previewFrom = state.previewFrom ?: current), handOver(current, next))
+        return Next(state.copy(current = next, previewFrom = state.previewFrom ?: current), handOver(state, current, next))
     }
 
     /**
@@ -90,13 +119,22 @@ class CustomizationReducer(
      * Modulator, so not in the history. It counts the switch, so the app's picks' shuffle moves on.
      */
     private fun autoSwitch(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
+        if (state.switchingHeld) return Next(state)
         val current = state.current
         val switching = current.automations.style ?: return Next(state)
         val builtIns = styles.styles.map { it.id }
         val pick =
-            Automation.nextStyle(switching, current.style, state.visualizerStyles, builtIns, state.styleSwitches) ?: return Next(state)
+            Automation.nextStyle(
+                switching,
+                current.style,
+                state.visualizerStyles,
+                builtIns,
+                state.styleSwitches,
+                state.styleMarks,
+                state.favouriteStyles,
+            ) ?: return Next(state)
         val switched = Edits.switchStyle(current, styles.manifestOf(current.style), styles.manifestOf(pick.style))
-        return Next(state.copy(current = switched, styleSwitches = pick.played), handOver(current, switched))
+        return Next(state.copy(current = switched, styleSwitches = pick.played), handOver(state, current, switched))
     }
 
     private fun command(
@@ -127,6 +165,11 @@ class CustomizationReducer(
             is CustomizationCommand.SetLayerInfluence -> edit(state, Edits.setLayerInfluence(current, command.influence))
             is CustomizationCommand.SetLayerLoop -> edit(state, Edits.setLayerLoop(current, command.loop))
             is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
+            is CustomizationCommand.UseStyleLibrary -> Next(state.copy(styleMarks = command.marks, favouriteStyles = command.favourites))
+            is CustomizationCommand.HoldStyle -> holding(state, state.copy(styleHeld = command.held))
+            is CustomizationCommand.SetEditing -> holding(state, state.copy(editing = command.editing))
+            CustomizationCommand.StyleBack -> back(state)
+            CustomizationCommand.StyleForward -> forward(state)
             CustomizationCommand.ResetToStyle -> edit(state, Edits.resetToStyle(current, styles.manifestOf(current.style)))
             is CustomizationCommand.ResetValue -> edit(state, Edits.resetValue(current, styles.manifestOf(current.style), command.target))
             is CustomizationCommand.Preview -> preview(state, command.edit)
@@ -174,7 +217,7 @@ class CustomizationReducer(
     ): Next<CustomizationState, CustomizationEffect> {
         val shown = state.current
         val from = state.previewFrom ?: shown
-        val handOver = if (next == shown) emptyList() else handOver(shown, next)
+        val handOver = if (next == shown) emptyList() else handOver(state, shown, next)
         return if (next == from) {
             Next(state.copy(current = next, previewFrom = null), handOver)
         } else {
@@ -187,13 +230,44 @@ class CustomizationReducer(
         state: CustomizationState,
         next: Customization,
     ): Next<CustomizationState, CustomizationEffect> =
-        if (next == state.current) Next(state) else Next(state.copy(current = next), handOver(state.current, next))
+        if (next == state.current) Next(state) else Next(state.copy(current = next), handOver(state, state.current, next))
+
+    /** [next], with the engine told when it changes whether Style switching is held. */
+    private fun holding(
+        state: CustomizationState,
+        next: CustomizationState,
+    ): Next<CustomizationState, CustomizationEffect> =
+        if (next.switchingHeld == state.switchingHeld) {
+            Next(next)
+        } else {
+            Next(next, listOf(Perform(CustomizationWork.Publish(next.current, next.switchingHeld))))
+        }
+
+    /** Back to the last Style seen, as it was then, the current Automations kept; live. */
+    private fun back(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
+        val seen = state.stylesBack.lastOrNull() ?: return Next(state)
+        val shown = seen.copy(automations = state.current.automations)
+        return Next(
+            state.copy(current = shown, stylesBack = state.stylesBack.dropLast(1), stylesForward = state.stylesForward + state.current),
+            handOver(state, state.current, shown),
+        )
+    }
+
+    /** Forward again to the Style back left, as it was then, the current Automations kept; live. */
+    private fun forward(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
+        val seen = state.stylesForward.lastOrNull() ?: return Next(state)
+        val shown = seen.copy(automations = state.current.automations)
+        return Next(
+            state.copy(current = shown, stylesBack = state.stylesBack + state.current, stylesForward = state.stylesForward.dropLast(1)),
+            handOver(state, state.current, shown),
+        )
+    }
 
     private fun undo(state: CustomizationState): Next<CustomizationState, CustomizationEffect> {
         val previous = state.undo.lastOrNull() ?: return Next(state)
         return Next(
             state.copy(current = previous, undo = state.undo.dropLast(1), redo = state.redo + state.current),
-            handOver(state.current, previous),
+            handOver(state, state.current, previous),
         )
     }
 
@@ -201,24 +275,33 @@ class CustomizationReducer(
         val following = state.redo.lastOrNull() ?: return Next(state)
         return Next(
             state.copy(current = following, undo = state.undo + state.current, redo = state.redo.dropLast(1)),
-            handOver(state.current, following),
+            handOver(state, state.current, following),
         )
     }
 
     private fun handOver(
+        state: CustomizationState,
         from: Customization,
         to: Customization,
     ): List<CustomizationEffect> {
-        val publish = Perform(CustomizationWork.Publish(to))
+        val publish = Perform(CustomizationWork.Publish(to, state.switchingHeld))
         return if (from.style == to.style) listOf(publish) else listOf(publish, Emit(CustomizationFact.StyleChanged(to.style)))
     }
 
     companion object {
+        /** How many Styles the trail of Styles seen keeps. */
+        const val MAX_STYLES_SEEN: Int = 64
+
         /**
          * What the store does once, when it is built from [initial]: convert the presets an older Geode
-         * saved, and hand the starting Customization to the engine, which has none until then.
+         * saved, hand the starting Customization to the engine, which has none until then, and follow
+         * the engine's word that Style switching is due.
          */
         fun start(initial: CustomizationState): List<CustomizationEffect> =
-            listOf(Perform(CustomizationWork.UpgradePresets), Perform(CustomizationWork.Publish(initial.current)))
+            listOf(
+                Perform(CustomizationWork.UpgradePresets),
+                Perform(CustomizationWork.Publish(initial.current, initial.switchingHeld)),
+                Perform(CustomizationWork.FollowStyleCues),
+            )
     }
 }

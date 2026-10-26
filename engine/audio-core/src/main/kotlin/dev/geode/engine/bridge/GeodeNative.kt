@@ -405,6 +405,9 @@ object GeodeNative {
 
     external fun vizReleaseScenes(handle: Long): Int
 
+    /** How many times the Customization's Style switching has been due; 0 without a plan. */
+    external fun vizStylesDue(handle: Long): Int
+
     /** Not RT-safe on the native side: only call this on a dsp handle not yet passed to [playerSetDsp]. */
     external fun dspSetSampleRate(
         handle: Long,
@@ -463,6 +466,12 @@ object GeodeNative {
         feed: Long,
     ): Int
 
+    /** When the next frame is expected on screen, in System.nanoTime nanoseconds; 0 draws for now. */
+    external fun vizSetPresentTime(
+        handle: Long,
+        presentNs: Long,
+    ): Int
+
     /** Freeze reactions (#366) for a Visual reading a feed: its features and audio window hold still. */
     external fun vizSetReactionsHeld(
         handle: Long,
@@ -496,6 +505,25 @@ object GeodeNative {
         speed: Float,
     ): Int
 
+    /** [route] is a GEODE_FEED_ROUTE_* code ([dev.geode.engine.audio.OutputRoute.code]). */
+    external fun feedSetRoute(
+        handle: Long,
+        route: Int,
+    ): Int
+
+    /** The Sensitivity in dB (-12..24): a gain on the audio before the analysis and every Style reads it. */
+    external fun feedSetGain(
+        handle: Long,
+        gainDb: Float,
+    ): Int
+
+    /** The person's sync offset in microseconds; positive draws the player's picture later. */
+    external fun feedSetUserOffset(
+        handle: Long,
+        offsetUs: Long,
+    ): Int
+
+    /** The gain on [source]'s window for the scenes, after the Sensitivity; never on the analysis. */
     external fun feedSetWindowGain(
         handle: Long,
         source: Int,

@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.feature.capture.api.Capture
 import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.customization.handlers.StyleCues
 import dev.geode.feature.diagnostics.api.Diagnostics
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.playback.api.Playback
@@ -39,6 +40,8 @@ class ShellViewModel
         val capture: Capture,
         /** The Customization snapshots the live Visual reads (ADR-0004). */
         val snapshots: NativeSnapshots,
+        /** The live Visual's word that Style switching is due (#282). */
+        val styleCues: StyleCues,
         saved: SavedStateHandle,
     ) : ViewModel() {
         init {

@@ -183,6 +183,11 @@ class NativeViz(
         live { h -> GeodeNative.vizSetReactionsHeld(h, held) }
     }
 
+    /** When the next frame is expected on screen (System.nanoTime nanoseconds); 0 draws for now. */
+    fun setPresentTime(presentNanos: Long) {
+        live { h -> GeodeNative.vizSetPresentTime(h, presentNanos) }
+    }
+
     fun setLfoConfigs(configs: List<LfoConfig>) {
         live { h ->
             configs.take(LfoEngine.SLOTS).forEachIndexed { slot, c -> GeodeNative.vizSetLfo(h, slot, ModConfigCodec.packLfo(c)) }
@@ -262,6 +267,9 @@ class NativeViz(
     fun releaseScenes() {
         live { h -> GeodeNative.vizReleaseScenes(h) }
     }
+
+    /** How many times the Customization's Style switching has been due since its evaluation started over. */
+    fun stylesDue(): Int = liveOr(0) { h -> GeodeNative.vizStylesDue(h) }
 
     /** Full-frame RGBA8 overlay drawn last, premultiplied alpha; null clears. Any thread; latched for the next frame. */
     fun setOverlay(

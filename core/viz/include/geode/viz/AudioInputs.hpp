@@ -7,7 +7,7 @@
 
 namespace geode::viz {
 
-// The audio inputs every shader Style reads from uAudioTex (lib_audio.glsl): a log-frequency spectrum
+// The audio inputs every shader Style reads from uAudioTex (lib_scene_uniforms.glsl): a log-frequency spectrum
 // normalised on one scale, with a peak-hold row, and an oscilloscope that stands still (#300).
 //
 // The texture is kWidth texels by kRows rows. Rows 1-2 (read at y = 0.25) are the spectrum and rows 5-6

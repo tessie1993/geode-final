@@ -15,6 +15,8 @@
 
 namespace geode::viz {
 
+class SharedInputs;
+
 enum class SceneFamily { Shader, Milkdrop, Fluid };
 
 // Port of Scene.kt plus the optional hooks the renderer wires by capability rather than by class.
@@ -34,6 +36,14 @@ public:
     // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
     virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
+    // The same frame's longer span of interleaved stereo audio, ending where the window ends, of which the
+    // newest `fresh` frames were heard since the last frame (0 when that is not known). For a scene that
+    // measures the audio itself and must not miss what fell between two windows (MilkDrop).
+    virtual void acceptPcmSpan(const float* interleaved, int frames, int fresh) {
+        (void) interleaved;
+        (void) frames;
+        (void) fresh;
+    }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
@@ -44,6 +54,12 @@ public:
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
     // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
     virtual void setQuality(const quality::Budget& budget) { (void) budget; }
+    // The renderer's shared Style inputs (SharedInputs.hpp), handed over before init(); a shader Style
+    // binds the ones its pack declares.
+    virtual void setSharedInputs(SharedInputs* inputs) { (void) inputs; }
+    // The Style starts to be drawn: it became Layer 1 or Layer 2. Its visit clocks start over and its
+    // kept frames are let go (StyleInputs.hpp).
+    virtual void beginVisit() {}
     // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just
     // before draw(). A Style that draws through targets of its own comes back to this one from here
     // rather than asking the driver: a glGet makes a threaded driver wait for its queue (#311). The

@@ -5,6 +5,7 @@ import android.media.MediaCodec
 import android.net.Uri
 import dev.geode.RingLog
 import dev.geode.analysis.AnalysisCache
+import dev.geode.analysis.BeatTuning
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.analysis.OfflineAnalyzer
 import dev.geode.engine.types.Millis
@@ -30,7 +31,6 @@ import dev.geode.feature.studio.handlers.FrozenLook
 import dev.geode.feature.studio.handlers.RenderEngine
 import dev.geode.playback.toUri
 import dev.geode.render.SceneFactory
-import dev.geode.render.VisualSafety
 import dev.geode.render.scene.SceneIds
 import dev.geode.visuals.EngineSnapshots
 import kotlinx.coroutines.CancellationException
@@ -189,7 +189,7 @@ class NativeRenderEngine(
         onProgress: (Float) -> Unit,
     ): FeatureTimeline {
         val sensitivity = values.analysis.beatSensitivity
-        val gap = VisualSafety.beatMinIntervalMs(values.analysis.beatMinIntervalMs)
+        val gap = BeatTuning.clampIntervalMs(values.analysis.beatMinIntervalMs)
         val analysed =
             withContext(work) {
                 AnalysisCache.load(context, uri, sensitivity, gap)
