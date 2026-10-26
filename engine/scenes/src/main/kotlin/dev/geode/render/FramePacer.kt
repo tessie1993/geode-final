@@ -1,9 +1,9 @@
 package dev.geode.render
 
+import android.annotation.TargetApi
 import android.os.Build
 import android.view.Choreographer
 import android.view.Surface
-import androidx.annotation.RequiresApi
 import kotlin.math.ceil
 
 /**
@@ -260,13 +260,13 @@ class FramePacer(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) unpostTimeline(instance) else instance.removeFrameCallback(callback)
     }
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
     private fun postTimeline(instance: Choreographer) = instance.postVsyncCallback(timelineCallback as TimelineCallback)
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
     private fun unpostTimeline(instance: Choreographer) = instance.removeVsyncCallback(timelineCallback as TimelineCallback)
 
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
     private inner class TimelineCallback : Choreographer.VsyncCallback {
         override fun onVsync(data: Choreographer.FrameData) {
             this@FramePacer.onVsync(data.frameTimeNanos, data.preferredFrameTimeline.expectedPresentationTimeNanos)
