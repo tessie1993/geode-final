@@ -62,6 +62,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassMessage
+import dev.geode.design.glass.GlassTopBar
 import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.GroupRow
 import dev.geode.feature.library.api.IndexStatus
@@ -143,23 +144,18 @@ private fun TopBar(
     model: LibraryModel,
     send: (LibraryCommand) -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = LibraryDimens.small, vertical = LibraryDimens.small),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // The plain top bar every page has (#355): the way back inside the Library, and the title.
+    val back: (@Composable () -> Unit)? =
         if (model.canGoBack) {
-            IconButton(onClick = { send(LibraryCommand.Back) }) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.library_back))
+            {
+                IconButton(onClick = { send(LibraryCommand.Back) }) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.library_back))
+                }
             }
+        } else {
+            null
         }
-        Text(
-            title(model),
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(horizontal = LibraryDimens.small),
-        )
-    }
+    GlassTopBar(title(model), navigation = back)
 }
 
 @Composable

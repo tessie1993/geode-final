@@ -85,6 +85,7 @@
     <string name="home_shortcut_studio">Make a video</string>
     <string name="home_shortcut_studio_hint">Renders and recordings</string>
     <string name="player_close">Close the player</string>
+    <string name="sheet_close">Close the sheet</string>
 
     
     

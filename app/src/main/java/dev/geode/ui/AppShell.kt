@@ -6,6 +6,13 @@ import android.content.ContextWrapper
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +69,7 @@ import dev.geode.design.glass.CalmBackdrop
 import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassButton
 import dev.geode.design.glass.GlassCard
+import dev.geode.design.glass.GlassCrossfade
 import dev.geode.design.glass.GlassDialog
 import dev.geode.design.glass.GlassEdge
 import dev.geode.design.glass.GlassKind
@@ -74,11 +82,14 @@ import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSheet
 import dev.geode.design.glass.GlassSource
 import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.GlassTokens
 import dev.geode.design.glass.GlassTone
 import dev.geode.design.glass.GlassTopBar
+import dev.geode.design.glass.GlassVisualSheet
 import dev.geode.design.glass.glassSource
 import dev.geode.design.glass.glassSurface
 import dev.geode.design.glass.rememberGlassSource
+import dev.geode.design.theme.LocalReducedMotion
 import dev.geode.engine.types.Millis
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.ui.LibraryRoute
@@ -238,30 +249,33 @@ fun AppRoot() {
         // Set by Settings > Help to replay the intro tour; first-run setup shows it by itself (#187).
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
         val page: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
-            when (ui.place) {
-                Place.HOME -> HomeScreen(shell, loaded, onResume = { resumeLastPlayed(shell.playback) }, onOpen = open)
-                Place.MUSIC ->
-                    if (twoPane) {
-                        Row(Modifier.fillMaxSize()) {
-                            Box(Modifier.weight(1f)) { MusicLibrary(shell) }
-                            VerticalDivider()
-                            Box(Modifier.weight(1f)) { PlayerControls(shell) }
+            // Changing place cross-fades (#355); the place being left is drawn as it was while it fades.
+            PlaceFade(ui.place) { place ->
+                when (place) {
+                    Place.HOME -> HomeScreen(shell, loaded, onResume = { resumeLastPlayed(shell.playback) }, onOpen = open)
+                    Place.MUSIC ->
+                        if (twoPane) {
+                            Row(Modifier.fillMaxSize()) {
+                                Box(Modifier.weight(1f)) { MusicLibrary(shell) }
+                                VerticalDivider()
+                                Box(Modifier.weight(1f)) { PlayerControls(shell) }
+                            }
+                        } else {
+                            MusicLibrary(shell)
                         }
-                    } else {
-                        MusicLibrary(shell)
-                    }
-                Place.VISUALS ->
-                    // Full-screen mode hosts the Visual itself, so it is never in two places at once.
-                    VisualsPlace(
-                        shell,
-                        onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) },
-                        // Loads the MilkDrop preset the Visual shows again from its file (#382).
-                        onReloadMilkPreset = { visualizerView.visualizerRenderer.reloadCurrentMilkPreset() },
-                    ) {
-                        if (!ui.fullScreen) visual(null)
-                    }
-                Place.STUDIO -> StudioPlace(shell)
-                Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
+                    Place.VISUALS ->
+                        // Full-screen mode hosts the Visual itself, so it is never in two places at once.
+                        VisualsPlace(
+                            shell,
+                            onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) },
+                            // Loads the MilkDrop preset the Visual shows again from its file (#382).
+                            onReloadMilkPreset = { visualizerView.visualizerRenderer.reloadCurrentMilkPreset() },
+                        ) {
+                            if (!ui.fullScreen) visual(null)
+                        }
+                    Place.STUDIO -> StudioPlace(shell)
+                    Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
+                }
             }
         }
         val content: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
@@ -323,9 +337,10 @@ fun AppRoot() {
             if (!inPip) {
                 RecordingProjectHost(shell)
                 val sheetOverVisual = ui.place == Place.VISUALS || (ui.fullScreen && !visualsOff)
-                PlayerSheet(shell, ui.sheet, if (sheetOverVisual) GlassBackdrop.Visual else GlassBackdrop.Live(source))
-                ui.banner?.let { banner ->
-                    FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
+                PlayerSheet(shell, ui.sheet, overVisual = sheetOverVisual, source)
+                // The banner fades in and out, over the live Visual too (#355).
+                GlassCrossfade(ui.banner, label = "banner") { banner ->
+                    banner?.let { FailureBanner(it, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding()) }
                 }
                 DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
             }
@@ -437,24 +452,51 @@ private fun PlayerControls(
 }
 
 /**
- * The sheet the App UI has open, if any: the Queue, Tools, or Customize over full-screen mode (owner
- * decision on #17: Customize is both a Visuals sub-tab and this sheet).
+ * The sheet the App UI has open, if any: the Queue, Tools, Capture, or Customize over full-screen mode
+ * (owner decision on #17: Customize is both a Visuals sub-tab and this sheet). Over a page a sheet frosts
+ * the page's [source] and slides up as Material's do. Over the live Visual ([overVisual]) it fades in and
+ * out in place instead, never sliding (#355); Customize there is its own panel, with no dimming, so the
+ * Visual it changes stays in full view.
  */
 @Composable
 private fun PlayerSheet(
     shell: ShellViewModel,
     sheet: Sheet?,
-    backdrop: GlassBackdrop,
+    overVisual: Boolean,
+    source: GlassSource,
 ) {
-    if (sheet == null) return
     val close = { shell.appUi.send(AppUiCommand.CloseSheet) }
-    GlassSheet(onDismissRequest = close, backdrop = backdrop) {
-        when (sheet) {
-            Sheet.QUEUE -> QueueRoute(shell.playback)
-            Sheet.LISTENING -> ListeningRoute(shell.playback, elapsedNow = ::elapsedNow)
-            Sheet.CUSTOMIZE -> CustomizePanel(shell, onHide = close, onBrowsePresets = close)
-            Sheet.CAPTURE -> CaptureRoute(shell.capture)
+    if (overVisual) {
+        // Drawn in the app's own window, so Back must close it before the page under it sees Back.
+        BackHandler(enabled = sheet != null, onBack = close)
+        GlassCrossfade(sheet, label = "visualSheet") { shown ->
+            when (shown) {
+                null -> Unit
+                Sheet.CUSTOMIZE ->
+                    CustomizePanel(shell, onHide = close, onBrowsePresets = close, modifier = Modifier.navigationBarsPadding())
+                else ->
+                    GlassVisualSheet(onDismissRequest = close, closeLabel = stringResource(R.string.sheet_close)) {
+                        SheetContent(shell, shown, close)
+                    }
+            }
         }
+    } else if (sheet != null) {
+        GlassSheet(onDismissRequest = close, backdrop = GlassBackdrop.Live(source)) { SheetContent(shell, sheet, close) }
+    }
+}
+
+/** What [sheet] holds. */
+@Composable
+private fun SheetContent(
+    shell: ShellViewModel,
+    sheet: Sheet,
+    close: () -> Unit,
+) {
+    when (sheet) {
+        Sheet.QUEUE -> QueueRoute(shell.playback)
+        Sheet.LISTENING -> ListeningRoute(shell.playback, elapsedNow = ::elapsedNow)
+        Sheet.CUSTOMIZE -> CustomizePanel(shell, onHide = close, onBrowsePresets = close)
+        Sheet.CAPTURE -> CaptureRoute(shell.capture)
     }
 }
 
@@ -486,27 +528,22 @@ private fun FullScreenVisual(
                 keepScreenOn = keepScreenOn,
                 onToggleControls = toggleControls,
                 onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) },
-            )
-            // Tonal, so their labels sit on an opaque fill and read over any Visual.
-            GlassButton(
-                onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
-                filled = false,
-                modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(GlassSpacing.Large),
-            ) { Text(stringResource(R.string.visuals_open_customize)) }
-            GlassButton(
-                onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
-                filled = false,
-                modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(GlassSpacing.Large),
-            ) { Text(stringResource(R.string.visuals_open_capture)) }
-            // Clear of the overlay's bars, top and bottom.
-            RecordControlHost(shell, Modifier.align(Alignment.CenterEnd).navigationBarsPadding().padding(GlassSpacing.Large))
-            GlassButton(
-                onClick = { onHeldChange(!reactionsHeld) },
-                filled = false,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(GlassSpacing.Large),
             ) {
-                Text(stringResource(if (reactionsHeld) R.string.visuals_reactions_unfreeze else R.string.visuals_reactions_freeze))
+                // On the overlay's bottom bar between the Style steps, so they show, hide and fade with
+                // its controls and never sit on top of them. Tonal: their labels read over any Visual.
+                GlassButton(onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) }, filled = false) {
+                    Text(stringResource(R.string.visuals_open_capture))
+                }
+                GlassButton(onClick = { onHeldChange(!reactionsHeld) }, filled = false) {
+                    Text(stringResource(if (reactionsHeld) R.string.visuals_reactions_unfreeze else R.string.visuals_reactions_freeze))
+                }
+                GlassButton(onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) }, filled = false) {
+                    Text(stringResource(R.string.visuals_open_customize))
+                }
             }
+            // Clear of the overlay's bars, top and bottom. It stays while the controls hide, so a
+            // recording can always be stopped.
+            RecordControlHost(shell, Modifier.align(Alignment.CenterEnd).navigationBarsPadding().padding(GlassSpacing.Large))
         }
     }
 }
@@ -536,13 +573,43 @@ private fun PlainPlayer(
     }
 }
 
-/** What lies behind each place: the playing song's art behind Home, the calm backdrop elsewhere. */
+/**
+ * What lies behind each place: the playing song's art behind Home, the calm backdrop elsewhere. It
+ * cross-fades with the page when the place changes.
+ */
 @Composable
 private fun PlaceBackdrop(
     place: Place,
     artwork: ImageBitmap?,
 ) {
-    if (place == Place.HOME) ArtworkBackdrop(artwork, Modifier.fillMaxSize()) else CalmBackdrop()
+    GlassCrossfade(place == Place.HOME, Modifier.fillMaxSize(), label = "placeBackdrop") { home ->
+        if (home) ArtworkBackdrop(artwork, Modifier.fillMaxSize()) else CalmBackdrop()
+    }
+}
+
+/**
+ * Changing place cross-fades with [content] drawn for each place (#355). Into or out of Visuals it
+ * switches at once: the live Visual is a surface of its own that cannot fade with the page, so a fade
+ * there would leave it hanging over the next place. Under reduced motion every change snaps.
+ */
+@Composable
+private fun PlaceFade(
+    place: Place,
+    content: @Composable (Place) -> Unit,
+) {
+    val reduced = LocalReducedMotion.current
+    AnimatedContent(
+        targetState = place,
+        modifier = Modifier.fillMaxSize(),
+        transitionSpec = {
+            if (reduced || initialState == Place.VISUALS || targetState == Place.VISUALS) {
+                EnterTransition.None togetherWith ExitTransition.None
+            } else {
+                fadeIn(tween(GlassTokens.FADE_MILLIS)) togetherWith fadeOut(tween(GlassTokens.FADE_MILLIS))
+            }
+        },
+        label = "place",
+    ) { shown -> content(shown) }
 }
 
 /** The playing song's embedded art, loaded off the main thread and cached; null without a song or art. */
@@ -730,23 +797,29 @@ private fun Shortcut(
     }
 }
 
+/** Playback's notice above the page, for a while or until dismissed; it fades in and out (#355). */
 @Composable
 private fun PlaybackNoticeBanner(viewModel: EngineHoldViewModel) {
     val notice by viewModel.playbackNotice.collectAsStateWithLifecycle()
-    val message = notice ?: return
 
-    LaunchedEffect(message) {
-        kotlinx.coroutines.delay(NOTICE_VISIBLE_MS)
-        viewModel.clearPlaybackNotice()
+    LaunchedEffect(notice) {
+        if (notice != null) {
+            delay(NOTICE_VISIBLE_MS)
+            viewModel.clearPlaybackNotice()
+        }
     }
 
-    GlassNotice(
-        message,
-        Modifier.padding(horizontal = GlassSpacing.Medium, vertical = GlassSpacing.Small),
-        tone = GlassTone.ERROR,
-        actionLabel = stringResource(R.string.notice_dismiss),
-        onAction = viewModel::clearPlaybackNotice,
-    )
+    GlassCrossfade(notice, label = "playbackNotice") { message ->
+        if (message != null) {
+            GlassNotice(
+                message,
+                Modifier.padding(horizontal = GlassSpacing.Medium, vertical = GlassSpacing.Small),
+                tone = GlassTone.ERROR,
+                actionLabel = stringResource(R.string.notice_dismiss),
+                onAction = viewModel::clearPlaybackNotice,
+            )
+        }
+    }
 }
 
 private const val NOTICE_VISIBLE_MS = 8_000L

@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,7 +51,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassCard
 import dev.geode.design.glass.GlassLoading
 import dev.geode.design.glass.GlassMessage
 import dev.geode.feature.studio.api.EditCommand
@@ -174,7 +177,7 @@ private fun SavedCuts(
 
 @Composable
 private fun FolderMissing(onAction: (StudioAction) -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
+    GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(StudioDimens.padding), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
             Text(stringResource(R.string.studio_folder_missing))
             OutlinedButton(onClick = { onAction(StudioAction.PickSaveFolder) }) { Text(stringResource(R.string.studio_choose_folder)) }
@@ -264,7 +267,8 @@ private fun ProjectMenu(
 /**
  * The delete confirmation (owner decision on #21): a Project with videos asks "Delete N videos too?"
  * and offers to keep them by moving them to another Project; nothing is deleted silently. [onChoice]
- * gets null when the user backs out. Drawn as a card so the screenshots can show it.
+ * gets null when the user backs out. Drawn as a card so the screenshots can show it: matte glass, since
+ * it opens in a dialog over anything.
  */
 @Composable
 internal fun DeleteProjectPrompt(
@@ -272,7 +276,7 @@ internal fun DeleteProjectPrompt(
     onChoice: (VideosOnDelete?) -> Unit,
 ) {
     var moveTo by remember(model) { mutableStateOf(model.moveTo) }
-    Card {
+    GlassCard(backdrop = GlassBackdrop.Unknown, contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(StudioDimens.padding), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
             Text(stringResource(R.string.studio_delete_title, model.project.name), style = MaterialTheme.typography.titleLarge)
             if (model.videos == 0) {

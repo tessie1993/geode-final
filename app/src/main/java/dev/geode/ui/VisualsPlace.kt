@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
 import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassCrossfade
 import dev.geode.design.glass.GlassEdge
 import dev.geode.design.glass.GlassKind
 import dev.geode.design.glass.GlassSpacing
@@ -83,40 +84,66 @@ fun VisualsPlace(
     val context = LocalContext.current
     Box(Modifier.fillMaxSize()) {
         visual()
-        when (page) {
-            VisualsPage.PRESETS ->
-                PresetsRoute(shell.visuals, onShare = { sharePreset(context, it) }, onBack = { page = VisualsPage.TABS })
-            VisualsPage.MILKDROP -> {
-                BackHandler { page = VisualsPage.TABS }
-                MilkdropRoute(shell.visuals, onReload = onReloadMilkPreset)
-            }
-            VisualsPage.TABS ->
-                Column(Modifier.fillMaxSize()) {
-                    // Over the live Visual: matte glass until the engine frosts it (#349).
-                    PrimaryTabRow(
-                        selectedTabIndex = tab.ordinal,
-                        modifier = Modifier.glassSurface(GlassKind.BAR, RectangleShape, GlassBackdrop.Visual, GlassEdge.NONE),
-                        containerColor = Color.Transparent,
-                    ) {
-                        VisualsTab.entries.forEach { entry ->
-                            Tab(selected = entry == tab, onClick = { tab = entry }, text = { Text(stringResource(entry.label)) })
-                        }
-                    }
-                    when (tab) {
-                        VisualsTab.STYLE -> {
-                            VisualsRoute(shell.visuals, onEnterFullScreen = onEnterFullScreen, modifier = Modifier.weight(1f))
-                            GlassButton(
-                                onClick = { page = VisualsPage.MILKDROP },
-                                filled = false,
-                                modifier = Modifier.padding(GlassSpacing.Small),
-                            ) { Text(stringResource(R.string.visuals_milkdrop)) }
-                        }
-                        VisualsTab.CUSTOMIZE ->
-                            CustomizePanel(shell, onHide = { tab = VisualsTab.STYLE }, onBrowsePresets = { page = VisualsPage.PRESETS })
-                        VisualsTab.MODULATORS -> AutomationPanel(shell)
-                    }
+        // Panels over the live Visual fade from one to the next, never slide (#355); the Visual itself
+        // stays as it is underneath.
+        GlassCrossfade(page, label = "visualsPage") { shown ->
+            when (shown) {
+                VisualsPage.PRESETS ->
+                    PresetsRoute(shell.visuals, onShare = { sharePreset(context, it) }, onBack = { page = VisualsPage.TABS })
+                VisualsPage.MILKDROP -> {
+                    BackHandler { page = VisualsPage.TABS }
+                    MilkdropRoute(shell.visuals, onReload = onReloadMilkPreset)
                 }
+                VisualsPage.TABS ->
+                    Column(Modifier.fillMaxSize()) {
+                        // Over the live Visual: matte glass until the engine frosts it (#349).
+                        PrimaryTabRow(
+                            selectedTabIndex = tab.ordinal,
+                            modifier = Modifier.glassSurface(GlassKind.BAR, RectangleShape, GlassBackdrop.Visual, GlassEdge.NONE),
+                            containerColor = Color.Transparent,
+                        ) {
+                            VisualsTab.entries.forEach { entry ->
+                                Tab(selected = entry == tab, onClick = { tab = entry }, text = { Text(stringResource(entry.label)) })
+                            }
+                        }
+                        GlassCrossfade(tab, Modifier.weight(1f), label = "visualsTab") { open ->
+                            VisualsTabPanel(
+                                shell,
+                                open,
+                                onEnterFullScreen = onEnterFullScreen,
+                                onOpenMilkdrop = { page = VisualsPage.MILKDROP },
+                                onOpenPresets = { page = VisualsPage.PRESETS },
+                                onHideCustomize = { tab = VisualsTab.STYLE },
+                            )
+                        }
+                    }
+            }
         }
+    }
+}
+
+/** What one of the Visuals tab's sub-tabs shows under the tab row. */
+@Composable
+private fun VisualsTabPanel(
+    shell: ShellViewModel,
+    tab: VisualsTab,
+    onEnterFullScreen: () -> Unit,
+    onOpenMilkdrop: () -> Unit,
+    onOpenPresets: () -> Unit,
+    onHideCustomize: () -> Unit,
+) {
+    when (tab) {
+        VisualsTab.STYLE ->
+            Column(Modifier.fillMaxSize()) {
+                VisualsRoute(shell.visuals, onEnterFullScreen = onEnterFullScreen, modifier = Modifier.weight(1f))
+                GlassButton(
+                    onClick = onOpenMilkdrop,
+                    filled = false,
+                    modifier = Modifier.padding(GlassSpacing.Small),
+                ) { Text(stringResource(R.string.visuals_milkdrop)) }
+            }
+        VisualsTab.CUSTOMIZE -> CustomizePanel(shell, onHide = onHideCustomize, onBrowsePresets = onOpenPresets)
+        VisualsTab.MODULATORS -> AutomationPanel(shell)
     }
 }
 

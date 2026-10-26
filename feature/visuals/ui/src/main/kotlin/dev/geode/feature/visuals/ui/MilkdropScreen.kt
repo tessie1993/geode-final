@@ -265,11 +265,7 @@ private fun PresetPlayback.label(): String =
 private fun ShelfTitle(
     @StringRes text: Int,
 ) {
-    Text(
-        stringResource(text),
-        modifier = Modifier.padding(top = GlassSpacing.Small, start = GlassSpacing.Small),
-        style = MaterialTheme.typography.titleMedium,
-    )
+    SectionTitle(stringResource(text))
 }
 
 @Composable

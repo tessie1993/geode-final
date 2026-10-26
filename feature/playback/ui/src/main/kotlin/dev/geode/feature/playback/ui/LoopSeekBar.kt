@@ -105,9 +105,11 @@ private class SeekBarColors(
             val scheme = MaterialTheme.colorScheme
             return SeekBarColors(
                 played = scheme.primary,
-                unplayed = scheme.onSurfaceVariant.copy(alpha = UNPLAYED_ALPHA),
+                // The outline colour keeps 3:1 on every glass and backdrop (WCAG 1.4.11), so the line
+                // still to play is never lost on bright art; the playhead is the full text colour.
+                unplayed = scheme.outline,
                 loop = scheme.secondary.copy(alpha = LOOP_ALPHA),
-                playhead = scheme.onSurface.copy(alpha = PLAYHEAD_ALPHA),
+                playhead = scheme.onSurface,
             )
         }
     }

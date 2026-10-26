@@ -2,17 +2,19 @@ package dev.geode.feature.studio.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import dev.geode.design.glass.GlassCard
 
 /**
  * Studio's own first-run step (owner decision on #21): where Studio saves its videos, picked with the
@@ -32,7 +34,7 @@ fun StudioSetupScreen(
     ) {
         Text(stringResource(R.string.studio_setup_title), style = MaterialTheme.typography.headlineSmall)
         Text(stringResource(R.string.studio_setup_body))
-        Card(Modifier.fillMaxWidth()) {
+        GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
             Column(Modifier.padding(StudioDimens.padding), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
                 Text(stringResource(R.string.studio_setup_folder), style = MaterialTheme.typography.titleSmall)
                 Text(model.folder ?: stringResource(R.string.studio_setup_no_folder))

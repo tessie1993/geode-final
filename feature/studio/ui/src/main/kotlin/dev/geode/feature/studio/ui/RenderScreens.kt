@@ -4,6 +4,7 @@ import android.content.ClipData
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -15,7 +16,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
@@ -33,13 +33,19 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassCard
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
@@ -69,7 +75,7 @@ fun RenderQueue(
     modifier: Modifier = Modifier,
 ) {
     if (model.batches.isEmpty()) return
-    Card(modifier.fillMaxWidth()) {
+    GlassCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
         Column(Modifier.padding(StudioDimens.padding), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -199,7 +205,13 @@ fun RenderSetupDialog(
     onSaveChapters: (ChapterFile) -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxWidth().padding(StudioDimens.padding), shape = MaterialTheme.shapes.large) {
+        // Matte glass: a dialog opens over anything, so nothing behind it may show through its text.
+        val shape = MaterialTheme.shapes.large
+        Surface(
+            Modifier.fillMaxWidth().padding(StudioDimens.padding).glassSurface(GlassKind.SHEET, shape, GlassBackdrop.Unknown),
+            shape = shape,
+            color = Color.Transparent,
+        ) {
             Column(
                 Modifier.verticalScroll(rememberScrollState()).padding(StudioDimens.padding),
                 verticalArrangement = Arrangement.spacedBy(StudioDimens.gap),

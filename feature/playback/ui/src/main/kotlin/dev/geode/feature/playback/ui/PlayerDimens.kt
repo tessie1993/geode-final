@@ -19,15 +19,14 @@ internal object PlayerDimens {
     val miniProgress = 2.dp
 
     // The seek bar (#147), with the A-B loop shaded on it.
-    val seekBarHeight = 40.dp
+    // At least a touch target tall (#355), though the line drawn is thin.
+    val seekBarHeight = 48.dp
     val seekLine = 3.dp
     val playhead = 2.dp
 }
 
-/** How faint the part of the seek bar still to play is, the A-B loop's shading and the playhead. */
-internal const val UNPLAYED_ALPHA = 0.45f
+/** How faint the A-B loop's shading on the seek bar is. */
 internal const val LOOP_ALPHA = 0.28f
-internal const val PLAYHEAD_ALPHA = 0.85f
 
 /** How far through [position] is of [duration], from 0 to 1. */
 internal fun fraction(

@@ -76,7 +76,7 @@ fun VisualsRoute(
  * there; this screen's own toggle (its accessibility action) reports [onToggleControls]. While it is on
  * screen the system bars are hidden (a swipe brings them back for a moment), and the screen stays awake
  * when the person's Keep screen on setting ([keepScreenOn], read from Settings by `:app`) asks for it.
- * Back, or the leave button, is [onExit].
+ * Back, or the leave button, is [onExit]. [actions] are `:app`'s own buttons, set on the bottom bar.
  */
 @Composable
 fun FullScreenVisualRoute(
@@ -86,6 +86,7 @@ fun FullScreenVisualRoute(
     onToggleControls: () -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit = {},
 ) {
     val state by visuals.state.collectAsStateWithLifecycle()
     BackHandler(onBack = onExit)
@@ -101,6 +102,7 @@ fun FullScreenVisualRoute(
             }
         },
         modifier,
+        actions,
     )
 }
 

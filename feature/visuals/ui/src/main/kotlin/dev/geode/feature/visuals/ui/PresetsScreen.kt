@@ -172,7 +172,8 @@ private fun Trail(
     trail: List<Crumb>,
     onAction: (PresetsAction) -> Unit,
 ) {
-    FlowRow {
+    // On glass, like everything over the live Visual.
+    FlowRow(Modifier.fillMaxWidth().glass().padding(horizontal = GlassSpacing.Small)) {
         TextButton(onClick = { onAction(PresetsAction.Open(PresetPlace.TOP)) }) { Text(stringResource(R.string.presets_top)) }
         for (crumb in trail.dropLast(1)) {
             Text("/", Modifier.align(Alignment.CenterVertically), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -192,10 +193,10 @@ private fun FolderTitle(
     var naming by rememberSaveable { mutableStateOf(false) }
     val title =
         model.trail.lastOrNull()?.let { it.name ?: stringResource(R.string.presets_built_in) } ?: stringResource(R.string.presets_folders)
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f)) { SectionTitle(title) }
-        if (model.editable) TextButton(onClick = { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
+    val newFolder: @Composable () -> Unit = {
+        TextButton(onClick = { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
     }
+    SectionTitle(title, action = newFolder.takeIf { model.editable })
     if (naming) {
         TextDialog(
             title = stringResource(R.string.visuals_new_folder),

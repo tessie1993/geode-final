@@ -27,6 +27,8 @@ import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import dev.geode.design.glass.GlassCard
 import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSize
@@ -74,7 +76,8 @@ internal fun SliderRow(
 ) {
     Column {
         Text(label, style = MaterialTheme.typography.labelMedium)
-        Slider(value = value, onValueChange = onChange, valueRange = range)
+        // Named for accessibility too, so the slider is never read out as a bare percentage.
+        Slider(value = value, onValueChange = onChange, modifier = Modifier.semantics { contentDescription = label }, valueRange = range)
     }
 }
 
@@ -105,7 +108,7 @@ internal fun <T> ChoiceRow(
                 FilterChip(
                     selected = isChosen,
                     onClick = { onSelect(option) },
-                    label = { Text(name(option), style = MaterialTheme.typography.labelSmall) },
+                    label = { Text(name(option)) },
                     modifier =
                         if (isChosen) {
                             Modifier.onPlaced { chosen = ChipSpan(it.positionInParent().x.toInt(), it.size.width) }

@@ -3,6 +3,8 @@ package dev.geode.feature.visuals.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,7 +38,8 @@ import dev.geode.engine.types.SceneId
 /**
  * Full-screen visual mode (#43): the one live Visual fills the screen, and this is the App UI over it.
  * It has no background, so the Visual the app keeps running behind it shows through. The controls are
- * the Style's name, the Styles either side of it, and the way back.
+ * the Style's name, the Styles either side of it, and the way back, with whatever [actions] the app adds
+ * set between the Styles on the bottom bar, wrapping to a second line when they do not fit.
  *
  * Every touch on the picture belongs to the Style (#290), so this layer handles no pointer input of
  * its own: the Visual's host turns a double tap into [FullScreenAction.ToggleControls], and touches
@@ -48,6 +51,7 @@ fun FullScreenVisualScreen(
     model: FullScreenModel,
     onAction: (FullScreenAction) -> Unit,
     modifier: Modifier = Modifier,
+    actions: @Composable () -> Unit = {},
 ) {
     val toggle = stringResource(R.string.visuals_show_controls)
     Box(
@@ -62,14 +66,16 @@ fun FullScreenVisualScreen(
             },
     ) {
         // Glass over the Visual fades in and out, never slides (#270).
-        GlassFade(model.controlsShown) { Controls(model, onAction) }
+        GlassFade(model.controlsShown) { Controls(model, onAction, actions) }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Controls(
     model: FullScreenModel,
     onAction: (FullScreenAction) -> Unit,
+    actions: @Composable () -> Unit,
 ) {
     // Bands of glass over the Visual: matte until the engine frosts it (#349).
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
@@ -98,10 +104,18 @@ private fun Controls(
                 .glassSurface(GlassKind.BAR, RectangleShape, GlassBackdrop.Visual, GlassEdge.TOP)
                 .safeDrawingPadding()
                 .padding(GlassSpacing.Large),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             StepButton(model.previous, onAction) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = stringResource(R.string.visuals_previous_style))
+            }
+            FlowRow(
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
+            ) {
+                actions()
             }
             StepButton(model.next, onAction) {
                 Icon(Icons.Rounded.ChevronRight, contentDescription = stringResource(R.string.visuals_next_style))

@@ -106,10 +106,15 @@ fun RecordControl(
             }
         }
         if (model.lowStorage) {
+            // On its own calm error fill: it sits on the live Visual, which could be any colour.
             Text(
                 stringResource(R.string.studio_record_low_storage),
+                modifier =
+                    Modifier
+                        .background(MaterialTheme.colorScheme.errorContainer, MaterialTheme.shapes.small)
+                        .padding(horizontal = StudioDimens.gap, vertical = StudioDimens.gap / 2),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.onErrorContainer,
             )
         }
     }

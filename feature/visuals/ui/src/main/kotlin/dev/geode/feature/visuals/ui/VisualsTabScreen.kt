@@ -2,6 +2,7 @@ package dev.geode.feature.visuals.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
@@ -45,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
@@ -182,13 +185,27 @@ private fun SearchField(
     )
 }
 
+/**
+ * A section's title, read as a heading, with an optional [action] at its end. It sits on a band of glass
+ * like the rows under it: nothing is drawn straight on the live Visual, whose picture could be any
+ * colour behind the text (#355).
+ */
 @Composable
-internal fun SectionTitle(title: String) {
-    Text(
-        title,
-        modifier = Modifier.padding(top = GlassSpacing.Small, start = GlassSpacing.Small),
-        style = MaterialTheme.typography.titleMedium,
-    )
+internal fun SectionTitle(
+    title: String,
+    action: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = GlassSize.TapTarget)
+            .glass()
+            .padding(start = GlassSpacing.Large, end = GlassSpacing.Small),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GlassSectionHeader(title, Modifier.weight(1f).padding(vertical = GlassSpacing.Small))
+        action?.invoke()
+    }
 }
 
 @Composable
@@ -198,8 +215,7 @@ private fun FoldersTitle(
 ) {
     // Whether the "new folder" dialog is open: App UI state only (ADR-0003).
     var naming by rememberSaveable { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f)) { SectionTitle(title) }
+    SectionTitle(title) {
         TextButton(onClick = { naming = true }) { Text(stringResource(R.string.visuals_new_folder)) }
     }
     if (naming) {
@@ -231,7 +247,16 @@ private fun Path(
     path: List<FolderItem>,
     onAction: (VisualsAction) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall), verticalAlignment = Alignment.CenterVertically) {
+    // On glass, like everything over the live Visual; a deep path scrolls sideways.
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .glass()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = GlassSpacing.Small),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         TextButton(onClick = { onAction(VisualsAction.OpenFolder(null)) }) { Text(stringResource(R.string.visuals_top)) }
         for (folder in path.dropLast(1)) {
             Text("/", color = MaterialTheme.colorScheme.onSurfaceVariant)

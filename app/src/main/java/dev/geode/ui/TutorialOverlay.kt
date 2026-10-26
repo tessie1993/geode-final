@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -34,6 +37,7 @@ import dev.geode.design.glass.GlassBackdrop
 import dev.geode.design.glass.GlassButton
 import dev.geode.design.glass.GlassKind
 import dev.geode.design.glass.GlassSectionHeader
+import dev.geode.design.glass.GlassSize
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
 import dev.geode.ui.shell.Place
@@ -98,8 +102,16 @@ fun TutorialOverlay(
 
             // Offered on every step, not just the last: someone who is skipping on step one is
             // exactly the person most likely to mean "and don't ask me again".
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = dontShowAgain, onCheckedChange = onDontShowAgainChange)
+            // The whole row, label and all, is the checkbox's touch area.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = GlassSize.TapTarget)
+                    .toggleable(value = dontShowAgain, role = Role.Checkbox, onValueChange = onDontShowAgainChange),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
+            ) {
+                Checkbox(checked = dontShowAgain, onCheckedChange = null)
                 Text(
                     stringResource(R.string.tutorial_dont_show),
                     style = MaterialTheme.typography.bodySmall,
@@ -130,10 +142,11 @@ private fun TutorialActions(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         // Skip stays put at the left on every step, including the last, so it never becomes a
         // moving target and nobody has to hunt for the way out.
-        GlassButton(onClick = onSkip) { Text(stringResource(R.string.tutorial_skip)) }
+        // Only the way on is filled; Skip and Back are quieter, so the next step is plain to see.
+        GlassButton(onClick = onSkip, filled = false) { Text(stringResource(R.string.tutorial_skip)) }
         Spacer(Modifier.weight(1f))
         if (!atFirst) {
-            GlassButton(onClick = onBack) { Text(stringResource(R.string.tutorial_back)) }
+            GlassButton(onClick = onBack, filled = false) { Text(stringResource(R.string.tutorial_back)) }
             Spacer(Modifier.width(8.dp))
         }
         GlassButton(onClick = onNext) {
