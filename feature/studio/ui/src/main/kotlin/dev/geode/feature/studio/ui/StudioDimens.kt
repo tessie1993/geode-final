@@ -8,6 +8,9 @@ internal object StudioDimens {
     val gap = 8.dp
     val thumbnailWidth = 96.dp
 
+    /** How tall the Render setup's list of Tracks or playlists grows before it scrolls. */
+    val pickerHeight = 240.dp
+
     /** Thumbnails are drawn 16:9 in lists. */
     const val THUMBNAIL_RATIO = 16f / 9f
 

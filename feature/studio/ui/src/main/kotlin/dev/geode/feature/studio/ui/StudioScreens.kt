@@ -69,14 +69,15 @@ fun ThumbnailPlaceholder(
 }
 
 /**
- * The library's first page: every Project with its ⋮ menu, New Project, and a reminder when no save
- * folder or no default Project is chosen. Stateless (ADR-0003).
+ * The library's first page: every Project with its ⋮ menu, New Project, Render and the render queue
+ * (#316), and a reminder when no save folder or no default Project is chosen. Stateless (ADR-0003).
  */
 @Composable
 fun ProjectListScreen(
     model: ProjectListModel,
     onAction: (StudioAction) -> Unit,
     modifier: Modifier = Modifier,
+    queue: RenderQueueModel = RenderQueueModel(emptyList(), canClear = false, visualsOff = false, projects = emptyList()),
 ) {
     var naming by remember { mutableStateOf(false) }
     Column(
@@ -89,8 +90,15 @@ fun ProjectListScreen(
                 Modifier.weight(StudioDimens.FILL),
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Button(onClick = { naming = true }, enabled = !model.loading) { Text(stringResource(R.string.studio_new_project)) }
+            OutlinedButton(onClick = { onAction(StudioAction.OpenRender) }, enabled = !model.loading && !queue.visualsOff) {
+                Text(stringResource(R.string.studio_render))
+            }
+            Button(onClick = { naming = true }, enabled = !model.loading, modifier = Modifier.padding(start = StudioDimens.gap)) {
+                Text(stringResource(R.string.studio_new_project))
+            }
         }
+        if (queue.visualsOff) Note(stringResource(R.string.studio_render_visuals_off))
+        RenderQueue(queue, onAction)
         if (model.folderMissing) FolderMissing(onAction)
         if (model.noDefault) Note(stringResource(R.string.studio_no_default))
         when {

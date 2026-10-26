@@ -144,4 +144,44 @@ class FeatureTimelineTest {
         assertTrue(merged.drop)
         assertTrue(merged.arrival)
     }
+
+    /** Half a frame before frame [frame] at [fps], as OffscreenSceneRenderer centres its windows (#302). */
+    private fun halfwayBefore(
+        frame: Int,
+        fps: Int,
+    ) = Math.floorDiv((2L * frame - 1) * 1000L, 2L * fps)
+
+    @Test
+    fun `a Render's windows centred on each frame draw every event exactly once`() {
+        val t = timeline(events)
+        for (fps in listOf(24, 30, 60, 120)) {
+            val seen = Seen()
+            var frame = 0
+            while (frame * 1000L / fps < t.durationMs + 1000L / fps) {
+                seen.add(t.featuresAround(frame * 1000L / fps, halfwayBefore(frame, fps), halfwayBefore(frame + 1, fps)))
+                frame++
+            }
+            assertEquals("kicks at $fps fps", listOf(0.5f, 0.9f, 0.2f), seen.kicks)
+            assertEquals("beats at $fps fps", 1, seen.beats)
+            assertEquals("snares at $fps fps", 1, seen.snares)
+            assertEquals("hats at $fps fps", 1, seen.hats)
+            assertEquals("drops at $fps fps", 1, seen.drops)
+            assertEquals("arrivals at $fps fps", 1, seen.arrivals)
+        }
+    }
+
+    @Test
+    fun `an event is drawn on the frame nearest the moment it is heard, never a frame early`() {
+        val t = timeline(events)
+
+        // At 30 fps frame 2 is at 66 ms, its window (50 ms, 83 ms]: frame 3's kick (50 ms) is not in it.
+        assertEquals(0f, t.featuresAround(66L, halfwayBefore(2, 30), halfwayBefore(3, 30)).kick, 0f)
+        // Frame 1 is at 33 ms, its window (16 ms, 50 ms]: the kick heard at 50 ms is drawn there.
+        assertEquals(0.5f, t.featuresAround(33L, halfwayBefore(1, 30), halfwayBefore(2, 30)).kick, 0f)
+        // The continuous values are those of the frame's own moment.
+        assertEquals(0.002f, t.featuresAround(33L, halfwayBefore(1, 30), halfwayBefore(2, 30)).rms, 1e-6f)
+        val none = FeatureTimeline(emptyList(), hopMs = 16).featuresAround(0L, -10L, 10L)
+        assertEquals(0f, none.rms, 0f)
+        assertFalse(none.beat)
+    }
 }

@@ -14,6 +14,11 @@ void WaterScene::init() {
     sim_.inkEnabled = true;
     sim_.create();
     choreography_.reset();
+    // A Render repeats from its seed; the live Visual keeps the random ones it was built with (#339).
+    if (host_.rendering && host_.rendering()) {
+        emitters_.seed(fluid::kRenderSeed);
+        rng_.seed(fluid::kRenderSeed + 1u);
+    }
     appliedTier_ = -1;
     lastUserQuality_ = -1;
     autoDowngrade_ = 0;

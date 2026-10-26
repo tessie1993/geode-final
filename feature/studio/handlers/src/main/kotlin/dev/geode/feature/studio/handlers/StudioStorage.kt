@@ -4,12 +4,16 @@ import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderId
+import dev.geode.feature.studio.api.RenderJob
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.core.NewRender
 
 /**
- * What Studio keeps (ADR-0004): the Projects, their videos and the default Project. Studio owns its
+ * What Studio keeps (ADR-0004): the Projects, their videos, the default Project and the Renders (#338),
+ * queued and finished, each with its choices and frozen look. Studio owns its
  * Projects, so the default Project is kept here, not in Settings. [RoomStudioStorage] keeps them in
  * Studio's own Room database. Any call may throw; the handlers turn that into a named failure.
  */
@@ -51,6 +55,31 @@ interface StudioStorage {
         project: ProjectId,
         videos: List<NewVideo>,
     ): List<Video>
+
+    /**
+     * Saves [renders], all with [look], as one batch queued at [queuedAt]; returns them waiting, with
+     * their ids, in the same order.
+     */
+    suspend fun queueRenders(
+        renders: List<NewRender>,
+        look: FrozenLook,
+        queuedAt: Millis,
+    ): List<RenderJob>
+
+    /** The Renders that have not finished, oldest first: the queue to carry on after a restart. */
+    suspend fun unfinishedRenders(): List<RenderJob>
+
+    /** The look frozen for [render], or null when it is not kept. */
+    suspend fun lookOf(render: RenderId): FrozenLook?
+
+    /** [render] was made as [file]: it is kept, with its choices and look, so it can be made again. */
+    suspend fun renderSaved(
+        render: RenderId,
+        file: String,
+    )
+
+    /** Forgets [render]: it was cancelled or failed, and left no video. */
+    suspend fun forgetRender(render: RenderId)
 }
 
 /** [StudioStorage] in Studio's own Room database. */
@@ -110,6 +139,32 @@ class RoomStudioStorage(
         val ids = dao.insertVideos(rows)
         return rows.zip(ids) { row, id -> row.copy(id = id).toVideo() }
     }
+
+    override suspend fun queueRenders(
+        renders: List<NewRender>,
+        look: FrozenLook,
+        queuedAt: Millis,
+    ): List<RenderJob> {
+        val rows =
+            renders.map {
+                RenderEntity(batch = 0, spec = RenderSpecFormat.encode(it), look = look.text, videoFile = null, queuedAtMs = queuedAt.value)
+            }
+        val ids = dao.queueRenders(rows)
+        val batch = RenderId(ids.firstOrNull() ?: 0)
+        return renders.zip(ids) { render, id -> render.queuedAs(RenderId(id), batch) }
+    }
+
+    override suspend fun unfinishedRenders(): List<RenderJob> =
+        dao.unfinishedRenders().map { RenderSpecFormat.decode(it.spec).queuedAs(RenderId(it.id), RenderId(it.batch)) }
+
+    override suspend fun lookOf(render: RenderId): FrozenLook? = dao.lookOf(render.value)?.let(::FrozenLook)
+
+    override suspend fun renderSaved(
+        render: RenderId,
+        file: String,
+    ) = dao.renderSaved(render.value, file)
+
+    override suspend fun forgetRender(render: RenderId) = dao.forgetRender(render.value)
 
     private fun VideoEntity.toVideo() =
         Video(

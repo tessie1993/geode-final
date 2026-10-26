@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.geode.render.GravityMath
 import dev.geode.render.GravitySource
 import dev.geode.render.VisualizerView
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Hosts the Visual's view in the App UI. The Visual itself stays out of :design.
@@ -44,6 +45,23 @@ fun VisualizerCanvasHost(
     onDoubleTap: (() -> Unit)? = null,
     tilt: Float = 0f,
 ) {
+    // On screen only while the app is in front: a Visual hosted behind another app is not seen.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(view, lifecycle) {
+        var counted = false
+        val follow = { on: Boolean ->
+            if (on != counted) {
+                counted = on
+                if (on) LiveVisualPresence.shown() else LiveVisualPresence.hidden()
+            }
+        }
+        val observer = LifecycleEventObserver { _, _ -> follow(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            follow(false)
+        }
+    }
     // Read when it happens: entering or leaving full-screen reuses the same view without rebuilding
     // the listener, and nothing recomposes per touch event.
     val doubleTap = rememberUpdatedState(onDoubleTap)
@@ -78,7 +96,6 @@ fun VisualizerCanvasHost(
         }
     gravity.weight = tilt
     val powerSave = rememberPowerSave()
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val wanted = tilt > 0f && !powerSave
     DisposableEffect(gravity, wanted, lifecycle) {
         val observer =
@@ -119,4 +136,22 @@ private fun rememberPowerSave(): Boolean {
         onDispose { context.unregisterReceiver(receiver) }
     }
     return on
+}
+
+/**
+ * Whether the live Visual is on screen: a Render gives way to it while it is (ADR-0004). Counted, as a
+ * place may host the Visual for a moment before the one it moves from lets it go.
+ */
+object LiveVisualPresence {
+    private val hosts = AtomicInteger()
+
+    val isShown: Boolean get() = hosts.get() > 0
+
+    fun shown() {
+        hosts.incrementAndGet()
+    }
+
+    fun hidden() {
+        hosts.decrementAndGet()
+    }
 }

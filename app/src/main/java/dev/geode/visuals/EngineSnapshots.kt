@@ -18,8 +18,11 @@ import dev.geode.render.scene.SceneParams
  * Style's defaults, and no old app-wide LFO or envelope slot is used any more.
  */
 object EngineSnapshots {
-    private val defaultParams: List<Float> =
-        FloatArray(CustomizationSnapshot.PARAMS_COUNT).also { SceneParamsCodec.pack(SceneParams.DEFAULT, it) }.toList()
+    private val defaultParams: List<Float> = packed(SceneParams.DEFAULT)
+
+    // A Render's Fluid quality never adapts downward: it renders as fast as the encoder takes frames,
+    // so its frame time says nothing about the phone (the thermal half is the offscreen pin).
+    private val renderParams: List<Float> = packed(SceneParams.DEFAULT.copy(fluidAutoQuality = false))
 
     private val noLfo: List<Float> = List(CustomizationSnapshot.LFO_COUNT) { 0f }
 
@@ -29,12 +32,27 @@ object EngineSnapshots {
     fun of(
         customization: Customization,
         settings: SettingsValues?,
+    ): CustomizationSnapshot = snapshot(customization, settings, defaultParams)
+
+    /**
+     * [customization] as a Render hands it to its own engine (#337): the same plan as live, so the
+     * Render draws everything the live Visual would, with only the quality pinned for offline work.
+     */
+    fun forRender(
+        customization: Customization,
+        settings: SettingsValues?,
+    ): CustomizationSnapshot = snapshot(customization, settings, renderParams)
+
+    private fun snapshot(
+        customization: Customization,
+        settings: SettingsValues?,
+        params: List<Float>,
     ): CustomizationSnapshot {
         val values = settings ?: SettingsValues()
         return CustomizationSnapshot(
             revision = 0,
             reducedMotion = values.behavior.reducedMotion,
-            params = defaultParams,
+            params = params,
             lfo = noLfo,
             adsr = noEnvelope,
             plan = NativePlan.encode(customization),
@@ -44,4 +62,7 @@ object EngineSnapshots {
             soundReleaseSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_DECAY),
         )
     }
+
+    private fun packed(params: SceneParams): List<Float> =
+        FloatArray(CustomizationSnapshot.PARAMS_COUNT).also { SceneParamsCodec.pack(params, it) }.toList()
 }

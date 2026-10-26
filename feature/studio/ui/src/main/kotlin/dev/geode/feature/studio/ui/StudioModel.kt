@@ -165,6 +165,9 @@ sealed interface StudioAction {
     /** Pick the save folder with the system folder picker; it is a Settings value. */
     data object PickSaveFolder : StudioAction
 
+    /** Open the Render setup (#316). */
+    data object OpenRender : StudioAction
+
     data object Back : StudioAction
 }
 

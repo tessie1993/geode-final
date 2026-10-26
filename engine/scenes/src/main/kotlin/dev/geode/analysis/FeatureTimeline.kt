@@ -114,11 +114,24 @@ class FeatureTimeline(
         timeMs: Long,
         spanMs: Long = 0L,
     ): AudioFeatures {
+        if (spanMs <= 0L) return if (frames.isEmpty()) AudioFeatures.empty() else frames[indexAt(timeMs)].features
+        return featuresAround(timeMs, timeMs, timeMs + spanMs)
+    }
+
+    /**
+     * The features to draw at [timeMs] with every one-hop event of the frames timed in (fromMs, toMs]
+     * folded in. A Render centres that window on each frame (#302): an event is drawn on the frame
+     * nearest the moment it is heard, never a frame early, and windows that share their edges tile
+     * the timeline, so each event is drawn exactly once.
+     */
+    fun featuresAround(
+        timeMs: Long,
+        fromMs: Long,
+        toMs: Long,
+    ): AudioFeatures {
         if (frames.isEmpty()) return AudioFeatures.empty()
-        val f = frames[indexAt(timeMs)].features
-        if (spanMs <= 0L) return f
-        var folded = f.withoutEvents()
-        for (i in framesUpTo(timeMs) until framesUpTo(timeMs + spanMs)) {
+        var folded = frames[indexAt(timeMs)].features.withoutEvents()
+        for (i in framesUpTo(fromMs) until framesUpTo(toMs)) {
             folded = folded.foldedWith(frames[i].features)
         }
         return folded
