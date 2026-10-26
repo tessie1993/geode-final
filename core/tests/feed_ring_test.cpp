@@ -364,3 +364,40 @@ TEST(FeedRingTest, TheOldestReadableFrameIsNeverBeforeTheEpoch) {
     ring.flush(FeedSource::Player);
     EXPECT_EQ(ring.oldestReadable(), 100u);
 }
+
+TEST(FeedRingTest, AReaderResumesALookbackBeforeTheFrameHeardNow) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 10000, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 9000u);
+    EXPECT_EQ(ring.resumeFrom(0, 0), 10000u);
+    EXPECT_EQ(ring.resumeFrom(0, 9999), 1u);
+}
+
+TEST(FeedRingTest, AReaderResumesBehindTheSpeakerForASourceThatRunsAhead) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    writeRamp(ring, 0, 10000, 0);
+    // 100 ms at 48 kHz is 4,800 frames between the newest frame and the speaker.
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 10000u - 4800u - 1000u);
+}
+
+TEST(FeedRingTest, AReaderNeverResumesBeforeTheOldestReadableFrame) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 100, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
+    ring.flush(FeedSource::Player);
+    writeRamp(ring, 0, 50, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 100u);
+    writeRamp(ring, 0, 3 * kSmall, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 150u + 3 * kSmall - 1000u);
+    EXPECT_EQ(ring.resumeFrom(0, 2 * kSmall), ring.oldestReadable());
+    EXPECT_GT(ring.oldestReadable(), 100u);
+}
+
+TEST(FeedRingTest, AReaderResumesFromTheStartWhenNothingIsSelected) {
+    FeedRing ring(kSmall);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
+}

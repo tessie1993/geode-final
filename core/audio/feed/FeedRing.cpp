@@ -146,6 +146,12 @@ uint64_t FeedRing::oldestReadable() const {
     return std::max(safe, begin_.load(std::memory_order_acquire));
 }
 
+uint64_t FeedRing::resumeFrom(int64_t nowNs, uint64_t lookbackFrames) const {
+    const uint64_t heard = locate(nowNs).end;
+    const uint64_t from = heard > lookbackFrames ? heard - lookbackFrames : 0;
+    return std::max(from, oldestReadable());
+}
+
 size_t FeedRing::copyRange(uint64_t from, size_t frames, float* out) const {
     if (!out || frames == 0) return 0;
     const uint64_t w = written_.load(std::memory_order_acquire);

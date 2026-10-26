@@ -79,6 +79,10 @@ public:
     size_t copyRange(uint64_t from, size_t frames, float* out) const;
     // The oldest frame still safe to read in the current epoch.
     uint64_t oldestReadable() const;
+    // Where a reader that stopped following the ring (an analysis that slept) picks up again at nowNs:
+    // lookbackFrames before the frame heard now, so it catches up within a few hops rather than working
+    // through all the ring still holds, and never before oldestReadable().
+    uint64_t resumeFrom(int64_t nowNs, uint64_t lookbackFrames) const;
 
     uint64_t written() const { return written_.load(std::memory_order_acquire); }
     uint64_t begin() const { return begin_.load(std::memory_order_acquire); }

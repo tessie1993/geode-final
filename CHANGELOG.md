@@ -11,6 +11,15 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The analysis sleeps when no Visual is shown (#298).** The live Visual
+  watches the audio feed only while it is on screen (the Visuals tab, full
+  screen or picture-in-picture) and the app is started, so another tab, the
+  lock screen or a screen turned off runs no analysis; the log notes
+  "analysis sleeps" and "analysis runs". On waking, the analysis drops what
+  it had before and starts a quarter of a second before the audio heard now,
+  so the Visual has fresh features within a frame rather than replaying old
+  ones or working through seconds of backlog.
+
 - **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
   feed, Freeze reactions is held in the engine: every Style, MilkDrop
   included, keeps the Sound signals and audio window of the first held frame
