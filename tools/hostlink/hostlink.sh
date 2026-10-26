@@ -15,16 +15,16 @@
 # (they need oboe, taglib and mediandk; only analysis/Spectrum and kissfft come along, for
 # viz's audio inputs), or that anything runs.
 #
-# Stubs, all named: android/asset_manager.h and android/log.h are replaced by
+# Stubs, all named: android/asset_manager.h, android/log.h, android/bitmap.h and android/imagedecoder.h are replaced by
 # C-linkage declarations, projectM's two CMake-generated headers
 # (projectM_export.h, version.h) are written by hand, and every extern "C"
-# symbol from those three libraries that the link needs is defined as an
+# symbol from those libraries that the link needs is defined as an
 # empty function generated from `nm`. Nothing C++ is stubbed.
 #
 # projectM's public headers come from the exact commit the submodule pins,
 # fetched sparsely (one network round trip, ~2 MB), with the repo's own
-# patches applied to them (render-fbo backport, then render clock) - the same
-# patches tools/projectm-patches.cmake applies at configure time.
+# header changes of the repo's own patches applied to them, in the order
+# tools/projectm-patches.cmake applies them at configure time.
 #
 #   tools/hostlink/hostlink.sh            # exit 0 on a clean link
 #   HOSTLINK_KEEP=1 tools/hostlink/hostlink.sh   # keep the work dir
@@ -42,8 +42,10 @@ if [[ ! -d "$WORK/pm" ]]; then
   git -C "$WORK/pm" sparse-checkout set src/api/include >/dev/null
   git -C "$WORK/pm" fetch -q --depth 1 origin "$PM_COMMIT"
   git -C "$WORK/pm" checkout -q FETCH_HEAD
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-fbo-backport.patch"
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-clock.patch"
+  # Every patch that changes a public header, in the order tools/projectm-patches.cmake applies them.
+  for patch in render-fbo-backport render-clock loudness program-cache shader-extras; do
+    git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-$patch.patch"
+  done
 fi
 cp "$WORK/pm/src/api/include/projectM-4/"*.h "$WORK/inc/projectM-4/"
 printf '#pragma once\n#define PROJECTM_EXPORT\n' > "$WORK/inc/projectM-4/projectM_export.h"
@@ -69,6 +71,35 @@ AAsset* AAssetManager_open(AAssetManager*, const char*, int);
 off_t AAsset_getLength(AAsset*);
 int AAsset_read(AAsset*, void*, size_t);
 void AAsset_close(AAsset*);
+#ifdef __cplusplus
+}
+#endif
+HDR
+# The platform image decoder (jnigraphics) the render library decodes Style pack images with (#391).
+cat > "$WORK/inc/android/bitmap.h" << 'HDR'
+#pragma once
+enum AndroidBitmapFormat { ANDROID_BITMAP_FORMAT_NONE = 0, ANDROID_BITMAP_FORMAT_RGBA_8888 = 1 };
+HDR
+cat > "$WORK/inc/android/imagedecoder.h" << 'HDR'
+#pragma once
+#include <stddef.h>
+#include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
+struct AImageDecoder; struct AImageDecoderHeaderInfo;
+typedef struct AImageDecoder AImageDecoder;
+typedef struct AImageDecoderHeaderInfo AImageDecoderHeaderInfo;
+#define ANDROID_IMAGE_DECODER_SUCCESS 0
+int AImageDecoder_createFromBuffer(const void*, size_t, AImageDecoder**);
+void AImageDecoder_delete(AImageDecoder*);
+int AImageDecoder_setAndroidBitmapFormat(AImageDecoder*, int32_t);
+int AImageDecoder_setUnpremultipliedRequired(AImageDecoder*, bool);
+const AImageDecoderHeaderInfo* AImageDecoder_getHeaderInfo(const AImageDecoder*);
+int32_t AImageDecoderHeaderInfo_getWidth(const AImageDecoderHeaderInfo*);
+int32_t AImageDecoderHeaderInfo_getHeight(const AImageDecoderHeaderInfo*);
+size_t AImageDecoder_getMinimumStride(AImageDecoder*);
+int AImageDecoder_decodeImage(AImageDecoder*, void*, size_t, size_t);
 #ifdef __cplusplus
 }
 #endif
@@ -120,10 +151,10 @@ done
 [[ $fail -eq 0 ]] || exit 1
 
 # ---- stubs for the three libraries that are not here --------------------------
-nm "$WORK"/obj/*.o | awk '$1 == "U" {print $2}' | sort -u | grep -E '^(projectm_|AAsset|__android)' > "$WORK/stubs.txt" || true
+nm "$WORK"/obj/*.o | awk '$1 == "U" {print $2}' | sort -u | grep -E '^(projectm_|AAsset|AImageDecoder|__android)' > "$WORK/stubs.txt" || true
 { while read -r sym; do echo "void $sym(void) {}"; done < "$WORK/stubs.txt"; } > "$WORK/stubs.c"
 gcc -fPIC -c "$WORK/stubs.c" -o "$WORK/obj/zz_stubs.o"
-echo "hostlink: $(wc -l < "$WORK/stubs.txt") C symbols stubbed (projectM, AAsset, __android_log_print)"
+echo "hostlink: $(wc -l < "$WORK/stubs.txt") C symbols stubbed (projectM, AAsset, AImageDecoder, __android_log_print)"
 
 # ---- link -------------------------------------------------------------------------
 g++ -shared -fPIC -Wl,--no-undefined -o "$WORK/libgeode_viz_host.so" "$WORK"/obj/*.o -lGLESv2 -lEGL

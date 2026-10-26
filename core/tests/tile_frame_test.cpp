@@ -167,6 +167,21 @@ TEST(TileCompositeIdentity, AnUngatedInputCountsWhateverTheGates) {
     }
 }
 
+TEST(TileCompositeIdentity, ThePaletteTintCountsOnlyWhereTheGradeGateCarriesIt) {
+    CompositeLook look = gated();
+    look.paletteTint = 0.001f;
+    look.gate[2] = 2.0f;
+    EXPECT_TRUE(compositeIsIdentity(look)) << "at its threshold";
+    look.paletteTint = 0.0011f;
+    EXPECT_FALSE(compositeIsIdentity(look)) << "above its threshold";
+    look.gate[2] = 1.5f;
+    EXPECT_TRUE(compositeIsIdentity(look)) << "with the grade but not the tint";
+    look.gate[2] = 1.51f;
+    EXPECT_FALSE(compositeIsIdentity(look)) << "with the tint";
+    look.gate[2] = 0.0f;
+    EXPECT_TRUE(compositeIsIdentity(look)) << "with the grade gate closed";
+}
+
 TEST(TileCompositeIdentity, AKaleidoscopeNeedsBothItsSwitchAndTwoSegments) {
     CompositeLook off = gated();
     off.kaleido = false;

@@ -41,6 +41,11 @@ constexpr const char* kInputsKey = "inputs";
 constexpr const char* kLensKey = "lens";
 constexpr const char* kParticlesKey = "particles3d";
 constexpr const char* kFeedbackKey = "feedback";
+constexpr const char* kTexturesKey = "textures";
+constexpr const char* kFileKey = "file";
+constexpr const char* kWrapKey = "wrap";
+constexpr const char* kFilterKey = "filter";
+constexpr const char* kImageUniformPrefix = "uImage";
 constexpr const char* kShaderFamily = "shader";
 
 constexpr const char* kTypeInt = "int";
@@ -49,6 +54,7 @@ constexpr const char* kDetailNone = "none";
 constexpr const char* kDetailMarch = "march";
 
 constexpr char kPathSeparator = '/';
+constexpr char kWordSeparator = '_';
 
 void report(std::vector<PackProblem>& problems, PackError error, const std::string& where, std::string detail) {
     problems.push_back(PackProblem{error, where, std::move(detail)});
@@ -463,7 +469,110 @@ std::optional<Feedback> parseFeedback(const Value& manifest, const StylePack& pa
     return out;
 }
 
+// A name made of lower-case letters, digits and _, starting with a letter: an image's name, which its
+// sampler's name is made from.
+bool isImageName(const std::string& name) {
+    if (name.empty() || name.front() < 'a' || name.front() > 'z') return false;
+    return std::all_of(name.begin(), name.end(), [](char c) { return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == kWordSeparator; });
+}
+
+std::optional<TextureWrap> wrapNamed(const std::string& name) {
+    if (name == "repeat") return TextureWrap::Repeat;
+    if (name == "mirror") return TextureWrap::Mirror;
+    if (name == "clamp") return TextureWrap::Clamp;
+    return std::nullopt;
+}
+
+std::optional<TextureFilter> filterNamed(const std::string& name) {
+    if (name == "linear") return TextureFilter::Linear;
+    if (name == "nearest") return TextureFilter::Nearest;
+    if (name == "mipmap") return TextureFilter::Mipmap;
+    return std::nullopt;
+}
+
+// One entry of "textures": {"name", "file", "wrap", "filter"}, the last two optional.
+std::optional<TextureSpec> parseTexture(const Value& entry, const std::string& styleId, const std::string& where,
+                                        std::vector<PackProblem>& problems) {
+    const std::string* name = entry.kind() == Value::Kind::Object ? stringField(entry, kNameKey) : nullptr;
+    const std::string* file = name != nullptr ? stringField(entry, kFileKey) : nullptr;
+    if (name == nullptr || file == nullptr) {
+        report(problems, PackError::MissingField, where, "an image needs \"name\" and \"file\"");
+        return std::nullopt;
+    }
+    const std::string what = "image \"" + *name + "\"";
+    if (!isImageName(*name)) {
+        report(problems, PackError::BadValue, where, what + " needs a name of lower-case letters, digits and _, starting with a letter");
+        return std::nullopt;
+    }
+    if (file->find(kPathSeparator) != std::string::npos) {
+        report(problems, PackError::BadValue, where, what + " must be a file in the Style's own folder");
+        return std::nullopt;
+    }
+    TextureSpec spec;
+    spec.name = *name;
+    spec.path = packFilePath(styleId, *file);
+    if (const Value* wrap = entry.get(kWrapKey)) {
+        const auto mode = wrap->kind() == Value::Kind::String ? wrapNamed(wrap->string()) : std::nullopt;
+        if (!mode) {
+            report(problems, PackError::BadValue, where, what + " \"wrap\" must be \"repeat\", \"mirror\" or \"clamp\"");
+            return std::nullopt;
+        }
+        spec.wrap = *mode;
+    }
+    if (const Value* filter = entry.get(kFilterKey)) {
+        const auto mode = filter->kind() == Value::Kind::String ? filterNamed(filter->string()) : std::nullopt;
+        if (!mode) {
+            report(problems, PackError::BadValue, where, what + " \"filter\" must be \"linear\", \"nearest\" or \"mipmap\"");
+            return std::nullopt;
+        }
+        spec.filter = *mode;
+    }
+    return spec;
+}
+
+// "textures": the images the Style ships in its pack (#391), each named once, at most kMaxTextures, and
+// only a shader Style samples them.
+std::optional<std::vector<TextureSpec>> parseTextures(const Value& manifest, const StylePack& pack, const std::string& where,
+                                                      std::vector<PackProblem>& problems) {
+    std::vector<TextureSpec> textures;
+    const Value* declared = manifest.get(kTexturesKey);
+    if (declared == nullptr) return textures;
+    if (pack.family != kShaderFamily) {
+        report(problems, PackError::BadValue, where, "only a shader Style can declare \"textures\"");
+        return std::nullopt;
+    }
+    if (declared->kind() != Value::Kind::Array || declared->array().size() > static_cast<size_t>(kMaxTextures)) {
+        report(problems, PackError::BadValue, where, "\"textures\" must be an array of at most " + std::to_string(kMaxTextures) + " images");
+        return std::nullopt;
+    }
+    for (const Value& entry : declared->array()) {
+        auto spec = parseTexture(entry, pack.id, where, problems);
+        if (!spec) return std::nullopt;
+        const bool named = std::any_of(textures.begin(), textures.end(), [&](const TextureSpec& t) { return t.name == spec->name; });
+        if (named) {
+            report(problems, PackError::BadValue, where, "image \"" + spec->name + "\" is declared twice");
+            return std::nullopt;
+        }
+        textures.push_back(std::move(*spec));
+    }
+    return textures;
+}
+
 }  // namespace
+
+std::string textureUniform(std::string_view name) {
+    std::string uniform(kImageUniformPrefix);
+    bool wordStart = true;
+    for (const char c : name) {
+        if (c == kWordSeparator) {
+            wordStart = true;
+            continue;
+        }
+        uniform.push_back(wordStart && c >= 'a' && c <= 'z' ? static_cast<char>(c - 'a' + 'A') : c);
+        wordStart = false;
+    }
+    return uniform;
+}
 
 std::string stylesPath(std::string_view name) {
     std::string path(kStylesDir);
@@ -629,6 +738,9 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     if (!warp) return std::nullopt;
     pack.feedback = warp->spec;
     pack.feedbackShaderPath = std::move(warp->shaderPath);
+    auto textures = parseTextures(*doc, pack, folderId, problems);
+    if (!textures) return std::nullopt;
+    pack.textures = std::move(*textures);
     return pack;
 }
 

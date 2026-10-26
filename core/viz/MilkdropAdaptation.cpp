@@ -65,6 +65,26 @@ BufferSize bufferSize(int windowWidth, int windowHeight, float scale) {
     return {side(windowWidth), side(windowHeight)};
 }
 
+bool resizeNow(BufferSize current, BufferSize wanted) {
+    const float shape = static_cast<float>(current.width) / static_cast<float>(current.height);
+    const float wantedShape = static_cast<float>(wanted.width) / static_cast<float>(wanted.height);
+    // An engine with no size yet has no shape (0/0 is NaN, a zero side an infinity or 0): resize it.
+    return !(std::fabs(shape / wantedShape - 1.0f) <= kAspectTolerance);
+}
+
+float pictureZoom(float leanIn) { return 1.0f + std::max(leanIn, 0.0f); }
+
+float crossfadedZoom(float incoming, float outgoing, float progress, bool transitioning) {
+    if (!transitioning) return incoming;
+    const float t = std::clamp(progress, 0.0f, 1.0f);
+    return outgoing + (incoming - outgoing) * t;
+}
+
+Pointer pointerFromTouch(int fingersDown, float ndcX, float ndcY) {
+    if (fingersDown <= 0) return {-1.0f, -1.0f, false};
+    return {std::clamp(0.5f * (ndcX + 1.0f), 0.0f, 1.0f), std::clamp(0.5f * (1.0f - ndcY), 0.0f, 1.0f), true};
+}
+
 void LoadAdapter::onFrame(float frameSeconds, float pacedFps) {
     if (frameSeconds <= 0.0f || frameSeconds > kMaxFrameSeconds) return;
     averageSeconds_ = averageSeconds_ > 0.0f ? averageSeconds_ + kSmoothing * (frameSeconds - averageSeconds_) : frameSeconds;

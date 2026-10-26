@@ -67,6 +67,12 @@ sealed interface VisualsEvent {
         val textures: List<String>,
     ) : VisualsEvent
 
+    /** A file was deleted from the MilkDrop folder, which now holds [presets] and [textures] (#360). */
+    data class MilkdropDeleted(
+        val presets: List<MilkdropPreset>,
+        val textures: List<String>,
+    ) : VisualsEvent
+
     /** A piece of work failed at the handlers' edge; the reducer reports it. */
     data class WorkFailed(
         val failure: WorkFailure,
@@ -92,6 +98,7 @@ enum class WorkFailure(
     PRESET_NOT_IMPORTED("could not save the shared preset", resyncs = true),
     MILKDROP_NOT_LISTED("could not list the MilkDrop presets and textures"),
     MILKDROP_NOT_IMPORTED("could not import into the MilkDrop folder"),
+    MILKDROP_NOT_DELETED("could not delete from the MilkDrop folder"),
 }
 
 /** The handlers' work, carried out by `:feature:visuals:handlers`. */
@@ -181,6 +188,12 @@ sealed interface VisualsWork {
     data class ImportMilkdrop(
         val kind: MilkdropKind,
         val files: List<String>,
+    ) : VisualsWork
+
+    /** Delete the file [file] of [kind] from the MilkDrop folder; answered with [VisualsEvent.MilkdropDeleted]. */
+    data class DeleteMilkdrop(
+        val kind: MilkdropKind,
+        val file: String,
     ) : VisualsWork
 }
 

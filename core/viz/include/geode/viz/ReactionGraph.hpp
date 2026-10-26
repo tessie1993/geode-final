@@ -177,6 +177,8 @@ struct CustomizationPlan {
     int automationCount = 0;
     // Layer 2's Style, blend and influence; its opacity, influence amount and swap are in `shared`.
     viz::layer::Spec layer;
+    // The Style this Customization is for (layer::styleHash), layer::kNoStyle when unnamed.
+    uint32_t style = viz::layer::kNoStyle;
 
     // Every property at its starting value, Macros at rest, neutral trims, no links.
     static CustomizationPlan defaults();

@@ -64,6 +64,34 @@ makeTexture('palette', 256, 1, (x, y, px) => {
   px[3] = 255;
 });
 makeTexture('flow', 2, 2, (x, y, px) => { px[0] = px[1] = 128; px[2] = 0; px[3] = 255; });
+
+// A Style pack's own image (#391), the real file: decoded by the browser, its bottom row first as the
+// engine uploads it, with the pack's wrap and filter (a mipmapped one with its chain of halved copies).
+window.__packImage = async function (image) {
+  try {
+    const bytes = Uint8Array.from(atob(image.png), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }),
+      { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+    const wrap = { repeat: gl.REPEAT, mirror: gl.MIRRORED_REPEAT, clamp: gl.CLAMP_TO_EDGE }[image.wrap];
+    const filter = image.filter === 'nearest' ? gl.NEAREST : gl.LINEAR;
+    if (wrap === undefined) throw new Error(`unknown wrap ${image.wrap}`);
+    const t = textures[image.key] || gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+    if (image.filter === 'mipmap') {
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    }
+    textures[image.key] = t;
+    return { width: bitmap.width, height: bitmap.height };
+  } catch (e) {
+    return { error: String(e.message || e) };
+  }
+};
 makeTexture('white', 2, 2, (x, y, px) => { px[0] = px[1] = px[2] = px[3] = 255; });
 // Seeded (mulberry32), not Math.random: a noise texture that changes per run made the bloom
 // variants differ between runs.

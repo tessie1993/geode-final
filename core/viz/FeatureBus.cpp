@@ -33,6 +33,31 @@ void Hit::reset() {
     rising_ = false;
 }
 
+void UsualBand::step(float band, float dt) {
+    const float elapsed = std::clamp(dt, 0.0f, kMaxDt);
+    const float heard = std::isfinite(band) ? std::clamp(band, 0.0f, 1.0f) : 0.0f;
+    if (heard > kAudible) {
+        if (!heard_) usual_ = heard;
+        const float seconds = heard > usual_ ? kUsualRiseSeconds : kUsualFallSeconds;
+        usual_ = std::max(usual_ + (heard - usual_) * (1.0f - std::exp(-elapsed / seconds)), kUsualFloor);
+        heard_ = true;
+    }
+    const float ratio = heard_ ? heard / usual_ : 0.0f;
+    const float reading = std::clamp(0.5f * ratio, 0.0f, 1.0f);
+    level_ = slew(level_, reading, elapsed, kLevelRiseHz, kLevelFallHz);
+    presence_ = slew(presence_, reading, elapsed, kPresenceHz, kPresenceHz);
+    float fired = 0.0f;
+    if (ratio >= kBandHitRatio && armed_) {
+        fired = 0.5f * ratio / kBandHitRatio;
+        armed_ = false;
+    } else if (ratio < kBandRearmRatio) {
+        armed_ = true;
+    }
+    hit_.step(fired, elapsed, kBandHit.attackSeconds, kBandHit.fallHz);
+}
+
+void UsualBand::reset() { *this = UsualBand{}; }
+
 float slew(float current, float target, float dt, float riseHz, float fallHz) {
     const float hz = target > current ? riseHz : fallHz;
     const float next = current + (target - current) * (1.0f - std::exp(-std::clamp(dt, 0.0f, kMaxDt) * hz));
@@ -56,6 +81,7 @@ FeatureValues calmed(const FeatureValues& v, float scale) {
                        &out.sectionHit, &out.dropHit, &out.arrivalHit}) {
         *hit *= scale;
     }
+    for (float& hit : out.bandHits) hit *= scale;
     return out;
 }
 
@@ -68,6 +94,7 @@ const FeatureValues& FeatureBus::step(const GeodeFeatureFrame& f, float dt) {
     stepRhythm(f, elapsed);
     stepStructure(f, elapsed);
     stepTimbre(f, elapsed);
+    stepBands(f, elapsed);
     FeatureValues& v = values_;
     v.stereoWidth = fb::slew(v.stereoWidth, std::clamp(f.stereoWidth, 0.0f, 1.0f), elapsed, fb::kSpaceHz, fb::kSpaceHz);
     v.stereoPan = fb::slew(v.stereoPan, std::clamp(f.stereoPan, -1.0f, 1.0f), elapsed, fb::kSpaceHz, fb::kSpaceHz);
@@ -160,6 +187,17 @@ void FeatureBus::stepTimbre(const GeodeFeatureFrame& f, float dt) {
     v.onset = fb::slew(v.onset, targets_[3], dt, fb::kTimbreGlideHz, fb::kTimbreGlideHz);
 }
 
+void FeatureBus::stepBands(const GeodeFeatureFrame& f, float dt) {
+    FeatureValues& v = values_;
+    const std::array<float, fb::kBands> heard = {f.bass, f.mid, f.treble};
+    for (size_t b = 0; b < fb::kBands; ++b) {
+        bands_[b].step(heard[b], dt);
+        v.bandLevel[b] = bands_[b].level();
+        v.bandHits[b] = bands_[b].hits();
+        v.bandPresence[b] = bands_[b].presence();
+    }
+}
+
 void FeatureBus::reset() {
     values_ = FeatureValues{};
     for (fb::Hit* h :
@@ -173,6 +211,7 @@ void FeatureBus::reset() {
     sums_.fill(0.0f);
     targets_ = {0.0f, 0.5f, 0.0f, 0.0f};
     fluxPeak_ = fb::kFluxFloor;
+    for (fb::UsualBand& band : bands_) band.reset();
 }
 
 std::array<float, kFeatureUniforms.size()> uniformValues(const FeatureValues& v) {
@@ -182,6 +221,8 @@ std::array<float, kFeatureUniforms.size()> uniformValues(const FeatureValues& v)
         v.novelty, v.section, v.buildup, v.drop, v.arrival, v.macro, v.sectionHit, v.dropHit, v.arrivalHit,
         v.centroid, v.harmonicity, v.flux, v.onset,
         v.stereoWidth, v.stereoPan, v.stereoCorrelation,
+        v.bandLevel[0], v.bandLevel[1], v.bandLevel[2], v.bandHits[0], v.bandHits[1], v.bandHits[2],
+        v.bandPresence[0], v.bandPresence[1], v.bandPresence[2],
     };
     // clang-format on
 }

@@ -8,5 +8,6 @@
     { "name": "count", "min": 0, "max": 2, "default": 1 },
     { "name": "size", "min": 0, "max": 2, "default": 1 },
     { "name": "orbit", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["spectrum"]}
 }

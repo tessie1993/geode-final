@@ -68,6 +68,56 @@ TEST(MilkdropBufferSize, NeverBelowOnePixel) {
     EXPECT_EQ(milkdrop::bufferSize(0, 0, 1.0f), (milkdrop::BufferSize{1, 1}));
 }
 
+TEST(MilkdropResizeNow, AnEngineWithNoSizeTakesOneAtOnce) {
+    EXPECT_TRUE(milkdrop::resizeNow({0, 0}, {1080, 2400}));
+    EXPECT_TRUE(milkdrop::resizeNow({0, 2400}, {1080, 2400}));
+    EXPECT_TRUE(milkdrop::resizeNow({1080, 0}, {1080, 2400}));
+}
+
+TEST(MilkdropResizeNow, TheSameShapeWaitsForThePresetChange) {
+    EXPECT_FALSE(milkdrop::resizeNow({1080, 2400}, {1080, 2400}));
+    EXPECT_FALSE(milkdrop::resizeNow({1080, 2400}, {918, 2040}));
+    EXPECT_FALSE(milkdrop::resizeNow({1000, 2000}, {1010, 2000}));
+}
+
+TEST(MilkdropResizeNow, ANewShapeResizesAtOnce) {
+    EXPECT_TRUE(milkdrop::resizeNow({1080, 2400}, {2400, 1080}));
+    EXPECT_TRUE(milkdrop::resizeNow({1000, 2000}, {1050, 2000}));
+    EXPECT_TRUE(milkdrop::resizeNow({1050, 2000}, {1000, 2000}));
+}
+
+TEST(MilkdropPictureZoom, OnePlusTheLeanInNeverBelowOne) {
+    EXPECT_FLOAT_EQ(milkdrop::pictureZoom(0.0f), 1.0f);
+    EXPECT_FLOAT_EQ(milkdrop::pictureZoom(0.06f), 1.06f);
+    EXPECT_FLOAT_EQ(milkdrop::pictureZoom(-0.5f), 1.0f);
+}
+
+TEST(MilkdropPictureZoom, CrossfadedOverATransitionOnly) {
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.2f, 1.0f, 0.25f, false), 1.2f);
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.2f, 1.0f, 0.0f, true), 1.0f);
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.2f, 1.0f, 0.25f, true), 1.05f);
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.2f, 1.0f, 1.0f, true), 1.2f);
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.0f, 1.4f, 0.5f, true), 1.2f);
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.2f, 1.0f, 3.0f, true), 1.2f);
+    EXPECT_FLOAT_EQ(milkdrop::crossfadedZoom(1.2f, 1.0f, -1.0f, true), 1.0f);
+}
+
+TEST(MilkdropPointer, NoFingerIsNoPointer) {
+    EXPECT_EQ(milkdrop::pointerFromTouch(0, 0.3f, 0.4f), (milkdrop::Pointer{-1.0f, -1.0f, false}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(-1, 0.3f, 0.4f), (milkdrop::Pointer{-1.0f, -1.0f, false}));
+}
+
+TEST(MilkdropPointer, TheFirstFingerInUvWithYDown) {
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, -1.0f, 1.0f), (milkdrop::Pointer{0.0f, 0.0f, true}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(2, 1.0f, -1.0f), (milkdrop::Pointer{1.0f, 1.0f, true}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, 0.5f, 0.5f), (milkdrop::Pointer{0.75f, 0.25f, true}));
+}
+
+TEST(MilkdropPointer, StaysInsideThePicture) {
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, -3.0f, 3.0f), (milkdrop::Pointer{0.0f, 0.0f, true}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, 3.0f, -3.0f), (milkdrop::Pointer{1.0f, 1.0f, true}));
+}
+
 TEST(MilkdropLadders, StartAtFullDetailAndOnlyGetCoarser) {
     EXPECT_EQ(milkdrop::kMeshLadder.front(), (milkdrop::MeshSize{48, 32}));
     for (size_t i = 1; i < milkdrop::kMeshLadder.size(); ++i) {

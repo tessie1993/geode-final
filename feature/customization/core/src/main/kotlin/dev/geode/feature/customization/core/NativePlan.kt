@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Cadence
@@ -33,8 +34,9 @@ import dev.geode.feature.customization.api.Trigger
  * Style switching's due moves for the reducer ([CustomizationEvent.StyleDue]). Style switching's slot
  * is marked held while the person holds it or Customize is open (#282).
  *
- * Layer 2 goes last: its Style, blend and influence. Its loop ([LayerLoops]) goes as one more Modulator
- * and its Reactions, after the person's own, which give up the last slots if the plan is full.
+ * Layer 2 goes next: its Style, blend and influence. Its loop ([LayerLoops]) goes as one more Modulator
+ * and its Reactions, after the person's own, which give up the last slots if the plan is full. The
+ * Style the Customization is for goes last ([STYLE_FLOATS]).
  */
 object NativePlan {
     const val MAX_REACTIONS: Int = 128
@@ -51,6 +53,13 @@ object NativePlan {
     /** Layer 2: its Style ([StyleHash], 0 when off), blend and influence. */
     const val LAYER_FLOATS: Int = 3
 
+    /**
+     * The Style the Customization is for ([StyleHash]), last: the engine keeps a Customization off the
+     * Style it draws until a change of Style to its own Style starts (#309). A MilkDrop preset's Style is
+     * named as the MilkDrop scene that draws it (#305), as is Layer 2's.
+     */
+    const val STYLE_FLOATS: Int = 1
+
     /** An index no array has: the engine ignores a link through it. */
     const val NO_INDEX: Float = 255f
 
@@ -65,6 +74,8 @@ object NativePlan {
     const val KIND_HIT_ENVELOPE: Float = 1f
     const val KIND_STEP_SEQUENCER: Float = 2f
     const val KIND_RANDOM_DRIFT: Float = 3f
+    const val KIND_TOGGLE_ON_BEAT: Float = 4f
+    const val KIND_RANDOM_ON_BEAT: Float = 5f
     const val START_ON_SOUND: Float = 1f
     const val START_BY_HAND: Float = 2f
 
@@ -80,12 +91,16 @@ object NativePlan {
     val floatCount: Int =
         HEADER_FLOATS + SharedProperty.entries.size + ExtraKind.entries.size + MACRO_COUNT + 2 * SoundSignal.entries.size +
             MAX_REACTIONS * REACTION_FLOATS + MAX_MODULATORS * MODULATOR_FLOATS + MAX_MACRO_LINKS * MACRO_LINK_FLOATS +
-            MAX_AUTOMATIONS * AUTOMATION_FLOATS + LAYER_FLOATS
+            MAX_AUTOMATIONS * AUTOMATION_FLOATS + LAYER_FLOATS + STYLE_FLOATS
 
     private const val MILLIS_PER_SECOND = 1000f
 
     /** A target's floats in a slot: its kind, its index and its field. */
     private const val TARGET_FLOATS = 3
+
+    /** Where in a Modulator slot its attack and its step count go. */
+    private const val ATTACK_AT = 5
+    private const val STEP_COUNT_AT = 8 + MAX_STEPS
 
     /** [value] of [property] as a fraction 0..1 of its range; its default's fraction when not a number. */
     fun fraction(
@@ -157,6 +172,23 @@ object NativePlan {
 
         fun skipTo(position: Int) {
             at = position
+        }
+
+        /**
+         * A beat Modulator in the slot at [slot] (Modulators.hpp): its glide where an envelope's attack
+         * goes and its beats between changes where a sequencer's step count goes, so the plan keeps its size.
+         */
+        fun onBeat(
+            slot: Int,
+            kind: Float,
+            everyBeats: Int,
+            glide: Millis,
+        ) {
+            put(kind)
+            skipTo(slot + ATTACK_AT)
+            put(glide)
+            skipTo(slot + STEP_COUNT_AT)
+            put(everyBeats.coerceIn(1, MAX_STEPS).toFloat())
         }
     }
 
@@ -264,6 +296,8 @@ object NativePlan {
                     w.skipTo(at + 2)
                     w.put(shape.period)
                 }
+                is ModulatorShape.ToggleOnBeat -> w.onBeat(at, KIND_TOGGLE_ON_BEAT, shape.everyBeats, shape.glide)
+                is ModulatorShape.RandomOnBeat -> w.onBeat(at, KIND_RANDOM_ON_BEAT, shape.everyBeats, shape.glide)
             }
             w.skipTo(at + 10 + MAX_STEPS)
             when (val start = m.start) {
@@ -320,9 +354,11 @@ object NativePlan {
         }
 
         w.skipTo(linksAt + MAX_MACRO_LINKS * MACRO_LINK_FLOATS + MAX_AUTOMATIONS * AUTOMATION_FLOATS)
-        w.put(layer.style?.let { StyleHash.of(it).toFloat() } ?: 0f)
+        // The engine draws a MilkDrop preset's Style (#305) as its MilkDrop scene, so the plan names that.
+        w.put(layer.style?.let { StyleHash.of(MilkdropStyles.scene(it)).toFloat() } ?: 0f)
         w.put(layer.blend.ordinal.toFloat())
         w.put(layer.influence.ordinal.toFloat())
+        w.put(StyleHash.of(MilkdropStyles.scene(customization.style)).toFloat())
         return w.out.asList()
     }
 }

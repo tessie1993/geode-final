@@ -154,9 +154,18 @@ function shaderPacks() {
     if (manifest.family !== 'shader') continue;
     const feedback = manifest.feedback;
     const warp = !feedback ? null : feedback.shader ? path.join(STYLES, id, feedback.shader) : path.join(SHADERS, 'feedback_warp_frag.glsl');
-    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp });
+    const images = (manifest.textures ?? []).map((t) => ({
+      key: `${id}/${t.name}`, uniform: imageUniform(t.name), file: path.join(STYLES, id, t.file),
+      wrap: t.wrap ?? 'repeat', filter: t.filter ?? 'linear',
+    }));
+    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp, images });
   }
   return out;
+}
+
+// The sampler a Style's own image is read by (packs::textureUniform, #391): fold_ramp -> uImageFoldRamp.
+function imageUniform(name) {
+  return 'uImage' + name.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
 }
 
 // A shader file's name as a compile error gives it: styles/<id>/<file> or shaders/<file>.
@@ -245,6 +254,10 @@ const SHADER_VALUES = {
   uPulseConfidence: 0.85, uTempoStability: 0.9, uNovelty: 0.3, uSection: 0.62, uBuildup: 0.2, uDrop: 0.4,
   uArrival: 0.1, uMacro: 0.5, uSectionHit: 0.05, uDropHit: 0.1, uArrivalHit: 0.0, uCentroid: 0.55,
   uHarmonicity: 0.6, uFlux: 0.35, uOnset: 0.3, uStereoWidth: 0.4, uStereoPan: 0.15, uStereoCorrelation: 0.7,
+  // The bands against their usual level (#319): a bass a little over its usual, a mid hit decaying, a
+  // passage light on treble.
+  uBassLevel: 0.6, uMidLevel: 0.55, uTrebleLevel: 0.4, uBassHits: 0.1, uMidHits: 0.3, uTrebleHits: 0.0,
+  uBassPresence: 0.55, uMidPresence: 0.5, uTreblePresence: 0.4,
 };
 
 // The shared inputs' textures: the noise as the engine seeds it (page.html mirrors StyleInputs.cpp),
@@ -321,6 +334,7 @@ const COMPOSITE_NEUTRAL = {
   uPostMirror: 0, uPostBloom: 0, uPostPosterize: 0, uPostInvert: 0, uPostDriftX: 0, uPostDriftY: 0, uPostSway: 0,
   uPostShake: 0, uPostTemp: 0, uPostSolarize: 0, uPostZoom: 1, uPostRotation: 0, uPostSat: 1, uPostBright: 1,
   uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0, uPostAnaglyph: 0,
+  uPostPalTint: 0, uPostPalBase: 0, uPostPalSpan: 1,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
   uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
@@ -350,6 +364,8 @@ const COMPOSITE_EFFECTS = {
   fisheye: { uFisheye: 0.8 },
   glow: { uPostBloom: 0.25 },
   grading: { uPostHue: 0.2, uPostSat: 1.4, uPostContrast: 1.2, uPostGamma: 1.3, uPostBright: 0.9 },
+  // MilkDrop's palette tint, which the composite applies where the grade gate is 2 (#303).
+  palette_tint: { uGateA: [1, 1, 2, 1], uGateB: [1, 1, 2, 1], uPostPalTint: 0.8, uPostPalBase: 0.6, uPostPalSpan: 0.3 },
   temperature: { uPostTemp: 0.8 },
   solarize: { uPostSolarize: 1 },
   invert: { uPostInvert: 1 },
@@ -811,9 +827,12 @@ function buildJobs(args, registry, styles, renderIds) {
     const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;
+    // The Style's own images, each bound to its sampler as the engine binds it.
+    const images = packs.get(id).images;
+    const textures = { ...SHADER_TEXTURES, ...Object.fromEntries(images.map((image) => [image.uniform, image.key])) };
     const job = {
-      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs,
-      uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size),
+      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs, images,
+      uniforms: plan(parseUniforms(frag), values, textures, args.size, args.size),
     };
     if (args.resize) {
       job.name = `${id} resized`;
@@ -872,6 +891,11 @@ async function runOnce(args, getPage) {
   if (jobs.length) {
     const page = await getPage();
     for (const job of jobs) {
+      for (const image of job.images ?? []) {
+        const png = fs.readFileSync(image.file).toString('base64');
+        const loaded = await page.call('__packImage', { key: image.key, png, wrap: image.wrap, filter: image.filter });
+        if (loaded.error) throw new Error(`${job.name}: image ${path.basename(image.file)}: ${loaded.error}`);
+      }
       const entry = job.frames ? '__renderFeedback' : job.resizeWidth ? '__renderResized' : '__render';
       const r = await page.call(entry, { ...job, width: args.size, height: args.size });
       if (job.frames && !r.error) judgeSettle(job, r);

@@ -100,6 +100,20 @@ class RulesTest {
     }
 
     @Test
+    fun `a beat modulator waits one to sixteen beats and never glides backwards in time`() {
+        val toggle = Modulator(ModulatorId(1), ModulatorShape.ToggleOnBeat(everyBeats = 0, glide = Millis(-5)))
+        assertEquals(ModulatorShape.ToggleOnBeat(1, Millis.ZERO), Rules.modulator(toggle).shape)
+        val random = toggle.copy(shape = ModulatorShape.RandomOnBeat(everyBeats = 40, glide = Millis(-1)))
+        assertEquals(ModulatorShape.RandomOnBeat(ModulatorShape.MAX_EVERY_BEATS, Millis.ZERO), Rules.modulator(random).shape)
+        val kept = toggle.copy(shape = ModulatorShape.RandomOnBeat(everyBeats = 4, glide = Millis(300)))
+        assertEquals(kept, Rules.modulator(kept))
+        val toggleKept = toggle.copy(shape = ModulatorShape.ToggleOnBeat(everyBeats = 16, glide = Millis(1)))
+        assertEquals(toggleKept, Rules.modulator(toggleKept))
+        val drift = toggle.copy(shape = ModulatorShape.RandomDrift(Millis(-3)))
+        assertEquals(drift, Rules.modulator(drift))
+    }
+
+    @Test
     fun `a trim keeps to its ranges`() {
         assertEquals(SignalTrim(1f, 0f), Rules.trim(SignalTrim(Float.NaN, Float.NaN)))
         assertEquals(SignalTrim(4f, 0.9f), Rules.trim(SignalTrim(9f, 2f)))

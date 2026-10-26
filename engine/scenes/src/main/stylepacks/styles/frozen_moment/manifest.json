@@ -12,5 +12,6 @@
       "max": 2,
       "default": 1
     }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

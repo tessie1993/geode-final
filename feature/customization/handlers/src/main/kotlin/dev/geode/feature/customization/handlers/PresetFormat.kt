@@ -443,7 +443,15 @@ object PresetFormat {
                     .put(STEP_LENGTH, shape.stepLength.value)
                     .put(BEAT_SYNC, shape.beatSync)
             is ModulatorShape.RandomDrift -> JSONObject().put(KIND, RANDOM_DRIFT).put(PERIOD, shape.period.value)
+            is ModulatorShape.ToggleOnBeat -> onBeat(TOGGLE_ON_BEAT, shape.everyBeats, shape.glide)
+            is ModulatorShape.RandomOnBeat -> onBeat(RANDOM_ON_BEAT, shape.everyBeats, shape.glide)
         }
+
+    private fun onBeat(
+        kind: String,
+        everyBeats: Int,
+        glide: Millis,
+    ): JSONObject = JSONObject().put(KIND, kind).put(EVERY_BEATS, everyBeats).put(GLIDE, glide.value)
 
     private fun shapeOf(o: JSONObject): ModulatorShape? =
         when (o.getString(KIND)) {
@@ -467,6 +475,8 @@ object PresetFormat {
                     beatSync = o.getBoolean(BEAT_SYNC),
                 )
             RANDOM_DRIFT -> ModulatorShape.RandomDrift(Millis(o.getLong(PERIOD)))
+            TOGGLE_ON_BEAT -> ModulatorShape.ToggleOnBeat(o.getInt(EVERY_BEATS), Millis(o.getLong(GLIDE)))
+            RANDOM_ON_BEAT -> ModulatorShape.RandomOnBeat(o.getInt(EVERY_BEATS), Millis(o.getLong(GLIDE)))
             else -> null
         }
 
@@ -596,6 +606,10 @@ object PresetFormat {
     private const val HIT_ENVELOPE = "hitEnvelope"
     private const val STEP_SEQUENCER = "stepSequencer"
     private const val RANDOM_DRIFT = "randomDrift"
+    private const val TOGGLE_ON_BEAT = "toggleOnBeat"
+    private const val RANDOM_ON_BEAT = "randomOnBeat"
+    private const val EVERY_BEATS = "everyBeats"
+    private const val GLIDE = "glideMs"
     private const val WAVE = "wave"
     private const val PERIOD = "periodMs"
     private const val BEAT_SYNC = "beatSync"

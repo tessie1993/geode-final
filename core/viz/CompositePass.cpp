@@ -208,6 +208,7 @@ tile::CompositeLook CompositePass::lookOf(const Inputs& inputs) {
     look.gamma = fx.gamma;
     look.brightness = grade::brightness(fx.brightness, fx.intensity);
     look.pulse = grade::pulseAmount(fx.pulse, inputs.postBeatPulse);
+    look.paletteTint = grade::paletteTintAmount(fx.milkdropPaletteTint);
     return look;
 }
 
@@ -287,6 +288,9 @@ void CompositePass::uploadGradeUniforms(UniformCache& p, const Inputs& inputs) {
     glUniform1f(p.loc("uPostGamma"), fx.gamma);
     glUniform1f(p.loc("uPostHue"), fx.colorShift + inputs.postCyclePhase);
     glUniform1f(p.loc("uPostPulse"), grade::pulseAmount(fx.pulse, inputs.postBeatPulse));
+    glUniform1f(p.loc("uPostPalTint"), grade::paletteTintAmount(fx.milkdropPaletteTint));
+    glUniform1f(p.loc("uPostPalBase"), fx.paletteBase());
+    glUniform1f(p.loc("uPostPalSpan"), grade::paletteSpan(fx.hueRange, fx.paletteRange()));
     glUniform1f(p.loc("uPostAnaglyph"), inputs.anaglyph);
 }
 

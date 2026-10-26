@@ -50,6 +50,7 @@ import dev.geode.feature.visuals.ui.PresetsRoute
 import dev.geode.feature.visuals.ui.VisualsRoute
 import dev.geode.render.scene.StylePacks
 import dev.geode.ui.shell.ShellViewModel
+import dev.geode.visuals.StyleTargets
 import java.io.File
 
 /** The Visuals tab's three sub-tabs (owner decision on #17, 2026-10-22). */
@@ -74,6 +75,7 @@ private enum class VisualsPage { TABS, PRESETS, MILKDROP }
 fun VisualsPlace(
     shell: ShellViewModel,
     onEnterFullScreen: () -> Unit,
+    onReloadMilkPreset: () -> Unit,
     visual: @Composable () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(VisualsTab.STYLE) }
@@ -86,7 +88,7 @@ fun VisualsPlace(
                 PresetsRoute(shell.visuals, onShare = { sharePreset(context, it) }, onBack = { page = VisualsPage.TABS })
             VisualsPage.MILKDROP -> {
                 BackHandler { page = VisualsPage.TABS }
-                MilkdropRoute(shell.visuals)
+                MilkdropRoute(shell.visuals, onReload = onReloadMilkPreset)
             }
             VisualsPage.TABS ->
                 Column(Modifier.fillMaxSize()) {
@@ -169,7 +171,7 @@ fun CustomizePanel(
         ignored =
             IgnoredControls.targets(
                 customization.current,
-                IgnoredControls.properties(StylePacks.find(style)?.ignores.orEmpty()),
+                IgnoredControls.properties(StylePacks.find(StyleTargets.sceneOf(style))?.ignores.orEmpty()),
             ),
         onBrowsePresets = onBrowsePresets,
     )

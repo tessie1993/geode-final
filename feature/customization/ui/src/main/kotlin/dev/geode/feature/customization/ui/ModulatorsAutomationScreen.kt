@@ -80,7 +80,7 @@ fun ModulatorsAutomationScreen(
     }
 }
 
-/** Modulators: add one of the four kinds; each shows its picture, its start setting, rate and depth. */
+/** Modulators: add one of the kinds; each shows its picture, its start setting, rate and depth. */
 @Composable
 private fun ModulatorsSection(
     model: CustomizeModel,
@@ -142,6 +142,16 @@ private fun ModulatorCard(
                 SwitchRow(stringResource(R.string.customize_beat_sync), shape.beatSync) {
                     update(modulator.copy(shape = shape.copy(beatSync = it)))
                 }
+            is ModulatorShape.ToggleOnBeat, is ModulatorShape.RandomOnBeat -> {
+                SectionTitle(stringResource(R.string.customize_beats_between))
+                ChipFlow {
+                    BEATS_BETWEEN_CHOICES.forEach { beats ->
+                        ChoiceChip(beats.toString(), shape.beatsBetween == beats) {
+                            update(modulator.copy(shape = shape.withBeatsBetween(beats)))
+                        }
+                    }
+                }
+            }
             is ModulatorShape.HitEnvelope, is ModulatorShape.RandomDrift -> Unit
         }
         SectionTitle(stringResource(R.string.customize_start))

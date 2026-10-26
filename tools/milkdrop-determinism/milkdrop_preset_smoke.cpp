@@ -10,7 +10,8 @@
 // Each preset is loaded into a fresh engine, seeded and on the render clock like a Render, and
 // rendered for a few seconds of the same song. Checks, each a failure on its own:
 //   - the preset loads (its equations compile; projectM reports those through the load callback);
-//   - neither its warp nor its composite shader fell back to the default;
+//   - neither its warp nor its composite shader fell back to the default (as the debug build writes it
+//     on stderr, and as the shader fallback callback reports it);
 //   - the picture is lit and moves.
 //
 //   milkdrop_preset_smoke <texture dir> <preset.milk or folder of presets>...
@@ -57,9 +58,15 @@ constexpr size_t kMessagePreview = 300;
 constexpr const char* kPresetExtension = ".milk";
 
 std::string g_loadError;
+// The shaders projectM reported falling back from (tools/projectm-v4.1.8-shader-extras.patch).
+std::vector<std::string> g_fallbacks;
 
 void onPresetSwitchFailed(const char* file, const char* message, void*) {
     g_loadError = std::string(file ? file : "?") + ": " + (message ? message : "?");
+}
+
+void onShaderFallback(const char*, const char* shader, const char*, void*) {
+    g_fallbacks.emplace_back(shader ? shader : "?");
 }
 
 // A bass line with a kick, a mid tone and a treble shimmer, as in the frame-exactness check.
@@ -133,6 +140,7 @@ size_t litPixels(const std::vector<unsigned char>& px) {
 int checkPreset(const std::filesystem::path& preset, const std::string& textureDir, StderrCapture& capture) {
     const std::string name = preset.filename().string();
     g_loadError.clear();
+    g_fallbacks.clear();
     capture.drain();
 
     GLuint fbo = 0;
@@ -146,6 +154,7 @@ int checkPreset(const std::filesystem::path& preset, const std::string& textureD
     projectm_set_random_seed(pm, kRenderSeed);
     projectm_set_frame_time(pm, 0.0);
     projectm_set_preset_switch_failed_event_callback(pm, onPresetSwitchFailed, nullptr);
+    projectm_set_shader_fallback_event_callback(pm, onShaderFallback, nullptr);
     projectm_set_fps(pm, kFps);
     projectm_set_mesh_size(pm, kMeshColumns, kMeshRows);
     projectm_set_preset_duration(pm, kPresetDurationSeconds);
@@ -186,6 +195,11 @@ int checkPreset(const std::filesystem::path& preset, const std::string& textureD
         const std::string message = firstMessage(log, marker);
         if (message.empty()) continue;
         std::printf("FAIL: %s: the %s shader failed and projectM fell back to its default\n  %s\n", name.c_str(), which, message.c_str());
+        ++failures;
+    }
+    // A shader projectM gave up on is also reported through its callback, so the app hears of it.
+    for (const auto& shader : g_fallbacks) {
+        std::printf("FAIL: %s: projectM reported the %s shader's fallback\n", name.c_str(), shader.c_str());
         ++failures;
     }
     if (mostLit == 0) {

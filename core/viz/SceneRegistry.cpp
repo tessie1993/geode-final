@@ -6,6 +6,7 @@
 #include <string_view>
 #include <utility>
 
+#include "geode/render/ImageDecoder.hpp"
 #include "geode/util/Log.hpp"
 #include "geode/viz/StyleProfiles.hpp"
 #include "scenes/AcidScene.hpp"
@@ -56,6 +57,27 @@ std::optional<ShaderFeedback> feedbackOf(const packs::StylePack& pack, const Sha
     return ShaderFeedback{pack.feedback, *vertex, *fragment};
 }
 
+// The images a pack ships ("textures", #391), decoded, each with the sampler its shader reads it by; nullopt,
+// with the reason, when one is missing or cannot be decoded, as for a missing shader.
+std::optional<std::vector<ShaderImage>> imagesOf(const packs::StylePack& pack, const ShaderSource& assets, std::string* error) {
+    std::vector<ShaderImage> images;
+    for (const packs::TextureSpec& spec : pack.textures) {
+        const auto bytes = assets.readAsset(spec.path);
+        if (!bytes) {
+            *error = "missing image asset '" + spec.path + "'";
+            return std::nullopt;
+        }
+        std::string why;
+        auto image = decodeImage(*bytes, packs::kMaxTextureSide, &why);
+        if (!image) {
+            *error = "image '" + spec.path + "': " + why;
+            return std::nullopt;
+        }
+        images.push_back(ShaderImage{packs::textureUniform(spec.name), spec.wrap, spec.filter, std::move(*image)});
+    }
+    return images;
+}
+
 std::unique_ptr<Scene> buildShader(const Build& b) {
     std::string error;
     const auto fragment = fragmentOf(b.pack, b.loader.assets, b.labShader, &error);
@@ -71,7 +93,13 @@ std::unique_ptr<Scene> buildShader(const Build& b) {
             return nullptr;
         }
     }
-    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs, std::move(feedback));
+    auto images = imagesOf(b.pack, b.loader.assets, &error);
+    if (!images) {
+        b.host.onShaderError(error);
+        return nullptr;
+    }
+    return std::make_unique<ShaderScene>(b.pack.id, b.quadVert, *fragment, b.loader.cache, b.host, b.pack.inputs, std::move(feedback),
+                                         std::move(*images));
 }
 
 // One renderer per family. A Style is a pack naming one of these; nothing here names a Style.

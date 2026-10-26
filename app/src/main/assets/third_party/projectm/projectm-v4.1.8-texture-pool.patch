@@ -1,0 +1,234 @@
+diff --git a/src/libprojectM/ProjectM.cpp b/src/libprojectM/ProjectM.cpp
+index afdf2cf0f..d99539efb 100644
+--- a/src/libprojectM/ProjectM.cpp
++++ b/src/libprojectM/ProjectM.cpp
+@@ -85,7 +85,8 @@ void ProjectM::SetTexturePaths(std::vector<std::string> texturePaths)
+ {
+     RandomSource::Scope randomScope(m_seededRandom.get());
+     m_textureSearchPaths = std::move(texturePaths);
+-    m_textureManager = std::make_unique<Renderer::TextureManager>(m_textureSearchPaths);
++    // New paths, the same generated textures: the noise is made once per engine (and once per seed).
++    m_textureManager = std::make_unique<Renderer::TextureManager>(m_textureSearchPaths, m_textureManager.get());
+ }
+ 
+ void ProjectM::ResetTextures()
+@@ -242,6 +243,9 @@ void ProjectM::SetFrameTime(double secondsSinceFirstFrame)
+ void ProjectM::SetRandomSeed(uint32_t seed)
+ {
+     m_seededRandom = std::make_unique<RandomSource::Engine>(seed);
++    // The noise textures are drawn from the seed: made again here, since new texture paths keep them.
++    RandomSource::Scope randomScope(m_seededRandom.get());
++    m_textureManager = std::make_unique<Renderer::TextureManager>(m_textureSearchPaths);
+ }
+ 
+ void ProjectM::SetWindowSize(uint32_t width, uint32_t height)
+diff --git a/src/libprojectM/Renderer/FileScanner.cpp b/src/libprojectM/Renderer/FileScanner.cpp
+index 26ad774ff..5bf99fc52 100644
+--- a/src/libprojectM/Renderer/FileScanner.cpp
++++ b/src/libprojectM/Renderer/FileScanner.cpp
+@@ -48,8 +48,26 @@ void FileScanner::Scan(ScanCallback callback)
+                 continue;
+             }
+ 
+-            for (const auto& entry : recursive_directory_iterator(basePath))
++            for (recursive_directory_iterator it(basePath); it != recursive_directory_iterator(); ++it)
+             {
++                const auto& entry = *it;
++
++                // Hidden files and folders below a root are skipped: they hold copies, links and
++                // partial writes (a link folder for every preset, say), never textures of their own.
++                const auto fileName = entry.path().filename().string();
++                if (!fileName.empty() && fileName.front() == '.')
++                {
++                    if (is_directory(entry.status()))
++                    {
++#ifdef PROJECTM_FILESYSTEM_USE_BOOST
++                        it.no_push();
++#else
++                        it.disable_recursion_pending();
++#endif
++                    }
++                    continue;
++                }
++
+                 // Skip files without extensions and everything that's not a normal file.
+ #ifdef PROJECTM_FILESYSTEM_USE_BOOST
+                 if (!entry.path().has_extension() || (entry.status().type() != file_type::symlink_file && entry.status().type() != file_type::regular_file))
+diff --git a/src/libprojectM/Renderer/TextureManager.cpp b/src/libprojectM/Renderer/TextureManager.cpp
+index 7c12a28af..cc89f4e8e 100644
+--- a/src/libprojectM/Renderer/TextureManager.cpp
++++ b/src/libprojectM/Renderer/TextureManager.cpp
+@@ -12,8 +12,11 @@
+ #include <algorithm>
+ #include <memory>
+ #include <random>
++#include <set>
+ #include <vector>
+ 
++#include PROJECTM_FILESYSTEM_INCLUDE
++
+ #ifdef DEBUG
+ #include <iostream>
+ #endif
+@@ -26,11 +29,31 @@
+ namespace libprojectM {
+ namespace Renderer {
+ 
+-TextureManager::TextureManager(const std::vector<std::string>& textureSearchPaths)
++namespace {
++
++// The texture names a TextureManager generates itself, which a later manager can share.
++const char* const generatedTextureNames[] = {"idlem", "idleheadphones", "noise_lq_lite", "noise_lq", "noise_mq",
++                                             "noise_hq", "noisevol_lq", "noisevol_hq"};
++
++// The file a path finally names, links resolved; the path itself if that cannot be found out.
++auto RealFile(const std::string& filePath) -> std::string
++{
++#ifdef PROJECTM_FILESYSTEM_USE_BOOST
++    boost::system::error_code error;
++#else
++    std::error_code error;
++#endif
++    const auto real = PROJECTM_FILESYSTEM_NAMESPACE::filesystem::canonical(PROJECTM_FILESYSTEM_NAMESPACE::filesystem::path(filePath), error);
++    return error ? filePath : real.string();
++}
++
++} // namespace
++
++TextureManager::TextureManager(const std::vector<std::string>& textureSearchPaths, const TextureManager* generatedFrom)
+     : m_textureSearchPaths(textureSearchPaths)
+     , m_placeholderTexture(std::make_shared<Texture>("placeholder", 1, 1, false))
+ {
+-    Preload();
++    Preload(generatedFrom);
+ }
+ 
+ void TextureManager::SetCurrentPresetPath(const std::string&)
+@@ -63,7 +86,7 @@ auto TextureManager::GetSampler(const std::string& fullName) -> std::shared_ptr<
+     return m_samplers.at({wrapMode, filterMode});
+ }
+ 
+-void TextureManager::Preload()
++void TextureManager::Preload(const TextureManager* generatedFrom)
+ {
+     // Create samplers
+     m_samplers.emplace(std::pair<GLint, GLint>(GL_CLAMP_TO_EDGE, GL_LINEAR), std::make_shared<Sampler>(GL_CLAMP_TO_EDGE, GL_LINEAR));
+@@ -71,6 +94,27 @@ void TextureManager::Preload()
+     m_samplers.emplace(std::pair<GLint, GLint>(GL_REPEAT, GL_LINEAR), std::make_shared<Sampler>(GL_REPEAT, GL_LINEAR));
+     m_samplers.emplace(std::pair<GLint, GLint>(GL_REPEAT, GL_NEAREST), std::make_shared<Sampler>(GL_REPEAT, GL_NEAREST));
+ 
++    // The noise textures are the costly part of a new manager, made on the CPU from random numbers, and
++    // only change with the random seed; a new set of search paths keeps them.
++    if (generatedFrom != nullptr)
++    {
++        bool shared = true;
++        for (const char* name : generatedTextureNames)
++        {
++            const auto found = generatedFrom->m_textures.find(name);
++            if (found == generatedFrom->m_textures.end())
++            {
++                shared = false;
++                break;
++            }
++            m_textures[name] = found->second;
++        }
++        if (shared)
++        {
++            return;
++        }
++    }
++
+     int width{};
+     int height{};
+ 
+@@ -254,27 +298,28 @@ auto TextureManager::GetRandomTexture(const std::string& randomName) -> TextureS
+         prefix = lowerCaseName.substr(7);
+     }
+ 
++    const auto pool = RandomTexturePool();
+     if (prefix.empty())
+     {
+         // Just pick a random index.
+-        std::uniform_int_distribution<size_t> distribution(0, m_scannedTextureFiles.size() - 1);
+-        selectedFilename = m_scannedTextureFiles.at(distribution(rndEngine)).lowerCaseBaseName;
++        std::uniform_int_distribution<size_t> distribution(0, pool.size() - 1);
++        selectedFilename = pool.at(distribution(rndEngine))->lowerCaseBaseName;
+     }
+     else
+     {
+ 
+-        std::vector<ScannedFile> filteredFiles;
++        std::vector<const ScannedFile*> filteredFiles;
+         auto prefixLength = prefix.length();
+-        std::copy_if(m_scannedTextureFiles.begin(), m_scannedTextureFiles.end(),
++        std::copy_if(pool.begin(), pool.end(),
+                      std::back_inserter(filteredFiles),
+-                     [&prefix, prefixLength](const ScannedFile& file) {
+-                         return file.lowerCaseBaseName.substr(0, prefixLength) == prefix;
++                     [&prefix, prefixLength](const ScannedFile* file) {
++                         return file->lowerCaseBaseName.substr(0, prefixLength) == prefix;
+                      });
+ 
+         if (!filteredFiles.empty())
+         {
+             std::uniform_int_distribution<size_t> distribution(0, filteredFiles.size() - 1);
+-            selectedFilename = filteredFiles.at(distribution(rndEngine)).lowerCaseBaseName;
++            selectedFilename = filteredFiles.at(distribution(rndEngine))->lowerCaseBaseName;
+         }
+     }
+ 
+@@ -291,6 +336,22 @@ auto TextureManager::GetRandomTexture(const std::string& randomName) -> TextureS
+     return {desc.Texture(), desc.Sampler(), randomName, randomName};
+ }
+ 
++auto TextureManager::RandomTexturePool() const -> std::vector<const ScannedFile*>
++{
++    std::vector<const ScannedFile*> pool;
++    std::set<std::string> names;
++    std::set<std::string> files;
++    for (const auto& file : m_scannedTextureFiles)
++    {
++        if (!names.insert(file.lowerCaseBaseName).second || !files.insert(RealFile(file.filePath)).second)
++        {
++            continue;
++        }
++        pool.push_back(&file);
++    }
++    return pool;
++}
++
+ void TextureManager::AddTextureFile(const std::string& fileName, const std::string& baseName)
+ {
+     std::string lowerCaseBaseName = Utils::ToLower(baseName);
+diff --git a/src/libprojectM/Renderer/TextureManager.hpp b/src/libprojectM/Renderer/TextureManager.hpp
+index 388f722ac..95bf05358 100644
+--- a/src/libprojectM/Renderer/TextureManager.hpp
++++ b/src/libprojectM/Renderer/TextureManager.hpp
+@@ -17,8 +17,10 @@ public:
+     /**
+      * Constructor.
+      * @param textureSearchPaths List of paths to search for textures. These paths are searched in the given order.
++     * @param generatedFrom A previous manager whose generated textures (the noise textures and the idle
++     *                      preset's images) this one shares instead of making them again, or null to make them.
+      */
+-    TextureManager(const std::vector<std::string>& textureSearchPaths);
++    TextureManager(const std::vector<std::string>& textureSearchPaths, const TextureManager* generatedFrom = nullptr);
+ 
+     ~TextureManager() = default;
+ 
+@@ -80,7 +82,14 @@ private:
+ 
+     auto TryLoadingTexture(const std::string& name) -> TextureSamplerDescriptor;
+ 
+-    void Preload();
++    void Preload(const TextureManager* generatedFrom);
++
++    /**
++     * @brief The scanned files a random texture is drawn from: each file once, so every file has the
++     * same chance. A file found again under another search path, or through a link to it, is skipped,
++     * as is a second file with a name already in the pool (the lookup by name only ever finds the first).
++     */
++    auto RandomTexturePool() const -> std::vector<const ScannedFile*>;
+ 
+     auto LoadTexture(const ScannedFile& file) -> std::shared_ptr<Texture>;
+ 

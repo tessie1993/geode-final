@@ -6,8 +6,6 @@
 #include <cmath>
 
 #include "geode/util/Log.hpp"
-#include "CompositeGrade.hpp"
-#include "geode/viz/LiveSignal.hpp"
 #include "geode/render/Quad.hpp"
 
 namespace geode::viz {
@@ -45,6 +43,75 @@ void MilkdropScene::onPresetSwitchFailed(const char* presetFilename, const char*
     self->lastLoggedError_ = self->lastError_;
     GEODE_LOGE(kTag, "preset switch failed: %s", self->lastError_.c_str());
 }
+
+bool MilkdropScene::loadProgram(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !vertexSource || !fragmentSource) return false;
+    const auto key = cache->keyFor(vertexSource, fragmentSource);
+    if (!key) return false;
+    if (cache->loadInto(*key, program)) return true;
+    // Compiled from source next: asked to keep its binary, which only a hint before linking ensures.
+    cache->markRetrievable(program);
+    return false;
+}
+
+void MilkdropScene::storeProgram(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !vertexSource || !fragmentSource) return;
+    if (const auto key = cache->keyFor(vertexSource, fragmentSource)) cache->store(*key, program);
+}
+
+const char* MilkdropScene::lookupText(const char* key, size_t keyLength, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !key) return nullptr;
+    auto text = cache->loadText(std::string(key, keyLength));
+    if (!text) return nullptr;
+    self->keptText_ = std::move(*text);
+    return self->keptText_.c_str();
+}
+
+void MilkdropScene::storeText(const char* key, size_t keyLength, const char* text, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    ProgramBinaryCache* cache = self ? self->loader_.cache : nullptr;
+    if (!cache || !key || !text) return;
+    cache->storeText(std::string(key, keyLength), text);
+}
+
+MilkdropScene::CachesInUse::CachesInUse(MilkdropScene* scene) {
+    projectm_opengl_set_shader_caches(&loadProgram, &storeProgram, &lookupText, &storeText, scene);
+}
+
+// Cleared again, so nothing compiled later on this thread reaches a scene that may be gone by then.
+MilkdropScene::CachesInUse::~CachesInUse() {
+    projectm_opengl_set_shader_caches(nullptr, nullptr, nullptr, nullptr, nullptr);
+}
+
+void MilkdropScene::onShaderFallback(const char* presetFilename, const char* shader, const char* message, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    if (!self) return;
+    std::string reason = message ? message : "unknown error";
+    // projectM's message goes on with the whole shader source: the first line says why.
+    reason = reason.substr(0, std::min(reason.find('\n'), kFallbackReasonLength));
+    const std::string file = presetFilename ? presetFilename : "?";
+    const std::string note = file.substr(file.find_last_of('/') + 1) + ": plays without its " + (shader ? shader : "?") + " shader (" + reason + ")";
+    GEODE_LOGW(kTag, "%s", note.c_str());
+    std::lock_guard<std::mutex> lock(self->errorLock_);
+    if (!self->lastFallback_.empty()) self->lastFallback_ += "; ";
+    self->lastFallback_ += note;
+}
+
+std::optional<std::string> MilkdropScene::takeFallback() {
+    std::lock_guard<std::mutex> lock(errorLock_);
+    if (lastFallback_.empty()) return std::nullopt;
+    std::string out;
+    out.swap(lastFallback_);
+    return out;
+}
+
+float MilkdropScene::pictureZoom() const { return milkdrop::pictureZoom(featuremap::milkdropZoom(bus_)); }
 
 double MilkdropScene::nowSeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -108,15 +175,6 @@ void MilkdropScene::init() {
     diagFrames_ = 0;
     diagDone_ = false;
     errorChecksLeft_ = kErrorCheckFrames;
-    std::string error;
-    postProgram_ = loader_.build("fade_vert.glsl", "pm_post_frag.glsl", &error);
-    if (postProgram_ == 0) {
-        host_.onShaderError("MilkDrop unavailable on this GPU: " + error);
-        return;
-    }
-    postProgramOk_ = true;
-    postLocs_ = UniformCache(postProgram_);
-    glGenVertexArrays(1, &postVao_);
 }
 
 void MilkdropScene::resize(int width, int height) {
@@ -131,20 +189,13 @@ void MilkdropScene::setDrawTarget(GLuint fbo, int width, int height) {
     drawHeight_ = height;
 }
 
-void MilkdropScene::setWindowSize(int width, int height) {
-    windowWidth_ = width;
-    windowHeight_ = height;
-}
-
-// The engine renders at the window size (Scene::setWindowSize) times the load adapter's buffer step,
-// not at the supersampled scene target; the post pass scales its frame onto the target. A new window
-// size applies at once. A new buffer step reaches here only through loadPendingPreset(), at a preset
-// change. The frame target is (re)built to the engine size, so projectM's viewport and the FBO agree.
-void MilkdropScene::applyEngineSize() {
-    const int windowWidth = windowWidth_ > 0 ? windowWidth_ : width_;
-    const int windowHeight = windowHeight_ > 0 ? windowHeight_ : height_;
-    const milkdrop::BufferSize size = milkdrop::bufferSize(windowWidth, windowHeight, adapter_.bufferScale());
+// The engine renders at the scene target's size (resize()) times the load adapter's buffer step. A
+// new size waits for the next preset change, where the incoming preset starts at it and blends from the
+// old picture, so the restart never shows; only a first size or a new shape applies at once.
+void MilkdropScene::applyEngineSize(bool atPresetChange) {
+    const milkdrop::BufferSize size = milkdrop::bufferSize(width_, height_, adapter_.bufferScale());
     if (size.width == engineWidth_ && size.height == engineHeight_) return;
+    if (!atPresetChange && !milkdrop::resizeNow({engineWidth_, engineHeight_}, size)) return;
     projectm_set_window_size(engine_.get(), static_cast<size_t>(size.width), static_cast<size_t>(size.height));
     engineWidth_ = size.width;
     engineHeight_ = size.height;
@@ -183,11 +234,12 @@ void MilkdropScene::ensureEngine(double now) {
         projectm_set_preset_locked(engine_.get(), true);
         projectm_set_aspect_correction(engine_.get(), true);
         projectm_set_preset_switch_failed_event_callback(engine_.get(), onPresetSwitchFailed, this);
+        projectm_set_shader_fallback_event_callback(engine_.get(), onShaderFallback, this);
         armLastPreset();
         engineWidth_ = 0;
         engineHeight_ = 0;
     }
-    applyEngineSize();
+    applyEngineSize(false);
 }
 
 // The host raises the flag for the whole of a Render. Either way the engine starts over: a Render
@@ -231,11 +283,6 @@ void MilkdropScene::armLastPreset() {
 }
 
 void MilkdropScene::update(const GeodeFeatureFrame& features, float dt) {
-    const SceneParams& p = params_;
-    rotationAngle_ = std::fmod(rotationAngle_ + p.rotation * dt, kTwoPi);
-    zoomPhase_ = p.endlessZoom ? std::fmod(zoomPhase_ + p.endlessZoomSpeed * dt, 1.0f) : 0.0f;
-    if (p.colorCycle) cyclePhase_ = std::fmod(cyclePhase_ + p.cycleSpeed * dt, 1.0f);
-    beatPulse_ = beatEnvelope_.step(live::hit(features), dt);
     followRenderMode();
     lastDt_ = dt;
     if (rendering_) {
@@ -281,16 +328,20 @@ void MilkdropScene::loadPendingPreset(double now) {
     {
         std::lock_guard<std::mutex> lock(errorLock_);
         lastError_.clear();
+        lastFallback_.clear();
     }
-    // The preset change is where a new buffer step lands: the incoming preset starts at the new
-    // size and blends from the old picture, so the resize never shows.
-    if (adapter_.onPresetChange()) applyEngineSize();
+    // The preset change is where a new buffer step and a new target size land: the incoming preset
+    // starts at the new size and blends from the old picture, so the resize never shows.
+    adapter_.onPresetChange();
+    applyEngineSize(true);
     const bool blend = params_.milkdropBlendPresets && !(rendering_ && !presetSinceCreate_);
     projectm_load_preset_file(engine_.get(), path.c_str(), blend);
     errorChecksLeft_ = kErrorCheckFrames;
     projectm_set_preset_locked(engine_.get(), true);
     const auto error = takeError();
-    host_.onShaderError(error.value_or(""));
+    // A preset that plays without one of its shaders still loaded: it is said, and it stays.
+    const auto fallback = takeFallback();
+    host_.onShaderError(error ? *error : fallback.value_or(""));
     if (!error) {
         presetSinceCreate_ = true;
         {
@@ -309,59 +360,47 @@ void MilkdropScene::loadPendingPreset(double now) {
 
 void MilkdropScene::draw(float timeSeconds) {
     (void) timeSeconds;
-    if (!postProgramOk_) return;
-    GLint prevFbo = static_cast<GLint>(drawFbo_);
-    if (!drawTargetHanded_) glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo);
+    GLint target = static_cast<GLint>(drawFbo_);
+    if (!drawTargetHanded_) glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &target);
+    const int targetWidth = drawTargetHanded_ ? drawWidth_ : width_;
+    const int targetHeight = drawTargetHanded_ ? drawHeight_ : height_;
     // Reset before the engine as well as after: projectM assumes default GL state and restores little.
     resetFrameState();
+    // Making the engine and loading a preset compile shaders: from the caches when they hold them.
+    const CachesInUse caches(this);
     const double now = nowSeconds();
     ensureEngine(now);
     if (!engine_) return;
     // Mesh, rate and clock first: a preset loaded this frame initialises against them.
     applyFrameSettings();
     loadPendingPreset(now);
-    if (!frame_.ensure(engineWidth_, engineHeight_)) return;
-    const SceneParams& p = params_;
+    if (engineWidth_ <= 0 || engineHeight_ <= 0) return;
     // How far bass, mid and treble swing (tools/projectm-v4.1.8-loudness.patch): the Style's beat response,
     // where 1 leaves the preset reacting as it was written.
-    projectm_set_beat_sensitivity(engine_.get(), milkdrop::beatSensitivity(p.beatResponse));
+    projectm_set_beat_sensitivity(engine_.get(), milkdrop::beatSensitivity(params_.beatResponse));
+    const auto& touchPoints = touch_ ? touch_->points() : std::array<float, TouchField::kMaxPoints * TouchField::kPointStride>{};
+    const milkdrop::Pointer pointer = milkdrop::pointerFromTouch(touch_ ? touch_->liveCount() : 0, touchPoints[0], touchPoints[1]);
+    projectm_set_pointer(engine_.get(), pointer.x, pointer.y, pointer.down);
 
-    // The engine composites its frame straight into the scene's FBO. The window surface is never
-    // read or written here, so the result does not depend on the EGL config the host chose.
-    projectm_opengl_render_frame_fbo(engine_.get(), frame_.fbo());
+    // projectM draws its frame onto the renderer's target itself when the two are the same size: no
+    // copy of its own, and the composite grades it (#303). Otherwise, and while the first frames are
+    // checked for a black picture (diagnoseBlackFrame reads the scene's own 8-bit target), it draws into
+    // the scene's framebuffer, which is then scaled onto the target.
+    const bool direct = diagDone_ && engineWidth_ == targetWidth && engineHeight_ == targetHeight;
+    if (!direct && !frame_.ensure(engineWidth_, engineHeight_)) return;
+    projectm_opengl_render_frame_fbo(engine_.get(), direct ? static_cast<uint32_t>(target) : frame_.fbo());
     if (const auto error = takeError()) host_.onShaderError(*error);
-    diagnoseBlackFrame();
+    if (!direct) diagnoseBlackFrame();
     drainEngineErrors();
 
     resetFrameState();
-    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prevFbo));
-    glViewport(0, 0, drawTargetHanded_ ? drawWidth_ : width_, drawTargetHanded_ ? drawHeight_ : height_);
-
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glUseProgram(postProgram_);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, frame_.tex());
-    glUniform1i(postLocs_.loc("uTex"), 0);
-    // Geode's own post pass leans in on a trusted downbeat and a drop; the preset's variables are left alone (#294).
-    set1f("uZoom", p.zoom * (1.0f + beatPulse_ * p.beatResponse * 0.08f + featuremap::milkdropZoom(bus_)));
-    set1f("uRotation", rotationAngle_);
-    set1f("uZoomPhase", zoomPhase_);
-    set1f("uMirrorX", p.mirror ? 1.0f : 0.0f);
-    set1f("uPalBase", p.paletteBase());
-    set1f("uPalSpan", grade::paletteSpan(p.hueRange, p.paletteRange()));
-    set1f("uPalTint", grade::paletteTintAmount(p.milkdropPaletteTint));
-    set1f("uHue", p.colorShift + cyclePhase_);
-    set1f("uSat", p.saturation);
-    set1f("uBright", p.brightness);
-    set1f("uContrast", p.contrast);
-    set1f("uGamma", p.gamma);
-    set1f("uInvert", p.invert ? 1.0f : 0.0f);
-    set1f("uIntensity", p.intensity);
-    glBindVertexArray(postVao_);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    glBindVertexArray(0);
-    glUseProgram(0);
+    if (!direct) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, frame_.fbo());
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, static_cast<GLuint>(target));
+        glBlitFramebuffer(0, 0, engineWidth_, engineHeight_, 0, 0, targetWidth, targetHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(target));
+    glViewport(0, 0, targetWidth, targetHeight);
 }
 
 // Samples the scene's own target, i.e. what the post pass is about to display; a black result here
@@ -417,12 +456,6 @@ void MilkdropScene::release() {
     engineHeight_ = 0;
     adapter_.reset();
     frame_.release();
-    if (postProgram_ != 0) glDeleteProgram(postProgram_);
-    postProgram_ = 0;
-    postProgramOk_ = false;
-    if (postVao_ != 0) glDeleteVertexArrays(1, &postVao_);
-    postVao_ = 0;
-    postLocs_ = UniformCache(0);
 }
 
 }  // namespace geode::viz

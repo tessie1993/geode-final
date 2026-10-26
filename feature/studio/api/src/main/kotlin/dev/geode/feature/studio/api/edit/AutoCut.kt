@@ -229,6 +229,15 @@ object AutoCut {
     private const val MIN_HEADROOM = 1e-3f
 }
 
+private fun TransientEnvelope.indicesIn(
+    fromMs: Long,
+    untilMs: Long,
+): IntRange {
+    val first = timesMs.indexOfFirst { it >= fromMs }
+    val last = timesMs.indexOfLast { it < untilMs }
+    return if (first < 0 || last < first) IntRange.EMPTY else first..last
+}
+
 /** Frame spacing, taken as a median so a single ragged gap cannot skew the window sizes. */
 private fun TransientEnvelope.medianHopMs(): Long {
     val gaps = timesMs.zipWithNext { a, b -> b - a }.filter { it > 0L }.sorted()

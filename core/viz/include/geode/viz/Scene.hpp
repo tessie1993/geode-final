@@ -72,6 +72,9 @@ public:
     // True when the Style moves a camera of its own from the Camera (a raymarched world reading
     // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
     virtual bool ownsCamera() const { return false; }
+    // How far the composite zooms this Style's picture in, on top of the Shared core's zoom: for a Style
+    // whose own post pass went into the composite (MilkDrop's lean-in on downbeats and drops, #294, #303).
+    virtual float pictureZoom() const { return 1.0f; }
     // > 0 keeps the previous frame in the scene target (Curl Flow); 0 clears it.
     virtual float trailRetention(const SceneParams& params) const { (void) params; return 0.0f; }
     virtual GLuint velocityTexture() const { return 0; }
@@ -84,10 +87,6 @@ public:
     virtual void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
         (void) nx; (void) ny; (void) ndx; (void) ndy; (void) dt; (void) strength;
     }
-    // The surface size in pixels, unscaled: no supersampling and no thermal render scale. resize()
-    // gives the scene target; MilkDrop sizes its engine buffer from this instead (times its load
-    // step) and its post pass scales the result onto the scene target.
-    virtual void setWindowSize(int width, int height) { (void) width; (void) height; }
     virtual void queueMilkPreset(const std::string& path) { (void) path; }
     virtual void reloadMilkPreset() {}
     virtual void setMilkTextureDir(const std::string& dir) { (void) dir; }

@@ -6,5 +6,6 @@
   "shader": "shader.glsl",
   "extras": [
     { "name": "count", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

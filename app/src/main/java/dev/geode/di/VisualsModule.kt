@@ -23,7 +23,6 @@ import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.handlers.ContentPickedFiles
 import dev.geode.feature.visuals.handlers.DataStoreVisualsStorage
-import dev.geode.feature.visuals.handlers.FileMilkdropFolder
 import dev.geode.feature.visuals.handlers.visualsDataStore
 import dev.geode.feature.visuals.handlers.visualsStore
 import dev.geode.geodeContainer
@@ -31,6 +30,7 @@ import dev.geode.kernel.FeatureRuntime
 import dev.geode.render.scene.SceneIds
 import dev.geode.visuals.AppPresetFiles
 import dev.geode.visuals.EngineSnapshots
+import dev.geode.visuals.InstalledMilkdropFolder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -126,7 +126,7 @@ object VisualsModule {
                     fallbackStyle = SceneIds.DEFAULT,
                 ),
             manifests = BuiltInStyles.all,
-            milkdrop = FileMilkdropFolder.of(application),
+            milkdrop = InstalledMilkdropFolder(application),
             picked = ContentPickedFiles(application),
             builtInMilkdrop =
                 MilkCatalog.load(application).presets.map { MilkdropPreset(it.file, it.name, it.author, builtIn = true) },

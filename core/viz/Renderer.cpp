@@ -372,9 +372,12 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     in.exportSupersample = exportSupersample_;
     in.thermalCeiling = thermal_.renderCeiling();
     // MilkDrop follows load on its own (MilkdropAdaptation: mesh first, buffers only at a preset
-    // change), so the load scale leaves its scene target alone; the thermal ceiling still applies.
-    const bool followsLoad = scene == nullptr || scene->family() != SceneFamily::Milkdrop;
-    in.loadScale = followsLoad ? loadScale_.scale() : scale::LoadScaleConfig{}.maxScale;
+    // change), so the load scale leaves its scene target alone; the quality and thermal ceiling still
+    // apply, and its target is held to kMilkdropMaxMegapixels, since projectM draws its passes at that
+    // size too (#303).
+    const bool milkdrop = scene != nullptr && scene->family() == SceneFamily::Milkdrop;
+    in.loadScale = milkdrop ? scale::LoadScaleConfig{}.maxScale : loadScale_.scale();
+    in.maxMegapixels = milkdrop ? scale::kMilkdropMaxMegapixels : 0.0f;
     in.styleScale = scene != nullptr ? styleScaleFor(scene->id()) : scale::kDefaultStyleRenderScale;
     // Two Styles drawing every frame: both draw softer (RenderScale.hpp, kLayeredRenderScale).
     in.layered = layerScene_ != nullptr && layerScene_ != scene;
@@ -407,7 +410,6 @@ void Renderer::applyRenderSize(scale::RenderSize size) {
     renderHeight_ = size.height;
     for (auto& entry : scenes_) {
         entry.second->resize(renderWidth_, renderHeight_);
-        entry.second->setWindowSize(width_, height_);
     }
     overlays_.resize(renderWidth_, renderHeight_);
 }
@@ -420,6 +422,13 @@ bool Renderer::setScene(const std::string& sceneId) {
 }
 
 void Renderer::warmTransition(const std::string& id) { compositePass_.warmTransition(id); }
+
+uint32_t Renderer::drawnStyle() const { return activeScene_ != nullptr ? layer::styleHash(activeScene_->id()) : layer::kNoStyle; }
+
+uint32_t Renderer::requestedStyle() const {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return requestedSceneId_.empty() ? layer::kNoStyle : layer::styleHash(requestedSceneId_);
+}
 
 void Renderer::cut() {
     activeScene_ = nullptr;
@@ -468,7 +477,6 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);
-    scene->setWindowSize(width_, height_);
     if (!textureDir.empty()) scene->setMilkTextureDir(textureDir);
     if (!preset.empty()) scene->queueMilkPreset(preset);
     return scene;

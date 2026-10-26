@@ -7,5 +7,6 @@
   "extras": [
     { "name": "count", "min": 0, "max": 2, "default": 1 },
     { "name": "flight", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["spectrum"]}
 }

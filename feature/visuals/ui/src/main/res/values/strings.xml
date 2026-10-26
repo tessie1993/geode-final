@@ -77,7 +77,7 @@
 
     <!-- MilkDrop presets and textures, and importing them (#145). -->
     <string name="milkdrop_title">MilkDrop</string>
-    <string name="milkdrop_subtitle">Presets for the MilkDrop Style, and the images they use</string>
+    <string name="milkdrop_subtitle">Every preset plays as a Style of its own. Tap one to show it.</string>
     <string name="milkdrop_import_presets">Import presets</string>
     <string name="milkdrop_import_textures">Import textures</string>
     <string name="milkdrop_loading">Finding your MilkDrop presets…</string>
@@ -109,4 +109,14 @@
     <string name="milkdrop_problem_unreadable">Could not be read</string>
     <string name="milkdrop_problem_already_there">One by this name is already here</string>
     <string name="milkdrop_problem_not_saved">Could not be saved</string>
+    <string name="milkdrop_plays">Plays as written</string>
+    <string name="milkdrop_plays_without_shader">Plays without its shader: %1$s</string>
+    <string name="milkdrop_missing_textures">Missing textures: %1$s</string>
+    <string name="milkdrop_playing">Playing now</string>
+    <string name="milkdrop_reload">Load %1$s again from its file</string>
+    <string name="milkdrop_delete">Delete</string>
+    <string name="milkdrop_delete_named">Delete %1$s</string>
+    <string name="milkdrop_delete_title">Delete \"%1$s\"?</string>
+    <string name="milkdrop_delete_preset_body">This removes the preset\'s file from the phone for good; there is no undo. Import it again if you want it back.</string>
+    <string name="milkdrop_delete_texture_body">This removes the image from the phone for good. Presets that sample it will ask for it again.</string>
 </resources>

@@ -272,3 +272,73 @@ TEST(StyleTransition, TheEaseStartsAndLandsGently) {
         last = eased;
     }
 }
+
+namespace {
+
+constexpr uint32_t kOld = 3997830U;
+constexpr uint32_t kNew = 15643514U;
+constexpr float kFrame = 1.0f / 60.0f;
+
+}  // namespace
+
+TEST(StyleTransition, ACustomizationForTheDrawnStyleAppliesAtOnce) {
+    transition::LookHold hold;
+    EXPECT_TRUE(hold.offer(kOld, kOld));
+    EXPECT_FALSE(hold.holding());
+    EXPECT_TRUE(hold.offer(0U, kOld)) << "a Customization that names no Style";
+    EXPECT_TRUE(hold.offer(kNew, 0U)) << "nothing drawn yet: the first Style";
+    EXPECT_FALSE(hold.step(kOld, kNew, kFrame)) << "nothing is held";
+}
+
+TEST(StyleTransition, TheOutgoingStyleKeepsItsLookUntilTheChangeStarts) {
+    transition::LookHold hold;
+    EXPECT_FALSE(hold.offer(kNew, kOld));
+    EXPECT_TRUE(hold.holding());
+    // The change is asked for and waits for its downbeat: up to 3 s, with the old Style drawn.
+    for (int i = 0; i < 180; ++i) ASSERT_FALSE(hold.step(kOld, kNew, kFrame)) << i;
+    EXPECT_TRUE(hold.holding());
+    // The downbeat: the new Style is drawn, and its look applies.
+    EXPECT_TRUE(hold.step(kNew, kNew, kFrame));
+    EXPECT_FALSE(hold.holding());
+    EXPECT_FALSE(hold.step(kNew, kNew, kFrame)) << "once";
+}
+
+TEST(StyleTransition, TheLookMayComeAMomentBeforeTheChangeIsAskedFor) {
+    transition::LookHold hold;
+    EXPECT_FALSE(hold.offer(kNew, kOld));
+    for (int i = 0; i < 20; ++i) ASSERT_FALSE(hold.step(kOld, kOld, kFrame)) << "not asked for yet, " << i;
+    for (int i = 0; i < 60; ++i) ASSERT_FALSE(hold.step(kOld, kNew, kFrame)) << "asked for, waiting, " << i;
+    EXPECT_TRUE(hold.step(kNew, kNew, kFrame));
+}
+
+TEST(StyleTransition, ALookForAStyleNobodyAsksForGoesOnTheDrawnOne) {
+    transition::LookHold hold;
+    EXPECT_FALSE(hold.offer(kNew, kOld));
+    EXPECT_FALSE(hold.step(kOld, kOld, 0.25f));
+    EXPECT_FALSE(hold.step(kOld, kOld, -1.0f)) << "time never runs backwards";
+    EXPECT_TRUE(hold.step(kOld, kOld, 0.25f)) << "half a second unasked";
+
+    EXPECT_FALSE(hold.offer(kNew, kOld));
+    EXPECT_FALSE(hold.step(kOld, kOld, 0.4f));
+    EXPECT_FALSE(hold.step(kOld, kNew, 0.01f)) << "asked for: the grace starts again";
+    EXPECT_FALSE(hold.step(kOld, kOld, 0.4f));
+    EXPECT_TRUE(hold.step(kOld, kOld, 0.15f));
+}
+
+TEST(StyleTransition, NothingIsHeldForGood) {
+    transition::LookHold hold;
+    EXPECT_FALSE(hold.offer(kNew, kOld));
+    EXPECT_FALSE(hold.step(kOld, kNew, 3.5f));
+    EXPECT_FALSE(hold.step(kOld, kNew, 0.25f));
+    EXPECT_TRUE(hold.step(kOld, kNew, 0.25f)) << "a change that never starts lets its look go at 4 s";
+}
+
+TEST(StyleTransition, ANewerLookReplacesTheHeldOne) {
+    transition::LookHold hold;
+    EXPECT_FALSE(hold.offer(kNew, kOld));
+    EXPECT_FALSE(hold.step(kOld, kNew, 3.0f));
+    EXPECT_FALSE(hold.offer(kNew, kOld)) << "an edit to the new Style's look, still held";
+    EXPECT_FALSE(hold.step(kOld, kNew, 3.0f)) << "and its own 4 s begin again";
+    EXPECT_TRUE(hold.offer(kOld, kOld)) << "back to the drawn Style: applies, and nothing is held";
+    EXPECT_FALSE(hold.holding());
+}

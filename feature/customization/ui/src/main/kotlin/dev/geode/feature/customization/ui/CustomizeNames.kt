@@ -253,6 +253,8 @@ internal fun kindName(kind: ModulatorKind): String =
             ModulatorKind.ENVELOPE -> R.string.customize_modulator_kind_envelope
             ModulatorKind.SEQUENCER -> R.string.customize_modulator_kind_sequencer
             ModulatorKind.DRIFT -> R.string.customize_modulator_kind_drift
+            ModulatorKind.TOGGLE_ON_BEAT -> R.string.customize_modulator_kind_toggle_on_beat
+            ModulatorKind.RANDOM_ON_BEAT -> R.string.customize_modulator_kind_random_on_beat
         },
     )
 

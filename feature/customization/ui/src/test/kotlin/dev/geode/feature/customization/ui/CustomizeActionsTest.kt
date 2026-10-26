@@ -156,6 +156,21 @@ class CustomizeActionsTest {
             newModulator(ModulatorKind.SEQUENCER).shape,
         )
         assertEquals(ModulatorShape.RandomDrift(Millis(8_000)), newModulator(ModulatorKind.DRIFT).shape)
+        assertEquals(ModulatorShape.ToggleOnBeat(4, Millis(120)), newModulator(ModulatorKind.TOGGLE_ON_BEAT).shape)
+        assertEquals(ModulatorShape.RandomOnBeat(4, Millis(120)), newModulator(ModulatorKind.RANDOM_ON_BEAT).shape)
+    }
+
+    @Test
+    fun `a beat Modulator changes how many beats it waits, and nothing else does`() {
+        val toggle = ModulatorShape.ToggleOnBeat(4)
+        assertEquals(4, toggle.beatsBetween)
+        assertEquals(ModulatorShape.ToggleOnBeat(8), toggle.withBeatsBetween(8))
+        assertEquals(ModulatorShape.RandomOnBeat(2, Millis(50)), ModulatorShape.RandomOnBeat(16, Millis(50)).withBeatsBetween(2))
+        assertEquals(16, ModulatorShape.RandomOnBeat(16).beatsBetween)
+        val drift = ModulatorShape.RandomDrift(Millis(1))
+        assertEquals(drift, drift.withBeatsBetween(2))
+        assertNull(drift.beatsBetween)
+        assertEquals(listOf(1, 2, 4, 8, 16), BEATS_BETWEEN_CHOICES)
     }
 
     @Test
@@ -164,6 +179,8 @@ class CustomizeActionsTest {
         assertEquals(ModulatorKind.ENVELOPE, ModulatorShape.HitEnvelope(SoundSignal.HIT, Millis(1), Millis(1), 0f).kind)
         assertEquals(ModulatorKind.SEQUENCER, ModulatorShape.StepSequencer(emptyList(), Millis(1)).kind)
         assertEquals(ModulatorKind.DRIFT, ModulatorShape.RandomDrift(Millis(1)).kind)
+        assertEquals(ModulatorKind.TOGGLE_ON_BEAT, ModulatorShape.ToggleOnBeat().kind)
+        assertEquals(ModulatorKind.RANDOM_ON_BEAT, ModulatorShape.RandomOnBeat().kind)
         ModulatorKind.entries.forEach { assertEquals(it, newModulator(it).shape.kind) }
     }
 

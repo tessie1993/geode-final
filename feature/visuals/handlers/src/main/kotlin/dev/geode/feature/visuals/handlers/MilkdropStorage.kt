@@ -25,6 +25,12 @@ interface MilkdropFolder {
         name: String,
         bytes: ByteArray,
     )
+
+    /** Deletes the file [name] of [kind]; one already gone is no failure (#360). */
+    suspend fun delete(
+        kind: MilkdropKind,
+        name: String,
+    )
 }
 
 /** Reads what the person picked through the system picker. */
@@ -68,6 +74,17 @@ class FileMilkdropFolder(
         } finally {
             partial.delete()
         }
+    }
+
+    override suspend fun delete(
+        kind: MilkdropKind,
+        name: String,
+    ) {
+        val target = File(dir(kind), name)
+        // Only a file directly in the folder: never a path out of it, never a folder.
+        if (name != target.name || name.startsWith(".")) throw IOException("$name is not a MilkDrop file")
+        if (target.isDirectory) throw IOException("$name is a folder")
+        if (target.exists() && !target.delete()) throw IOException("cannot delete $name")
     }
 
     private fun dir(kind: MilkdropKind): File =

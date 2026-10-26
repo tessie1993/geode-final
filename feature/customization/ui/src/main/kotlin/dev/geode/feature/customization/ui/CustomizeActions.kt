@@ -68,6 +68,10 @@ private const val NEW_ENVELOPE_THRESHOLD = 0.5f
 private val NEW_SEQUENCER_STEPS = listOf(1f, 0f, 0.5f, 0f, 1f, 0f, 0.75f, 0.25f)
 private val NEW_SEQUENCER_STEP = Millis(250)
 private val NEW_DRIFT_PERIOD = Millis(8_000)
+private const val NEW_BEATS_BETWEEN = 4
+
+/** The beats a beat Modulator can wait between changes, as its editor offers them. */
+val BEATS_BETWEEN_CHOICES: List<Int> = listOf(1, 2, 4, 8, 16)
 
 /** The value each level effect is turned on at from the basic view's toggles. */
 private val EFFECT_ON_VALUES =
@@ -185,16 +189,35 @@ fun LayerLoop.toggled(target: LoopTarget): CustomizationCommand.SetLayerLoop? =
         else -> null
     }
 
+/** [shape], a beat Modulator, changing every [beats] heard beats; any other shape as it is. */
+fun ModulatorShape.withBeatsBetween(beats: Int): ModulatorShape =
+    when (this) {
+        is ModulatorShape.ToggleOnBeat -> copy(everyBeats = beats)
+        is ModulatorShape.RandomOnBeat -> copy(everyBeats = beats)
+        else -> this
+    }
+
+/** How many heard beats a beat Modulator waits between changes; null for the other kinds. */
+val ModulatorShape.beatsBetween: Int?
+    get() =
+        when (this) {
+            is ModulatorShape.ToggleOnBeat -> everyBeats
+            is ModulatorShape.RandomOnBeat -> everyBeats
+            else -> null
+        }
+
 /** Play a stopped hand-started Modulator, or stop a playing one. */
 fun togglePlay(modulator: Modulator): CustomizationCommand.PlayModulator =
     CustomizationCommand.PlayModulator(modulator.id, !modulator.playing)
 
-/** The four kinds of Modulator (#11), as the add menu offers them. */
+/** The kinds of Modulator (#11, and the beat Modulators of #319), as the add menu offers them. */
 enum class ModulatorKind {
     LFO,
     ENVELOPE,
     SEQUENCER,
     DRIFT,
+    TOGGLE_ON_BEAT,
+    RANDOM_ON_BEAT,
 }
 
 val ModulatorShape.kind: ModulatorKind
@@ -204,6 +227,8 @@ val ModulatorShape.kind: ModulatorKind
             is ModulatorShape.HitEnvelope -> ModulatorKind.ENVELOPE
             is ModulatorShape.StepSequencer -> ModulatorKind.SEQUENCER
             is ModulatorShape.RandomDrift -> ModulatorKind.DRIFT
+            is ModulatorShape.ToggleOnBeat -> ModulatorKind.TOGGLE_ON_BEAT
+            is ModulatorShape.RandomOnBeat -> ModulatorKind.RANDOM_ON_BEAT
         }
 
 /** A new Modulator of [kind], from a calm shape the person then edits. It runs once something listens to it. */
@@ -217,5 +242,7 @@ fun newModulator(kind: ModulatorKind): Modulator =
                     ModulatorShape.HitEnvelope(SoundSignal.KICK, NEW_ENVELOPE_ATTACK, NEW_ENVELOPE_RELEASE, NEW_ENVELOPE_THRESHOLD)
                 ModulatorKind.SEQUENCER -> ModulatorShape.StepSequencer(NEW_SEQUENCER_STEPS, NEW_SEQUENCER_STEP, beatSync = true)
                 ModulatorKind.DRIFT -> ModulatorShape.RandomDrift(NEW_DRIFT_PERIOD)
+                ModulatorKind.TOGGLE_ON_BEAT -> ModulatorShape.ToggleOnBeat(NEW_BEATS_BETWEEN)
+                ModulatorKind.RANDOM_ON_BEAT -> ModulatorShape.RandomOnBeat(NEW_BEATS_BETWEEN)
             },
     )

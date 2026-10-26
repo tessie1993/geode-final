@@ -28,8 +28,14 @@ constexpr const char* kTempPrefix = "tmp-";
 constexpr size_t kHeaderBytes = 16;
 constexpr size_t kKeyBytes = 16;
 constexpr size_t kNamespaceBytes = 8;
-constexpr uintmax_t kMaxTotalBytes = 24ull * 1024ull * 1024ull;
-constexpr size_t kMaxEntries = 256;
+// Room for every Style's programs and a few hundred MilkDrop presets' warp and composite shaders, so a
+// warm-up (#304) is not swept out by itself.
+constexpr uintmax_t kMaxTotalBytes = 48ull * 1024ull * 1024ull;
+constexpr size_t kMaxEntries = 1024;
+// Translated shader text, kept for every driver alike.
+constexpr const char* kTextDir = "shader-text";
+constexpr uintmax_t kMaxTextBytes = 16ull * 1024ull * 1024ull;
+constexpr size_t kMaxTextEntries = 2048;
 constexpr GLint kMaxEntryBytes = 4 * 1024 * 1024;
 constexpr size_t kWriteQueueLimit = 32;
 constexpr int kSweepAfterWrites = 32;
@@ -105,31 +111,102 @@ void ProgramBinaryCache::markRetrievable(GLuint program) {
 
 GLuint ProgramBinaryCache::load(const ProgramKey& key) {
     if (state_ != State::On) return 0;
+    const GLuint program = glCreateProgram();
+    if (program == 0) return 0;
+    if (loadInto(key, program)) return program;
+    glDeleteProgram(program);
+    return 0;
+}
+
+bool ProgramBinaryCache::loadInto(const ProgramKey& key, GLuint program) {
+    if (state_ != State::On || program == 0) return false;
     const std::string promoted = proven_ + "/" + key.hex;
     const bool fromProbation = !isFile(promoted);
     const std::string file = fromProbation ? probation_ + "/" + key.hex : promoted;
-    if (!isFile(file)) return 0;
+    if (!isFile(file)) return false;
 
     const auto entry = readEntry(file);
     if (!entry) {
         submit([file] { std::remove(file.c_str()); });
-        return 0;
+        return false;
     }
-    const GLuint program = glCreateProgram();
-    if (program == 0) return 0;
     loadGuarded(program, *entry);
     prober::drainErrors();
 
     GLint status = 0;
     glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (status == 0) {
-        glDeleteProgram(program);
         GEODE_LOGW(kTag, "driver rejected its own program binary; recompiling from source");
         submit([file] { std::remove(file.c_str()); });
-        return 0;
+        return false;
     }
     touch(file, fromProbation);
-    return program;
+    return true;
+}
+
+std::string ProgramBinaryCache::textFile(const std::string& key) const {
+    Sha256 digest;
+    digest.updateInt(kSchema);
+    digest.updateFramed(key);
+    return root_ + "/" + kTextDir + "/" + Sha256::hex(digest.digest(), kKeyBytes);
+}
+
+std::optional<std::string> ProgramBinaryCache::loadText(const std::string& key) {
+    if (root_.empty()) return std::nullopt;
+    const std::string file = textFile(key);
+    std::ifstream in(file, std::ios::binary);
+    if (!in) return std::nullopt;
+    std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    if (text.empty()) return std::nullopt;
+    submit([file] {
+        std::error_code ec;
+        fs::last_write_time(file, fs::file_time_type::clock::now(), ec);
+    });
+    return text;
+}
+
+void ProgramBinaryCache::storeText(const std::string& key, std::string text) {
+    if (root_.empty() || text.empty()) return;
+    const std::string file = textFile(key);
+    submit([this, file, text = std::move(text)] { writeText(file, text); });
+}
+
+void ProgramBinaryCache::writeText(const std::string& file, const std::string& text) {
+    if (isFile(file) || !ensureDir(fs::path(file).parent_path().string())) return;
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const std::string temp = file + "." + kTempPrefix + std::to_string(stamp);
+    {
+        std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+        if (!out) return;
+        out.write(text.data(), static_cast<std::streamsize>(text.size()));
+    }
+    std::error_code ec;
+    fs::rename(temp, file, ec);
+    if (ec) {
+        std::remove(temp.c_str());
+        return;
+    }
+    sweepText();
+}
+
+// The oldest translations go first once the folder holds too many or too much.
+void ProgramBinaryCache::sweepText() {
+    auto files = filesIn(root_ + "/" + kTextDir);
+    std::error_code ec;
+    uintmax_t bytes = 0;
+    for (const auto& f : files) bytes += f.file_size(ec);
+    size_t count = files.size();
+    if (bytes <= kMaxTextBytes && count <= kMaxTextEntries) return;
+    std::sort(files.begin(), files.end(),
+              [&](const fs::directory_entry& a, const fs::directory_entry& b) { return a.last_write_time(ec) < b.last_write_time(ec); });
+    for (const auto& file : files) {
+        if (bytes <= kMaxTextBytes && count <= kMaxTextEntries) return;
+        const uintmax_t size = file.file_size(ec);
+        if (fs::remove(file.path(), ec)) {
+            bytes -= size;
+            count--;
+        }
+    }
 }
 
 void ProgramBinaryCache::store(const ProgramKey& key, GLuint program) {
@@ -317,7 +394,8 @@ void ProgramBinaryCache::prune() {
     std::error_code ec;
     const std::string live = fs::path(namespace_).filename().string();
     for (const auto& entry : fs::directory_iterator(root_, ec)) {
-        if (entry.path().filename().string() == live) continue;
+        const std::string name = entry.path().filename().string();
+        if (name == live || name == kTextDir) continue;
         fs::remove_all(entry.path(), ec);
     }
     for (const auto& entry : fs::directory_iterator(namespace_, ec)) {

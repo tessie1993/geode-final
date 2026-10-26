@@ -59,4 +59,22 @@ class ModulatorPicturesTest {
     fun `a drift stays within 0 and 1`() {
         (0..100).map { driftAt(it / 100f) }.forEach { assertEquals(true, it in 0f..1f) }
     }
+
+    @Test
+    fun `a toggle on the beat starts low and flips every so many beats`() {
+        assertEquals(0f, toggleAt(1, 0f), tolerance)
+        assertEquals(1f, toggleAt(1, 1.5f / PICTURE_BEATS), tolerance)
+        assertEquals(0f, toggleAt(1, 2.5f / PICTURE_BEATS), tolerance)
+        assertEquals(0f, toggleAt(4, 3.5f / PICTURE_BEATS), tolerance)
+        assertEquals(1f, toggleAt(4, 4.5f / PICTURE_BEATS), tolerance)
+        assertEquals(0f, toggleAt(0, -1f), tolerance)
+    }
+
+    @Test
+    fun `a random value on the beat holds the random wave's values, a new one every so many beats`() {
+        assertEquals(RANDOM_STEPS[0], randomOnBeatAt(2, 1.5f / PICTURE_BEATS), tolerance)
+        assertEquals(RANDOM_STEPS[1], randomOnBeatAt(2, 2.5f / PICTURE_BEATS), tolerance)
+        assertEquals(RANDOM_STEPS[0], randomOnBeatAt(1, 4.5f / PICTURE_BEATS), tolerance)
+        assertEquals(RANDOM_STEPS[(PICTURE_BEATS / 2) % RANDOM_STEPS.size], randomOnBeatAt(2, 2f), tolerance)
+    }
 }

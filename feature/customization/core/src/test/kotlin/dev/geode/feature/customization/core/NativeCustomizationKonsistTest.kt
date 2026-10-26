@@ -121,6 +121,7 @@ class NativeCustomizationKonsistTest {
         assertEquals(NativePlan.MACRO_LINK_FLOATS.toString(), constant(codec, "kMacroLinkFloats"))
         assertEquals("${NativePlan.AUTOMATION_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kAutomationFloats"))
         assertEquals(NativePlan.LAYER_FLOATS.toString(), constant(codec, "kLayerFloats"))
+        assertEquals(NativePlan.STYLE_FLOATS.toString(), constant(codec, "kStyleFloats"))
         assertEquals(NativePlan.floatCount.toString(), constant(codec, "kPlanFloats"))
     }
 
@@ -133,6 +134,22 @@ class NativeCustomizationKonsistTest {
             .split(',')
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+    }
+
+    @Test
+    fun `the engine's Modulator kinds are at the places NativePlan writes`() {
+        val kinds = nativeEnum(read("core/viz/include/geode/viz/Modulators.hpp"), "ModulatorKind")
+        val written =
+            mapOf(
+                "Lfo" to 0f,
+                "HitEnvelope" to NativePlan.KIND_HIT_ENVELOPE,
+                "StepSequencer" to NativePlan.KIND_STEP_SEQUENCER,
+                "RandomDrift" to NativePlan.KIND_RANDOM_DRIFT,
+                "ToggleOnBeat" to NativePlan.KIND_TOGGLE_ON_BEAT,
+                "RandomOnBeat" to NativePlan.KIND_RANDOM_ON_BEAT,
+            )
+        assertEquals(written.keys.toList(), kinds)
+        written.forEach { (kind, place) -> assertEquals(kind, kinds.indexOf(kind).toFloat(), place, 0f) }
     }
 
     @Test

@@ -5,5 +5,9 @@
   "family": "shader",
   "shader": "shader.glsl",
   "renderScale": 0.6,
-  "detail": "march"
+  "detail": "march",
+  "textures": [
+    { "name": "paper", "file": "paper.png", "wrap": "repeat", "filter": "mipmap" }
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["bands"]}
 }

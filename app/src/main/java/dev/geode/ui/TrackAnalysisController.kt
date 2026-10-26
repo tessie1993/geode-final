@@ -50,8 +50,9 @@ class TrackAnalysisController internal constructor(
                 onProgress(1f)
                 return it
             }
-        return offlineAnalyzer
-            .analyze(uri, gui.beatSensitivity, gui.effectiveBeatMinIntervalMs, onProgress)
+        // At the cache's precision, so the export draws the same whether the analysis is fresh or cached (#302).
+        return AnalysisCache
+            .stored(offlineAnalyzer.analyze(uri, gui.beatSensitivity, gui.effectiveBeatMinIntervalMs, onProgress))
             .also { AnalysisCache.save(application, uri, it) }
     }
 }

@@ -47,9 +47,9 @@ uniform float uGlitch;
 uniform float uFisheye;
 // PER-TEXTURE GATES. Which of the uPost* groups below the composite must
 // apply is a property of the SCENE, not of the frame: shader scenes already
-// warp/grade in view()/grade(), particle scenes in particle_vert/frag,
-// milkdrop in pm_post_frag, and the fluid family (Fluid, Curl Flow, Water)
-// applies nothing of its own. main() routes BOTH uTexA (incoming) and uTexB
+// warp/grade in view()/grade(), particle scenes in particle_vert/frag, and
+// the fluid family (Fluid, Curl Flow, Water) and MilkDrop (whose projectM
+// frame lands in its scene target as it is, #303) apply nothing of their own. main() routes BOTH uTexA (incoming) and uTexB
 // (outgoing) through postFx, and during a transition those two textures can
 // come from DIFFERENT families - so one gate per texture, never one shared
 // gate taken from the incoming scene. With a single gate a julia -> fluid
@@ -60,7 +60,8 @@ uniform float uFisheye;
 //                                 twist, bloom, posterize, drift, sway,
 //                                 shake, temp, solarize)
 //   y = mirror + invert
-//   z = colour grade + zoom/rotation  (the uPostZoom..uPostHue block below)
+//   z = colour grade + zoom/rotation  (the uPostZoom..uPostHue block below);
+//       2.0 adds the palette tint first (uPostPal*, MilkDrop only)
 //   w = beat pulse
 // A component is 1.0 when the COMPOSITE owns that group for that texture and
 // 0.0 when the scene already applied it. Uploaded by VisualizerRenderer and
@@ -94,10 +95,10 @@ uniform float uPostSolarize;
 // Red/blue anaglyph (#388): its mix 0..1, faded in and out on the CPU (sharedfx::anaglyphMix). 0 skips it.
 uniform float uPostAnaglyph;
 // Universal grading + zoom/rotation for scenes that grade NOTHING themselves
-// (the fluid family: Fluid, Curl Flow, Water). Shader scenes grade in
-// view()/grade(), particle scenes in particle_vert/particle_frag and milkdrop
-// in pm_post_frag, so for those the gate's z is 0 and the whole block below is
-// skipped - a bitwise no-op, never a double grade.
+// (the fluid family: Fluid, Curl Flow, Water; and MilkDrop). Shader scenes
+// grade in view()/grade() and particle scenes in particle_vert/particle_frag,
+// so for those the gate's z is 0 and the whole block below is skipped - a
+// bitwise no-op, never a double grade.
 // The gate is required (not just neutral values) because the neutral value of
 // these uniforms is 1.0, not 0.0: a program that never uploads them would
 // otherwise read the GL default 0 and render black at 20x zoom.
@@ -109,14 +110,19 @@ uniform float uPostContrast;
 uniform float uPostGamma;
 uniform float uPostHue;
 // Beat pulse for scenes that don't swell on the beat themselves (the fluid
-// family AND milkdrop - a DIFFERENT set from the grading block above, which
-// milkdrop is excluded from because pm_post_frag grades but never pulses).
+// family and milkdrop).
 // This is the pulse AMOUNT with the beat envelope already folded in on the
 // CPU (CompositeGrade.pulseAmount), because the composite pass has no BPM
 // phase clock of its own. Its gate component (w) is separate from the grade's
 // (z) for that reason; the VALUE is still neutral at 0.0, which is also GL's
 // default, so a program that never uploads it renders identically.
 uniform float uPostPulse;
+// Palette tint (Color > Palettes) for MilkDrop, where the gate's z is 2: uPostPalTint is the blend
+// amount, 0 by default, which skips it. A .milk preset authors its own colours, so the palette may only
+// STEER them (base hue uPostPalBase across uPostPalSpan of the wheel), never replace them.
+uniform float uPostPalTint;
+uniform float uPostPalBase;
+uniform float uPostPalSpan;
 // FlowField fluidWarp: the shared fluid velocity field bends the sampling
 // coordinate of ANY scene's output (particles, shaders, milkdrop) before the
 // scene-texture fetch. A 1x1 zero texture is bound when disabled so the
@@ -162,14 +168,50 @@ float compHash12(vec2 p) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
-// Hue rotation about the grey axis, byte-for-byte the same formula as
-// pm_post_frag's hueRotate (and mirrored by CompositeGrade.hueRotate).
+// Hue rotation about the grey axis (mirrored by CompositeGrade.hueRotate).
 vec3 hueRotate(vec3 c, float a) {
     const vec3 w = vec3(0.299, 0.587, 0.114);
     float angle = a * 6.2831;
     float cs = cos(angle);
     float sn = sin(angle);
     return vec3(dot(c, w)) + (c - vec3(dot(c, w))) * cs + cross(vec3(0.57735), c) * sn;
+}
+
+// Chroma below which a pixel has no hue worth steering, and the chroma a fully tinted grey gains so the
+// palette shows on the white cores most presets draw.
+const float TINT_CHROMA_KNEE = 0.15;
+const float TINT_SAT_LIFT = 0.35;
+
+vec3 rgb2hsv(vec3 c) {
+    vec4 k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, k.wz), vec4(c.gb, k.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    const float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 hsv2rgb(vec3 c) {
+    vec4 k = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
+    return c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y);
+}
+
+// Steers a preset's own colours toward the palette by `amount`, in HSV so VALUE is never touched: a
+// coloured pixel keeps its hue relationships, compressed into the palette's band, and a pixel with no
+// chroma takes the palette entry its own brightness selects (a gradient map), the only way the white
+// cores most presets draw can show the palette at all. The colour the old MilkDrop post pass gave.
+vec3 paletteTint(vec3 col, float base, float span, float amount) {
+    vec3 hsv = rgb2hsv(col);
+    float luma = dot(col, vec3(0.299, 0.587, 0.114));
+    float chroma = smoothstep(0.0, TINT_CHROMA_KNEE, hsv.y);
+    float t = mix(luma, hsv.x, chroma);
+    float target = base + t * span;
+    // Shortest way round the wheel, so a tint never sweeps through the complementary hue.
+    float delta = fract(target - hsv.x + 0.5) - 0.5;
+    hsv.x = fract(hsv.x + delta * amount);
+    hsv.y = mix(hsv.y, hsv.y + (1.0 - hsv.y) * TINT_SAT_LIFT, amount * (1.0 - chroma));
+    return hsv2rgb(hsv);
 }
 
 // Applies geometric transforms to a [0,1] uv, operating in centered space.
@@ -354,11 +396,13 @@ vec3 postFxAt(sampler2D tex, vec2 uv, vec4 gate, bool cam, float scale) {
         float levels = mix(24.0, 3.0, uPostPosterize);
         col = floor(col * levels + 0.5) / levels;
     }
-    // Colour grade: identical chain and order to plasma_frag's grade() and
-    // pm_post_frag (hue -> saturation -> contrast -> gamma, brightness last,
-    // just before invert), so a slider value lands the same on every style.
-    // Mirrored on the CPU by CompositeGrade for the headless test.
+    // Colour grade: identical chain and order to plasma_frag's grade()
+    // (hue -> saturation -> contrast -> gamma, brightness last, just before
+    // invert), so a slider value lands the same on every style. MilkDrop's
+    // palette tint comes first: palette IDENTITY, then hue ROTATION turns the
+    // tinted frame instead of being cancelled by it.
     if (gradeOn) {
+        if (gate.z > 1.5 && uPostPalTint > 0.001) col = paletteTint(col, uPostPalBase, uPostPalSpan, uPostPalTint);
         if (abs(uPostHue) > 0.0001) col = hueRotate(col, uPostHue);
         if (abs(uPostSat - 1.0) > 0.0001) {
             float lum = dot(col, vec3(0.299, 0.587, 0.114));

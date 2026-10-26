@@ -79,11 +79,16 @@ fun interface FramePcm {
     ): PcmSpan
 }
 
-/** A change of Style a Render makes (#343): to [sceneId], drawn with [look], crossfading over [transition]. */
+/**
+ * A change of Style a Render makes (#343): to [sceneId], drawn with [look], crossfading over [transition].
+ * A MilkDrop preset's own Style (#305) names the preset it loads, [milkPresetPath]; otherwise a switch into
+ * MilkDrop loads the Render's preset.
+ */
 class RenderSwitch(
     val sceneId: SceneId,
     val look: CustomizationSnapshot,
     val transition: Millis,
+    val milkPresetPath: String? = null,
 )
 
 /**
@@ -195,7 +200,7 @@ class OffscreenSceneRenderer(
         viz.setTransition(TransitionStyle.FADE.name.lowercase(), switch.transition)
         viz.setScene(switch.sceneId)
         // The MilkDrop preset waits for the MilkDrop scene: a switch into it loads the Render's preset.
-        if (switch.sceneId == SceneIds.MILKDROP) sceneFactory.milkPresetPath?.let { viz.loadMilkPreset(it) }
+        if (switch.sceneId == SceneIds.MILKDROP) (switch.milkPresetPath ?: sceneFactory.milkPresetPath)?.let { viz.loadMilkPreset(it) }
     }
 
     /**

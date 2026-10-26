@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
@@ -135,7 +136,7 @@ class NativePlanTest {
     @Test
     fun `is exactly the engine's size`() {
         assertEquals(NativePlan.floatCount, plan.size)
-        assertEquals(3955, NativePlan.floatCount)
+        assertEquals(3956, NativePlan.floatCount)
     }
 
     @Test
@@ -212,6 +213,44 @@ class NativePlanTest {
         val driftFloats = at(modulatorsAt + 3 * MODULATOR_FLOATS, MODULATOR_FLOATS)
         assertEquals(listOf(NativePlan.KIND_RANDOM_DRIFT, 0f, 3f, 0f), driftFloats.subList(0, 4))
         assertEquals(0f, driftFloats.last())
+    }
+
+    @Test
+    fun `carries the beat Modulators and their links to a Macro like the others`() {
+        val toggle = ModulatorId(1)
+        val random = ModulatorId(2)
+        val beats =
+            Customization(
+                style = Fixtures.JULIA,
+                shared = emptyMap(),
+                extras = emptyMap(),
+                macros = emptyList(),
+                signals = emptyMap(),
+                modulators =
+                    listOf(
+                        Modulator(toggle, ModulatorShape.ToggleOnBeat(everyBeats = 4, glide = Millis(250)), rate = 2f),
+                        Modulator(random, ModulatorShape.RandomOnBeat(everyBeats = MAX_STEPS + 3, glide = Millis(80))),
+                    ),
+                reactions =
+                    listOf(
+                        Reaction(ReactionId(1), ReactionSource.Generated(toggle), Target.MacroSlot(0), amount = 0.4f),
+                        Reaction(ReactionId(2), ReactionSource.Generated(random), Target.MacroSlot(5)),
+                    ),
+            )
+        val floats = NativePlan.encode(beats)
+        val first = floats.subList(modulatorsAt, modulatorsAt + MODULATOR_FLOATS)
+        assertEquals(listOf(NativePlan.KIND_TOGGLE_ON_BEAT, 0f, 0f, 0f, 0f, 0.25f, 0f, 0f), first.subList(0, 8))
+        assertEquals(listOf(4f, 0f, 0f, 0f, 0f, 2f, 1f, 1f), first.subList(8 + MAX_STEPS, MODULATOR_FLOATS))
+        val second = floats.subList(modulatorsAt + MODULATOR_FLOATS, modulatorsAt + 2 * MODULATOR_FLOATS)
+        assertEquals(listOf(NativePlan.KIND_RANDOM_ON_BEAT, 0f, 0f, 0f, 0f, 0.08f), second.subList(0, 6))
+        assertEquals(MAX_STEPS.toFloat(), second[8 + MAX_STEPS])
+        assertEquals(2f, second.last())
+        val links = floats.subList(reactionsAt, reactionsAt + 2 * REACTION_FLOATS)
+        assertEquals(listOf(NativePlan.SOURCE_MODULATOR, 0f, NativePlan.TARGET_MACRO, 0f, 0f, 0.4f), links.subList(0, 6))
+        assertEquals(
+            listOf(NativePlan.SOURCE_MODULATOR, 1f, NativePlan.TARGET_MACRO, 5f, 0f),
+            links.subList(REACTION_FLOATS, REACTION_FLOATS + 5),
+        )
     }
 
     @Test
@@ -343,12 +382,30 @@ class NativePlanTest {
     }
 
     @Test
-    fun `ends with Layer 2's Style, blend and influence`() {
-        assertEquals(NativePlan.floatCount, layerAt + NativePlan.LAYER_FLOATS)
-        assertEquals(listOf(0f, LayerBlend.SCREEN.ordinal.toFloat(), 0f), plan.subList(layerAt, plan.size))
+    fun `has Layer 2's Style, blend and influence before the Style`() {
+        val styleAt = layerAt + NativePlan.LAYER_FLOATS
+        assertEquals(listOf(0f, LayerBlend.SCREEN.ordinal.toFloat(), 0f), plan.subList(layerAt, styleAt))
         val layered =
             NativePlan.encode(customization.copy(layer = Layer(Fixtures.TUNNEL, LayerBlend.DIFFERENCE, LayerInfluence.TINT)))
-        assertEquals(listOf(StyleHash.of(Fixtures.TUNNEL).toFloat(), 7f, 4f), layered.subList(layerAt, layered.size))
+        assertEquals(listOf(StyleHash.of(Fixtures.TUNNEL).toFloat(), 7f, 4f), layered.subList(layerAt, styleAt))
+    }
+
+    @Test
+    fun `ends with the Style the Customization is for`() {
+        assertEquals(NativePlan.floatCount, layerAt + NativePlan.LAYER_FLOATS + NativePlan.STYLE_FLOATS)
+        assertEquals(StyleHash.of(Fixtures.JULIA).toFloat(), plan.last())
+        val tunnel = NativePlan.encode(customization.copy(style = Fixtures.TUNNEL))
+        assertEquals(StyleHash.of(Fixtures.TUNNEL).toFloat(), tunnel.last())
+    }
+
+    @Test
+    fun `names a MilkDrop preset's Style as the MilkDrop scene that draws it`() {
+        val milk = StyleHash.of(SceneId("milkdrop")).toFloat()
+        val preset = NativePlan.encode(customization.copy(style = MilkdropStyles.of("Ocean.milk")))
+        assertEquals(milk, preset.last())
+        val layered =
+            NativePlan.encode(customization.copy(layer = Layer(MilkdropStyles.of("Ocean.milk"), LayerBlend.SCREEN, LayerInfluence.NONE)))
+        assertEquals(milk, layered[layerAt])
     }
 
     @Test

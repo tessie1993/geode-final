@@ -18,6 +18,7 @@ styles/
   <id>/
     manifest.json       the Style
     shader.glsl         its fragment shader (shader Styles only)
+    *.png               the images it ships, if any ("Images" below)
 ```
 
 ## `index.json`
@@ -51,6 +52,10 @@ presets name them: MilkDrop paces itself and takes raw sound, so it has
 and any Macro that moves only them (#365). Only the Kotlin side reads it; the Customization tests
 check every name is a real property.
 
+A family other than `shader` also declares, under `reactivity`, what its renderer reads of the music,
+in the form of a Style's reactivity profile (below): Fluid takes the kick, a drop, the brightness of the
+sound, the bands, the spectrum and the stereo image, so its Styles declare exactly that.
+
 ## `manifest.json`
 
 ```json
@@ -65,7 +70,8 @@ check every name is a real property.
   "parameters": {},
   "extras": [ { "name": "scale", "min": 0, "max": 2, "default": 1 } ],
   "macros": [ { "name": "energy", "links": [ { "target": "scale", "amount": 0.5 } ] } ],
-  "reactions": [ { "signal": "bass", "target": "scale", "amount": 0.4, "riseMs": 20, "fallMs": 300, "curve": "smooth" } ]
+  "reactions": [ { "signal": "bass", "target": "scale", "amount": 0.4, "riseMs": 20, "fallMs": 300, "curve": "smooth" } ],
+  "reactivity": { "macro": ["energy"], "micro": ["onset", "bands", "spectrum"] }
 }
 ```
 
@@ -86,7 +92,9 @@ check every name is a real property.
 | `inputs` | no | The shared Style inputs the shader reads ("Shared inputs" below), each named once: `noise_lq`, `noise_mq`, `noise_hq`, `noise_vol`, `blue_noise`, `blur1`, `blur2`, `blur3`, `previous_frame`, `clocks`, `bar`. Shader Styles only; the shader includes `lib_inputs` and reads every input it declares and no other (CI checks both, the render check on the linked program). |
 | `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 | `lens` | no | The shared lens effects (#313, `geode/viz/LensFx.hpp`), each part optional: `threshold` (0.5–1, the light the glare gathers from), `flare` (`amount`, `ghosts` 1–8, `halo`, `dispersion`), `godRays` (`amount`, `source` [x, y] in 0–1 from the bottom left, `length` 0.1–1, `decay` 0.8–0.99), `streaks` (`amount`, `shape` `star`, `zoom` or `anamorphic`, `spokes` 2–8, `length` 0.1–1) and `depthOfField` (`aperture`, `focus` 0.05–0.95). Amounts, halo, dispersion and aperture are 0–1, and each part needs its `amount` (`aperture` for depth of field) above 0. Depth of field is for shader Styles only: the shader writes its depth into alpha as t / (t + the subject's distance), 1 for nothing hit. |
+| `reactivity` | yes | The Style's reactivity profile (#319): what it reacts to at each level of the music, `macro` (sections and energy), `meso` (the bar and the beat) and `micro` (onsets and the spectrum), each a list of the features below. A shader Style declares exactly what its own code reads, its shader and its feedback warp stage (its copy of `view()` and of the audio taps aside: those are the Shared core's controls; nor what the engine's warp does with `react` and the Extras); any other Style declares exactly what its family declares. CI rejects a feature nothing reads and one read but not declared. |
 | `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1) and `react` (0–1, how much the music speeds the motion), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
+| `textures` | no | The Style's own images ("Images" below), at most 4: each a `name` (lower-case letters, digits and `_`, starting with a letter), a PNG `file` in its folder, and optionally `wrap` (`repeat`, the default, `mirror` or `clamp`) and `filter` (`linear`, the default, `nearest` or `mipmap`). Shader Styles only. |
 | `particles3d` | no | The shared 3D particle layer (#314): `amount` (above 0, up to 1), `kind` (`streaks` or `sparks`), and multipliers `count` (0.25–2), `speed` (0.1–3) and `size` (0.3–3), and a `tint` [r, g, b] in 0–2. |
 
 Every lens effect and the particles are light: they run inside the HDR frame graph, before the
@@ -119,6 +127,30 @@ nothing.
 The noise is drawn from the Render seed, and so is `uVisitRand` in a Render, so a Render gives the same
 frames every time. The previous frame and the blur levels are the Style's own picture: what feeds back
 must stay below 1, or the loop grows into a flash. A Style's kept frames start black at each visit.
+
+## Images
+
+A shader Style may ship its own images, and use them with no code anywhere but its shader (#391). Each
+is a PNG in the Style's folder, 8 bits a channel and at most 1024 pixels a side, declared under
+`textures`; the shader declares its sampler itself and reads it:
+
+```json
+"textures": [ { "name": "paper", "file": "paper.png", "wrap": "repeat", "filter": "mipmap" } ]
+```
+
+```glsl
+uniform highp sampler2D uImagePaper;   // uImage and the name's words capitalised: fold_ramp is uImageFoldRamp
+```
+
+The engine decodes each image with the platform's decoder when it builds the Style, uploads it as RGBA8
+(not premultiplied, its bottom row at texture coordinate 0, like every other picture a shader reads) with
+the pack's wrap on both axes and its filter, and binds it on a unit of its own above the shared inputs'.
+`mipmap` adds the chain of halved copies, so an image seen far off or small does not shimmer; a shader
+that samples one inside a raymarch's loop or branch picks the level itself with `textureLod`, since the
+implicit derivatives are undefined there. The pack check fails an image that is missing, not such a PNG,
+or never sampled, and a shader that samples an image its pack does not declare; the render check binds
+the real file. Images are ours: drawn by `tools/style_textures/generate.py` (or made here by hand), never
+taken from elsewhere.
 
 ## Feedback
 
@@ -177,6 +209,7 @@ for it, so it needs no `inputs` entry (the bar's phase is the `bar` shared input
 | | trust | `uPulseConfidence`, `uTempoStability`, `uDownbeatConfidence` | how far a tempo-locked use may go | all |
 | Timbre | centroid, harmonicity, flux, onset | `uCentroid`, `uHarmonicity`, `uFlux`, `uOnset` | material: rough or smooth, metal or organic, bloom or crisp | Fluid's tint, Life's rule, Acid's feedback |
 | Space | width, pan, correlation | `uStereoWidth`, `uStereoPan`, `uStereoCorrelation` | true left/right asymmetry, duplication | stereo-meaningful Styles only |
+| Bands | each band against its usual level in the song | `uBassLevel`, `uMidLevel`, `uTrebleLevel` (0.5 is usual), `uBassHits`, `uMidHits`, `uTrebleHits`, `uBassPresence`, `uMidPresence`, `uTreblePresence` | what one band moves, a ripple when it jumps, a slow lean while the passage has more or less of it | Kaleido, Plasma, Tunnel |
 
 What not to do:
 
@@ -188,13 +221,30 @@ What not to do:
   a phase that has run for minutes, where the smallest change slides the whole picture.
 - **Fade tempo-locked uses by the trust**, so a tracker that is unsure falls back to the energy.
 
+A Style's `reactivity` profile names what it reads, by level, with these words (`tools/ci/check_style_packs.py`):
+
+| Level | Feature | Read as |
+|---|---|---|
+| `macro` | `section`, `novelty`, `buildup`, `drop`, `arrival` | their structure uniforms above |
+| | `energy` | `uMacro`, `uSwell`, `uEnergy`, `uEnergySmooth`, `uEnergyPhase`, `uFlowPhase` |
+| | `timbre` | `uCentroid`, `uHarmonicity` |
+| | `presence` | the bands' presence |
+| `meso` | `bar` | `uBarPhase`, `uBarConfidence`, `uBeatInBar`, `uDownbeat`, `uDownbeatConfidence` |
+| | `beat` | `uBeat`, `uBeatPhase`, `uPulseConfidence`, `uTempoStability` |
+| `micro` | `onset` | `uOnset`, `uFlux`, and the motion layer's spike: `uSpike`, `uMoveDir`, `uSpawnSeed`, `uSpawnAge`, `uFormPhase` |
+| | `drums`, `hits` | `uKick`, `uSnare`, `uHat`; the bands' hits |
+| | `bands` | `uBass`, `uMid`, `uTreble`, their smooth forms and the bands' levels |
+| | `spectrum`, `wave` | `aband`, `apeak`; `awave`, `awaveL`, `awaveR` |
+| | `space` | the stereo uniforms |
+
 The engine uploads every feature uniform to every shader Style; one it never reads costs nothing. A host
 test holds the uploaded list to the library and fails when no shipped Style reads one of them, and the
 pack check fails a Style that includes the library and reads none of it.
 
 ## Adding a Style
 
-1. Make `styles/<id>/` with `manifest.json` (and `shader.glsl` for a shader Style).
+1. Make `styles/<id>/` with `manifest.json` (and `shader.glsl` for a shader Style), its `reactivity`
+   naming what it reads (the pack check says what is missing).
 2. Add the id to `index.json` where it should appear in the picker.
 3. If it declares Extras, run `python3 tools/ci/check_style_packs.py --write-kotlin` and commit `PackExtras.kt`.
 4. Push with `[record-goldens]` in the commit message to record its golden frame, then push again

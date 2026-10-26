@@ -9,5 +9,6 @@
     { "name": "decay", "min": 0, "max": 2, "default": 1 },
     { "name": "size", "min": 0, "max": 2, "default": 1 },
     { "name": "force", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy", "drop", "timbre"], "micro": ["drums", "bands", "spectrum", "space"]}
 }

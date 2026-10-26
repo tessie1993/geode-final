@@ -1,8 +1,10 @@
 package dev.geode.feature.visuals.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.customization.api.StyleManifest
+import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import org.junit.Assert.assertEquals
@@ -58,6 +60,24 @@ class StyleEntriesTest {
             ),
             entries,
         )
+    }
+
+    @Test
+    fun `every MilkDrop preset is listed as a Style of its own, in place of the plain MilkDrop Style`() {
+        val tunnel = StyleEntry(SceneId("tunnel"), "Tunnel", StyleGroup.SHADERS)
+        val plain = StyleEntry(SceneId("milkdrop"), "Milkdrop", StyleGroup.MILKDROP)
+        val reef = MilkdropPreset("reef.milk", "Coral Reef", "Geode", builtIn = true)
+        val ocean = MilkdropPreset("Ocean.milk", "Ocean", null, builtIn = false)
+        val reefStyle = StyleEntry(MilkdropStyles.of("reef.milk"), "Coral Reef", StyleGroup.MILKDROP)
+        val oceanStyle = StyleEntry(MilkdropStyles.of("Ocean.milk"), "Ocean", StyleGroup.MILKDROP)
+
+        val listed = StyleEntries.withMilkdrop(listOf(tunnel, plain), listOf(reef, ocean))
+        assertEquals(listOf(tunnel, reefStyle, oceanStyle), listed)
+        // A later listing replaces the presets of the earlier one.
+        assertEquals(listOf(tunnel, oceanStyle), StyleEntries.withMilkdrop(listed, listOf(ocean)))
+        // With no presets at all, only the presets go.
+        assertEquals(listOf(tunnel), StyleEntries.withMilkdrop(listed, emptyList()))
+        assertEquals(listOf(tunnel, plain), StyleEntries.withMilkdrop(listOf(tunnel, plain), emptyList()))
     }
 
     @Test

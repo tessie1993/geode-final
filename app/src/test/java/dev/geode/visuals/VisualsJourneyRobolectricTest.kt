@@ -295,6 +295,11 @@ class VisualsJourneyRobolectricTest {
             name: String,
             bytes: ByteArray,
         ) = Unit
+
+        override suspend fun delete(
+            kind: MilkdropKind,
+            name: String,
+        ) = Unit
     }
 
     private object NoPicks : PickedFiles {
