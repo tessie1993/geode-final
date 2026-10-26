@@ -1,8 +1,14 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.customization.api.Automations
+import dev.geode.feature.customization.api.BeatSpan
+import dev.geode.feature.customization.api.Cadence
+import dev.geode.feature.customization.api.CameraMove
+import dev.geode.feature.customization.api.CameraMoveKind
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.MACRO_REST
 import dev.geode.feature.customization.api.Macro
@@ -11,6 +17,7 @@ import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.ModulatorParameter
 import dev.geode.feature.customization.api.ModulatorShape
+import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
@@ -19,8 +26,12 @@ import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StepLength
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
+import dev.geode.feature.customization.api.Trigger
 import dev.geode.feature.customization.api.Wave
+import dev.geode.feature.customization.core.NativePlan.AUTOMATION_FLOATS
 import dev.geode.feature.customization.core.NativePlan.MACRO_LINK_FLOATS
 import dev.geode.feature.customization.core.NativePlan.MAX_MACRO_LINKS
 import dev.geode.feature.customization.core.NativePlan.MAX_MODULATORS
@@ -42,6 +53,9 @@ class NativePlanTest {
     private val modulatorsAt = reactionsAt + MAX_REACTIONS * REACTION_FLOATS
     private val linksAt = modulatorsAt + MAX_MODULATORS * MODULATOR_FLOATS
     private val automationsAt = linksAt + MAX_MACRO_LINKS * MACRO_LINK_FLOATS
+
+    /** An Automation slot's floats before its steps. */
+    private val automationHead = AUTOMATION_FLOATS - MAX_STEPS
 
     private val extra = ExtraKind.entries[2]
     private val steps = ModulatorId(7)
@@ -115,7 +129,7 @@ class NativePlanTest {
     }
 
     @Test
-    fun `starts with the carried mark and the counts, with no Automation yet`() {
+    fun `starts with the carried mark and the counts, and no Automation when there is none`() {
         assertEquals(listOf(1f, 4f, 4f, 2f, 0f), at(0, NativePlan.HEADER_FLOATS))
         assertEquals(List(NativePlan.MAX_AUTOMATIONS * NativePlan.AUTOMATION_FLOATS) { 0f }, plan.subList(automationsAt, plan.size))
     }
@@ -198,6 +212,92 @@ class NativePlanTest {
         )
         assertEquals(listOf(3f, NativePlan.TARGET_MODULATOR, 3f, 0f, 0f, 1f), at(linksAt + MACRO_LINK_FLOATS, MACRO_LINK_FLOATS))
         assertEquals(List(MACRO_LINK_FLOATS) { 0f }, at(linksAt + 2 * MACRO_LINK_FLOATS, MACRO_LINK_FLOATS))
+    }
+
+    private val laneTargets =
+        listOf(Target.Shared(SharedProperty.GLOW), Target.ModulatorField(lfo, ModulatorParameter.DEPTH), Target.Extra(extra))
+
+    private val automated =
+        customization.copy(
+            automations =
+                Automations(
+                    style = StyleSwitching(Cadence(Trigger.BigMoments(0.7f), Millis(8_000)), transition = Millis(4_000)),
+                    palette = PaletteChanges(Cadence(Trigger.EveryBars(8)), fade = Millis(2_000)),
+                    camera = listOf(CameraMove(CameraMoveKind.TRAVEL_CURVE, BeatSpan.FOUR, 0.5f), CameraMove(CameraMoveKind.PULL_OUT)),
+                    lanes = listOf(Lane(laneTargets, listOf(listOf(0.1f, 0.2f, 0.3f), listOf(0.4f, 0.5f)), StepLength.BEAT)),
+                ),
+        )
+    private val automatedPlan = NativePlan.encode(automated)
+
+    /** Where the Automation slot [index] starts. */
+    private fun slotAt(index: Int): Int = automationsAt + index * AUTOMATION_FLOATS
+
+    /** The Automation slot [index] of [automatedPlan], less its steps. */
+    private fun slot(index: Int): List<Float> = automatedPlan.subList(slotAt(index), slotAt(index) + automationHead)
+
+    private fun steps(index: Int): List<Float> = automatedPlan.subList(slotAt(index) + automationHead, slotAt(index + 1))
+
+    /** A slot as written: its kind, its target's three floats, then amount, every, trigger, threshold, spacing, fade, alternate, count. */
+    private fun expected(
+        kind: Float,
+        target: List<Float>,
+        vararg rest: Float,
+    ): List<Float> = listOf(kind) + target + rest.toList()
+
+    private fun shared(property: SharedProperty): List<Float> = listOf(NativePlan.TARGET_SHARED, property.ordinal.toFloat(), 0f)
+
+    private val none = listOf(0f, 0f, 0f)
+
+    @Test
+    fun `counts every Automation it carries`() {
+        assertEquals(listOf(1f, 4f, 4f, 2f, 8f), automatedPlan.subList(0, NativePlan.HEADER_FLOATS))
+        assertEquals(List(AUTOMATION_FLOATS) { 0f }, slot(8) + steps(8))
+    }
+
+    @Test
+    fun `carries Style switching on big moments, so the engine counts its due moves`() {
+        assertEquals(
+            expected(NativePlan.AUTOMATION_STYLE_SWITCH, none, 0f, 1f, NativePlan.TRIGGER_BIG_MOMENTS, 0.7f, 8f, 4f, 0f, 0f),
+            slot(0),
+        )
+        assertEquals(List(MAX_STEPS) { 0f }, steps(0))
+    }
+
+    @Test
+    fun `carries palette changes every few bars, in beats`() {
+        assertEquals(expected(NativePlan.AUTOMATION_PALETTE, none, 0f, 32f, NativePlan.TRIGGER_EVERY_BEATS, 0f, 10f, 2f, 0f, 0f), slot(1))
+    }
+
+    @Test
+    fun `carries each Camera move as one slot per property, the alternating ones marked`() {
+        val camera = NativePlan.AUTOMATION_CAMERA
+        assertEquals(expected(camera, shared(SharedProperty.DRIFT_X), 0.5f, 4f, 0f, 0f, 0f, 0f, 1f, 0f), slot(2))
+        assertEquals(expected(camera, shared(SharedProperty.TRAVEL), 0.5f, 4f, 0f, 0f, 0f, 0f, 0f, 0f), slot(3))
+        assertEquals(expected(camera, shared(SharedProperty.ZOOM), -0.25f, 2f, 0f, 0f, 0f, 0f, 0f, 0f), slot(4))
+    }
+
+    @Test
+    fun `carries a lane as one slot per target, each with its own steps`() {
+        val lane = NativePlan.AUTOMATION_LANE
+        assertEquals(expected(lane, shared(SharedProperty.GLOW), 0f, 1f, 0f, 0f, 0f, 0f, 0f, 2f), slot(5))
+        assertEquals(listOf(0.1f, 0.4f) + List(MAX_STEPS - 2) { 0f }, steps(5))
+        assertEquals(listOf(lane, NativePlan.TARGET_MODULATOR, 1f, ModulatorParameter.DEPTH.ordinal.toFloat()), slot(6).subList(0, 4))
+        assertEquals(listOf(0.2f, 0.5f), steps(6).subList(0, 2))
+        assertEquals(listOf(lane, NativePlan.TARGET_EXTRA, extra.ordinal.toFloat(), 0f), slot(7).subList(0, 4))
+        assertEquals(listOf(0.3f, 0f), steps(7).subList(0, 2))
+    }
+
+    @Test
+    fun `carries at most the engine's room for Automations and steps`() {
+        val glow = Target.Shared(SharedProperty.GLOW)
+        val lane = Lane(List(4) { glow }, List(MAX_STEPS + 2) { listOf(1f, 1f, 1f, 1f) })
+        val crowded = customization.copy(automations = Automations(lanes = List(NativePlan.MAX_AUTOMATIONS / 4 + 1) { lane }))
+        val full = NativePlan.encode(crowded)
+        assertEquals(NativePlan.floatCount, full.size)
+        assertEquals(NativePlan.MAX_AUTOMATIONS.toFloat(), full[4])
+        assertEquals(MAX_STEPS.toFloat(), full[automationsAt + automationHead - 1])
+        assertEquals(1f, full[automationsAt + AUTOMATION_FLOATS - 1])
+        assertEquals(NativePlan.AUTOMATION_LANE, full[automationsAt + (NativePlan.MAX_AUTOMATIONS - 1) * AUTOMATION_FLOATS])
     }
 
     @Test
