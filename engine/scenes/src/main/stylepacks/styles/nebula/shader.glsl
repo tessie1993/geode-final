@@ -20,6 +20,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // NEBULA - a volumetric fbm cloud, lit from inside.
@@ -507,7 +508,7 @@ void main() {
     vec2 uv = view();
 
     vec3 ro = vec3(0.0, 0.0, -NEB_CAM_DIST);
-    vec3 rd = normalize(vec3(uv, NEB_FOCAL));
+    vec3 rd = tiltLook(normalize(vec3(uv, NEB_FOCAL)));
 
     // ---- what the music is doing to the medium ----------------------------
     // Clamped at 1.5 because that is the documented top of the auto-gained

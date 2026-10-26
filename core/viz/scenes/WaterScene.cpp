@@ -88,6 +88,25 @@ void WaterScene::drainTouchStrokes(float rippleStrength, float baseHue) {
     }
 }
 
+void WaterScene::tilt(float dt, float rippleStrength) {
+    const std::array<float, 2> down = inPlaneDown();
+    sim_.runoffX = down[0] * kRunoff;
+    sim_.runoffY = down[1] * kRunoff;
+    sloshWait_ = std::max(sloshWait_ - dt, 0.0f);
+    const float tx = gravity_ != nullptr ? gravity_->tiltX() : 0.0f;
+    const float ty = gravity_ != nullptr ? gravity_->tiltY() : 0.0f;
+    const float moved = std::hypot(tx - sloshTilt_[0], ty - sloshTilt_[1]);
+    if (moved < kSloshStep || sloshWait_ > 0.0f) return;
+    const float len = std::hypot(down[0], down[1]);
+    sloshTilt_ = {tx, ty};
+    sloshWait_ = kSloshRefractorySeconds;
+    if (len <= 0.0f) return;
+    // The water piles up against the side that went down.
+    const float edge = 0.85f;
+    const float amp = kSloshAmplitude * std::min(moved, 1.0f) * std::clamp(rippleStrength, 0.0f, 2.0f);
+    sim_.queueDrop(down[0] / len * edge * sim_.aspect(), down[1] / len * edge, kSloshRadius, amp);
+}
+
 void WaterScene::draw(float timeSeconds) {
     (void) timeSeconds;
     if (!sim_.available() || !displayOk_) return;
@@ -127,6 +146,7 @@ void WaterScene::draw(float timeSeconds) {
     }
     if (idle) queueIdleRain(lastDt_);
     drainTouchStrokes(rippleStrength, baseHue);
+    tilt(simDt, rippleStrength);
     sim_.step(simDt);
     hasPending_ = false;
 

@@ -20,6 +20,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // ===========================================================================
@@ -532,7 +533,9 @@ void main() {
     vec3 fwd = normalize(-ro);
     vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), fwd));
     vec3 up = cross(fwd, right);
-    vec3 rd = normalize(right * uv.x + up * uv.y + fwd * KIFS_FOCAL);
+    // Tilt looks around a little (lib_gravity): the ray turned in camera space, the identity when off.
+    vec3 look = tiltLook(vec3(uv, KIFS_FOCAL));
+    vec3 rd = normalize(right * look.x + up * look.y + fwd * look.z);
 
     // ---- the fold set, built once per fragment ----------------------------
 

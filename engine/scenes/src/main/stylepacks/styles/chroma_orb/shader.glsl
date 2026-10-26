@@ -10,6 +10,7 @@ out vec4 fragColor;
 //#include lib_palette
 //#include lib_scene_grade
 //#include lib_touch
+//#include lib_gravity
 
 // Chroma Orb: a glass sphere skinned with a four-fold kaleidoscope of neon dot
 // lattices, a ringed tunnel bored through its centre, and the whole thing
@@ -103,7 +104,8 @@ vec3 bokeh(vec2 uv) {
 }
 
 void main() {
-    vec2 uv = view();
+    // Tilt parallaxes the whole field a little (lib_gravity): vec2(0) when off.
+    vec2 uv = view() + tiltDrift();
     // Smoothed bass breathes the lattice; uSpike swells the fringes. Neither can
     // move far in one frame, which is what keeps the dots from strobing.
     float pulse = clamp(uBassSmooth * uBeatResponse, 0.0, 1.5);
