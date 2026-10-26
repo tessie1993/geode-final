@@ -297,6 +297,16 @@ object BuiltInStyles {
             shader("nectar_flow", true, listOf(generic(COMPLEXITY), generic(FOG)), listOf(react(BASS, FOG, 0.2f))),
         )
 
+    /**
+     * The camera library's journeys (#396): each Style is built around one camera move and, where it
+     * draws a 3D world, owns its Camera (lib_camera). Their motion is their own clock; their Reactions
+     * only shift colour or push the Camera, never brightness.
+     */
+    private val cameraJourneys: List<StyleManifest> =
+        listOf(
+            shader("little_planet", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.1f))),
+        )
+
     private fun life(
         id: String,
         grayScott: Boolean,
@@ -526,7 +536,7 @@ object BuiltInStyles {
 
     /** Every Style this version draws. */
     val all: List<StyleManifest> =
-        classicShaders + newerShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
+        classicShaders + newerShaders + cameraJourneys + lifeStyles + mycoStyles + acidStyles + fluidStyles +
             listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     val catalogue: StyleCatalogue = StyleCatalogue(all)
