@@ -14,7 +14,8 @@ import dev.geode.kernel.Results
 import kotlinx.coroutines.CancellationException
 
 /**
- * Carries out the editors' work (#318): reading a picked video, keeping the Timeline's cut, and saving
+ * Carries out the editors' work (#318): reading a picked video, keeping the Timeline's cut (one write at a
+ * time, the newest winning, and read back only after the writes before it), and saving
  * an Edit's export to the render queue. With Settings' Copy, the Edit's videos are copied into the Save
  * folder first and the Edit points at the copies; with Reference nothing is copied. An Edit is queued
  * with no look: it is cut from videos, never drawn. Every failure is caught here and reported by name.
@@ -24,6 +25,9 @@ internal class EditHandlers(
 ) {
     private val tools: EditTools get() = sources.edits
 
+    // Every save of the cut goes through here, one at a time and the newest winning.
+    private val cuts = CutWriter<EditorProject> { tools.drafts.save(it) }
+
     suspend fun run(
         work: EditWork,
         results: Results<StudioEvent>,
@@ -32,14 +36,14 @@ internal class EditHandlers(
             is EditWork.ReadSource -> results.report(EditEvent.SourceRead(attempt { tools.videos.read(work.file) }))
             EditWork.LoadCut -> load(results)
             is EditWork.SaveCut ->
-                if (attempt { tools.drafts.save(work.project) } == null) results.report(StudioEvent.Failed(StudioFailure.SAVE_CUT))
+                if (attempt { cuts.offer(work.revision, work.project) } == null) results.report(StudioEvent.Failed(StudioFailure.SAVE_CUT))
             is EditWork.QueueEdit -> queue(work, results)
         }
     }
 
     /** The saved cut, or an empty one when there is none; one that cannot be read is reported too. */
     private suspend fun load(results: Results<StudioEvent>) {
-        val loaded = attempt { Loaded(tools.drafts.load()) }
+        val loaded = attempt { cuts.read { Loaded(tools.drafts.load()) } }
         if (loaded == null) results.report(StudioEvent.Failed(StudioFailure.LOAD_CUT))
         results.report(EditEvent.CutLoaded(loaded?.project ?: EditorProject()))
     }

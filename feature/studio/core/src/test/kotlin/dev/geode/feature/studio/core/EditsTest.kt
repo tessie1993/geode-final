@@ -129,8 +129,8 @@ class EditsTest {
         name,
         open(before, playheadMs),
         command(edit),
-        editing(EditSession.Cut(EditorHistory(before).push(after), playheadMs)),
-        Perform(EditWork.SaveCut(after)),
+        editing(EditSession.Cut(EditorHistory(before).push(after), playheadMs)).copy(cutRevision = 1),
+        Perform(EditWork.SaveCut(after, 1)),
     )
 
     /** A change to [cut] that is refused with [error]: the cut stays and says why. */
@@ -320,8 +320,25 @@ class EditsTest {
                     EditSession.Cut(
                         EditorHistory(cut).push(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false))))),
                     ),
-                ),
-                Perform(EditWork.SaveCut(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false)))))),
+                ).copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false)))), 1)),
+            ),
+            row(
+                "each save is numbered after the last, so an older one never lands over it",
+                open().copy(cutRevision = 41),
+                command(EditCommand.EnableClip(words.id, false)),
+                editing(
+                    EditSession.Cut(
+                        EditorHistory(cut).push(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false))))),
+                    ),
+                ).copy(cutRevision = 42),
+                Perform(EditWork.SaveCut(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false)))), 42)),
+            ),
+            row(
+                "a refused change saves nothing and keeps the count",
+                open().copy(cutRevision = 7),
+                command(EditCommand.SplitClip(words.id, 3_500L)),
+                open(cut, 0L, EditError.OutsideClip).copy(cutRevision = 7),
             ),
             unchanged("a change that changes nothing is no step of undo", EditCommand.EnableClip(words.id, true)),
             unchanged("the Timeline's changes do nothing while it is closed", EditCommand.AddLane(LaneKind.Text, "Text"), ready),
@@ -464,16 +481,28 @@ class EditsTest {
 
     private val historyRows: List<Row> =
         listOf(
-            row("undo goes back a step and saves", withPast, command(EditCommand.Undo), undone, Perform(EditWork.SaveCut(cut))),
-            row("redo goes forward a step and saves", undone, command(EditCommand.Redo), withPast, Perform(EditWork.SaveCut(after))),
+            row(
+                "undo goes back a step and saves",
+                withPast,
+                command(EditCommand.Undo),
+                undone.copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut, 1)),
+            ),
+            row(
+                "redo goes forward a step and saves",
+                undone.copy(cutRevision = 1),
+                command(EditCommand.Redo),
+                withPast.copy(cutRevision = 2),
+                Perform(EditWork.SaveCut(after, 2)),
+            ),
             unchanged("nothing to undo", EditCommand.Undo),
             unchanged("nothing to redo", EditCommand.Redo),
             row(
                 "an undone refusal is forgotten",
                 editing(EditSession.Cut(EditorHistory(cut).push(after), refused = EditError.TooShort)),
                 command(EditCommand.Undo),
-                undone,
-                Perform(EditWork.SaveCut(cut)),
+                undone.copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut, 1)),
             ),
             row("the playhead moves, saving nothing", open(), command(EditCommand.MovePlayhead(2_500L)), open(playheadMs = 2_500L)),
             row("the playhead stops at the start", open(playheadMs = 900L), command(EditCommand.MovePlayhead(-5L)), open()),

@@ -69,9 +69,13 @@ sealed interface EditWork : StudioWork {
     /** Read the Timeline's saved cut; it comes back in [EditEvent.CutLoaded]. */
     data object LoadCut : EditWork
 
-    /** Keep [project] as the Timeline's cut, so it is there next time. */
+    /**
+     * Keep [project] as the Timeline's cut, so it is there next time. [revision] numbers the saves in the
+     * order the changes were made: a save is never written over a newer one.
+     */
     data class SaveCut(
         val project: EditorProject,
+        val revision: Long,
     ) : EditWork
 
     /**
@@ -215,7 +219,11 @@ internal object Edits {
         history: EditorHistory,
     ): Next<StudioState, StudioEffect> {
         if (history === session.history) return Next(state)
-        return Next(state.copy(edit = session.copy(history = history, refused = null)), listOf(Perform(EditWork.SaveCut(history.present))))
+        val revision = state.cutRevision + 1
+        return Next(
+            state.copy(edit = session.copy(history = history, refused = null), cutRevision = revision),
+            listOf(Perform(EditWork.SaveCut(history.present, revision))),
+        )
     }
 
     private fun changed(

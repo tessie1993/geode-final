@@ -128,7 +128,8 @@ sealed interface SaveFolder {
  * [rendersKeepGoing] is Settings' Renders keep going switch (#28), and [appInFront] whether the app is
  * what the person sees: with the switch off, Renders only run while the app is in front. [edit] is the
  * editor open on an Edit (#318), and [editSources] Settings' choice of what a saved Edit does with its
- * videos.
+ * videos. [cutRevision] counts the changes to the Timeline's cut saved since the app started: each save
+ * carries its number, so a slower, older save is never written over a newer one.
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -146,6 +147,7 @@ data class StudioState(
     val appInFront: Boolean = true,
     val edit: EditSession = EditSession.Closed,
     val editSources: EditSources = EditSources.REFERENCE,
+    val cutRevision: Long = 0L,
 ) {
     /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
     val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront
