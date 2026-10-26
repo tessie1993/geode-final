@@ -173,6 +173,15 @@ def in_range(spec: dict, value: object) -> bool:
     return spec["type"] != "int" or float(value).is_integer()
 
 
+def style_hash(style_id: str) -> int:
+    """The 24-bit name the plan gives a Style (core/viz/Layers.cpp styleHash, Kotlin StyleHash)."""
+    value = 2166136261
+    for byte in style_id.encode():
+        value = ((value ^ byte) * 16777619) & 0xFFFFFFFF
+    folded = (value >> 24) ^ (value & 0xFFFFFF)
+    return 1 if folded == 0 else folded
+
+
 def check_index(doc: dict, report: Report) -> list[str]:
     styles = doc.get("styles")
     if not isinstance(styles, list):
@@ -186,6 +195,11 @@ def check_index(doc: dict, report: Report) -> list[str]:
             report.error(INDEX_FILE, f'"{entry}" is listed twice')
         else:
             ids.append(entry)
+    hashed: dict[int, str] = {}
+    for style_id in ids:
+        other = hashed.setdefault(style_hash(style_id), style_id)
+        if other != style_id:
+            report.error(INDEX_FILE, f'"{style_id}" and "{other}" share a Style name in the plan; rename one')
     return ids
 
 
