@@ -6,9 +6,11 @@ import dev.geode.analysis.FeatureTimeline
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.render.SceneFactory
 import dev.geode.render.TransitionStyle
 import dev.geode.render.bridge.NativeViz
+import dev.geode.render.scene.SceneIds
 import dev.geode.util.bestEffort
 
 /**
@@ -77,6 +79,21 @@ fun interface FramePcm {
     ): PcmSpan
 }
 
+/** A change of Style a Render makes (#343): to [sceneId], drawn with [look], crossfading over [transition]. */
+class RenderSwitch(
+    val sceneId: SceneId,
+    val look: CustomizationSnapshot,
+    val transition: Millis,
+)
+
+/**
+ * A Render's Style switching (#343): asked each time the engine says the look's switching is due, it
+ * gives the change of Style to make, or null to stay. Asked on the Render's own thread, in frame order.
+ */
+fun interface StyleSwitches {
+    fun due(): RenderSwitch?
+}
+
 /**
  * Draws an analysed track to a GL target, one frame at a time, through its own native renderer.
  *
@@ -85,8 +102,10 @@ fun interface FramePcm {
  * has its own snapshot exchange, separate from the live Visual's (ADR-0004: a Render is its own
  * engine instance), and hands it the Render's look once. With [pcm], every frame also hands the
  * scenes the real sound heard at that moment (#342), as the live Visual's feed does, so projectM, the
- * shader PCM row and the simulations' strikes react to it. Not thread-safe, and every call must happen
- * on the thread holding the GL context.
+ * shader PCM row and the simulations' strikes react to it. With [switches], the look's Style switching
+ * runs as it does live (#343): each time the engine's count of due switches rises, the Render changes
+ * Style, crossfading over the switching's transition, and hands the engine the switched look. Not
+ * thread-safe, and every call must happen on the thread holding the GL context.
  */
 class OffscreenSceneRenderer(
     private val context: Context,
@@ -94,9 +113,14 @@ class OffscreenSceneRenderer(
     private val timeline: FeatureTimeline,
     private val spec: OffscreenRenderSpec,
     private val pcm: FramePcm? = null,
+    private val switches: StyleSwitches? = null,
 ) {
     private var native: NativeViz? = null
     private var snapshots: NativeSnapshots? = null
+
+    // The engine's count of due Style switches after the last frame, and the revision of the look last handed over.
+    private var stylesDue = 0
+    private var revision = 0
     private val span = FloatArray(PCM_SPAN_FRAMES * 2)
 
     /** Builds the native renderer, its scene and its look; must run with the target GL context current. */
@@ -149,6 +173,27 @@ class OffscreenSceneRenderer(
         // one frame long, where whole milliseconds would alternate 16 and 17 ms at 60 fps, and a ranged
         // sequence keeps the clock a whole-track Render has at the same frame.
         viz.render(g.toDouble() / spec.fps, targetFbo)
+        switches?.let { switching ->
+            // A drop is a fresh start (a new plan): only a rise is a switch, as live.
+            val due = viz.stylesDue()
+            if (due > stylesDue) switching.due()?.let { switchTo(viz, it) }
+            stylesDue = due
+        }
+    }
+
+    /** Crossfades into [switch]'s Style from the next frame on, with its look handed to the engine first. */
+    private fun switchTo(
+        viz: NativeViz,
+        switch: RenderSwitch,
+    ) {
+        val exchange = snapshots ?: return
+        revision++
+        val refused = exchange.offer(switch.look.copy(revision = revision))
+        if (refused != null) return
+        viz.setTransition(TransitionStyle.FADE.name.lowercase(), switch.transition)
+        viz.setScene(switch.sceneId)
+        // The MilkDrop preset waits for the MilkDrop scene: a switch into it loads the Render's preset.
+        if (switch.sceneId == SceneIds.MILKDROP) sceneFactory.milkPresetPath?.let { viz.loadMilkPreset(it) }
     }
 
     /**

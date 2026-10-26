@@ -17,6 +17,7 @@ import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
+import dev.geode.render.offscreen.StyleSwitches
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -124,6 +125,8 @@ class VideoExporter(
         val codec: ExportCodec = ExportCodec.H264,
         /** How many times over the scene is drawn before it is brought to the frame (#345). */
         val supersample: Float = 1f,
+        /** The look's Style switching, replayed frame by frame (#343); none keeps one Style throughout. */
+        val switches: StyleSwitches? = null,
     )
 
     sealed interface Result {
@@ -334,6 +337,7 @@ class VideoExporter(
                     sceneFactory = job.sceneFactory,
                     timeline = timeline,
                     pcm = pcm,
+                    switches = job.switches,
                     spec =
                         OffscreenRenderSpec(
                             width = aspect.width,

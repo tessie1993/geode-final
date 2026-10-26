@@ -22,6 +22,8 @@ import dev.geode.export.LoopSpec
 import dev.geode.export.MixClip
 import dev.geode.export.VideoExporter
 import dev.geode.feature.customization.api.Customization
+import dev.geode.feature.customization.api.StyleSwitching
+import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
@@ -41,6 +43,8 @@ import dev.geode.feature.studio.handlers.RenderEngine
 import dev.geode.feature.visuals.handlers.FileMilkdropFolder
 import dev.geode.playback.toUri
 import dev.geode.render.SceneFactory
+import dev.geode.render.offscreen.RenderSwitch
+import dev.geode.render.offscreen.StyleSwitches
 import dev.geode.render.scene.SceneIds
 import dev.geode.visuals.EngineSnapshots
 import kotlinx.coroutines.CancellationException
@@ -84,6 +88,7 @@ class NativeRenderEngine(
         val values = (settings.state.value as? SettingsState.Ready)?.values ?: SettingsValues()
         progress(RenderPhase.PREPARING, 0f)
         val customization = lookOf(look) ?: return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
+        val context = runCatching { RenderLookFormat.decodeContext(look.text) }.getOrDefault(SwitchingContext())
         val uri = track.id.toUri()
         val timeline =
             timelineOf(uri, values, isCancelled) { progress(RenderPhase.ANALYSING, it * ANALYSIS_SHARE) }
@@ -106,6 +111,7 @@ class NativeRenderEngine(
                 aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
                 fps = format.fps,
                 range = section?.let { ExportRange(it.start.value, it.length.value) },
+                switches = switchesOf(customization, context, values),
                 codec = codecOf(format),
                 supersample = RenderPlan.supersampleOf(format),
             )
@@ -189,6 +195,26 @@ class NativeRenderEngine(
             }
         } finally {
             reel.delete()
+        }
+    }
+
+    /**
+     * The look's Style switching replayed in the export loop (#343), or null when it has none: each due
+     * switch picks the next Style by Customization's seeded rules and crossfades over its transition, so
+     * two Renders of the same spec switch at the same moments to the same Styles.
+     */
+    private fun switchesOf(
+        customization: Customization,
+        context: SwitchingContext,
+        values: SettingsValues,
+    ): StyleSwitches? {
+        if (customization.automations.style == null) return null
+        val switcher = RenderStyleSwitcher(customization, context, BuiltInStyles.catalogue)
+        return StyleSwitches {
+            switcher.next()?.let { switched ->
+                val transition = switched.automations.style?.transition ?: StyleSwitching.DEFAULT_TRANSITION
+                RenderSwitch(switched.style, EngineSnapshots.forRender(switched, values), transition)
+            }
         }
     }
 
@@ -324,15 +350,17 @@ class NativeRenderEngine(
     }
 
     /**
-     * The MilkDrop preset [job] plays, as a file the engine loads, when its look is MilkDrop (#341): the
-     * one in its spec, whatever the live Visual shows. It loads before the first frame, with the textures
-     * beside it in the MilkDrop folder. A preset no longer in the folder leaves MilkDrop's idle picture.
+     * The MilkDrop preset [job] plays, as a file the engine loads, when its look is MilkDrop or its Style
+     * switching can reach MilkDrop (#341, #343): the one in its spec, whatever the live Visual shows. It
+     * loads with the MilkDrop scene, with the textures beside it in the MilkDrop folder. A preset no
+     * longer in the folder leaves MilkDrop's idle picture.
      */
     private fun milkdropPathOf(
         customization: Customization,
         job: RenderJob,
     ): String? {
-        val file = job.milkdrop?.takeIf { customization.style == SceneIds.MILKDROP } ?: return null
+        val reaches = customization.style == SceneIds.MILKDROP || customization.automations.style != null
+        val file = job.milkdrop?.takeIf { reaches } ?: return null
         val preset = File(File(context.filesDir, FileMilkdropFolder.FOLDER), file)
         if (preset.isFile) return preset.absolutePath
         RingLog.note(TAG, "the Render's MilkDrop preset is no longer in the MilkDrop folder: $file")
