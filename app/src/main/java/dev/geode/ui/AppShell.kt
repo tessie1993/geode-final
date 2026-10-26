@@ -112,6 +112,7 @@ import dev.geode.ui.shell.Sheet
 import dev.geode.ui.shell.ShellViewModel
 import dev.geode.ui.shell.icon
 import dev.geode.ui.shell.label
+import dev.geode.ui.shortcuts.rememberIdlePointerHiding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -477,7 +478,8 @@ private fun FullScreenVisual(
     // tap that toggles them is the Visual host's own, so every other touch draws in the Visual.
     var controlsShown by rememberSaveable { mutableStateOf(true) }
     val toggleControls = { controlsShown = !controlsShown }
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    // The mouse pointer hides while it rests over the Visual (#410).
+    Box(Modifier.fillMaxSize().background(Color.Black).then(rememberIdlePointerHiding())) {
         visual(if (inPip) null else toggleControls)
         if (!inPip) {
             FullScreenVisualRoute(

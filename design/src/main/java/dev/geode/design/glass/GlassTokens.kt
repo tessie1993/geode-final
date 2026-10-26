@@ -49,6 +49,12 @@ object GlassTokens {
     const val EDGE_MIDDLE_ALPHA = 0.04f
     const val EDGE_BOTTOM_ALPHA = 0.10f
 
+    /**
+     * The ring round a glass card or row that has D-pad or keyboard focus (#410): a state layer alone
+     * barely shows on glass over a busy backdrop, so focus is drawn in the accent.
+     */
+    val FocusEdge: Dp = 2.dp
+
     /** The most live-blurred surfaces one screen may have; every still backdrop is baked instead. */
     const val LIVE_BLURS_MAX = 2
 

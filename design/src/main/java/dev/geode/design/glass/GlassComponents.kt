@@ -1,6 +1,10 @@
 package dev.geode.design.glass
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -21,8 +25,12 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -46,7 +54,7 @@ fun GlassCard(
     Column(
         modifier
             .glassSurface(GlassKind.CARD, MaterialTheme.shapes.large, backdrop)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(glassClickable(onClick, MaterialTheme.shapes.large))
             .padding(contentPadding),
         verticalArrangement = verticalArrangement,
         content = content,
@@ -112,7 +120,7 @@ fun GlassListRow(
         modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = if (supporting == null) GlassSize.RowOneLine else GlassSize.RowTwoLines)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(glassClickable(onClick, RectangleShape))
             .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Large),
@@ -121,6 +129,24 @@ fun GlassListRow(
         RowText(headline, supporting, Modifier.weight(1f))
         trailing?.invoke()
     }
+}
+
+/**
+ * [onClick] as a button on glass, or nothing without one. It is reached by the D-pad and the keyboard
+ * like any button, and with focus it shows a ring of the accent in [shape] (#410).
+ */
+@Composable
+private fun glassClickable(
+    onClick: (() -> Unit)?,
+    shape: Shape,
+): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    if (onClick == null) return Modifier
+    val ring = if (focused) Modifier.border(GlassTokens.FocusEdge, LocalGlassStyle.current.colors.accent, shape) else Modifier
+    return Modifier
+        .clickable(interactionSource = interaction, indication = LocalIndication.current, role = Role.Button, onClick = onClick)
+        .then(ring)
 }
 
 /** A row that turns a setting on or off: the whole row is the switch's touch area. */

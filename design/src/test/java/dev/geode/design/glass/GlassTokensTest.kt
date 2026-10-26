@@ -23,6 +23,12 @@ class GlassTokensTest {
     }
 
     @Test
+    fun `the focus ring is twice the edge light, so D-pad focus shows on glass`() {
+        assertEquals(2f, GlassTokens.FocusEdge.value, 0f)
+        assertTrue(GlassTokens.FocusEdge > GlassTokens.Edge)
+    }
+
+    @Test
     fun `the grain tile is square, in range and the same every time`() {
         val tile = GlassGrain.tile(16)
         assertEquals(256, tile.size)

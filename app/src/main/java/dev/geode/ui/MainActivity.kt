@@ -4,6 +4,7 @@ import android.app.SearchManager
 import android.content.Intent
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewTreeObserver
 import android.widget.Toast
@@ -23,11 +24,23 @@ import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.ui.shell.ShellViewModel
+import dev.geode.ui.shortcuts.KeyShortcuts
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val shell: ShellViewModel by viewModels()
+
+    // Keyboard and D-pad shortcuts (#410): the arrows over the full-screen Visual ahead of the screen,
+    // every other shortcut only once no view (a text field, say) has used the key.
+    private val shortcuts by lazy { KeyShortcuts(shell) }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean = shortcuts.beforeViews(event) || super.dispatchKeyEvent(event)
+
+    override fun onKeyDown(
+        keyCode: Int,
+        event: KeyEvent,
+    ): Boolean = shortcuts.afterViews(event) || super.onKeyDown(keyCode, event)
 
     private fun playFromSearch(intent: Intent?) {
         if (intent?.action != MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) return
