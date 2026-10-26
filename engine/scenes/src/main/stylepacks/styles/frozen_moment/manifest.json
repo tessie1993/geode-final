@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "frozen_moment",
+  "label": "Frozen Moment",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "extras": [
+    {
+      "name": "size",
+      "min": 0,
+      "max": 2,
+      "default": 1
+    }
+  ]
+}
