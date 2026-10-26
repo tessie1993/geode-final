@@ -36,7 +36,8 @@ struct CompositeLook {
     // Layer 2 drawn this frame (a presence above 0), and a transition's outgoing picture.
     bool hasLayer = false;
     bool hasOutgoing = false;
-    // uGateA: x geometry and stylize, y mirror and invert, z grade, zoom and rotation, w beat pulse.
+    // uGateA: x geometry and stylize, y mirror and invert, z grade, zoom and rotation (2: and the
+    // palette tint), w beat pulse.
     std::array<float, 4> gate{};
     // uCamGate.x (the Camera's flat moves) and uCamGate.z (its flat endless zoom) for this picture.
     float camMoves = 0.0f;
@@ -87,6 +88,8 @@ struct CompositeLook {
     float contrast = 1.0f;
     float gamma = 1.0f;
     float brightness = 1.0f;
+    // MilkDrop's palette tint amount (gate z at 2).
+    float paletteTint = 0.0f;
     // The beat pulse amount (gate w).
     float pulse = 0.0f;
 };

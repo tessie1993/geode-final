@@ -5,7 +5,7 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
 
 - `tools/projectm-v4.1.8-render-fbo-backport.patch` backports `projectm_opengl_render_frame_fbo` from
   upstream master: stock v4.1.8 can only composite a frame onto the default framebuffer, and
-  `core/viz/scenes/MilkdropScene.cpp` renders into its own framebuffer through this call.
+  `core/viz/scenes/MilkdropScene.cpp` renders onto the renderer's scene target through this call.
 - `tools/projectm-v4.1.8-render-clock.patch` adds `projectm_set_frame_time` and
   `projectm_set_random_seed`. A seeded instance draws every random value (preset state, shader
   randoms, noise textures, random textures, transitions) from its own generator, and preset
@@ -19,6 +19,10 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
   CPU each time. A seeded engine makes them again from its seed, so Renders stay frame-exact. The
   scanner skips hidden folders (the per-preset `.links` folders), and a random texture (`randNN`)
   draws from each file once, however many search paths or links reach it (#307).
+- `tools/projectm-v4.1.8-lean-frame.patch` skips the motion vectors' u/v map (a whole RG16F target
+  written during the warp) whenever the preset shows no motion vectors, which is most of them (#303).
+  `MilkdropScene` also has projectM draw its frame straight onto the scene target, graded by the
+  composite, instead of through a copy and a post pass of its own.
 - `tools/projectm-eval-render-clock.patch`, applied inside `vendor/projectm-eval`, lets the seeded
   instance feed the expression `rand()` too. The build therefore always uses the vendored
   projectm-eval, never a system one.

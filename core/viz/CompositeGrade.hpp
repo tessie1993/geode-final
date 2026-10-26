@@ -6,12 +6,18 @@
 
 namespace geode::viz::grade {
 
+// Which of the composite's groups apply to a picture (composite_frag.glsl, uGateA/uGateB). The
+// palette tint rides on the grade's component: 2 there means the grade with the palette tint first.
 struct Gate {
     bool geo;
     bool mirrorInvert;
     bool grade;
     bool pulse;
-    std::array<float, 4> toVec4() const { return {geo ? 1.0f : 0.0f, mirrorInvert ? 1.0f : 0.0f, grade ? 1.0f : 0.0f, pulse ? 1.0f : 0.0f}; }
+    bool palette = false;
+    std::array<float, 4> toVec4() const {
+        const float gradeGate = grade ? (palette ? 2.0f : 1.0f) : 0.0f;
+        return {geo ? 1.0f : 0.0f, mirrorInvert ? 1.0f : 0.0f, gradeGate, pulse ? 1.0f : 0.0f};
+    }
 };
 
 constexpr float kMinZoom = 0.05f;
@@ -19,9 +25,13 @@ constexpr float kMinGamma = 0.05f;
 constexpr float kPulseGain = 0.22f;
 constexpr float kTau = 6.2831855f;
 
+// Shader Styles grade and move themselves; the fluid family applies nothing of its own. MilkDrop
+// draws projectM's frame straight into its scene target (#303), so the composite grades it as it does
+// the fluid family, with the palette tint that steers a preset's own colours.
 inline Gate gateFor(SceneFamily family) {
-    return Gate{family != SceneFamily::Shader, family == SceneFamily::Fluid, family == SceneFamily::Fluid,
-                family == SceneFamily::Milkdrop || family == SceneFamily::Fluid};
+    const bool milkdrop = family == SceneFamily::Milkdrop;
+    const bool composited = family == SceneFamily::Fluid || milkdrop;
+    return Gate{family != SceneFamily::Shader, composited, composited, composited, milkdrop};
 }
 
 float integrateRotation(float angle, float rotation, float dt);

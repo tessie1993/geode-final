@@ -19,7 +19,7 @@ struct MeshSize {
 // on the next frame without touching the picture.
 inline constexpr std::array<MeshSize, 4> kMeshLadder = {{{48, 32}, {40, 28}, {32, 24}, {24, 18}}};
 
-// The engine's buffer size as a fraction of the window size, largest first. A resize starts the
+// The engine's buffer size as a fraction of the scene target's size, largest first. A resize starts the
 // picture over, so a new step waits for the next preset change, which blends from the old picture
 // anyway.
 inline constexpr std::array<float, 3> kBufferScaleLadder = {1.0f, 0.85f, 0.7f};
@@ -38,13 +38,22 @@ int engineFps(float pacedFps, float measuredFps);
 // A Render's frame rate, from the render clock's frame interval.
 int renderFps(float frameSeconds);
 
-// The engine buffer for a window at a buffer scale; never below one pixel a side.
+// The engine buffer for a scene target at a buffer scale; never below one pixel a side.
 struct BufferSize {
     int width;
     int height;
     bool operator==(const BufferSize&) const = default;
 };
 BufferSize bufferSize(int windowWidth, int windowHeight, float scale);
+
+// How far the engine buffer's shape may stray from its target's before it is resized at once.
+inline constexpr float kAspectTolerance = 0.02f;
+
+// Whether the engine buffer takes a new size now rather than at the next preset change. A resize
+// starts the picture over, which a preset change hides; so a new size waits for one, unless the
+// engine has no size yet or the target changed shape (a turned phone): a picture stretched to another
+// shape is worse than one started over. Until then the frame is scaled onto the target.
+bool resizeNow(BufferSize current, BufferSize wanted);
 
 // Follows the frame rate against its target and steps MilkDrop's detail down under a sustained
 // deficit and back up after sustained headroom: the mesh first, then the buffer. Between the two

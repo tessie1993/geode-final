@@ -109,7 +109,10 @@ float totalScale(const ScaleInputs& in) {
     if (in.offscreen) return std::clamp(in.exportSupersample, kMinExportSupersample, kMaxExportSupersample);
     const float style = layeredStyleScale(in.styleScale, in.layered, in.layerStyleScale);
     const float quality = std::max(style * std::min(in.loadScale, in.thermalCeiling), kMinQualityScale);
-    return liveSupersample(in.surfaceWidth, in.surfaceHeight) * quality;
+    const float live = liveSupersample(in.surfaceWidth, in.surfaceHeight) * quality;
+    if (in.maxMegapixels <= 0.0f) return live;
+    const float pixels = static_cast<float>(in.surfaceWidth) * static_cast<float>(in.surfaceHeight);
+    return std::min(live, std::sqrt(in.maxMegapixels * kPixelsPerMegapixel / pixels));
 }
 
 RenderSize renderSize(const ScaleInputs& in) {

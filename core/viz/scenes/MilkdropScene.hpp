@@ -10,23 +10,27 @@
 #include <vector>
 
 #include "geode/render/Framebuffer.hpp"
-#include "geode/render/Program.hpp"
 #include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/viz/scenes/ProgramLoader.hpp"
-#include "geode/viz/BeatEnvelope.hpp"
 
 namespace geode::viz {
 
-// One projectM instance rendering into a scene-owned framebuffer (projectm_opengl_render_frame_fbo,
-// backported onto v4.1.8 by tools/projectm-v4.1.8-render-fbo-backport.patch), graded by pm_post_frag.
-// The engine never touches the window surface, so the scene is independent of the EGL config.
+// One projectM instance drawing its frame straight into the scene target the renderer hands it
+// (projectm_opengl_render_frame_fbo, backported onto v4.1.8 by
+// tools/projectm-v4.1.8-render-fbo-backport.patch). The composite grades it like the fluid family,
+// palette tint included (CompositeGrade.hpp): there is no post pass of its own (#303). The engine never
+// touches the window surface, so the scene is independent of the EGL config.
 //
-// The engine buffer follows the window size (setWindowSize), not the supersampled scene target.
-// Live, it adapts to load mesh-first: the warp mesh steps down at once, the buffer only at the next
-// preset change (milkdrop::LoadAdapter), and projectM is told the real paced frame rate. During a
-// Render the engine is rebuilt seeded and driven by the render clock (projectm_set_frame_time,
-// tools/projectm-v4.1.8-render-clock.patch) at full detail, so the same input gives the same frames.
+// The engine buffer is the scene target's size (resize(), which follows the quality and thermal
+// scale and is held to scale::kMilkdropMaxMegapixels) times the load adapter's buffer step. Live, it
+// adapts to load mesh-first: the warp mesh steps down at once, the buffer only at the next preset change
+// (milkdrop::LoadAdapter), and a new target size waits for one too unless its shape changed
+// (milkdrop::resizeNow). While the engine and the target differ in size, the frame goes through the
+// scene's own framebuffer and is scaled onto the target; otherwise projectM draws onto the target
+// itself. projectM is told the real paced frame rate. During a Render the engine is rebuilt seeded and
+// driven by the render clock (projectm_set_frame_time, tools/projectm-v4.1.8-render-clock.patch) at full
+// detail, so the same input gives the same frames.
 class MilkdropScene : public Scene {
 public:
     MilkdropScene(std::string id, ProgramLoader loader, SceneHost host)
@@ -39,7 +43,6 @@ public:
     void init() override;
     void setParams(const SceneParams& params) override { params_ = params; }
     void resize(int width, int height) override;
-    void setWindowSize(int width, int height) override;
     void update(const GeodeFeatureFrame& features, float dt) override;
     void draw(float timeSeconds) override;
     void release() override;
@@ -65,7 +68,6 @@ private:
     static constexpr int kErrorCheckFrames = 8;
     static constexpr int kPcmCapacity = 8192;
     static constexpr int kEnginePcmSamples = 576;
-    static constexpr float kTwoPi = 6.2831853f;
 
     struct EngineDeleter {
         void operator()(projectm_handle h) const;
@@ -81,14 +83,14 @@ private:
     void loadPendingPreset(double now);
     // Enters or leaves Render mode when the host's flag changes; the engine is rebuilt either way.
     void followRenderMode();
-    // Sizes the engine buffer from the window at the adapter's buffer step.
-    void applyEngineSize();
+    // Sizes the engine buffer from the scene target at the adapter's buffer step: at once when the
+    // engine has no size or the target's shape changed, otherwise only `atPresetChange`.
+    void applyEngineSize(bool atPresetChange);
     // Mesh, frame rate and clock for the frame about to render.
     void applyFrameSettings();
     std::optional<std::string> takeError();
     void diagnoseBlackFrame();
     void drainEngineErrors();
-    void set1f(const char* name, float value) { glUniform1f(postLocs_.loc(name), value); }
 
     std::string id_;
     ProgramLoader loader_;
@@ -106,8 +108,6 @@ private:
     Framebuffer frame_{"milkdrop"};
     int engineWidth_ = 0;
     int engineHeight_ = 0;
-    int windowWidth_ = 0;
-    int windowHeight_ = 0;
     milkdrop::LoadAdapter adapter_;
     milkdrop::RenderClock renderClock_;
     milkdrop::MeshSize appliedMesh_{0, 0};
@@ -117,15 +117,6 @@ private:
     // Whether the engine has loaded a preset since it was created: a Render's first preset is a
     // hard cut, since the unseeded idle preset it would blend from differs from run to run.
     bool presetSinceCreate_ = false;
-    GLuint postProgram_ = 0;
-    bool postProgramOk_ = false;
-    UniformCache postLocs_{0};
-    GLuint postVao_ = 0;
-    float rotationAngle_ = 0.0f;
-    float zoomPhase_ = 0.0f;
-    float cyclePhase_ = 0.0f;
-    float beatPulse_ = 0.0f;
-    BeatEnvelope beatEnvelope_;
     double lastLoadSeconds_ = 0.0;
     SceneParams params_;
     int diagFrames_ = 0;

@@ -64,6 +64,24 @@ TEST(MilkdropBufferSize, NeverBelowOnePixel) {
     EXPECT_EQ(milkdrop::bufferSize(0, 0, 1.0f), (milkdrop::BufferSize{1, 1}));
 }
 
+TEST(MilkdropResizeNow, AnEngineWithNoSizeTakesOneAtOnce) {
+    EXPECT_TRUE(milkdrop::resizeNow({0, 0}, {1080, 2400}));
+    EXPECT_TRUE(milkdrop::resizeNow({0, 2400}, {1080, 2400}));
+    EXPECT_TRUE(milkdrop::resizeNow({1080, 0}, {1080, 2400}));
+}
+
+TEST(MilkdropResizeNow, TheSameShapeWaitsForThePresetChange) {
+    EXPECT_FALSE(milkdrop::resizeNow({1080, 2400}, {1080, 2400}));
+    EXPECT_FALSE(milkdrop::resizeNow({1080, 2400}, {918, 2040}));
+    EXPECT_FALSE(milkdrop::resizeNow({1000, 2000}, {1010, 2000}));
+}
+
+TEST(MilkdropResizeNow, ANewShapeResizesAtOnce) {
+    EXPECT_TRUE(milkdrop::resizeNow({1080, 2400}, {2400, 1080}));
+    EXPECT_TRUE(milkdrop::resizeNow({1000, 2000}, {1050, 2000}));
+    EXPECT_TRUE(milkdrop::resizeNow({1050, 2000}, {1000, 2000}));
+}
+
 TEST(MilkdropLadders, StartAtFullDetailAndOnlyGetCoarser) {
     EXPECT_EQ(milkdrop::kMeshLadder.front(), (milkdrop::MeshSize{48, 32}));
     for (size_t i = 1; i < milkdrop::kMeshLadder.size(); ++i) {

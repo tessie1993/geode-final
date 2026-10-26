@@ -13,6 +13,8 @@
 #                                              seed), not on every new set of texture paths; hidden
 #                                              folders are not scanned; a random texture picks each
 #                                              file with the same chance.
+#   projectm-v4.1.8-lean-frame.patch           a preset that shows no motion vectors does not write
+#                                              their u/v map every frame (#303).
 #   projectm-eval-render-clock.patch           (in vendor/projectm-eval) lets the seeded instance feed
 #                                              the expression rand() as well.
 #
@@ -60,6 +62,7 @@ function(geode_patch_projectm projectm_dir)
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-render-clock.patch")
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-plasma-mediump.patch")
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-texture-pool.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-lean-frame.patch")
     geode_apply_patch("${projectm_dir}/vendor/projectm-eval" "${GEODE_PROJECTM_PATCH_DIR}/projectm-eval-render-clock.patch")
     set(ENABLE_SYSTEM_PROJECTM_EVAL OFF CACHE BOOL "" FORCE)
 endfunction()

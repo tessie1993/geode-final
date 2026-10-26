@@ -8,6 +8,7 @@ namespace geode::viz::tile {
 namespace {
 // composite_frag.glsl's thresholds, each named after the test that uses it.
 constexpr float kGateOn = 0.5f;
+constexpr float kPaletteGateOn = 1.5f;
 constexpr float kEffectEpsilon = 0.001f;
 constexpr float kCameraEpsilon = 0.0001f;
 constexpr float kShakeEpsilon = 0.000001f;
@@ -44,6 +45,7 @@ bool geometryStill(const CompositeLook& l) {
 
 bool gradeStill(const CompositeLook& l) {
     if (!on(l.gate[2])) return true;
+    if (l.gate[2] > kPaletteGateOn && l.paletteTint > kEffectEpsilon) return false;
     return std::fabs(l.rotation) <= kGradeEpsilon && std::fabs(l.zoom - 1.0f) <= kGradeEpsilon && std::fabs(l.hue) <= kGradeEpsilon &&
            std::fabs(l.saturation - 1.0f) <= kGradeEpsilon && std::fabs(l.contrast - 1.0f) <= kGradeEpsilon &&
            std::fabs(l.gamma - 1.0f) <= kGradeEpsilon && l.brightness == 1.0f;

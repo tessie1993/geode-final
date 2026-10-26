@@ -384,11 +384,12 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     Scene* other = outgoingScene_ ? outgoingScene_ : activeScene_;
     in.gateB = grade::gateFor(other->family()).toVec4();
     // The Camera's flat moves for every picture whose Style does not move a camera of its own, and the
-    // flat endless zoom for the ones whose renderer has none.
+    // flat endless zoom for the ones whose renderer has none (the fluid family, and MilkDrop since its
+    // post pass went into the composite, #303).
     in.camera = camera_.pose();
-    in.cameraGate = {activeScene_->ownsCamera() ? 0.0f : 1.0f, other->ownsCamera() ? 0.0f : 1.0f,
-                     activeScene_->family() == SceneFamily::Fluid ? 1.0f : 0.0f,
-                     other->family() == SceneFamily::Fluid ? 1.0f : 0.0f};
+    const auto flatZoom = [](const Scene* s) { return s->family() == SceneFamily::Fluid || s->family() == SceneFamily::Milkdrop; };
+    in.cameraGate = {activeScene_->ownsCamera() ? 0.0f : 1.0f, other->ownsCamera() ? 0.0f : 1.0f, flatZoom(activeScene_) ? 1.0f : 0.0f,
+                     flatZoom(other) ? 1.0f : 0.0f};
     // Layer 2, with its own gate and Camera pair like the two pictures above.
     Scene* layerPicture = layerScene_ ? layerScene_ : activeScene_;
     in.texL = layerTexture();

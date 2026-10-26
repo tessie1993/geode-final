@@ -59,6 +59,12 @@ float layeredStyleScale(float styleScale, bool layered, float layerStyleScale);
 // The floor under style x min(load, thermal), so no combination draws softer than this.
 constexpr float kMinQualityScale = 0.5f;
 
+// MilkDrop draws its whole frame into the scene target (MilkdropScene), and projectM's own passes run
+// at that size too, several of them. Live, its target is held to this many pixels, so a large panel
+// costs no more than a mid-sized one; the composite's last pass upscales it onto the output as it
+// does any reduced scene. Renders are not held: they draw at the export size.
+constexpr float kMilkdropMaxMegapixels = 1.6f;
+
 // ---- load scale ----------------------------------------------------------------------------------
 
 // The frame-time distribution the frame pacer reports (FramePacer.stats on the Kotlin side): how many
@@ -151,6 +157,9 @@ struct ScaleInputs {
     float layerStyleScale = 1.0f;
     float loadScale = 1.0f;
     float thermalCeiling = 1.0f;
+    // The most megapixels the live scene target may hold (kMilkdropMaxMegapixels for MilkDrop); 0 for
+    // no limit. A Render ignores it.
+    float maxMegapixels = 0.0f;
 };
 
 float totalScale(const ScaleInputs& in);

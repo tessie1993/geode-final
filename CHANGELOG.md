@@ -11,6 +11,19 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **MilkDrop follows the quality scale at about half the memory traffic
+  (#303).** MilkDrop's engine buffer is now the scene target's size, so it
+  follows Visual quality and the thermal tiers like every family, held to
+  1.6 megapixels live (`kMilkdropMaxMegapixels`; Renders draw at the export
+  size). projectM draws its frame straight onto the scene target and the
+  composite grades it, palette tint included: Geode's own copy and
+  `pm_post_frag` are gone. `projectm-v4.1.8-lean-frame.patch` stops writing
+  the motion vectors' u/v map for presets that show none. Estimated from the
+  passes, at 1080x2400: about 135-150 MB of memory traffic per frame before
+  (2.6 MP x ~52-58 bytes a pixel), about 64-74 MB after (1.6 MP x ~40-46).
+  projectM's two y-flip copies stay: removing them means redrawing every
+  preset pass upside down, which the CI cannot check by eye.
+
 - **Our own starter textures for MilkDrop (#307).** Geode ships 24 textures
   of its own, drawn from integer hashes by `tools/milk_textures/generate.py`
   (about 0.9 MB in all) under the names presets ask for most (`worms`,

@@ -246,6 +246,7 @@ const COMPOSITE_NEUTRAL = {
   uPostMirror: 0, uPostBloom: 0, uPostPosterize: 0, uPostInvert: 0, uPostDriftX: 0, uPostDriftY: 0, uPostSway: 0,
   uPostShake: 0, uPostTemp: 0, uPostSolarize: 0, uPostZoom: 1, uPostRotation: 0, uPostSat: 1, uPostBright: 1,
   uPostContrast: 1, uPostGamma: 1, uPostHue: 0, uPostPulse: 0, uPostAnaglyph: 0,
+  uPostPalTint: 0, uPostPalBase: 0, uPostPalSpan: 1,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
   uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0],
@@ -275,6 +276,8 @@ const COMPOSITE_EFFECTS = {
   fisheye: { uFisheye: 0.8 },
   glow: { uPostBloom: 0.25 },
   grading: { uPostHue: 0.2, uPostSat: 1.4, uPostContrast: 1.2, uPostGamma: 1.3, uPostBright: 0.9 },
+  // MilkDrop's palette tint, which the composite applies where the grade gate is 2 (#303).
+  palette_tint: { uGateA: [1, 1, 2, 1], uGateB: [1, 1, 2, 1], uPostPalTint: 0.8, uPostPalBase: 0.6, uPostPalSpan: 0.3 },
   temperature: { uPostTemp: 0.8 },
   solarize: { uPostSolarize: 1 },
   invert: { uPostInvert: 1 },
