@@ -6,11 +6,14 @@ import dev.geode.engine.bridge.NativeStatus
 import dev.geode.engine.bridge.SnapshotPublisher
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.api.PRESET_VERSION
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.StylePool
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.core.Defaults
 import dev.geode.kernel.FeatureFailure
@@ -48,18 +51,20 @@ class CustomizationStoreTest {
 
     private val places = MemoryPlaces()
 
+    private val cues = StyleCues()
+
     private fun store(
         appStorage: Map<String, String> = emptyMap(),
         startStyle: SceneId = julia,
     ): CustomizationFeature {
         places.appStorage.contents.putAll(appStorage)
         val engine =
-            EnginePublisher(::zoomSnapshot) { snapshot ->
+            EnginePublisher({ customization, _ -> zoomSnapshot(customization) }) { snapshot ->
                 offered += snapshot
                 publisher.offer(snapshot)
             }
         val library = PresetLibrary(places, LegacyModulation.None, BuiltInStyles.catalogue, fallbackStyle = julia)
-        return customizationStore(CustomizationHandlers(engine, library), startStyle, inPlaceRuntime(failures = failures))
+        return customizationStore(CustomizationHandlers(engine, library, cues), startStyle, inPlaceRuntime(failures = failures))
     }
 
     /** The snapshot the engine has now. */
@@ -76,6 +81,26 @@ class CustomizationStoreTest {
         assertEquals(1, offered.single().revision)
         assertEquals(offered.single(), publisher.accepted())
         assertTrue(wire.single().contentEquals(offered.single().encode()))
+    }
+
+    @Test
+    fun `the live Visual's cue moves Style switching on, unless it is held`() {
+        val store = store()
+        store.send(CustomizationCommand.UseVisualizerStyles(listOf(julia, tunnel)))
+        store.send(CustomizationCommand.SetAutomations(Automations(style = StyleSwitching(pool = StylePool.VISUALIZER))))
+
+        cues.raise()
+
+        assertEquals(tunnel, store.state.value.current.style)
+
+        store.send(CustomizationCommand.HoldStyle(true))
+        cues.raise()
+
+        assertEquals(tunnel, store.state.value.current.style)
+
+        store.send(CustomizationCommand.StyleBack)
+
+        assertEquals(julia, store.state.value.current.style)
     }
 
     @Test
@@ -129,7 +154,7 @@ class CustomizationStoreTest {
 
     @Test
     fun `a snapshot that cannot even be built is reported as refused`() {
-        val engine = EnginePublisher({ error("no engine yet") }) { publisher.offer(it) }
+        val engine = EnginePublisher({ _, _ -> error("no engine yet") }) { publisher.offer(it) }
         val library = PresetLibrary(places, LegacyModulation.None, BuiltInStyles.catalogue, fallbackStyle = julia)
 
         customizationStore(CustomizationHandlers(engine, library), julia, inPlaceRuntime(failures = failures))

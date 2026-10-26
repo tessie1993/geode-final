@@ -41,6 +41,7 @@ import dev.geode.feature.customization.ui.CustomizeRoute
 import dev.geode.feature.customization.ui.LookChip
 import dev.geode.feature.customization.ui.ModulatorsAutomationRoute
 import dev.geode.feature.customization.ui.PresetChip
+import dev.geode.feature.customization.ui.StyleFolderChip
 import dev.geode.feature.visuals.api.PresetShare
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.core.PresetLinks
@@ -110,11 +111,31 @@ fun VisualsPlace(
                         }
                         VisualsTab.CUSTOMIZE ->
                             CustomizePanel(shell, onHide = { tab = VisualsTab.STYLE }, onBrowsePresets = { page = VisualsPage.PRESETS })
-                        VisualsTab.MODULATORS -> ModulatorsAutomationRoute(shell.customization)
+                        VisualsTab.MODULATORS -> AutomationPanel(shell)
                     }
                 }
         }
     }
+}
+
+/**
+ * Modulators & Automation, with the Visuals feature's Styles to name and its folders for Style
+ * switching to switch within (#308).
+ */
+@Composable
+private fun AutomationPanel(shell: ShellViewModel) {
+    val visuals by shell.visuals.state.collectAsStateWithLifecycle()
+    val library = visuals.library
+    ModulatorsAutomationRoute(
+        shell.customization,
+        looks = visuals.styles.map { LookChip(it.id, it.name) },
+        styleFolders =
+            library
+                ?.folders
+                .orEmpty()
+                .filter { it.styles.isNotEmpty() }
+                .map { StyleFolderChip(it.name, it.styles) },
+    )
 }
 
 /**

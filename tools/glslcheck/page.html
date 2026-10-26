@@ -346,7 +346,9 @@ window.__render = async function (job) {
     gl.disable(gl.BLEND);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    // An instanced job (the 3D particle layer) draws `vertices` per instance, as the app does.
+    if (job.instances) gl.drawArraysInstanced(gl.TRIANGLES, 0, job.vertices, job.instances);
+    else gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.finish();
     const err = gl.getError();
     out.glError = err === gl.NO_ERROR ? 0 : err;

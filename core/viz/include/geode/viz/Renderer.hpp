@@ -20,6 +20,8 @@
 #include "geode/render/GlProfile.hpp"
 #include "geode/viz/Layers.hpp"
 #include "geode/viz/HdrPass.hpp"
+#include "geode/viz/LensFx.hpp"
+#include "geode/viz/LensPasses.hpp"
 #include "geode/viz/Lfo.hpp"
 #include "geode/viz/NoFlashPass.hpp"
 #include "geode/viz/Overlays.hpp"
@@ -156,6 +158,8 @@ private:
     GLuint applySharedEffects(float dt);
     // The evaluated Customization in the active Style's units, onto `p`, the Camera and the effects.
     void applyCustomization(SceneParams& p, float dt, bool reducedMotion);
+    // The active Style's lens effects and 3D particles for this frame (LensFx.hpp), as its tier allows.
+    void stepLensEffects(float dt);
     // The ranges a Style's Customization maps into: the Shared core's, and its pack's Extras.
     const mod::FamilyRanges& rangesFor(const std::string& sceneId);
     // A Style's Extras: its pack's defaults, or `frame`'s values for the ones it declares.
@@ -203,6 +207,15 @@ private:
     HdrPass hdrPass_;
     // The shared Style inputs (StyleInputs.hpp): noise made on first use, blur levels through hdrPass_.
     SharedInputs sharedInputs_;
+    // The lens effects (#313) and the 3D particle layer (#314): depth of field over the scene target,
+    // the particles onto the composite; the glare is drawn by hdrPass_ from its bloom chain.
+    DofPass dofPass_;
+    ParticlePass particlePass_;
+    lens::LensDrive lensDrive_;
+    lens::ParticleFlight particleFlight_;
+    lens::Glare frameGlare_;
+    lens::Dof frameDof_;
+    lens::Particles frameParticles_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;

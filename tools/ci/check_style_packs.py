@@ -42,7 +42,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "inputs",
+    "effects", "tiers", "inputs", "lens", "particles3d",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -90,6 +90,23 @@ INPUT_READS = {
     "bar": ("uBarPhase", "uBarConfidence"),
 }
 INPUTS_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_inputs[ \t]*$", re.MULTILINE)
+# The lens effects and the 3D particle layer (geode/viz/LensFx.hpp): each part's fields as
+# (type, low, high), type "number", "int", "pair" (two numbers), "rgb" (three) or a set of names. The
+# "required" field must be above 0. Only a shader Style can declare depth of field: it hands over its
+# depth in its own alpha.
+LENS_THRESHOLD = (0.5, 1.0)
+LENS_PARTS = {
+    "flare": ("amount", {"amount": ("number", 0.0, 1.0), "ghosts": ("int", 1, 8), "halo": ("number", 0.0, 1.0),
+                         "dispersion": ("number", 0.0, 1.0)}),
+    "godRays": ("amount", {"amount": ("number", 0.0, 1.0), "source": ("pair", 0.0, 1.0), "length": ("number", 0.1, 1.0),
+                           "decay": ("number", 0.8, 0.99)}),
+    "streaks": ("amount", {"amount": ("number", 0.0, 1.0), "shape": ({"star", "zoom", "anamorphic"}, None, None),
+                           "spokes": ("int", 2, 8), "length": ("number", 0.1, 1.0)}),
+    "depthOfField": ("aperture", {"aperture": ("number", 0.0, 1.0), "focus": ("number", 0.05, 0.95)}),
+}
+PARTICLES = ("amount", {"amount": ("number", 0.0, 1.0), "kind": ({"streaks", "sparks"}, None, None),
+                        "count": ("number", 0.25, 2.0), "speed": ("number", 0.1, 3.0), "size": ("number", 0.3, 3.0),
+                        "tint": ("rgb", 0.0, 2.0)})
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -191,6 +208,15 @@ def in_range(spec: dict, value: object) -> bool:
     return spec["type"] != "int" or float(value).is_integer()
 
 
+def style_hash(style_id: str) -> int:
+    """The 24-bit name the plan gives a Style (core/viz/Layers.cpp styleHash, Kotlin StyleHash)."""
+    value = 2166136261
+    for byte in style_id.encode():
+        value = ((value ^ byte) * 16777619) & 0xFFFFFFFF
+    folded = (value >> 24) ^ (value & 0xFFFFFF)
+    return 1 if folded == 0 else folded
+
+
 def check_index(doc: dict, report: Report) -> list[str]:
     styles = doc.get("styles")
     if not isinstance(styles, list):
@@ -204,6 +230,11 @@ def check_index(doc: dict, report: Report) -> list[str]:
             report.error(INDEX_FILE, f'"{entry}" is listed twice')
         else:
             ids.append(entry)
+    hashed: dict[int, str] = {}
+    for style_id in ids:
+        other = hashed.setdefault(style_hash(style_id), style_id)
+        if other != style_id:
+            report.error(INDEX_FILE, f'"{style_id}" and "{other}" share a Style name in the plan; rename one')
     return ids
 
 
@@ -408,6 +439,58 @@ def check_manifest(
     check_reactions(manifest, where, report)
     check_tiers(manifest, where, report)
     check_inputs(manifest, family, shader_file, where, report)
+    check_lens(manifest, family, where, report)
+
+
+def check_part(name: str, part: object, shape: tuple, where: str, report: Report) -> None:
+    required, fields = shape
+    if not isinstance(part, dict):
+        report.error(where, f'"{name}" must be an object')
+        return
+    unknown = set(part) - set(fields)
+    if unknown:
+        report.error(where, f'"{name}" may hold only {sorted(fields)}, not {sorted(unknown)}')
+    if required not in part:
+        report.error(where, f'"{name}" needs "{required}"')
+    elif is_number(part[required]) and part[required] <= 0:
+        report.error(where, f'"{name}" "{required}" must be above 0')
+    for key, (kind, low, high) in fields.items():
+        if key not in part:
+            continue
+        value = part[key]
+        if isinstance(kind, set):
+            if value not in kind:
+                report.error(where, f'"{name}" "{key}" must be one of {sorted(kind)}')
+            continue
+        if kind in ("pair", "rgb"):
+            size = 2 if kind == "pair" else 3
+            ok = isinstance(value, list) and len(value) == size and all(is_number(v) and low <= v <= high for v in value)
+            if not ok:
+                report.error(where, f'"{name}" "{key}" must be {size} numbers in [{low}, {high}]')
+            continue
+        ok = is_number(value) and low <= value <= high and (kind != "int" or float(value).is_integer())
+        if not ok:
+            report.error(where, f'"{name}" "{key}" must be {"a whole number" if kind == "int" else "a number"} in [{low}, {high}]')
+
+
+def check_lens(manifest: dict, family: str, where: str, report: Report) -> None:
+    if "lens" in manifest:
+        lens = manifest["lens"]
+        if not isinstance(lens, dict):
+            report.error(where, '"lens" must be an object')
+        else:
+            unknown = set(lens) - set(LENS_PARTS) - {"threshold"}
+            if unknown:
+                report.error(where, f'"lens" may hold only "threshold" and {sorted(LENS_PARTS)}, not {sorted(unknown)}')
+            if "threshold" in lens and not (is_number(lens["threshold"]) and LENS_THRESHOLD[0] <= lens["threshold"] <= LENS_THRESHOLD[1]):
+                report.error(where, f'"lens" "threshold" must be a number in [{LENS_THRESHOLD[0]}, {LENS_THRESHOLD[1]}]')
+            for name, shape in LENS_PARTS.items():
+                if name in lens:
+                    check_part(name, lens[name], shape, where, report)
+            if "depthOfField" in lens and family != SHADER_FAMILY:
+                report.error(where, '"depthOfField" needs a shader Style, which writes its depth into its alpha')
+    if "particles3d" in manifest:
+        check_part("particles3d", manifest["particles3d"], PARTICLES, where, report)
 
 
 def check_tiers(manifest: dict, where: str, report: Report) -> None:
@@ -536,6 +619,14 @@ GOOD_MANIFESTS = {
         "inputs": ["noise_vol", "clocks"],
         "macros": [{"name": "energy", "links": [{"target": "scale", "amount": 0.5}]}],
         "reactions": [{"signal": "bass", "target": "scale", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
+        "lens": {
+            "threshold": 0.8,
+            "flare": {"amount": 0.5, "ghosts": 4, "halo": 0.4, "dispersion": 0.3},
+            "godRays": {"amount": 0.6, "source": [0.5, 0.6], "length": 0.7, "decay": 0.94},
+            "streaks": {"amount": 0.4, "shape": "star", "spokes": 6, "length": 0.5},
+            "depthOfField": {"aperture": 0.5, "focus": 0.4},
+        },
+        "particles3d": {"kind": "sparks", "amount": 0.7, "count": 1, "speed": 1.2, "size": 1, "tint": [1, 0.8, 0.6]},
     },
     "drum": {"version": 1, "id": "drum", "label": "Drum", "family": "plate", "parameters": {"mode": 2}},
 }
@@ -607,6 +698,31 @@ def self_test() -> int:
         "tier with an unknown key": setter(["orb", "tiers", "minimal", "fps"], 30),
         "tier steps rising with heat": setter(["orb", "tiers", "minimal", "steps"], 0.9),
         "effect named twice": setter(["orb", "effects"], ["halo", "halo"]),
+        "lens not an object": setter(["orb", "lens"], 1),
+        "lens with an unknown part": setter(["orb", "lens", "bokeh"], {"amount": 1}),
+        "lens threshold out of range": setter(["orb", "lens", "threshold"], 0.2),
+        "lens part not an object": setter(["orb", "lens", "flare"], 0.5),
+        "lens part without its amount": setter(["orb", "lens", "flare", "amount"], DELETE),
+        "lens part at amount 0": setter(["orb", "lens", "godRays", "amount"], 0),
+        "lens part with an unknown key": setter(["orb", "lens", "streaks", "angle"], 30),
+        "lens amount out of range": setter(["orb", "lens", "streaks", "amount"], 1.5),
+        "flare ghosts not whole": setter(["orb", "lens", "flare", "ghosts"], 2.5),
+        "flare ghosts out of range": setter(["orb", "lens", "flare", "ghosts"], 12),
+        "god ray source not a pair": setter(["orb", "lens", "godRays", "source"], [0.5]),
+        "god ray source out of range": setter(["orb", "lens", "godRays", "source"], [0.5, 1.5]),
+        "god ray decay out of range": setter(["orb", "lens", "godRays", "decay"], 1.0),
+        "unknown streak shape": setter(["orb", "lens", "streaks", "shape"], "spiral"),
+        "streak spokes out of range": setter(["orb", "lens", "streaks", "spokes"], 1),
+        "depth of field without an aperture": setter(["orb", "lens", "depthOfField", "aperture"], DELETE),
+        "depth of field focus out of range": setter(["orb", "lens", "depthOfField", "focus"], 1),
+        "depth of field on a non-shader family": setter(["drum", "lens"], {"depthOfField": {"aperture": 0.5}}),
+        "particles not an object": setter(["orb", "particles3d"], []),
+        "particles without an amount": setter(["orb", "particles3d", "amount"], DELETE),
+        "unknown particle kind": setter(["orb", "particles3d", "kind"], "comets"),
+        "particle count out of range": setter(["orb", "particles3d", "count"], 5),
+        "particle tint not three numbers": setter(["orb", "particles3d", "tint"], [1, 1]),
+        "particle tint out of range": setter(["orb", "particles3d", "tint"], [1, 1, 3]),
+        "particles with an unknown key": setter(["orb", "particles3d", "colour"], 1),
         "too many effects": setter(["orb", "effects"], [f"fx{n}" for n in range(MAX_EFFECTS + 1)]),
         "inputs not a list": setter(["orb", "inputs"], "clocks"),
         "input that is no input": setter(["orb", "inputs"], ["noise_vol", "clocks", "noise_xq"]),

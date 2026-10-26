@@ -304,6 +304,12 @@
     <string name="automation_pool_visualizer">Visualizer styles</string>
     <string name="automation_pool_picks">App\'s picks</string>
     <string name="automation_pool_both">Both</string>
+    <string name="automation_pool_favourites">Favourites</string>
+    <string name="automation_pool_chosen">Chosen Styles</string>
+    <string name="automation_pool_folder">Folder: %1$s</string>
+    <string name="automation_pool_pair">Back and forth</string>
+    <string name="automation_pair_hint">Pick the two Styles to go back and forth between.</string>
+    <string name="automation_marks">Styles you love come round more often. Styles marked Never are never switched to.</string>
     <string name="automation_palette_fade">Crossfade</string>
     <string name="automation_span_one">Every beat</string>
     <string name="automation_span_two">Every 2 beats</string>
@@ -324,6 +330,9 @@
     <string name="automation_move_shake">Shake</string>
     <string name="automation_transition">Transition</string>
     <string name="automation_seconds">%1$.1f s</string>
+    <string name="automation_hold">Hold this Style</string>
+    <string name="automation_style_back">Back a Style</string>
+    <string name="automation_style_forward">Forward a Style</string>
     <string name="automation_no_flash">Fades smoothly from one Style to the next. The Visual never flashes.</string>
 
     <!-- Layers: Layer 2, a second Style laid over the Style. -->

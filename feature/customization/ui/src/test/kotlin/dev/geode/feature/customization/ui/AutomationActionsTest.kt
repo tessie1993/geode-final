@@ -1,6 +1,7 @@
 package dev.geode.feature.customization.ui
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -12,6 +13,7 @@ import dev.geode.feature.customization.api.ModulatorParameter
 import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.StepLength
+import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Trigger
@@ -129,5 +131,45 @@ class AutomationActionsTest {
             (1..4).map { Target.ModulatorField(ModulatorId(it), ModulatorParameter.DEPTH) },
             targets.filterIsInstance<Target.ModulatorField>(),
         )
+    }
+
+    @Test
+    fun `a folder's chip switches within its Styles as they are now`() {
+        val calm = StyleFolderChip("Calm", listOf(SceneId("a"), SceneId("b")))
+        val within = StyleSwitching().withinFolder(calm)
+        assertEquals(StylePool.CHOSEN, within.pool)
+        assertEquals(calm.styles, within.chosen)
+        assertTrue(within.within(calm))
+        assertFalse(within.within(calm.copy(styles = listOf(SceneId("a")))))
+        assertFalse(StyleSwitching(pool = StylePool.PICKS, chosen = calm.styles).within(calm))
+        assertFalse(StylePool.CHOSEN in POOL_CHOICES)
+        assertTrue(StylePool.FAVOURITES in POOL_CHOICES)
+    }
+
+    @Test
+    fun `a pair keeps two Styles, the newest taking the older one's place`() {
+        val (a, b, c) = listOf(SceneId("a"), SceneId("b"), SceneId("c"))
+        val pair = StyleSwitching(pool = StylePool.PAIR)
+        assertEquals(listOf(a), pair.pairToggled(a).pair)
+        assertEquals(listOf(a, b), pair.pairToggled(a).pairToggled(b).pair)
+        assertEquals(
+            listOf(b, c),
+            pair
+                .pairToggled(a)
+                .pairToggled(b)
+                .pairToggled(c)
+                .pair,
+        )
+        assertEquals(
+            listOf(b),
+            pair
+                .pairToggled(a)
+                .pairToggled(b)
+                .pairToggled(a)
+                .pair,
+        )
+        assertEquals(listOf(a, b), StyleSwitching(chosen = listOf(a, b, c)).pair)
+        assertEquals(listOf(b), StyleSwitching(chosen = listOf(a, b, c)).pairToggled(a).chosen)
+        assertTrue(StylePool.PAIR in POOL_CHOICES)
     }
 }

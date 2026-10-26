@@ -226,6 +226,20 @@ class CustomizeModelTest {
     }
 
     @Test
+    fun `the Hold and the Styles seen come from the state`() {
+        val plain = CustomizationState(customization).toCustomizeModel()
+        assertFalse(plain.styleHeld)
+        assertFalse(plain.canGoBack)
+        assertFalse(plain.canGoForward)
+        val walked =
+            CustomizationState(customization, styleHeld = true, stylesBack = listOf(customization), stylesForward = listOf(customization))
+                .toCustomizeModel()
+        assertTrue(walked.styleHeld)
+        assertTrue(walked.canGoBack)
+        assertTrue(walked.canGoForward)
+    }
+
+    @Test
     fun `the controls the Style ignores are greyed out, and only those`() {
         val ignored = setOf(Target.Shared(SharedProperty.SPEED), Target.Shared(SharedProperty.KALEIDOSCOPE), Target.MacroSlot(0))
         val shown = CustomizationState(customization).toCustomizeModel(ignored = ignored)

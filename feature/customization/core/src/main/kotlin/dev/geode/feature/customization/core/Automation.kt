@@ -6,11 +6,13 @@ import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.CameraMove
 import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Trigger
 import kotlin.math.PI
 import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -42,6 +44,41 @@ object Automation {
             is Trigger.EveryBars -> beat != null && beat > 0 && beat % (trigger.bars * BEATS_PER_BAR) == 0
         }
 
+    /**
+     * The Level (0..1, as heard, before the trims) under which Style switching takes the music for
+     * silence (#361): it never switches then, so a pause, the gap between tracks or a quiet intro never
+     * switches. The one value to retarget to the analysis' measured noise floor (#278); the engine's
+     * kSilenceLevel is the same.
+     */
+    const val SILENCE_LEVEL: Float = 0.02f
+
+    /** How long silence lasts, in played time, before Style switching's spacing starts again when sound returns. */
+    val SILENCE: Millis = Millis(2_500)
+
+    /** Whether Style switching takes a [level] (as heard) for silence. */
+    fun silent(level: Float): Boolean = level < SILENCE_LEVEL
+
+    /** How far Style switching's big-moment threshold rises after a switch: this much of the room above it (#362). */
+    const val THRESHOLD_RISE: Float = 0.5f
+
+    /** The half-life the raised threshold relaxes back over, in played time. */
+    val THRESHOLD_HALF_LIFE: Millis = Millis(15_000)
+
+    /**
+     * Style switching's big-moment [threshold] [sinceLast] (played) after its last switch, null when it
+     * has not switched yet (#362): raised [THRESHOLD_RISE] of the way to 1, the raise halving every
+     * [THRESHOLD_HALF_LIFE]. A loud, busy master then does not switch on every chorus, yet keeps its
+     * variety without a longer fixed spacing. The engine's raisedThreshold is the same.
+     */
+    fun raisedThreshold(
+        threshold: Float,
+        sinceLast: Millis?,
+    ): Float {
+        if (sinceLast == null) return threshold
+        val halvings = maxOf(sinceLast.value, 0L).toDouble() / THRESHOLD_HALF_LIFE.value
+        return threshold + maxOf(1f - threshold, 0f) * THRESHOLD_RISE * 2.0.pow(-halvings).toFloat()
+    }
+
     /** Whether [cadence] lets a move happen [sinceLast] after its last one (null: there was none yet). */
     fun spaced(
         cadence: Cadence,
@@ -68,9 +105,14 @@ object Automation {
      * - [StylePool.VISUALIZER]: the [visualizer] styles this version draws, in their order;
      * - [StylePool.PICKS]: every one of [builtIns] in a shuffle seeded by the switching's seed and the
      *   round, so none comes again until all have played, and a Render repeats exactly;
-     * - [StylePool.BOTH]: the Visualizer styles, then the shuffle of the other built-in Styles.
+     * - [StylePool.BOTH]: the Visualizer styles, then the shuffle of the other built-in Styles;
+     * - [StylePool.FAVOURITES]: the shuffle of the person's [favourites];
+     * - [StylePool.CHOSEN]: the shuffle of the switching's chosen Styles;
+     * - [StylePool.PAIR]: the first two chosen Styles, in turn, so it goes back and forth between them.
      *
-     * A pick that is the Style already showing is passed over. Null when the pool has nowhere else to go.
+     * Every shuffle is weighted by the person's [marks] ([weighted]); a Style marked Never is left out
+     * of every pool. A pick that is the Style already showing is passed over. Null when the pool has
+     * nowhere else to go.
      */
     fun nextStyle(
         switching: StyleSwitching,
@@ -78,13 +120,20 @@ object Automation {
         visualizer: List<SceneId>,
         builtIns: List<SceneId>,
         played: Int,
+        marks: Map<SceneId, StyleMark> = emptyMap(),
+        favourites: List<SceneId> = emptyList(),
     ): Pick? {
-        val listed = visualizer.filter { it in builtIns }.distinct()
+        val drawn = builtIns.filter { markOf(it, marks) != StyleMark.NEVER }
+        val among = { styles: List<SceneId> -> styles.filter { it in drawn }.distinct() }
+        val listed = among(visualizer)
         val round = { n: Int ->
             when (switching.pool) {
                 StylePool.VISUALIZER -> listed
-                StylePool.PICKS -> shuffled(builtIns, switching.seed, n)
-                StylePool.BOTH -> listed + shuffled(builtIns - listed.toSet(), switching.seed, n)
+                StylePool.PICKS -> weighted(drawn, marks, switching.seed, n)
+                StylePool.BOTH -> listed + weighted(drawn - listed.toSet(), marks, switching.seed, n)
+                StylePool.FAVOURITES -> weighted(among(favourites), marks, switching.seed, n)
+                StylePool.CHOSEN -> weighted(among(switching.chosen), marks, switching.seed, n)
+                StylePool.PAIR -> among(switching.chosen).take(PAIRED)
             }
         }
         val size = round(0).size
@@ -101,6 +150,24 @@ object Automation {
         seed: Long,
         round: Int,
     ): List<SceneId> = styles.shuffled(Random(seed * SEED_STRIDE + round))
+
+    /** The mark [style] has in [marks]: Normal when it has none. */
+    fun markOf(
+        style: SceneId,
+        marks: Map<SceneId, StyleMark>,
+    ): StyleMark = marks[style] ?: StyleMark.NORMAL
+
+    /**
+     * [styles] in the weighted shuffle [seed] gives round [round] (#308): each comes round as many times
+     * as its mark's weight, so a loved Style plays three times as often as a Normal one and a Never one
+     * not at all. With no marks it is [shuffled].
+     */
+    fun weighted(
+        styles: List<SceneId>,
+        marks: Map<SceneId, StyleMark>,
+        seed: Long,
+        round: Int,
+    ): List<SceneId> = shuffled(styles.flatMap { style -> List(markOf(style, marks).weight) { style } }, seed, round)
 
     /**
      * How far a crossfade of [length] is, 0..1, [elapsed] into it: a smooth S-curve. Its steepest point
@@ -181,6 +248,9 @@ object Automation {
 
     private val PALETTES = SharedProperty.PALETTE.max.toInt() + 1
     private const val SEED_STRIDE = 1_000_003L
+
+    /** How many Styles [StylePool.PAIR] goes back and forth between. */
+    private const val PAIRED = 2
     private const val SMOOTH_A = 3f
     private const val SMOOTH_B = 2f
 }

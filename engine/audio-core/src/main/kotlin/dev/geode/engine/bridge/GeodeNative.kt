@@ -405,6 +405,9 @@ object GeodeNative {
 
     external fun vizReleaseScenes(handle: Long): Int
 
+    /** How many times the Customization's Style switching has been due; 0 without a plan. */
+    external fun vizStylesDue(handle: Long): Int
+
     /** Not RT-safe on the native side: only call this on a dsp handle not yet passed to [playerSetDsp]. */
     external fun dspSetSampleRate(
         handle: Long,

@@ -24,6 +24,9 @@
     <string name="visuals_unfavourite">Take %1$s out of Favourites</string>
     <string name="visuals_add_to">Add to %1$s</string>
     <string name="visuals_remove_from_folder">Take out of this folder</string>
+    <string name="visuals_mark_love">Love: switch to it more often</string>
+    <string name="visuals_mark_normal">Normal</string>
+    <string name="visuals_mark_never">Never switch to it</string>
     <string name="visuals_showing">Showing</string>
 
     <!-- The Style families, as the tab lists them. -->

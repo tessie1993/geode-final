@@ -1,8 +1,10 @@
 #include "geode/viz/StylePacks.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <set>
+#include <string>
 
 #include "geode/util/Json.hpp"
 #include "geode/viz/RenderScale.hpp"
@@ -36,6 +38,9 @@ constexpr const char* kTiersKey = "tiers";
 constexpr const char* kTierStepsKey = "steps";
 constexpr const char* kTierOffKey = "off";
 constexpr const char* kInputsKey = "inputs";
+constexpr const char* kLensKey = "lens";
+constexpr const char* kParticlesKey = "particles3d";
+constexpr const char* kShaderFamily = "shader";
 
 constexpr const char* kTypeInt = "int";
 constexpr const char* kTypeFloat = "float";
@@ -284,6 +289,137 @@ std::optional<inputs::Set> parseInputs(const Value& manifest, const std::string&
     return set;
 }
 
+// A number of a lens or particle object into `out`, which keeps its default when the key is absent;
+// false, with the problem reported, when it is present but not a number.
+bool readNumber(const Value& object, const char* key, float& out, const std::string& where, std::vector<PackProblem>& problems) {
+    const Value* value = object.get(key);
+    if (value == nullptr) return true;
+    if (value->kind() != Value::Kind::Number || !std::isfinite(value->number())) {
+        report(problems, PackError::BadValue, where, std::string("\"") + key + "\" must be a number");
+        return false;
+    }
+    out = static_cast<float>(value->number());
+    return true;
+}
+
+bool readWhole(const Value& object, const char* key, int& out, const std::string& where, std::vector<PackProblem>& problems) {
+    float value = static_cast<float>(out);
+    if (!readNumber(object, key, value, where, problems)) return false;
+    out = static_cast<int>(std::lround(value));
+    return true;
+}
+
+// Fills `out` from an array of numbers of exactly its size; false when the key holds anything else.
+template <size_t N>
+bool readNumbers(const Value& object, const char* key, std::array<float, N>& out, const std::string& where,
+                 std::vector<PackProblem>& problems) {
+    const Value* value = object.get(key);
+    if (value == nullptr) return true;
+    const bool shaped = value->kind() == Value::Kind::Array && value->array().size() == N &&
+                        std::all_of(value->array().begin(), value->array().end(), [](const Value& v) {
+                            return v.kind() == Value::Kind::Number && std::isfinite(v.number());
+                        });
+    if (!shaped) {
+        report(problems, PackError::BadValue, where, std::string("\"") + key + "\" must be " + std::to_string(N) + " numbers");
+        return false;
+    }
+    for (size_t i = 0; i < N; ++i) out[i] = static_cast<float>(value->array()[i].number());
+    return true;
+}
+
+// One effect's object inside "lens" (or "particles3d" itself): nullptr when absent; `ok` turns false,
+// with the problem reported, when the key holds something that is not an object.
+const Value* section(const Value& parent, const char* key, bool& ok, const std::string& where, std::vector<PackProblem>& problems) {
+    const Value* value = parent.get(key);
+    if (value == nullptr) return nullptr;
+    if (value->kind() != Value::Kind::Object) {
+        report(problems, PackError::BadValue, where, std::string("\"") + key + "\" must be an object");
+        ok = false;
+        return nullptr;
+    }
+    return value;
+}
+
+std::optional<lens::StreakShape> streakShape(const Value& streaks, const std::string& where, std::vector<PackProblem>& problems) {
+    const Value* value = streaks.get("shape");
+    if (value == nullptr) return lens::StreakShape::Star;
+    const std::string name = value->kind() == Value::Kind::String ? value->string() : std::string();
+    if (name == "star") return lens::StreakShape::Star;
+    if (name == "zoom") return lens::StreakShape::Zoom;
+    if (name == "anamorphic") return lens::StreakShape::Anamorphic;
+    report(problems, PackError::BadValue, where, "\"shape\" must be \"star\", \"zoom\" or \"anamorphic\"");
+    return std::nullopt;
+}
+
+// "lens": {"threshold", "flare", "godRays", "streaks", "depthOfField"}, every part optional.
+std::optional<lens::LensSpec> parseLens(const Value& manifest, const std::string& family, const std::string& where,
+                                        std::vector<PackProblem>& problems) {
+    lens::LensSpec spec;
+    bool ok = true;
+    const Value* declared = section(manifest, kLensKey, ok, where, problems);
+    if (!ok) return std::nullopt;
+    if (declared == nullptr) return spec;
+    ok = readNumber(*declared, "threshold", spec.threshold, where, problems);
+    if (const Value* flare = section(*declared, "flare", ok, where, problems)) {
+        ok = ok && readNumber(*flare, "amount", spec.flare.amount, where, problems) &&
+             readWhole(*flare, "ghosts", spec.flare.ghosts, where, problems) &&
+             readNumber(*flare, "halo", spec.flare.halo, where, problems) &&
+             readNumber(*flare, "dispersion", spec.flare.dispersion, where, problems);
+    }
+    if (const Value* rays = section(*declared, "godRays", ok, where, problems)) {
+        std::array<float, 2> source{spec.godRays.x, spec.godRays.y};
+        ok = ok && readNumber(*rays, "amount", spec.godRays.amount, where, problems) &&
+             readNumbers(*rays, "source", source, where, problems) &&
+             readNumber(*rays, "length", spec.godRays.length, where, problems) &&
+             readNumber(*rays, "decay", spec.godRays.decay, where, problems);
+        spec.godRays.x = source[0];
+        spec.godRays.y = source[1];
+    }
+    if (const Value* streaks = section(*declared, "streaks", ok, where, problems)) {
+        const auto shape = ok ? streakShape(*streaks, where, problems) : std::nullopt;
+        ok = shape.has_value() && readNumber(*streaks, "amount", spec.streaks.amount, where, problems) &&
+             readWhole(*streaks, "spokes", spec.streaks.spokes, where, problems) &&
+             readNumber(*streaks, "length", spec.streaks.length, where, problems);
+        spec.streaks.shape = shape.value_or(lens::StreakShape::Star);
+    }
+    if (const Value* dof = section(*declared, "depthOfField", ok, where, problems)) {
+        // Only a shader Style writes its own alpha, so only a shader Style can hand over its depth.
+        if (ok && family != kShaderFamily) {
+            report(problems, PackError::BadValue, where, "only a shader Style can declare \"depthOfField\"");
+            ok = false;
+        }
+        ok = ok && readNumber(*dof, "aperture", spec.depthOfField.aperture, where, problems) &&
+             readNumber(*dof, "focus", spec.depthOfField.focus, where, problems);
+    }
+    if (!ok) return std::nullopt;
+    return lens::sanitized(spec);
+}
+
+// "particles3d": {"kind", "amount", "count", "speed", "size", "tint"}.
+std::optional<lens::ParticleSpec> parseParticles(const Value& manifest, const std::string& where, std::vector<PackProblem>& problems) {
+    lens::ParticleSpec spec;
+    bool ok = true;
+    const Value* declared = section(manifest, kParticlesKey, ok, where, problems);
+    if (!ok) return std::nullopt;
+    if (declared == nullptr) return spec;
+    if (const Value* kind = declared->get("kind")) {
+        const std::string name = kind->kind() == Value::Kind::String ? kind->string() : std::string();
+        if (name == "streaks") {
+            spec.kind = lens::ParticleKind::Streaks;
+        } else if (name == "sparks") {
+            spec.kind = lens::ParticleKind::Sparks;
+        } else {
+            report(problems, PackError::BadValue, where, "\"kind\" must be \"streaks\" or \"sparks\"");
+            return std::nullopt;
+        }
+    }
+    ok = readNumber(*declared, "amount", spec.amount, where, problems) && readNumber(*declared, "count", spec.count, where, problems) &&
+         readNumber(*declared, "speed", spec.speed, where, problems) && readNumber(*declared, "size", spec.size, where, problems) &&
+         readNumbers(*declared, "tint", spec.tint, where, problems);
+    if (!ok) return std::nullopt;
+    return lens::sanitized(spec);
+}
+
 }  // namespace
 
 std::string stylesPath(std::string_view name) {
@@ -440,6 +576,12 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     const auto declaredInputs = parseInputs(*doc, folderId, problems);
     if (!declaredInputs) return std::nullopt;
     pack.inputs = *declaredInputs;
+    const auto lensEffects = parseLens(*doc, pack.family, folderId, problems);
+    if (!lensEffects) return std::nullopt;
+    pack.lensEffects = *lensEffects;
+    const auto particles = parseParticles(*doc, folderId, problems);
+    if (!particles) return std::nullopt;
+    pack.particles3d = *particles;
     return pack;
 }
 

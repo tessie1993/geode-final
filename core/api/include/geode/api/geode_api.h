@@ -201,6 +201,10 @@ GEODE_API GeodeStatus geode_viz_attach_feed(geode_viz*, geode_feed*);
 GEODE_API void        geode_viz_set_reactions_held(geode_viz*, int held);
 GEODE_API void        geode_viz_render(geode_viz*, double time_seconds, uint32_t target_fbo);
 GEODE_API void        geode_viz_release_scenes(geode_viz*);
+/* How many times the Customization's Style switching has been due (ReactionGraph's stylesDue) since its
+ * evaluation last started over; 0 without a plan. Any thread. The host raises StyleDue each time it rises, and
+ * takes a drop as a fresh start. */
+GEODE_API uint32_t    geode_viz_styles_due(geode_viz*);
 
 /* Customization snapshots (ADR-0004, ADR-0005). Kotlin publishes the whole Customization, in the wire format
  * core/bridge/schema/native_bridge.json defines, only when it changes. Each attached reader picks the newest one

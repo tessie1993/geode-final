@@ -792,5 +792,10 @@ void main() {
     // that give it its scale.
     col *= 0.55 + 0.45 * smoothstep(2.0, 0.4, length(uv));
 
-    fragColor = vec4(grade(col), 1.0);
+    // The depth the shared depth of field reads from alpha (the pack's "depthOfField";
+    // lens::depthAlpha): the distance to what the ray hit as t / (t + KIFS_CAM_R), so the centre of
+    // the cathedral sits at 0.5, and a ray that hit nothing is far (1).
+    float hitDepth = hitT > 0.0 ? hitT : (satT > 0.0 ? satT : -1.0);
+    float depthA = hitDepth > 0.0 ? hitDepth / (hitDepth + KIFS_CAM_R) : 1.0;
+    fragColor = vec4(grade(col), depthA);
 }

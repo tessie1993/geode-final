@@ -72,6 +72,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/RenderScale.cpp
     viz/TileFrame.cpp
     viz/StylePacks.cpp
+    viz/LensFx.cpp
     viz/StyleLab.cpp
     viz/StyleProfiles.cpp
     viz/StyleExtras.cpp

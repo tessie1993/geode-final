@@ -29,7 +29,8 @@ sealed interface CustomizationEvent {
 
     /**
      * The engine heard the moment Style switching waits for ([Automation.due] on its cadence, evaluated
-     * per frame). The reducer moves to the next Style; the engine crossfades into it.
+     * per frame), raised through [CustomizationWork.FollowStyleCues]. The reducer moves to the next
+     * Style; the engine crossfades into it over Style switching's transition.
      */
     data object StyleDue : CustomizationEvent
 
@@ -52,10 +53,20 @@ enum class WorkFailure(
 
 /** The handlers' work, carried out by `:feature:customization:handlers`. */
 sealed interface CustomizationWork {
-    /** Hand [customization] to the engine as one snapshot (ADR-0002, ADR-0004). Nothing crosses per frame. */
+    /**
+     * Hand [customization] to the engine as one snapshot (ADR-0002, ADR-0004). Nothing crosses per frame.
+     * [switchingHeld] holds its Style switching in the engine (the state's `switchingHeld`).
+     */
     data class Publish(
         val customization: Customization,
+        val switchingHeld: Boolean = false,
     ) : CustomizationWork
+
+    /**
+     * Report a [CustomizationEvent.StyleDue] each time the live Visual says the engine's Style switching
+     * is due (#282), for as long as the app runs.
+     */
+    data object FollowStyleCues : CustomizationWork
 
     /** Write [preset] as a versioned preset file. */
     data class SavePreset(

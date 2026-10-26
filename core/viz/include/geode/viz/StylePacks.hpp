@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "geode/viz/LensFx.hpp"
 #include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/StyleInputs.hpp"
 
@@ -88,6 +89,10 @@ struct StylePack {
     // The shared inputs the Style's shader reads ("inputs", StyleInputs.hpp): the engine makes and binds
     // only these.
     inputs::Set inputs = 0;
+    // The shared lens effects and the 3D particle layer the Style declares ("lens", "particles3d"),
+    // each held to its range; everything is off when the manifest declares neither.
+    lens::LensSpec lensEffects;
+    lens::ParticleSpec particles3d;
 
     // The resolved value of `key`; 0 for a key the family does not declare.
     float parameter(std::string_view key) const;

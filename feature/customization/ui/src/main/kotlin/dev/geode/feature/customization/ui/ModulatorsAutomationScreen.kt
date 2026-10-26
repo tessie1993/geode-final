@@ -75,7 +75,7 @@ fun ModulatorsAutomationScreen(
             SectionTitle(stringResource(R.string.customize_section_modulators))
             ModulatorsSection(model, send)
             SectionTitle(stringResource(R.string.automation_section))
-            AutomationsSection(model) { send(CustomizationCommand.SetAutomations(it)) }
+            AutomationsSection(model, send)
         }
     }
 }
@@ -183,13 +183,18 @@ private fun ModulatorCard(
 @Composable
 private fun AutomationsSection(
     model: CustomizeModel,
-    set: (Automations) -> Unit,
+    send: (CustomizationCommand) -> Unit,
 ) {
     val automations = model.automations
+    val set = { next: Automations -> send(CustomizationCommand.SetAutomations(next)) }
     QuietText(stringResource(R.string.automation_live_only))
     InsetCard {
         SwitchRow(stringResource(R.string.automation_style), automations.style != null) { set(automations.switchingStyle(it)) }
-        automations.style?.let { switching -> StyleSwitchingControls(switching) { set(automations.copy(style = it)) } }
+        automations.style?.let { switching ->
+            StyleSwitchingControls(model, switching) { set(automations.copy(style = it)) }
+            SwitchRow(stringResource(R.string.automation_hold), model.styleHeld) { send(CustomizationCommand.HoldStyle(it)) }
+        }
+        StylesSeen(model, send)
     }
     InsetCard {
         SwitchRow(stringResource(R.string.automation_palette), automations.palette != null) { set(automations.changingPalette(it)) }
@@ -202,13 +207,28 @@ private fun AutomationsSection(
 
 @Composable
 private fun StyleSwitchingControls(
+    model: CustomizeModel,
     switching: StyleSwitching,
     set: (StyleSwitching) -> Unit,
 ) {
     CadenceControls(switching.cadence) { set(switching.copy(cadence = it)) }
     ChipFlow {
-        StylePool.entries.forEach { pool -> ChoiceChip(poolName(pool), switching.pool == pool) { set(switching.copy(pool = pool)) } }
+        POOL_CHOICES.forEach { pool -> ChoiceChip(poolName(pool), switching.pool == pool) { set(switching.copy(pool = pool)) } }
+        // A folder's Styles, taken as they are now (#308).
+        model.styleFolders.forEach { folder ->
+            ChoiceChip(stringResource(R.string.automation_pool_folder, folder.name), switching.within(folder)) {
+                set(switching.withinFolder(folder))
+            }
+        }
     }
+    // The two Styles a pair goes back and forth between (#384).
+    if (switching.pool == StylePool.PAIR) {
+        QuietText(stringResource(R.string.automation_pair_hint))
+        ChipFlow {
+            model.looks.forEach { look -> ChoiceChip(look.name, look.style in switching.pair) { set(switching.pairToggled(look.style)) } }
+        }
+    }
+    QuietText(stringResource(R.string.automation_marks))
     HeldSlider(
         label = stringResource(R.string.automation_transition),
         value = switching.seconds,
@@ -217,6 +237,29 @@ private fun StyleSwitchingControls(
         onSet = { set(switching.transitionOf(it)) },
     )
     QuietText(stringResource(R.string.automation_no_flash))
+}
+
+/** Back and forward through the Styles seen this session (#282); not undo steps. */
+@Composable
+private fun StylesSeen(
+    model: CustomizeModel,
+    send: (CustomizationCommand) -> Unit,
+) {
+    if (!model.canGoBack && !model.canGoForward) return
+    ChipFlow {
+        AssistChip(
+            onClick = { send(CustomizationCommand.StyleBack) },
+            label = { Text(stringResource(R.string.automation_style_back)) },
+            enabled = model.canGoBack,
+            shape = MaterialTheme.shapes.small,
+        )
+        AssistChip(
+            onClick = { send(CustomizationCommand.StyleForward) },
+            label = { Text(stringResource(R.string.automation_style_forward)) },
+            enabled = model.canGoForward,
+            shape = MaterialTheme.shapes.small,
+        )
+    }
 }
 
 @Composable
@@ -365,6 +408,9 @@ private fun poolName(pool: StylePool): String =
             StylePool.VISUALIZER -> R.string.automation_pool_visualizer
             StylePool.PICKS -> R.string.automation_pool_picks
             StylePool.BOTH -> R.string.automation_pool_both
+            StylePool.FAVOURITES -> R.string.automation_pool_favourites
+            StylePool.CHOSEN -> R.string.automation_pool_chosen
+            StylePool.PAIR -> R.string.automation_pool_pair
         },
     )
 

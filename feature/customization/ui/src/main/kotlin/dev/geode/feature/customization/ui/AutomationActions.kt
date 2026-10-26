@@ -1,6 +1,7 @@
 package dev.geode.feature.customization.ui
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -10,6 +11,7 @@ import dev.geode.feature.customization.api.Lane
 import dev.geode.feature.customization.api.ModulatorParameter
 import dev.geode.feature.customization.api.PaletteChanges
 import dev.geode.feature.customization.api.StepLength
+import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Trigger
@@ -32,6 +34,25 @@ internal const val MILLIS_PER_SECOND = 1_000f
 
 /** Style switching turned on (from its defaults, or as it was) or off. */
 fun Automations.switchingStyle(on: Boolean): Automations = copy(style = if (on) style ?: StyleSwitching() else null)
+
+/** The pools offered as chips of their own: every one but [StylePool.CHOSEN], which a folder's chip picks. */
+internal val POOL_CHOICES: List<StylePool> = StylePool.entries - StylePool.CHOSEN
+
+/** Whether Style switching switches within [folder]'s Styles. */
+fun StyleSwitching.within(folder: StyleFolderChip): Boolean = pool == StylePool.CHOSEN && chosen == folder.styles
+
+/** Style switching within [folder]'s Styles, as they are now. */
+fun StyleSwitching.withinFolder(folder: StyleFolderChip): StyleSwitching = copy(pool = StylePool.CHOSEN, chosen = folder.styles)
+
+/** The two Styles a [StylePool.PAIR] goes back and forth between (#384): the first two chosen. */
+val StyleSwitching.pair: List<SceneId>
+    get() = chosen.take(2)
+
+/** [style] taken out of the pair when it is in it, or else paired with the newer of the two. */
+fun StyleSwitching.pairToggled(style: SceneId): StyleSwitching {
+    val paired = pair
+    return copy(chosen = if (style in paired) paired - style else (paired + style).takeLast(2))
+}
 
 /** Palette changes turned on or off. */
 fun Automations.changingPalette(on: Boolean): Automations = copy(palette = if (on) palette ?: PaletteChanges() else null)
