@@ -26,6 +26,15 @@ Use the Graphify MCP tools (`mcp__graphify__*`, repository `tessie1993/geode-fin
 
 The graph reflects the last indexed commit (check `graph_stats` freshness). Confirm with the actual file before editing, and fall back to Grep/Read for files changed since indexing.
 
+What the graph misses:
+
+- The JNI hop. `GeodeNative.foo` (Kotlin, `:engine:audio-core`) is implemented by `Java_dev_geode_engine_bridge_GeodeNative_foo` in `app/src/main/cpp/`, a shim around one `geode_*` C function. There is no edge across that hop: look up the JNI name with `graphify_find` and continue with `graphify_callees` from there.
+- Shaders. `app/src/main/assets/shaders/*.glsl` are not indexed. C++ names a shader by its file name, so `grep -rn "<name>.glsl" core/viz core/render` finds the pass that owns it; `docs/visual-frames.md` says what each pass draws.
+
+Memory: `recall` before editing `core/bridge`, `core/audio` or `app/src/main/cpp`; `remember` a gotcha or a mid-ticket decision no document holds. A decision that lasts goes in `docs/adr/`, not in memory.
+
+Rules scoped to a part of the tree live in `.claude/rules/` and load when a matching file is touched.
+
 ## Builds and tests
 
-Never run Gradle, CMake or tests locally. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it. What each check gates and the mutation floors: `docs/ci.md`.
+Never run Gradle, CMake or tests locally. One PR per issue; read `git diff --stat` before pushing and drop anything the issue did not ask for. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it. What each check gates and the mutation floors: `docs/ci.md`.

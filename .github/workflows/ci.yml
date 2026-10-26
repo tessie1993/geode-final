@@ -410,6 +410,11 @@ jobs:
         run: |
           python3 tools/ci/check_native_includes.py --self-test
           python3 tools/ci/check_native_includes.py
+      # The dependency diagram in docs/native-libraries.md is generated from LIBRARY_DEPS; it must match.
+      - name: Native dependency diagram is current
+        run: |
+          python3 tools/ci/native_graph_doc.py --self-test
+          python3 tools/ci/native_graph_doc.py --check
       # The snapshot schema generates the C, C++ and Kotlin bridge types; they must match what is committed.
       - name: Bridge schema is current
         run: python3 tools/bridge_schema/generate.py --check
