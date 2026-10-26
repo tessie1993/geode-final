@@ -60,12 +60,14 @@ out vec4 fragColor;
 
 const float RF_CELL = 2.6;
 /** How far a coral reaches from its cell's centre: the offset plus the widest coral. */
-const float RF_EXTENT = 0.3 + 0.95;
+const float RF_EXTENT = 0.2 + 0.85;
 const vec3 RF_LIGHT = vec3(0.2228, 0.9285, 0.2971);
 
 float gTip;
 float gHue;
 float gKind;
+/** Set while probing for occlusion: the cell-border bound is a step limit, not a surface. */
+bool gProbe = false;
 
 float rfCapsule(vec3 p, vec3 a, vec3 b, float r) {
     vec3 pa = p - a;
@@ -84,8 +86,9 @@ float rfCoral(vec3 p) {
     vec2 border = 0.5 * RF_CELL - abs(local);
     float safe = min(border.x, border.y) + (0.5 * RF_CELL - RF_EXTENT);
     float h = motionHash(cell + 0.71);
+    if (gProbe) safe = 1e3;
     if (h < 0.08) return safe;
-    vec2 off = (vec2(motionHash(cell + 3.3), motionHash(cell + 5.1)) - 0.5) * 0.6;
+    vec2 off = (vec2(motionHash(cell + 3.3), motionHash(cell + 5.1)) - 0.5) * 0.4;
     vec3 q = vec3(local.x - off.x, p.y + 0.12, local.y - off.y);
     float s = 0.75 + 0.25 * fract(h * 7.7);
     float kind = floor(fract(h * 3.9) * 3.0);
@@ -162,6 +165,21 @@ vec3 rfWater(vec3 rd) {
 }
 
 /**
+ * A filmic shoulder before the grade: below the knee the picture is untouched,
+ * above it highlights roll off smoothly toward white instead of clipping, so a
+ * swell of light stays a swell. Continuous in value and slope at the knee.
+ */
+vec3 shoulder(vec3 c) {
+    vec3 over = max(c - 0.6, 0.0);
+    return min(c, 0.6) + over / (1.0 + over * 2.5);
+}
+
+/** A fraction of one 8-bit step of noise, so dark gradients do not band. */
+float dither() {
+    return (motionHash(gl_FragCoord.xy + 0.5) - 0.5) / 255.0;
+}
+
+/**
  * Where a finger rests the head turns toward it: x yaws, y pitches, scaled by
  * how firmly it is held, so a release glides the view home. Exactly zero with
  * nothing touched, which leaves the frame bit-identical.
@@ -228,7 +246,12 @@ void main() {
         // The beat's ring of brighter caustics, spreading across the seabed.
         float ring = length(p.xz - ro.xz) - uBeatPhase * 12.0;
         float caustic = rfCaustic(p) * (0.7 + 0.9 * bass + 1.2 * beatEnv * beatEnv * exp(-ring * ring * 0.4));
-        float ao = 0.45 + 0.55 * smoothstep(-0.2, 1.3, p.y);
+        // Occlusion: lower is darker, and two probes of the field along the
+        // normal darken the hollows between and under the corals.
+        gProbe = true;
+        float probe = clamp(0.5 * (rfMap(p + n * 0.12) / 0.12 + rfMap(p + n * 0.4) / 0.4), 0.0, 1.0);
+        gProbe = false;
+        float ao = (0.55 + 0.45 * smoothstep(-0.2, 1.3, p.y)) * (0.4 + 0.6 * probe);
         vec3 base;
         if (coral) {
             base = mix(pal(fract(hue * 3.7)), vec3(0.8, 0.75, 0.7), 0.12) * 1.1;
@@ -290,5 +313,5 @@ void main() {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
     }
     col *= 0.72 + 0.28 * smoothstep(2.2, 0.5, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(shoulder(col)) + dither(), 1.0);
 }

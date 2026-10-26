@@ -136,6 +136,21 @@ vec3 cnCamera(float z) {
 }
 
 /**
+ * A filmic shoulder before the grade: below the knee the picture is untouched,
+ * above it highlights roll off smoothly toward white instead of clipping, so a
+ * swell of light stays a swell. Continuous in value and slope at the knee.
+ */
+vec3 shoulder(vec3 c) {
+    vec3 over = max(c - 0.6, 0.0);
+    return min(c, 0.6) + over / (1.0 + over * 2.5);
+}
+
+/** A fraction of one 8-bit step of noise, so dark gradients do not band. */
+float dither() {
+    return (motionHash(gl_FragCoord.xy + 0.5) - 0.5) / 255.0;
+}
+
+/**
  * Where a finger rests the head turns toward it: x yaws, y pitches, scaled by
  * how firmly it is held, so a release glides the view home. Exactly zero with
  * nothing touched, which leaves the frame bit-identical.
@@ -195,8 +210,10 @@ void main() {
         vec3 n = cnNormal(p, 0.002 + 0.0015 * t);
         float rim = cnRim(p.z);
         float across = p.x - cnPath(p.z);
-        // Height in the canyon: deep rock sees less of the sky.
-        float ao = 0.3 + 0.7 * smoothstep(-0.3, rim * 0.85, p.y);
+        // Height in the canyon: deep rock sees less of the sky. Two probes of
+        // the field along the normal darken the creases under each ledge.
+        float probe = clamp(0.5 * (cnMap(p + n * 0.15) / 0.15 + cnMap(p + n * 0.45) / 0.45), 0.0, 1.0);
+        float ao = (0.3 + 0.7 * smoothstep(-0.3, rim * 0.85, p.y)) * (0.45 + 0.55 * probe);
         float diffuse = max(dot(n, sun), 0.0);
         vec3 sunCol = mix(pal(0.93), vec3(1.0, 0.9, 0.75), 0.5);
         vec3 skyCol = pal(0.38) * 0.25 + 0.2;
@@ -216,6 +233,8 @@ void main() {
             // Fine grain across each band.
             rock *= 0.85 + 0.15 * motionNoise(vec2(p.z * 2.0, p.y * 9.0));
             col = rock * light * ao;
+            // The sky's rim along edges that turn away from the eye.
+            col += skyCol * pow(1.0 - max(dot(n, -rd), 0.0), 4.0) * 0.35 * ao;
 
             // The seams between strata glow, every other one or so. Bass
             // warms them: cool when quiet, a hot ember under a bass line.
@@ -260,5 +279,5 @@ void main() {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
     }
     col *= 0.72 + 0.28 * smoothstep(2.2, 0.5, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(shoulder(col)) + dither(), 1.0);
 }

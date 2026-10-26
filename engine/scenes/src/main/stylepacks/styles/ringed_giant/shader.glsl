@@ -138,6 +138,21 @@ vec3 rgPlanet(vec3 p, vec3 rd, vec3 sun, float bass) {
 }
 
 /**
+ * A filmic shoulder before the grade: below the knee the picture is untouched,
+ * above it highlights roll off smoothly toward white instead of clipping, so a
+ * swell of light stays a swell. Continuous in value and slope at the knee.
+ */
+vec3 shoulder(vec3 c) {
+    vec3 over = max(c - 0.6, 0.0);
+    return min(c, 0.6) + over / (1.0 + over * 2.5);
+}
+
+/** A fraction of one 8-bit step of noise, so dark gradients do not band. */
+float dither() {
+    return (motionHash(gl_FragCoord.xy + 0.5) - 0.5) / 255.0;
+}
+
+/**
  * Where a finger rests the head turns toward it: x yaws, y pitches, scaled by
  * how firmly it is held, so a release glides the view home. Exactly zero with
  * nothing touched, which leaves the frame bit-identical.
@@ -250,5 +265,5 @@ void main() {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
     }
     col *= 0.78 + 0.22 * smoothstep(2.2, 0.5, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(shoulder(col)) + dither(), 1.0);
 }

@@ -83,7 +83,7 @@ float gcMap(vec3 p) {
         float ring = length(max(b, 0.0)) + min(max(b.x, b.y), 0.0) - 0.02;
         // The pins along this ring's hinge, out to the ring that holds it
         // (the outer ring's run up and down to the mount).
-        float outer = k == 0 ? rad + 2.5 : GC_RADIUS[k - 1];
+        float outer = k == 0 ? rad + 2.5 : GC_RADIUS[max(k - 1, 0)];
         float along = (k == 2) ? q.y : q.x;
         vec2 across = (k == 2) ? q.xz : q.yz;
         if (k == 0) {
@@ -128,6 +128,21 @@ vec3 gcRoom(vec3 rd) {
     vec3 col = pal(0.36) * 0.025 + vec3(0.005, 0.006, 0.012);
     col += pal(0.36) * 0.03 * motionNoise(rd.xy * 3.0 + rd.z * 2.0);
     return col;
+}
+
+/**
+ * A filmic shoulder before the grade: below the knee the picture is untouched,
+ * above it highlights roll off smoothly toward white instead of clipping, so a
+ * swell of light stays a swell. Continuous in value and slope at the knee.
+ */
+vec3 shoulder(vec3 c) {
+    vec3 over = max(c - 0.6, 0.0);
+    return min(c, 0.6) + over / (1.0 + over * 2.5);
+}
+
+/** A fraction of one 8-bit step of noise, so dark gradients do not band. */
+float dither() {
+    return (motionHash(gl_FragCoord.xy + 0.5) - 0.5) / 255.0;
 }
 
 /**
@@ -259,5 +274,5 @@ void main() {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
     }
     col *= 0.72 + 0.28 * smoothstep(2.2, 0.5, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(shoulder(col)) + dither(), 1.0);
 }

@@ -142,6 +142,21 @@ vec3 esWalk(float d) {
 }
 
 /**
+ * A filmic shoulder before the grade: below the knee the picture is untouched,
+ * above it highlights roll off smoothly toward white instead of clipping, so a
+ * swell of light stays a swell. Continuous in value and slope at the knee.
+ */
+vec3 shoulder(vec3 c) {
+    vec3 over = max(c - 0.6, 0.0);
+    return min(c, 0.6) + over / (1.0 + over * 2.5);
+}
+
+/** A fraction of one 8-bit step of noise, so dark gradients do not band. */
+float dither() {
+    return (motionHash(gl_FragCoord.xy + 0.5) - 0.5) / 255.0;
+}
+
+/**
  * Where a finger rests the head turns toward it: x yaws, y pitches, scaled by
  * how firmly it is held, so a release glides the view home. Exactly zero with
  * nothing touched, which leaves the frame bit-identical.
@@ -212,7 +227,8 @@ void main() {
         // Deep in the shelving there is less light.
         vec2 q = mod(p.xz, ES_CELL) - 0.5 * ES_CELL;
         float inset = ES_HALF - max(abs(q.x), abs(q.y));
-        float ao = plain ? 1.0 : clamp(1.0 - inset * 2.5, 0.25, 1.0);
+        float probe = clamp(0.5 * (esMap(p + n * 0.06) / 0.06 + esMap(p + n * 0.2) / 0.2), 0.0, 1.0);
+        float ao = (plain ? 1.0 : clamp(1.0 - inset * 2.5, 0.25, 1.0)) * (0.45 + 0.55 * probe);
         vec3 base;
         if (book >= 0.0) {
             base = mix(pal(fract(book * 5.3)), vec3(0.45, 0.32, 0.22), 0.35) * (0.45 + 0.3 * fract(book * 17.0));
@@ -257,5 +273,5 @@ void main() {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
     }
     col *= 0.7 + 0.3 * smoothstep(2.2, 0.5, length(uv));
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(shoulder(col)) + dither(), 1.0);
 }
