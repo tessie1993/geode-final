@@ -198,6 +198,9 @@ class NativeViz(
         live { h -> GeodeNative.vizSetPacedFps(h, fps) }
     }
 
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap. */
+    fun frameCapFps(): Float = liveOr(0f) { h -> GeodeNative.vizFrameCapFps(h) }
+
     /** The Visual quality on screen as a render scale ceiling; the thermal ceiling can only lower it. */
     fun setQualityCeiling(ceiling: Float) {
         if (handle != 0L) GeodeNative.vizSetQualityCeiling(handle, ceiling)

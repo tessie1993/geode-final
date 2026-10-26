@@ -31,6 +31,10 @@ constexpr const char* kShaderKey = "shader";
 constexpr const char* kRenderScaleKey = "renderScale";
 constexpr const char* kDetailKey = "detail";
 constexpr const char* kExtrasKey = "extras";
+constexpr const char* kEffectsKey = "effects";
+constexpr const char* kTiersKey = "tiers";
+constexpr const char* kTierStepsKey = "steps";
+constexpr const char* kTierOffKey = "off";
 
 constexpr const char* kTypeInt = "int";
 constexpr const char* kTypeFloat = "float";
@@ -174,6 +178,85 @@ std::optional<DetailUse> parseDetail(const Value& manifest, const std::string& w
     if (declared->kind() == Value::Kind::String && declared->string() == kDetailMarch) return DetailUse::March;
     report(problems, PackError::BadValue, where, "\"detail\" must be \"none\" or \"march\"");
     return std::nullopt;
+}
+
+std::optional<std::vector<std::string>> parseEffects(const Value& manifest, const std::string& where, std::vector<PackProblem>& problems) {
+    std::vector<std::string> effects;
+    const Value* declared = manifest.get(kEffectsKey);
+    if (declared == nullptr) return effects;
+    if (declared->kind() != Value::Kind::Array || declared->array().size() > static_cast<size_t>(quality::kMaxEffects)) {
+        report(problems, PackError::BadValue, where,
+               "\"effects\" must be an array of at most " + std::to_string(quality::kMaxEffects) + " names");
+        return std::nullopt;
+    }
+    for (const Value& entry : declared->array()) {
+        if (entry.kind() != Value::Kind::String || entry.string().empty()) {
+            report(problems, PackError::BadValue, where, "every entry of \"effects\" must be a name");
+            return std::nullopt;
+        }
+        if (std::find(effects.begin(), effects.end(), entry.string()) != effects.end()) {
+            report(problems, PackError::BadValue, where, "effect \"" + entry.string() + "\" is named twice");
+            return std::nullopt;
+        }
+        effects.push_back(entry.string());
+    }
+    return effects;
+}
+
+// One tier's entry of "tiers": {"steps": share, "off": [effect names]}, both optional.
+std::optional<quality::Declared> parseTier(const std::string& tierName, const Value& entry, const std::vector<std::string>& effects,
+                                           const std::string& where, std::vector<PackProblem>& problems) {
+    const std::string what = "tier \"" + tierName + "\"";
+    if (entry.kind() != Value::Kind::Object) {
+        report(problems, PackError::BadValue, where, what + " must be an object");
+        return std::nullopt;
+    }
+    quality::Declared declared;
+    for (const auto& [key, value] : entry.object()) {
+        if (key == kTierStepsKey) {
+            if (value.kind() != Value::Kind::Number || !std::isfinite(value.number())) {
+                report(problems, PackError::BadValue, where, what + " \"steps\" must be a number");
+                return std::nullopt;
+            }
+            declared.stepScale = static_cast<float>(value.number());
+        } else if (key == kTierOffKey && value.kind() == Value::Kind::Array) {
+            for (const Value& name : value.array()) {
+                const auto at = name.kind() == Value::Kind::String ? std::find(effects.begin(), effects.end(), name.string()) : effects.end();
+                if (at == effects.end()) {
+                    report(problems, PackError::BadValue, where, what + " switches off an effect \"effects\" does not name");
+                    return std::nullopt;
+                }
+                declared.effectsOff |= 1u << static_cast<unsigned>(at - effects.begin());
+            }
+        } else {
+            report(problems, PackError::BadValue, where, what + " may hold only \"steps\" and an \"off\" array");
+            return std::nullopt;
+        }
+    }
+    return declared;
+}
+
+std::optional<quality::Budgets> parseTiers(const Value& manifest, const std::vector<std::string>& effects, const std::string& where,
+                                           std::vector<PackProblem>& problems) {
+    const Value* declared = manifest.get(kTiersKey);
+    if (declared == nullptr) return quality::defaults();
+    if (declared->kind() != Value::Kind::Object) {
+        report(problems, PackError::BadValue, where, "\"tiers\" must be an object");
+        return std::nullopt;
+    }
+    std::array<quality::Declared, quality::kTierCount> tiers{};
+    for (const auto& [name, entry] : declared->object()) {
+        const auto tier = quality::tierNamed(name);
+        // The coolest tier is always the whole budget, so only the hotter three can be declared.
+        if (!tier || *tier == 0) {
+            report(problems, PackError::BadValue, where, "\"tiers\" may declare only \"eased\", \"reduced\" and \"minimal\"");
+            return std::nullopt;
+        }
+        auto parsed = parseTier(name, entry, effects, where, problems);
+        if (!parsed) return std::nullopt;
+        tiers[static_cast<size_t>(*tier)] = *parsed;
+    }
+    return quality::resolve(tiers);
 }
 
 }  // namespace
@@ -323,6 +406,12 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     auto extras = parseExtras(*doc, folderId, problems);
     if (!extras) return std::nullopt;
     pack.extras = std::move(*extras);
+    auto effects = parseEffects(*doc, folderId, problems);
+    if (!effects) return std::nullopt;
+    pack.effects = std::move(*effects);
+    const auto tiers = parseTiers(*doc, pack.effects, folderId, problems);
+    if (!tiers) return std::nullopt;
+    pack.tiers = *tiers;
     return pack;
 }
 

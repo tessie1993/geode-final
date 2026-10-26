@@ -55,6 +55,8 @@ uniform float uTile;
 uniform float uTwist;
 uniform float uTemperature;
 uniform float uSolarize;
+// Speed x smoothed loudness, integrated on the CPU (ShaderScene): never jumps.
+uniform float uEnergyPhase;
 
 float aband(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float awave(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
@@ -160,7 +162,8 @@ vec3 grade(vec3 col) {
 void main() {
     vec2 uv = view();
     vec3 col = vec3(0.0);
-    float t = uTime * (0.4 + uEnergy * 1.6);
+    // Integrated, as in the tunnel: loudness speeds the stars up smoothly instead of jumping them.
+    float t = uTime * 0.4 + uEnergyPhase * 1.6;
     for (int i = 0; i < 48; i++) {
         float fi = float(i) / 48.0;
         float ang = fi * 6.2831853 * 7.0 + t * 0.05;

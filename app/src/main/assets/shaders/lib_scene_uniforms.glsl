@@ -110,6 +110,19 @@ uniform float uTouchSpin;
  */
 uniform float uSteps;
 
+/**
+ * The Style's costly effects the thermal tier has switched off (#286): bit i
+ * is the i-th name in the pack manifest's "effects" list, set by its "tiers"
+ * (docs/style-packs.md). Zero on a cool phone, and on every style that names
+ * no effects. uSteps is already cut to the tier's share of the Detail budget.
+ */
+uniform int uFxOff;
+
+/** True while the manifest's effect number `index` is on at the current tier. */
+bool fxOn(int index) {
+    return (uFxOff & (1 << index)) == 0;
+}
+
 float aband(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float awave(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
 
