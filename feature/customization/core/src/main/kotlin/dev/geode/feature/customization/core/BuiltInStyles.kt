@@ -309,6 +309,7 @@ object BuiltInStyles {
             shader("monolith_plain", true, emptyList()),
             shader("spiral_descent", true, emptyList()),
             shader("glass_vines", true, emptyList()),
+            shader("swarm_chase", true, emptyList()),
         )
 
     private fun life(
