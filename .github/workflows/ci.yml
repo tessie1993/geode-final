@@ -7,10 +7,15 @@ name: CI
 on:
   workflow_dispatch:
   pull_request:
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - "CONTEXT.md"
+    # Docs-only changes skip the suite, except the two files a check reads: the generated dependency
+    # diagram (tools/ci/native_graph_doc.py) and the provenance registry (geode.provenance).
+    paths:
+      - "**"
+      - "!**.md"
+      - "!docs/**"
+      - "!CONTEXT.md"
+      - "docs/native-libraries.md"
+      - "docs/visualizer-v2/provenance.json"
 
 permissions:
   contents: read
