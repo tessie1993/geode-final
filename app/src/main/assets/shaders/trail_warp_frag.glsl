@@ -22,5 +22,8 @@ void main() {
         ) * uWarp * 0.004;
     }
     vec3 prev = texture(uPrev, clamp(uv, vec2(0.001), vec2(0.999))).rgb;
+    // The scene target is HDR (RGBA16F) where the device allows: a stray NaN or runaway value
+    // must not live on in the feedback, so it is bounded as ToneMap.hpp's kHdrCeiling says.
+    prev = any(isnan(prev)) ? vec3(0.0) : clamp(prev, 0.0, 64.0);
     fragColor = vec4(prev * uDecay, 1.0);
 }

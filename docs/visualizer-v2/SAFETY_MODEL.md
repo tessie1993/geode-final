@@ -60,9 +60,10 @@ the values are ignored.
 **The No-flash limiter.** `core/viz/FlashLimiter` (pure, host-tested in
 `core/tests/flash_limiter_test.cpp`) bounds what reaches the screen, whatever produced it: every
 shader and field Style, MilkDrop, Layers, transitions and the composite's effects.
-`NoFlashPass` draws the composite into a candidate target, averages it on the GPU into a 4x4
-grid of linear relative luminance and saturated-red value (`noflash_measure_frag.glsl`), reads
-those 16 texels back, and asks the limiter how much of the new frame may be shown. The limiter
+The HDR composite is bloomed and tonemapped (`HdrPass`) into `NoFlashPass`'s candidate target,
+so the limiter measures exactly what the display will get. It averages the candidate on the GPU
+into a 4x4 grid of linear relative luminance and saturated-red value (`noflash_measure_frag.glsl`),
+reads those 16 texels back, and asks the limiter how much of the new frame may be shown. The limiter
 follows WCAG 2.3.1: a transition is a change of at least 0.1 in relative luminance with the
 darker state below 0.8, or of at least 20 in (R - G - B) * 320 over saturated red; a flash is a
 pair of them. It tracks the whole frame and the nine overlapping quarter-of-the-frame regions of
@@ -70,7 +71,11 @@ the grid, each with its own budget of six transitions in any one second. While a
 spent, the frame is crossfaded in linear light from the one shown before toward the new one by
 just enough that no spent area completes another transition (`noflash_mix_frag.glsl`). Normal
 motion changes an area a few times a second at most and never reaches a budget, so it passes
-unchanged. The readback is synchronous (16 texels), which costs the CPU/GPU overlap of one frame.
+unchanged. The readback is asynchronous: the 16 texels go into a pixel-pack buffer behind a
+fence, and each frame is limited and shown one frame later, when its measurement has arrived
+(`DelayedPresent`), so the GPU never stalls and no frame reaches the screen unjudged. The
+offscreen Render waits for each frame's own measurement instead, so every frame it writes is the
+one asked for.
 
 Inversion and solarize are deliberately **not** forced off. A statically inverted picture is not a
 flash; the hazard is toggling it quickly, which the rate limits above already bound. Forcing them

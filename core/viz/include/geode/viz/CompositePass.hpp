@@ -76,6 +76,9 @@ public:
         float underlayAmount = 0.0f;
         // The red/blue anaglyph's mix, 0..1, already faded on the CPU (sharedfx::anaglyphMix).
         float anaglyph = 0.0f;
+        // Whether the composite is the last pass before an 8-bit target and dithers it. Off when it
+        // draws into the HDR target, whose final pass (HdrPass) dithers instead.
+        bool dither = true;
     };
 
     CompositePass(const ShaderSource& assets, ProgramBinaryCache* cache) : transitions_(assets, cache), assets_(assets), cache_(cache) {}
