@@ -18,6 +18,8 @@ out vec4 fragColor;
 // The blue noise staggers where each pixel's march starts, so the glow gathered along the rays never
 // bands (manifest "inputs").
 //#include lib_inputs
+// Drawn through the engine's passes (manifest "multipass"): half resolution, upscaled and accumulated.
+//#include lib_multipass
 
 // Mirror Prism: a flight down a corridor of black mirror glass laced with neon wireframe, which opens,
 // every so often, into a great mirrored chamber where a crystal turns inside a neon cage, bending the
@@ -321,7 +323,11 @@ void main() {
     float bank = pathBank(tangent, bend, 3.0, 0.18) + 0.03 * sin(uTime * 0.13);
     mat3 frame = pathFrame(target - ro, bank);
     vec3 rd = normalize(frame * rdCam);
-    float cone = 2.0 / (uResolution.y * PR_FOCAL);
+    if (mpCameraPass()) {
+        fragColor = mpCameraTexel(ro, frame * uCamRot, PR_FOCAL);
+        return;
+    }
+    float cone = mpCone(2.0 / (uResolution.y * PR_FOCAL));
 
     // ---- colours ------------------------------------------------------------------
     float hueBase = 0.55 + 0.35 * (1.0 - abs(2.0 * uFormPhase - 1.0));
@@ -335,7 +341,7 @@ void main() {
 
     // ---- march ------------------------------------------------------------------------
     float jitter = texelFetch(uBlueNoise, ivec2(gl_FragCoord.xy) & 63, 0).r;
-    March3 m = marchStart(0.05 + 0.2 * jitter, 1.4, 0.01);
+    March3 m = marchStart(mpStart(0.05 + 0.2 * jitter), 1.4, 0.01);
     vec3 glow = vec3(0.0);
     bool glowing = fxOn(PR_FX_GLOW);
     for (int i = 0; i < PR_MAX_STEPS; i++) {
@@ -349,6 +355,10 @@ void main() {
         if (marchStep(m, d * 0.9, cone) || m.t > PR_FAR) break;
     }
     float t = min(m.t, PR_FAR);
+    if (mpCoarsePass()) {
+        fragColor = vec4(0.0, 0.0, 0.0, mpDepth(t));
+        return;
+    }
     vec3 p = ro + rd * t;
     map(p);
     float mat = gMat;
@@ -440,5 +450,5 @@ void main() {
     col = vec3(1.0) - exp(-col * 1.25);
     col *= 0.76 + 0.24 * smoothstep(1.9, 0.4, length(vUv * 2.0 - 1.0));
     col += (jitter - 0.5) / 255.0;
-    fragColor = vec4(grade(col), 1.0);
+    fragColor = vec4(grade(col), mpDepth(t));
 }

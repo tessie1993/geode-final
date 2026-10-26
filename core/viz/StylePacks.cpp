@@ -41,6 +41,7 @@ constexpr const char* kInputsKey = "inputs";
 constexpr const char* kLensKey = "lens";
 constexpr const char* kParticlesKey = "particles3d";
 constexpr const char* kFeedbackKey = "feedback";
+constexpr const char* kMultipassKey = "multipass";
 constexpr const char* kShaderFamily = "shader";
 
 constexpr const char* kTypeInt = "int";
@@ -463,6 +464,42 @@ std::optional<Feedback> parseFeedback(const Value& manifest, const StylePack& pa
     return out;
 }
 
+// A boolean of the "multipass" object into `out`, which keeps its default when the key is absent.
+bool readFlag(const Value& object, const char* key, bool& out, const std::string& where, std::vector<PackProblem>& problems) {
+    const Value* value = object.get(key);
+    if (value == nullptr) return true;
+    if (value->kind() != Value::Kind::Bool) {
+        report(problems, PackError::BadValue, where, std::string("\"") + key + "\" must be true or false");
+        return false;
+    }
+    out = value->boolValue();
+    return true;
+}
+
+// "multipass": the engine's passes (MultiPass.hpp), {"scale", "coarse", "temporal"}, every part optional.
+// Only a shader Style runs them, and a feedback loop already keeps a picture of its own at the target's size.
+std::optional<multipass::Spec> parseMultipass(const Value& manifest, const StylePack& pack, const std::string& where,
+                                              std::vector<PackProblem>& problems) {
+    multipass::Spec spec;
+    bool ok = true;
+    const Value* declared = section(manifest, kMultipassKey, ok, where, problems);
+    if (!ok) return std::nullopt;
+    if (declared == nullptr) return spec;
+    if (pack.family != kShaderFamily) {
+        report(problems, PackError::BadValue, where, "only a shader Style can declare \"multipass\"");
+        return std::nullopt;
+    }
+    if (pack.feedback.on) {
+        report(problems, PackError::BadValue, where, "a Style with \"feedback\" cannot also declare \"multipass\"");
+        return std::nullopt;
+    }
+    ok = readNumber(*declared, "scale", spec.scale, where, problems) && readFlag(*declared, "coarse", spec.coarse, where, problems) &&
+         readFlag(*declared, "temporal", spec.temporal, where, problems);
+    if (!ok) return std::nullopt;
+    spec.on = true;
+    return multipass::sanitized(spec);
+}
+
 }  // namespace
 
 std::string stylesPath(std::string_view name) {
@@ -629,6 +666,9 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     if (!warp) return std::nullopt;
     pack.feedback = warp->spec;
     pack.feedbackShaderPath = std::move(warp->shaderPath);
+    const auto passes = parseMultipass(*doc, pack, folderId, problems);
+    if (!passes) return std::nullopt;
+    pack.multipass = *passes;
     return pack;
 }
 

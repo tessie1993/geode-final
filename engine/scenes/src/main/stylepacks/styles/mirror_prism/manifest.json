@@ -5,6 +5,7 @@
   "family": "shader",
   "shader": "shader.glsl",
   "detail": "march",
+  "multipass": { "scale": 0.5, "coarse": false, "temporal": true },
   "inputs": ["blue_noise"],
   "extras": [
     { "name": "flight", "min": 0, "max": 2, "default": 1 },

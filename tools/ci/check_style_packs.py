@@ -46,7 +46,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "inputs", "lens", "particles3d", "feedback", "reactivity",
+    "effects", "tiers", "inputs", "lens", "particles3d", "feedback", "multipass", "reactivity",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -162,6 +162,14 @@ FEEDBACK_FIELDS = {
 FEEDBACK_EXTRAS = {"decay", "flight", "spin", "drift", "swirl"}
 FEEDBACK_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_feedback[ \t]*$", re.MULTILINE)
 FEEDBACK_SETTLES = re.compile(r"\b(fbSettle|fbWarp)\s*\(")
+# The engine's passes (geode/viz/MultiPass.hpp): the march's share of the target and the two optional
+# passes. The Style's one shader runs every pass, so it includes lib_multipass and does each pass's part:
+# writes its depth (mpDepth), its camera when the temporal accumulation runs (mpCameraPass,
+# mpCameraTexel), and starts its rays from the coarse prepass when that runs (mpCoarsePass, mpStart).
+MULTIPASS_SCALE = (0.25, 0.75)
+MULTIPASS_FLAGS = ("coarse", "temporal")
+MULTIPASS_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_multipass[ \t]*$", re.MULTILINE)
+MULTIPASS_CALLS = {None: ("mpDepth",), "temporal": ("mpCameraPass", "mpCameraTexel"), "coarse": ("mpCoarsePass", "mpStart")}
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -604,6 +612,7 @@ def check_manifest(
     check_tiers(manifest, where, report)
     check_inputs(manifest, family, shader_file, where, report)
     check_lens(manifest, family, where, report)
+    check_multipass(manifest, family, shader_file, where, report)
     own = [path for path in (shader_file, folder / warp if warp is not None else None) if path is not None]
     check_reactivity(manifest, family, own if shader_file is not None else None, profiles, where, report)
 
@@ -677,6 +686,46 @@ def check_feedback(manifest: dict, family: str, folder: Path, where: str, report
     if not FEEDBACK_SETTLES.search(strip_comments(source)):
         report.error(where, f"the warp stage {name} hands what it keeps to fbSettle() (or keeps fbWarp())")
     return name
+
+
+def check_multipass(manifest: dict, family: str, shader: Path | None, where: str, report: Report) -> None:
+    """The engine's passes: declared only by a shader Style without feedback, held to their ranges, and
+    the shader doing its part of every pass that runs; a shader that includes lib_multipass declares them."""
+    declared = manifest.get("multipass")
+    includes = shader is not None and MULTIPASS_INCLUDE.search(shader.read_text(encoding="utf-8")) is not None
+    if declared is None:
+        if includes:
+            report.error(where, 'the shader includes lib_multipass but the manifest does not declare "multipass"')
+        return
+    if not isinstance(declared, dict):
+        report.error(where, '"multipass" must be an object')
+        return
+    if family != SHADER_FAMILY:
+        report.error(where, '"multipass" needs a shader Style')
+        return
+    if "feedback" in manifest:
+        report.error(where, 'a Style with "feedback" cannot also declare "multipass"')
+    unknown = set(declared) - {"scale", *MULTIPASS_FLAGS}
+    if unknown:
+        report.error(where, f'"multipass" may hold only {sorted({"scale", *MULTIPASS_FLAGS})}, not {sorted(unknown)}')
+    if "scale" in declared and not (is_number(declared["scale"]) and MULTIPASS_SCALE[0] <= declared["scale"] <= MULTIPASS_SCALE[1]):
+        report.error(where, f'"multipass" "scale" must be a number in [{MULTIPASS_SCALE[0]}, {MULTIPASS_SCALE[1]}]')
+    for flag in MULTIPASS_FLAGS:
+        if flag in declared and not isinstance(declared[flag], bool):
+            report.error(where, f'"multipass" "{flag}" must be true or false')
+    if shader is None:
+        return
+    if not includes:
+        report.error(where, 'a Style with "multipass" includes lib_multipass (//#include lib_multipass)')
+        return
+    code = strip_comments(shader.read_text(encoding="utf-8"))
+    for flag, calls in MULTIPASS_CALLS.items():
+        if flag is not None and declared.get(flag, True) is not True:
+            continue
+        for call in calls:
+            if not re.search(rf"\b{call}\s*\(", code):
+                pass_name = "every pass" if flag is None else f'the "{flag}" pass'
+                report.error(where, f"the shader never calls {call}(), which {pass_name} needs")
 
 
 def check_lens(manifest: dict, family: str, where: str, report: Report) -> None:
@@ -848,6 +897,11 @@ GOOD_MANIFESTS = {
                      "tint": [1, 0.9, 0.8], "center": [0.5, 0.5], "react": 0.5, "shader": "warp.glsl"},
         "reactivity": {"micro": ["bands"]},
     },
+    "passes": {
+        "version": 1, "id": "passes", "label": "Passes", "family": "shader", "shader": "shader.glsl",
+        "multipass": {"scale": 0.5, "coarse": True, "temporal": True},
+        "reactivity": {"micro": ["bands"]},
+    },
 }
 
 
@@ -860,6 +914,11 @@ GOOD_SHADER = (
 LOOP_SHADER = "//#include lib_inputs\nvoid main() { vec3 c = texture(uPrevFrame, vUv).rgb * uTreble; }\n"
 LOOP_WARP = "//#include lib_feedback\nvoid main() { fragColor = vec4(fbSettle(fbFetch(vSrc)), 1.0); }\n"
 LOOP_FILES = [("shader.glsl", LOOP_SHADER), ("warp.glsl", LOOP_WARP)]
+PASSES_SHADER = (
+    "//#include lib_multipass\n"
+    "void main() { if (mpCameraPass()) { fragColor = mpCameraTexel(vec3(0.0), mat3(1.0), 1.0); return; }\n"
+    "  float t = mpStart(0.0) * uBass; if (mpCoarsePass()) return; fragColor = vec4(vec3(t), mpDepth(t)); }\n"
+)
 
 
 def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
@@ -882,7 +941,7 @@ def run_case(mutate) -> list[str]:
     families = copy.deepcopy(GOOD_FAMILIES)
     manifests = copy.deepcopy(GOOD_MANIFESTS)
     index = list(manifests)
-    shaders = {"orb": "shader.glsl", "loop": list(LOOP_FILES)}
+    shaders = {"orb": "shader.glsl", "loop": list(LOOP_FILES), "passes": ("shader.glsl", PASSES_SHADER)}
     mutate(families, index, manifests, shaders)
     with tempfile.TemporaryDirectory() as tmp:
         return check(write_tree(Path(tmp), families, index, manifests, shaders))
@@ -979,6 +1038,21 @@ def self_test() -> int:
         "warp Extra on a Style without feedback": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 1},
                                                                              {"name": "decay", "min": 0, "max": 2, "default": 1}]),
         "stray file beside a feedback Style": lambda f, i, m, s: s.update({"loop": list(LOOP_FILES) + [("notes.glsl", "")]}),
+        "multipass not an object": setter(["passes", "multipass"], True),
+        "multipass on a non-shader family": setter(["drum", "multipass"], {}),
+        "multipass beside feedback": setter(["loop", "multipass"], {}),
+        "multipass with an unknown key": setter(["passes", "multipass", "steps"], 2),
+        "multipass scale out of range": setter(["passes", "multipass", "scale"], 0.9),
+        "multipass flag not a boolean": setter(["passes", "multipass", "coarse"], 1),
+        "multipass without lib_multipass": lambda f, i, m, s: s.update(
+            {"passes": ("shader.glsl", PASSES_SHADER.replace("//#include lib_multipass\n", ""))}),
+        "multipass shader that never writes its depth": lambda f, i, m, s: s.update(
+            {"passes": ("shader.glsl", PASSES_SHADER.replace("mpDepth(t)", "1.0"))}),
+        "temporal multipass shader without its camera": lambda f, i, m, s: s.update(
+            {"passes": ("shader.glsl", PASSES_SHADER.replace("mpCameraTexel(vec3(0.0), mat3(1.0), 1.0)", "vec4(0.0)"))}),
+        "coarse multipass shader that never starts from it": lambda f, i, m, s: s.update(
+            {"passes": ("shader.glsl", PASSES_SHADER.replace("mpStart(0.0)", "0.0"))}),
+        "lib_multipass without multipass": setter(["passes", "multipass"], DELETE),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),

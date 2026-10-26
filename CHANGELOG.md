@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Multi-pass Styles (#332).** A shader Style can declare `multipass` and the
+  engine draws it in passes: its camera into a tiny target, an optional coarse
+  prepass that lets each ray start near its surface, the march at half the
+  target (or another share) with a sub-pixel jitter each frame, and a resolve
+  that upscales by depth and accumulates last frame's picture, reprojected
+  through both cameras with the depth kept in alpha. History is dropped on a
+  camera cut, off screen and where the depth disagrees, and is clamped to this
+  frame's colours around the pixel, so fast moves leave no ghost. The folder
+  stays one manifest and one shader (`lib_multipass`). A Style marches about a
+  quarter of the pixels it did; Mirror Prism is the first to use it.
+
 - **Mirror Prism (#331).** A new Style: a flight down a corridor of black
   mirror glass laced with neon wireframe, opening every so often into a
   mirrored chamber where a crystal turns in a neon cage. The mirrors are folded

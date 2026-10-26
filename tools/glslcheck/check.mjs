@@ -249,6 +249,8 @@ const SHADER_VALUES = {
   // passage light on treble.
   uBassLevel: 0.6, uMidLevel: 0.55, uTrebleLevel: 0.4, uBassHits: 0.1, uMidHits: 0.3, uTrebleHits: 0.0,
   uBassPresence: 0.55, uMidPresence: 0.5, uTreblePresence: 0.4,
+  // A multi-pass Style (lib_multipass) drawn in one pass, as on a phone without half-float targets.
+  uMpPass: 0, uMpUseCoarse: 0,
 };
 
 // The shared inputs' textures: the noise as the engine seeds it (page.html mirrors StyleInputs.cpp),
@@ -257,6 +259,7 @@ const SHADER_TEXTURES = {
   uAudioTex: 'audio', uPalLut: 'palette', uFlow: 'flow',
   uNoiseLq: 'noise_lq', uNoiseMq: 'noise_mq', uNoiseHq: 'noise_hq', uNoiseVol: 'noise_vol', uBlueNoise: 'noise',
   uPrevFrame: 'history', uBlur1: 'history_blur', uBlur2: 'history_blur', uBlur3: 'history_blur',
+  uMpCoarse: 'history',
 };
 
 // The shared inputs (geode/viz/StyleInputs.hpp): each sampler and clock uniform of lib_inputs.glsl and
@@ -524,6 +527,13 @@ const HDR_HALF_TEXTURES = { ...HDR_TEXTURES, uScene: 'scene_half' };
 const NOFLASH_MIX_NEUTRAL = { uAmount: 1 };
 const NOFLASH_MIX_TEXTURES = { uShown: 'history', uNext: 'scene_half' };
 
+// A multi-pass Style's resolve (multipass_resolve_frag.glsl, geode/viz/MultiPass.hpp): the march
+// ('scene_half', a smaller target) brought up to the whole frame, first on its own and then with a
+// history ('history') and two cameras. The stand-in cameras are not real ones, so the reprojection
+// mostly rejects the history; the frame must still come out lit.
+const RESOLVE_NEUTRAL = { uMpHistoryOn: 0, uMpJitter: [0.25, -0.125], uMpAspect: 1, uMpTexel: [0, 0] };
+const RESOLVE_TEXTURES = { uMpMarch: 'scene_half', uMpHistory: 'history', uMpCamNow: 'scene', uMpCamPrev: 'scene' };
+
 function effectJobs(registry, size) {
   const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
   const jobs = [];
@@ -533,6 +543,7 @@ function effectJobs(registry, size) {
     for (const [name, values] of Object.entries(effects)) {
       const all = { ...neutral, ...values };
       if ('uTexel' in all) all.uTexel = [1 / size, 1 / size];
+      if ('uMpTexel' in all) all.uMpTexel = [1 / size, 1 / size];
       jobs.push({ name: `${pass}_${name}`, vert, frag, uniforms: plan(uniforms, all, textures, size, size) });
     }
   };
@@ -555,6 +566,8 @@ function effectJobs(registry, size) {
   add('tile', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_HALF_TEXTURES, COMPOSITE_FROM_HALF);
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
+  add('multipass', 'multipass_resolve_frag.glsl', RESOLVE_NEUTRAL, RESOLVE_TEXTURES,
+    { resolve_upscale: {}, resolve_temporal: { uMpHistoryOn: 1 } });
   jobs.push(warpJob('feedback_warp_shared', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size));
   jobs.push(...settleJobs(registry));
   return jobs;
