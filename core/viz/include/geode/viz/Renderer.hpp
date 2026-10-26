@@ -31,6 +31,7 @@
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
+#include "geode/viz/SharedInputs.hpp"
 #include "geode/render/ShaderSource.hpp"
 #ifdef GEODE_STYLE_HOT_RELOAD
 #include "geode/viz/StyleLab.hpp"
@@ -200,6 +201,8 @@ private:
     CompositePass::Inputs compositeInputs_;
     // HDR: the composite's target, the bloom and the tonemap (highlight roll-off) into the No-flash candidate.
     HdrPass hdrPass_;
+    // The shared Style inputs (StyleInputs.hpp): noise made on first use, blur levels through hdrPass_.
+    SharedInputs sharedInputs_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;
     ThermalGovernor thermal_;

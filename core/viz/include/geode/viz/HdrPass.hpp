@@ -36,8 +36,17 @@ public:
     // would not change it; TileFrame.hpp) into `targetFbo`, drawn at targetWidth x targetHeight and
     // left bound. The bloom chain follows the size ensureComposite() was given.
     void resolve(const tone::BloomSettings& bloom, GLuint source, GLuint targetFbo, int targetWidth, int targetHeight, GLuint quadVao);
+    // The bloom chain's down filter without its threshold, run down `count` targets: the first drawn from
+    // `source` with its taps a texel of sourceWidth x sourceHeight apart, each next one from the one
+    // before. A shader Style's blur levels are made with it (StyleInputs.hpp), so they blur exactly as
+    // the bloom chain does. Leaves the last target bound; false when the pass has no program.
+    bool downsample(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, GLuint quadVao);
 
 private:
+    // Draws the down filter into each of `count` targets in turn (see downsample), the first through the
+    // bloom's threshold when `prefilter`.
+    void drawDown(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, bool prefilter,
+                  const tone::BloomSettings& bloom);
     // Draws the bloom chain; returns how many levels it holds (0 when there is none this frame).
     int drawBloom(const tone::BloomSettings& bloom, GLuint source, GLuint quadVao);
     static GLuint createBlackTexture();

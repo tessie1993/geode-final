@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Shared Style inputs (#312).** A shader Style can declare, in its
+  manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D
+  noise, a 32³ noise volume and the blue-noise mask), its previous frame,
+  that frame blurred at 1/4, 1/8 and 1/16 by the bloom chain's own down
+  filter, and clocks: the frame index and dt, a random vector per visit, the
+  Style's age and a bar clock locked to the heard downbeat. The engine makes
+  and binds only what a Style declares; the noise and, in a Render, the visit
+  vector come from the Render seed, so Renders stay exact. Nebula, Event
+  Horizon and Wormhole Pass draw their clouds from the noise volume, one fetch
+  per octave instead of eight hashes. See docs/style-packs.md, "Shared inputs".
+
 - **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
   feed, Freeze reactions is held in the engine: every Style, MilkDrop
   included, keeps the Sound signals and audio window of the first held frame

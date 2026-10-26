@@ -74,30 +74,13 @@ int HdrPass::drawBloom(const tone::BloomSettings& bloom, GLuint source, GLuint q
         if (!levels_[static_cast<size_t>(i)].ensure(size.width, size.height)) return 0;
     }
     if (count == 0) return 0;
-    glDisable(GL_BLEND);
     glBindVertexArray(quadVao);
-    glActiveTexture(GL_TEXTURE0);
     // Down the chain: the composite's light above the threshold into level 0, then each level halved.
-    glUseProgram(downProgram_);
-    glUniform1i(downUniforms_.loc("uSource"), 0);
-    glUniform2f(downUniforms_.loc("uCurve"), bloom.threshold, bloom.knee);
     // The first level's taps are a frame texel apart whatever the source's own size, so a skipped
     // composite (the supersampled scene target read directly) blurs exactly as the composite would.
-    int sourceWidth = width_;
-    int sourceHeight = height_;
-    for (int i = 0; i < count; ++i) {
-        const Framebuffer& level = levels_[static_cast<size_t>(i)];
-        glBindFramebuffer(GL_FRAMEBUFFER, level.fbo());
-        level.discardContents();
-        glViewport(0, 0, level.width(), level.height());
-        glBindTexture(GL_TEXTURE_2D, source);
-        glUniform1i(downUniforms_.loc("uPrefilter"), i == 0 ? 1 : 0);
-        glUniform2f(downUniforms_.loc("uTexel"), 1.0f / static_cast<float>(sourceWidth), 1.0f / static_cast<float>(sourceHeight));
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        source = level.tex();
-        sourceWidth = level.width();
-        sourceHeight = level.height();
-    }
+    std::array<Framebuffer*, tone::kMaxLevels> targets{};
+    for (int i = 0; i < count; ++i) targets[static_cast<size_t>(i)] = &levels_[static_cast<size_t>(i)];
+    drawDown(source, width_, height_, targets.data(), count, true, bloom);
     // Back up: each smaller level added onto the one above it, so level 0 gathers them all.
     glUseProgram(upProgram_);
     glUniform1i(upUniforms_.loc("uSource"), 0);
@@ -115,6 +98,37 @@ int HdrPass::drawBloom(const tone::BloomSettings& bloom, GLuint source, GLuint q
     glDisable(GL_BLEND);
     glBindVertexArray(0);
     return count;
+}
+
+void HdrPass::drawDown(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, bool prefilter,
+                       const tone::BloomSettings& bloom) {
+    glDisable(GL_BLEND);
+    glActiveTexture(GL_TEXTURE0);
+    glUseProgram(downProgram_);
+    glUniform1i(downUniforms_.loc("uSource"), 0);
+    glUniform2f(downUniforms_.loc("uCurve"), bloom.threshold, bloom.knee);
+    for (int i = 0; i < count; ++i) {
+        const Framebuffer& level = *targets[i];
+        glBindFramebuffer(GL_FRAMEBUFFER, level.fbo());
+        level.discardContents();
+        glViewport(0, 0, level.width(), level.height());
+        glBindTexture(GL_TEXTURE_2D, source);
+        glUniform1i(downUniforms_.loc("uPrefilter"), prefilter && i == 0 ? 1 : 0);
+        glUniform2f(downUniforms_.loc("uTexel"), 1.0f / static_cast<float>(sourceWidth), 1.0f / static_cast<float>(sourceHeight));
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        source = level.tex();
+        sourceWidth = level.width();
+        sourceHeight = level.height();
+    }
+}
+
+bool HdrPass::downsample(GLuint source, int sourceWidth, int sourceHeight, Framebuffer* const* targets, int count, GLuint quadVao) {
+    if (downProgram_ == 0 || sourceWidth <= 0 || sourceHeight <= 0) return false;
+    if (count <= 0) return true;
+    glBindVertexArray(quadVao);
+    drawDown(source, sourceWidth, sourceHeight, targets, count, false, tone::BloomSettings{});
+    glBindVertexArray(0);
+    return true;
 }
 
 void HdrPass::resolve(const tone::BloomSettings& bloom, GLuint source, GLuint targetFbo, int targetWidth, int targetHeight,

@@ -277,6 +277,7 @@ void Renderer::onSurfaceCreated() {
     fboOut_.release();
     fboL_.release();
     hdrPass_.release();
+    sharedInputs_.release();
     compositePass_.releaseStaleTextures();
     // The HDR targets (ToneMap.hpp) are RGBA16F where this device proved it renders and blends them.
     const FormatProbe half = profile_.report.probeOf(ProbedFormat::RGBA16F);
@@ -289,6 +290,7 @@ void Renderer::onSurfaceCreated() {
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);
     hdrPass_.setTargetFormat(hdrFormat);
+    sharedInputs_.attach(&assets_, &hdrPass_, hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
@@ -453,6 +455,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
     scene->setGravityField(&gravityField_);
+    scene->setSharedInputs(&sharedInputs_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);

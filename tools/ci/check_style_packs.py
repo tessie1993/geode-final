@@ -6,7 +6,8 @@ shader Style, its fragment shader. styles/index.json lists the Styles in picker 
 styles/families.json declares each family's parameters with their types and ranges. Both the Kotlin
 side (StylePacks.kt) and the native side (geode/viz/StylePacks.hpp) read these files; this check holds
 them to the format, plus the rules that span packs (every folder listed exactly once, an Extra name
-meaning the same range on every Style, every Extra a shader Style declares read by its shader).
+meaning the same range on every Style, every Extra a shader Style declares read by its shader, and a
+shader Style reading exactly the shared inputs it declares).
 
 The packs are the one source of a Style's Extras. The Kotlin side lists them in a generated file
 (PackExtras.kt in :feature:customization:core), which this check holds to the packs.
@@ -41,7 +42,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers",
+    "effects", "tiers", "inputs",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -72,6 +73,23 @@ TIER_KEYS = {"steps", "off"}
 MAX_EFFECTS = 8
 MIN_TIER_STEPS = 0.25
 MAX_TIER_STEPS = 1.0
+# The shared Style inputs (geode/viz/StyleInputs.hpp, lib_inputs.glsl), in Input's order: each name, and
+# what in lib_inputs reads it (its uniforms, and the helpers that sample it). The engine binds only the
+# inputs a manifest declares, so a shader reading one it does not declare would sample nothing.
+INPUT_READS = {
+    "noise_lq": ("uNoiseLq",),
+    "noise_mq": ("uNoiseMq",),
+    "noise_hq": ("uNoiseHq",),
+    "noise_vol": ("uNoiseVol", "vnoiseVol", "fbmVol"),
+    "blue_noise": ("uBlueNoise",),
+    "blur1": ("uBlur1",),
+    "blur2": ("uBlur2",),
+    "blur3": ("uBlur3",),
+    "previous_frame": ("uPrevFrame",),
+    "clocks": ("uFrame", "uFrameDt", "uVisitRand", "uStyleAge"),
+    "bar": ("uBarPhase", "uBarConfidence"),
+}
+INPUTS_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_inputs[ \t]*$", re.MULTILINE)
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -251,6 +269,32 @@ def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report)
             report.error(where, f'extra "{name}" is declared but the shader never reads {extra_uniform(name)}')
 
 
+def check_inputs(manifest: dict, family: str, shader: Path | None, where: str, report: Report) -> None:
+    declared = manifest.get("inputs", [])
+    if not isinstance(declared, list) or not all(isinstance(name, str) for name in declared):
+        report.error(where, '"inputs" must be a list of input names')
+        return
+    for name in sorted(set(n for n in declared if n not in INPUT_READS)):
+        report.error(where, f'input "{name}" is not one of the shared inputs {list(INPUT_READS)}')
+    if len(set(declared)) != len(declared):
+        report.error(where, '"inputs" names an input twice')
+    if family != SHADER_FAMILY:
+        if declared:
+            report.error(where, f'family "{family}" reads no shared inputs; only a shader Style declares them')
+        return
+    if shader is None:
+        return
+    source = shader.read_text(encoding="utf-8")
+    code = strip_comments(source)
+    reads = {name for name, words in INPUT_READS.items() if any(re.search(rf"\b{word}\b", code) for word in words)}
+    if (declared or reads) and not INPUTS_INCLUDE.search(source):
+        report.error(where, "a shader Style with inputs includes lib_inputs (//#include lib_inputs)")
+    for name in sorted(n for n in set(declared) if n in INPUT_READS and n not in reads):
+        report.error(where, f'input "{name}" is declared but the shader never reads {" or ".join(INPUT_READS[name])}')
+    for name in sorted(reads - set(declared)):
+        report.error(where, f'the shader reads input "{name}" ({" or ".join(INPUT_READS[name])}) but "inputs" does not declare it')
+
+
 def check_extras(manifest: dict, where: str, report: Report, extra_ranges: dict[str, tuple[float, float, str]]) -> None:
     names: set[str] = set()
     for extra in check_list(manifest, "extras", where, report):
@@ -339,13 +383,15 @@ def check_manifest(
         return
     files = {p.name for p in folder.iterdir()}
     expected = {MANIFEST_FILE}
+    shader_file: Path | None = None
     if family == SHADER_FAMILY:
         shader = manifest.get("shader")
         if not is_text(shader) or "/" in shader or not (folder / shader).is_file():
             report.error(where, 'a shader Style needs "shader": a file in its own folder')
         else:
             expected.add(shader)
-            check_shader_reads(manifest, folder / shader, where, report)
+            shader_file = folder / shader
+            check_shader_reads(manifest, shader_file, where, report)
     elif "shader" in manifest:
         report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
     if files != expected:
@@ -361,6 +407,7 @@ def check_manifest(
     check_macros(manifest, where, report)
     check_reactions(manifest, where, report)
     check_tiers(manifest, where, report)
+    check_inputs(manifest, family, shader_file, where, report)
 
 
 def check_tiers(manifest: dict, where: str, report: Report) -> None:
@@ -486,6 +533,7 @@ GOOD_MANIFESTS = {
         "version": 1, "id": "orb", "label": "Orb", "family": "shader", "shader": "shader.glsl", "renderScale": 0.75,
         "detail": "march", "extras": [{"name": "scale", "min": 0, "max": 2, "default": 1}],
         "effects": ["halo"], "tiers": {"reduced": {"steps": 0.7, "off": ["halo"]}, "minimal": {"steps": 0.5}},
+        "inputs": ["noise_vol", "clocks"],
         "macros": [{"name": "energy", "links": [{"target": "scale", "amount": 0.5}]}],
         "reactions": [{"signal": "bass", "target": "scale", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
     },
@@ -493,7 +541,7 @@ GOOD_MANIFESTS = {
 }
 
 
-GOOD_SHADER = "//#include lib_style\nvoid main() { float s = uXScale; }\n"
+GOOD_SHADER = "//#include lib_style\n//#include lib_inputs\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n"
 
 
 def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
@@ -560,6 +608,15 @@ def self_test() -> int:
         "tier steps rising with heat": setter(["orb", "tiers", "minimal", "steps"], 0.9),
         "effect named twice": setter(["orb", "effects"], ["halo", "halo"]),
         "too many effects": setter(["orb", "effects"], [f"fx{n}" for n in range(MAX_EFFECTS + 1)]),
+        "inputs not a list": setter(["orb", "inputs"], "clocks"),
+        "input that is no input": setter(["orb", "inputs"], ["noise_vol", "clocks", "noise_xq"]),
+        "input named twice": setter(["orb", "inputs"], ["noise_vol", "clocks", "clocks"]),
+        "input the shader never reads": setter(["orb", "inputs"], ["noise_vol", "clocks", "blur2"]),
+        "input read but not declared": setter(["orb", "inputs"], ["noise_vol"]),
+        "input read through a helper but not declared": setter(["orb", "inputs"], ["clocks"]),
+        "inputs without lib_inputs": lambda f, i, m, s: s.update(
+            {"orb": ("shader.glsl", "//#include lib_style\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n")}),
+        "inputs on a non-shader family": setter(["drum", "inputs"], ["clocks"]),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),

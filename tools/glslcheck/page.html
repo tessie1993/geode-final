@@ -77,6 +77,52 @@ const noiseRandom = (() => {
   };
 })();
 makeTexture('noise', 64, 64, (x, y, px) => { const v = Math.floor(noiseRandom() * 256); px[0] = px[1] = px[2] = v; px[3] = 255; });
+// The shared Style inputs' noise (lib_inputs.glsl), drawn as core/viz/StyleInputs.cpp draws it: the
+// same hash of the Render seed, the same lattices, so a Style renders here over the noise it gets on a
+// phone.
+const NOISE_SEED = 0x6E0DE5;
+function mix32(x) {
+  x ^= x >>> 16; x = Math.imul(x, 0x7feb352d); x ^= x >>> 15; x = Math.imul(x, 0x846ca68b); x ^= x >>> 16;
+  return x >>> 0;
+}
+function hashCell(seed, c, x, y, z) {
+  let h = mix32((seed + 0x9e3779b9) >>> 0);
+  for (const v of [c, x, y, z]) h = mix32((h ^ v) >>> 0);
+  return h;
+}
+function noisePlane(name, size, lattice) {
+  const cells = size / lattice;
+  const smooth = (t) => t * t * (3 - 2 * t);
+  makeTexture(name, size, size, (x, y, px) => {
+    const x0 = Math.floor(x / lattice), y0 = Math.floor(y / lattice);
+    const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+    const sx = smooth((x % lattice) / lattice), sy = smooth((y % lattice) / lattice);
+    for (let c = 0; c < 4; c++) {
+      const v = (cx, cy) => hashCell(NOISE_SEED, c, cx, cy, 0) >>> 24;
+      const bottom = v(x0, y0) + (v(x1, y0) - v(x0, y0)) * sx;
+      const top = v(x0, y1) + (v(x1, y1) - v(x0, y1)) * sx;
+      px[c] = Math.round(bottom + (top - bottom) * sy);
+    }
+  });
+}
+noisePlane('noise_lq', 256, 1);
+noisePlane('noise_mq', 256, 4);
+noisePlane('noise_hq', 256, 8);
+const volumeTextures = {};
+(() => {
+  const side = 32;
+  const data = new Uint8Array(side * side * side * 4);
+  for (let z = 0; z < side; z++) for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    for (let c = 0; c < 4; c++) data[((z * side + y) * side + x) * 4 + c] = hashCell(NOISE_SEED, c, x, y, z) >>> 24;
+  }
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_3D, t);
+  gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGBA8, side, side, side, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  for (const wrap of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, wrap, gl.REPEAT);
+  volumeTextures.noise_vol = t;
+})();
 // A dye field with structure: two soft coloured blobs and a filament, so a
 // look that reads gradients, luminance or hue has something to chew on.
 makeTexture('dye', 128, 128, (x, y, px) => {
@@ -118,6 +164,28 @@ makeTexture('history', 128, 128, (x, y, px) => {
   px[3] = 255;
 });
 
+// The last frame's blur levels: the history picture blurred (a box over a 5x5 neighbourhood, wrapped).
+(() => {
+  const size = 32, radius = 2;
+  const src = new Float32Array(size * size * 3);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size - 0.5, v = y / size - 0.5;
+    const disc = Math.exp(-((u + 0.2) ** 2 + (v + 0.15) ** 2) * 50);
+    const ring = 0.5 + 0.5 * Math.cos(Math.hypot(u - 0.08, v) * 40);
+    src.set([0.1 + 0.3 * ring + 0.9 * disc, 0.1 + 0.25 * ring + 0.8 * disc, 0.15 + 0.2 * ring + 0.5 * disc], (y * size + x) * 3);
+  }
+  makeTexture('history_blur', size, size, (x, y, px) => {
+    const sum = [0, 0, 0];
+    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+      const i = (((y + dy + size) % size) * size + ((x + dx + size) % size)) * 3;
+      for (let c = 0; c < 3; c++) sum[c] += src[i + c];
+    }
+    const n = (2 * radius + 1) ** 2;
+    for (let c = 0; c < 3; c++) px[c] = Math.min(255, Math.round((255 * sum[c]) / n));
+    px[3] = 255;
+  });
+})();
+
 // The app's FullscreenTriangle (core/render/Quad.cpp): three vertices at
 // location 0. quad_vert.glsl builds its triangle from gl_VertexID and needs
 // no buffer; fluid_base_vert.glsl reads aPosition and does.
@@ -130,7 +198,8 @@ function upload(program, u) {
   if (loc === null) return false;
   if (u.texture) {
     gl.activeTexture(gl.TEXTURE0 + u.unit);
-    gl.bindTexture(gl.TEXTURE_2D, textures[u.texture]);
+    if (u.type === 'sampler3D') gl.bindTexture(gl.TEXTURE_3D, volumeTextures[u.texture]);
+    else gl.bindTexture(gl.TEXTURE_2D, textures[u.texture]);
     gl.uniform1i(loc, u.unit);
     return true;
   }

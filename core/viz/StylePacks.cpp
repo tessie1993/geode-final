@@ -35,6 +35,7 @@ constexpr const char* kEffectsKey = "effects";
 constexpr const char* kTiersKey = "tiers";
 constexpr const char* kTierStepsKey = "steps";
 constexpr const char* kTierOffKey = "off";
+constexpr const char* kInputsKey = "inputs";
 
 constexpr const char* kTypeInt = "int";
 constexpr const char* kTypeFloat = "float";
@@ -259,6 +260,30 @@ std::optional<quality::Budgets> parseTiers(const Value& manifest, const std::vec
     return quality::resolve(tiers);
 }
 
+// "inputs": the shared Style inputs the shader reads, each named once (StyleInputs.hpp).
+std::optional<inputs::Set> parseInputs(const Value& manifest, const std::string& where, std::vector<PackProblem>& problems) {
+    const Value* declared = manifest.get(kInputsKey);
+    if (declared == nullptr) return inputs::Set{0};
+    if (declared->kind() != Value::Kind::Array) {
+        report(problems, PackError::BadValue, where, "\"inputs\" must be an array of input names");
+        return std::nullopt;
+    }
+    inputs::Set set = 0;
+    for (const Value& entry : declared->array()) {
+        const auto input = entry.kind() == Value::Kind::String ? inputs::named(entry.string()) : std::nullopt;
+        if (!input) {
+            report(problems, PackError::BadValue, where, "every entry of \"inputs\" must name a shared input");
+            return std::nullopt;
+        }
+        if (inputs::has(set, *input)) {
+            report(problems, PackError::BadValue, where, "input \"" + entry.string() + "\" is named twice");
+            return std::nullopt;
+        }
+        set |= inputs::bit(*input);
+    }
+    return set;
+}
+
 }  // namespace
 
 std::string stylesPath(std::string_view name) {
@@ -412,6 +437,9 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     const auto tiers = parseTiers(*doc, pack.effects, folderId, problems);
     if (!tiers) return std::nullopt;
     pack.tiers = *tiers;
+    const auto declaredInputs = parseInputs(*doc, folderId, problems);
+    if (!declaredInputs) return std::nullopt;
+    pack.inputs = *declaredInputs;
     return pack;
 }
 
