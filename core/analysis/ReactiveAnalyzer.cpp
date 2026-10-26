@@ -85,7 +85,7 @@ void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
     tempoStability_ = stability_.value();
     // The Beat is every hit heard, never one a prediction lets through: a song's tempo moves, and a
     // hit off the estimated grid is still a hit. The grid only paces the bar count.
-    const bool onGrid = grid_.step(tempo_.periodFrames(), tempo_.confidence(), isOnset);
+    const bool onGrid = grid_.step(tempo_.periodFrames(), tempo_.phase(), tempo_.confidence(), isOnset);
     beat_ = isOnset;
     beatPhase_ = grid_.phase();
     beatStrength_ = beat_ ? picker_.strength() : 0.0f;
