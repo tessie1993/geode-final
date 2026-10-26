@@ -171,11 +171,11 @@
         </receiver>
 
         <!--
-          Keeps a video render alive while the app is not in front of the user.
-          It does not own the render - that lives in ExportRun's process-scoped
-          coroutine - it only tells Android the process is doing visible work.
-          Both types are declared because mediaProcessing does not exist before
-          Android 15 and the service picks at runtime.
+          Keeps Studio's render queue alive while the app is not in front of the
+          user. It does not own the Renders - Studio's store runs them - it follows
+          the queue, shows its progress, and is sticky so a queue Android cut short
+          resumes. Both types are declared because mediaProcessing does not exist
+          before Android 15 and the service picks at runtime.
         -->
         <service
             android:name=".export.ExportService"

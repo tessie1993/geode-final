@@ -8,8 +8,21 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.TrackId
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderExtras
+import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderId
+import dev.geode.feature.studio.api.RenderJob
+import dev.geode.feature.studio.api.RenderLength
+import dev.geode.feature.studio.api.RenderLook
+import dev.geode.feature.studio.api.RenderPhase
+import dev.geode.feature.studio.api.RenderPreset
+import dev.geode.feature.studio.api.RenderProblem
+import dev.geode.feature.studio.api.RenderStatus
+import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.api.Video
@@ -58,6 +71,46 @@ internal object PreviewStudio {
             videos = videos,
             defaultProject = gigs.id,
             saveFolder = SaveFolder.Chosen(FOLDER),
+        )
+
+    val night = RenderTrack(TrackId("content://media/12"), "Midnight City", Millis(244_000))
+    val tide = RenderTrack(TrackId("content://media/7"), "Teardrop", Millis(330_000))
+    val dusk = RenderTrack(TrackId("content://media/9"), "Dusk", Millis(198_000))
+
+    private fun render(
+        id: Long,
+        batch: Long,
+        track: RenderTrack,
+        status: RenderStatus,
+    ) = RenderJob(
+        RenderId(id),
+        RenderId(batch),
+        listOf(track),
+        RenderLook.Current,
+        RenderFormat(),
+        RenderLength.WholeTrack,
+        trip.id,
+        RenderExtras(),
+        status,
+    )
+
+    /** A finished Track, and a playlist with one track rendering, one waiting and one failed. */
+    val queued =
+        state.copy(
+            renders =
+                listOf(
+                    render(1, 1, dusk, RenderStatus.Done),
+                    render(2, 2, night, RenderStatus.Running(RenderPhase.RENDERING, 0.42f, 190)),
+                    render(3, 2, tide, RenderStatus.Queued),
+                    render(4, 2, dusk, RenderStatus.Failed(RenderProblem.ENCODER_REFUSED)),
+                ),
+        )
+
+    val choices =
+        RenderChoices(
+            tracks = listOf(dusk, night, tide),
+            playlists = listOf(RenderPlaylist("Evening", listOf(night, tide))),
+            presets = listOf(LookChoice(PresetId("Night drive"), "Night drive")),
         )
 }
 
@@ -118,3 +171,36 @@ internal fun SetupPreview() = PreviewTheme { StudioSetupScreen(setupModel(null),
 @Preview(name = "Studio first-run step, folder picked")
 @Composable
 internal fun SetupPickedPreview() = PreviewTheme { StudioSetupScreen(setupModel(PreviewStudio.FOLDER), onAction = {}) }
+
+@Preview(name = "Project list with the render queue")
+@Composable
+internal fun RenderQueuePreview() =
+    PreviewTheme { ProjectListScreen(PreviewStudio.queued.toProjectList(), onAction = {}, queue = PreviewStudio.queued.toRenderQueue()) }
+
+@Preview(name = "Project list, Visuals off")
+@Composable
+internal fun RenderVisualsOffPreview() =
+    PreviewTheme {
+        val off = PreviewStudio.state.copy(visualsOff = true)
+        ProjectListScreen(off.toProjectList(), onAction = {}, queue = off.toRenderQueue())
+    }
+
+@Preview(name = "Render setup")
+@Composable
+internal fun RenderSetupPreview() =
+    PreviewTheme {
+        val draft = RenderDraft.startingFrom(PreviewStudio.state).track(PreviewStudio.night)
+        RenderSetupDialog(draft, PreviewStudio.choices, PreviewStudio.state.projects, onDraft = {}, onRender = {}, onDismiss = {})
+    }
+
+@Preview(name = "Render setup, a playlist for Shorts", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun RenderSetupPlaylistPreview() =
+    PreviewTheme(dark = true) {
+        val draft =
+            RenderDraft
+                .startingFrom(PreviewStudio.state)
+                .playlist(PreviewStudio.choices.playlists.first())
+                .preset(RenderPreset.TIKTOK_AND_SHORTS)
+        RenderSetupDialog(draft, PreviewStudio.choices, PreviewStudio.state.projects, onDraft = {}, onRender = {}, onDismiss = {})
+    }

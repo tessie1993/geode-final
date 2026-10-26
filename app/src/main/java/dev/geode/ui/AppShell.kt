@@ -80,6 +80,7 @@ import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
+import dev.geode.studio.renderChoicesOf
 import dev.geode.ui.shell.AppUiCommand
 import dev.geode.ui.shell.AppUiFact
 import dev.geode.ui.shell.Banner
@@ -293,16 +294,21 @@ private fun MusicLibrary(shell: ShellViewModel) {
 }
 
 /**
- * Studio: the Studio feature's own library place (#17), with the old export entry re-anchored as a
- * sheet until Studio's own export lands. The save folder is a Settings value, picked here as in the
+ * Studio: the Studio feature's own library place (#17), where Renders are set up and queued (#316)
+ * from the Library's Tracks and playlists and the saved presets. The old editors stay reachable as a
+ * sheet until they move into Studio (#334). The save folder is a Settings value, picked here as in the
  * first-run step.
  */
 @Composable
 private fun StudioPlace(shell: ShellViewModel) {
+    val library by shell.library.state.collectAsStateWithLifecycle()
+    val visuals by shell.visuals.state.collectAsStateWithLifecycle()
+    val choices = remember(library.songs, library.playlists, visuals.presets) { renderChoicesOf(library, visuals.presets) }
     Box(Modifier.fillMaxSize()) {
         StudioRoute(
             shell.studio,
             onSaveFolderPicked = { shell.settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
+            renderChoices = choices,
         )
         TextButton(
             onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.EXPORT)) },

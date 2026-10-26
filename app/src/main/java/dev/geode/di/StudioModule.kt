@@ -5,22 +5,26 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dev.geode.export.ExportService
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.handlers.AndroidPresetPlaces
 import dev.geode.feature.customization.handlers.PresetLibrary
 import dev.geode.feature.customization.handlers.SharedPreferencesLegacyModulation
 import dev.geode.feature.settings.api.Settings
-import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.Studio
-import dev.geode.feature.studio.core.RenderEnd
-import dev.geode.feature.studio.handlers.RenderEngine
 import dev.geode.feature.studio.handlers.androidStudioSources
 import dev.geode.feature.studio.handlers.studioStore
+import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.render.scene.SceneIds
 import dev.geode.studio.AppRenderLooks
+import dev.geode.studio.NativeRenderEngine
+import dev.geode.ui.LiveVisualPresence
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Singleton
 
 /**
@@ -38,7 +42,8 @@ import javax.inject.Singleton
 object StudioModule {
     @Provides
     @Singleton
-    @Suppress("InjectDispatcher") // Preset files are read on IO, as Customization's handlers read them.
+    // Preset files are read on IO, as Customization's handlers read them; Renders analyse on Default.
+    @Suppress("InjectDispatcher")
     fun provideStudio(
         application: Application,
         settings: Settings,
@@ -53,8 +58,15 @@ object StudioModule {
                 fallbackStyle = SceneIds.DEFAULT,
             )
         val looks = AppRenderLooks(customization, presets, BuiltInStyles.catalogue, Dispatchers.IO)
-        // The engine adapter lands with the Render of a Track (#316); until then a Render fails plainly.
-        val engine = RenderEngine { _, _, _, _ -> RenderEnd.Failed(RenderProblem.ENGINE_FAILED) }
-        return studioStore(androidStudioSources(application, settings, looks, engine), runtime)
+        val engine = NativeRenderEngine(application, settings, LiveVisualPresence::isShown, Dispatchers.Default)
+        return studioStore(androidStudioSources(application, settings, looks, engine), runtime).also { studio ->
+            // The queue runs in the foreground service whenever a Render waits or runs (ADR-0004).
+            application.geodeContainer.appScope.launch {
+                studio.state
+                    .map { state -> state.renders.any { it.active } }
+                    .distinctUntilChanged()
+                    .collect { busy -> if (busy) ExportService.start(application) }
+            }
+        }
     }
 }

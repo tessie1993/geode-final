@@ -62,9 +62,9 @@ class GeodeContainer(
      * crash, a force-stop, a low-memory kill of [dev.geode.export.ExportService] before it could
      * finish. [dev.geode.export.VideoExporter], [dev.geode.export.StudioExporter] and
      * [dev.geode.export.LoopExtend] all insert with `IS_PENDING` set and clear it on success or
-     * delete the row on a clean failure; nothing runs `START_STICKY` or persists the run for a
-     * retry, so a row that is still pending once the app restarts belongs to nobody and never
-     * finishes on its own. It would otherwise sit in Movies/Geode or Pictures/Geode forever, a
+     * delete the row on a clean failure. A Studio Render the queue resumes after a restart starts
+     * over with a new row, so a row that is still pending once the app restarts belongs to nobody
+     * and never finishes on its own. It would otherwise sit in Movies/Geode or Pictures/Geode forever, a
      * broken, unplayable, ever-growing invisible file.
      *
      * A short grace period (rather than sweeping every pending row on sight) keeps this from
