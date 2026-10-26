@@ -146,7 +146,7 @@ class MilkdropStoreTest {
                 mapOf(
                     "content://1" to PickedFile.Read("Sky.milk", shader("ret = tex2D(sampler_clouds, uv).xyz;")),
                     "content://2" to PickedFile.Read("Moss.milk", shader("ret = tex2D(sampler_fw_moss, uv).xyz;")),
-                    "content://3" to PickedFile.Read("Tanh.milk", shader("ret = tanh(uv.xyy);")),
+                    "content://3" to PickedFile.Read("Frexp.milk", shader("ret = frexp(uv.xyy, e);")),
                 ),
             )
         val visuals = store(picked)
@@ -157,7 +157,7 @@ class MilkdropStoreTest {
             mapOf(
                 "Sky" to PresetPlayback.Full,
                 "Moss" to PresetPlayback.MissingTextures(listOf("moss")),
-                "Tanh" to PresetPlayback.WithoutShader(listOf("tanh")),
+                "Frexp" to PresetPlayback.WithoutShader(listOf("frexp")),
             ),
             visuals.state.value.milkdrop
                 ?.lastImport

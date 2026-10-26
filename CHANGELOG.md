@@ -11,6 +11,16 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **MilkDrop accepts BeatDrop-style shader extras (#306).** Geode's projectM
+  (`projectm-v4.1.8-shader-extras.patch`, written from the documented
+  behaviour) now runs preset shaders that read the spectrum and waveform
+  (`get_fft`, `get_wave` and their variants), the pointer (`mouse`, fed from
+  touch), the clock (`sysTime`, `sysDate`; a fixed day in a Render) and
+  `aspect_sd`, that call `tanh`, `sinh`, `cosh`, `radians`, `degrees` or
+  `trunc`, or that ask for random textures above `rand15`. The import report
+  only warns about the few calls still missing, and projectM now tells the
+  app when it drops a shader.
+
 - **Visuals compile before the switch (#304).** projectM's programs now go to
   Geode's `ProgramBinaryCache`, and its HLSL-to-GLSL translations are kept
   beside them (`projectm-v4.1.8-program-cache.patch`), so a MilkDrop preset

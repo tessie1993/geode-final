@@ -55,29 +55,32 @@ class MilkdropChecksTest {
 
     @Test
     fun `shader functions our projectM cannot translate drop the shader`() {
-        val playback = MilkdropChecks.playback(preset(warp = "ret = tanh(get_fft(uv.x)) * sampler_fft;"), emptyList())
+        val playback = MilkdropChecks.playback(preset(warp = "ret = lit(frexp(uv.x, e), 0, 1).xyz;"), emptyList())
 
-        assertEquals(PresetPlayback.WithoutShader(listOf("get_fft", "tanh", "sampler_fft")), playback)
+        assertEquals(PresetPlayback.WithoutShader(listOf("frexp", "lit")), playback)
     }
 
     @Test
-    fun `a call is only a call with its bracket, a name only a whole word`() {
-        assertEquals(listOf("get_fft_hz"), MilkdropChecks.unsupported("x = get_fft_hz (440.0);"))
-        assertEquals(emptyList<String>(), MilkdropChecks.unsupported("float tanhish = 1; float my_tanh = 2; float all = 3;"))
+    fun `the extras our projectM translates since #306 play fully`() {
+        val warp =
+            "ret = tanh(get_fft(uv.x)) * sinh(get_wave_left(uv.y)) + cosh(get_fft_peak_hz(440.0)) * mouse.x + " +
+                "trunc(radians(degrees(sysTime.x))) + aspect_sd.x + mouse_x + sysDateWeekday + tex2D(sampler_fft, uv).x;"
+
+        assertEquals(PresetPlayback.Full, MilkdropChecks.playback(preset(warp = warp), emptyList()))
+    }
+
+    @Test
+    fun `a call is only a call with its bracket, and only a whole word`() {
+        assertEquals(listOf("frexp"), MilkdropChecks.unsupported("x = frexp (440.0, e);"))
+        assertEquals(emptyList<String>(), MilkdropChecks.unsupported("float frexpish = 1; float my_frexp = 2; float all = 3;"))
         assertEquals(listOf("all"), MilkdropChecks.unsupported("if (all(x)) ret = 1;"))
-        assertEquals(listOf("mouse"), MilkdropChecks.unsupported("ret = mouse.x;"))
-        assertEquals(listOf("mouse_x"), MilkdropChecks.unsupported("ret = mouse_x;"))
-        assertEquals(listOf("aspect_sd", "sysTime"), MilkdropChecks.unsupported("uv *= aspect_sd.xy; ret = sysTime.x;"))
-        assertEquals(emptyList<String>(), MilkdropChecks.unsupported("float mousey = 1; float sysTimer = 2;"))
+        assertEquals(listOf("tex1D"), MilkdropChecks.unsupported("ret = tex1D(sampler_main, uv.x) + tex1DSomething;"))
     }
 
     @Test
-    fun `every name it lists is found`() {
+    fun `every call it lists is found`() {
         for (call in MilkdropChecks.UNSUPPORTED_CALLS) {
             assertEquals(call, listOf(call), MilkdropChecks.unsupported("ret = $call(uv);"))
-        }
-        for (name in MilkdropChecks.UNSUPPORTED_NAMES) {
-            assertEquals(name, listOf(name), MilkdropChecks.unsupported("ret = $name;"))
         }
     }
 
@@ -115,8 +118,8 @@ class MilkdropChecksTest {
 
     @Test
     fun `a shader that cannot run says so, whatever textures it is missing`() {
-        val playback = MilkdropChecks.playback(preset(warp = "ret = tex2D(sampler_worms, uv) * cosh(1.0);"), emptyList())
+        val playback = MilkdropChecks.playback(preset(warp = "ret = tex2D(sampler_worms, uv) * determinant(m);"), emptyList())
 
-        assertEquals(PresetPlayback.WithoutShader(listOf("cosh")), playback)
+        assertEquals(PresetPlayback.WithoutShader(listOf("determinant")), playback)
     }
 }

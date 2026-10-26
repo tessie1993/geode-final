@@ -35,6 +35,11 @@ bool resizeNow(BufferSize current, BufferSize wanted) {
     return !(std::fabs(shape / wantedShape - 1.0f) <= kAspectTolerance);
 }
 
+Pointer pointerFromTouch(int fingersDown, float ndcX, float ndcY) {
+    if (fingersDown <= 0) return {-1.0f, -1.0f, false};
+    return {std::clamp(0.5f * (ndcX + 1.0f), 0.0f, 1.0f), std::clamp(0.5f * (1.0f - ndcY), 0.0f, 1.0f), true};
+}
+
 void LoadAdapter::onFrame(float frameSeconds, float pacedFps) {
     if (frameSeconds <= 0.0f || frameSeconds > kMaxFrameSeconds) return;
     averageSeconds_ = averageSeconds_ > 0.0f ? averageSeconds_ + kSmoothing * (frameSeconds - averageSeconds_) : frameSeconds;

@@ -53,6 +53,8 @@ public:
     void reloadMilkPreset() override;
     void setMilkTextureDir(const std::string& dir) override;
     void setDrawTarget(GLuint fbo, int width, int height) override;
+    // The fingers on the Visual: presets that read `mouse` follow the first one (projectm_set_pointer).
+    void setTouchField(const TouchField* field) override { touch_ = field; }
 
 private:
     static constexpr double kLoadDebounceSeconds = 0.4;
@@ -66,6 +68,8 @@ private:
     // read: that is when a preset's pipeline raises them. Reading glGetError every frame would make a
     // threaded driver wait for its queue each time (#311).
     static constexpr int kErrorCheckFrames = 8;
+    // How much of projectM's reason for a shader fallback is kept.
+    static constexpr size_t kFallbackReasonLength = 160;
     static constexpr int kPcmCapacity = 8192;
     static constexpr int kEnginePcmSamples = 576;
 
@@ -75,6 +79,9 @@ private:
     using Engine = std::unique_ptr<std::remove_pointer_t<projectm_handle>, EngineDeleter>;
 
     static void onPresetSwitchFailed(const char* presetFilename, const char* message, void* userData);
+    // A preset that loads but plays without its warp or composite shader (projectM's shader fallback
+    // callback, tools/projectm-v4.1.8-shader-extras.patch): reported, never silent.
+    static void onShaderFallback(const char* presetFilename, const char* shader, const char* message, void* userData);
     // projectM's shader caches (projectm_opengl_set_shader_caches, tools/projectm-v4.1.8-program-cache.patch),
     // over the renderer's ProgramBinaryCache: the linked programs as binaries, the translated text as
     // files, so a preset seen before loads without translating or compiling (#304).
@@ -104,6 +111,7 @@ private:
     // Mesh, frame rate and clock for the frame about to render.
     void applyFrameSettings();
     std::optional<std::string> takeError();
+    std::optional<std::string> takeFallback();
     void diagnoseBlackFrame();
     void drainEngineErrors();
 
@@ -149,8 +157,11 @@ private:
     std::string sharedTextureDir_;
     // The text lookupText handed projectM last; it must outlive the call.
     std::string keptText_;
+    const TouchField* touch_ = nullptr;
     std::mutex errorLock_;
     std::string lastError_;
+    // What the last preset load fell back from, guarded by errorLock_.
+    std::string lastFallback_;
     // The last message written to logcat, so a preset that fails on every frame it is retried
     // writes one line rather than one line per frame. Guarded by errorLock_.
     std::string lastLoggedError_;

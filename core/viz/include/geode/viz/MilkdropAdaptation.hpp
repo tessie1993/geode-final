@@ -104,6 +104,16 @@ private:
     float headroomSeconds_ = 0.0f;
 };
 
+// The pointer projectM's presets read as `mouse` (projectm_set_pointer): the first finger, in uv (x to
+// the right, y down), while one is down. From the touch field's y-up NDC position of its first point.
+struct Pointer {
+    float x;
+    float y;
+    bool down;
+    bool operator==(const Pointer&) const = default;
+};
+Pointer pointerFromTouch(int fingersDown, float ndcX, float ndcY);
+
 // A Render's time: the sum of the frame intervals the render clock handed out, from zero. The same
 // frames give the same times, whatever the wall clock does.
 class RenderClock {

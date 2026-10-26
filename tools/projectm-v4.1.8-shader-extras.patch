@@ -1,0 +1,788 @@
+diff --git a/src/api/include/projectM-4/callbacks.h b/src/api/include/projectM-4/callbacks.h
+index 4a55c872a..c64d281d5 100644
+--- a/src/api/include/projectM-4/callbacks.h
++++ b/src/api/include/projectM-4/callbacks.h
+@@ -83,6 +83,33 @@ PROJECTM_EXPORT void projectm_set_preset_switch_failed_event_callback(projectm_h
+                                                                       projectm_preset_switch_failed_event callback,
+                                                                       void* user_data);
+ 
++/**
++ * @brief Callback function that is executed when a preset's warp or composite shader cannot be
++ *        translated or compiled, so the preset loads and plays without it.
++ *
++ * Geode patch (tools/projectm-v4.1.8-shader-extras.patch). The pointers are only valid inside the callback.
++ *
++ * @param preset_filename The filename of the preset.
++ * @param shader "warp" or "composite".
++ * @param message The error message.
++ * @param user_data A user-defined data pointer that was provided when registering the callback.
++ */
++typedef void (*projectm_shader_fallback_event)(const char* preset_filename, const char* shader, const char* message,
++                                               void* user_data);
++
++/**
++ * @brief Sets a callback function that will be called when a preset plays without one of its shaders.
++ *
++ * Only one callback can be registered per projectM instance. To remove the callback, use NULL.
++ *
++ * @param instance The projectM instance handle.
++ * @param callback A pointer to the callback function.
++ * @param user_data A pointer to any data that will be sent back in the callback.
++ */
++PROJECTM_EXPORT void projectm_set_shader_fallback_event_callback(projectm_handle instance,
++                                                                 projectm_shader_fallback_event callback,
++                                                                 void* user_data);
++
+ #ifdef __cplusplus
+ } // extern "C"
+ #endif
+diff --git a/src/api/include/projectM-4/parameters.h b/src/api/include/projectM-4/parameters.h
+index 14674588f..6a5e7fdbd 100644
+--- a/src/api/include/projectM-4/parameters.h
++++ b/src/api/include/projectM-4/parameters.h
+@@ -224,6 +224,22 @@ PROJECTM_EXPORT void projectm_set_frame_time(projectm_handle instance, double se
+  */
+ PROJECTM_EXPORT void projectm_set_random_seed(projectm_handle instance, uint32_t seed);
+ 
++/**
++ * @brief Sets the pointer preset shaders read as `mouse` (and mouse_x, mouse_y, mouse_pos,
++ *        mouse_clicked, mouse_released, as presets for BeatDrop and MilkDrop 3 name them).
++ *
++ * Geode patch (tools/projectm-v4.1.8-shader-extras.patch). @a x and @a y are where the pointer is,
++ * in uv (0..1, x to the right, y down). While it is neither down nor just lifted, shaders read -1 for
++ * both. mouse_clicked is 1 while it is down and -1 otherwise; mouse_released is 1 on the first frame
++ * after it lifts and -1 otherwise.
++ *
++ * @param instance The projectM instance handle.
++ * @param x The pointer's x, in uv.
++ * @param y The pointer's y, in uv.
++ * @param down True while the pointer is down.
++ */
++PROJECTM_EXPORT void projectm_set_pointer(projectm_handle instance, float x, float y, bool down);
++
+ /**
+  * @brief Enabled or disables aspect ratio correction in presets that support it.
+  *
+diff --git a/src/libprojectM/MilkdropPreset/FinalComposite.cpp b/src/libprojectM/MilkdropPreset/FinalComposite.cpp
+index 549c95043..a5bd34e6f 100644
+--- a/src/libprojectM/MilkdropPreset/FinalComposite.cpp
++++ b/src/libprojectM/MilkdropPreset/FinalComposite.cpp
+@@ -54,6 +54,7 @@ void FinalComposite::LoadCompositeShader(const PresetState& presetState)
+             }
+             catch (Renderer::ShaderException& ex)
+             {
++                Renderer::Shader::ReportFallback("composite", ex.message());
+ #ifdef MILKDROP_PRESET_DEBUG
+                 std::cerr << "[Composite Shader] Error loading composite warp shader code:" << ex.message() << std::endl;
+                 std::cerr << "[Composite Shader] Using fallback shader." << std::endl;
+@@ -100,6 +101,7 @@ void FinalComposite::CompileCompositeShader(PresetState& presetState)
+         }
+         catch (Renderer::ShaderException& ex)
+         {
++            Renderer::Shader::ReportFallback("composite", ex.message());
+ #ifdef MILKDROP_PRESET_DEBUG
+             std::cerr << "[Composite Shader] Error compiling composite warp shader code:" << ex.message() << std::endl;
+             std::cerr << "[Composite Shader] Using fallback shader." << std::endl;
+diff --git a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+index 07ad6c612..817ea859f 100644
+--- a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
++++ b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+@@ -115,7 +115,8 @@ void MilkdropShader::LoadTexturesAndCompile(PresetState& presetState)
+             {
+             }
+ 
+-            if (randomSlot >= 0 && randomSlot <= 15)
++            // Slots 0-99, as BeatDrop-era presets use them (MilkDrop 2 stopped at 15).
++            if (randomSlot >= 0 && randomSlot <= 99)
+             {
+                 if (presetState.randomTextureDescriptors.find(randomSlot) != presetState.randomTextureDescriptors.end())
+                 {
+@@ -179,10 +180,11 @@ void MilkdropShader::LoadVariables(const PresetState& presetState, const PerFram
+                                       presetState.renderContext.aspectY,
+                                       1.0f / presetState.renderContext.aspectX,
+                                       1.0f / presetState.renderContext.aspectY});
+-    m_shader.SetUniformFloat4("_c1", {0.0,
+-                                      0.0,
+-                                      0.0,
+-                                      0.0});
++    // aspect_sd (BeatDrop-era presets): the aspect, as in _c0, since projectM always corrects it.
++    m_shader.SetUniformFloat4("_c1", {presetState.renderContext.aspectX,
++                                      presetState.renderContext.aspectY,
++                                      1.0f / presetState.renderContext.aspectX,
++                                      1.0f / presetState.renderContext.aspectY});
+     m_shader.SetUniformFloat4("_c2", {timeSincePresetStartWrapped,
+                                       presetState.renderContext.fps,
+                                       presetState.renderContext.frame,
+@@ -236,6 +238,11 @@ void MilkdropShader::LoadVariables(const PresetState& presetState, const PerFram
+                                        blurMax[1],
+                                        blurMin[2],
+                                        blurMax[2]});
++    // mouse, sysTime and sysDate (BeatDrop-era presets).
++    const auto& context = presetState.renderContext;
++    m_shader.SetUniformFloat4("_c14", {context.pointer[0], context.pointer[1], context.pointer[2], context.pointer[3]});
++    m_shader.SetUniformFloat4("_c15", {context.clockTime[0], context.clockTime[1], context.clockTime[2], context.clockTime[3]});
++    m_shader.SetUniformFloat4("_c16", {context.clockDate[0], context.clockDate[1], context.clockDate[2], context.clockDate[3]});
+ 
+ 
+     std::array<glm::mat4, 24> tempMatrices{};
+@@ -350,15 +357,27 @@ void MilkdropShader::PreprocessPresetShader(std::string& program)
+     {
+         // Now go backwards and find the assignment
+         found = stripped.rfind('=', found);
++        if (found == std::string::npos)
++        {
++            break;
++        }
+         auto startPos = found;
+ 
+         // Find closing brace and semicolon
+         found = stripped.find('}', found);
+-        found = stripped.find(';', found);
++        if (found != std::string::npos)
++        {
++            found = stripped.find(';', found);
++        }
+ 
+         if (found != std::string::npos)
+         {
+-            stripped.replace(startPos, found - startPos, "");
++            // Blanked in the program itself as well as in the search copy, keeping both the same
++            // length: "sampler sampler_x = sampler_state { ... };" becomes "sampler sampler_x ;",
++            // which the sampler declarations are removed with before the translation.
++            const auto length = found - startPos;
++            program.replace(startPos, length, length, ' ');
++            stripped.replace(startPos, length, length, ' ');
+         }
+         else
+         {
+@@ -576,6 +595,16 @@ void MilkdropShader::GetReferencedSamplers(const std::string& program)
+         }
+     }
+ 
++    // The spectrum and waveform functions BeatDrop-era presets call read textures of their own.
++    if (stripped.find("get_fft") != std::string::npos)
++    {
++        m_samplerNames.insert("fft");
++    }
++    if (stripped.find("get_wave") != std::string::npos)
++    {
++        m_samplerNames.insert("wave");
++    }
++
+     if (stripped.find("GetBlur3") != std::string::npos)
+     {
+         UpdateMaxBlurLevel(BlurTexture::BlurLevel::Blur3);
+@@ -671,7 +700,8 @@ void MilkdropShader::TranspileHLSLShader(const PresetState& presetState, std::st
+     //       Leaving it in causes HLSLParser to add "sampler_XYZ = sampler2D( <unknown expression> );"
+     //       in the main() function, which is also bad...
+     std::smatch matches;
+-    while (std::regex_search(sourcePreprocessed, matches, std::regex("sampler(2D|3D|)(\\s+|\\().*")))
++    // A declaration ends at its semicolon: code after it on the same line stays.
++    while (std::regex_search(sourcePreprocessed, matches, std::regex("sampler(2D|3D|)(\\s+|\\()[^;\\n]*;?")))
+     {
+         sourcePreprocessed.replace(matches.position(), matches.length(), "");
+     }
+diff --git a/src/libprojectM/MilkdropPreset/PerPixelMesh.cpp b/src/libprojectM/MilkdropPreset/PerPixelMesh.cpp
+index d1f031411..4e535dfb8 100644
+--- a/src/libprojectM/MilkdropPreset/PerPixelMesh.cpp
++++ b/src/libprojectM/MilkdropPreset/PerPixelMesh.cpp
+@@ -77,6 +77,7 @@ void PerPixelMesh::LoadWarpShader(const PresetState& presetState)
+             }
+             catch (Renderer::ShaderException& ex)
+             {
++                Renderer::Shader::ReportFallback("warp", ex.message());
+ #ifdef MILKDROP_PRESET_DEBUG
+                 std::cerr << "[Warp Shader] Error loading warp shader code:" << ex.message() << std::endl;
+ #else
+@@ -101,6 +102,7 @@ void PerPixelMesh::CompileWarpShader(PresetState& presetState)
+         }
+         catch (Renderer::ShaderException& ex)
+         {
++            Renderer::Shader::ReportFallback("warp", ex.message());
+ #ifdef MILKDROP_PRESET_DEBUG
+             std::cerr << "[Warp Shader] Error compiling warp shader code:" << ex.message() << std::endl;
+ #else
+diff --git a/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc b/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc
+index 283829193..397a0cb81 100644
+--- a/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc
++++ b/src/libprojectM/MilkdropPreset/Shaders/PresetShaderHeaderGlsl330.inc
+@@ -153,3 +153,44 @@ uniform float4x3 rot_rand4;
+ #define lum(x) (dot(x,float3(0.32,0.49,0.29)))
+ #define tex2d tex2D
+ #define tex3d tex3D
++
++// Inputs that presets written for BeatDrop and MilkDrop 3 read, under the names they read them by
++// (Geode's own definitions; the values are set in MilkdropShader::LoadVariables).
++uniform float4   _c14;          // .xy = the pointer (a touch) in uv, -1 while there is none
++                                // .z = 1 while it is down, else -1; .w = 1 on the frame it lifts, else -1
++uniform float4   _c15;          // .x hour, .y minute, .z second, .w seconds since midnight
++uniform float4   _c16;          // .x year, .y month, .z day of the month, .w weekday (1 Monday .. 7 Sunday)
++
++#define aspect_sd _c1
++#define mouse _c14
++#define mouse_x _c14.x
++#define mouse_y _c14.y
++#define mouse_pos _c14.xy
++#define mouse_clicked _c14.z
++#define mouse_released _c14.w
++#define sysTime _c15
++#define sysTimeHour _c15.x
++#define sysTimeMinute _c15.y
++#define sysTimeSecond _c15.z
++#define sysTimeTotalSeconds _c15.w
++#define sysDate _c16
++#define sysDateYear _c16.x
++#define sysDateMonth _c16.y
++#define sysDateDay _c16.z
++#define sysDateWeekday _c16.w
++
++// The spectrum (sampler_fft: row 0 now, row 1 a decaying peak) from the lowest frequency at 0 to the
++// highest at 1, or by frequency in Hz; and the waveform (sampler_wave: row 0 left, row 1 right) across
++// the window from 0 to 1. Each written out in full: a macro here never names another.
++#define get_fft(_fft_at) (sqrt(abs(tex2D(sampler_fft, float2((_fft_at), 0.25)).x)))
++#define get_fft_peak(_fft_at) (sqrt(abs(tex2D(sampler_fft, float2((_fft_at), 0.75)).x)))
++#define get_fft_hz(_fft_hz) (sqrt(abs(tex2D(sampler_fft, float2((_fft_hz) / 22050.0, 0.25)).x)))
++#define get_fft_peak_hz(_fft_hz) (sqrt(abs(tex2D(sampler_fft, float2((_fft_hz) / 22050.0, 0.75)).x)))
++#define get_wave_left(_wave_at) (tex2D(sampler_wave, float2((_wave_at), 0.25)).x)
++#define get_wave_right(_wave_at) (tex2D(sampler_wave, float2((_wave_at), 0.75)).x)
++#define get_wave(_wave_at) (0.5 * (tex2D(sampler_wave, float2((_wave_at), 0.25)).x + tex2D(sampler_wave, float2((_wave_at), 0.75)).x))
++
++// GLSL-style names some presets use for the HLSL ones.
++#define texture2D tex2D
++#define texture3D tex3D
++#define texcube texCUBE
+diff --git a/src/libprojectM/ProjectM.cpp b/src/libprojectM/ProjectM.cpp
+index d99539efb..3f64e50c8 100644
+--- a/src/libprojectM/ProjectM.cpp
++++ b/src/libprojectM/ProjectM.cpp
+@@ -27,8 +27,13 @@
+ 
+ #include <Audio/PCM.hpp>
+ 
++#include <algorithm>
++#include <chrono>
++#include <ctime>
++
+ #include <Renderer/CopyTexture.hpp>
+ #include <Renderer/PresetTransition.hpp>
++#include <Renderer/Shader.hpp>
+ #include <Renderer/TextureManager.hpp>
+ #include <Renderer/TransitionShaderManager.hpp>
+ 
+@@ -53,9 +58,39 @@ void ProjectM::PresetSwitchFailedEvent(const std::string&, const std::string&) c
+ {
+ }
+ 
++void ProjectM::ShaderFallbackEvent(const std::string&, const std::string&, const std::string&) const
++{
++}
++
++namespace {
++
++// Reports every shader fallback of the preset being loaded on this thread to its instance, for the
++// length of the load.
++class ShaderFallbackScope
++{
++public:
++    ShaderFallbackScope(const ProjectM& instance, const std::string& presetFilename)
++    {
++        Renderer::Shader::SetFallbackReporter([&instance, presetFilename](const char* shader, const std::string& message) {
++            instance.ShaderFallbackEvent(presetFilename, shader, message);
++        });
++    }
++
++    ~ShaderFallbackScope()
++    {
++        Renderer::Shader::SetFallbackReporter({});
++    }
++
++    ShaderFallbackScope(const ShaderFallbackScope&) = delete;
++    auto operator=(const ShaderFallbackScope&) -> ShaderFallbackScope& = delete;
++};
++
++} // namespace
++
+ void ProjectM::LoadPresetFile(const std::string& presetFilename, bool smoothTransition)
+ {
+     RandomSource::Scope randomScope(m_seededRandom.get());
++    ShaderFallbackScope fallbackScope(*this, presetFilename);
+     try
+     {
+         m_textureManager->PurgeTextures();
+@@ -70,6 +105,7 @@ void ProjectM::LoadPresetFile(const std::string& presetFilename, bool smoothTran
+ void ProjectM::LoadPresetData(std::istream& presetData, bool smoothTransition)
+ {
+     RandomSource::Scope randomScope(m_seededRandom.get());
++    ShaderFallbackScope fallbackScope(*this, "");
+     try
+     {
+         m_textureManager->PurgeTextures();
+@@ -111,6 +147,8 @@ void ProjectM::RenderFrame(uint32_t targetFramebufferObject)
+     // Update and retrieve audio data
+     m_audioStorage.UpdateFrameAudioData(m_timeKeeper->SecondsSinceLastFrame(), m_frameCount);
+     auto audioData = m_audioStorage.GetFrameAudioData();
++    m_textureManager->UpdateAudioTextures(audioData.spectrumLeft.data(), audioData.spectrumRight.data(), audioData.spectrumLeft.size(),
++                                          audioData.waveformLeft.data(), audioData.waveformRight.data(), audioData.waveformLeft.size());
+ 
+     // Check if the preset isn't locked, and we've not already notified the user
+     if (!m_presetChangeNotified)
+@@ -199,6 +237,7 @@ void ProjectM::RenderFrame(uint32_t targetFramebufferObject)
+ 
+     m_frameCount++;
+     m_previousFrameVolume = audioData.vol;
++    m_pointerLifted = false;
+ }
+ 
+ void ProjectM::Initialize()
+@@ -248,6 +287,17 @@ void ProjectM::SetRandomSeed(uint32_t seed)
+     m_textureManager = std::make_unique<Renderer::TextureManager>(m_textureSearchPaths);
+ }
+ 
++void ProjectM::SetPointer(float x, float y, bool down)
++{
++    m_pointerLifted = m_pointerLifted || (m_pointerDown && !down);
++    m_pointerDown = down;
++    if (down)
++    {
++        m_pointerX = x;
++        m_pointerY = y;
++    }
++}
++
+ void ProjectM::SetWindowSize(uint32_t width, uint32_t height)
+ {
+     /** Stash the new dimensions */
+@@ -476,6 +526,50 @@ auto ProjectM::GetRenderContext() -> Renderer::RenderContext
+     ctx.perPixelMeshY = static_cast<int>(m_meshY);
+     ctx.textureManager = m_textureManager.get();
+ 
++    // The pointer as presets read it: -1 for where it is while it is neither down nor just lifted.
++    const bool pointerShown = m_pointerDown || m_pointerLifted;
++    ctx.pointer[0] = pointerShown ? m_pointerX : -1.0f;
++    ctx.pointer[1] = pointerShown ? m_pointerY : -1.0f;
++    ctx.pointer[2] = m_pointerDown ? 1.0f : -1.0f;
++    ctx.pointer[3] = m_pointerLifted ? 1.0f : -1.0f;
++
++    // The clock: the wall clock's local time, or on a host-driven clock (a Render) a fixed day,
++    // 1 January 2000, and the time since its first frame, so the same frames read the same values.
++    std::tm local{};
++    double secondOfMinute = 0.0;
++    if (m_timeKeeper->FrameTimeOverridden())
++    {
++        const double running = std::max(0.0, m_timeKeeper->GetRunningTime());
++        const auto whole = static_cast<long long>(running);
++        local.tm_year = 100;
++        local.tm_mon = 0;
++        local.tm_mday = 1;
++        local.tm_wday = 6;
++        local.tm_hour = static_cast<int>((whole / 3600) % 24);
++        local.tm_min = static_cast<int>((whole / 60) % 60);
++        secondOfMinute = static_cast<double>(whole % 60) + (running - static_cast<double>(whole));
++    }
++    else
++    {
++        const auto now = std::chrono::system_clock::now();
++        const std::time_t seconds = std::chrono::system_clock::to_time_t(now);
++#ifdef _WIN32
++        localtime_s(&local, &seconds);
++#else
++        localtime_r(&seconds, &local);
++#endif
++        const auto sinceSecond = now - std::chrono::system_clock::from_time_t(seconds);
++        secondOfMinute = static_cast<double>(local.tm_sec) + std::chrono::duration<double>(sinceSecond).count();
++    }
++    ctx.clockTime[0] = static_cast<float>(local.tm_hour);
++    ctx.clockTime[1] = static_cast<float>(local.tm_min);
++    ctx.clockTime[2] = static_cast<float>(secondOfMinute);
++    ctx.clockTime[3] = static_cast<float>(local.tm_hour * 3600 + local.tm_min * 60 + secondOfMinute);
++    ctx.clockDate[0] = static_cast<float>(local.tm_year + 1900);
++    ctx.clockDate[1] = static_cast<float>(local.tm_mon + 1);
++    ctx.clockDate[2] = static_cast<float>(local.tm_mday);
++    ctx.clockDate[3] = static_cast<float>((local.tm_wday + 6) % 7 + 1);
++
+     return ctx;
+ }
+ 
+diff --git a/src/libprojectM/ProjectM.hpp b/src/libprojectM/ProjectM.hpp
+index 41d4a3893..f711ec467 100644
+--- a/src/libprojectM/ProjectM.hpp
++++ b/src/libprojectM/ProjectM.hpp
+@@ -70,6 +70,15 @@ public:
+      */
+     virtual void PresetSwitchFailedEvent(const std::string& presetFilename, const std::string& message) const;
+ 
++    /**
++     * @brief Callback for notifying the integrating app that a preset's warp or composite shader could
++     * not be translated or compiled, and the preset plays without it (Geode).
++     * @param presetFilename The filename of the preset.
++     * @param shader "warp" or "composite".
++     * @param message The error message.
++     */
++    virtual void ShaderFallbackEvent(const std::string& presetFilename, const std::string& shader, const std::string& message) const;
++
+     /**
+      * @brief Loads the given preset file and performs a smooth or immediate transition.
+      * @param presetFilename The preset filename to load.
+@@ -191,6 +200,11 @@ public:
+      */
+     void SetRandomSeed(uint32_t seed);
+ 
++    /**
++     * @brief The pointer presets read as `mouse` (Geode): where it is, in uv, and whether it is down.
++     */
++    void SetPointer(float x, float y, bool down);
++
+ private:
+     void Initialize();
+ 
+@@ -234,6 +248,10 @@ private:
+     std::unique_ptr<Renderer::PresetTransition> m_transition;                     //!< Transition effect used for blending.
+     std::unique_ptr<TimeKeeper> m_timeKeeper;                                     //!< Keeps the different timers used to render and switch presets.
+     std::unique_ptr<RandomSource::Engine> m_seededRandom;                         //!< This instance's generator once seeded; null draws from the thread's.
++    float m_pointerX{-1.0f};                                                      //!< The pointer's last position, in uv.
++    float m_pointerY{-1.0f};
++    bool m_pointerDown{false};                                                    //!< The pointer is down.
++    bool m_pointerLifted{false};                                                  //!< The pointer lifted since the last frame.
+ };
+ 
+ } // namespace libprojectM
+diff --git a/src/libprojectM/ProjectMCWrapper.cpp b/src/libprojectM/ProjectMCWrapper.cpp
+index 1774ea9c3..8ef93619b 100644
+--- a/src/libprojectM/ProjectMCWrapper.cpp
++++ b/src/libprojectM/ProjectMCWrapper.cpp
+@@ -28,6 +28,15 @@ void projectMWrapper::PresetSwitchFailedEvent(const std::string& presetFilename,
+     }
+ }
+ 
++void projectMWrapper::ShaderFallbackEvent(const std::string& presetFilename, const std::string& shader,
++                                          const std::string& message) const
++{
++    if (m_shaderFallbackEventCallback)
++    {
++        m_shaderFallbackEventCallback(presetFilename.c_str(), shader.c_str(), message.c_str(), m_shaderFallbackEventUserData);
++    }
++}
++
+ } // namespace libprojectM
+ 
+ libprojectM::projectMWrapper* handle_to_instance(projectm_handle instance)
+@@ -112,6 +121,14 @@ void projectm_set_preset_switch_failed_event_callback(projectm_handle instance,
+     projectMInstance->m_presetSwitchFailedEventUserData = user_data;
+ }
+ 
++void projectm_set_shader_fallback_event_callback(projectm_handle instance,
++                                                 projectm_shader_fallback_event callback, void* user_data)
++{
++    auto projectMInstance = handle_to_instance(instance);
++    projectMInstance->m_shaderFallbackEventCallback = callback;
++    projectMInstance->m_shaderFallbackEventUserData = user_data;
++}
++
+ void projectm_set_texture_search_paths(projectm_handle instance,
+                                        const char** texture_search_paths,
+                                        size_t count)
+@@ -303,6 +320,12 @@ void projectm_set_random_seed(projectm_handle instance, uint32_t seed)
+     projectMInstance->SetRandomSeed(seed);
+ }
+ 
++void projectm_set_pointer(projectm_handle instance, float x, float y, bool down)
++{
++    auto projectMInstance = handle_to_instance(instance);
++    projectMInstance->SetPointer(x, y, down);
++}
++
+ void projectm_set_aspect_correction(projectm_handle instance, bool enabled)
+ {
+     auto projectMInstance = handle_to_instance(instance);
+diff --git a/src/libprojectM/ProjectMCWrapper.hpp b/src/libprojectM/ProjectMCWrapper.hpp
+index 38e4cc9af..27a322b65 100644
+--- a/src/libprojectM/ProjectMCWrapper.hpp
++++ b/src/libprojectM/ProjectMCWrapper.hpp
+@@ -33,12 +33,17 @@ public:
+     void PresetSwitchFailedEvent(const std::string& presetFilename,
+                                  const std::string& failureMessage) const override;
+     void PresetSwitchRequestedEvent(bool isHardCut) const override;
++    void ShaderFallbackEvent(const std::string& presetFilename, const std::string& shader,
++                             const std::string& message) const override;
+ 
+     projectm_preset_switch_failed_event m_presetSwitchFailedEventCallback{nullptr};
+     void* m_presetSwitchFailedEventUserData{nullptr};
+ 
+     projectm_preset_switch_requested_event m_presetSwitchRequestedEventCallback{nullptr};
+     void* m_presetSwitchRequestedEventUserData{nullptr};
++
++    projectm_shader_fallback_event m_shaderFallbackEventCallback{nullptr};
++    void* m_shaderFallbackEventUserData{nullptr};
+ };
+ 
+ } // namespace libprojectM
+diff --git a/src/libprojectM/Renderer/RenderContext.hpp b/src/libprojectM/Renderer/RenderContext.hpp
+index a5a1f9c6e..94e3045a4 100644
+--- a/src/libprojectM/Renderer/RenderContext.hpp
++++ b/src/libprojectM/Renderer/RenderContext.hpp
+@@ -30,6 +30,10 @@ public:
+     int perPixelMeshY{48}; //!< Per-pixel/per-vertex mesh Y resolution.
+ 
+     TextureManager* textureManager{nullptr}; //!< Holds all loaded textures for shader access.
++
++    float pointer[4]{-1.0f, -1.0f, -1.0f, -1.0f}; //!< The pointer: x, y in uv (-1 when none), down (1/-1), lifted this frame (1/-1).
++    float clockTime[4]{};                         //!< Hour, minute, second and seconds since midnight.
++    float clockDate[4]{};                         //!< Year, month, day of the month, weekday (1 Monday .. 7 Sunday).
+ };
+ 
+ } // namespace Renderer
+diff --git a/src/libprojectM/Renderer/Shader.cpp b/src/libprojectM/Renderer/Shader.cpp
+index 25c739491..8316d4b3c 100644
+--- a/src/libprojectM/Renderer/Shader.cpp
++++ b/src/libprojectM/Renderer/Shader.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include <glm/gtc/type_ptr.hpp>
+ 
++#include <utility>
+ #include <vector>
+ 
+ namespace libprojectM {
+@@ -12,6 +13,9 @@ namespace {
+ // Per thread: a host with two GL threads (a live picture and an offscreen export) keeps two caches.
+ thread_local Shader::CacheHooks cacheHooks;
+ 
++// Per thread, set for the length of a preset load.
++thread_local Shader::FallbackReporter fallbackReporter;
++
+ } // namespace
+ 
+ void Shader::SetCacheHooks(const CacheHooks& hooks)
+@@ -24,6 +28,19 @@ auto Shader::CurrentCacheHooks() -> const CacheHooks&
+     return cacheHooks;
+ }
+ 
++void Shader::SetFallbackReporter(FallbackReporter reporter)
++{
++    fallbackReporter = std::move(reporter);
++}
++
++void Shader::ReportFallback(const char* shader, const std::string& message)
++{
++    if (fallbackReporter)
++    {
++        fallbackReporter(shader, message);
++    }
++}
++
+ Shader::Shader()
+     : m_shaderProgram(glCreateProgram())
+ {
+diff --git a/src/libprojectM/Renderer/Shader.hpp b/src/libprojectM/Renderer/Shader.hpp
+index 68359c96d..96d19e55a 100644
+--- a/src/libprojectM/Renderer/Shader.hpp
++++ b/src/libprojectM/Renderer/Shader.hpp
+@@ -14,6 +14,7 @@
+ 
+ #include <cstddef>
+ #include <cstdint>
++#include <functional>
+ #include <map>
+ #include <string>
+ 
+@@ -83,6 +84,22 @@ public:
+      */
+     static auto CurrentCacheHooks() -> const CacheHooks&;
+ 
++    /**
++     * Told when a preset shader cannot be used and its preset plays without it: which one ("warp" or
++     * "composite") and why.
++     */
++    using FallbackReporter = std::function<void(const char* shader, const std::string& message)>;
++
++    /**
++     * @brief Sets who hears of shader fallbacks on the calling thread; an empty reporter for nobody.
++     */
++    static void SetFallbackReporter(FallbackReporter reporter);
++
++    /**
++     * @brief Tells the calling thread's reporter, if any, that `shader` fell back for `message`.
++     */
++    static void ReportFallback(const char* shader, const std::string& message);
++
+     /**
+      * Creates a new shader.
+      */
+diff --git a/src/libprojectM/Renderer/TextureManager.cpp b/src/libprojectM/Renderer/TextureManager.cpp
+index cc89f4e8e..7c625d0fa 100644
+--- a/src/libprojectM/Renderer/TextureManager.cpp
++++ b/src/libprojectM/Renderer/TextureManager.cpp
+@@ -33,7 +33,36 @@ namespace {
+ 
+ // The texture names a TextureManager generates itself, which a later manager can share.
+ const char* const generatedTextureNames[] = {"idlem", "idleheadphones", "noise_lq_lite", "noise_lq", "noise_mq",
+-                                             "noise_hq", "noisevol_lq", "noisevol_hq"};
++                                             "noise_hq", "noisevol_lq", "noisevol_hq", "fft", "wave"};
++
++// The audio textures' widths: the spectrum's and the waveform's sample counts.
++constexpr int fftTextureWidth = 512;
++constexpr int waveTextureWidth = 480;
++// How much of the spectrum's peak is left after a frame.
++constexpr float fftPeakDecay = 0.95f;
++
++// A two-row, one-channel float texture, filtered linearly and clamped at its edges.
++auto MakeAudioTexture(const char* name, int width) -> std::shared_ptr<Texture>
++{
++    GLuint tex{};
++    glGenTextures(1, &tex);
++    glBindTexture(GL_TEXTURE_2D, tex);
++    const std::vector<float> zeros(static_cast<size_t>(width) * 2, 0.0f);
++    glTexImage2D(GL_TEXTURE_2D, 0, GL_R16F, width, 2, 0, GL_RED, GL_FLOAT, zeros.data());
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
++    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
++    glBindTexture(GL_TEXTURE_2D, 0);
++    return std::make_shared<Texture>(name, tex, GL_TEXTURE_2D, width, 2, false);
++}
++
++void UploadRows(const Texture& texture, const std::vector<float>& rows)
++{
++    glBindTexture(GL_TEXTURE_2D, texture.TextureID());
++    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texture.Width(), 2, GL_RED, GL_FLOAT, rows.data());
++    glBindTexture(GL_TEXTURE_2D, 0);
++}
+ 
+ // The file a path finally names, links resolved; the path itself if that cannot be found out.
+ auto RealFile(const std::string& filePath) -> std::string
+@@ -71,6 +100,10 @@ TextureSamplerDescriptor TextureManager::GetTexture(const std::string& fullName)
+     {
+         return TryLoadingTexture(fullName);
+     }
++    if (unqualifiedName == "fft" || unqualifiedName == "wave")
++    {
++        m_audioTexturesWanted = true;
++    }
+ 
+     return {m_textures[unqualifiedName], m_samplers.at({wrapMode, filterMode}), fullName, unqualifiedName};
+ }
+@@ -98,6 +131,8 @@ void TextureManager::Preload(const TextureManager* generatedFrom)
+     // only change with the random seed; a new set of search paths keeps them.
+     if (generatedFrom != nullptr)
+     {
++        m_fftPeak = generatedFrom->m_fftPeak;
++        m_audioTexturesWanted = generatedFrom->m_audioTexturesWanted;
+         bool shared = true;
+         for (const char* name : generatedTextureNames)
+         {
+@@ -143,6 +178,44 @@ void TextureManager::Preload(const TextureManager* generatedFrom)
+     m_textures["noise_hq"] = MilkdropNoise::HighQuality();
+     m_textures["noisevol_lq"] = MilkdropNoise::LowQualityVolume();
+     m_textures["noisevol_hq"] = MilkdropNoise::HighQualityVolume();
++
++    // The audio, for presets that read it in their shaders (get_fft, get_wave).
++    m_textures["fft"] = MakeAudioTexture("fft", fftTextureWidth);
++    m_textures["wave"] = MakeAudioTexture("wave", waveTextureWidth);
++}
++
++void TextureManager::UpdateAudioTextures(const float* spectrumLeft, const float* spectrumRight, size_t spectrumCount,
++                                         const float* waveLeft, const float* waveRight, size_t waveCount)
++{
++    if (!m_audioTexturesWanted)
++    {
++        return;
++    }
++    const auto fft = m_textures.find("fft");
++    const auto wave = m_textures.find("wave");
++    if (fft == m_textures.end() || wave == m_textures.end())
++    {
++        return;
++    }
++
++    std::vector<float> rows(static_cast<size_t>(fftTextureWidth) * 2, 0.0f);
++    m_fftPeak.resize(fftTextureWidth, 0.0f);
++    for (size_t i = 0; i < static_cast<size_t>(fftTextureWidth) && i < spectrumCount; i++)
++    {
++        const float now = 0.5f * (spectrumLeft[i] + spectrumRight[i]);
++        m_fftPeak[i] = std::max(now, m_fftPeak[i] * fftPeakDecay);
++        rows[i] = now;
++        rows[fftTextureWidth + i] = m_fftPeak[i];
++    }
++    UploadRows(*fft->second, rows);
++
++    rows.assign(static_cast<size_t>(waveTextureWidth) * 2, 0.0f);
++    for (size_t i = 0; i < static_cast<size_t>(waveTextureWidth) && i < waveCount; i++)
++    {
++        rows[i] = waveLeft[i];
++        rows[waveTextureWidth + i] = waveRight[i];
++    }
++    UploadRows(*wave->second, rows);
+ }
+ 
+ void TextureManager::PurgeTextures()
+diff --git a/src/libprojectM/Renderer/TextureManager.hpp b/src/libprojectM/Renderer/TextureManager.hpp
+index 95bf05358..3daed842a 100644
+--- a/src/libprojectM/Renderer/TextureManager.hpp
++++ b/src/libprojectM/Renderer/TextureManager.hpp
+@@ -54,6 +54,19 @@ public:
+      */
+     auto GetSampler(const std::string& fullName) -> std::shared_ptr<class Sampler>;
+ 
++    /**
++     * @brief Uploads this frame's audio to the "fft" and "wave" textures, which presets read through
++     * get_fft() and get_wave() (or sampler_fft and sampler_wave). Only once a preset has asked for one.
++     * @param spectrumLeft The left channel's spectrum, spectrumCount values, lowest frequency first.
++     * @param spectrumRight The right channel's spectrum.
++     * @param spectrumCount How many spectrum values each channel has.
++     * @param waveLeft The left channel's waveform, waveCount samples.
++     * @param waveRight The right channel's waveform.
++     * @param waveCount How many waveform samples each channel has.
++     */
++    void UpdateAudioTextures(const float* spectrumLeft, const float* spectrumRight, size_t spectrumCount,
++                             const float* waveLeft, const float* waveRight, size_t waveCount);
++
+     /**
+      * @brief Purges unused textures and increments the age counter of all stored textures.
+      * Also resets the scanned texture list. Must be called exactly once per preset load.
+@@ -109,6 +122,8 @@ private:
+     std::map<std::pair<GLint, GLint>, std::shared_ptr<Sampler>> m_samplers; //!< The four sampler objects for each combination of wrap and filter modes.
+     std::map<std::string, UsageStats> m_textureStats;                       //!< Map with texture stats for user-loaded files.
+     std::vector<std::string> m_randomTextures;
++    std::vector<float> m_fftPeak;       //!< The spectrum's decaying peak, the "fft" texture's second row.
++    bool m_audioTexturesWanted{false};  //!< A preset asked for "fft" or "wave": upload them every frame.
+     std::vector<std::string> m_extensions{".jpg", ".jpeg", ".dds", ".png", ".tga", ".bmp", ".dib"};
+ };
+ 
+diff --git a/src/libprojectM/TimeKeeper.hpp b/src/libprojectM/TimeKeeper.hpp
+index 75ab6af70..859d96a25 100644
+--- a/src/libprojectM/TimeKeeper.hpp
++++ b/src/libprojectM/TimeKeeper.hpp
+@@ -19,6 +19,14 @@ public:
+      */
+     void SetFrameTime(double secondsSinceFirstFrame);
+ 
++    /**
++     * @brief True while the host drives the clock (SetFrameTime), so nothing may read the wall clock.
++     */
++    bool FrameTimeOverridden() const
++    {
++        return m_frameTimeOverride >= 0.0;
++    }
++
+     void StartPreset();
+ 
+     void StartSmoothing();
+diff --git a/vendor/hlslparser/src/HLSLParser.cpp b/vendor/hlslparser/src/HLSLParser.cpp
+index da708aabf..58a83ba84 100644
+--- a/vendor/hlslparser/src/HLSLParser.cpp
++++ b/vendor/hlslparser/src/HLSLParser.cpp
+@@ -451,6 +451,14 @@ const Intrinsic _intrinsic[] =
+         INTRINSIC_FLOAT1_FUNCTION( "cos" ),
+         INTRINSIC_FLOAT1_FUNCTION( "tan" ),
+ 
++        // In HLSL and in GLSL ES 3.00 under the same names, and used by BeatDrop-era presets (Geode).
++        INTRINSIC_FLOAT1_FUNCTION( "tanh" ),
++        INTRINSIC_FLOAT1_FUNCTION( "sinh" ),
++        INTRINSIC_FLOAT1_FUNCTION( "cosh" ),
++        INTRINSIC_FLOAT1_FUNCTION( "radians" ),
++        INTRINSIC_FLOAT1_FUNCTION( "degrees" ),
++        INTRINSIC_FLOAT1_FUNCTION( "trunc" ),
++
+         INTRINSIC_FLOAT3_FUNCTION( "lerp" ),
+         INTRINSIC_FLOAT3_FUNCTION( "smoothstep" ),
+ 

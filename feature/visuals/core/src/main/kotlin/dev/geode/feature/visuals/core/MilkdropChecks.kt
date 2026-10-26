@@ -13,24 +13,14 @@ import dev.geode.feature.visuals.api.PresetPlayback
  */
 object MilkdropChecks {
     /**
-     * What our projectM cannot translate yet, as the call or name a shader writes: shader functions that
-     * BeatDrop and MilkDrop 3 added, and HLSL intrinsics the translator has no entry for. A shader that
-     * uses one is dropped, and the preset plays on MilkDrop's plain warp and composite.
+     * What our projectM cannot translate, as the call a shader writes: HLSL intrinsics with no entry in
+     * its translator and no GLSL ES 3.00 counterpart. A shader that uses one is dropped, and the preset
+     * plays on MilkDrop's plain warp and composite. (The spectrum and waveform functions, the pointer,
+     * clock and aspect inputs BeatDrop and MilkDrop 3 added, and tanh, sinh, cosh, radians, degrees and
+     * trunc all translate, through tools/projectm-v4.1.8-shader-extras.patch, #306.)
      */
     val UNSUPPORTED_CALLS: List<String> =
         listOf(
-            "get_fft",
-            "get_fft_hz",
-            "get_fft_peak",
-            "get_fft_peak_hz",
-            "get_wave",
-            "get_wave_left",
-            "get_wave_right",
-            "tanh",
-            "sinh",
-            "cosh",
-            "radians",
-            "degrees",
             "frexp",
             "all",
             "isfinite",
@@ -45,30 +35,6 @@ object MilkdropChecks {
             "tex3Dproj",
             "texCUBEgrad",
             "texCUBEproj",
-        )
-
-    /** Inputs BeatDrop and MilkDrop 3 added that our projectM does not provide yet, as a shader names them. */
-    val UNSUPPORTED_NAMES: List<String> =
-        listOf(
-            "sampler_fft",
-            "sampler_wave",
-            "aspect_sd",
-            "mouse",
-            "mouse_x",
-            "mouse_y",
-            "mouse_pos",
-            "mouse_clicked",
-            "mouse_released",
-            "sysTime",
-            "sysDate",
-            "sysTimeHour",
-            "sysTimeMinute",
-            "sysTimeSecond",
-            "sysTimeTotalSeconds",
-            "sysDateYear",
-            "sysDateMonth",
-            "sysDateDay",
-            "sysDateWeekday",
         )
 
     /** The textures projectM makes itself, which no folder needs to hold. */
@@ -119,12 +85,8 @@ object MilkdropChecks {
         return lineComment.replace(blockComment.replace(lines.joinToString("\n"), " "), "")
     }
 
-    /** The names in [code] our projectM cannot translate, each once, in the order the lists above give them. */
-    fun unsupported(code: String): List<String> {
-        val calls = UNSUPPORTED_CALLS.filter { Regex("\\b${it}\\s*\\(").containsMatchIn(code) }
-        val names = UNSUPPORTED_NAMES.filter { Regex("\\b$it\\b").containsMatchIn(code) }
-        return calls + names
-    }
+    /** The calls in [code] our projectM cannot translate, each once, in the order [UNSUPPORTED_CALLS] gives them. */
+    fun unsupported(code: String): List<String> = UNSUPPORTED_CALLS.filter { Regex("\\b${it}\\s*\\(").containsMatchIn(code) }
 
     /** The textures [code] samples by name, each once and in the order it first names them; none projectM makes itself. */
     fun textures(code: String): List<String> =

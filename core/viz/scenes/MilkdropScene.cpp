@@ -89,6 +89,28 @@ MilkdropScene::CachesInUse::~CachesInUse() {
     projectm_opengl_set_shader_caches(nullptr, nullptr, nullptr, nullptr, nullptr);
 }
 
+void MilkdropScene::onShaderFallback(const char* presetFilename, const char* shader, const char* message, void* userData) {
+    auto* self = static_cast<MilkdropScene*>(userData);
+    if (!self) return;
+    std::string reason = message ? message : "unknown error";
+    // projectM's message goes on with the whole shader source: the first line says why.
+    reason = reason.substr(0, std::min(reason.find('\n'), kFallbackReasonLength));
+    const std::string file = presetFilename ? presetFilename : "?";
+    const std::string note = file.substr(file.find_last_of('/') + 1) + ": plays without its " + (shader ? shader : "?") + " shader (" + reason + ")";
+    GEODE_LOGW(kTag, "%s", note.c_str());
+    std::lock_guard<std::mutex> lock(self->errorLock_);
+    if (!self->lastFallback_.empty()) self->lastFallback_ += "; ";
+    self->lastFallback_ += note;
+}
+
+std::optional<std::string> MilkdropScene::takeFallback() {
+    std::lock_guard<std::mutex> lock(errorLock_);
+    if (lastFallback_.empty()) return std::nullopt;
+    std::string out;
+    out.swap(lastFallback_);
+    return out;
+}
+
 double MilkdropScene::nowSeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
@@ -208,6 +230,7 @@ void MilkdropScene::ensureEngine(double now) {
         projectm_set_preset_locked(engine_.get(), true);
         projectm_set_aspect_correction(engine_.get(), true);
         projectm_set_preset_switch_failed_event_callback(engine_.get(), onPresetSwitchFailed, this);
+        projectm_set_shader_fallback_event_callback(engine_.get(), onShaderFallback, this);
         armLastPreset();
         engineWidth_ = 0;
         engineHeight_ = 0;
@@ -301,6 +324,7 @@ void MilkdropScene::loadPendingPreset(double now) {
     {
         std::lock_guard<std::mutex> lock(errorLock_);
         lastError_.clear();
+        lastFallback_.clear();
     }
     // The preset change is where a new buffer step and a new target size land: the incoming preset
     // starts at the new size and blends from the old picture, so the resize never shows.
@@ -311,7 +335,9 @@ void MilkdropScene::loadPendingPreset(double now) {
     errorChecksLeft_ = kErrorCheckFrames;
     projectm_set_preset_locked(engine_.get(), true);
     const auto error = takeError();
-    host_.onShaderError(error.value_or(""));
+    // A preset that plays without one of its shaders still loaded: it is said, and it stays.
+    const auto fallback = takeFallback();
+    host_.onShaderError(error ? *error : fallback.value_or(""));
     if (!error) {
         presetSinceCreate_ = true;
         {
@@ -346,6 +372,9 @@ void MilkdropScene::draw(float timeSeconds) {
     loadPendingPreset(now);
     if (engineWidth_ <= 0 || engineHeight_ <= 0) return;
     projectm_set_beat_sensitivity(engine_.get(), std::clamp(0.2f + params_.beatResponse, 0.2f, 3.0f));
+    const auto& touchPoints = touch_ ? touch_->points() : std::array<float, TouchField::kMaxPoints * TouchField::kPointStride>{};
+    const milkdrop::Pointer pointer = milkdrop::pointerFromTouch(touch_ ? touch_->liveCount() : 0, touchPoints[0], touchPoints[1]);
+    projectm_set_pointer(engine_.get(), pointer.x, pointer.y, pointer.down);
 
     // projectM draws its frame onto the renderer's target itself when the two are the same size: no
     // copy of its own, and the composite grades it (#303). Otherwise, and while the first frames are

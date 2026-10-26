@@ -82,6 +82,22 @@ TEST(MilkdropResizeNow, ANewShapeResizesAtOnce) {
     EXPECT_TRUE(milkdrop::resizeNow({1050, 2000}, {1000, 2000}));
 }
 
+TEST(MilkdropPointer, NoFingerIsNoPointer) {
+    EXPECT_EQ(milkdrop::pointerFromTouch(0, 0.3f, 0.4f), (milkdrop::Pointer{-1.0f, -1.0f, false}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(-1, 0.3f, 0.4f), (milkdrop::Pointer{-1.0f, -1.0f, false}));
+}
+
+TEST(MilkdropPointer, TheFirstFingerInUvWithYDown) {
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, -1.0f, 1.0f), (milkdrop::Pointer{0.0f, 0.0f, true}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(2, 1.0f, -1.0f), (milkdrop::Pointer{1.0f, 1.0f, true}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, 0.5f, 0.5f), (milkdrop::Pointer{0.75f, 0.25f, true}));
+}
+
+TEST(MilkdropPointer, StaysInsideThePicture) {
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, -3.0f, 3.0f), (milkdrop::Pointer{0.0f, 0.0f, true}));
+    EXPECT_EQ(milkdrop::pointerFromTouch(1, 3.0f, -3.0f), (milkdrop::Pointer{1.0f, 1.0f, true}));
+}
+
 TEST(MilkdropLadders, StartAtFullDetailAndOnlyGetCoarser) {
     EXPECT_EQ(milkdrop::kMeshLadder.front(), (milkdrop::MeshSize{48, 32}));
     for (size_t i = 1; i < milkdrop::kMeshLadder.size(); ++i) {

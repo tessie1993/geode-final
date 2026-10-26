@@ -28,6 +28,15 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
   handed each result. `MilkdropScene` points them at the renderer's `ProgramBinaryCache` (binaries per
   driver, translated text for all) for the length of each draw, so a preset seen before loads without
   translating or compiling (#304).
+- `tools/projectm-v4.1.8-shader-extras.patch` lets preset shaders written for MilkDrop 3 and
+  BeatDrop-era players run (#306): `get_fft*`/`get_wave*` sample two small spectrum and waveform
+  textures (`fft`, `wave`) filled from the audio each frame, only while a loaded shader uses them;
+  `mouse*`, `aspect_sd`, `sysTime*` and `sysDate*` read the pointer (`projectm_set_pointer`) and the
+  clock (a fixed day on a host-driven clock, so Renders stay frame-exact); the translator knows
+  `tanh`, `sinh`, `cosh`, `radians`, `degrees` and `trunc`; `texture2D`-style aliases and random
+  texture slots up to `rand99` are accepted. `projectm_set_shader_fallback_event_callback` reports a
+  preset shader that fell back to the plain warp or composite. Written from the documented behaviour
+  only; no BeatDrop code.
 - `tools/projectm-eval-render-clock.patch`, applied inside `vendor/projectm-eval`, lets the seeded
   instance feed the expression `rand()` too. The build therefore always uses the vendored
   projectm-eval, never a system one.
