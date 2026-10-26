@@ -20,6 +20,9 @@ StructureTracker::StructureTracker(int bandCount, float hopRateHz)
       fastEnergyPole_(poleFor(1.0f)),
       slowEnergyPole_(poleFor(6.0f)),
       noveltySmoothPole_(poleFor(0.25f)),
+      trackPole_(poleFor(kTrackSeconds)),
+      quietTrackPole_(poleFor(kQuietTrackSeconds)),
+      memoryDecay_(std::exp(-dt_ / kBuildupMemorySeconds)),
       fast_(static_cast<size_t>(bandCount)),
       slow_(static_cast<size_t>(bandCount)),
       sinceSection_(kFar),
@@ -62,18 +65,23 @@ void StructureTracker::step(const float* bands, float rms, float onset) {
         sectionArmed_ = true;
     }
 
-    const float energy = 0.5f * rms + 0.5f * onset;
+    const float levelDb = 20.0f * std::log10(std::max(rms, kMinRms));
+    const float energy = 0.5f * levelDb / kLevelSpanDb + 0.5f * onset;
     if (!energySeeded_) {
         energySeeded_ = true;
         fastEnergy_ = energy;
         slowEnergy_ = energy;
+        trackDb_ = levelDb;
     }
+    trackDb_ += (levelDb - trackDb_) * (levelDb > trackDb_ - kLoudnessGateDb ? trackPole_ : quietTrackPole_);
     fastEnergy_ += (energy - fastEnergy_) * fastEnergyPole_;
     slowEnergy_ += (energy - slowEnergy_) * slowEnergyPole_;
     buildup_ = std::clamp((fastEnergy_ - slowEnergy_) / kBuildupScale, 0.0f, 1.0f);
-    buildupMemory_ = std::max(buildup_, buildupMemory_ * std::exp(-dt_ / kBuildupMemorySeconds));
 
-    if (rms < slowEnergy_ * kDipFraction) {
+    // The build-up is remembered through the dip before a drop.
+    const bool dipping = levelDb < trackDb_ - kDipDb;
+    buildupMemory_ = std::max(buildup_, dipping ? buildupMemory_ : buildupMemory_ * memoryDecay_);
+    if (dipping) {
         dipSeconds_ += dt_;
         if (dipSeconds_ >= kMinDipSeconds) sinceDip_ = 0.0f;
     } else {
@@ -82,23 +90,36 @@ void StructureTracker::step(const float* bands, float rms, float onset) {
 
     drop_ = false;
     if (warmupSeconds_ > kWarmupSeconds && sinceDrop_ > kDropRefractorySeconds && buildupMemory_ > kDropBuildup &&
-        sinceDip_ < kDropDipWindowSeconds && rms > kDropSlamLevel && rms > slowEnergy_ + kDropSlamMargin) {
+        sinceDip_ < kDropDipWindowSeconds && levelDb >= trackDb_ + kDropSlamDb) {
         drop_ = true;
         sinceDrop_ = 0.0f;
         buildupMemory_ = 0.0f;
     }
 
     arrival_ = false;
-    if (rms < kArrivalQuietLevel) {
+    if (levelDb < trackDb_ - kArrivalQuietDb) {
         quietSeconds_ += dt_;
         if (quietSeconds_ >= kArrivalQuietSeconds) arrivalArmed_ = true;
     } else {
-        if (arrivalArmed_ && rms > kArrivalRecoveryLevel && warmupSeconds_ > kWarmupSeconds) {
+        if (arrivalArmed_ && levelDb >= trackDb_ - kArrivalRecoveryDb && warmupSeconds_ > kWarmupSeconds) {
             arrival_ = true;
             arrivalArmed_ = false;
         }
         quietSeconds_ = 0.0f;
     }
+}
+
+void StructureTracker::stepSilent() {
+    sinceSection_ += dt_;
+    sinceDip_ += dt_;
+    sinceDrop_ += dt_;
+    sectionBoundary_ = false;
+    drop_ = false;
+    arrival_ = false;
+    dipSeconds_ += dt_;
+    if (dipSeconds_ >= kMinDipSeconds) sinceDip_ = 0.0f;
+    quietSeconds_ += dt_;
+    if (quietSeconds_ >= kArrivalQuietSeconds) arrivalArmed_ = true;
 }
 
 void StructureTracker::reset() {
@@ -112,6 +133,7 @@ void StructureTracker::reset() {
     fastEnergy_ = 0.0f;
     slowEnergy_ = 0.0f;
     energySeeded_ = false;
+    trackDb_ = 0.0f;
     buildupMemory_ = 0.0f;
     sinceDip_ = kFar;
     dipSeconds_ = 0.0f;

@@ -72,9 +72,6 @@ object VisualSafety {
         target: LfoTarget,
     ): Float = if (target.isLuminance) rateHz.coerceAtMost(WCAG_FLASHES_PER_SECOND) else rateHz
 
-    /** Floors the gap between beat-driven hits so they cannot outrun the flash limit. */
-    fun beatMinIntervalMs(requestedMs: Float): Float = maxOf(requestedMs, 1000f / WCAG_FLASHES_PER_SECOND)
-
     /** A hard cut between scenes is a full-frame luminance step, so it always becomes a fade. */
     fun transitionStyle(requested: TransitionStyle): TransitionStyle =
         if (requested == TransitionStyle.CUT) TransitionStyle.FADE else requested

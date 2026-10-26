@@ -4,7 +4,7 @@
 namespace geode::analysis {
 
 // Picks onsets from an onset-strength curve, causally: a value is an onset when it clears the adaptive
-// threshold, beats the hops just before it, and comes after the refractory time since the last onset.
+// threshold, beats the hops just before it, and comes at least the refractory time after the last onset.
 // The threshold is the window's median plus sensitivity spreads, and never under kMedianFloor times the
 // median, so stationary noise (whose peaks stay near its median) does not fire; an onset must also reach
 // kMinOnset, so a curve that is all but silent does not fire on its own crumbs.
@@ -17,8 +17,9 @@ public:
     static constexpr float kMinOnset = 0.01f;
     static constexpr float kPeakMemorySeconds = 8.0f;
 
+    // minStrength: the least strength (the onset over the recent peak) an onset may have.
     explicit OnsetPeakPicker(float hopRateHz, float windowSeconds = 1.5f, float sensitivity = 3.0f,
-                             float refractorySeconds = 0.06f, float localMaxSeconds = 0.03f);
+                             float refractorySeconds = 0.06f, float localMaxSeconds = 0.03f, float minStrength = 0.0f);
 
     float sensitivity() const { return sensitivity_; }
     void setSensitivity(float value) { sensitivity_ = value; }
@@ -27,7 +28,9 @@ public:
     float threshold() const { return threshold_; }
     float strength() const { return strength_; }
 
-    bool accept(float onset);
+    // eligible false keeps this hop from being an onset (and from starting a refractory time) while it still
+    // counts towards the threshold.
+    bool accept(float onset, bool eligible = true);
     void reset();
 
 private:
@@ -38,6 +41,7 @@ private:
     float hopRateHz_;
     float sensitivity_;
     float refractorySeconds_;
+    float minStrength_;
     int windowSize_;
     std::vector<float> window_;
     std::vector<float> scratch_;

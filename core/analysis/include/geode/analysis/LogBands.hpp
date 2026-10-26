@@ -31,8 +31,6 @@ public:
     void energyDb(const float* magnitudes, float* out) const;
     void energy(const float* magnitudes, float* out) const;
 
-    static int bandForHz(float hz, int bandCount, int sampleRateHz, float minHz = kDefaultMinHz, float maxHz = kDefaultMaxHz);
-
 private:
     void rebuild();
     float binHz() const { return static_cast<float>(sampleRateHz_) / fftSize_; }

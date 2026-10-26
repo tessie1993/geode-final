@@ -26,7 +26,7 @@ ReactiveAnalyzer::ReactiveAnalyzer(int bandCount, int fftSize, int sampleRateHz,
       picker_(hopRateHz),
       tempo_(hopRateHz),
       stability_(hopRateHz),
-      drums_(std::make_unique<DrumChannels>(bandCount, hopRateHz, sampleRateHz)),
+      drums_(std::make_unique<DrumChannels>(bandCount, hopRateHz, sampleRateHz, fftSize)),
       structure_(bandCount, hopRateHz),
       harmonic_(fftSize / 2 + 1, hopRateHz),
       bands_(static_cast<size_t>(bandCount)),
@@ -59,6 +59,7 @@ void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
             stability_.step(0.0f);
             tempoStability_ = stability_.value();
         }
+        structure_.stepSilent();
         silenceOutputs();
         return;
     }
@@ -108,7 +109,7 @@ void ReactiveAnalyzer::analyze(const float* samples, float dtSeconds) {
     beatPhase_ = grid_.phase();
     beatStrength_ = beat_ ? picker_.strength() : 0.0f;
 
-    drums_->step(whitened_.data());
+    drums_->step(drumLevels_.data());
     kick_ = drums_->kick();
     snare_ = drums_->snare();
     hat_ = drums_->hat();

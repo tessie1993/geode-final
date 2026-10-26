@@ -93,13 +93,4 @@ void LogBands::rebuild() {
     }
 }
 
-int LogBands::bandForHz(float hz, int bandCount, int sampleRateHz, float minHz, float maxHz) {
-    const float top = std::min(maxHz, sampleRateHz / 2.0f);
-    const float bottom = std::min(minHz, top * 0.5f);
-    if (hz <= bottom) return 0;
-    if (hz >= top) return bandCount - 1;
-    const float fraction = std::log(hz / bottom) / std::log(top / bottom);
-    return std::clamp(static_cast<int>(fraction * bandCount), 0, bandCount - 1);
-}
-
 }  // namespace geode::analysis

@@ -248,6 +248,21 @@ TEST(FlashLimiter, WholeFrameStrobeIsHeldToThreeFlashesPerSecond) {
     EXPECT_NEAR(means(run.shown[kFirstDampedStrobeFrame].luminance)[0], 0.098f, kTolerance);
 }
 
+TEST(FlashLimiter, AFlashOnEveryBeatOfA220BpmTrackIsHeldToThreeASecond) {
+    // The analysis reports every beat at any tempo (#279); the limit is applied here, to what is drawn. A Style
+    // that flashed the whole frame for four frames on every beat at 220 BPM would make 7.3 transitions a second.
+    FlashLimiter limiter;
+    constexpr double kFramesPerBeat = 60.0 * kFramesPerSecond / 220.0;
+    const LimiterRun run = drive(limiter, 4 * kFramesPerSecond, [&](int i) {
+        const double sinceBeat = std::fmod(static_cast<double>(i), kFramesPerBeat);
+        return LumaGrid::uniform(sinceBeat < 4.0 ? 1.0f : 0.0f);
+    });
+    EXPECT_TRUE(anyDamped(run));
+    for (int area = 0; area < noflash::kAreaCount; ++area) {
+        EXPECT_LE(countGeneral(run, area).mostInAnyWindow(noflash::kWindowSeconds), noflash::kMaxTransitionsPerWindow) << "area " << area;
+    }
+}
+
 TEST(FlashLimiter, StrobeInOneRegionIsCaughtEvenWhenTheWholeFrameBarelyMoves) {
     FlashLimiter limiter;
     // Only cell 0 strobes, full swing, over grey: the whole frame moves by 1/16, under 0.1.
