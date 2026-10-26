@@ -649,7 +649,8 @@ jobs:
           retention-days: 14
 
   # The one check to require on main: green when every job this change needed is green. A skipped job
-  # was not needed; a failed, cancelled or missing one fails this, and so does a failed selection.
+  # was not needed; a failed or missing one fails this, and so does a failed selection. A run cancelled
+  # by a newer push skips it instead of reporting a failure that was never the code's.
   ci:
     name: CI
     needs:
@@ -669,7 +670,7 @@ jobs:
       - notices
       - dependency-review
       - instrumented-tests
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
