@@ -34,7 +34,11 @@ class CustomizeExtrasTest {
             val declared = pack.extras.map { it.name }.toSet()
             val sliders = model.extras.map { (it.target as Target.Extra).kind.name.lowercase() }.toSet()
             assertEquals(pack.id.value, declared, sliders)
-            val linkable = model.targets.filterIsInstance<Target.Extra>().map { it.kind.name.lowercase() }.toSet()
+            val linkable =
+                model.targets
+                    .filterIsInstance<Target.Extra>()
+                    .map { it.kind.name.lowercase() }
+                    .toSet()
             assertEquals(pack.id.value, declared, linkable)
         }
     }
