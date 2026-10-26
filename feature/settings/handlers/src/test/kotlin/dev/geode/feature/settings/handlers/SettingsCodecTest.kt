@@ -10,6 +10,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCodec
@@ -216,6 +217,17 @@ class SettingsCodecTest {
     @Test
     fun `settings are written in today's keys and formats`() {
         assertEquals(today + newKeysAtDefaults, SettingsCodec.encode(todayValues))
+    }
+
+    @Test
+    fun `whether an Edit copies its sources is kept by name in its own key, Reference when nothing is stored`() {
+        assertEquals("REFERENCE", newKeysAtDefaults["export_edit_sources"])
+        for (sources in EditSources.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(export = ExportSettings(editSources = sources)))
+            assertEquals(sources.name, stored["export_edit_sources"])
+            assertEquals(sources, SettingsCodec.decode(stored).export.editSources)
+        }
+        assertEquals(EditSources.REFERENCE, SettingsCodec.decode(mapOf("export_edit_sources" to "MOVE")).export.editSources)
     }
 
     @Test

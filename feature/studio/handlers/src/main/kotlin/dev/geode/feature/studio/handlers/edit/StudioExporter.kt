@@ -16,7 +16,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import dev.geode.feature.studio.api.RenderCodec
-import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipEdit
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

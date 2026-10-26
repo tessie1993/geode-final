@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioFact
@@ -81,7 +82,8 @@ fun StudioSetupRoute(
  * folder picker. Which Project or video is open, the type filter and the Render setup being filled in
  * are App UI state kept here. [onSaveFolderPicked] hands a picked save folder to Settings, as in
  * [StudioSetupRoute]. [renderChoices] are the Tracks, playlists and presets a Render can be made of,
- * which `:app` reads from their own features (#316).
+ * which `:app` reads from their own features (#316). While an Edit is open (#318) its editor takes the
+ * place, with the [editorTools] `:app` fills.
  */
 @Composable
 fun StudioRoute(
@@ -89,6 +91,7 @@ fun StudioRoute(
     onSaveFolderPicked: (String) -> Unit,
     modifier: Modifier = Modifier,
     renderChoices: RenderChoices = RenderChoices(),
+    editorTools: EditorTools = NoEditorTools,
 ) {
     val state by studio.state.collectAsStateWithLifecycle()
     var draft by remember { mutableStateOf<RenderDraft?>(null) }
@@ -96,6 +99,7 @@ fun StudioRoute(
     var video by rememberSaveable { mutableStateOf<Long?>(null) }
     var filter by rememberSaveable { mutableStateOf<VideoKind?>(null) }
     val pickFolder = rememberSaveFolderPicker(onSaveFolderPicked)
+    val pickVideo = rememberVideoPicker { studio.send(it) }
 
     LaunchedEffect(studio) {
         studio.events.collect { fact ->
@@ -117,6 +121,7 @@ fun StudioRoute(
             is StudioAction.OpenVideo -> video = action.video.value
             is StudioAction.Filter -> filter = action.kind
             StudioAction.PickSaveFolder -> pickFolder()
+            StudioAction.PickVideoToEdit -> pickVideo()
             StudioAction.OpenRender -> draft = RenderDraft.startingFrom(state)
             is StudioAction.RenderAgain ->
                 draft = state.videos.firstOrNull { it.id == action.video }?.let { RenderDraft.again(it, state) }
@@ -126,8 +131,11 @@ fun StudioRoute(
     val thumbnail: Thumbnail = { shown, mod -> LoadedThumbnail(shown, mod) }
     val openVideo = video?.let { state.toVideoModel(VideoId(it)) }
     val openProject = project?.let { state.toProjectModel(ProjectId(it), filter) }
+    val editing = state.toEditModel()
     BackHandler(enabled = openVideo != null || openProject != null) { onAction(StudioAction.Back) }
+    BackHandler(enabled = editing != null) { studio.send(EditCommand.Close) }
     when {
+        editing != null -> EditPlace(editing, studio, editorTools, modifier)
         openVideo != null -> VideoScreen(openVideo, onAction, modifier, thumbnail)
         openProject != null -> ProjectScreen(openProject, onAction, modifier, thumbnail)
         else -> ProjectListScreen(state.toProjectList(), onAction, modifier, state.toRenderQueue())

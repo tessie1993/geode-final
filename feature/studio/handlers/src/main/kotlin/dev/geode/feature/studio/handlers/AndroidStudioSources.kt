@@ -5,11 +5,19 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.annotation.OptIn
 import androidx.documentfile.provider.DocumentFile
+import androidx.media3.common.util.UnstableApi
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.Settings
+import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.handlers.edit.AndroidEditVideos
+import dev.geode.feature.studio.handlers.edit.EditDrafts
+import dev.geode.feature.studio.handlers.edit.EditTools
+import dev.geode.feature.studio.handlers.edit.MediaEditEngine
+import dev.geode.feature.studio.handlers.edit.TransitionShaders
 import kotlinx.coroutines.flow.Flow
 
 /** Where the old Studio saved its exports, as a MediaStore relative path. */
@@ -83,7 +91,10 @@ class AndroidVideoFiles(
  * Studio's sources on the phone, for `:app` to wire (#17): the save folder and the Renders' settings
  * come from [settings]; `:app` fills the [looks] and the [engine] Renders are made with (#338, #316),
  * the [recorder] of the live Visual (#317), and says whether the app is [inFront] of the person (#28).
+ * The editors (#318) export through the Edit pipeline here, with the GL Transitions `:app` reads from
+ * the engine ([transitions]), and keep the Timeline's cut in the [drafts] `:app` keeps.
  */
+@OptIn(UnstableApi::class)
 fun androidStudioSources(
     context: Context,
     settings: Settings,
@@ -91,6 +102,8 @@ fun androidStudioSources(
     engine: RenderEngine,
     inFront: Flow<Boolean>,
     recorder: LiveRecorder = LiveRecorder.None,
+    transitions: TransitionShaders = TransitionShaders { null },
+    drafts: EditDrafts = EditDrafts.None,
 ): StudioSources =
     StudioSources(
         storage = RoomStudioStorage(StudioDatabase.open(context).dao()),
@@ -99,4 +112,8 @@ fun androidStudioSources(
         now = { Millis(System.currentTimeMillis()) },
         renders = RenderSources(renderSettingsOf(settings), looks, engine, inFront),
         recorder = recorder,
+        edits = EditTools(drafts, AndroidEditVideos(context), MediaEditEngine(context, transitions) { loopSafe(settings) }),
     )
+
+/** Settings' loop-safe length for exports, off until Settings are read. */
+private fun loopSafe(settings: Settings): Boolean = (settings.state.value as? SettingsState.Ready)?.values?.export?.loopSafe ?: false

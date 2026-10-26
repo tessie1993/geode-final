@@ -12,6 +12,7 @@ import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.core.EditWork
 import dev.geode.feature.studio.core.RecordingWork
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderEta
@@ -19,6 +20,7 @@ import dev.geode.feature.studio.core.StudioEvent
 import dev.geode.feature.studio.core.StudioFailure
 import dev.geode.feature.studio.core.StudioReducer
 import dev.geode.feature.studio.core.StudioWork
+import dev.geode.feature.studio.handlers.edit.EditTools
 import dev.geode.kernel.EffectRunner
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.kernel.FeatureStore
@@ -42,7 +44,8 @@ fun interface VideoFiles {
 /**
  * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
  * > Default paths, the [files] of deleted videos, the wall clock that stamps a new Project and times a
- * Render, what the [renders] need (#338), and the [recorder] of the live Visual (#317).
+ * Render, what the [renders] need (#338), the [recorder] of the live Visual (#317), and what the
+ * editors need ([edits], #318).
  */
 class StudioSources(
     val storage: StudioStorage,
@@ -51,6 +54,7 @@ class StudioSources(
     val now: () -> Millis,
     val renders: RenderSources,
     val recorder: LiveRecorder = LiveRecorder.None,
+    val edits: EditTools = EditTools(),
 )
 
 /**
@@ -83,6 +87,8 @@ class StudioHandlers(
     private val stopping: MutableSet<RenderId> = ConcurrentHashMap.newKeySet()
 
     private val recordings = RecordingHandlers(sources.recorder)
+
+    private val edits = EditHandlers(sources)
 
     override suspend fun run(
         work: StudioWork,
@@ -117,6 +123,7 @@ class StudioHandlers(
             is StudioWork.StopRender -> stopping += work.render
             is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
             is RecordingWork -> recordings.run(work, results)
+            is EditWork -> edits.run(work, results)
         }
     }
 
@@ -154,15 +161,7 @@ class StudioHandlers(
         results: Results<StudioEvent>,
     ) {
         val progress = RenderProgressReporter(job.id, results, sources.now)
-        val end =
-            attempt {
-                val look = storage.lookOf(job.id)
-                if (look == null) {
-                    RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
-                } else {
-                    sources.renders.engine.render(job, look, progress::report) { job.id in stopping }
-                }
-            } ?: RenderEnd.Failed(RenderProblem.ENGINE_FAILED)
+        val end = attempt { made(job, progress) } ?: RenderEnd.Failed(RenderProblem.ENGINE_FAILED)
         stopping -= job.id
         val kept =
             attempt {
@@ -170,6 +169,18 @@ class StudioHandlers(
             }
         if (kept == null) results.report(StudioEvent.Failed(StudioFailure.SAVE))
         results.report(StudioEvent.RenderEnded(job.id, end))
+    }
+
+    /** [job]'s video: an Edit exported by the Edit pipeline (#318), or a Render drawn with its frozen look. */
+    private suspend fun made(
+        job: RenderJob,
+        progress: RenderProgressReporter,
+    ): RenderEnd {
+        val stop = { job.id in stopping }
+        val edit = job.edit
+        if (edit != null) return sources.edits.engine.export(edit, job.format, progress::report, stop)
+        val look = storage.lookOf(job.id) ?: return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
+        return sources.renders.engine.render(job, look, progress::report, stop)
     }
 
     private suspend fun delete(

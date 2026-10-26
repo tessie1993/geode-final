@@ -7,7 +7,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.analysis.FeatureTimeline
-import dev.geode.data.EditorProjectStore
 import dev.geode.data.ExportDefaults
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.export.DriftStop
@@ -16,28 +15,18 @@ import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
-import dev.geode.feature.studio.api.NewVideo
-import dev.geode.feature.studio.api.Studio
-import dev.geode.feature.studio.api.StudioCommand
-import dev.geode.feature.studio.handlers.edit.TransitionShaders
 import dev.geode.geodeContainer
 import dev.geode.playback.toUri
-import dev.geode.studio.AppTransitionShaders
-import dev.geode.ui.EditorController
 import dev.geode.ui.ExportController
 import dev.geode.ui.GuiPrefs
 import dev.geode.ui.SettingsForOldScreens
 import dev.geode.ui.TrackAnalysisController
 import dev.geode.visuals.EngineSnapshots
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 /**
- * The export pipeline the Export sheet and the editor still drive (#17): the whole-song analysis
- * (ADR-0001), the open editor project and the export, studio and loop renders. Not the Studio feature
+ * The old export pipeline (#17): the whole-song analysis (ADR-0001), which the editors' auto-cut also
+ * reads (#318), and the export and loop renders. Not the Studio feature
  * (ADR-0005), whose store lives in [StudioModule]. Each lives as long as the process.
  */
 @Module
@@ -60,17 +49,6 @@ object ExportModule {
             },
         )
 
-    /** The open editor project. Edits run on the main thread; the store is written one write at a time. */
-    @OptIn(ExperimentalCoroutinesApi::class)
-    @Provides
-    @Singleton
-    fun provideEditorController(application: Application): EditorController =
-        EditorController(
-            store = EditorProjectStore(application),
-            scope = application.geodeContainer.appScope,
-            storeScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1)),
-        ).also { it.open() }
-
     /**
      * Exports the song Playback has loaded, with Settings' export defaults and the current
      * Customization, frozen as the export starts (#337).
@@ -84,7 +62,6 @@ object ExportModule {
         values: Settings,
         customization: CustomizationFeature,
         playback: Playback,
-        studio: Studio,
     ): ExportController =
         ExportController(
             application,
@@ -110,11 +87,6 @@ object ExportModule {
                 override val guiPrefs: GuiPrefs get() = settings.guiPrefs.value
 
                 override val exportDefaults: ExportDefaults get() = settings.exportDefaults()
-
-                override val transitions: TransitionShaders = AppTransitionShaders(application)
-
-                // Each saved cut becomes an Edit in Studio's default Project (#318).
-                override fun cutSaved(video: NewVideo) = studio.send(StudioCommand.AddVideos(listOf(video)))
 
                 override fun look(drift: DriftStop): CustomizationSnapshot =
                     EngineSnapshots.forRender(

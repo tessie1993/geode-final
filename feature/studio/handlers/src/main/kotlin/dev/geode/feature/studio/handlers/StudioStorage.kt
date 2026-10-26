@@ -92,12 +92,16 @@ class RoomStudioStorage(
 ) : StudioStorage {
     override suspend fun projects(): List<Project> = dao.projects().map { Project(ProjectId(it.id), it.name, Millis(it.createdAtMs)) }
 
-    /** Every video, each Render with the setup it was made from (#327); a setup that cannot be read is left off. */
+    /**
+     * Every video, each Render with the setup it was made from (#327); a setup that cannot be read is left
+     * off, and so is an Edit's (#318), which is cut from videos and cannot be made again.
+     */
     override suspend fun videos(): List<Video> {
         val madeWith = HashMap<String, RenderSpec>()
         for (row in dao.finishedRenders()) {
             val file = row.videoFile ?: continue
-            runCatching { RenderSpecFormat.decode(row.spec).toSpec() }.getOrNull()?.let { madeWith[file] = it }
+            val made = runCatching { RenderSpecFormat.decode(row.spec) }.getOrNull()
+            if (made != null && made.edit == null) madeWith[file] = made.toSpec()
         }
         return dao.videos().map { it.toVideo(madeWith[it.file]) }
     }
