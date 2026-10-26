@@ -46,8 +46,8 @@ private enum class FolderPick {
 
 /**
  * Settings' place (ADR-0003): the only part that touches the Settings store and the system folder
- * picker. Which section is open is App UI state kept here. [fontColors] and [appVersion] come from the
- * app; [onStartTutorial] replays the intro tour and [onSetLiveWallpaper] opens the system's wallpaper
+ * picker. Which section is open is App UI state kept here. [fontColors], [appVersion] and the looks Geode
+ * can start on ([startLooks], #383) come from the app; [onStartTutorial] replays the intro tour and [onSetLiveWallpaper] opens the system's wallpaper
  * picker. [helpExtra] is drawn at the end of the Help section, for what other features add there (Diagnostics).
  */
 @Composable
@@ -58,6 +58,7 @@ fun SettingsRoute(
     onStartTutorial: () -> Unit,
     onSetLiveWallpaper: () -> Unit,
     modifier: Modifier = Modifier,
+    startLooks: List<StartLookChoice> = emptyList(),
     helpExtra: @Composable () -> Unit = {},
 ) {
     val state by settings.state.collectAsStateWithLifecycle()
@@ -79,7 +80,7 @@ fun SettingsRoute(
         pick()
     }
     SettingsScreen(
-        SettingsScreenModel.of(state, section, fontColors, appVersion),
+        SettingsScreenModel.of(state, section, fontColors, appVersion, startLooks),
         onAction = { action ->
             when (action) {
                 is SettingsAction.Change -> settings.send(action.command)

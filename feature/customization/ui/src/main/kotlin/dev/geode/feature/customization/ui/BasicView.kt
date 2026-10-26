@@ -23,8 +23,8 @@ import dev.geode.feature.customization.api.SharedProperty
 private const val KNOBS_PER_ROW = 3
 
 /**
- * The basic view (#12): the 6 Macro knobs, the effect toggles, the palette chips, this Style's
- * presets and the look picker strip.
+ * The basic view (#12): the 6 Macro knobs, the effect toggles, the way into Layer 2, the palette chips,
+ * this Style's presets and the look picker strip.
  */
 @Composable
 internal fun BasicView(panel: PanelState) {
@@ -40,6 +40,7 @@ internal fun BasicView(panel: PanelState) {
                     knob = knob,
                     driver = driverTag(knob, model),
                     onSet = { panel.send(CustomizationCommand.SetMacro(knob.index, it)) },
+                    onPreview = { panel.send(CustomizationCommand.Preview(CustomizationCommand.SetMacro(knob.index, it))) },
                     onEdit = { panel.open(CustomizePage.Advanced(AdvancedSection.MACROS, knob.index)) },
                     modifier = Modifier.weight(1f),
                 )
@@ -50,9 +51,11 @@ internal fun BasicView(panel: PanelState) {
     SectionTitle(stringResource(R.string.customize_effects))
     ChipFlow {
         model.effects.forEach { effect ->
-            ChoiceChip(propertyName(effect.property), effect.on) { panel.send(effect.toggled()) }
+            ChoiceChip(propertyName(effect.property), effect.on, enabled = !effect.ignored) { panel.send(effect.toggled()) }
         }
     }
+
+    LayersEntry(panel)
 
     SectionTitle(stringResource(R.string.customize_palettes))
     ChipStrip {

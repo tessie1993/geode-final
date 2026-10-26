@@ -1,6 +1,6 @@
 // Two Renders of the same input give byte-identical frames (ADR-0005, "Renders are frame-exact").
 //
-// Builds Geode's copy of projectM (the v4.1.7 submodule plus tools/projectm-*.patch) on the host and
+// Builds Geode's copy of projectM (the v4.1.8 submodule plus tools/projectm-*.patch) on the host and
 // renders the same song twice, the way MilkdropScene does during a Render: a fresh engine seeded
 // with projectm_set_random_seed() and driven by projectm_set_frame_time() from the render clock.
 // The two runs are interleaved frame by frame with a third, live-style engine (wall clock, no

@@ -6,6 +6,7 @@
 set(GEODE_UTIL_PURE_SOURCES
     util/Json.cpp
     util/Sha256.cpp
+    util/ShaderAssembly.cpp
 )
 # The bridge between Kotlin and the engine: the generated snapshot codec, the lock-free hand-off and the
 # guard that keeps C++ exceptions from crossing JNI (core/bridge/schema/native_bridge.json).
@@ -53,7 +54,9 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Lfo.cpp
     viz/Adsr.cpp
     viz/VisualSafety.cpp
+    viz/Layers.cpp
     viz/FlashLimiter.cpp
+    viz/ToneMap.cpp
     viz/Reactions.cpp
     viz/Modulators.cpp
     viz/SharedCore.cpp
@@ -61,13 +64,18 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/PlanCodec.cpp
     viz/Normaliser.cpp
     viz/SharedEffects.cpp
+    viz/FrameRate.cpp
+    viz/QualityTiers.cpp
     viz/BeatEnvelope.cpp
     viz/DisplayEvents.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
     viz/StylePacks.cpp
+    viz/StyleLab.cpp
     viz/StyleProfiles.cpp
     viz/ThermalGovernor.cpp
+    viz/TouchField.cpp
+    viz/GravityField.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/SimGrid.cpp
     viz/fluid/RippleMath.cpp

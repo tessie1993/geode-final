@@ -1,5 +1,5 @@
 diff --git a/projectm-eval/TreeFunctions.c b/projectm-eval/TreeFunctions.c
-index cf1a2c0..5d2a72f 100644
+index ddd1d82..da133e9 100644
 --- a/projectm-eval/TreeFunctions.c
 +++ b/projectm-eval/TreeFunctions.c
 @@ -8,6 +8,7 @@
@@ -10,7 +10,7 @@ index cf1a2c0..5d2a72f 100644
  #include <stdint.h>
  
  #if PRJM_F_SIZE == 4
-@@ -162,6 +163,14 @@ void prjm_eval_intrinsic_functions(prjm_eval_intrinsic_function_list_ptr list, u
+@@ -152,6 +153,14 @@ void prjm_eval_intrinsic_functions(prjm_eval_intrinsic_function_list_ptr list, u
      *list = intrinsic_function_table;
  }
  
@@ -25,7 +25,7 @@ index cf1a2c0..5d2a72f 100644
  /* This is Milkdrop's original rand() implementation. */
  static uint32_t prjm_eval_genrand_int32(void)
  {
-@@ -1177,7 +1186,13 @@ prjm_eval_function_decl(rand)
+@@ -1167,7 +1176,13 @@ prjm_eval_function_decl(rand)
          rand_max = 1.;
      }
  

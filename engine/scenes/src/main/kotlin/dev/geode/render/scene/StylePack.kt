@@ -22,6 +22,8 @@ data class StylePack(
     val extras: List<StyleExtra>,
     val macros: List<StyleMacro>,
     val reactions: List<StyleReaction>,
+    /** The Shared core properties its family's renderer never reads, by name ([FamilySchema.ignores]). */
+    val ignores: Set<String> = emptySet(),
 )
 
 /** What the user's Detail control drives on a Style beyond the shared quality ladder. */
@@ -98,6 +100,11 @@ data class ParameterSpec(
 data class FamilySchema(
     val kind: SceneKind,
     val parameters: List<ParameterSpec>,
+    /**
+     * The Shared core properties the family's renderer never reads, named as presets name them
+     * (`SPEED`, `AUDIO_DRIVE`): Customize greys them out on its Styles (#365). Empty: it reads them all.
+     */
+    val ignores: Set<String> = emptySet(),
 )
 
 /** Why a pack could not be read. The registry leaves that Style out and keeps every other one. */

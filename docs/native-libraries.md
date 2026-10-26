@@ -17,7 +17,7 @@ Each library exports only `core/<lib>/include` (`target_include_directories(... 
 | Target | Directory | What it holds | Depends on (public / private) |
 |---|---|---|---|
 | `geode_api_types` (interface) | `core/api/include` | `geode/api/geode_api.h`: the C ABI's types and functions | — |
-| `geode_util` | `core/util` | JSON, SHA-256, logging | — |
+| `geode_util` | `core/util` | JSON, SHA-256, logging, shader assembly (includes and `#line` directives) | — |
 | `geode_bridge` | `core/bridge` | What crosses between Kotlin and the engine: the Customization snapshot and its codec (generated from `core/bridge/schema/native_bridge.json`), the lock-free triple-buffer hand-off to the drawing and audio threads, and the guard that turns any C++ exception into a `GeodeStatus` | `api_types` / — |
 | `geode_render` | `core/render` | GL plumbing: capability probing, GL profile, programs and the program binary cache, textures, framebuffers, the fullscreen quad, compute, shader sources | — / `util` |
 | `geode_analysis` | `core/analysis` | FFT, bands, onsets, tempo, beats, key, structure, the feature frame | `api_types` / — |

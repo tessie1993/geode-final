@@ -20,6 +20,7 @@ constexpr size_t kReactionsAt = kTrimsAt + 2 * kSoundSignalCount;
 constexpr size_t kModulatorsAt = kReactionsAt + kMaxReactions * kReactionFloats;
 constexpr size_t kLinksAt = kModulatorsAt + kMaxModulators * kModulatorFloats;
 constexpr size_t kAutomationsAt = kLinksAt + kMaxMacroLinks * kMacroLinkFloats;
+constexpr size_t kLayerAt = kAutomationsAt + kMaxAutomations * kAutomationFloats;
 constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
 
 std::vector<float> carried() {
@@ -68,6 +69,36 @@ TEST(PlanCodec, ReadsTheCountsAndValues) {
     EXPECT_EQ(plan.macros[1], 0.25f);
     EXPECT_EQ(plan.trims[static_cast<size_t>(SoundSignal::Bass)].gain, 2.0f);
     EXPECT_EQ(plan.trims[static_cast<size_t>(SoundSignal::Bass)].floor, 0.3f);
+}
+
+TEST(PlanCodec, ReadsLayerTwoAtTheEnd) {
+    EXPECT_EQ(kLayerAt + kLayerFloats, kPlanFloats);
+    std::vector<float> data = carried();
+    data[kLayerAt] = 3997830.0f;
+    data[kLayerAt + 1] = 5.0f;
+    data[kLayerAt + 2] = 2.0f;
+    const CustomizationPlan plan = decoded(data);
+    EXPECT_EQ(plan.layer.style, 3997830u);
+    EXPECT_EQ(plan.layer.blend, layer::Blend::Overlay);
+    EXPECT_EQ(plan.layer.influence, layer::Influence::Swirl);
+}
+
+TEST(PlanCodec, AnythingButAWhole24BitNameIsNoLayerTwo) {
+    for (const float style : {0.0f, 0.5f, -3.0f, 12.5f, 16777216.0f, kNaN, std::numeric_limits<float>::infinity()}) {
+        std::vector<float> data = carried();
+        data[kLayerAt] = style;
+        data[kLayerAt + 1] = 42.0f;
+        data[kLayerAt + 2] = -1.0f;
+        const CustomizationPlan plan = decoded(data);
+        EXPECT_EQ(plan.layer.style, layer::kNoStyle) << style;
+        EXPECT_EQ(plan.layer.blend, layer::Blend::Normal);
+        EXPECT_EQ(plan.layer.influence, layer::Influence::None);
+    }
+    std::vector<float> data = carried();
+    data[kLayerAt] = 1.0f;
+    EXPECT_EQ(decoded(data).layer.style, 1u);
+    data[kLayerAt] = 16777215.0f;
+    EXPECT_EQ(decoded(data).layer.style, 16777215u);
 }
 
 TEST(PlanCodec, ReadsAReactionInItsPlace) {

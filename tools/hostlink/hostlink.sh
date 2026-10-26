@@ -41,8 +41,8 @@ if [[ ! -d "$WORK/pm" ]]; then
   git -C "$WORK/pm" sparse-checkout set src/api/include >/dev/null
   git -C "$WORK/pm" fetch -q --depth 1 origin "$PM_COMMIT"
   git -C "$WORK/pm" checkout -q FETCH_HEAD
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.7-render-fbo-backport.patch"
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.7-render-clock.patch"
+  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-fbo-backport.patch"
+  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-clock.patch"
 fi
 cp "$WORK/pm/src/api/include/projectM-4/"*.h "$WORK/inc/projectM-4/"
 printf '#pragma once\n#define PROJECTM_EXPORT\n' > "$WORK/inc/projectM-4/projectM_export.h"
@@ -50,8 +50,8 @@ cat > "$WORK/inc/projectM-4/version.h" << 'HDR'
 #pragma once
 #define PROJECTM_VERSION_MAJOR 4
 #define PROJECTM_VERSION_MINOR 1
-#define PROJECTM_VERSION_PATCH 7
-#define PROJECTM_VERSION_STRING "4.1.7"
+#define PROJECTM_VERSION_PATCH 8
+#define PROJECTM_VERSION_STRING "4.1.8"
 #define PROJECTM_VERSION_VCS "hostlink"
 HDR
 

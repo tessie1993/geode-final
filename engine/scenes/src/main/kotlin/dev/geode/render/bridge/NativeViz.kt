@@ -12,7 +12,6 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
-import dev.geode.render.BlendMode
 import dev.geode.render.FrameStats
 import dev.geode.render.LfoConfig
 import dev.geode.render.LfoEngine
@@ -85,6 +84,9 @@ class NativeViz(
             if (h == 0L) otherwise else block(h)
         }
 
+    /** Runs [block] with the live native handle under the read lock, or not at all without one (the debug Style lab). */
+    internal fun withHandle(block: (Long) -> Unit) = live(block)
+
     fun knows(sceneId: SceneId): Boolean = liveOr(false) { h -> GeodeNative.vizKnows(h, sceneId.value) }
 
     fun sceneIds(): List<SceneId> {
@@ -113,14 +115,6 @@ class NativeViz(
         live { h -> GeodeNative.vizSetReducedMotion(h, on) }
     }
 
-    fun setLayer(
-        sceneId: SceneId?,
-        mix: Float,
-        blend: BlendMode,
-    ) {
-        live { h -> GeodeNative.vizSetLayer(h, sceneId?.value ?: "", mix, blend.ordinal) }
-    }
-
     fun setTransition(
         id: String,
         duration: Millis,
@@ -137,6 +131,21 @@ class NativeViz(
         n: Int,
     ) {
         live { h -> GeodeNative.vizSetTouch(h, xy, n) }
+    }
+
+    fun setTouchSmear(
+        on: Boolean,
+        strength: Float,
+    ) {
+        live { h -> GeodeNative.vizSetTouchSmear(h, on, strength) }
+    }
+
+    fun submitGravity(
+        x: Float,
+        y: Float,
+        z: Float,
+    ) {
+        live { h -> GeodeNative.vizSetGravity(h, x, y, z) }
     }
 
     fun queueTouchStroke(
@@ -169,6 +178,11 @@ class NativeViz(
         live { h -> NativeFailures.check(GeodeNative.vizAttachFeed(h, feed?.handle ?: 0L), "vizAttachFeed") }
     }
 
+    /** Freeze reactions (#366) on the features and audio window read from an attached feed. */
+    fun setReactionsHeld(held: Boolean) {
+        live { h -> GeodeNative.vizSetReactionsHeld(h, held) }
+    }
+
     fun setLfoConfigs(configs: List<LfoConfig>) {
         live { h ->
             configs.take(LfoEngine.SLOTS).forEachIndexed { slot, c -> GeodeNative.vizSetLfo(h, slot, ModConfigCodec.packLfo(c)) }
@@ -199,6 +213,9 @@ class NativeViz(
     fun setPacedFps(fps: Float) {
         live { h -> GeodeNative.vizSetPacedFps(h, fps) }
     }
+
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap. */
+    fun frameCapFps(): Float = liveOr(0f) { h -> GeodeNative.vizFrameCapFps(h) }
 
     /** The Visual quality on screen as a render scale ceiling; the thermal ceiling can only lower it. */
     fun setQualityCeiling(ceiling: Float) {

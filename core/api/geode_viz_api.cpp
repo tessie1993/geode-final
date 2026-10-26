@@ -38,6 +38,11 @@ struct geode_viz {
     std::shared_ptr<geode::api::Feed> feed;
     std::array<float, GEODE_FEED_WINDOW_FRAMES * 2> feedPcm{};
     geode::viz::DisplayEvents feedEvents;
+    // Freeze reactions (#366): set from any thread, applied to the feed's frames on the drawing thread,
+    // where the held window is kept so MilkDrop is fed the same audio for the whole hold.
+    std::atomic<bool> reactionsHeld{false};
+    geode::viz::SignalHold feedHold;
+    std::array<float, GEODE_FEED_WINDOW_FRAMES * 2> heldPcm{};
 };
 
 namespace {
@@ -114,10 +119,6 @@ void geode_viz_set_reduced_motion(geode_viz* v, int on) {
     if (v) v->renderer.setReducedMotion(on != 0);
 }
 
-void geode_viz_set_layer(geode_viz* v, const char* scene_id, float mix, int blend_mode) {
-    if (v) v->renderer.setLayer(text(scene_id), mix, blend_mode);
-}
-
 void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms) {
     if (v) v->renderer.setTransition(text(id), duration_ms);
 }
@@ -135,6 +136,14 @@ void geode_viz_queue_touch_stroke(geode_viz* v, float nx, float ny, float ndx, f
     if (v) v->renderer.queueTouchStroke(nx, ny, ndx, ndy, dt, strength);
 }
 
+void geode_viz_set_touch_smear(geode_viz* v, int on, float strength) {
+    if (v) v->renderer.setTouchSmear(on != 0, strength);
+}
+
+void geode_viz_set_gravity(geode_viz* v, float x, float y, float z) {
+    if (v) v->renderer.submitGravity(x, y, z);
+}
+
 void geode_viz_load_milk_preset(geode_viz* v, const char* path) {
     if (v && path) v->renderer.loadMilkPreset(path);
 }
@@ -146,6 +155,12 @@ void geode_viz_reload_milk_preset(geode_viz* v) {
 void geode_viz_set_milk_texture_dir(geode_viz* v, const char* dir) {
     if (v && dir) v->renderer.setMilkTextureDir(dir);
 }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+void geode_viz_set_style_lab(geode_viz* v, const char* dir) {
+    if (v && dir) v->renderer.setStyleLab(dir);
+}
+#endif
 
 size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacity) {
     if (!v) return 0;
@@ -204,6 +219,8 @@ void geode_viz_set_thermal(geode_viz* v, int platform_status, float headroom) {
 void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
+
+float geode_viz_frame_cap_fps(geode_viz* v) { return v ? v->renderer.thermal().frameCapFps() : 0.0f; }
 
 void geode_viz_set_quality_ceiling(geode_viz* v, float ceiling) {
     if (v) v->renderer.thermal().setQualityCeiling(ceiling);
@@ -325,11 +342,19 @@ static void readFeed(geode_viz* v) {
     if (!v->feed) return;
     GeodeFeatureFrame heard{};
     const bool live = v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
-    const GeodeFeatureFrame shown = v->feedEvents.frame(heard, live);
+    // Events keep being edge-detected under a hold, so those that fire meanwhile are dropped, not replayed.
+    const GeodeFeatureFrame events = v->feedEvents.frame(heard, live);
+    const bool held = v->reactionsHeld.load(std::memory_order_acquire);
+    if (held && !v->feedHold.holding()) v->heldPcm = v->feedPcm;
+    const GeodeFeatureFrame shown = v->feedHold.frame(events, held);
     v->renderer.setFeatures(shown);
-    v->renderer.setFramePcm(v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
+    v->renderer.setFramePcm(held ? v->heldPcm.data() : v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
     std::lock_guard<std::mutex> lock(v->configLock);
     v->features = shown;
+}
+
+void geode_viz_set_reactions_held(geode_viz* v, int held) {
+    if (v) v->reactionsHeld.store(held != 0, std::memory_order_release);
 }
 
 GeodeStatus geode_viz_attach_feed(geode_viz* v, geode_feed* f) {

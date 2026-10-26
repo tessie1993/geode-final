@@ -93,6 +93,15 @@ uniform float uFormPhase;
  */
 uniform float uFlowPhase;
 
+/**
+ * Speed x uEnergySmooth, integrated over time, in seconds. The way to run
+ * something faster when it is loud: `uTime * 0.6 + uEnergyPhase * 2.0` moves
+ * exactly like `uTime * (0.6 + uEnergy * 2.0)` at a steady loudness, but where
+ * that product jumps the picture whenever loudness changes (by more the longer
+ * the clock has run), the integral only ever changes its speed.
+ */
+uniform float uEnergyPhase;
+
 // ---- helpers ---------------------------------------------------------------
 
 /** 0 at the instant of a spawn, 1 once it has grown in over `seconds`. */

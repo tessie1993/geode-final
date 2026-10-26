@@ -25,6 +25,10 @@ public:
 
     float drag = 0.5f;
     float life = 6.0f;
+    // Tilt: the acceleration toward down, sim units per second squared; the drag caps the speed it
+    // reaches. Zero leaves the update exactly as it was.
+    float fallX = 0.0f;
+    float fallY = 0.0f;
 
     bool available() const { return available_; }
 

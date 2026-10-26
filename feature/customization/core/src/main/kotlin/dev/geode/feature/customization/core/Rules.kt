@@ -1,10 +1,13 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.Lane
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerLoop
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorShape
@@ -13,6 +16,8 @@ import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
+import dev.geode.feature.customization.api.StyleFamily
+import dev.geode.feature.customization.api.StyleManifest
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Trigger
@@ -178,6 +183,35 @@ object Rules {
                 )
             }.filter { it.targets.isNotEmpty() }
             .take(Automations.MAX_LANES)
+    }
+
+    /**
+     * Whether [manifest]'s Style can be Layer 2 over the Style [over]: not the same Style, and not
+     * MilkDrop, whose one engine is the MilkDrop preset the person picked.
+     */
+    fun canBeLayer(
+        manifest: StyleManifest,
+        over: SceneId,
+    ): Boolean = manifest.family != StyleFamily.MILKDROP && manifest.id != over
+
+    /** [loop] with its depth in 0..1; a loop that moves nothing is no loop. */
+    fun layerLoop(loop: LayerLoop?): LayerLoop? =
+        when {
+            loop == null || loop.targets.isEmpty() -> null
+            else -> loop.copy(depth = unit(loop.depth))
+        }
+
+    /**
+     * [layer] as it can be laid over the Style [over] with the Styles in [styles]: its loop in range, and
+     * off when its Style is unknown or cannot be Layer 2 there.
+     */
+    fun layer(
+        layer: Layer,
+        over: SceneId,
+        styles: StyleCatalogue,
+    ): Layer {
+        val style = layer.style?.takeIf { id -> styles[id]?.let { canBeLayer(it, over) } == true }
+        return layer.copy(style = style, loop = layerLoop(layer.loop))
     }
 
     /** [customization] without the Reactions, Macro links and lane targets whose source or target no longer exists. */

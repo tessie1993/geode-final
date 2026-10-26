@@ -65,6 +65,7 @@ enum class AdvancedSection {
     EFFECTS,
     EXTRAS,
     MACROS,
+    LAYERS,
 }
 
 /**
@@ -181,6 +182,14 @@ internal class PanelState(
     ) {
         learnOrSet(learning, target, value)?.let(send)
         if (learning != null) learn(null)
+    }
+
+    /** A slider is being dragged: the Visual follows it, unless Learn mode waits to link it. */
+    fun preview(
+        target: Target,
+        value: Float,
+    ) {
+        previewCommand(learning, target, value)?.let(send)
     }
 }
 
@@ -311,10 +320,10 @@ internal fun back(page: CustomizePage): CustomizePage =
 internal fun sectionOf(target: Target): AdvancedSection? =
     when (target) {
         is Target.Shared ->
-            if (target.property.group == SharedGroup.CAMERA) {
-                AdvancedSection.CAMERA
-            } else {
-                AdvancedSection.EFFECTS
+            when (target.property.group) {
+                SharedGroup.CAMERA -> AdvancedSection.CAMERA
+                SharedGroup.LAYERS -> AdvancedSection.LAYERS
+                else -> AdvancedSection.EFFECTS
             }
         is Target.Extra -> AdvancedSection.EXTRAS
         is Target.MacroSlot -> AdvancedSection.MACROS

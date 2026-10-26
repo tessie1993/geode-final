@@ -94,3 +94,32 @@ TEST(DisplayEventsTest, AResetReaderSeesTheNextEventAgain) {
     events.reset();
     EXPECT_EQ(events.frame(heard(1.0f, 0.5f), true).beat, 1.0f);
 }
+
+TEST(SignalHoldTest, AHeldVisualKeepsTheFirstHeldFrameWithoutItsEvents) {
+    geode::viz::SignalHold hold;
+    GeodeFeatureFrame first = heard(1.0f, 0.5f);
+    const GeodeFeatureFrame shown = hold.frame(first, true);
+    EXPECT_TRUE(hold.holding());
+    EXPECT_FLOAT_EQ(shown.rms, 0.4f);
+    EXPECT_FLOAT_EQ(shown.bass, 0.6f);
+    EXPECT_FLOAT_EQ(shown.events[GEODE_EVENT_BEAT].seq, 1.0f);
+    expectNoEvent(shown);
+    GeodeFeatureFrame later = heard(2.0f, 0.5f);
+    later.rms = 0.9f;
+    const GeodeFeatureFrame still = hold.frame(later, true);
+    EXPECT_FLOAT_EQ(still.rms, 0.4f);
+    expectNoEvent(still);
+}
+
+TEST(SignalHoldTest, ReleasingHandsTheLiveFramesBack) {
+    geode::viz::SignalHold hold;
+    hold.frame(heard(1.0f, 0.5f), true);
+    GeodeFeatureFrame live = heard(2.0f, 0.5f);
+    live.rms = 0.9f;
+    const GeodeFeatureFrame shown = hold.frame(live, false);
+    EXPECT_FALSE(hold.holding());
+    EXPECT_FLOAT_EQ(shown.rms, 0.9f);
+    EXPECT_EQ(shown.beat, 1.0f);
+    // A new hold freezes the frame it starts on, not the old one.
+    EXPECT_FLOAT_EQ(hold.frame(live, true).rms, 0.9f);
+}

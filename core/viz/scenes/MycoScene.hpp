@@ -11,6 +11,7 @@
 #include "scenes/SceneCommon.hpp"
 #include "geode/viz/StyleProfiles.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/FrameRate.hpp"
 
 namespace geode::viz {
 
@@ -31,6 +32,7 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    void setGravityField(const GravityField* field) override { gravity_ = field; }
 
 private:
     static constexpr int kTrailRes = 384;
@@ -40,8 +42,15 @@ private:
     static constexpr float kByteFallbackDeposit = 0.125f;
     static constexpr float kTouchBirthPerSecond = 0.35f;
     static constexpr float kTouchBirthPerFrameCap = 0.02f;
+    // Tilt: the largest heading nudge toward down, as a share of the Style's own turn per step.
+    static constexpr float kFallTurnShare = 0.1f;
+    // The colony moves, deposits and diffuses in ticks of a 60 fps frame, so it crawls at the same
+    // speed and its trails reach the same density at 30, 60 and 120 Hz (#280).
+    static constexpr float kTicksPerSecond = framerate::kReferenceFps;
+    static constexpr int kMaxTicksPerFrame = 4;
 
     bool ensureBuffers();
+    void step(fluid::DoubleFbo& colony, fluid::DoubleFbo& field, float speed, float drive, float reaim);
 
     std::string id_;
     styles::MycoStyle style_;
@@ -72,7 +81,9 @@ private:
     float beatPulse_ = 0.0f;
     BeatEnvelope beatEnvelope_;
     float reaim_ = 0.0f;
+    framerate::FixedStepClock ticks_{kTicksPerSecond, kMaxTicksPerFrame};
     const TouchField* touch_ = nullptr;
+    const GravityField* gravity_ = nullptr;
 };
 
 }  // namespace geode::viz

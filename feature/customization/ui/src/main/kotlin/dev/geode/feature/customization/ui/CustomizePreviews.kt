@@ -9,6 +9,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.geode.design.forest.ForestMode
 import dev.geode.design.forest.ForestTheme
 import dev.geode.design.forest.LocalForestColors
+import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LoopPreset
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SoundSignal
 
@@ -86,6 +91,16 @@ internal fun CustomizeEffectsPreview() = CustomizePreview(start = CustomizePage.
 @Preview(name = "Advanced, Style Extras", widthDp = 411, heightDp = 891)
 @Composable
 internal fun CustomizeExtrasPreview() = CustomizePreview(start = CustomizePage.Advanced(AdvancedSection.EXTRAS))
+
+@Preview(name = "Advanced, Layers", widthDp = 411, heightDp = 891)
+@Composable
+internal fun CustomizeLayersPreview() =
+    CustomizePreview(
+        PreviewModels.editing.copy(
+            layer = Layer(SceneId("warp"), LayerBlend.SCREEN, LayerInfluence.BEND, LoopPreset.BREATHE.loop),
+        ),
+        CustomizePage.Advanced(AdvancedSection.LAYERS),
+    )
 
 @Preview(name = "Advanced, one Macro", widthDp = 411, heightDp = 891)
 @Composable

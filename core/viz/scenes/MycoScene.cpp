@@ -16,6 +16,7 @@ void MycoScene::init() {
     agents_.reset();
     trail_.reset();
     agentsSeeded_ = false;
+    ticks_.reset();
     std::string error;
     const std::string quad = loader_.source("quad_vert.glsl", &error);
     const auto fail = [&](const char* what) { host_.onShaderError(std::string("Mycelium ") + what + " unavailable: " + error); };
@@ -80,34 +81,10 @@ bool MycoScene::ensureBuffers() {
     return agents_.has_value() && trail_.has_value();
 }
 
-void MycoScene::draw(float timeSeconds) {
-    (void) timeSeconds;
-    if (!programOk_) return;
-    resetFrameState();
-    GLint prevFbo = 0;
-    GLint prevViewport[4] = {0, 0, 0, 0};
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo);
-    glGetIntegerv(GL_VIEWPORT, prevViewport);
-    if (!ensureBuffers()) return;
-    fluid::DoubleFbo& colony = *agents_;
-    fluid::DoubleFbo& field = *trail_;
+// One tick of the colony, a 60 fps frame's worth: the agents sense and move, deposit into the trail
+// field, and the field diffuses and decays.
+void MycoScene::step(fluid::DoubleFbo& colony, fluid::DoubleFbo& field, float speed, float drive, float reaim) {
     const SceneParams& p = params_;
-    const float dt = std::clamp(lastDt_, 0.0f, 1.0f / 15.0f);
-    const GeodeFeatureFrame f = hasPending_ ? pending_ : GeodeFeatureFrame{};
-    hasPending_ = false;
-
-    const float speed = std::clamp(p.speed, 0.05f, 4.0f);
-    const float drive = safeAudioDrive(p.audioDrive);
-    envBass_ = slewEnvelope(envBass_, clampedBand(f.bass), dt, kEnvRisePerSec, kEnvFallPerSec);
-    envTreble_ = slewEnvelope(envTreble_, clampedBand(f.treble), dt, kEnvRisePerSec, kEnvFallPerSec);
-    const float hit = live::hit(f);
-    beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
-    reaim_ = hit * p.beatResponse > kBeatThreshold ? style_.reaim : 0.0f;
-
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glBindVertexArray(vao_);
-
     glUseProgram(agent_.program());
     glBindFramebuffer(GL_FRAMEBUFFER, colony.write().fbo());
     glViewport(0, 0, colony.width(), colony.height());
@@ -128,13 +105,20 @@ void MycoScene::draw(float timeSeconds) {
     glUniform1f(agent_.loc("uBreath"), beatPulse_ * drive);
     glUniform1f(agent_.loc("uJitter"), style_.jitter + 0.35f * envTreble_ * drive + std::clamp(p.turbulence, 0.0f, 1.0f) * 0.5f);
     glUniform1f(agent_.loc("uSnap"), style_.snap);
-    glUniform1f(agent_.loc("uReaim"), reaim_);
+    glUniform1f(agent_.loc("uReaim"), reaim);
     glUniform1f(agent_.loc("uTime"), time_);
     glUniform1f(agent_.loc("uAniso"), style_.aniso);
-    // A rate integrated over dt, so a gesture buds the same at 60 and 120 Hz.
-    const float birthRate = std::min(kTouchBirthPerSecond * dt, kTouchBirthPerFrameCap);
+    // A rate integrated over the tick, so a gesture buds the same at every frame rate.
+    const float birthRate = std::min(kTouchBirthPerSecond / kTicksPerSecond, kTouchBirthPerFrameCap);
     glUniform1f(agent_.loc("uTouchBirth"), birthRate * (touch_ ? touch_->anchorStrength() : 0.0f));
     uploadSceneTouch(agent_, touch_);
+    // Tilt (#315): agents lean their heading toward down, never a slide of the whole colony.
+    float down[2] = {0.0f, 0.0f};
+    if (gravity_ != nullptr && gravity_->weight() > 0.0f) {
+        const float w = gravity_->weight();
+        gravity::inPlaneDown(gravity_->x() / w, gravity_->y() / w, w, down);
+    }
+    glUniform3f(agent_.loc("uFall"), down[0], down[1], kFallTurnShare * style_.turnAngle);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     colony.swap();
     agentsSeeded_ = true;
@@ -158,9 +142,43 @@ void MycoScene::draw(float timeSeconds) {
     glBindTexture(GL_TEXTURE_2D, field.read().tex());
     glUniform1i(blur_.loc("uTrail"), 0);
     glUniform2f(blur_.loc("uTrailRes"), static_cast<float>(field.width()), static_cast<float>(field.height()));
-    glUniform1f(blur_.loc("uDecay"), std::pow(style_.decay, dt * 60.0f));
+    // The Style's decay is what one 60 fps frame keeps, and a tick is one such frame.
+    glUniform1f(blur_.loc("uDecay"), style_.decay);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     field.swap();
+}
+
+void MycoScene::draw(float timeSeconds) {
+    (void) timeSeconds;
+    if (!programOk_) return;
+    resetFrameState();
+    GLint prevFbo = 0;
+    GLint prevViewport[4] = {0, 0, 0, 0};
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo);
+    glGetIntegerv(GL_VIEWPORT, prevViewport);
+    if (!ensureBuffers()) return;
+    fluid::DoubleFbo& colony = *agents_;
+    fluid::DoubleFbo& field = *trail_;
+    const SceneParams& p = params_;
+    const float dt = std::clamp(lastDt_, 0.0f, 1.0f / 15.0f);
+    const GeodeFeatureFrame f = hasPending_ ? pending_ : GeodeFeatureFrame{};
+    hasPending_ = false;
+
+    const float speed = std::clamp(p.speed, 0.05f, 4.0f);
+    const float drive = safeAudioDrive(p.audioDrive);
+    envBass_ = slewEnvelope(envBass_, clampedBand(f.bass), dt, kEnvRisePerSec, kEnvFallPerSec);
+    envTreble_ = slewEnvelope(envTreble_, clampedBand(f.treble), dt, kEnvRisePerSec, kEnvFallPerSec);
+    const float hit = live::hit(f);
+    beatPulse_ = beatEnvelope_.step(std::clamp(hit * std::clamp(p.beatResponse, 0.0f, 2.0f), 0.0f, 1.5f), dt);
+    // A beat on a frame that runs no tick (every other frame at 120 Hz) re-aims the next tick instead.
+    if (hit * p.beatResponse > kBeatThreshold) reaim_ = style_.reaim;
+    const int ticks = ticks_.advance(dt);
+
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    glBindVertexArray(vao_);
+    for (int tick = 0; tick < ticks; ++tick) step(colony, field, speed, drive, tick == 0 ? reaim_ : 0.0f);
+    if (ticks > 0) reaim_ = 0.0f;
 
     glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prevFbo));
     glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);

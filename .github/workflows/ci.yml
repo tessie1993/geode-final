@@ -403,7 +403,9 @@ jobs:
         run: ctest --test-dir build-milkdrop --output-on-failure -R preset
 
   # A cheap shader check with no stored images: every Style's shader must compile and draw a lit
-  # frame, survive a scene-target resize without going dark, and every Shared core effect must draw.
+  # frame, survive a scene-target resize without going dark, and every Shared core effect and every
+  # Layer 2 blend mode and influence must draw.
+  # glslang then holds every Style to the GLSL ES 3.00 specification, which ANGLE may not.
   visual-frames:
     name: Shaders compile and render
     runs-on: ubuntu-latest
@@ -431,6 +433,16 @@ jobs:
           node tools/glslcheck/check.mjs --fluid-display --size 96 --out build-frames/fluid
           node tools/glslcheck/check.mjs --all --resize --size 96 --time 12.5 --out build-frames/resize
           node tools/glslcheck/check.mjs --effects --size 96 --out build-frames/effects
+          node tools/glslcheck/check.mjs --layers --size 96 --out build-frames/layers
+      # glslangValidator is a CI-only tool: nothing of it ships in the app.
+      - name: Install glslang
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q glslang-tools
+      - name: Check every Style with glslang (GLSL ES 3.00)
+        run: |
+          node tools/glslcheck/check.mjs --glslang-self-test
+          node tools/glslcheck/check.mjs --all --glslang
       - name: Upload rendered frames
         if: failure()
         uses: actions/upload-artifact@v7

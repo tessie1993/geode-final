@@ -24,6 +24,7 @@ public:
     void setParams(const SceneParams& params) override { params_ = params; }
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void update(const GeodeFeatureFrame& features, float dt) override;
+    void setGravityField(const GravityField* field) override { gravity_ = field; }
 
 protected:
     float tickPcm(float dt) { return pcmPulse_.tick(dt); }
@@ -45,6 +46,9 @@ protected:
     int savedViewportWidth() const { return prevViewport_[2]; }
     int savedViewportHeight() const { return prevViewport_[3]; }
     float viewportDpiScale() const { return particle_look::dpiScale(savedViewportHeight()); }
+    // The in-plane down a fluid pushes along (gravity::inPlaneDown): faded out near flat, scaled by the
+    // tilt weight, and exactly {0, 0} with tilt off.
+    std::array<float, 2> inPlaneDown() const;
 
     std::string id_;
     float timeWrapSeconds_;
@@ -64,6 +68,7 @@ protected:
     int autoDowngrade_ = 0;
     int lastUserQuality_ = -1;
     int appliedTier_ = -1;
+    const GravityField* gravity_ = nullptr;
 
 private:
     PcmPulse pcmPulse_;

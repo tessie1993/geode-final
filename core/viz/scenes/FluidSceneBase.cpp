@@ -45,6 +45,14 @@ GeodeFeatureFrame FluidSceneBase::idleAudioFeatures(float bass, float mid, float
     return f;
 }
 
+std::array<float, 2> FluidSceneBase::inPlaneDown() const {
+    std::array<float, 2> out{};
+    if (gravity_ == nullptr) return out;
+    const float w = gravity_->weight();
+    if (w > 0.0f) gravity::inPlaneDown(gravity_->x() / w, gravity_->y() / w, w, out.data());
+    return out;
+}
+
 void FluidSceneBase::applyQualityTier() {
     const bool userChanged = params_.fluidQuality != lastUserQuality_;
     if (userChanged) {

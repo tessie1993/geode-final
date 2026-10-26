@@ -1,6 +1,8 @@
 package dev.geode.feature.settings.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
@@ -42,8 +44,11 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -185,6 +190,19 @@ class SettingsRulesTest {
             Row(BehaviorCommand.SetTouchSmearStrength(9f), defaults.copy(behavior = behavior.copy(touchSmearStrength = 2f))),
             Row(BehaviorCommand.SetTouchTransform(false), defaults.copy(behavior = behavior.copy(touchTransform = false))),
             Row(BehaviorCommand.SetReducedMotion(true), defaults.copy(behavior = behavior.copy(reducedMotion = true))),
+            Row(BehaviorCommand.SetTilt(TiltAmount.FULL), defaults.copy(behavior = behavior.copy(tilt = TiltAmount.FULL))),
+            Row(BehaviorCommand.SetTilt(TiltAmount.OFF), defaults.copy(behavior = behavior.copy(tilt = TiltAmount.OFF))),
+            Row(
+                BehaviorCommand.SetStartLook(StartLook.Style(SceneId("cymatics"))),
+                defaults.copy(behavior = behavior.copy(startLook = StartLook.Style(SceneId("cymatics")))),
+            ),
+            Row(
+                BehaviorCommand.SetStartLook(StartLook.Preset(PresetId("Party"))),
+                defaults.copy(behavior = behavior.copy(startLook = StartLook.Preset(PresetId("Party")))),
+            ),
+            Row(BehaviorCommand.SetStartLook(StartLook.Last), defaults),
+            Row(BehaviorCommand.SetStartLook(StartLook.Style(SceneId(" "))), defaults),
+            Row(BehaviorCommand.SetStartLook(StartLook.Preset(PresetId(""))), defaults),
         )
 
     private val exportRows: List<Row> =
@@ -223,11 +241,23 @@ class SettingsRulesTest {
                 defaults.copy(performance = performance.copy(visualQuality = VisualQuality.BALANCED)),
             ),
             Row(
-                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.FPS60),
-                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.FPS60)),
+                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.SCREEN_MAX),
+                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.SCREEN_MAX)),
             ),
             Row(PerformanceCommand.SetSaveMode(true), defaults.copy(performance = performance.copy(saveMode = true))),
             Row(PerformanceCommand.SetVisualsOff(true), defaults.copy(performance = performance.copy(visualsOff = true))),
+            Row(
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, VisualQuality.SAVER),
+                defaults.copy(performance = performance.copy(surfaceQuality = mapOf(VisualSurface.WALLPAPER to VisualQuality.SAVER))),
+            ),
+            Row(
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.SCREEN_SAVER, VisualFrameRate.FPS30),
+                defaults.copy(
+                    performance = performance.copy(surfaceFrameRate = mapOf(VisualSurface.SCREEN_SAVER to VisualFrameRate.FPS30)),
+                ),
+            ),
+            Row(PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, null), defaults),
+            Row(PerformanceCommand.SetSurfaceFrameRate(VisualSurface.PICTURE_IN_PICTURE, null), defaults),
         )
 
     private val folderRows: List<Row> =
@@ -307,6 +337,36 @@ class SettingsRulesTest {
             PerformanceSettings(VisualQuality.BALANCED, VisualFrameRate.FPS60, saveMode = false),
             SettingsRules.apply(chosen, PerformanceCommand.SetSaveMode(false)).performance,
         )
+    }
+
+    @Test
+    fun `each surface keeps its own pick until it is set back to follow the shared one`() {
+        val picked =
+            listOf<SettingsCommand>(
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, VisualQuality.SAVER),
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.PICTURE_IN_PICTURE, VisualQuality.BALANCED),
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.WALLPAPER, VisualFrameRate.FPS30),
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.PICTURE_IN_PICTURE, VisualFrameRate.FPS60),
+                PerformanceCommand.SetVisualQuality(VisualQuality.BALANCED),
+            ).fold(defaults, SettingsRules::apply)
+
+        assertEquals(
+            mapOf(VisualSurface.WALLPAPER to VisualQuality.SAVER, VisualSurface.PICTURE_IN_PICTURE to VisualQuality.BALANCED),
+            picked.performance.surfaceQuality,
+        )
+        assertEquals(VisualQuality.BALANCED, picked.performance.visualQuality)
+
+        val repicked = SettingsRules.apply(picked, PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, VisualQuality.HIGH))
+        assertEquals(VisualQuality.HIGH, repicked.performance.surfaceQuality[VisualSurface.WALLPAPER])
+
+        val followed =
+            listOf<SettingsCommand>(
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, null),
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.WALLPAPER, null),
+            ).fold(picked, SettingsRules::apply)
+
+        assertEquals(mapOf(VisualSurface.PICTURE_IN_PICTURE to VisualQuality.BALANCED), followed.performance.surfaceQuality)
+        assertEquals(mapOf(VisualSurface.PICTURE_IN_PICTURE to VisualFrameRate.FPS60), followed.performance.surfaceFrameRate)
     }
 
     @Test

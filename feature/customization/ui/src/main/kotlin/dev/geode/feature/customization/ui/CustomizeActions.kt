@@ -3,6 +3,10 @@ package dev.geode.feature.customization.ui
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationCommand
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerLoop
+import dev.geode.feature.customization.api.LoopPreset
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
@@ -120,6 +124,16 @@ fun learnOrSet(
 ): CustomizationCommand? =
     if (learning != null) CustomizationCommand.AddReaction(newReaction(learning, target)) else sliderCommand(target, value)
 
+/**
+ * What a slider dragged to [value] previews (#285): the edit letting go would make, shown while the
+ * finger moves. Nothing in Learn mode ([learning]), where letting go links the slider instead.
+ */
+fun previewCommand(
+    learning: ReactionSource?,
+    target: Target,
+    value: Float,
+): CustomizationCommand? = if (learning != null) null else sliderCommand(target, value)?.let(CustomizationCommand::Preview)
+
 /** The toggle flipped: an effect turned off goes back to its minimum; one turned on to its on value. */
 fun EffectToggle.toggled(): CustomizationCommand.SetShared {
     val onValue = if (property.kind == ValueKind.SWITCH) property.max else EFFECT_ON_VALUES[property] ?: property.max
@@ -149,6 +163,21 @@ fun savePreset(
     name: String,
     parts: Set<PresetPart>,
 ): CustomizationCommand.SavePreset? = if (name.isBlank() || parts.isEmpty()) null else CustomizationCommand.SavePreset(name.trim(), parts)
+
+/** Layer 2's loop switched on, as the first ready-made loop, or off. */
+fun loopToggled(layer: Layer): CustomizationCommand.SetLayerLoop =
+    CustomizationCommand.SetLayerLoop(if (layer.loop == null) LoopPreset.BREATHE.loop else null)
+
+/**
+ * The loop with [target] added, or taken away when it is already moved. The last target stays: a loop
+ * that moves nothing would be no loop, and the switch is the way to stop it.
+ */
+fun LayerLoop.toggled(target: LoopTarget): CustomizationCommand.SetLayerLoop? =
+    when {
+        target !in targets -> CustomizationCommand.SetLayerLoop(copy(targets = targets + target))
+        targets.size > 1 -> CustomizationCommand.SetLayerLoop(copy(targets = targets - target))
+        else -> null
+    }
 
 /** Play a stopped hand-started Modulator, or stop a playing one. */
 fun togglePlay(modulator: Modulator): CustomizationCommand.PlayModulator =

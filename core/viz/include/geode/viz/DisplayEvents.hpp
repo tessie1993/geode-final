@@ -25,4 +25,24 @@ private:
     std::array<float, GEODE_EVENT_COUNT> lastSeq_{};
 };
 
+// The frame with every one-hop event taken out: no beat, transient, drum hit, downbeat, section
+// boundary, drop or arrival fires in it. The sequenced events are kept as they were.
+GeodeFeatureFrame withoutEvents(const GeodeFeatureFrame& frame);
+
+// Port of SignalHold.kt for the native audio feed: freeze reactions (#366). While held, every display
+// frame gets the Sound signals as they stood on the first held frame, with no one-hop event in them, so
+// Reactions and Automations stay where they are and nothing fires while the Style's own motion goes
+// on. Releasing it hands the live frames straight back. Stepped once per display frame after
+// DisplayEvents, which keeps running underneath so events that fire during the hold are dropped.
+class SignalHold {
+public:
+    GeodeFeatureFrame frame(const GeodeFeatureFrame& shown, bool held);
+    // Whether the last frame was held, and the frozen one is what it showed.
+    bool holding() const { return holding_; }
+
+private:
+    bool holding_ = false;
+    GeodeFeatureFrame frozen_{};
+};
+
 }  // namespace geode::viz

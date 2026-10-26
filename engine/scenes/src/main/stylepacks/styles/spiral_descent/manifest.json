@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "spiral_descent",
+  "label": "Spiral Descent",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march"
+}

@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.customization.api.Target
 import kotlin.random.Random
 
 /**
@@ -17,8 +18,9 @@ import kotlin.random.Random
  * [onShare] shares the current Customization as a preset file or code through the share sheet (the
  * app stays offline), and [onHide] leaves the Visual alone once the panel is swiped away. [looks],
  * [presets] and [live] are what the opening place offers: the look picker's Styles, this Style's saved
- * presets, and the engine's live values when it has them. [onBrowsePresets] opens the Presets browser
- * (#144), which the Visuals feature keeps.
+ * presets, and the engine's live values when it has them. [ignored] are the controls the current
+ * Style leaves alone, greyed out (#365). [onBrowsePresets] opens the Presets browser (#144), which the
+ * Visuals feature keeps.
  */
 @Composable
 fun CustomizeRoute(
@@ -29,11 +31,12 @@ fun CustomizeRoute(
     looks: List<LookChip> = emptyList(),
     presets: List<PresetChip> = emptyList(),
     live: LiveMeters = LiveMeters.NONE,
+    ignored: Set<Target> = emptySet(),
     onBrowsePresets: () -> Unit = {},
 ) {
     val state by customization.state.collectAsStateWithLifecycle()
     CustomizeScreen(
-        model = state.toCustomizeModel(looks, presets, live),
+        model = state.toCustomizeModel(looks, presets, live, ignored),
         onAction = { action ->
             when (action) {
                 is CustomizeAction.Send -> customization.send(action.command)

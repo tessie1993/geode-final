@@ -6,6 +6,8 @@
 #include <string_view>
 #include <vector>
 
+#include "geode/viz/QualityTiers.hpp"
+
 namespace geode::viz::packs {
 
 // Every Style is a data pack: a folder `styles/<id>/` in the APK's assets holding a `manifest.json`
@@ -77,6 +79,11 @@ struct StylePack {
     // the family's range and rounded for an int parameter.
     std::map<std::string, float> parameters;
     std::vector<ExtraSpec> extras;
+    // The costly effects the Style can switch off when the phone is hot, by name ("effects"); effect i
+    // is bit i of a tier's effectsOff, which the shader reads as uFxOff.
+    std::vector<std::string> effects;
+    // What each thermal tier lets the Style spend ("tiers"): its march step share and the effects off.
+    quality::Budgets tiers = quality::defaults();
 
     // The resolved value of `key`; 0 for a key the family does not declare.
     float parameter(std::string_view key) const;
@@ -128,6 +135,11 @@ public:
     const FamilySchema* family(std::string_view name) const;
     const std::vector<FamilySchema>& families() const { return families_; }
     const std::vector<PackProblem>& problems() const { return problems_; }
+
+    // The debug build's Style lab (geode/viz/StyleLab.hpp; defined in StyleLab.cpp): replaces Style `id`
+    // with the pack `manifestText` declares, read as if from folder `id`. The problem, and no change,
+    // when no Style has that id or the text is not a valid manifest for it.
+    std::optional<PackProblem> replace(const std::string& id, const std::string& manifestText);
 
 private:
     std::vector<FamilySchema> families_;

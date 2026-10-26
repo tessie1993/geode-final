@@ -3,6 +3,13 @@ package dev.geode.feature.customization.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LayerLoop
+import dev.geode.feature.customization.api.LoopRate
+import dev.geode.feature.customization.api.LoopShape
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.Macro
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
@@ -23,9 +30,13 @@ import dev.geode.feature.customization.api.StartMode
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 import dev.geode.feature.customization.core.LegacyPreset
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PresetFormatTest {
@@ -144,22 +155,130 @@ class PresetFormatTest {
         assertEquals(fallback, (stored as StoredPreset.Legacy).preset.style)
     }
 
+    /** [everything] as a newer Geode might write it: a new top-level part and a new entry of every kind. */
+    private fun newer(): JSONObject =
+        JSONObject(PresetFormat.encode(everything)).apply {
+            put("version", PRESET_VERSION + 1)
+            put("comet", JSONObject().put("tail", 3))
+            getJSONArray("parts").put("COMETS")
+            getJSONObject("shared").put("COMET_TAIL", 0.5)
+            getJSONObject("extras").put("TAIL", 0.25)
+            getJSONObject("signals").put("SPARKLE", JSONObject().put("gain", 1.0).put("floor", 0.0))
+            getJSONArray("macros")
+                .getJSONObject(0)
+                .getJSONArray("links")
+                .put(JSONObject().put("target", JSONObject().put("comet", 2)).put("low", 0.0).put("high", 1.0))
+            getJSONArray("reactions").put(
+                JSONObject(getJSONArray("reactions").getJSONObject(0).toString()).put("target", JSONObject().put("comet", 1)),
+            )
+            getJSONArray("modulators").put(
+                JSONObject(getJSONArray("modulators").getJSONObject(0).toString()).put("shape", JSONObject().put("kind", "comet")),
+            )
+        }
+
+    private fun current(text: String): Preset = (PresetFormat.decode(text, fallback) as StoredPreset.Current).preset
+
     @Test
-    fun `a newer preset is read for what this version knows`() {
-        val newer =
+    fun `a newer preset is read for what this version knows, and keeps the rest unread`() {
+        val read = current(newer().toString())
+        assertEquals(everything.copy(version = PRESET_VERSION + 1), read.copy(unread = null))
+        val unread = JSONObject(checkNotNull(read.unread))
+        assertEquals(PRESET_VERSION + 1, unread.getInt("version"))
+        assertEquals(3, unread.getJSONObject("comet").getInt("tail"))
+        assertEquals("COMETS", unread.getJSONArray("parts").getString(0))
+        assertEquals(0.5, unread.getJSONObject("shared").getDouble("COMET_TAIL"), 0.0)
+        assertEquals(0.25, unread.getJSONObject("extras").getDouble("TAIL"), 0.0)
+        assertTrue(unread.getJSONObject("signals").has("SPARKLE"))
+        assertEquals(1, unread.getJSONObject("macros").getJSONArray("0").length())
+        assertEquals(1, unread.getJSONArray("reactions").length())
+        assertEquals(1, unread.getJSONArray("modulators").length())
+    }
+
+    @Test
+    fun `what a newer preset kept unread is written back untouched`() {
+        val original = newer()
+        val again = JSONObject(PresetFormat.encode(current(original.toString())))
+        assertEquals(plain(original), plain(again))
+    }
+
+    /** [value] as plain maps, lists and doubles, so two files compare whatever their key order. */
+    private fun plain(value: Any?): Any? =
+        when (value) {
+            is JSONObject -> value.keys().asSequence().toList().associateWith { plain(value.get(it)) }
+            is JSONArray -> List(value.length()) { plain(value.get(it)) }
+            is Number -> value.toDouble()
+            else -> value
+        }
+
+    @Test
+    fun `a preset this version reads in full keeps nothing unread`() {
+        assertNull(current(PresetFormat.encode(everything)).unread)
+    }
+
+    @Test
+    fun `a broken entry is skipped and the rest of the preset loads`() {
+        val broken =
             JSONObject(PresetFormat.encode(everything)).apply {
-                put("version", PRESET_VERSION + 1)
-                put("comet", JSONObject().put("tail", 3))
-                getJSONArray("parts").put("COMETS")
-                getJSONObject("shared").put("COMET_TAIL", 0.5)
-                getJSONArray("reactions").put(
-                    JSONObject(getJSONArray("reactions").getJSONObject(0).toString()).put("target", JSONObject().put("comet", 1)),
-                )
-                getJSONArray("modulators").put(
-                    JSONObject(getJSONArray("modulators").getJSONObject(0).toString()).put("shape", JSONObject().put("kind", "comet")),
-                )
+                getJSONArray("parts").put(7)
+                getJSONObject("shared").put("SPEED", "fast")
+                getJSONObject("signals").put("MID", JSONObject().put("gain", 1.0))
+                getJSONArray("macros").getJSONObject(0).getJSONArray("links").put(JSONObject().put("low", 0.0))
+                getJSONArray("macros").put(JSONObject().put("value", 0.5))
+                getJSONArray("reactions").put(JSONObject().put("id", 9))
+                getJSONArray("reactions").put("not a reaction")
             }
-        assertEquals(StoredPreset.Current(everything.copy(version = PRESET_VERSION + 1)), PresetFormat.decode(newer.toString(), fallback))
+        val modulators = broken.getJSONArray("modulators")
+        modulators.put(JSONObject(modulators.getJSONObject(0).toString()).apply { remove("rate") })
+        modulators.put(JSONObject().put("id", 5).put("shape", JSONObject().put("kind", "lfo")))
+        assertEquals(everything, current(broken.toString()))
+    }
+
+    @Test
+    fun `the chosen MilkDrop preset is written and read back`() {
+        val chosen = everything.copy(milkdrop = "Geiss - Cosmic Dust.milk")
+        assertEquals("Geiss - Cosmic Dust.milk", JSONObject(PresetFormat.encode(chosen)).getString("milkPreset"))
+        assertEquals(chosen, current(PresetFormat.encode(chosen)))
+    }
+
+    @Test
+    fun `an old preset's chosen MilkDrop preset is read`() {
+        val stored = PresetFormat.decode(oldPresetFile("Old", "milkdrop", extra = ",\n\"milkPreset\": \"Cosmic.milk\""), fallback)
+        assertEquals("Cosmic.milk", (stored as StoredPreset.Legacy).preset.milkPreset)
+    }
+
+    private val layered =
+        everything.copy(
+            layer =
+                Layer(
+                    SceneId("kaleido"),
+                    LayerBlend.SOFT_LIGHT,
+                    LayerInfluence.CUT_OUT,
+                    LayerLoop(LoopShape.BEAT_STEPS, LoopRate.TWO_BEATS, 0.75f, setOf(LoopTarget.SWAP, LoopTarget.OPACITY)),
+                ),
+        )
+
+    @Test
+    fun `Layer 2 reads back as it was written`() {
+        assertEquals(StoredPreset.Current(layered), PresetFormat.decode(PresetFormat.encode(layered), fallback))
+        val off = everything.copy(layer = Layer.OFF)
+        assertEquals(StoredPreset.Current(off), PresetFormat.decode(PresetFormat.encode(off), fallback))
+        assertFalse(JSONObject(PresetFormat.encode(everything)).has("layer"))
+    }
+
+    @Test
+    fun `a newer Layer 2 is read for what this version knows`() {
+        val newer =
+            JSONObject(PresetFormat.encode(layered)).apply {
+                getJSONObject("layer").put("blend", "COMET").put("influence", "COMET").put("comet", 1)
+                getJSONObject("layer").getJSONObject("loop").put("shape", "COMET").put("rate", "COMET")
+            }
+        val read = (PresetFormat.decode(newer.toString(), fallback) as StoredPreset.Current).preset.layer
+        assertEquals(Layer(SceneId("kaleido"), loop = LayerLoop(depth = 0.75f, targets = setOf(LoopTarget.SWAP, LoopTarget.OPACITY))), read)
+        val noTargets =
+            JSONObject(PresetFormat.encode(layered)).apply {
+                getJSONObject("layer").getJSONObject("loop").put("targets", JSONArray().put("COMET"))
+            }
+        assertEquals(null, (PresetFormat.decode(noTargets.toString(), fallback) as StoredPreset.Current).preset.layer?.loop)
     }
 
     @Test(expected = JSONException::class)

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <functional>
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -28,13 +29,25 @@ struct Build {
     const ProgramLoader& loader;
     const SceneHost& host;
     const std::string& quadVert;
+    // The shader the Style lab pushed for this Style (debug builds only); null for the APK's.
+    const std::string* labShader;
 };
 
 using Factory = std::function<std::unique_ptr<Scene>(const Build&)>;
 
+std::optional<std::string> fragmentOf(const packs::StylePack& pack, const ShaderSource& assets, const std::string* labShader,
+                                      std::string* error) {
+#ifdef GEODE_STYLE_HOT_RELOAD
+    if (labShader != nullptr) return assets.resolveIncludes(pack.shaderPath, *labShader, error);
+#else
+    (void) labShader;
+#endif
+    return assets.loadAsset(pack.shaderPath, error);
+}
+
 std::unique_ptr<Scene> buildShader(const Build& b) {
     std::string error;
-    const auto fragment = b.loader.assets.loadAsset(b.pack.shaderPath, &error);
+    const auto fragment = fragmentOf(b.pack, b.loader.assets, b.labShader, &error);
     if (!fragment) {
         b.host.onShaderError(error);
         return nullptr;
@@ -99,7 +112,34 @@ std::unique_ptr<Scene> SceneRegistry::create(const std::string& id, const std::s
     if (found == nullptr) return nullptr;
     const Factory* factory = factoryFor(found->family);
     if (factory == nullptr) return nullptr;
-    return (*factory)(Build{*found, loader_, host_, quadVert});
+    const std::string* labShader = nullptr;
+#ifdef GEODE_STYLE_HOT_RELOAD
+    if (const auto lab = labShaders_.find(id); lab != labShaders_.end()) labShader = &lab->second;
+#endif
+    return (*factory)(Build{*found, loader_, host_, quadVert, labShader});
 }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+bool SceneRegistry::reload(const std::string& id, const std::optional<std::string>& manifest, const std::optional<std::string>& shader,
+                           std::string* error) {
+    if (packs_.find(id) == nullptr) {
+        if (error) *error = "no Style '" + id + "' ships in the packs";
+        return false;
+    }
+    if (manifest) {
+        if (const auto problem = packs_.replace(id, *manifest)) {
+            if (error) *error = problem->where + ": " + packs::describe(problem->error) + " " + problem->detail;
+            return false;
+        }
+    }
+    if (shader) labShaders_[id] = *shader;
+    return true;
+}
+
+std::optional<std::string> SceneRegistry::fragment(const packs::StylePack& pack, std::string* error) const {
+    const auto lab = labShaders_.find(pack.id);
+    return fragmentOf(pack, loader_.assets, lab != labShaders_.end() ? &lab->second : nullptr, error);
+}
+#endif
 
 }  // namespace geode::viz

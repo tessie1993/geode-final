@@ -53,7 +53,11 @@ object StylePackFormat {
                 val parameters =
                     family.optJSONArray("parameters")
                         ?: fail(PackError.MISSING_FIELD, FAMILIES_FILE, "family \"$name\" needs \"parameters\"")
-                FamilySchema(kind, objects(parameters, FAMILIES_FILE, "parameter").map { parameterSpec(it) })
+                FamilySchema(
+                    kind = kind,
+                    parameters = objects(parameters, FAMILIES_FILE, "parameter").map { parameterSpec(it) },
+                    ignores = ignores(family, name),
+                )
             }
         }
 
@@ -103,6 +107,7 @@ object StylePackFormat {
                 extras = extras(doc, id),
                 macros = macros(doc, id),
                 reactions = reactions(doc, id),
+                ignores = family.ignores,
             )
         }
 
@@ -189,6 +194,18 @@ object StylePackFormat {
         val max = number(entry, "max", FAMILIES_FILE)
         if (min > max) fail(PackError.BAD_VALUE, FAMILIES_FILE, "parameter \"$key\" has min above max")
         return ParameterSpec(key, type, min, max, optNumber(entry, "default", FAMILIES_FILE))
+    }
+
+    /** A family's optional `ignores`: names of the Shared core properties its renderer never reads. */
+    private fun ignores(
+        family: JSONObject,
+        name: String,
+    ): Set<String> {
+        val list = family.optJSONArray("ignores") ?: return emptySet()
+        return (0 until list.length()).mapTo(LinkedHashSet()) { i ->
+            (list.opt(i) as? String)?.takeIf { it.isNotEmpty() }
+                ?: fail(PackError.BAD_VALUE, FAMILIES_FILE, "family \"$name\" has an \"ignores\" entry that is not a name")
+        }
     }
 
     private fun shaderPath(

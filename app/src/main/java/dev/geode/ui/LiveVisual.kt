@@ -9,8 +9,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.RingLog
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.feature.customization.api.CustomizationFeature
+import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.VisualizerView
 
@@ -19,8 +21,9 @@ import dev.geode.render.VisualizerView
  * the renderer is attached to the [snapshots] exchange, which Customization's store publishes to
  * (ADR-0002, ADR-0004). The sound never passes through the main thread or Kotlin: the renderer is
  * attached to the engine's one audio feed, and each frame it reads the features heard now and the
- * stereo window natively, on its own thread. Only the Style to draw and the reduce-motion switch are
- * handed over from here, when they change.
+ * stereo window natively, on its own thread. Only the Style to draw, the Visual behaviours from
+ * Settings (reduce motion, the finger smear) and the [surface]'s quality and frame rate are handed
+ * over from here, when they change.
  */
 @Composable
 fun LiveVisualBindings(
@@ -28,6 +31,7 @@ fun LiveVisualBindings(
     customization: CustomizationFeature,
     snapshots: NativeSnapshots,
     settings: Settings,
+    surface: VisualSurface,
 ) {
     val context = LocalContext.current
     DisposableEffect(view, snapshots) {
@@ -48,8 +52,17 @@ fun LiveVisualBindings(
     val style = state.current.style
     LaunchedEffect(style) { view.visualizerRenderer.requestedSceneId = style }
     val values by settings.state.collectAsStateWithLifecycle()
-    val reducedMotion = (values as? SettingsState.Ready)?.values?.behavior?.reducedMotion ?: false
-    LaunchedEffect(reducedMotion) { view.visualizerRenderer.reducedMotion = reducedMotion }
+    val behavior = (values as? SettingsState.Ready)?.values?.behavior ?: BehaviorSettings()
+    LaunchedEffect(behavior.reducedMotion) { view.visualizerRenderer.reducedMotion = behavior.reducedMotion }
+    // The fingers themselves reach the engine through the host (VisualizerCanvasHost); this is only
+    // whether a Style that does not draw their strokes itself shows them as the shared smear.
+    LaunchedEffect(behavior.touchSmear, behavior.touchSmearStrength) {
+        view.visualizerRenderer.touchSmear = behavior.touchSmear
+        view.visualizerRenderer.touchSmearStrength = behavior.touchSmearStrength
+    }
+    // The quality and frame rate of where the Visual is shown now (#394); until Settings are read, the engine's own.
+    val drawing = (values as? SettingsState.Ready)?.values?.performance?.let { SurfaceDrawing.of(it, surface) }
+    LaunchedEffect(drawing) { drawing?.applyTo(view.visualizerRenderer, view.framePacer, view.holder.surface) }
 }
 
 private const val TAG = "LiveVisual"

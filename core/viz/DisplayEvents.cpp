@@ -26,4 +26,29 @@ GeodeFeatureFrame DisplayEvents::frame(const GeodeFeatureFrame& heard, bool live
     return out;
 }
 
+GeodeFeatureFrame withoutEvents(const GeodeFeatureFrame& frame) {
+    GeodeFeatureFrame out = frame;
+    out.beat = 0.0f;
+    out.beatStrength = 0.0f;
+    out.transient = 0.0f;
+    out.kick = 0.0f;
+    out.snare = 0.0f;
+    out.hat = 0.0f;
+    out.downbeat = 0.0f;
+    out.sectionBoundary = 0.0f;
+    out.drop = 0.0f;
+    out.arrival = 0.0f;
+    return out;
+}
+
+GeodeFeatureFrame SignalHold::frame(const GeodeFeatureFrame& shown, bool held) {
+    if (!held) {
+        holding_ = false;
+        return shown;
+    }
+    if (!holding_) frozen_ = withoutEvents(shown);
+    holding_ = true;
+    return frozen_;
+}
+
 }  // namespace geode::viz
