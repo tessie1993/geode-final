@@ -49,7 +49,7 @@ modulator can push it back into the hazardous range.
 | `apply` | glitch, bloom, brightness, intensity, contrast |
 | `limitLfoRate` | an LFO aimed at a luminance target; the rate is the hazard, not the amplitude |
 | `beatMinIntervalMs` | the floor between beat-driven hits |
-| `layerMix` | ADD and DIFFERENCE blends, which reach the screen after `apply` |
+| `layer::opacityCap`, `layer::Mixer` | Layer 2: Difference and Exclusion held to the flash depth; opacity, influence and swap slewed (a full swing over at least 0.5 s), every change of Style or mode faded |
 | `transitionStyle` / `transitionId` | a hard cut becomes a crossfade |
 | `FlashLimiter` | the finished frame itself — see below |
 | `BeatEnvelope` | the beat pulse every Style reads rises over 0.1 s instead of jumping |
@@ -59,7 +59,7 @@ the values are ignored.
 
 **The No-flash limiter.** `core/viz/FlashLimiter` (pure, host-tested in
 `core/tests/flash_limiter_test.cpp`) bounds what reaches the screen, whatever produced it: every
-shader and field Style, MilkDrop, Layers, transitions and the composite's effects.
+shader and field Style, MilkDrop, Layer 2, transitions and the composite's effects.
 `NoFlashPass` draws the composite into a candidate target, averages it on the GPU into a 4x4
 grid of linear relative luminance and saturated-red value (`noflash_measure_frag.glsl`), reads
 those 16 texels back, and asks the limiter how much of the new frame may be shown. The limiter
