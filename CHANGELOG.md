@@ -11,6 +11,20 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Live input survives real life (#297).** The built-in microphone is
+  chosen explicitly and chosen again if the system routes elsewhere, so a
+  plugged-in headset no longer takes over. Another app taking the
+  microphone, the privacy toggle or going to the background is reported as
+  lost at once (from the recording callbacks, not after four quiet seconds),
+  and Live input resumes by itself when the microphone is free; dismissing
+  the notice stops it. The microphone is let go when the app stops, since
+  there is no microphone foreground service. A failed read reopens the
+  capture up to six times (100 ms doubling to 1 s) and starts a new audio
+  epoch. 48 kHz is asked for first, reads are 256 frames, and the window the
+  scenes draw (MilkDrop's PCM) is raised 6 dB, or 24 dB for the UNPROCESSED
+  source, so the analysis hears the microphone as it is
+  (`geode_feed_set_window_gain`).
+
 - **The analysis sleeps when no Visual is shown (#298).** The live Visual
   watches the audio feed only while it is on screen (the Visuals tab, full
   screen or picture-in-picture) and the app is started, so another tab, the

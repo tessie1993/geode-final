@@ -47,6 +47,10 @@ void geode_feed_set_presentation(geode_feed* f, int source, int64_t delay_us, fl
     if (f) f->feed->ring().setPresentation(sourceOf(source), delay_us * 1000, speed);
 }
 
+void geode_feed_set_window_gain(geode_feed* f, int source, float gain) {
+    if (f) f->feed->ring().setWindowGain(sourceOf(source), gain);
+}
+
 size_t geode_feed_write(geode_feed* f, int source, const float* interleaved, size_t frames, int channels, int sample_rate) {
     if (!f) return 0;
     return f->feed->ring().write(sourceOf(source), interleaved, frames, channels, sample_rate, geode::api::Feed::nowNs());

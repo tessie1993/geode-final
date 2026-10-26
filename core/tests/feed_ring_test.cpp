@@ -401,3 +401,46 @@ TEST(FeedRingTest, AReaderResumesFromTheStartWhenNothingIsSelected) {
     FeedRing ring(kSmall);
     EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
 }
+
+TEST(FeedRingTest, AWindowGainRaisesTheWindowOnlyAndIsLimited) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Live);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 1.0f);
+    const float pcm[4] = {0.1f, -0.2f, 0.6f, -0.6f};
+    ring.write(FeedSource::Live, pcm, 2, 2, kRate, 0);
+    ring.setWindowGain(FeedSource::Live, 2.0f);
+    float out[6] = {9, 9, 9, 9, 9, 9};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 3), 2u);
+    // The frame before the epoch stays silent; the rest are raised and held within [-1, 1].
+    EXPECT_EQ(out[0], 0.0f);
+    EXPECT_EQ(out[1], 0.0f);
+    EXPECT_FLOAT_EQ(out[2], 0.2f);
+    EXPECT_FLOAT_EQ(out[3], -0.4f);
+    EXPECT_FLOAT_EQ(out[4], 1.0f);
+    EXPECT_FLOAT_EQ(out[5], -1.0f);
+    // What the analysis reads is as written.
+    float raw[4] = {};
+    EXPECT_EQ(ring.copyRange(0, 2, raw), 2u);
+    EXPECT_FLOAT_EQ(raw[2], 0.6f);
+    EXPECT_FLOAT_EQ(raw[3], -0.6f);
+}
+
+TEST(FeedRingTest, AWindowGainBelongsToItsSourceAndIsClamped) {
+    FeedRing ring(kSmall);
+    ring.setWindowGain(FeedSource::Live, 100.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), FeedRing::kMaxWindowGain);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Player), 1.0f);
+    ring.setWindowGain(FeedSource::Live, -1.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 0.0f);
+    ring.setWindowGain(FeedSource::Live, std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 1.0f);
+    ring.setWindowGain(FeedSource::None, 4.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::None), 1.0f);
+    // The player's window is untouched by the microphone's gain.
+    ring.setWindowGain(FeedSource::Live, 4.0f);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 3, 1, 0);
+    float out[2] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 1), 1u);
+    EXPECT_FLOAT_EQ(out[0], 3.0f);
+}

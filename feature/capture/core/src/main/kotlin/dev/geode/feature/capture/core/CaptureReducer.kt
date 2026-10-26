@@ -20,7 +20,10 @@ import dev.geode.kernel.StartTimer
  * - Starting asks Playback whether a song plays. If one does, the person is asked each time whether
  *   to pause it or keep both (ADR-0004); the song is paused only once the capture really runs.
  * - A missing microphone permission is asked for by the route, whose answer comes back as a command.
- * - A source that is unavailable, refused or lost is explained and capture stops. No fallback.
+ * - A source that is unavailable or refused is explained and capture stops. No fallback.
+ * - A source that is lost (another app took the microphone, the app went to the background) is
+ *   explained, and the adapter waits for it: when it runs again, so does the capture (#297).
+ *   Dismissing the explanation stops the wait.
  * - A start must be announced within [START_TIMEOUT], a timer that lives only while starting.
  * - A start that lands when Capture no longer wants it is undone.
  */
@@ -31,7 +34,7 @@ object CaptureReducer : Reducer<CaptureState, CaptureEvent, CaptureEffect> {
     ): Next<CaptureState, CaptureEffect> =
         when (state) {
             CaptureState.Off -> idle(state, event)
-            is CaptureState.Failed -> idle(state, event)
+            is CaptureState.Failed -> if (state.problem == CaptureProblem.SOURCE_LOST) lost(state, event) else idle(state, event)
             is CaptureState.Preparing -> preparing(state, event)
             is CaptureState.AskingAboutMusic -> asking(state, event)
             is CaptureState.AwaitingPermission -> awaitingPermission(state, event)
@@ -59,6 +62,18 @@ object CaptureReducer : Reducer<CaptureState, CaptureEvent, CaptureEffect> {
             CaptureEvent.StartTimedOut,
             is CaptureEvent.WorkFailed,
             -> unwanted(state, event)
+        }
+
+    /** The source was lost and the adapter waits for it to come back; anything else is as when idle. */
+    private fun lost(
+        state: CaptureState.Failed,
+        event: CaptureEvent,
+    ): Next<CaptureState, CaptureEffect> =
+        when {
+            event is CaptureEvent.Running -> Next(CaptureState.Capturing(state.source, quiet = false))
+            event is CaptureEvent.Command && event.command == CaptureCommand.Stop ->
+                Next(CaptureState.Off, listOf(Perform(CaptureWork.End)))
+            else -> idle(state, event)
         }
 
     private fun preparing(

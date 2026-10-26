@@ -3,19 +3,34 @@ package dev.geode.audio
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
+import android.media.AudioRecordingConfiguration
+import android.media.AudioRouting
 import android.media.MediaRecorder
+import android.os.Handler
+import android.os.Looper
 import androidx.core.content.ContextCompat
 import dev.geode.util.bestEffort
 import kotlin.math.abs
 
+/**
+ * Live input: the phone's built-in microphone, the only one (CONTEXT.md). It survives real life (#297):
+ *
+ * - A wired or USB headset that is plugged in does not take over: the built-in mic is chosen
+ *   explicitly, and chosen again whenever the system routes the capture elsewhere.
+ * - Being silenced by another app, the privacy toggle or the background is reported through
+ *   [onSilencedChanged] as it happens, rather than read as a quiet room after a few seconds.
+ * - A failed read is retried a bounded number of times (the pump, LiveInputPolicy).
+ * - 48 kHz is asked for first, and reads are small, so nearly every Visual frame has new audio.
+ */
 class MicCapture(
     private val context: Context,
     sink: dev.geode.engine.audio.PcmSink,
     nowMs: () -> Long = { android.os.SystemClock.elapsedRealtime() },
-) : AudioCapturePump(sink, DEFAULT_RATE, nowMs) {
+) : AudioCapturePump(sink, LiveInputPolicy.rates.first(), nowMs) {
     enum class Failure {
         PERMISSION,
 
@@ -30,7 +45,32 @@ class MicCapture(
     var silenceLikely: Boolean = false
         private set
 
+    /** Whether the capture reads the UNPROCESSED source, which is much quieter than the voice path. */
+    @Volatile
+    var unprocessed: Boolean = false
+        private set
+
+    /** Whether the system silences this capture now: another app, the privacy toggle or the background. */
+    @Volatile
+    var silenced: Boolean = false
+        private set
+
     override val threadName = "geode-mic"
+
+    private val audioManager: AudioManager? get() = context.getSystemService(AudioManager::class.java)
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private val recordingCallback =
+        object : AudioManager.AudioRecordingCallback() {
+            override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
+                val rec = currentRecord ?: return
+                val mine = configs.firstOrNull { it.clientAudioSessionId == rec.audioSessionId } ?: return
+                noteSilenced(mine.isClientSilenced)
+            }
+        }
+
+    private val routingListener = AudioRouting.OnRoutingChangedListener { router -> keepBuiltIn(router as? AudioRecord) }
 
     fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -41,9 +81,50 @@ class MicCapture(
         if (active) return null
         if (!hasPermission()) return Failure.PERMISSION
         val rec = openRecord() ?: return Failure.UNAVAILABLE
+        silenced = false
         if (!startPump(rec, 1, onSampleRate)) return Failure.UNAVAILABLE
+        watch(rec)
+        bestEffort(TAG, "registerAudioRecordingCallback") { audioManager?.registerAudioRecordingCallback(recordingCallback, mainHandler) }
+        // Already silenced when it starts (the app is in the background, the toggle is off).
+        bestEffort(TAG, "activeRecordingConfiguration") { rec.activeRecordingConfiguration?.let { noteSilenced(it.isClientSilenced) } }
         return null
     }
+
+    /** Called on the main thread each time [silenced] changes while capturing. */
+    @Volatile
+    var onSilencedChanged: ((Boolean) -> Unit)? = null
+
+    private fun noteSilenced(now: Boolean) {
+        if (silenced == now) return
+        silenced = now
+        onSilencedChanged?.invoke(now)
+    }
+
+    override fun reopen(): AudioRecord? = openRecord()
+
+    override fun onRecordReplaced(rec: AudioRecord) = watch(rec)
+
+    override fun onStopped() {
+        bestEffort(TAG, "unregisterAudioRecordingCallback") { audioManager?.unregisterAudioRecordingCallback(recordingCallback) }
+        silenced = false
+    }
+
+    private fun watch(rec: AudioRecord) {
+        bestEffort(TAG, "addOnRoutingChangedListener") { rec.addOnRoutingChangedListener(routingListener, mainHandler) }
+    }
+
+    /** Routed somewhere else than the built-in mic (a headset was plugged in): ask for the built-in one again. */
+    private fun keepBuiltIn(rec: AudioRecord?) {
+        if (rec == null || rec !== currentRecord) return
+        val builtIn = builtInMic() ?: return
+        if (rec.routedDevice?.type == AudioDeviceInfo.TYPE_BUILTIN_MIC) return
+        bestEffort(TAG, "setPreferredDevice") { rec.setPreferredDevice(builtIn) }
+    }
+
+    private fun builtInMic(): AudioDeviceInfo? =
+        runCatching {
+            audioManager?.getDevices(AudioManager.GET_DEVICES_INPUTS)?.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
+        }.getOrNull()
 
     override fun noteLevel(
         buffer: FloatArray,
@@ -83,36 +164,50 @@ class MicCapture(
 
     private fun openRecord(): AudioRecord? {
         val source = preferredSource()
-        for (rate in intArrayOf(DEFAULT_RATE, 48_000, 22_050)) {
+        val builtIn = builtInMic()
+        for (rate in LiveInputPolicy.rates) {
             for (encoding in intArrayOf(AudioFormat.ENCODING_PCM_FLOAT, AudioFormat.ENCODING_PCM_16BIT)) {
-                val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, encoding)
-                if (min <= 0) continue
-                val rec =
-                    runCatching {
-                        @Suppress("MissingPermission")
-                        AudioRecord(
-                            source,
-                            rate,
-                            AudioFormat.CHANNEL_IN_MONO,
-                            encoding,
-                            (min * BUFFER_MULTIPLIER).coerceAtLeast(READ_FRAMES * 4),
-                        )
-                    }.getOrNull()
-                if (rec != null && rec.state == AudioRecord.STATE_INITIALIZED) {
+                val rec = tryRecord(source, rate, encoding)
+                if (rec != null) {
+                    // Chosen before the capture starts, so a plugged-in headset mic never replaces it.
+                    builtIn?.let { device -> bestEffort(TAG, "setPreferredDevice") { rec.setPreferredDevice(device) } }
                     sampleRateHz = rate
+                    unprocessed = source == MediaRecorder.AudioSource.UNPROCESSED
                     return rec
                 }
-                bestEffort(TAG, "rec?.release()") { rec?.release() }
             }
         }
+        return null
+    }
+
+    private fun tryRecord(
+        source: Int,
+        rate: Int,
+        encoding: Int,
+    ): AudioRecord? {
+        val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, encoding)
+        if (min <= 0) return null
+        val bytesPerSample = if (encoding == AudioFormat.ENCODING_PCM_FLOAT) FLOAT_BYTES else SHORT_BYTES
+        val rec =
+            runCatching {
+                @Suppress("MissingPermission")
+                AudioRecord(
+                    source,
+                    rate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    encoding,
+                    (min * BUFFER_MULTIPLIER).coerceAtLeast(LiveInputPolicy.READ_FRAMES * bytesPerSample * BUFFER_MULTIPLIER),
+                )
+            }.getOrNull()
+        if (rec != null && rec.state == AudioRecord.STATE_INITIALIZED) return rec
+        bestEffort(TAG, "rec?.release()") { rec?.release() }
         return null
     }
 
     private fun preferredSource(): Int {
         val supported =
             runCatching {
-                (context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager)
-                    ?.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED)
+                audioManager?.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED)
             }.getOrNull()
         return if (supported == "true") {
             MediaRecorder.AudioSource.UNPROCESSED
@@ -122,7 +217,8 @@ class MicCapture(
     }
 
     private companion object {
-        const val DEFAULT_RATE = 44_100
+        const val FLOAT_BYTES = 4
+        const val SHORT_BYTES = 2
     }
 }
 

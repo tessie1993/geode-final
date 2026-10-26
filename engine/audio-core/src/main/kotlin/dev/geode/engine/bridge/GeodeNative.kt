@@ -496,6 +496,12 @@ object GeodeNative {
         speed: Float,
     ): Int
 
+    external fun feedSetWindowGain(
+        handle: Long,
+        source: Int,
+        gain: Float,
+    ): Int
+
     /** Returns the frames taken: 0 when [source] is not the one listened to. */
     external fun feedWrite(
         handle: Long,

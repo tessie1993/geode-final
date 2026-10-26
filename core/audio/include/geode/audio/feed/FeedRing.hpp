@@ -50,6 +50,8 @@ public:
     static constexpr int64_t kMaxPacketNs = 250'000'000;
     // The furthest a source may say it runs ahead of the speaker.
     static constexpr int64_t kMaxDelayNs = 2'000'000'000;
+    // The most a window may be raised: 24 dB.
+    static constexpr float kMaxWindowGain = 16.0f;
 
     // capacityFrames is rounded up to a power of two, and to at least 4 * kMaxWriteFrames.
     explicit FeedRing(size_t capacityFrames);
@@ -63,6 +65,11 @@ public:
     void setRunning(FeedSource source, bool running);
     // How far ahead of the speaker the source writes, and the speed its frames are heard at.
     void setPresentation(FeedSource source, int64_t delayNs, float speed);
+    // The gain copy() applies to the source's frames (the window the scenes draw), never copyRange() (the
+    // analysis). 1 leaves them as written; any other gain is clamped to [0, kMaxWindowGain] and its output
+    // limited to [-1, 1].
+    void setWindowGain(FeedSource source, float gain);
+    float windowGain(FeedSource source) const;
 
     // Writers. Returns the frames stored: 0 when `source` is not the one listened to, when another write
     // is under way, or for an unusable format. Mono is heard on both channels; past two channels only
@@ -113,6 +120,7 @@ private:
     std::array<std::atomic<bool>, kSources> running_{};
     std::array<std::atomic<int64_t>, kSources> delayNs_{};
     std::array<std::atomic<float>, kSources> speed_{};
+    std::array<std::atomic<float>, kSources> windowGain_{};
 };
 
 }  // namespace geode::audio::feed

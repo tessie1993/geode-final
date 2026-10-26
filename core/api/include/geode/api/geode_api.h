@@ -350,6 +350,9 @@ GEODE_API void        geode_feed_set_running(geode_feed*, int source, int runnin
 /* How far ahead of the speaker the source writes, in microseconds of its own audio, and the speed it is
  * heard at: the Visual reads that far behind the newest frame. */
 GEODE_API void        geode_feed_set_presentation(geode_feed*, int source, int64_t delay_us, float speed);
+/* The gain on `source`'s window for the Visual's scenes (MilkDrop's PCM), never on what the analysis hears;
+ * 1 by default, clamped to [0, 16]. A raised window is limited to [-1, 1]. */
+GEODE_API void        geode_feed_set_window_gain(geode_feed*, int source, float gain);
 /* Interleaved float PCM; returns the frames taken, 0 when `source` is not the one listened to. */
 GEODE_API size_t      geode_feed_write(geode_feed*, int source, const float* interleaved, size_t frames, int channels,
                                        int sample_rate);

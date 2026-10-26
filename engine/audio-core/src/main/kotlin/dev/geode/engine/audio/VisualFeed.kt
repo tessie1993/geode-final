@@ -55,6 +55,15 @@ class VisualFeed internal constructor(
         speed: Float,
     ) = backend.call("feedSetPresentation") { h -> GeodeNative.feedSetPresentation(h, source.code, delayUs, speed) }
 
+    /**
+     * The gain on [source]'s window for the scenes (MilkDrop's PCM, the Styles' waves), never on what the
+     * analysis hears; 1 leaves it as written.
+     */
+    fun setWindowGain(
+        source: FeedSource,
+        gain: Float,
+    ) = backend.call("feedSetWindowGain") { h -> GeodeNative.feedSetWindowGain(h, source.code, gain) }
+
     fun setTuning(
         sensitivity: Float,
         refractoryMs: Float,

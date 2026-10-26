@@ -77,6 +77,7 @@ class VisualFeedTest {
         feed.flush(FeedSource.PLAYER)
         feed.setRunning(FeedSource.PLAYER, false)
         feed.setPresentation(FeedSource.PLAYER, 500_000L, 1f)
+        feed.setWindowGain(FeedSource.LIVE, 2f)
         feed.setTuning(3f, 333f, 0.01f, 0.1f)
         feed.resetAnalysis()
         feed.attachSnapshots(null)
@@ -86,6 +87,7 @@ class VisualFeedTest {
                 "feedFlush",
                 "feedSetRunning",
                 "feedSetPresentation",
+                "feedSetWindowGain",
                 "feedSetTuning",
                 "feedResetAnalysis",
                 "feedAttachSnapshots",
