@@ -28,11 +28,23 @@ float srgbEncode(float linear) {
     return kSrgbScale * std::pow(linear, 1.0f / kSrgbPower) - kSrgbOffset;
 }
 
-float acesFit(float x) { return x * (kAcesA * x + kAcesB) / (x * (kAcesC * x + kAcesD) + kAcesE); }
-
 float toneMap(float encoded) {
-    const float x = std::max(encoded, 0.0f) * kExposure;
-    return std::clamp(acesFit(x) / acesFit(kWhite * kExposure), 0.0f, 1.0f);
+    const float x = std::max(encoded, 0.0f);
+    if (x <= 1.0f) return x;
+    const float span = kShoulderCeiling - 1.0f;
+    return 1.0f + span * (1.0f - std::exp(-(x - 1.0f) / span));
+}
+
+float whiteness(float compressed) { return std::clamp((compressed - 1.0f) / (kShoulderCeiling - 1.0f), 0.0f, 1.0f); }
+
+Rgb toDisplay(Rgb encoded) {
+    const Rgb c{std::max(encoded.r, 0.0f), std::max(encoded.g, 0.0f), std::max(encoded.b, 0.0f)};
+    const float peak = std::max(c.r, std::max(c.g, c.b));
+    if (peak <= 1.0f) return c;
+    // The hue at full brightness, then bleached toward white as far as the peak was compressed.
+    const float bleach = whiteness(toneMap(peak));
+    const auto out = [&](float channel) { return channel / peak + (1.0f - channel / peak) * bleach; };
+    return {out(c.r), out(c.g), out(c.b)};
 }
 
 float sanitize(float value) {

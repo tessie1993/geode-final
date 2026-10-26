@@ -154,7 +154,7 @@ private:
     SharedFxPass sharedFx_;
     CompositePass compositePass_;
     CompositePass::Inputs compositeInputs_;
-    // HDR: the composite's target, the bloom and the filmic tonemap into the No-flash candidate.
+    // HDR: the composite's target, the bloom and the tonemap (highlight roll-off) into the No-flash candidate.
     HdrPass hdrPass_;
     // The No-flash rule: every finished frame passes through it (CONTEXT.md).
     NoFlashPass noFlash_;

@@ -14,7 +14,7 @@ namespace geode::viz {
 // The end of the HDR frame graph (ToneMap.hpp). The composite draws into this pass's HDR target
 // instead of the output; resolve() gathers the light above a soft threshold into a dual-filter mip
 // chain (bloom_down_frag.glsl, then bloom_up_frag.glsl added back up the chain), and draws the
-// composite plus that bloom through the filmic curve and the blue-noise dither into the 8-bit
+// composite plus that bloom through the highlight roll-off and the blue-noise dither into the 8-bit
 // target the No-flash limiter measures (tonemap_frag.glsl). It runs only where its targets are
 // RGBA16F (the device renders and blends them); elsewhere the frame graph stays 8-bit as before.
 class HdrPass {

@@ -38,41 +38,78 @@ TEST(ToneMap, EncodeIsTheInverseOfDecode) {
     }
 }
 
-// ---- the filmic curve -------------------------------------------------------------------------
+// ---- the highlight roll-off --------------------------------------------------------------------
 
-TEST(ToneMap, AcesFitIsTheFittedCurve) {
-    EXPECT_EQ(tone::acesFit(0.0f), 0.0f);
-    EXPECT_NEAR(tone::acesFit(1.0f), (2.51f + 0.03f) / (2.43f + 0.59f + 0.14f), kTolerance);
-    EXPECT_NEAR(tone::acesFit(0.5f), 0.5f * (2.51f * 0.5f + 0.03f) / (0.5f * (2.43f * 0.5f + 0.59f) + 0.14f), kTolerance);
-}
-
-TEST(ToneMap, BlackStaysBlackAndTheWhitePointIsWhite) {
+TEST(ToneMap, BlackStaysBlackAndWhiteStaysWhite) {
     EXPECT_EQ(tone::toneMap(0.0f), 0.0f);
     EXPECT_EQ(tone::toneMap(-2.0f), 0.0f);
-    EXPECT_NEAR(tone::toneMap(tone::kWhite), 1.0f, kTolerance);
-    EXPECT_EQ(tone::toneMap(tone::kWhite * 2.0f), 1.0f);
-    EXPECT_EQ(tone::toneMap(tone::kHdrCeiling), 1.0f);
+    EXPECT_EQ(tone::toneMap(1.0f), 1.0f);
 }
 
-TEST(ToneMap, TheMiddleStaysWhereEachStyleWasTuned) {
-    EXPECT_NEAR(tone::toneMap(0.18f), 0.18f, 0.015f);
-    EXPECT_NEAR(tone::toneMap(0.5f), 0.5f, 0.05f);
-    EXPECT_NEAR(tone::toneMap(1.0f), 0.78f, 0.01f);
-    EXPECT_NEAR(tone::toneMap(0.5f),
-                tone::acesFit(0.5f * tone::kExposure) / tone::acesFit(tone::kWhite * tone::kExposure), kTolerance);
+TEST(ToneMap, EverythingUpToWhiteIsExactlyAsTheStyleMadeIt) {
+    for (int i = 0; i <= 100; ++i) {
+        const float encoded = static_cast<float>(i) / 100.0f;
+        EXPECT_EQ(tone::toneMap(encoded), encoded) << encoded;
+    }
 }
 
-TEST(ToneMap, HeadroomRollsOffSmoothlyInsteadOfClipping) {
-    float previous = tone::toneMap(0.0f);
+TEST(ToneMap, HighlightsRollOffBelowTheCeiling) {
+    EXPECT_NEAR(tone::toneMap(2.0f), 1.0f + (1.0f - std::exp(-1.0f)), kTolerance);
+    EXPECT_NEAR(tone::toneMap(1.5f), 1.0f + (1.0f - std::exp(-0.5f)), kTolerance);
+    float previous = tone::toneMap(1.0f);
     for (int i = 1; i <= 400; ++i) {
-        const float encoded = static_cast<float>(i) * tone::kWhite / 400.0f;
+        const float encoded = 1.0f + static_cast<float>(i) * 0.01f;
         const float shown = tone::toneMap(encoded);
         EXPECT_GT(shown, previous) << encoded;
+        EXPECT_LT(shown, encoded) << encoded;
+        EXPECT_LT(shown, tone::kShoulderCeiling) << encoded;
         previous = shown;
     }
-    // A value half again over a Style's white is still told apart from one twice over it.
-    EXPECT_LT(tone::toneMap(1.5f), tone::toneMap(2.0f) - 0.03f);
-    EXPECT_LT(tone::toneMap(2.0f), 1.0f);
+    EXPECT_LE(tone::toneMap(tone::kHdrCeiling), tone::kShoulderCeiling);
+    // The shoulder leaves the identity with slope 1, so there is no kink at white.
+    EXPECT_NEAR((tone::toneMap(1.001f) - 1.0f) / 0.001f, 1.0f, 1e-2f);
+}
+
+TEST(ToneMap, WhitenessIsHowFarTowardTheCeiling) {
+    EXPECT_EQ(tone::whiteness(1.0f), 0.0f);
+    EXPECT_EQ(tone::whiteness(0.5f), 0.0f);
+    EXPECT_NEAR(tone::whiteness(1.5f), 0.5f, kTolerance);
+    EXPECT_EQ(tone::whiteness(tone::kShoulderCeiling), 1.0f);
+    EXPECT_EQ(tone::whiteness(5.0f), 1.0f);
+}
+
+TEST(ToneMap, DisplayColoursUpToWhiteAreUnchanged) {
+    const tone::Rgb c = tone::toDisplay({0.2f, 0.7f, 1.0f});
+    EXPECT_EQ(c.r, 0.2f);
+    EXPECT_EQ(c.g, 0.7f);
+    EXPECT_EQ(c.b, 1.0f);
+    const tone::Rgb negative = tone::toDisplay({-0.5f, 0.3f, 0.0f});
+    EXPECT_EQ(negative.r, 0.0f);
+    EXPECT_EQ(negative.g, 0.3f);
+}
+
+TEST(ToneMap, OverexposedColoursKeepTheirHueAndBleachTowardWhite) {
+    // Red at twice the display's white: the hue (1, 0.25, 0) bleached by whiteness(toneMap(2)).
+    const float bleach = tone::whiteness(tone::toneMap(2.0f));
+    const tone::Rgb c = tone::toDisplay({2.0f, 0.5f, 0.0f});
+    EXPECT_NEAR(c.r, 1.0f, kTolerance);
+    EXPECT_NEAR(c.g, 0.25f + 0.75f * bleach, kTolerance);
+    EXPECT_NEAR(c.b, bleach, kTolerance);
+    // Just over white it barely changes; far over it, it is nearly white; never outside [0, 1].
+    const tone::Rgb near = tone::toDisplay({1.001f, 0.5f, 0.0f});
+    EXPECT_NEAR(near.g, 0.5f, 2e-3f);
+    const tone::Rgb far = tone::toDisplay({60.0f, 0.0f, 0.0f});
+    EXPECT_GT(far.g, 0.99f);
+    EXPECT_LE(far.g, 1.0f);
+    // Brighter in, never darker out.
+    float previous = 0.0f;
+    for (int i = 0; i <= 300; ++i) {
+        const float v = static_cast<float>(i) * 0.01f;
+        const tone::Rgb d = tone::toDisplay({v, v * 0.5f, v * 0.2f});
+        const float luma = 0.2126f * d.r + 0.7152f * d.g + 0.0722f * d.b;
+        EXPECT_GE(luma, previous - 1e-6f) << v;
+        previous = luma;
+    }
 }
 
 TEST(ToneMap, SanitiseBoundsTheHdrRange) {

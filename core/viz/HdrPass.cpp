@@ -129,8 +129,7 @@ void HdrPass::resolve(const tone::BloomSettings& bloom, GLuint targetFbo, GLuint
     glUniform1i(toneUniforms_.loc("uBloom"), 1);
     // Level 0 holds the sum of every level, so the strength is shared out between them.
     glUniform1f(toneUniforms_.loc("uBloomStrength"), levels > 0 ? bloom.strength / static_cast<float>(levels) : 0.0f);
-    glUniform1f(toneUniforms_.loc("uExposure"), tone::kExposure);
-    glUniform1f(toneUniforms_.loc("uWhite"), tone::kWhite);
+    glUniform1f(toneUniforms_.loc("uCeiling"), tone::kShoulderCeiling);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, noiseTex_);
     glUniform1i(toneUniforms_.loc("uNoise"), 2);

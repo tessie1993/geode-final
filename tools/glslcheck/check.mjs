@@ -245,11 +245,11 @@ const SHARED_FX_EFFECTS = {
 };
 
 // The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
-// level and a plain one), its upsample, and the final filmic tonemap with and without bloom. The
+// level and a plain one), its upsample, and the final tonemap (highlight roll-off) with and without bloom. The
 // stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
 const BLOOM_DOWN_NEUTRAL = { uTexel: [0, 0], uPrefilter: 1, uCurve: [0.6, 0.5] };
 const BLOOM_UP_NEUTRAL = { uTexel: [0, 0] };
-const TONEMAP_NEUTRAL = { uBloomStrength: 0, uExposure: 0.7, uWhite: 3.0, uDither: 1 / 255 };
+const TONEMAP_NEUTRAL = { uBloomStrength: 0, uCeiling: 2.0, uDither: 1 / 255 };
 const HDR_TEXTURES = { uSource: 'scene', uScene: 'scene', uBloom: 'history', uNoise: 'noise' };
 
 function effectJobs(registry, size) {
