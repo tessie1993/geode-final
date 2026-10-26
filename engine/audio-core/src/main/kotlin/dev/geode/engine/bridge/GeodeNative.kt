@@ -359,6 +359,9 @@ object GeodeNative {
         fps: Float,
     ): Int
 
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap (#286). */
+    external fun vizFrameCapFps(handle: Long): Float
+
     /** The Visual quality on screen as a render scale ceiling under the thermal one (#28). */
     external fun vizSetQualityCeiling(
         handle: Long,

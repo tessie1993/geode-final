@@ -24,6 +24,7 @@ import dev.geode.feature.settings.api.PlaybackCommand
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
 
 /**
  * What each command does to the settings, and the ranges every value is kept in. Pure: the reducer
@@ -153,6 +154,7 @@ object SettingsRules {
             is BehaviorCommand.SetTouchTransform -> behavior.copy(touchTransform = command.on)
             is BehaviorCommand.SetReducedMotion -> behavior.copy(reducedMotion = command.on)
             is BehaviorCommand.SetTilt -> behavior.copy(tilt = command.amount)
+            is BehaviorCommand.SetStartLook -> behavior.copy(startLook = command.look)
         }
 
     private fun export(
@@ -248,7 +250,18 @@ object SettingsRules {
         )
 
     private fun BehaviorSettings.inRange(): BehaviorSettings =
-        copy(touchSmearStrength = touchSmearStrength.coerceIn(BehaviorSettings.TOUCH_SMEAR_STRENGTH))
+        copy(
+            touchSmearStrength = touchSmearStrength.coerceIn(BehaviorSettings.TOUCH_SMEAR_STRENGTH),
+            startLook = startLook.inRange(),
+        )
+
+    /** A Style or preset with no id names nothing to start on, so it starts on the last look. */
+    private fun StartLook.inRange(): StartLook =
+        when (this) {
+            StartLook.Last -> this
+            is StartLook.Style -> if (style.value.isBlank()) StartLook.Last else this
+            is StartLook.Preset -> if (preset.value.isBlank()) StartLook.Last else this
+        }
 
     private val NO_SLEEP_TIMER = Minutes(0)
     private val FLAT = Millibels(0)

@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.data.MilkCatalog
 import dev.geode.engine.bridge.NativeSnapshots
+import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.handlers.CustomizationHandlers
@@ -15,6 +16,7 @@ import dev.geode.feature.customization.handlers.SharedPreferencesLegacyModulatio
 import dev.geode.feature.customization.handlers.customizationStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.handlers.ContentPickedFiles
@@ -32,6 +34,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
@@ -76,6 +79,15 @@ object VisualsModule {
                     .distinctUntilChanged()
                     .collect { engine.publish(customization.state.value.current) }
             }
+            // The look Geode starts on (#383): once, as soon as the stored settings are read.
+            application.geodeContainer.appScope.launch {
+                val start =
+                    settings.state
+                        .filterIsInstance<SettingsState.Ready>()
+                        .first()
+                        .values.behavior.startLook
+                startCommand(start)?.let(customization::send)
+            }
         }
     }
 
@@ -109,3 +121,11 @@ object VisualsModule {
     /** The app's own preset folder, where Customization saves presets until the person picks another. */
     private const val PRESET_FOLDER = "presets"
 }
+
+/** What Customization is sent to open on [look] (#383); nothing for the last look, which it keeps. */
+internal fun startCommand(look: StartLook): CustomizationCommand? =
+    when (look) {
+        StartLook.Last -> null
+        is StartLook.Style -> CustomizationCommand.ChooseStyle(look.style)
+        is StartLook.Preset -> CustomizationCommand.LoadPreset(look.preset)
+    }

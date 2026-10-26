@@ -160,6 +160,9 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     swell_ = slew(swell_, energy_, dt, kSwellRiseHz, kSwellFallHz);
     const float hit = live::hit(features);
     stepMotion(hit, dt);
+    energyPhase_ = framerate::advancePhase(energyPhase_, p.speed * smoothEnergy_, dt, kTimeWrapSeconds);
+    const float flowRate = kFlowBaseHz + kFlowEnergyHz * smoothEnergy_;
+    flight_ = framerate::advancePhase(flight_, kFlightTimeRate * p.speed + kFlightFlowRate * flowRate, dt, kFlightWrap);
     beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
@@ -207,7 +210,9 @@ void ShaderScene::draw(float timeSeconds) {
     }
     set1f("uPalLutMix", flag(lutSelected));
     set1f("uPalLutRow", paletteRowCoordinate(std::max(p.paletteLut, 0)));
-    set1f("uSteps", marchSteps(p.marchDetail));
+    // The Detail budget, cut to the share the thermal tier allows, and the effects it switches off.
+    set1f("uSteps", static_cast<float>(quality::marchSteps(static_cast<int>(marchSteps(p.marchDetail)), quality_.stepScale)));
+    glUniform1i(uniforms_.loc("uFxOff"), static_cast<GLint>(quality_.effectsOff));
     uploadMotion();
     uploadTouch();
     uploadGravity();
@@ -281,6 +286,8 @@ void ShaderScene::uploadMotion() {
     set1f("uSpawnAge", spawnAge_);
     set1f("uFormPhase", formPhase_);
     set1f("uFlowPhase", flowPhase_);
+    set1f("uEnergyPhase", energyPhase_);
+    set1f("uFlight", flight_);
     glUniform2f(uniforms_.loc("uMoveDir"), std::cos(dirAngle_), std::sin(dirAngle_));
 }
 
@@ -352,6 +359,13 @@ void ShaderScene::compilePendingIfAny() {
     currentFragment_ = *pending;
     host_.onShaderError("");
 }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+void ShaderScene::replaceFragment(std::string fragment) {
+    std::lock_guard<std::mutex> lock(pendingLock_);
+    pendingFragment_ = std::move(fragment);
+}
+#endif
 
 void ShaderScene::release() {
     if (program_ != 0) glDeleteProgram(program_);

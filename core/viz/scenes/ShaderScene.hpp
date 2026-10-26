@@ -11,6 +11,7 @@
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/FrameRate.hpp"
 
 namespace geode::viz {
 
@@ -38,7 +39,14 @@ public:
     void setGravityField(const GravityField* field) override { gravityField_ = field; }
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
+    void setQuality(const quality::Budget& budget) override { quality_ = budget; }
     bool ownsCamera() const override { return ownsCamera_; }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // The Style lab (debug builds only): compiles `fragment` at the next draw through the pending
+    // fragment, and keeps drawing the last shader that compiled when it does not.
+    void replaceFragment(std::string fragment);
+#endif
 
 private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -99,6 +107,14 @@ private:
     static constexpr float kFlowEnergyHz = 0.22f;
     // Well past the longest spawnGrow() horizon any style asks for.
     static constexpr float kSpawnAgeMax = 60.0f;
+    // The camera's distance down lib_dmt's flight path (uFlight): 1.4 units per second of uTime plus
+    // 9 per unit of uFlowPhase, the pace Rod Tunnel flies at. Integrated here and wrapped at the
+    // path's period (DMT_FLIGHT_WRAP, 2000 pi: every term of dmtTunnelPath repeats over it), so the
+    // camera keeps full float precision however long the Visual runs, where the sum of two clocks
+    // already in the thousands shimmered within the hour (#280).
+    static constexpr float kFlightTimeRate = 1.4f;
+    static constexpr float kFlightFlowRate = 9.0f;
+    static constexpr float kFlightWrap = 6283.1853f;
 
     // One-pole toward `target`, framerate independent, with its own rate for
     // rising and falling. Returns the new value.
@@ -165,6 +181,10 @@ private:
     float dirAngle_ = 0.0f;
     float dirTarget_ = 0.0f;
     float flowPhase_ = 0.0f;
+    // uEnergyPhase: the integral of speed x smoothed loudness, so a style can run faster when it is
+    // loud without the jump `uTime x loudness` makes whenever loudness changes.
+    float energyPhase_ = 0.0f;
+    float flight_ = 0.0f;
     // Deterministic per scene instance: the same audio gives the same picture,
     // which is what makes an exported frame reproducible.
     unsigned int seedState_ = 0x9e3779b9u;
@@ -193,6 +213,7 @@ private:
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;
+    quality::Budget quality_;
 };
 
 }  // namespace geode::viz

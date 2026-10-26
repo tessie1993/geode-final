@@ -1,57 +1,41 @@
 #include "geode/render/ShaderSource.hpp"
 
-#include <algorithm>
 #include <array>
-#include <cctype>
-#include <cstring>
 #include <memory>
+#include <vector>
+
+#include "geode/util/ShaderAssembly.hpp"
 
 namespace geode::viz {
 
 namespace {
 
+// The libraries a shader may include (shaders/<name>.glsl). tools/glslcheck/check.mjs reads this list.
 constexpr std::array<const char*, 13> kIncludes = {
     "lib_palette",         "lib_scene_uniforms", "lib_scene_grade",  "lib_sdf3", "lib_touch", "lib_psrdnoise2",
     "lib_particle_common", "lib_particle_shade", "lib_scene_motion", "lib_dmt",  "lib_style", "lib_camera",
     "lib_gravity",
 };
 
+const std::vector<std::string>& knownIncludes() {
+    static const std::vector<std::string> known(kIncludes.begin(), kIncludes.end());
+    return known;
+}
+
 struct AssetClose {
     void operator()(AAsset* asset) const { AAsset_close(asset); }
 };
 
-bool isBlank(char c) { return c == ' ' || c == '\t'; }
-bool isWord(char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; }
-
-// Matches GlUtil.INCLUDE_PATTERN: ^[ \t]*//#include[ \t]+(\w+)[ \t]*$ on one line.
-std::optional<std::string> includeNameOf(const std::string& line) {
-    size_t i = 0;
-    while (i < line.size() && isBlank(line[i])) i++;
-    static constexpr const char* kTag = "//#include";
-    const size_t tagLen = std::strlen(kTag);
-    if (line.compare(i, tagLen, kTag) != 0) return std::nullopt;
-    i += tagLen;
-    const size_t afterTag = i;
-    while (i < line.size() && isBlank(line[i])) i++;
-    if (i == afterTag) return std::nullopt;
-    const size_t start = i;
-    while (i < line.size() && isWord(line[i])) i++;
-    if (i == start) return std::nullopt;
-    const std::string name = line.substr(start, i - start);
-    while (i < line.size() && isBlank(line[i])) i++;
-    if (i != line.size()) return std::nullopt;
-    return name;
-}
-
 }  // namespace
 
 std::optional<std::string> ShaderSource::load(const std::string& name, std::string* error) const {
-    const auto raw = readAsset("shaders/" + name);
+    const std::string path = "shaders/" + name;
+    const auto raw = readAsset(path);
     if (!raw) {
         if (error) *error = "missing shader asset '" + name + "'";
         return std::nullopt;
     }
-    return resolveIncludes(*raw, error);
+    return resolveIncludes(path, *raw, error);
 }
 
 std::optional<std::string> ShaderSource::loadAsset(const std::string& path, std::string* error) const {
@@ -60,7 +44,7 @@ std::optional<std::string> ShaderSource::loadAsset(const std::string& path, std:
         if (error) *error = "missing shader asset '" + path + "'";
         return std::nullopt;
     }
-    return resolveIncludes(*raw, error);
+    return resolveIncludes(path, *raw, error);
 }
 
 std::optional<std::string> ShaderSource::readAsset(const std::string& path) const {
@@ -73,57 +57,8 @@ std::optional<std::string> ShaderSource::readAsset(const std::string& path) cons
     return out;
 }
 
-std::optional<std::string> ShaderSource::resolveIncludes(const std::string& source, std::string* error) const {
-    std::vector<std::string> visited;
-    return resolveIncludes(source, error, visited);
-}
-
-std::optional<std::string> ShaderSource::resolveIncludes(const std::string& source, std::string* error,
-                                                           std::vector<std::string>& visited) const {
-    std::string out;
-    out.reserve(source.size());
-    size_t pos = 0;
-    while (pos <= source.size()) {
-        const size_t eol = source.find('\n', pos);
-        const std::string line = source.substr(pos, eol == std::string::npos ? std::string::npos : eol - pos);
-        std::string body = line;
-        if (!body.empty() && body.back() == '\r') body.pop_back();
-        if (const auto name = includeNameOf(body)) {
-            if (!isIncludeName(*name)) {
-                if (error) *error = "unknown shader include '" + *name + "'";
-                return std::nullopt;
-            }
-            if (std::find(visited.begin(), visited.end(), *name) != visited.end()) {
-                if (error) *error = "circular shader include '" + *name + "'";
-                return std::nullopt;
-            }
-            const auto included = readAsset("shaders/" + *name + ".glsl");
-            if (!included) {
-                if (error) *error = "missing shader include '" + *name + "'";
-                return std::nullopt;
-            }
-            // Recurse so a nested //#include inside a lib_* file is resolved
-            // too, instead of surviving verbatim as a dead comment line.
-            visited.push_back(*name);
-            const auto resolved = resolveIncludes(*included, error, visited);
-            visited.pop_back();
-            if (!resolved) return std::nullopt;
-            out += *resolved;
-        } else {
-            out += line;
-        }
-        if (eol == std::string::npos) break;
-        out += '\n';
-        pos = eol + 1;
-    }
-    return out;
-}
-
-bool ShaderSource::isIncludeName(const std::string& name) {
-    for (const char* known : kIncludes) {
-        if (name == known) return true;
-    }
-    return false;
+std::optional<std::string> ShaderSource::resolveIncludes(const std::string& file, const std::string& source, std::string* error) const {
+    return geode::shader::assemble(file, source, knownIncludes(), [this](const std::string& path) { return readAsset(path); }, error);
 }
 
 }  // namespace geode::viz

@@ -84,6 +84,9 @@ class NativeViz(
             if (h == 0L) otherwise else block(h)
         }
 
+    /** Runs [block] with the live native handle under the read lock, or not at all without one (the debug Style lab). */
+    internal fun withHandle(block: (Long) -> Unit) = live(block)
+
     fun knows(sceneId: SceneId): Boolean = liveOr(false) { h -> GeodeNative.vizKnows(h, sceneId.value) }
 
     fun sceneIds(): List<SceneId> {
@@ -212,6 +215,9 @@ class NativeViz(
     fun setPacedFps(fps: Float) {
         live { h -> GeodeNative.vizSetPacedFps(h, fps) }
     }
+
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap. */
+    fun frameCapFps(): Float = liveOr(0f) { h -> GeodeNative.vizFrameCapFps(h) }
 
     /** The Visual quality on screen as a render scale ceiling; the thermal ceiling can only lower it. */
     fun setQualityCeiling(ceiling: Float) {

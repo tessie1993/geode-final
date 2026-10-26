@@ -182,6 +182,14 @@ internal class PanelState(
         learnOrSet(learning, target, value)?.let(send)
         if (learning != null) learn(null)
     }
+
+    /** A slider is being dragged: the Visual follows it, unless Learn mode waits to link it. */
+    fun preview(
+        target: Target,
+        value: Float,
+    ) {
+        previewCommand(learning, target, value)?.let(send)
+    }
 }
 
 @Composable

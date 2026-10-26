@@ -21,13 +21,15 @@ import kotlin.math.roundToLong
 
 /**
  * An old, version 1 preset as it was saved: the flat `SceneParams` fields of its JSON file, the
- * numbers in [numbers] and the switches in [switches], read by the handlers.
+ * numbers in [numbers] and the switches in [switches], and the MilkDrop preset it chose
+ * ([milkPreset]), read by the handlers.
  */
 data class LegacyPreset(
     val name: String,
     val style: SceneId,
     val numbers: Map<String, Double>,
     val switches: Map<String, Boolean>,
+    val milkPreset: String? = null,
 )
 
 /** One of the old app-wide modulation slots (`LfoConfig`), by its enum names. */
@@ -68,8 +70,9 @@ data class Upgrade(
  * default Style. Pure: the handlers back the originals up before they write the result.
  *
  * Only the old values a person changed away from the old defaults are carried over, so a Style's own
- * starting look (its retired in-Style effects included) survives. Strobe, flash, formDrive, user GLSL
- * and the other removed fields are dropped and named in [Upgrade.dropped].
+ * starting look (its retired in-Style effects included) survives. The chosen MilkDrop preset is kept
+ * as it was ([Preset.milkdrop]). Strobe, flash, formDrive, user GLSL and the other removed fields
+ * are dropped and named in [Upgrade.dropped].
  */
 object PresetUpgrade {
     /** An old field that maps onto one Shared core property, with the old default. */
@@ -267,7 +270,8 @@ object PresetUpgrade {
         val modulated = modulation(withExtras, lfos, envelopes, legacy)
         val customization = Rules.prune(modulated)
         val dropped = (legacy.numbers.keys + legacy.switches.keys).filterNot { it in used || it in PAIRED }.sorted()
-        return Upgrade(PresetRules.capture(legacy.name, customization, PresetRules.ALL_PARTS), dropped, restyled)
+        val preset = PresetRules.capture(legacy.name, customization, PresetRules.ALL_PARTS).copy(milkdrop = legacy.milkPreset)
+        return Upgrade(preset, dropped, restyled)
     }
 
     private fun gain(

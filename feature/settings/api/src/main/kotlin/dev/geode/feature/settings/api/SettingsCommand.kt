@@ -193,6 +193,11 @@ sealed interface BehaviorCommand : SettingsCommand {
     data class SetTilt(
         val amount: TiltAmount,
     ) : BehaviorCommand
+
+    /** The look Geode opens on (#383); a Style or preset with a blank id means [StartLook.Last]. */
+    data class SetStartLook(
+        val look: StartLook,
+    ) : BehaviorCommand
 }
 
 sealed interface ExportCommand : SettingsCommand {

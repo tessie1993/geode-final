@@ -1,6 +1,8 @@
 package dev.geode.feature.settings.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.BackgroundSettings
@@ -25,6 +27,7 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.core.SettingsRules
 import dev.geode.feature.settings.handlers.SettingsKeys as K
 
@@ -42,6 +45,8 @@ internal object SettingsCodec {
     private const val NO_PRESET = -1
     private const val DEFAULT_MORPH_BEATS = 4
     private const val BAND_SEPARATOR = ","
+    private const val START_STYLE = "style:"
+    private const val START_PRESET = "preset:"
 
     private val WHITE = Argb(0xFFFFFFFF.toInt())
 
@@ -155,8 +160,25 @@ internal object SettingsCodec {
             touchTransform = boolean(K.TOUCH_TRANSFORM, default.touchTransform),
             reducedMotion = boolean(K.REDUCED_MOTION, false) || string(K.LEGACY_SAFETY_CHOICE) == LEGACY_REDUCED_MOTION,
             tilt = enum(K.TILT, default.tilt),
+            startLook = startLook(string(K.START_LOOK)),
         )
     }
+
+    /** The stored start look; anything unreadable starts on the last look. */
+    private fun startLook(stored: String?): StartLook =
+        when {
+            stored == null -> StartLook.Last
+            stored.startsWith(START_STYLE) -> StartLook.Style(SceneId(stored.removePrefix(START_STYLE)))
+            stored.startsWith(START_PRESET) -> StartLook.Preset(PresetId(stored.removePrefix(START_PRESET)))
+            else -> StartLook.Last
+        }
+
+    private fun startLook(look: StartLook): String? =
+        when (look) {
+            StartLook.Last -> null
+            is StartLook.Style -> START_STYLE + look.style.value
+            is StartLook.Preset -> START_PRESET + look.preset.value
+        }
 
     private fun Reader.export(): ExportSettings {
         val default = ExportSettings()
@@ -292,6 +314,7 @@ internal object SettingsCodec {
             K.VISUAL_FRAME_RATE to values.performance.visualFrameRate.name,
             K.SAVE_MODE to values.performance.saveMode,
             K.VISUALS_OFF to values.performance.visualsOff,
+            K.START_LOOK to startLook(values.behavior.startLook),
         )
 
     /** Typed reads from a stored map; a value of the wrong type reads as absent. */

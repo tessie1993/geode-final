@@ -62,7 +62,7 @@ private fun LazyListScope.section(
     val change: (SettingsCommand) -> Unit = { onAction(SettingsAction.Change(it)) }
     when (model.section) {
         SettingsSection.THEME -> themeSection(values.look, model.fontColors, change)
-        SettingsSection.APPLICATION -> applicationSection(values, onAction)
+        SettingsSection.APPLICATION -> applicationSection(values, model.startLooks, onAction)
         SettingsSection.AUDIO -> audioSection(values, change)
         SettingsSection.EXPORT -> exportSection(values.export, change)
         SettingsSection.DEFAULT_PATHS -> defaultPathsSection(values.folders, onAction)

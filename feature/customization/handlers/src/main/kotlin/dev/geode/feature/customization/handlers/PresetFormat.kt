@@ -24,6 +24,7 @@ import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Wave
 import dev.geode.feature.customization.core.LegacyPreset
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 
 /** A preset file as read: one in the current format, or one an older Geode saved (version 1). */
@@ -40,24 +41,81 @@ sealed interface StoredPreset {
 /**
  * The preset file format (ADR-0004: small, versioned JSON files that can be shared). Version 1 was the
  * flat `SceneParams` file, which has no `version` key; it is read as a [LegacyPreset] for the one-time
- * upgrade. A file from a newer Geode is read for what this version knows: an entry it does not know
- * (a new Shared property, Extra, curve or kind of target) is left out rather than failing the file.
+ * upgrade.
+ *
+ * A file is read the way MilkDrop reads its presets, for what can be read:
+ * - an entry this version does not know (a new top-level part, Shared property, Extra, Sound signal,
+ *   curve, kind of target, source, shape or start) is kept unapplied in [Preset.unread] and written
+ *   back untouched, so a preset from a newer Geode survives being saved again here;
+ * - an entry that is broken (a missing field or a value of the wrong kind) is skipped, and the rest
+ *   of the preset still loads.
  */
 object PresetFormat {
-    /** [preset] as the text of its file. */
-    fun encode(preset: Preset): String =
-        JSONObject()
-            .put(VERSION, PRESET_VERSION)
-            .put(NAME, preset.name)
-            .put(STYLE, preset.style.value)
-            .put(PARTS, JSONArray(preset.parts.sortedBy { it.ordinal }.map { it.name }))
-            .put(SHARED, numbers(preset.shared.mapKeys { it.key.name }))
-            .put(EXTRAS, numbers(preset.extras.mapKeys { it.key.name }))
-            .put(MACROS, JSONArray(preset.macros.map(::macro)))
-            .put(REACTIONS, JSONArray(preset.reactions.map(::reaction)))
-            .put(MODULATORS, JSONArray(preset.modulators.map(::modulator)))
-            .put(SIGNALS, JSONObject(preset.signals.entries.associate { (signal, trim) -> signal.name to trim(trim) }))
-            .toString(INDENT)
+    /**
+     * [preset] as the text of its file, with what it kept unread written back where it was. A preset
+     * that kept parts of a newer format keeps that format's version.
+     */
+    fun encode(preset: Preset): String {
+        val unread = preset.unread?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
+        val o =
+            JSONObject()
+                .put(VERSION, maxOf(PRESET_VERSION, unread.optInt(VERSION, PRESET_VERSION)))
+                .put(NAME, preset.name)
+                .put(STYLE, preset.style.value)
+                .put(PARTS, JSONArray(preset.parts.sortedBy { it.ordinal }.map { it.name }))
+                .put(SHARED, numbers(preset.shared.mapKeys { it.key.name }))
+                .put(EXTRAS, numbers(preset.extras.mapKeys { it.key.name }))
+                .put(MACROS, JSONArray(preset.macros.map(::macro)))
+                .put(REACTIONS, JSONArray(preset.reactions.map(::reaction)))
+                .put(MODULATORS, JSONArray(preset.modulators.map(::modulator)))
+                .put(SIGNALS, JSONObject(preset.signals.entries.associate { (signal, trim) -> signal.name to trim(trim) }))
+        preset.milkdrop?.let { o.put(MILK_PRESET, it) }
+        writeBack(o, unread)
+        return o.toString(INDENT)
+    }
+
+    /** Puts what [unread] kept back into the file [o], each part where it was read from. */
+    private fun writeBack(
+        o: JSONObject,
+        unread: JSONObject,
+    ) {
+        for (key in keysOf(unread)) {
+            when (key) {
+                VERSION -> Unit
+                PARTS, REACTIONS, MODULATORS -> append(o.getJSONArray(key), unread.optJSONArray(key))
+                SHARED, EXTRAS, SIGNALS -> putMissing(o.getJSONObject(key), unread.optJSONObject(key))
+                MACROS -> appendLinks(o.getJSONArray(MACROS), unread.optJSONObject(key))
+                else -> if (!o.has(key)) o.put(key, unread.get(key))
+            }
+        }
+    }
+
+    private fun append(
+        to: JSONArray,
+        kept: JSONArray?,
+    ) {
+        if (kept != null) items(kept).forEach { to.put(it) }
+    }
+
+    private fun putMissing(
+        to: JSONObject,
+        kept: JSONObject?,
+    ) {
+        if (kept == null) return
+        for (name in keysOf(kept)) if (!to.has(name)) to.put(name, kept.get(name))
+    }
+
+    /** Each kept Macro link back onto the Macro at its place. */
+    private fun appendLinks(
+        macros: JSONArray,
+        kept: JSONObject?,
+    ) {
+        if (kept == null) return
+        for (index in keysOf(kept)) {
+            val links = index.toIntOrNull()?.let { macros.optJSONObject(it) }?.optJSONArray(LINKS) ?: continue
+            append(links, kept.optJSONArray(index))
+        }
+    }
 
     /**
      * Reads a preset file. An old file whose look was a user shader, which is gone (#87), lands on
@@ -76,19 +134,143 @@ object PresetFormat {
     private fun current(
         o: JSONObject,
         version: Int,
-    ): Preset =
-        Preset(
-            version = version,
-            name = o.getString(NAME),
-            style = SceneId(o.getString(STYLE)),
-            parts = names(o.optJSONArray(PARTS)).mapNotNull { enumOrNull<PresetPart>(it) }.toSet(),
-            shared = floats(o.optJSONObject(SHARED)).mapNotNullKeys { enumOrNull<SharedProperty>(it) },
-            extras = floats(o.optJSONObject(EXTRAS)).mapNotNullKeys { enumOrNull<ExtraKind>(it) },
-            macros = objects(o.optJSONArray(MACROS)).map(::macroOf),
-            reactions = objects(o.optJSONArray(REACTIONS)).mapNotNull(::reactionOf),
-            modulators = objects(o.optJSONArray(MODULATORS)).mapNotNull(::modulatorOf),
-            signals = signalsOf(o.optJSONObject(SIGNALS)),
-        )
+    ): Preset {
+        val unread = Unread()
+        for (key in keysOf(o)) if (key !in KNOWN) unread.part(key, o.get(key))
+        val parts =
+            names(o.optJSONArray(PARTS)).mapNotNull { name ->
+                enumOrNull<PresetPart>(name) ?: null.also { unread.item(PARTS, name) }
+            }
+        val macros =
+            objects(o.optJSONArray(MACROS)).mapIndexedNotNull { index, macro ->
+                attempt { macroOf(macro) { link -> unread.link(index, link) } }.valueOrNull()
+            }
+        val preset =
+            Preset(
+                version = version,
+                name = o.getString(NAME),
+                style = SceneId(o.getString(STYLE)),
+                parts = parts.toSet(),
+                shared = section(o, SHARED, unread) { enumOrNull<SharedProperty>(it) },
+                extras = section(o, EXTRAS, unread) { enumOrNull<ExtraKind>(it) },
+                macros = macros,
+                reactions = entries(o, REACTIONS, unread, ::reactionOf),
+                modulators = entries(o, MODULATORS, unread, ::modulatorOf),
+                signals = signalsOf(o.optJSONObject(SIGNALS), unread),
+                milkdrop = o.opt(MILK_PRESET) as? String,
+            )
+        return preset.copy(unread = unread.text(version))
+    }
+
+    /**
+     * What this version could not read in one file, laid out like the file: top-level parts by their
+     * own keys, unknown names under [SHARED], [EXTRAS] and [SIGNALS], unknown entries appended under
+     * [PARTS], [REACTIONS] and [MODULATORS], and unknown Macro links under [MACROS] by the Macro's place.
+     */
+    private class Unread {
+        private val kept = JSONObject()
+
+        fun part(
+            key: String,
+            value: Any,
+        ) {
+            kept.put(key, value)
+        }
+
+        fun entry(
+            section: String,
+            name: String,
+            value: Any,
+        ) {
+            (kept.optJSONObject(section) ?: JSONObject().also { kept.put(section, it) }).put(name, value)
+        }
+
+        fun item(
+            section: String,
+            value: Any,
+        ) {
+            (kept.optJSONArray(section) ?: JSONArray().also { kept.put(section, it) }).put(value)
+        }
+
+        fun link(
+            macro: Int,
+            value: Any,
+        ) {
+            val macros = kept.optJSONObject(MACROS) ?: JSONObject().also { kept.put(MACROS, it) }
+            (macros.optJSONArray(macro.toString()) ?: JSONArray().also { macros.put(macro.toString(), it) }).put(value)
+        }
+
+        /** The kept parts as text, with the file's [version] when it is newer; null when nothing was kept. */
+        fun text(version: Int): String? {
+            if (kept.length() == 0) return null
+            if (version > PRESET_VERSION) kept.put(VERSION, version)
+            return kept.toString()
+        }
+    }
+
+    /** How reading one entry went: [Read], not known to this version, or broken. */
+    private sealed interface Entry<out T> {
+        data class Read<T>(
+            val value: T,
+        ) : Entry<T>
+
+        data object Unknown : Entry<Nothing>
+
+        data object Broken : Entry<Nothing>
+    }
+
+    private fun <T> Entry<T>.valueOrNull(): T? =
+        when (this) {
+            is Entry.Read -> value
+            Entry.Unknown, Entry.Broken -> null
+        }
+
+    /** [read] of one entry: null from it means unknown; a missing field or a value of the wrong kind, broken. */
+    private inline fun <T : Any> attempt(read: () -> T?): Entry<T> =
+        try {
+            read()?.let { Entry.Read(it) } ?: Entry.Unknown
+        } catch (_: JSONException) {
+            Entry.Broken
+        } catch (_: IllegalArgumentException) {
+            Entry.Broken
+        }
+
+    /** The entries of the array [key]: one this version does not know is kept in [unread], a broken one skipped. */
+    private inline fun <T : Any> entries(
+        o: JSONObject,
+        key: String,
+        unread: Unread,
+        read: (JSONObject) -> T?,
+    ): List<T> =
+        objects(o.optJSONArray(key)).mapNotNull { entry ->
+            when (val result = attempt { read(entry) }) {
+                is Entry.Read -> result.value
+                Entry.Unknown -> null.also { unread.item(key, entry) }
+                Entry.Broken -> null
+            }
+        }
+
+    /**
+     * The numbers of the object [key] by name: a name this version does not know is kept in [unread],
+     * a value that is not a number is skipped.
+     */
+    private inline fun <K : Any> section(
+        o: JSONObject,
+        key: String,
+        unread: Unread,
+        known: (String) -> K?,
+    ): Map<K, Float> {
+        val values = o.optJSONObject(key) ?: return emptyMap()
+        return keysOf(values).mapNotNull { name ->
+            val value = values.get(name)
+            val k = known(name)
+            when {
+                k == null -> null.also { unread.entry(key, name, value) }
+                value is Number && !value.toDouble().isNaN() -> k to value.toFloat()
+                else -> null
+            }
+        }.toMap()
+    }
 
     private fun legacy(
         o: JSONObject,
@@ -103,7 +285,8 @@ object PresetFormat {
             }
         }
         val style = if (o.has(LEGACY_USER_SHADER)) fallbackStyle else SceneId(o.getString(LEGACY_STYLE))
-        return LegacyPreset(o.getString(NAME), style, numbers, switches)
+        val milkPreset = o.opt(MILK_PRESET) as? String
+        return LegacyPreset(o.getString(NAME), style, numbers, switches, milkPreset)
     }
 
     private fun macro(macro: Macro): JSONObject =
@@ -112,12 +295,23 @@ object PresetFormat {
             .put(VALUE, macro.value.toDouble())
             .put(LINKS, JSONArray(macro.links.map(::link)))
 
-    private fun macroOf(o: JSONObject): Macro =
-        Macro(
-            name = o.getString(NAME),
-            value = o.getDouble(VALUE).toFloat(),
-            links = objects(o.optJSONArray(LINKS)).mapNotNull(::linkOf),
-        )
+    /** A Macro, its links read one by one: [unknown] keeps each link this version does not know. */
+    private inline fun macroOf(
+        o: JSONObject,
+        unknown: (JSONObject) -> Unit,
+    ): Macro {
+        val name = o.getString(NAME)
+        val value = o.getDouble(VALUE).toFloat()
+        val links =
+            objects(o.optJSONArray(LINKS)).mapNotNull { link ->
+                when (val result = attempt { linkOf(link) }) {
+                    is Entry.Read -> result.value
+                    Entry.Unknown -> null.also { unknown(link) }
+                    Entry.Broken -> null
+                }
+            }
+        return Macro(name = name, value = value, links = links)
+    }
 
     private fun link(link: MacroLink): JSONObject =
         JSONObject()
@@ -283,39 +477,36 @@ object PresetFormat {
 
     private fun trim(trim: SignalTrim): JSONObject = JSONObject().put(GAIN, trim.gain.toDouble()).put(FLOOR, trim.floor.toDouble())
 
-    private fun signalsOf(o: JSONObject?): Map<SoundSignal, SignalTrim> {
+    private fun signalsOf(
+        o: JSONObject?,
+        unread: Unread,
+    ): Map<SoundSignal, SignalTrim> {
         if (o == null) return emptyMap()
-        return o
-            .keys()
-            .asSequence()
-            .toList()
+        return keysOf(o)
             .mapNotNull { key ->
-                val signal = enumOrNull<SoundSignal>(key) ?: return@mapNotNull null
-                val trim = o.getJSONObject(key)
-                signal to SignalTrim(trim.getDouble(GAIN).toFloat(), trim.getDouble(FLOOR).toFloat())
+                val signal = enumOrNull<SoundSignal>(key) ?: return@mapNotNull null.also { unread.entry(SIGNALS, key, o.get(key)) }
+                val trim = attempt { o.getJSONObject(key).let { SignalTrim(it.getDouble(GAIN).toFloat(), it.getDouble(FLOOR).toFloat()) } }
+                trim.valueOrNull()?.let { signal to it }
             }.toMap()
     }
 
     private fun numbers(values: Map<String, Float>): JSONObject = JSONObject(values.mapValues { it.value.toDouble() })
 
-    private fun floats(o: JSONObject?): Map<String, Float> =
-        o
-            ?.keys()
-            ?.asSequence()
-            ?.associateWith { o.getDouble(it).toFloat() }
-            .orEmpty()
+    /** The names in [array]; an entry that is not a name is skipped. */
+    private fun names(array: JSONArray?): List<String> =
+        if (array == null) emptyList() else List(array.length()) { array.opt(it) }.filterIsInstance<String>()
 
-    private fun names(array: JSONArray?): List<String> = if (array == null) emptyList() else List(array.length()) { array.getString(it) }
+    private fun keysOf(o: JSONObject): List<String> = o.keys().asSequence().toList()
+
+    private fun items(array: JSONArray): List<Any> = List(array.length()) { array.get(it) }
 
     private fun doubles(array: JSONArray): List<Double> = List(array.length()) { array.getDouble(it) }
 
+    /** The objects in [array]; an entry that is not an object is skipped. */
     private fun objects(array: JSONArray?): List<JSONObject> =
-        if (array == null) emptyList() else List(array.length()) { array.getJSONObject(it) }
+        if (array == null) emptyList() else List(array.length()) { array.opt(it) }.filterIsInstance<JSONObject>()
 
     private inline fun <reified T : Enum<T>> enumOrNull(name: String): T? = enumValues<T>().firstOrNull { it.name == name }
-
-    private inline fun <K> Map<String, Float>.mapNotNullKeys(key: (String) -> K?): Map<K, Float> =
-        entries.mapNotNull { (name, value) -> key(name)?.let { it to value } }.toMap()
 
     /** The version old files carry implicitly: they have no version key. */
     private const val LEGACY_VERSION = 1
@@ -374,6 +565,10 @@ object PresetFormat {
     private const val BY_HAND = "byHand"
     private const val GAIN = "gain"
     private const val FLOOR = "floor"
+    private const val MILK_PRESET = "milkPreset"
+
+    /** The top-level keys this version reads; any other is kept unread. */
+    private val KNOWN = setOf(VERSION, NAME, STYLE, PARTS, SHARED, EXTRAS, MACROS, REACTIONS, MODULATORS, SIGNALS, MILK_PRESET)
 
     /** Version 1's keys: the Style id, and the user shader that replaced its look. */
     private const val LEGACY_STYLE = "sceneId"

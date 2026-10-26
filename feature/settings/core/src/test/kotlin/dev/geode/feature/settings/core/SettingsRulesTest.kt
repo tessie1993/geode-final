@@ -1,6 +1,8 @@
 package dev.geode.feature.settings.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
@@ -42,6 +44,7 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
@@ -188,6 +191,17 @@ class SettingsRulesTest {
             Row(BehaviorCommand.SetReducedMotion(true), defaults.copy(behavior = behavior.copy(reducedMotion = true))),
             Row(BehaviorCommand.SetTilt(TiltAmount.FULL), defaults.copy(behavior = behavior.copy(tilt = TiltAmount.FULL))),
             Row(BehaviorCommand.SetTilt(TiltAmount.OFF), defaults.copy(behavior = behavior.copy(tilt = TiltAmount.OFF))),
+            Row(
+                BehaviorCommand.SetStartLook(StartLook.Style(SceneId("cymatics"))),
+                defaults.copy(behavior = behavior.copy(startLook = StartLook.Style(SceneId("cymatics")))),
+            ),
+            Row(
+                BehaviorCommand.SetStartLook(StartLook.Preset(PresetId("Party"))),
+                defaults.copy(behavior = behavior.copy(startLook = StartLook.Preset(PresetId("Party")))),
+            ),
+            Row(BehaviorCommand.SetStartLook(StartLook.Last), defaults),
+            Row(BehaviorCommand.SetStartLook(StartLook.Style(SceneId(" "))), defaults),
+            Row(BehaviorCommand.SetStartLook(StartLook.Preset(PresetId(""))), defaults),
         )
 
     private val exportRows: List<Row> =

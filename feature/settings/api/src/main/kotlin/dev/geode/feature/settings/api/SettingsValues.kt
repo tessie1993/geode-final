@@ -1,6 +1,8 @@
 package dev.geode.feature.settings.api
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 
 /**
  * Every setting the app has, grouped as today's Settings tabs group them (#38). Immutable: a change
@@ -242,7 +244,24 @@ data class AnalysisSettings(
     }
 }
 
-/** Application preferences (was Behavior): touch and motion. */
+/**
+ * The look Geode opens on (#383), so kiosk, party and wall-display setups start on a known one: the
+ * look it was left on ([Last], the default), a chosen Style, or a saved preset. Customization is sent
+ * the chosen one once, when the app starts.
+ */
+sealed interface StartLook {
+    data object Last : StartLook
+
+    data class Style(
+        val style: SceneId,
+    ) : StartLook
+
+    data class Preset(
+        val preset: PresetId,
+    ) : StartLook
+}
+
+/** Application preferences (was Behavior): touch, motion and the look Geode starts on. */
 data class BehaviorSettings(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = TOUCH_SMEAR_STRENGTH_DEFAULT,
@@ -250,6 +269,7 @@ data class BehaviorSettings(
     val reducedMotion: Boolean = false,
     /** How much tilting the phone moves the live Visual (#315). Reduce motion stills it whatever this says. */
     val tilt: TiltAmount = TiltAmount.SUBTLE,
+    val startLook: StartLook = StartLook.Last,
 ) {
     companion object {
         const val TOUCH_SMEAR_STRENGTH_DEFAULT = 1f

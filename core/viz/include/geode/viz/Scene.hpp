@@ -9,6 +9,7 @@
 #include "geode/api/geode_api.h"
 #include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
+#include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/TouchField.hpp"
 
@@ -38,6 +39,8 @@ public:
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
+    virtual void setQuality(const quality::Budget& budget) { (void) budget; }
     // True when the Style moves a camera of its own from the Camera (a raymarched world reading
     // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
     virtual bool ownsCamera() const { return false; }

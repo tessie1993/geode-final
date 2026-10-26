@@ -21,6 +21,7 @@ uniform float uParticleKind;
 uniform float uParticleSize;
 // How much of the last frame an echo keeps (frame-rate corrected on the CPU: sharedfx::echoKeep).
 uniform float uEchoKeep;
+// The echo's zoom and warp this frame (sharedfx::echoZoom and echoWarp: the 60 fps amounts, scaled by dt).
 uniform float uEchoZoom;
 uniform float uEchoWarp;
 // How much of the last frame motion blur mixes in (sharedfx::motionKeep).
@@ -100,6 +101,8 @@ void main() {
             h += vec2(sin(h.y * 11.0 + uTime * 0.7), sin(h.x * 13.0 - uTime * 0.9)) * uEchoWarp * 0.004;
         }
         vec3 prev = texture(uHistory, clamp(h, vec2(0.001), vec2(0.999))).rgb;
+        // HDR history: bounded so nothing runaway lives on in the echo (ToneMap.hpp, kHdrCeiling).
+        prev = any(isnan(prev)) ? vec3(0.0) : clamp(prev, 0.0, 64.0);
         col = mix(col, prev, clamp(uMotionKeep, 0.0, 0.95));
         // An echo only ever adds what is fading behind the new frame; it never darkens it.
         col = max(col, prev * clamp(uEchoKeep, 0.0, 0.98));

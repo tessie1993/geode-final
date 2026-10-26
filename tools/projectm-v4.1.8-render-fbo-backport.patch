@@ -72,7 +72,7 @@ index b84e29335..844597128 100644
      void SetBeatSensitivity(float sensitivity);
  
 diff --git a/src/libprojectM/ProjectMCWrapper.cpp b/src/libprojectM/ProjectMCWrapper.cpp
-index cbf5f6edc..d73374227 100644
+index d58f1231e..d60c8210d 100644
 --- a/src/libprojectM/ProjectMCWrapper.cpp
 +++ b/src/libprojectM/ProjectMCWrapper.cpp
 @@ -171,6 +171,12 @@ void projectm_opengl_render_frame(projectm_handle instance)

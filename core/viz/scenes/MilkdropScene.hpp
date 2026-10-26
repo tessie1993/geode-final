@@ -19,14 +19,14 @@
 namespace geode::viz {
 
 // One projectM instance rendering into a scene-owned framebuffer (projectm_opengl_render_frame_fbo,
-// backported onto v4.1.7 by tools/projectm-v4.1.7-render-fbo-backport.patch), graded by pm_post_frag.
+// backported onto v4.1.8 by tools/projectm-v4.1.8-render-fbo-backport.patch), graded by pm_post_frag.
 // The engine never touches the window surface, so the scene is independent of the EGL config.
 //
 // The engine buffer follows the window size (setWindowSize), not the supersampled scene target.
 // Live, it adapts to load mesh-first: the warp mesh steps down at once, the buffer only at the next
 // preset change (milkdrop::LoadAdapter), and projectM is told the real paced frame rate. During a
 // Render the engine is rebuilt seeded and driven by the render clock (projectm_set_frame_time,
-// tools/projectm-v4.1.7-render-clock.patch) at full detail, so the same input gives the same frames.
+// tools/projectm-v4.1.8-render-clock.patch) at full detail, so the same input gives the same frames.
 class MilkdropScene : public Scene {
 public:
     MilkdropScene(std::string id, ProgramLoader loader, SceneHost host)

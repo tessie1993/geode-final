@@ -49,7 +49,7 @@ constexpr float kTwoPi = 6.28318530718f;
 // A channel above this counts as lit.
 constexpr unsigned char kLitThreshold = 8;
 // What projectM writes when it drops a preset's shader (MilkdropPreset/PerPixelMesh.cpp and
-// FinalComposite.cpp in v4.1.7).
+// FinalComposite.cpp in v4.1.8).
 constexpr const char* kWarpShaderError = "[Warp Shader] Error";
 constexpr const char* kCompositeShaderError = "[Composite Shader] Error";
 // How much of projectM's message to show; the rest is the whole shader source.
