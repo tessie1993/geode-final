@@ -239,9 +239,12 @@ class RenderFinishTest {
 
     @Test
     fun `extras with nothing to add queue nothing, and a Project that is gone is reported`() {
-        assertEquals(Next(ready), StudioReducer.reduce(ready, StudioEvent.FinishReady(job(captions), video, emptyList())))
         assertEquals(
-            Next(ready),
+            Next<StudioState, StudioEffect>(ready),
+            StudioReducer.reduce(ready, StudioEvent.FinishReady(job(captions), video, emptyList())),
+        )
+        assertEquals(
+            Next<StudioState, StudioEffect>(ready),
             StudioReducer.reduce(ready, StudioEvent.FinishReady(job(cards, listOf(night, night)), video, emptyList())),
         )
         val gone = ready.copy(projects = emptyList(), defaultProject = null)
