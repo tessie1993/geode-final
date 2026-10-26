@@ -311,6 +311,7 @@ object BuiltInStyles {
             shader("glass_vines", true, emptyList()),
             shader("swarm_chase", true, emptyList()),
             shader("origami_peaks", true, emptyList()),
+            shader("rain_glass", true, emptyList()),
         )
 
     private fun life(
