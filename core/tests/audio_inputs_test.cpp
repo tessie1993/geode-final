@@ -297,7 +297,8 @@ TEST(AudioInputs, ALongWindowKeepsItsNewestFrames) {
     std::copy(tone.begin(), tone.end(), pcm.begin() + 1000);
     step(inputs, pcm);
     EXPECT_NEAR(loudestTexel(inputs.instant()), texelOf(1000.0), 3);
-    EXPECT_NEAR(inputs.ceilingDb(), 0.0f, 1.5f);
+    // The tone is at 0.9, so its level is 20 log10(0.9) = -0.92 dBFS, within the same 1 dB as a full-scale sine.
+    EXPECT_NEAR(inputs.ceilingDb(), -0.915f, 1.0f);
 }
 
 TEST(AudioInputs, AResetForgetsEverything) {
