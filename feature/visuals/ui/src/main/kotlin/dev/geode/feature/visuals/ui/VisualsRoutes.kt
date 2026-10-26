@@ -108,12 +108,14 @@ fun FullScreenVisualRoute(
  * The MilkDrop presets and textures' place (#145, ADR-0003): it reads the Visuals store and owns the two
  * system pickers. Whatever the person picks goes to the store as one import, by content uri; the store
  * reads, checks and copies each file, and its report comes back in the state. `:app` wires it at the
- * switch-over (#17), reached from the Visuals tab.
+ * switch-over (#17), reached from the Visuals tab. [onReload] loads the preset the Visual shows again
+ * from its file (#382), which only the engine can do; without it, the screen offers no reload.
  */
 @Composable
 fun MilkdropRoute(
     visuals: Visuals,
     modifier: Modifier = Modifier,
+    onReload: (() -> Unit)? = null,
 ) {
     val state by visuals.state.collectAsStateWithLifecycle()
 
@@ -128,7 +130,7 @@ fun MilkdropRoute(
     val texturePicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { importPicked(MilkdropKind.TEXTURES, it) }
     MilkdropScreen(
-        state.toMilkdropModel(),
+        state.toMilkdropModel().copy(canReload = onReload != null),
         onAction = { action ->
             when (action) {
                 is MilkdropAction.Pick ->
@@ -136,6 +138,7 @@ fun MilkdropRoute(
                         MilkdropKind.PRESETS -> presetPicker.launch(PRESET_TYPES)
                         MilkdropKind.TEXTURES -> texturePicker.launch(TEXTURE_TYPES)
                     }
+                MilkdropAction.Reload -> onReload?.invoke()
                 MilkdropAction.DismissReport, is MilkdropAction.Play, is MilkdropAction.Delete -> action.toCommand()?.let(visuals::send)
             }
         },

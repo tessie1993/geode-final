@@ -67,6 +67,8 @@ class MilkdropModelTest {
     fun `dismissing sends a Command, and picking stays in the route`() {
         assertEquals(VisualsCommand.DismissImportReport, MilkdropAction.DismissReport.toCommand())
         assertNull(MilkdropAction.Pick(MilkdropKind.PRESETS).toCommand())
+        assertNull(MilkdropAction.Reload.toCommand())
+        assertFalse(VisualsState(milkdrop = MilkdropShelf(presets)).toMilkdropModel().canReload)
     }
 
     @Test

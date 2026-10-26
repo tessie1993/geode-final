@@ -13,6 +13,7 @@ import dev.geode.feature.visuals.api.VisualsState
  * [textures]; null until the MilkDrop folder has been listed ([loading]). While [importing], the import
  * buttons wait. [report] is how the last import went, until it is dismissed. Every preset is a Style
  * of its own (#305): [playing] is the file of the one the Visual shows, null when it shows another Style.
+ * When [canReload], the one playing can be loaded again from its file (#382).
  */
 @Immutable
 data class MilkdropModel(
@@ -22,6 +23,7 @@ data class MilkdropModel(
     val textures: List<String>,
     val report: ImportReport?,
     val playing: String? = null,
+    val canReload: Boolean = false,
 ) {
     /** Whether an import can start now. */
     val canImport: Boolean get() = !loading && !importing
@@ -45,6 +47,12 @@ sealed interface MilkdropAction {
         val file: String,
     ) : MilkdropAction
 
+    /**
+     * Load the preset the Visual shows again from its file (#382), to see a fix made to it. The engine's,
+     * so the route's.
+     */
+    data object Reload : MilkdropAction
+
     /** Delete the person's own preset or texture [file] of [kind], for good, once they have confirmed it (#360). */
     data class Delete(
         val kind: MilkdropKind,
@@ -55,7 +63,7 @@ sealed interface MilkdropAction {
 /** The Command an action sends; null for one the route carries out itself. */
 fun MilkdropAction.toCommand(): VisualsCommand? =
     when (this) {
-        is MilkdropAction.Pick -> null
+        is MilkdropAction.Pick, MilkdropAction.Reload -> null
         MilkdropAction.DismissReport -> VisualsCommand.DismissImportReport
         is MilkdropAction.Play -> VisualsCommand.Choose(MilkdropStyles.of(file))
         is MilkdropAction.Delete -> VisualsCommand.DeleteMilkdrop(kind, file)

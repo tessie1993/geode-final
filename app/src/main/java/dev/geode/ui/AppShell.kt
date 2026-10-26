@@ -246,7 +246,12 @@ fun AppRoot() {
                     }
                 Place.VISUALS ->
                     // Full-screen mode hosts the Visual itself, so it is never in two places at once.
-                    VisualsPlace(shell, onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) }) {
+                    VisualsPlace(
+                        shell,
+                        onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) },
+                        // Loads the MilkDrop preset the Visual shows again from its file (#382).
+                        onReloadMilkPreset = { visualizerView.visualizerRenderer.reloadCurrentMilkPreset() },
+                    ) {
                         if (!ui.fullScreen) visual(null)
                     }
                 Place.STUDIO -> StudioPlace(shell)

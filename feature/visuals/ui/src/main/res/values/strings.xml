@@ -110,6 +110,7 @@
     <string name="milkdrop_plays_without_shader">Plays without its shader: %1$s</string>
     <string name="milkdrop_missing_textures">Missing textures: %1$s</string>
     <string name="milkdrop_playing">Playing now</string>
+    <string name="milkdrop_reload">Load %1$s again from its file</string>
     <string name="milkdrop_delete">Delete</string>
     <string name="milkdrop_delete_named">Delete %1$s</string>
     <string name="milkdrop_delete_title">Delete \"%1$s\"?</string>

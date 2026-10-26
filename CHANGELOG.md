@@ -11,6 +11,11 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Reload the MilkDrop preset that is playing (#382).** On the MilkDrop
+  screen, the preset the Visual shows has a reload button that loads it
+  again from its file, so a fix made to an imported preset can be checked
+  right away.
+
 - **Delete imported MilkDrop presets and textures (#360).** The MilkDrop
   screen has a bin button on each of the person's own presets and on every
   texture, behind a confirmation. A deleted preset also leaves Favourites,

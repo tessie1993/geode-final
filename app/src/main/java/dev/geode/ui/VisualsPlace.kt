@@ -74,6 +74,7 @@ private enum class VisualsPage { TABS, PRESETS, MILKDROP }
 fun VisualsPlace(
     shell: ShellViewModel,
     onEnterFullScreen: () -> Unit,
+    onReloadMilkPreset: () -> Unit,
     visual: @Composable () -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(VisualsTab.STYLE) }
@@ -86,7 +87,7 @@ fun VisualsPlace(
                 PresetsRoute(shell.visuals, onShare = { sharePreset(context, it) }, onBack = { page = VisualsPage.TABS })
             VisualsPage.MILKDROP -> {
                 BackHandler { page = VisualsPage.TABS }
-                MilkdropRoute(shell.visuals)
+                MilkdropRoute(shell.visuals, onReload = onReloadMilkPreset)
             }
             VisualsPage.TABS ->
                 Column(Modifier.fillMaxSize()) {

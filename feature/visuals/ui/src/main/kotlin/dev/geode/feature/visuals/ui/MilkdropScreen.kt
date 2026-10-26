@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.LibraryAdd
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -83,6 +84,7 @@ fun MilkdropScreen(
                     preset,
                     playing = preset.file == model.playing,
                     onPlay = { onAction(MilkdropAction.Play(preset.file)) },
+                    onReload = if (model.canReload && preset.file == model.playing) ({ onAction(MilkdropAction.Reload) }) else null,
                     onDelete = if (preset.builtIn) null else ({ askToDelete(MilkdropKind.PRESETS, preset.file) }),
                     canDelete = model.canDelete,
                 )
@@ -282,12 +284,16 @@ private fun ShelfHint(
     )
 }
 
-/** One preset; a tap shows it in the Visual, as its own Style. The person's own has [onDelete]. */
+/**
+ * One preset; a tap shows it in the Visual, as its own Style. The one playing has [onReload] (#382), the
+ * person's own [onDelete] (#360).
+ */
 @Composable
 private fun MilkdropPresetRow(
     preset: MilkdropPreset,
     playing: Boolean,
     onPlay: () -> Unit,
+    onReload: (() -> Unit)?,
     onDelete: (() -> Unit)?,
     canDelete: Boolean,
 ) {
@@ -301,6 +307,11 @@ private fun MilkdropPresetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PresetLines(preset, playing, Modifier.weight(1f))
+        if (onReload != null) {
+            IconButton(onClick = onReload) {
+                Icon(Icons.Rounded.Refresh, contentDescription = stringResource(R.string.milkdrop_reload, preset.name))
+            }
+        }
         if (onDelete != null) DeleteButton(preset.name, canDelete, onDelete)
     }
 }
