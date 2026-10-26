@@ -307,6 +307,7 @@ object BuiltInStyles {
             shader("little_planet", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.1f))),
             shader("event_horizon", true, emptyList(), listOf(react(TREBLE, SharedProperty.HUE_SHIFT, 0.08f))),
             shader("wormhole_pass", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.08f))),
+            shader("grand_reveal", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.08f))),
         )
 
     private fun life(
