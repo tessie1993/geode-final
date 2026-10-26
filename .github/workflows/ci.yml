@@ -333,8 +333,13 @@ jobs:
         run: cmake --build build-mutation --parallel --target geode_core_tests
       # Every mutant runs (the build has no coverage filter); one no test reaches survives.
       # mull-runner's own threshold is off: the gate below decides.
+      # Each mutant's test process is held to 3 GB of address space (four run at once on a 16 GB
+      # runner): a mutant that allocates without end then dies of bad_alloc, a detected mutant,
+      # instead of taking the runner down with it (geode_analysis lost its runner to a "shutdown
+      # signal" part-way through on #426 and #427; the suite itself needs well under 1 GB).
       - name: Run every mutant
         run: |
+          ulimit -v 3145728
           "mull-runner-$LLVM_MAJOR" --include-not-covered --allow-surviving \
             --reporters Elements --report-dir mutation-report --report-name ${{ matrix.library }} \
             build-mutation/geode_core_tests
