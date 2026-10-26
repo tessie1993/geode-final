@@ -7,8 +7,8 @@ precision highp float;
 in vec2 vUv;
 uniform highp sampler2D uPrev;
 uniform float uDecay;   // 0..1 kept energy per frame
-uniform float uZoom;    // +in / -out per frame (small, e.g. 0.01)
-uniform float uWarp;    // sine warp amplitude 0..1
+uniform float uZoom;    // +in / -out this frame (sharedfx::echoZoom: the 60 fps amount, scaled by dt)
+uniform float uWarp;    // sine warp amplitude this frame (sharedfx::echoWarp, scaled by dt)
 uniform float uTime;
 out vec4 fragColor;
 void main() {

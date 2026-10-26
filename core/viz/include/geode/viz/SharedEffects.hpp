@@ -41,6 +41,17 @@ float echoKeep(float trails, float dt);
 // How much of the last frame motion blur mixes into this one.
 float motionKeep(float motionBlur, float dt);
 
+// The echo's zoom and warp for a frame of dt, in the per-frame units the feedback shaders read
+// (trail_warp_frag's uZoom and uWarp, shared_fx_frag's uEchoZoom and uEchoWarp). `zoom` and `warp` are
+// what one 60 fps frame moves the picture by, so a 120 Hz frame moves it half as far and the echo
+// streams at the same speed on every panel. A stalled frame moves nothing.
+//
+// The shaders scale the picture about its centre by (1 - zoom x kEchoZoomScale) a frame; over n
+// reference frames that is (1 - zoom x kEchoZoomScale)^n, handed back in the same form.
+constexpr float kEchoZoomScale = 0.06f;
+float echoZoom(float zoom, float dt);
+float echoWarp(float warp, float dt);
+
 }  // namespace sharedfx
 
 }  // namespace geode::viz

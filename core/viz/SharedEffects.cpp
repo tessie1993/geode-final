@@ -3,9 +3,13 @@
 #include <algorithm>
 #include <cmath>
 
+#include "geode/viz/FrameRate.hpp"
+
 namespace geode::viz {
 
 namespace {
+constexpr float kMinEchoScale = 0.5f;
+
 // `perFrame` (what one reference frame keeps) over a frame of `dt`; nothing for a stalled frame.
 float perFrame(float perFrame, float dt) {
     if (!(dt > 0.0f) || !std::isfinite(dt) || !(perFrame > 0.0f)) return 0.0f;
@@ -39,6 +43,15 @@ float echoKeep(float trails, float dt) { return perFrame(std::isnan(trails) ? 0.
 float motionKeep(float motionBlur, float dt) {
     return perFrame(mod::unit(motionBlur) * kMaxMotionKeep, dt);
 }
+
+float echoZoom(float zoom, float dt) {
+    if (!std::isfinite(zoom)) return 0.0f;
+    // The per-frame scale stays positive, so a picture never folds through its centre.
+    const float perFrameScale = std::max(1.0f - zoom * kEchoZoomScale, kMinEchoScale);
+    return (1.0f - framerate::perFrameFactor(perFrameScale, dt)) / kEchoZoomScale;
+}
+
+float echoWarp(float warp, float dt) { return std::isfinite(warp) ? warp * framerate::referenceFrames(dt) : 0.0f; }
 
 }  // namespace sharedfx
 

@@ -160,6 +160,9 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     swell_ = slew(swell_, energy_, dt, kSwellRiseHz, kSwellFallHz);
     const float hit = live::hit(features);
     stepMotion(hit, dt);
+    energyPhase_ = framerate::advancePhase(energyPhase_, p.speed * smoothEnergy_, dt, kTimeWrapSeconds);
+    const float flowRate = kFlowBaseHz + kFlowEnergyHz * smoothEnergy_;
+    flight_ = framerate::advancePhase(flight_, kFlightTimeRate * p.speed + kFlightFlowRate * flowRate, dt, kFlightWrap);
     beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
@@ -280,6 +283,8 @@ void ShaderScene::uploadMotion() {
     set1f("uSpawnAge", spawnAge_);
     set1f("uFormPhase", formPhase_);
     set1f("uFlowPhase", flowPhase_);
+    set1f("uEnergyPhase", energyPhase_);
+    set1f("uFlight", flight_);
     glUniform2f(uniforms_.loc("uMoveDir"), std::cos(dirAngle_), std::sin(dirAngle_));
 }
 

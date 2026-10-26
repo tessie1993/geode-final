@@ -58,6 +58,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/PlanCodec.cpp
     viz/Normaliser.cpp
     viz/SharedEffects.cpp
+    viz/FrameRate.cpp
     viz/BeatEnvelope.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp

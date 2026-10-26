@@ -47,8 +47,8 @@ GLuint SharedFxPass::apply(const SharedEffects& fx, GLuint sceneTex, int width, 
     glUniform1f(uniforms_.loc("uParticleKind"), static_cast<float>(fx.particleKind));
     glUniform1f(uniforms_.loc("uParticleSize"), fx.particleSize);
     glUniform1f(uniforms_.loc("uEchoKeep"), historyValid_ ? sharedfx::echoKeep(fx.trails, dt) : 0.0f);
-    glUniform1f(uniforms_.loc("uEchoZoom"), fx.trailZoom);
-    glUniform1f(uniforms_.loc("uEchoWarp"), fx.trailWarp);
+    glUniform1f(uniforms_.loc("uEchoZoom"), sharedfx::echoZoom(fx.trailZoom, dt));
+    glUniform1f(uniforms_.loc("uEchoWarp"), sharedfx::echoWarp(fx.trailWarp, dt));
     glUniform1f(uniforms_.loc("uMotionKeep"), historyValid_ ? sharedfx::motionKeep(fx.motionBlur, dt) : 0.0f);
     glBindVertexArray(quadVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);

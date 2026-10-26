@@ -21,6 +21,7 @@ uniform float uParticleKind;
 uniform float uParticleSize;
 // How much of the last frame an echo keeps (frame-rate corrected on the CPU: sharedfx::echoKeep).
 uniform float uEchoKeep;
+// The echo's zoom and warp this frame (sharedfx::echoZoom and echoWarp: the 60 fps amounts, scaled by dt).
 uniform float uEchoZoom;
 uniform float uEchoWarp;
 // How much of the last frame motion blur mixes in (sharedfx::motionKeep).
