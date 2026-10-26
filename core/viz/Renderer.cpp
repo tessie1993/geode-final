@@ -63,10 +63,13 @@ void Renderer::beginParamMorph(float seconds) {
     morphRemainSec_ = seconds * 3.0f;
 }
 
-void Renderer::setFramePcm(const float* stereo, int frames) {
-    const int n = stereo ? std::clamp(frames, 0, kPcmWindowFrames) : 0;
-    std::copy(stereo, stereo + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
+void Renderer::setFramePcm(const float* stereo, int frames, int fresh) {
+    const int n = stereo ? std::clamp(frames, 0, kPcmSpanFrames) : 0;
+    // The newest frames of a longer span, which is where the audio heard is.
+    const std::ptrdiff_t skip = stereo ? static_cast<std::ptrdiff_t>(frames - n) * 2 : 0;
+    std::copy(stereo + skip, stereo + skip + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
     pendingPcmFrames_ = n;
+    pendingPcmFresh_ = std::clamp(fresh, 0, n);
 }
 
 double Renderer::monotonicSeconds() {

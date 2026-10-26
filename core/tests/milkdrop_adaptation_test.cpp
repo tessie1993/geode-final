@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <initializer_list>
+#include <limits>
+#include <vector>
+
 namespace milkdrop = geode::viz::milkdrop;
 using milkdrop::LoadAdapter;
 
@@ -238,4 +242,104 @@ TEST(MilkdropRenderClock, SameFramesGiveTheSameTimes) {
         b.advance(dt);
         EXPECT_EQ(a.seconds(), b.seconds());
     }
+}
+
+TEST(MilkdropBeatSensitivity, TheBeatResponseScalesTheSwing) {
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(1.0f), 1.0f);
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(0.5f), 0.5f);
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(0.0f), 0.0f);
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(2.0f), 2.0f);
+}
+
+TEST(MilkdropBeatSensitivity, OutOfRangeResponsesAreHeldToProjectMsRange) {
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(-1.0f), 0.0f);
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(3.0f), milkdrop::kMaxBeatSensitivity);
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(std::numeric_limits<float>::quiet_NaN()), 1.0f);
+    EXPECT_FLOAT_EQ(milkdrop::beatSensitivity(std::numeric_limits<float>::infinity()), 1.0f);
+}
+
+namespace {
+
+// `frames` silent stereo frames with a click of `level` on the left of each frame in `left` and on the
+// right of each frame in `right`.
+std::vector<float> clicks(int frames, std::initializer_list<int> left, std::initializer_list<int> right = {}, float level = 0.5f) {
+    std::vector<float> pcm(static_cast<size_t>(frames) * 2, 0.0f);
+    for (int f : left) pcm[static_cast<size_t>(2 * f)] = level;
+    for (int f : right) pcm[static_cast<size_t>(2 * f + 1)] = level;
+    return pcm;
+}
+
+}  // namespace
+
+TEST(MilkdropLoudestWindow, WithNothingNewTheNewestWindowGoesIn) {
+    const std::vector<float> pcm = clicks(10, {0});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 0), 6);
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, -3), 6);
+}
+
+TEST(MilkdropLoudestWindow, AClickHeardSinceTheLastFrameIsNeverSkipped) {
+    // Windows may start at 3..6; only the one starting at 3 still holds the click at frame 3.
+    const std::vector<float> pcm = clicks(10, {3});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3), 3);
+}
+
+TEST(MilkdropLoudestWindow, AClickBeforeTheNewAudioIsNotChosenAgain) {
+    // The click at frame 2 belongs to the last frame: no window ending in the new audio holds it.
+    const std::vector<float> pcm = clicks(10, {2});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3), 6);
+}
+
+TEST(MilkdropLoudestWindow, TheNewestOfEquallyLoudWindowsGoesIn) {
+    // Windows starting at 4, 5 and 6 all hold the click at frame 7.
+    const std::vector<float> pcm = clicks(10, {7});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3), 6);
+}
+
+TEST(MilkdropLoudestWindow, TheLouderOfTwoClicksWins) {
+    std::vector<float> pcm = clicks(10, {3, 9});
+    pcm[2 * 3] = 0.25f;
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3), 6);
+    pcm[2 * 3] = 1.0f;
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3), 3);
+}
+
+TEST(MilkdropLoudestWindow, BothChannelsCount) {
+    const std::vector<float> pcm = clicks(10, {}, {4});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3), 4);
+}
+
+TEST(MilkdropLoudestWindow, TheNewAudioIsHeldToTheSpan) {
+    // More new audio than the span holds: every window may go in, back to the first.
+    const std::vector<float> pcm = clicks(10, {0});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 100), 0);
+}
+
+TEST(MilkdropLoudestWindow, ASpanWithNoRoomForAWindowStartsAtItsFirstFrame) {
+    const std::vector<float> pcm = clicks(10, {9});
+    EXPECT_EQ(milkdrop::loudestWindow(nullptr, 10, 4, 3), 0);
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 0, 3), 0);
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, -4, 3), 0);
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 10, 3), 0);
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 3, 4, 3), 0);
+}
+
+TEST(MilkdropHeardSince, TheAudioBetweenTwoFramesIsNew) {
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1800, 4000), 800);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1001, 4000), 1);
+}
+
+TEST(MilkdropHeardSince, NoMoreIsNewThanTheSpanHolds) {
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 9000, 3520), 3520);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 4520, 3520), 3520);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 4519, 3520), 3519);
+}
+
+TEST(MilkdropHeardSince, NothingIsNewAcrossSilenceAnEpochOrAStep) {
+    EXPECT_EQ(milkdrop::heardSince(false, 3, 1000, true, 3, 1800, 4000), 0);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, false, 3, 1800, 4000), 0);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 4, 1800, 4000), 0);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1000, 4000), 0);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 900, 4000), 0);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1800, 0), 0);
+    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1800, -5), 0);
 }

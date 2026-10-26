@@ -34,6 +34,14 @@ public:
     // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
     virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
+    // The same frame's longer span of interleaved stereo audio, ending where the window ends, of which the
+    // newest `fresh` frames were heard since the last frame (0 when that is not known). For a scene that
+    // measures the audio itself and must not miss what fell between two windows (MilkDrop).
+    virtual void acceptPcmSpan(const float* interleaved, int frames, int fresh) {
+        (void) interleaved;
+        (void) frames;
+        (void) fresh;
+    }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }

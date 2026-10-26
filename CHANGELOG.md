@@ -11,6 +11,21 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **MilkDrop presets react the way they were written (#296).** Two projectM
+  patches: `projectm-v4.1.8-stereo-beats.patch` (upstream `494269e`) takes
+  bass, mid and treble from both channels now that Geode feeds stereo, and
+  `projectm-v4.1.8-loudness.patch` holds the loudness followers and reads a
+  neutral 1.0 in silence, starts them from the first real value and times
+  their warm-up in seconds, so a return from the background, a Render start
+  or a resume after a pause no longer spikes (stock: about 20x on a new
+  engine at 60 Hz, 11x after a 10 s pause). The patch also makes
+  `projectm_set_beat_sensitivity` work, and the Style's beat response now
+  drives it: 1 reacts as written, 0 holds still, 2 doubles every swing.
+  Each frame projectM gets the loudest 576-frame window of the audio heard
+  since the last frame, so no kick falls between frames at 30-60 fps.
+  Renders still feed projectM the features' waveform; real PCM for Renders
+  is not done yet.
+
 - **The Visual lands on the beat you hear (#295).** Each Visual frame now
   reads the audio heard at the moment it reaches the screen, from
   Choreographer's frame timeline (API 33+) or two refreshes after its vsync,

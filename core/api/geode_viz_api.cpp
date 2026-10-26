@@ -10,6 +10,7 @@
 
 #include "geode/api/geode_api.h"
 #include "geode/viz/DisplayEvents.hpp"
+#include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/Normaliser.hpp"
 #include "geode/viz/PlanCodec.hpp"
 #include "geode/viz/Renderer.hpp"
@@ -36,13 +37,15 @@ struct geode_viz {
     // The live sound this Visual reads at the start of each frame; null when it is handed features instead.
     // Drawing thread only, as are the frame's window and the edge detection on the feed's events.
     std::shared_ptr<geode::api::Feed> feed;
-    std::array<float, GEODE_FEED_WINDOW_FRAMES * 2> feedPcm{};
+    std::array<float, GEODE_FEED_SPAN_FRAMES * 2> feedPcm{};
     geode::viz::DisplayEvents feedEvents;
+    // Where the last frame's audio ended, so the next knows how much of its span is new.
+    geode::audio::feed::ReadPoint feedLast;
     // Freeze reactions (#366): set from any thread, applied to the feed's frames on the drawing thread,
     // where the held window is kept so MilkDrop is fed the same audio for the whole hold.
     std::atomic<bool> reactionsHeld{false};
     geode::viz::SignalHold feedHold;
-    std::array<float, GEODE_FEED_WINDOW_FRAMES * 2> heldPcm{};
+    std::array<float, GEODE_FEED_SPAN_FRAMES * 2> heldPcm{};
     // When the next frame is expected on screen (CLOCK_MONOTONIC ns, 0 for now): the feed is read at the audio
     // heard then. Set from any thread, read on the drawing thread.
     std::atomic<int64_t> presentNs{0};
@@ -54,6 +57,7 @@ using namespace geode::viz;
 
 static_assert(LfoEngine::kSlots == GEODE_LFO_SLOTS);
 static_assert(Renderer::kPcmWindowFrames == GEODE_FEED_WINDOW_FRAMES);
+static_assert(Renderer::kPcmSpanFrames == GEODE_FEED_SPAN_FRAMES);
 static_assert(AdsrEngine::kCount == GEODE_ADSR_SLOTS);
 // The snapshot schema (core/bridge/schema/native_bridge.json) must describe exactly what the Visual reads.
 static_assert(geode::bridge::kSnapshotParamsCount == static_cast<size_t>(SceneParams::kFieldCount));
@@ -344,14 +348,20 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
 static void readFeed(geode_viz* v) {
     if (!v->feed) return;
     GeodeFeatureFrame heard{};
-    const bool live = v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES, v->presentNs.load(std::memory_order_acquire));
+    geode::audio::feed::ReadPoint point;
+    const bool live =
+        v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_SPAN_FRAMES, v->presentNs.load(std::memory_order_acquire), &point);
+    const int fresh = geode::viz::milkdrop::heardSince(v->feedLast.live, v->feedLast.epoch, v->feedLast.end, point.live, point.epoch,
+                                                       point.end, GEODE_FEED_SPAN_FRAMES - GEODE_FEED_WINDOW_FRAMES);
+    v->feedLast = point;
     // Events keep being edge-detected under a hold, so those that fire meanwhile are dropped, not replayed.
     const GeodeFeatureFrame events = v->feedEvents.frame(heard, live);
     const bool held = v->reactionsHeld.load(std::memory_order_acquire);
     if (held && !v->feedHold.holding()) v->heldPcm = v->feedPcm;
     const GeodeFeatureFrame shown = v->feedHold.frame(events, held);
     v->renderer.setFeatures(shown);
-    v->renderer.setFramePcm(held ? v->heldPcm.data() : v->feedPcm.data(), GEODE_FEED_WINDOW_FRAMES);
+    // A held window is the same audio again: nothing in it is new.
+    v->renderer.setFramePcm(held ? v->heldPcm.data() : v->feedPcm.data(), GEODE_FEED_SPAN_FRAMES, held ? 0 : fresh);
     std::lock_guard<std::mutex> lock(v->configLock);
     v->features = shown;
 }
@@ -368,6 +378,7 @@ GeodeStatus geode_viz_attach_feed(geode_viz* v, geode_feed* f) {
     if (!v) return GEODE_STATUS_NULL_HANDLE;
     v->feed = f ? f->feed : nullptr;
     v->feedEvents.reset();
+    v->feedLast = geode::audio::feed::ReadPoint{};
     return GEODE_STATUS_OK;
 }
 

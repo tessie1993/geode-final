@@ -340,6 +340,7 @@ GEODE_API void          geode_player_set_feed(geode_player*, geode_feed*);
 #define GEODE_FEED_PLAYER 1          /* the player's tap: Geode's own engine or ExoPlayer */
 #define GEODE_FEED_LIVE 2            /* Live input: the microphone */
 #define GEODE_FEED_WINDOW_FRAMES 576 /* the stereo window each Visual frame reads: projectM's ring size */
+#define GEODE_FEED_SPAN_FRAMES 4096  /* the span it reads around that window, so MilkDrop misses no kick */
 /* Where the player's sound comes out: what an output that cannot time itself is assumed to add. */
 #define GEODE_FEED_ROUTE_UNKNOWN 0
 #define GEODE_FEED_ROUTE_SPEAKER 1

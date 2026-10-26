@@ -50,6 +50,8 @@ class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
     static constexpr int kPcmWindowFrames = 576;
+    // The longest span of audio a frame is handed: a frame interval at 15 fps and 48 kHz, plus a window.
+    static constexpr int kPcmSpanFrames = 4096;
 
     Renderer(AAssetManager* assets, std::string cacheDir);
     ~Renderer();
@@ -101,10 +103,12 @@ public:
 #endif
 
     // GL thread.
-    // The next frame's audio window, interleaved stereo (at most kPcmWindowFrames): handed to every scene
-    // that frame and then dropped, so no window is ever drawn twice. Without one, the scenes fall back to
-    // the features' waveform.
-    void setFramePcm(const float* stereo, int frames);
+    // The next frame's audio, interleaved stereo: up to kPcmSpanFrames frames ending at the audio heard,
+    // the newest `fresh` of them heard since the last frame. Every scene gets the newest
+    // kPcmWindowFrames as its window, and the whole span (Scene::acceptPcmSpan); both are handed over
+    // that frame and then dropped, so no window is ever drawn twice. Without them, the scenes fall back
+    // to the features' waveform.
+    void setFramePcm(const float* stereo, int frames, int fresh = 0);
     void onSurfaceCreated();
     void surfaceChanged(int width, int height);
     bool setScene(const std::string& sceneId);
@@ -234,8 +238,12 @@ private:
     // The audio window setFramePcm handed over for the next frame, and the one this frame draws: latched in
     // beginFrame, so every scene of a frame gets the same window and the next frame gets none unless a new
     // one comes.
-    std::array<float, kPcmWindowFrames * 2> pendingPcm_{};
+    std::array<float, kPcmSpanFrames * 2> pendingPcm_{};
     int pendingPcmFrames_ = 0;
+    int pendingPcmFresh_ = 0;
+    std::array<float, kPcmSpanFrames * 2> frameSpan_{};
+    int frameSpanFrames_ = 0;
+    int frameSpanFresh_ = 0;
     std::array<float, kPcmWindowFrames * 2> framePcm_{};
     std::array<float, kPcmWindowFrames> framePcmMono_{};
     int framePcmFrames_ = 0;

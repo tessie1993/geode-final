@@ -41,8 +41,9 @@ public:
 
     // The drawing thread: this frame's features and the `frames` stereo frames heard when the frame reaches
     // the screen, at presentNs on the steady clock (0 or less for now). Returns false, with an empty frame
-    // and silence, when nothing is heard.
-    bool read(GeodeFeatureFrame& features, float* stereo, size_t frames, int64_t presentNs = 0);
+    // and silence, when nothing is heard. `heard`, when given, gets where the window ends.
+    bool read(GeodeFeatureFrame& features, float* stereo, size_t frames, int64_t presentNs = 0,
+              audio::feed::ReadPoint* heard = nullptr);
 
     static int64_t nowNs();
 
