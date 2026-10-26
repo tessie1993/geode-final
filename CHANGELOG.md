@@ -11,6 +11,25 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Camera v2: field of view, roll and speed ramp (#330).** Three new
+  Camera controls, each one a Reaction, Macro and Automation target: the
+  field of view springs wide fast and settles slowly, so linked to a hit it
+  punches; the roll turns the camera about the way it looks, speeding up and
+  slowing down smoothly and levelling out when set back to 0; the speed ramp
+  surges the flight and eases off. Every Style that draws a 3D world now
+  turns, widens and rolls a real camera with them; flat pictures roll and
+  narrow. Reduced motion calms all three. Two new Camera moves on the beat:
+  Lens punch and Speed ramp.
+
+- **Five Styles become flyable 3D worlds (#335).** Spiral Eye is a real
+  volume of spiral gas round an iridescent eye that the camera circles;
+  Fractal Temple is a walk down a causeway through a nave of geodesic domes,
+  lamp rings and filigree spires; Blacklight Bloom flies through UV-ink
+  lattices into soap bubbles and out the other side; Merkaba Grid flies a
+  hall of geodesic spheres and turning merkabas under a web sky; Vanishing's
+  falling stack of shells now follows the Camera. Their Extras keep their
+  names, so saved presets load as before.
+
 - **Reload the MilkDrop preset that is playing (#382).** On the MilkDrop
   screen, the preset the Visual shows has a reload button that loads it
   again from its file, so a fix made to an imported preset can be checked
