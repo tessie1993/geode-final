@@ -154,6 +154,7 @@ object SettingsRules {
             is BehaviorCommand.SetTouchSmearStrength -> behavior.copy(touchSmearStrength = command.strength)
             is BehaviorCommand.SetTouchTransform -> behavior.copy(touchTransform = command.on)
             is BehaviorCommand.SetReducedMotion -> behavior.copy(reducedMotion = command.on)
+            is BehaviorCommand.SetTilt -> behavior.copy(tilt = command.amount)
             is BehaviorCommand.SetStartLook -> behavior.copy(startLook = command.look)
         }
 

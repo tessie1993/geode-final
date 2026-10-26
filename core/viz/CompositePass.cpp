@@ -145,6 +145,7 @@ void CompositePass::draw(const Inputs& inputs) {
     uploadFrameUniforms(program, inputs, definition);
     uploadGradeUniforms(program, inputs);
     uploadCameraUniforms(program, inputs);
+    uploadLayerUniforms(program, inputs);
 
     glUniform4fv(program.loc("uGateA"), 1, inputs.gateA.data());
     glUniform4fv(program.loc("uGateB"), 1, inputs.gateB.data());
@@ -181,14 +182,14 @@ void CompositePass::bindTextures(UniformCache& p, const Inputs& inputs) {
     glUniform1i(p.loc("uUnderlay"), 5);
     glUniform1i(p.loc("uUnderlayBlend"), inputs.underlayBlend);
     glUniform1f(p.loc("uUnderlayAmount"), inputs.underlayAmount);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, inputs.texL != 0 ? inputs.texL : zeroTex_);
+    glUniform1i(p.loc("uTexL"), 6);
 }
 
 void CompositePass::uploadFrameUniforms(UniformCache& p, const Inputs& inputs, const TransitionCatalog::Def* definition) {
     glUniform1f(p.loc("uProgress"), inputs.progress);
-    glUniform1f(p.loc("uLayerMix"), inputs.layerMix);
-    glUniform1i(p.loc("uBlendMode"), inputs.blendOrdinal);
-    const int styleValue = inputs.hasLayer ? kStyleLayer
-                           : !inputs.hasOutgoing ? static_cast<int>(TransitionStyle::Cut)
+    const int styleValue = !inputs.hasOutgoing ? static_cast<int>(TransitionStyle::Cut)
                            : definition ? TransitionCatalog::kStyleLibrary
                                         : static_cast<int>(inputs.transitionStyle);
     glUniform1i(p.loc("uStyle"), styleValue);
@@ -240,6 +241,19 @@ void CompositePass::uploadCameraUniforms(UniformCache& p, const Inputs& inputs) 
     glUniform2f(p.loc("uCamTilt"), cam.tiltYaw, cam.tiltPitch);
     glUniform3f(p.loc("uCamShake"), cam.shakeX, cam.shakeY, cam.shakeRoll);
     glUniform2f(p.loc("uCamDive"), cam.travelDive, cam.endlessDive);
+}
+
+void CompositePass::uploadLayerUniforms(UniformCache& p, const Inputs& inputs) {
+    const layer::Mix& mix = inputs.layer;
+    const bool on = inputs.texL != 0 && mix.draws();
+    glUniform4fv(p.loc("uGateL"), 1, inputs.gateL.data());
+    glUniform2f(p.loc("uCamGateL"), inputs.cameraGateL[0], inputs.cameraGateL[1]);
+    glUniform1f(p.loc("uLayerPresence"), on ? mix.presence : 0.0f);
+    glUniform1i(p.loc("uLayerBlend"), static_cast<int>(mix.spec.blend));
+    glUniform1f(p.loc("uLayerOpacity"), mix.opacity);
+    glUniform1i(p.loc("uLayerInfluence"), static_cast<int>(mix.spec.influence));
+    glUniform1f(p.loc("uLayerAmount"), mix.amount);
+    glUniform1f(p.loc("uLayerSwap"), mix.swap);
 }
 
 }  // namespace geode::viz

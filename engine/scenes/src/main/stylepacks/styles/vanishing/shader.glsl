@@ -21,6 +21,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // ===========================================================================
@@ -639,7 +640,7 @@ void main() {
     // ---- march ------------------------------------------------------------
     vec2 w = uv - vp;
     vec3 ro = vec3(0.0, 0.0, -CAM_DIST);
-    vec3 rd = normalize(vec3(w * FOV, 1.0));
+    vec3 rd = tiltLook(normalize(vec3(w * FOV, 1.0)));
 
     float t = 0.05;
     float hitT = -1.0;

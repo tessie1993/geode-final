@@ -24,6 +24,7 @@ typealias CustomizationFeature = Feature<CustomizationState, CustomizationComman
  * - [signals]: the normaliser's trim for every Sound signal.
  * - [automations]: what it performs by itself over the music; they carry over to the next Style and
  *   are not saved in presets.
+ * - [layer]: Layer 2, a second Style drawn over this one; it carries over to the next Style.
  */
 data class Customization(
     val style: SceneId,
@@ -34,6 +35,7 @@ data class Customization(
     val modulators: List<Modulator>,
     val signals: Map<SoundSignal, SignalTrim>,
     val automations: Automations = Automations.NONE,
+    val layer: Layer = Layer.OFF,
 )
 
 /**
@@ -163,6 +165,27 @@ sealed interface CustomizationCommand {
      */
     data class UseVisualizerStyles(
         val styles: List<SceneId>,
+    ) : CustomizationCommand
+
+    /**
+     * Lays [style] over the current Style as Layer 2, or turns Layer 2 off when null. Ignored for a
+     * Style that cannot be Layer 2: one this version does not know, MilkDrop, or the current Style.
+     */
+    data class ChooseLayerStyle(
+        val style: SceneId?,
+    ) : CustomizationCommand
+
+    data class SetLayerBlend(
+        val blend: LayerBlend,
+    ) : CustomizationCommand
+
+    data class SetLayerInfluence(
+        val influence: LayerInfluence,
+    ) : CustomizationCommand
+
+    /** Sets Layer 2's loop, or stops it when null. Its depth is brought into 0..1, and a loop with no target is no loop. */
+    data class SetLayerLoop(
+        val loop: LayerLoop?,
     ) : CustomizationCommand
 
     /** Back to the current Style's own defaults. Undoable. */

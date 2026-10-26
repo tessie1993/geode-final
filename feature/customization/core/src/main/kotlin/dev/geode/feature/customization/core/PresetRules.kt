@@ -32,13 +32,15 @@ object PresetRules {
             reactions = if (PresetPart.REACTIONS in parts) customization.reactions else emptyList(),
             modulators = if (PresetPart.MODULATORS in parts) customization.modulators else emptyList(),
             signals = if (PresetPart.SOUND in parts) customization.signals else emptyMap(),
+            layer = if (PresetPart.LAYERS in parts) customization.layer else null,
         )
     }
 
     /**
      * [preset]'s kept parts applied to [customization] (#11). A kept [PresetPart.STYLE] switches to the
      * preset's Style first, if this version knows it. On the preset's own Style every kept part
-     * applies; on another Style only the shared parts do. Links left pointing at nothing are dropped.
+     * applies; on another Style only the shared parts do (Layer 2 is one of them, off when its Style cannot
+     * be Layer 2 there). Links left pointing at nothing are dropped.
      */
     fun apply(
         customization: Customization,
@@ -68,6 +70,7 @@ object PresetRules {
                 macros = if (kept(PresetPart.MACROS) && preset.macros.size == MACRO_COUNT) preset.macros else base.macros,
                 modulators = if (kept(PresetPart.MODULATORS)) preset.modulators.map(Rules::modulator) else base.modulators,
                 reactions = if (kept(PresetPart.REACTIONS)) preset.reactions.map(Rules::reaction) else base.reactions,
+                layer = preset.layer?.takeIf { kept(PresetPart.LAYERS) }?.let { Rules.layer(it, base.style, styles) } ?: base.layer,
             )
         return Rules.prune(next)
     }

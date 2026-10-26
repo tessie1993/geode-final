@@ -12,6 +12,7 @@ out vec4 fragColor;
 //#include lib_scene_grade
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // Curl Bloom: a host body, raymarched, that is continuously changing what it
@@ -148,7 +149,7 @@ void main() {
     vec3 ro = vec3(0.0, 0.0, -3.1);
     mat3 cam = rotY(uTime * 0.11 + uFlowPhase * 0.9) * rotX(0.32 * sin(uTime * 0.07) + uMoveDir.y * 0.25);
     ro = cam * ro;
-    vec3 rd = cam * normalize(vec3(uv, CB_FOCAL));
+    vec3 rd = cam * tiltLook(normalize(vec3(uv, CB_FOCAL)));
 
     // ---- the march ---------------------------------------------------------
     float t = 0.0;

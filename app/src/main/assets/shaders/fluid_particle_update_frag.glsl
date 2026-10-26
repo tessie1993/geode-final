@@ -21,6 +21,7 @@ uniform highp sampler2D uMeta;           // B: age, ttl, emitterIndex, seed
 uniform highp sampler2D uVelocityField;  // fluid/curl velocity grid
 uniform highp float uAspect;
 uniform float uDt;
+uniform vec2 uFall;            // tilt: acceleration toward down, sim units/s^2; 0 = no tilt
 uniform float uDrag;
 uniform float uFlowScale;      // grid velocity -> sim units per second
 uniform float uTime;
@@ -99,6 +100,8 @@ void main() {
     vec2 flow = texture(uVelocityField, clamp(uv, 0.0, 1.0)).xy * uFlowScale;
     // Frame-rate-independent inertia: uDrag is the per-1/60s blend factor.
     float k = 1.0 - pow(1.0 - uDrag, uDt * 60.0);
+    // Tilt (#315): a snow globe. Gravity with the drag above capping the speed; skipped with no tilt.
+    if (uFall.x != 0.0 || uFall.y != 0.0) v += uFall * uDt;
     v += (flow - v) * k;
     p += v * uDt;
     // Wrap at the domain edges so the field never empties.

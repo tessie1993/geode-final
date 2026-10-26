@@ -21,6 +21,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // NONEUCLID - space turning inside-out through a point.
@@ -609,7 +610,7 @@ void main() {
     );
 
     vec3 ro = vec3(0.0);
-    vec3 rd = normalize(vec3(uv, FOCAL));
+    vec3 rd = tiltLook(normalize(vec3(uv, FOCAL)));
 
     // The pixel footprint per unit of ray length. view() is height-normalized,
     // so one pixel is 2/height in uv units, and a uv offset of that at focal

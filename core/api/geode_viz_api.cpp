@@ -106,10 +106,6 @@ void geode_viz_set_reduced_motion(geode_viz* v, int on) {
     if (v) v->renderer.setReducedMotion(on != 0);
 }
 
-void geode_viz_set_layer(geode_viz* v, const char* scene_id, float mix, int blend_mode) {
-    if (v) v->renderer.setLayer(text(scene_id), mix, blend_mode);
-}
-
 void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms) {
     if (v) v->renderer.setTransition(text(id), duration_ms);
 }
@@ -125,6 +121,14 @@ void geode_viz_set_touch(geode_viz* v, const float* xy_ndc, int points) {
 
 void geode_viz_queue_touch_stroke(geode_viz* v, float nx, float ny, float ndx, float ndy, float dt, float strength) {
     if (v) v->renderer.queueTouchStroke(nx, ny, ndx, ndy, dt, strength);
+}
+
+void geode_viz_set_touch_smear(geode_viz* v, int on, float strength) {
+    if (v) v->renderer.setTouchSmear(on != 0, strength);
+}
+
+void geode_viz_set_gravity(geode_viz* v, float x, float y, float z) {
+    if (v) v->renderer.submitGravity(x, y, z);
 }
 
 void geode_viz_load_milk_preset(geode_viz* v, const char* path) {

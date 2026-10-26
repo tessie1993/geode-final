@@ -13,6 +13,8 @@ constexpr const char* kTag = "GeodeRenderer";
 constexpr int kPaletteSize = 256;
 constexpr int kPaletteRows = 5;
 constexpr int kPcmCapacity = 512 * 8;
+// The strongest smear Settings offers (BehaviorSettings.TOUCH_SMEAR_STRENGTH).
+constexpr float kMaxTouchSmear = 2.0f;
 }  // namespace
 
 Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
@@ -47,13 +49,6 @@ void Renderer::setFeatures(const GeodeFeatureFrame& features) {
     features_ = features;
 }
 
-void Renderer::setLayer(const std::string& sceneId, float mix, int blendOrdinal) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    layerSceneId_ = sceneId;
-    layerMix_ = mix;
-    layerBlend_ = blendOrdinal;
-}
-
 void Renderer::setTransition(const std::string& id, int64_t durationMs) {
     std::lock_guard<std::mutex> lock(stateLock_);
     transitionId_ = safety::transitionId(id);
@@ -84,6 +79,11 @@ double Renderer::monotonicSeconds() {
 
 void Renderer::queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
     overlays_.queueTouchStroke(nx, ny, ndx, ndy, dt, strength, monotonicSeconds());
+}
+
+void Renderer::setTouchSmear(bool on, float strength) {
+    const float s = std::isfinite(strength) ? std::clamp(strength, 0.0f, kMaxTouchSmear) : 0.0f;
+    touchSmear_.store(on ? s : 0.0f, std::memory_order_relaxed);
 }
 
 void Renderer::loadMilkPreset(const std::string& path) {
@@ -270,6 +270,7 @@ void Renderer::onSurfaceCreated() {
         quadVao_ = 0;
     }
     touchField_.reset();
+    gravityField_.reset();
     loadScale_.reset();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -277,6 +278,7 @@ void Renderer::onSurfaceCreated() {
     }
     fboA_.release();
     fboB_.release();
+    fboL_.release();
     hdrPass_.release();
     compositePass_.releaseStaleTextures();
     // The HDR targets (ToneMap.hpp) are RGBA16F where this device proved it renders and blends them.
@@ -285,12 +287,16 @@ void Renderer::onSurfaceCreated() {
         half.renderable() && half.blendsAdditively ? Framebuffer::Format::Rgba16F : Framebuffer::Format::Rgba8;
     fboA_.setFormat(hdrFormat);
     fboB_.setFormat(hdrFormat);
+    fboL_.setFormat(hdrFormat);
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);
     hdrPass_.setTargetFormat(hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
+    layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
+    layerMixer_.reset();
     overlays_.recreate();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -362,6 +368,9 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     const bool followsLoad = scene == nullptr || scene->family() != SceneFamily::Milkdrop;
     in.loadScale = followsLoad ? loadScale_.scale() : scale::LoadScaleConfig{}.maxScale;
     in.styleScale = scene != nullptr ? styleScaleFor(scene->id()) : scale::kDefaultStyleRenderScale;
+    // Two Styles drawing every frame: both draw softer (RenderScale.hpp, kLayeredRenderScale).
+    in.layered = layerScene_ != nullptr && layerScene_ != scene;
+    in.layerStyleScale = in.layered ? styleScaleFor(layerScene_->id()) : scale::kDefaultStyleRenderScale;
     return in;
 }
 
@@ -384,6 +393,7 @@ void Renderer::applyRenderSize(scale::RenderSize size) {
         fboA_.resizePreserving(size.width, size.height);
         if (fboA_.width() != size.width || fboA_.height() != size.height) return;
         if (fboB_.ok()) fboB_.resizePreserving(size.width, size.height);
+        if (fboL_.ok()) fboL_.resizePreserving(size.width, size.height);
     }
     renderWidth_ = size.width;
     renderHeight_ = size.height;
@@ -408,6 +418,7 @@ void Renderer::cut() {
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
     layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
 }
 
 Scene* Renderer::builtScene(const std::string& id) {
@@ -443,6 +454,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     }
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
+    scene->setGravityField(&gravityField_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);
@@ -458,6 +470,7 @@ void Renderer::releaseScenes() {
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
 }
 
 }  // namespace geode::viz

@@ -4,6 +4,7 @@
 
 #include <array>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -14,8 +15,10 @@
 #include "geode/viz/Adsr.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/CompositePass.hpp"
+#include "geode/viz/GravityField.hpp"
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/GlProfile.hpp"
+#include "geode/viz/Layers.hpp"
 #include "geode/viz/HdrPass.hpp"
 #include "geode/viz/Lfo.hpp"
 #include "geode/viz/NoFlashPass.hpp"
@@ -54,12 +57,16 @@ public:
     bool setParam(const std::string& key, float value);
     void setFeatures(const GeodeFeatureFrame& features);
     void setReducedMotion(bool on) { reducedMotion_.store(on, std::memory_order_relaxed); }
-    void setLayer(const std::string& sceneId, float mix, int blendOrdinal);
     void setTransition(const std::string& id, int64_t durationMs);
     void beginParamMorph(float seconds);
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
+    // The phone's down in screen space, latest-wins (GravityField); 0, 0, 0 says there is none.
+    void submitGravity(float x, float y, float z) { gravityField_.submit(x, y, z); }
     void pushPcm(const float* samples, int count);
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
+    // The person's "smear the Visual with a finger" (Settings): whether a Style that does not draw the
+    // strokes itself gets them as the shared ripple smear, and how strongly. Off until set.
+    void setTouchSmear(bool on, float strength);
     void loadMilkPreset(const std::string& path);
     void reloadMilkPreset();
     void setMilkTextureDir(const std::string& dir);
@@ -70,7 +77,8 @@ public:
     // This frame's evaluated Customization (geode_viz_render runs the ReactionGraph), or nullptr while
     // no snapshot carries a plan; taken at the next frame. The renderer maps it into the active Style's
     // ranges (its pack's Extras) and draws all of it: the Shared core onto every Style and the
-    // composite, the Camera (CameraRig), the Shared core effects (SharedFxPass) and the Style's Extras.
+    // composite, the Camera (CameraRig), the Shared core effects (SharedFxPass), the Style's Extras and
+    // Layer 2 (Layers.hpp), which every Render gets the same way as the live Visual.
     void setCustomization(const mod::Evaluated* evaluated);
     // W00: full-frame overlay/underlay layers, latched here and uploaded to GL textures at the
     // start of the next frame; see CompositePass.hpp for the pass itself. `pixels` is Android's
@@ -120,9 +128,20 @@ private:
     float styleScaleFor(const std::string& sceneId) const;
     Scene* resolveActiveScene();
     SceneParams resolveParams(float dt);
-    void resolveLayerScene();
+    // Layer 2 this frame: what the Customization asks for, through the mixer's fades, and the scene
+    // that draws it (nullptr while there is none).
+    void resolveLayer(float dt);
+    // The id of the Style the plan names `name` (layer::styleHash), or "" for none this build draws.
+    const std::string& layerStyleId(uint32_t name);
+    // Whether Style `id` can be Layer 2 over `activeId`: a Style this build draws, not the active one,
+    // and not MilkDrop, whose one projectM engine is the MilkDrop preset the person picked.
+    bool canBeLayer(const std::string& id, const std::string& activeId) const;
     bool ensureTargets();
     float drawSecondaryTargets(const SceneParams& p, float dt);
+    // Draws Layer 2 into its own target, unless its scene is already drawn as Layer 1 or the outgoing
+    // picture of a transition; its picture is then that target's (layerTexture()).
+    void drawLayerTarget(const SceneParams& p, float dt);
+    GLuint layerTexture() const;
     void bindSecondaryTarget();
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
     // The active Style's picture with the Shared core effects drawn over it, or the scene target as
@@ -167,6 +186,7 @@ private:
     std::string quadVert_;
 
     TouchField touchField_;
+    GravityField gravityField_;
     TrailPass trailPass_;
     SharedFxPass sharedFx_;
     CompositePass compositePass_;
@@ -181,6 +201,8 @@ private:
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
     Framebuffer fboB_{"sceneB"};
+    // Layer 2's picture, allocated while Layer 2 draws.
+    Framebuffer fboL_{"sceneL"};
     GLuint quadVao_ = 0;
     GLuint paletteLutTex_ = 0;
 
@@ -191,12 +213,10 @@ private:
     // Empty until the app's first setScene: the app requests its Style (SceneIds.DEFAULT, the one place
     // the default Style is chosen) before every frame, and until then the renderer draws black.
     std::string requestedSceneId_;
-    std::string layerSceneId_;
-    float layerMix_ = 0.5f;
-    int layerBlend_ = static_cast<int>(BlendMode::Screen);
     std::string transitionId_ = "fade";
     int64_t transitionDurationMs_ = 1200;
     std::atomic<bool> reducedMotion_{false};
+    std::atomic<float> touchSmear_{0.0f};
     scale::FrameLoad frameLoad_;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
@@ -238,6 +258,13 @@ private:
     Scene* activeScene_ = nullptr;
     Scene* outgoingScene_ = nullptr;
     Scene* layerScene_ = nullptr;
+    // The scene Layer 2's target last held, so a new one starts from a clear target, not the old picture.
+    Scene* layerDrawn_ = nullptr;
+    layer::Mixer layerMixer_;
+    layer::Mix frameLayer_;
+    // Layer 2's own parameters this frame: its Style's, without Layer 1's Customization.
+    SceneParams layerParams_;
+    std::map<uint32_t, std::string> layerIds_;
     std::optional<SceneParams> outgoingParams_;
     double transitionStartS_ = 0.0;
     bool sceneJustSwitched_ = false;
@@ -260,10 +287,7 @@ private:
     mod::FamilyRanges ranges_ = mod::FamilyRanges::sharedCore();
     // Latched once per frame in beginFrame alongside frameFeatures_, so the
     // rest of the frame (composite(), drawSecondaryTargets(), ...) reads a
-    // stable snapshot instead of racing setLayer()/setTransition() on
-    // stateLock_.
-    float frameLayerMix_ = 0.5f;
-    int frameLayerBlend_ = static_cast<int>(BlendMode::Screen);
+    // stable snapshot instead of racing setTransition() on stateLock_.
     std::string frameTransitionId_ = "fade";
     int64_t frameTransitionDurationMs_ = 1200;
     std::string lastError_;

@@ -1,8 +1,12 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LayerLoop
 import dev.geode.feature.customization.api.Macro
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
@@ -147,6 +151,37 @@ object Edits {
         automations: Automations,
     ): Customization = customization.copy(automations = Rules.automations(customization, automations))
 
+    /**
+     * Lays [style] over the current Style as Layer 2 ([styles] says what it is), or turns Layer 2 off
+     * when null. A Style that cannot be Layer 2 there changes nothing.
+     */
+    fun chooseLayerStyle(
+        customization: Customization,
+        style: SceneId?,
+        styles: StyleCatalogue,
+    ): Customization {
+        if (style == null) return customization.copy(layer = customization.layer.copy(style = null))
+        val manifest = styles[style] ?: return customization
+        if (!Rules.canBeLayer(manifest, customization.style)) return customization
+        return customization.copy(layer = customization.layer.copy(style = style))
+    }
+
+    fun setLayerBlend(
+        customization: Customization,
+        blend: LayerBlend,
+    ): Customization = customization.copy(layer = customization.layer.copy(blend = blend))
+
+    fun setLayerInfluence(
+        customization: Customization,
+        influence: LayerInfluence,
+    ): Customization = customization.copy(layer = customization.layer.copy(influence = influence))
+
+    /** Layer 2's loop set to [loop] as [Rules.layerLoop] lets it run, or stopped when null. */
+    fun setLayerLoop(
+        customization: Customization,
+        loop: LayerLoop?,
+    ): Customization = customization.copy(layer = customization.layer.copy(loop = Rules.layerLoop(loop)))
+
     /** Back to the Style's own defaults ([manifest]); the Automations stay, as they do across a change of Style. */
     fun resetToStyle(
         customization: Customization,
@@ -178,8 +213,9 @@ object Edits {
     /**
      * Moves to the Style [to]. Its own parts (Extras, Macros, Reactions, Modulators) start from its
      * defaults. The Shared core starts from its defaults too, except where the person changed a value
-     * away from the old Style's ([from]) default: that change carries over, as do the Sound trims and
-     * the Automations (less any lane target, an Extra or a Modulator, the new Style lacks).
+     * away from the old Style's ([from]) default: that change carries over, as do the Sound trims,
+     * the Automations (less any lane target, an Extra or a Modulator, the new Style lacks) and Layer 2,
+     * which turns off when it is the Style moved to (a Style cannot be its own Layer 2).
      */
     fun switchStyle(
         customization: Customization,
@@ -193,6 +229,7 @@ object Edits {
             shared = fresh.shared + changed,
             signals = customization.signals,
             automations = Rules.automations(fresh, customization.automations),
+            layer = if (customization.layer.style == to.id) customization.layer.copy(style = null) else customization.layer,
         )
     }
 

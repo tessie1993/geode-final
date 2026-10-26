@@ -26,6 +26,10 @@ float styleRenderScale(std::optional<double> declared) {
     return std::clamp(static_cast<float>(*declared), kMinStyleRenderScale, kMaxStyleRenderScale);
 }
 
+float layeredStyleScale(float styleScale, bool layered, float layerStyleScale) {
+    return layered ? std::min(styleScale, layerStyleScale) * kLayeredRenderScale : styleScale;
+}
+
 // ---- load scale ----------------------------------------------------------------------------------
 
 float frameBudgetMs(float pacedFps) {
@@ -103,7 +107,8 @@ void LoadScaleController::reset() {
 
 float totalScale(const ScaleInputs& in) {
     if (in.offscreen) return std::clamp(in.exportSupersample, kMinExportSupersample, kMaxExportSupersample);
-    const float quality = std::max(in.styleScale * std::min(in.loadScale, in.thermalCeiling), kMinQualityScale);
+    const float style = layeredStyleScale(in.styleScale, in.layered, in.layerStyleScale);
+    const float quality = std::max(style * std::min(in.loadScale, in.thermalCeiling), kMinQualityScale);
     return liveSupersample(in.surfaceWidth, in.surfaceHeight) * quality;
 }
 

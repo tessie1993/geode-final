@@ -27,6 +27,8 @@ namespace geode::viz::mod {
 //   automations  kMaxAutomations of kAutomationFloats: kind, target kind, target index, target field,
 //                amount, every (beats), trigger, threshold, spacing, fade, alternate, step count,
 //                kMaxSteps steps
+//   layer        Layer 2 (Layers.hpp): its Style as layer::styleHash (0 when Layer 2 is off), its blend
+//                and its influence; its opacity, influence amount and swap are Shared core properties
 //
 // Target kinds and source kinds are Target::Kind and Source::Kind in order.
 constexpr size_t kPlanHeaderFloats = 5;
@@ -34,11 +36,12 @@ constexpr size_t kReactionFloats = 12;
 constexpr size_t kModulatorFloats = 16 + kMaxSteps;
 constexpr size_t kMacroLinkFloats = 6;
 constexpr size_t kAutomationFloats = 12 + kMaxSteps;
+constexpr size_t kLayerFloats = 3;
 // The snapshot schema reads this literal.
-constexpr size_t kPlanFloats = 3901;
+constexpr size_t kPlanFloats = 3907;
 static_assert(kPlanFloats == kPlanHeaderFloats + kSharedCount + kExtraCount + kMacroCount + 2 * kSoundSignalCount +
                                  kMaxReactions * kReactionFloats + kMaxModulators * kModulatorFloats +
-                                 kMaxMacroLinks * kMacroLinkFloats + kMaxAutomations * kAutomationFloats);
+                                 kMaxMacroLinks * kMacroLinkFloats + kMaxAutomations * kAutomationFloats + kLayerFloats);
 
 // Reads `count` floats into `out`. False, with `out` untouched, when they are not kPlanFloats or do
 // not carry a plan. Anything out of range is kept in range; the graph ignores what targets nothing.

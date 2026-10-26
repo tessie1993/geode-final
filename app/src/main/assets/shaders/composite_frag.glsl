@@ -9,6 +9,8 @@ precision highp sampler2D;
 in vec2 vUv;
 out vec4 fragColor;
 
+//#include lib_layers
+
 uniform sampler2D uTexA;
 uniform sampler2D uTexB;
 // Blue-noise dither mask, sampled 1:1 with output pixels. See BlueNoise.kt for
@@ -19,14 +21,22 @@ uniform float uDither;
 uniform float uRatio;
 uniform float uProgress;
 uniform int uStyle;
-/**
- * Layers: how much the TOP layer (uTexA) contributes, 0..1. Photoshop's layer
- * opacity, not a crossfade position - at 0 you see the bottom layer alone, at
- * 1 the full blend. Only read when uStyle is 6.
- */
-uniform float uLayerMix;
-/** Layers: which blend function, matching BlendMode's ordinals. */
-uniform int uBlendMode;
+// Layer 2 (core/viz/include/geode/viz/Layers.hpp, lib_layers.glsl): a second Style's picture, laid
+// over everything above (Layer 1, transitions included). uTexL is its picture, with its
+// own gate and Camera pair (x its flat moves, y its flat endless zoom), as uTexA and uTexB have theirs.
+// uLayerPresence is how far it is faded in: 0 is no Layer 2, and then nothing of it runs. uLayerBlend is
+// layer::Blend's ordinal, uLayerOpacity the source opacity (already held to the mode's No-flash cap),
+// uLayerInfluence layer::Influence's ordinal (how Layer 2 acts on Layer 1) at uLayerAmount, and
+// uLayerSwap crossfades towards Layer 1 laid over Layer 2 instead.
+uniform sampler2D uTexL;
+uniform vec4 uGateL;
+uniform vec2 uCamGateL;
+uniform float uLayerPresence;
+uniform int uLayerBlend;
+uniform float uLayerOpacity;
+uniform int uLayerInfluence;
+uniform float uLayerAmount;
+uniform float uLayerSwap;
 uniform float uTime;
 uniform float uBeat;
 uniform float uChroma;
@@ -125,7 +135,7 @@ uniform float uRippleStrength;
 uniform float uRippleSpecular;
 // Underlay (W00): a full-frame RGBA8 background layer, blended into the finished composite
 // colour in main() below, just before the dither - so it applies once, identically, regardless
-// of transitions or Layers. uUnderlayBlend selects the function (0 = screen: shows through where
+// of transitions or Layer 2. uUnderlayBlend selects the function (0 = screen: shows through where
 // the scene is black while leaving bright scene pixels alone; 1 = multiply; 2 = add) and
 // uUnderlayAmount (0..1) is how much of that blend result replaces the plain scene colour.
 // uUnderlayAmount is 0 by default (GL's uniform default for a value never uploaded), so a program
@@ -427,100 +437,102 @@ vec4 getToColor(vec2 uv) { return vec4(postFx(uTexA, clamp(uv, 0.0, 1.0), uGateA
 #endif
 
 /**
- * The separable blend functions for Layers, on two already-graded layers.
- *
- * `base` is the bottom layer and `top` the one being laid over it. Both are
- * opaque, so these are pure per-channel functions of two colours and not
- * Porter-Duff compositing.
- *
- * Every one of them clamps. The scenes upstream are emissive and routinely
- * exceed 1 before the composite grades them down, so ADD in particular would
- * otherwise hand values well over 1 to the dither below, where
- * they stop behaving like colours. The switch order is BlendMode's ordinals.
- */
-vec3 layerBlend(vec3 base, vec3 top, int mode) {
-    vec3 b = max(base, vec3(0.0));
-    vec3 t = max(top, vec3(0.0));
-    vec3 r;
-    if (mode == 1) {
-        r = vec3(1.0) - (vec3(1.0) - b) * (vec3(1.0) - t);
-    } else if (mode == 2) {
-        r = b + t;
-    } else if (mode == 3) {
-        r = b * t;
-    } else if (mode == 4) {
-        r = abs(b - t);
-    } else if (mode == 5) {
-        // Overlay: multiply where the BASE is dark, screen where it is light,
-        // which is what preserves the base's own contrast rather than the top's.
-        vec3 lo = 2.0 * b * t;
-        vec3 hi = vec3(1.0) - 2.0 * (vec3(1.0) - b) * (vec3(1.0) - t);
-        r = mix(lo, hi, step(vec3(0.5), b));
-    } else if (mode == 6) {
-        r = max(b, t);
-    } else if (mode == 7) {
-        r = min(b, t);
-    } else {
-        r = t;
-    }
-    return clamp(r, 0.0, 1.0);
-}
-
-/**
  * The transition stage: the incoming scene, or a blend of it with the outgoing
- * one. Split out of main() so every path returns a colour rather than writing
+ * one, sampled at [uv] (vUv, or where Layer 2's Bend or Swirl moved it). Split
+ * out of main() so every path returns a colour rather than writing
  * fragColor itself - the dither below has to be the last thing that touches the
  * output, and an early `return` in main() used to skip it.
  */
-vec3 blended() {
+vec3 blended(vec2 uv) {
 #ifdef MV_TRANSITION
     // uStyle 5 is "a spliced library transition is running". The variant stays
     // bound outside transitions too - swapping programs per frame would cost
     // more than the branch - so it must still render a plain CUT at uStyle 0.
     if (uStyle == 5 && uProgress < 1.0) {
-        return transition(vUv).rgb;
+        return transition(uv).rgb;
     }
 #endif
-    vec3 a = postFx(uTexA, vUv, uGateA, uCamGate.xz);
-    // uStyle 6 is Layers, and it is checked BEFORE the uProgress short-circuit
-    // below: uProgress is a transition's clock and sits at 1.0 whenever no
-    // transition is running, which is precisely when a layer IS running.
-    // Reusing uProgress as the mix would have made the two mutually exclusive
-    // for no reason and coupled a persistent setting to a timer.
-    if (uStyle == 6) {
-        vec3 b = postFx(uTexB, vUv, uGateB, uCamGate.yw);
-        return mix(b, layerBlend(b, a, uBlendMode), clamp(uLayerMix, 0.0, 1.0));
-    }
+    vec3 a = postFx(uTexA, uv, uGateA, uCamGate.xz);
     if (uStyle == 0 || uProgress >= 1.0) {
         return a;
     }
     if (uStyle == 1) {
-        vec3 b = postFx(uTexB, vUv, uGateB, uCamGate.yw);
+        vec3 b = postFx(uTexB, uv, uGateB, uCamGate.yw);
         return mix(b, a, uProgress);
     } else if (uStyle == 3) {
         float sh = smoothstep(0.0, 1.0, uProgress);
-        vec3 aSlide = postFx(uTexA, clamp(vUv + vec2(1.0 - sh, 0.0), 0.0, 1.0), uGateA, uCamGate.xz);
-        vec3 bSlide = postFx(uTexB, clamp(vUv - vec2(sh, 0.0), 0.0, 1.0), uGateB, uCamGate.yw);
-        return vUv.x < sh ? aSlide : bSlide;
+        vec3 aSlide = postFx(uTexA, clamp(uv + vec2(1.0 - sh, 0.0), 0.0, 1.0), uGateA, uCamGate.xz);
+        vec3 bSlide = postFx(uTexB, clamp(uv - vec2(sh, 0.0), 0.0, 1.0), uGateB, uCamGate.yw);
+        return uv.x < sh ? aSlide : bSlide;
     } else if (uStyle == 4) {
         float sh = smoothstep(0.0, 1.0, uProgress);
-        vec2 zUv = (vUv - 0.5) / (1.0 + sh * 2.5) + 0.5;
+        vec2 zUv = (uv - 0.5) / (1.0 + sh * 2.5) + 0.5;
         vec3 bZoom = postFx(uTexB, clamp(zUv, 0.0, 1.0), uGateB, uCamGate.yw);
-        vec2 aUv = (vUv - 0.5) * (1.0 + (1.0 - sh) * 0.35) + 0.5;
+        vec2 aUv = (uv - 0.5) * (1.0 + (1.0 - sh) * 0.35) + 0.5;
         vec3 aZoom = postFx(uTexA, clamp(aUv, 0.0, 1.0), uGateA, uCamGate.xz);
         return mix(bZoom, aZoom, sh);
     } else {
-        float lumB = dot(texture(uTexB, vUv).rgb, vec3(0.299, 0.587, 0.114));
-        vec2 melted = vUv + vec2(0.0, uProgress * (0.25 + lumB * 0.6));
+        float lumB = dot(texture(uTexB, uv).rgb, vec3(0.299, 0.587, 0.114));
+        vec2 melted = uv + vec2(0.0, uProgress * (0.25 + lumB * 0.6));
         vec3 bMelt = postFx(uTexB, clamp(melted, 0.0, 1.0), uGateB, uCamGate.yw);
         float reveal = smoothstep(0.0, 1.0, uProgress * 1.4 - lumB * 0.4);
         return mix(bMelt, a, clamp(reveal, 0.0, 1.0));
     }
 }
 
+// Layer 2's luminance gradient where its picture is drawn: central differences a few texels apart, read
+// raw from its target. Bend, Swirl and Outline share it.
+vec2 layerGradient() {
+    vec2 p = geo(vUv, uGateL, uCamGateL.x > 0.5, 1.0);
+    vec2 texel = 2.5 / vec2(textureSize(uTexL, 0));
+    float lL = layerLum(texture(uTexL, p - vec2(texel.x, 0.0)).rgb);
+    float lR = layerLum(texture(uTexL, p + vec2(texel.x, 0.0)).rgb);
+    float lB = layerLum(texture(uTexL, p - vec2(0.0, texel.y)).rgb);
+    float lT = layerLum(texture(uTexL, p + vec2(0.0, texel.y)).rgb);
+    return vec2(lR - lL, lT - lB);
+}
+
+// Bend and Swirl: Layer 2's gradient [g] moves where Layer 1 is sampled, away from Layer 2's edges like a
+// refraction (Bend) or along them (Swirl, the gradient turned a quarter), soft-capped the way the ripple
+// overlay's refraction is, since an unbounded warp reads as flashing. Fades with Layer 2.
+vec2 layerDisplaced(vec2 uv, vec2 g) {
+    if (uLayerInfluence != 1 && uLayerInfluence != 2) return uv;
+    vec2 d = uLayerInfluence == 2 ? vec2(-g.y, g.x) : g;
+    vec2 off = d * uLayerAmount * uLayerPresence * 0.08;
+    off *= 0.06 / (0.06 + length(off));
+    return clamp(uv - off, 0.0, 1.0);
+}
+
+// Layer 2 over Layer 1 ([base], everything above it, transitions included), both as postFx gives them,
+// kept to 0..1. Layer 1 is first acted on by Layer 2: Cut-out shows it only where Layer 2 is lit (a luma
+// key), Tint gives it Layer 2's colour at its own brightness (W3C Color, weighted by how much colour
+// Layer 2 has there), Outline shows it only along Layer 2's edges ([g]). Then Layer 2 is laid over it, or
+// with the swap Layer 1 over Layer 2, and the whole fades in with uLayerPresence.
+vec3 layered(vec3 base, vec3 top, vec2 g) {
+    vec3 b = clamp(base, 0.0, 1.0);
+    vec3 t = clamp(top, 0.0, 1.0);
+    vec3 l1 = b;
+    if (uLayerInfluence == 3) {
+        l1 *= mix(1.0, smoothstep(0.05, 0.6, layerLum(t)), uLayerAmount);
+    } else if (uLayerInfluence == 4) {
+        float chroma = max(max(t.r, t.g), t.b) - min(min(t.r, t.g), t.b);
+        l1 = mix(l1, layerSetLum(t, layerLum(l1)), uLayerAmount * smoothstep(0.02, 0.25, chroma));
+    } else if (uLayerInfluence == 5) {
+        l1 *= mix(1.0, clamp(length(g) * 6.0, 0.0, 1.0), uLayerAmount);
+    }
+    vec3 col = layerOver(l1, t, uLayerBlend, uLayerOpacity);
+    if (uLayerSwap > 0.0001) col = mix(col, layerOver(t, l1, uLayerBlend, uLayerOpacity), uLayerSwap);
+    return mix(b, col, uLayerPresence);
+}
+
 void main() {
-    vec3 col = blended();
-    // Underlay (W00): folded in here, after every transition/Layers/postFx blend above and
+    // Layer 2's gradient is read only by the influences that use it, and only while Layer 2 is in.
+    vec2 g = vec2(0.0);
+    bool edges = uLayerInfluence == 1 || uLayerInfluence == 2 || uLayerInfluence == 5;
+    if (uLayerPresence > 0.0 && uLayerAmount > 0.0001 && edges) g = layerGradient();
+    vec3 col = blended(layerDisplaced(vUv, g));
+    if (uLayerPresence > 0.0) col = layered(col, postFx(uTexL, vUv, uGateL, uCamGateL), g);
+    // Underlay (W00): folded in here, after every transition/Layer 2/postFx blend above and
     // before the dither, so it is the one place both the live composite and the offscreen export
     // apply it - see the uUnderlay* declarations above and CompositePass.hpp.
     if (uUnderlayAmount > 0.0001) {

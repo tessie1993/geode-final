@@ -112,6 +112,13 @@ void MycoScene::step(fluid::DoubleFbo& colony, fluid::DoubleFbo& field, float sp
     const float birthRate = std::min(kTouchBirthPerSecond / kTicksPerSecond, kTouchBirthPerFrameCap);
     glUniform1f(agent_.loc("uTouchBirth"), birthRate * (touch_ ? touch_->anchorStrength() : 0.0f));
     uploadSceneTouch(agent_, touch_);
+    // Tilt (#315): agents lean their heading toward down, never a slide of the whole colony.
+    float down[2] = {0.0f, 0.0f};
+    if (gravity_ != nullptr && gravity_->weight() > 0.0f) {
+        const float w = gravity_->weight();
+        gravity::inPlaneDown(gravity_->x() / w, gravity_->y() / w, w, down);
+    }
+    glUniform3f(agent_.loc("uFall"), down[0], down[1], kFallTurnShare * style_.turnAngle);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     colony.swap();
     agentsSeeded_ = true;

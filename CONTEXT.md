@@ -58,6 +58,10 @@ _Avoid_: Scene (an engine term), effect, visualizer
 The user's choices for how a Style looks and how it reacts to sound.
 _Avoid_: Params, settings, tweaks
 
+**Layer**:
+Layer 2 is a second Style drawn over the Style itself (Layer 1) and part of its Customization: it is laid over Layer 1 by one of ten blend modes, can act on it (bend, swirl, cut-out, tint, outline), can swap places with it, and can loop. Its opacity, influence and swap are Shared core controls, so Reactions and Modulators can move them. MilkDrop can be Layer 1 but never Layer 2.
+_Avoid_: overlay (the App's picture layer above the Visual), mix, stack
+
 **Camera**:
 The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel.
 _Avoid_: View params, motion params
@@ -71,7 +75,7 @@ One large control in the basic Customize view. It is a single value: changing it
 _Avoid_: Preset knob, master slider
 
 **Shared core**:
-The controls every Style has, MilkDrop included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, and colour grading.
+The controls every Style has, MilkDrop included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, colour grading, and Layer 2's opacity, influence and swap.
 _Avoid_: Global params, common FX
 
 **Extras**:

@@ -213,7 +213,14 @@ class VisualsJourneyRobolectricTest {
             when (place.value) {
                 Place.VISUALS -> VisualsRoute(visuals, onEnterFullScreen = { place.value = Place.FULL_SCREEN })
                 Place.LIBRARY -> Text("Library")
-                Place.FULL_SCREEN -> FullScreenVisualRoute(visuals, keepScreenOn = false, onExit = { place.value = Place.VISUALS })
+                Place.FULL_SCREEN ->
+                    FullScreenVisualRoute(
+                        visuals,
+                        controlsShown = true,
+                        keepScreenOn = false,
+                        onToggleControls = {},
+                        onExit = { place.value = Place.VISUALS },
+                    )
             }
         }
     }

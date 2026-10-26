@@ -11,6 +11,7 @@ out vec4 fragColor;
 //#include lib_palette
 //#include lib_scene_grade
 //#include lib_touch
+//#include lib_gravity
 
 // Spiral Eye: a turbulent cloud wound into a logarithmic spiral, streaked
 // outward as if the whole frame were being pulled through the middle, with a
@@ -44,7 +45,8 @@ float dye(vec2 lp, float detail) {
 }
 
 void main() {
-    vec2 uv = view();
+    // Tilt parallaxes the whole field a little (lib_gravity): vec2(0) when off.
+    vec2 uv = view() + tiltDrift();
     float r = max(length(uv), 1e-4);
     float a = atan(uv.y, uv.x);
 

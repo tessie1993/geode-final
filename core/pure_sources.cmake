@@ -51,6 +51,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Lfo.cpp
     viz/Adsr.cpp
     viz/VisualSafety.cpp
+    viz/Layers.cpp
     viz/FlashLimiter.cpp
     viz/ToneMap.cpp
     viz/Reactions.cpp
@@ -70,6 +71,8 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/StyleProfiles.cpp
     viz/StyleExtras.cpp
     viz/ThermalGovernor.cpp
+    viz/TouchField.cpp
+    viz/GravityField.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/SimGrid.cpp
     viz/fluid/RippleMath.cpp
