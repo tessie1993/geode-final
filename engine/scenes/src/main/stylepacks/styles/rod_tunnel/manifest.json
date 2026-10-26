@@ -11,5 +11,9 @@
     "eased": {"steps": 0.85},
     "reduced": {"steps": 0.7, "off": ["motes"]},
     "minimal": {"steps": 0.5, "off": ["motes"]}
-  }
+  },
+  "lens": {
+    "streaks": {"amount": 0.3, "shape": "zoom", "length": 0.5}
+  },
+  "particles3d": {"kind": "streaks", "amount": 0.6, "count": 1, "speed": 1, "size": 1, "tint": [0.85, 0.95, 1.1]}
 }

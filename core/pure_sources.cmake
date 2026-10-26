@@ -65,6 +65,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
     viz/StylePacks.cpp
+    viz/LensFx.cpp
     viz/StyleProfiles.cpp
     viz/ThermalGovernor.cpp
     viz/fluid/FluidMath.cpp

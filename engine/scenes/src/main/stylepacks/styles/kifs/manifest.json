@@ -5,5 +5,9 @@
   "family": "shader",
   "shader": "shader.glsl",
   "renderScale": 0.75,
-  "detail": "march"
+  "detail": "march",
+  "lens": {
+    "flare": {"amount": 0.35, "ghosts": 5, "halo": 0.4, "dispersion": 0.5},
+    "depthOfField": {"aperture": 0.5, "focus": 0.5}
+  }
 }

@@ -5,5 +5,9 @@
   "family": "shader",
   "shader": "shader.glsl",
   "renderScale": 0.75,
-  "detail": "march"
+  "detail": "march",
+  "lens": {
+    "godRays": {"amount": 0.4, "source": [0.5, 0.5], "length": 0.6, "decay": 0.94}
+  },
+  "particles3d": {"kind": "sparks", "amount": 0.45, "count": 0.8, "speed": 0.6, "size": 1.2, "tint": [1, 0.85, 0.7]}
 }

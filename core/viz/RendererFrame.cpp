@@ -96,6 +96,7 @@ SceneParams Renderer::resolveParams(float dt) {
         p.rippleOverlayEnabled = false;
     }
     lastFinalParams_ = p;
+    stepLensEffects(dt);
     postRotationAngle_ = grade::integrateRotation(postRotationAngle_, p.rotation, dt);
     postCyclePhase_ = grade::integrateCyclePhase(postCyclePhase_, p.cycleSpeed, dt, p.colorCycle);
     postBeatPulse_ = postBeat_.step(live::hit(frameFeatures_), dt);
@@ -113,6 +114,19 @@ void Renderer::applyCustomization(SceneParams& p, float dt, bool reducedMotion) 
     frameEffects_ = shared ? SharedEffects::from(*shared) : SharedEffects{};
     camera_.step(shared ? CameraInput::from(*shared) : CameraInput{}, live::hit(frameFeatures_), dt, reducedMotion);
     activeExtras_ = extrasFor(sceneId, shared ? &*shared : nullptr);
+}
+
+void Renderer::stepLensEffects(float dt) {
+    const packs::StylePack* pack = activeScene_ != nullptr ? registry_.pack(activeScene_->id()) : nullptr;
+    const lens::LensSpec spec = pack != nullptr ? pack->lensEffects : lens::LensSpec{};
+    const lens::ParticleSpec particles = pack != nullptr ? pack->particles3d : lens::ParticleSpec{};
+    const int tier = static_cast<int>(thermal_.tier());
+    const bool optionalPasses = thermalTierInfo(thermal_.tier()).optionalPasses;
+    const bool reducedMotion = reducedMotion_.load(std::memory_order_relaxed);
+    const lens::Drive drive{live::level(frameFeatures_), live::hit(frameFeatures_)};
+    frameGlare_ = lensDrive_.step(spec, drive, tier, optionalPasses, reducedMotion, dt);
+    frameDof_ = lens::dofFor(spec, tier, optionalPasses);
+    frameParticles_ = particleFlight_.step(particles, drive, tier, reducedMotion, dt);
 }
 
 const mod::FamilyRanges& Renderer::rangesFor(const std::string& sceneId) {
@@ -247,13 +261,15 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
 }
 
 GLuint Renderer::applySharedEffects(float dt) {
+    // Depth of field first: it reads the depth the Style wrote into the scene target's alpha.
+    const GLuint sceneTex = dofPass_.apply(frameDof_, fboA_.tex(), renderWidth_, renderHeight_, quadVao_);
     if (!frameEffects_.active()) {
         sharedFx_.forgetHistory();
-        return fboA_.tex();
+        return sceneTex;
     }
     // A new Style starts its trails afresh rather than echoing the old one.
     if (sceneJustSwitched_) sharedFx_.forgetHistory();
-    return sharedFx_.apply(frameEffects_, fboA_.tex(), renderWidth_, renderHeight_, dt, timeSeconds_, quadVao_);
+    return sharedFx_.apply(frameEffects_, sceneTex, renderWidth_, renderHeight_, dt, timeSeconds_, quadVao_);
 }
 
 void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt) {
@@ -327,7 +343,9 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.anaglyph = anaglyphMix_;
     in.dither = !hdr;
     compositePass_.draw(in);
-    if (hdr) hdrPass_.resolve(tone::bloomFor(p.bloom, thermalTierInfo(thermal_.tier()).optionalPasses), finalFbo, quadVao_);
+    // The 3D particle layer, added onto the picture as light, so the bloom catches it.
+    particlePass_.draw(frameParticles_, camera_.pose(), hdr ? hdrPass_.compositeFbo() : finalFbo, width_, height_, quadVao_);
+    if (hdr) hdrPass_.resolve(tone::bloomFor(p.bloom, thermalTierInfo(thermal_.tier()).optionalPasses), finalFbo, quadVao_, frameGlare_);
     // The offscreen Render waits for each frame's own measurement, so every frame it writes is the one asked for.
     if (limited) noFlash_.present(dt, targetFbo, quadVao_, thermal_.offscreen());
     // W00: overlay is its own draw call, over whatever composite() just wrote to targetFbo, so it
