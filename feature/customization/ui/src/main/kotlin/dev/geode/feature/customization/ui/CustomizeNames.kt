@@ -3,6 +3,12 @@ package dev.geode.feature.customization.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
+import dev.geode.feature.customization.api.LoopPreset
+import dev.geode.feature.customization.api.LoopRate
+import dev.geode.feature.customization.api.LoopShape
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.ModulatorId
 import dev.geode.feature.customization.api.ModulatorParameter
 import dev.geode.feature.customization.api.PresetPart
@@ -127,6 +133,9 @@ internal fun propertyName(property: SharedProperty): String =
             SharedProperty.GAMMA -> R.string.customize_property_gamma
             SharedProperty.TEMPERATURE -> R.string.customize_property_temperature
             SharedProperty.INVERT -> R.string.customize_property_invert
+            SharedProperty.LAYER_OPACITY -> R.string.customize_property_layer_opacity
+            SharedProperty.LAYER_INFLUENCE -> R.string.customize_property_layer_influence
+            SharedProperty.LAYER_SWAP -> R.string.customize_property_layer_swap
         },
     )
 
@@ -145,6 +154,7 @@ internal fun groupName(group: SharedGroup): String =
             SharedGroup.GLITCH_AND_PIXELATE -> R.string.customize_group_glitch_and_pixelate
             SharedGroup.PARTICLES -> R.string.customize_group_particles
             SharedGroup.COLOUR_GRADING -> R.string.customize_group_colour_grading
+            SharedGroup.LAYERS -> R.string.customize_group_layers
         },
     )
 
@@ -261,10 +271,85 @@ internal fun partName(part: PresetPart): String =
             PresetPart.GLITCH_AND_PIXELATE -> R.string.customize_group_glitch_and_pixelate
             PresetPart.PARTICLES -> R.string.customize_group_particles
             PresetPart.COLOUR_GRADING -> R.string.customize_group_colour_grading
+            PresetPart.LAYERS -> R.string.customize_group_layers
             PresetPart.SOUND -> R.string.customize_part_sound
             PresetPart.EXTRAS -> R.string.customize_part_extras
             PresetPart.MACROS -> R.string.customize_part_macros
             PresetPart.REACTIONS -> R.string.customize_part_reactions
             PresetPart.MODULATORS -> R.string.customize_part_modulators
+        },
+    )
+
+@Composable
+internal fun blendName(blend: LayerBlend): String =
+    stringResource(
+        when (blend) {
+            LayerBlend.NORMAL -> R.string.customize_blend_normal
+            LayerBlend.ADD -> R.string.customize_blend_add
+            LayerBlend.SCREEN -> R.string.customize_blend_screen
+            LayerBlend.LIGHTEN -> R.string.customize_blend_lighten
+            LayerBlend.MULTIPLY -> R.string.customize_blend_multiply
+            LayerBlend.OVERLAY -> R.string.customize_blend_overlay
+            LayerBlend.SOFT_LIGHT -> R.string.customize_blend_soft_light
+            LayerBlend.DIFFERENCE -> R.string.customize_blend_difference
+            LayerBlend.EXCLUSION -> R.string.customize_blend_exclusion
+            LayerBlend.LUMINOSITY -> R.string.customize_blend_luminosity
+        },
+    )
+
+@Composable
+internal fun influenceName(influence: LayerInfluence): String =
+    stringResource(
+        when (influence) {
+            LayerInfluence.NONE -> R.string.customize_influence_none
+            LayerInfluence.BEND -> R.string.customize_influence_bend
+            LayerInfluence.SWIRL -> R.string.customize_influence_swirl
+            LayerInfluence.CUT_OUT -> R.string.customize_influence_cut_out
+            LayerInfluence.TINT -> R.string.customize_influence_tint
+            LayerInfluence.OUTLINE -> R.string.customize_influence_outline
+        },
+    )
+
+@Composable
+internal fun loopShapeName(shape: LoopShape): String =
+    stringResource(
+        when (shape) {
+            LoopShape.SINE -> R.string.customize_loop_shape_sine
+            LoopShape.TRIANGLE -> R.string.customize_loop_shape_triangle
+            LoopShape.PING_PONG -> R.string.customize_loop_shape_ping_pong
+            LoopShape.BEAT_STEPS -> R.string.customize_loop_shape_beat_steps
+        },
+    )
+
+@Composable
+internal fun loopRateName(rate: LoopRate): String =
+    stringResource(
+        when (rate) {
+            LoopRate.TWO_BEATS -> R.string.customize_loop_rate_two_beats
+            LoopRate.ONE_BAR -> R.string.customize_loop_rate_one_bar
+            LoopRate.FOUR_SECONDS -> R.string.customize_loop_rate_four_seconds
+            LoopRate.EIGHT_SECONDS -> R.string.customize_loop_rate_eight_seconds
+            LoopRate.SIXTEEN_SECONDS -> R.string.customize_loop_rate_sixteen_seconds
+        },
+    )
+
+@Composable
+internal fun loopTargetName(target: LoopTarget): String =
+    stringResource(
+        when (target) {
+            LoopTarget.OPACITY -> R.string.customize_loop_target_opacity
+            LoopTarget.INFLUENCE -> R.string.customize_loop_target_influence
+            LoopTarget.SWAP -> R.string.customize_loop_target_swap
+        },
+    )
+
+@Composable
+internal fun loopPresetName(preset: LoopPreset): String =
+    stringResource(
+        when (preset) {
+            LoopPreset.BREATHE -> R.string.customize_loop_preset_breathe
+            LoopPreset.TRADE_PLACES -> R.string.customize_loop_preset_trade_places
+            LoopPreset.PULSE -> R.string.customize_loop_preset_pulse
+            LoopPreset.DRIFT -> R.string.customize_loop_preset_drift
         },
     )

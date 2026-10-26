@@ -1,8 +1,8 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Customization
-import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.LayerBlend
 import dev.geode.feature.customization.api.LayerInfluence

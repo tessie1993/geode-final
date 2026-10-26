@@ -35,6 +35,7 @@
     <string name="customize_section_effects">Shared effects</string>
     <string name="customize_section_extras">Style Extras</string>
     <string name="customize_section_macros">Macros</string>
+    <string name="customize_section_layers">Layers</string>
 
     <!-- Reactions -->
     <string name="customize_links_list">List</string>
@@ -182,6 +183,9 @@
     <string name="customize_property_gamma">Gamma</string>
     <string name="customize_property_temperature">Temperature</string>
     <string name="customize_property_invert">Invert</string>
+    <string name="customize_property_layer_opacity">Layer 2 opacity</string>
+    <string name="customize_property_layer_influence">Layer 2 influence</string>
+    <string name="customize_property_layer_swap">Swap layers</string>
 
     <!-- SharedGroup -->
     <string name="customize_group_camera">Camera</string>
@@ -195,6 +199,7 @@
     <string name="customize_group_glitch_and_pixelate">Glitch and pixelate</string>
     <string name="customize_group_particles">Particles</string>
     <string name="customize_group_colour_grading">Colour grading</string>
+    <string name="customize_group_layers">Layers</string>
 
     <!-- ExtraKind -->
     <string name="customize_extra_scale">Scale</string>
@@ -313,4 +318,53 @@
     <string name="automation_seconds">%1$.1f s</string>
     <string name="automation_no_flash">Fades smoothly from one Style to the next. The Visual never flashes.</string>
 
+    <!-- Layers: Layer 2, a second Style laid over the Style. -->
+    <string name="customize_layers">Layers</string>
+    <string name="customize_layer_summary">Layer 2: %1$s</string>
+    <string name="customize_layer_style">Layer 2</string>
+    <string name="customize_layer_off">Off</string>
+    <string name="customize_layer_off_hint">Lay a second Style over this one. The two draw together, so both draw a little softer to keep the picture smooth.</string>
+    <string name="customize_layer_milkdrop">MilkDrop can\'t be Layer 2: it runs one engine, which is your MilkDrop preset. Make MilkDrop the main Style and lay another Style over it instead.</string>
+    <string name="customize_layer_blend">Blend</string>
+    <string name="customize_layer_capped">%1$s is held to a quarter so it never flashes.</string>
+    <string name="customize_layer_swap_hint">Swapped all the way, Overlay works as Hard Light and Luminosity as Color.</string>
+    <string name="customize_layer_influence">Influence</string>
+    <string name="customize_layer_loop">Loop</string>
+    <string name="customize_layer_loop_shape">Shape</string>
+    <string name="customize_layer_loop_rate">Every</string>
+    <string name="customize_layer_loop_depth">Depth</string>
+    <string name="customize_layer_loop_moves">Moves</string>
+    <string name="customize_layer_loop_ready">Ready-made</string>
+    <string name="customize_blend_normal">Normal</string>
+    <string name="customize_blend_add">Add</string>
+    <string name="customize_blend_screen">Screen</string>
+    <string name="customize_blend_lighten">Lighten</string>
+    <string name="customize_blend_multiply">Multiply</string>
+    <string name="customize_blend_overlay">Overlay</string>
+    <string name="customize_blend_soft_light">Soft light</string>
+    <string name="customize_blend_difference">Difference</string>
+    <string name="customize_blend_exclusion">Exclusion</string>
+    <string name="customize_blend_luminosity">Luminosity</string>
+    <string name="customize_influence_none">None</string>
+    <string name="customize_influence_bend">Bend</string>
+    <string name="customize_influence_swirl">Swirl</string>
+    <string name="customize_influence_cut_out">Cut-out</string>
+    <string name="customize_influence_tint">Tint</string>
+    <string name="customize_influence_outline">Outline</string>
+    <string name="customize_loop_shape_sine">Sine</string>
+    <string name="customize_loop_shape_triangle">Triangle</string>
+    <string name="customize_loop_shape_ping_pong">Ping-pong</string>
+    <string name="customize_loop_shape_beat_steps">Beat steps</string>
+    <string name="customize_loop_rate_two_beats">2 beats</string>
+    <string name="customize_loop_rate_one_bar">1 bar</string>
+    <string name="customize_loop_rate_four_seconds">4 s</string>
+    <string name="customize_loop_rate_eight_seconds">8 s</string>
+    <string name="customize_loop_rate_sixteen_seconds">16 s</string>
+    <string name="customize_loop_target_opacity">Opacity</string>
+    <string name="customize_loop_target_influence">Influence</string>
+    <string name="customize_loop_target_swap">Swap</string>
+    <string name="customize_loop_preset_breathe">Breathe</string>
+    <string name="customize_loop_preset_trade_places">Trade places</string>
+    <string name="customize_loop_preset_pulse">Pulse</string>
+    <string name="customize_loop_preset_drift">Drift</string>
 </resources>

@@ -65,6 +65,7 @@ enum class AdvancedSection {
     EFFECTS,
     EXTRAS,
     MACROS,
+    LAYERS,
 }
 
 /**
@@ -311,10 +312,10 @@ internal fun back(page: CustomizePage): CustomizePage =
 internal fun sectionOf(target: Target): AdvancedSection? =
     when (target) {
         is Target.Shared ->
-            if (target.property.group == SharedGroup.CAMERA) {
-                AdvancedSection.CAMERA
-            } else {
-                AdvancedSection.EFFECTS
+            when (target.property.group) {
+                SharedGroup.CAMERA -> AdvancedSection.CAMERA
+                SharedGroup.LAYERS -> AdvancedSection.LAYERS
+                else -> AdvancedSection.EFFECTS
             }
         is Target.Extra -> AdvancedSection.EXTRAS
         is Target.MacroSlot -> AdvancedSection.MACROS
