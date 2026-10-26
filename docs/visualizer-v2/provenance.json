@@ -727,16 +727,22 @@
       "notIncorporated": "New-engine foundation or static linking",
       "importedFiles": [
         "third_party/projectm/",
-        "tools/projectm-v4.1.7-render-fbo-backport.patch"
+        "tools/projectm-v4.1.8-render-fbo-backport.patch",
+        "tools/projectm-v4.1.8-render-clock.patch",
+        "tools/projectm-v4.1.8-plasma-mediump.patch",
+        "tools/projectm-eval-render-clock.patch"
       ],
       "modifications": [
-        "tools/projectm-v4.1.7-render-fbo-backport.patch backports projectm_opengl_render_frame_fbo from upstream master onto v4.1.7; the root CMakeLists.txt applies it to the submodule at configure time."
+        "tools/projectm-v4.1.8-render-fbo-backport.patch backports projectm_opengl_render_frame_fbo from upstream master onto v4.1.8.",
+        "tools/projectm-v4.1.8-render-clock.patch and tools/projectm-eval-render-clock.patch add projectm_set_frame_time and projectm_set_random_seed, so a Render is frame-exact.",
+        "tools/projectm-v4.1.8-plasma-mediump.patch carries upstream master commit 0227b7a (plasma transition overflow at mediump).",
+        "tools/projectm-patches.cmake applies them to the submodule at configure time."
       ],
       "attribution": "LGPL-2.1: dynamic linking, licence notice, and the corresponding source of the modification (the patch in tools/); the library is built in-tree from the git submodule by the root CMakeLists.txt (see tools/build-projectm.md).",
       "notes": "libprojectM-4.so and libgeode.so are built per ABI with 16 KB page alignment and checked by checkNativePageAlignment in app/build.gradle.kts; the scene adapter is core/viz/scenes/MilkdropScene.cpp.",
       "pin": {
-        "commit": "e0b0a967f0ffd7d332106c366668ed271718472b",
-        "source": "resolved tag on 2026-08-15"
+        "commit": "4967dc003e5206d7df3ff447287f7609c47d2343",
+        "source": "resolved tag v4.1.8 on 2026-10-26"
       },
       "licenceEvidence": {
         "state": "verified",

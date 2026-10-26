@@ -1,5 +1,5 @@
 diff --git a/src/api/include/projectM-4/parameters.h b/src/api/include/projectM-4/parameters.h
-index 2d9c70c89..4b0c12728 100644
+index 2d9c70c89..14674588f 100644
 --- a/src/api/include/projectM-4/parameters.h
 +++ b/src/api/include/projectM-4/parameters.h
 @@ -197,6 +197,33 @@ PROJECTM_EXPORT void projectm_set_fps(projectm_handle instance, int32_t fps);
@@ -9,7 +9,7 @@ index 2d9c70c89..4b0c12728 100644
 +/**
 + * @brief Drives this instance's clock from the host instead of the wall clock.
 + *
-+ * Geode patch (tools/projectm-v4.1.7-render-clock.patch). The value is used as the time of every
++ * Geode patch (tools/projectm-v4.1.8-render-clock.patch). The value is used as the time of every
 + * frame rendered after this call, including the preset transition timing, until it is set again.
 + * A host rendering frame by frame sets it before each frame; a negative value returns the
 + * instance to the wall clock.
@@ -22,7 +22,7 @@ index 2d9c70c89..4b0c12728 100644
 +/**
 + * @brief Seeds this instance's own random generator.
 + *
-+ * Geode patch (tools/projectm-v4.1.7-render-clock.patch). Every random value the instance draws
++ * Geode patch (tools/projectm-v4.1.8-render-clock.patch). Every random value the instance draws
 + * from then on - preset state, shader randoms, noise textures, random textures, the transition
 + * effect and the expression rand() - comes from this seed, and no other instance shares it. Seed
 + * before setting the texture search paths and loading the first preset: together with
@@ -232,7 +232,7 @@ index 844597128..41d4a3893 100644
  
  } // namespace libprojectM
 diff --git a/src/libprojectM/ProjectMCWrapper.cpp b/src/libprojectM/ProjectMCWrapper.cpp
-index d73374227..558fdbfdf 100644
+index d60c8210d..a2b754373 100644
 --- a/src/libprojectM/ProjectMCWrapper.cpp
 +++ b/src/libprojectM/ProjectMCWrapper.cpp
 @@ -276,6 +276,18 @@ void projectm_set_fps(projectm_handle instance, int32_t fps)
@@ -323,7 +323,7 @@ index 000000000..22d463b16
 +} // namespace libprojectM
 diff --git a/src/libprojectM/RandomSource.hpp b/src/libprojectM/RandomSource.hpp
 new file mode 100644
-index 000000000..2c1799bcd
+index 000000000..4d37af109
 --- /dev/null
 +++ b/src/libprojectM/RandomSource.hpp
 @@ -0,0 +1,55 @@
@@ -337,7 +337,7 @@ index 000000000..2c1799bcd
 +/**
 + * @brief The one generator every random draw in libprojectM takes from.
 + *
-+ * Geode patch (tools/projectm-v4.1.7-render-clock.patch). An instance given a seed with
++ * Geode patch (tools/projectm-v4.1.8-render-clock.patch). An instance given a seed with
 + * projectm_set_random_seed() owns an engine and makes it current on the calling thread for the
 + * duration of every call that can draw a random number (see Scope), so two instances never share
 + * random state and a seeded instance draws the same numbers every time. Outside a seeded scope,

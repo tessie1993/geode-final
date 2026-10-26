@@ -1,12 +1,14 @@
-# Geode's copy of projectM: the third_party/projectm submodule, pinned to the stock v4.1.7 tag, plus
+# Geode's copy of projectM: the third_party/projectm submodule, pinned to the stock v4.1.8 tag, plus
 # these local patches, applied at configure time so the submodule itself stays unmodified
 # (tools/build-projectm.md). LGPL-2.1: the patches are the corresponding source of the modification.
 #
-#   projectm-v4.1.7-render-fbo-backport.patch  projectm_opengl_render_frame_fbo, backported from master;
+#   projectm-v4.1.8-render-fbo-backport.patch  projectm_opengl_render_frame_fbo, backported from master;
 #                                              MilkdropScene renders into its own framebuffer with it.
-#   projectm-v4.1.7-render-clock.patch         projectm_set_frame_time and projectm_set_random_seed:
+#   projectm-v4.1.8-render-clock.patch         projectm_set_frame_time and projectm_set_random_seed:
 #                                              a Render drives the engine from the render clock with a
 #                                              fixed seed, so the same input gives the same frames.
+#   projectm-v4.1.8-plasma-mediump.patch       upstream master 0227b7a: the plasma transition's noise
+#                                              no longer overflows at mediump on mobile GPUs.
 #   projectm-eval-render-clock.patch           (in vendor/projectm-eval) lets the seeded instance feed
 #                                              the expression rand() as well.
 #
@@ -41,7 +43,7 @@ function(geode_apply_patch working_dir patch)
     if(NOT already_applied EQUAL 0)
         message(FATAL_ERROR
             "Could not apply ${patch} in ${working_dir}. "
-            "Run 'git submodule update --init --recursive' and make sure third_party/projectm is at v4.1.7 "
+            "Run 'git submodule update --init --recursive' and make sure third_party/projectm is at v4.1.8 "
             "with no other local changes.")
     endif()
 endfunction()
@@ -50,8 +52,9 @@ endfunction()
 # projectm-eval (a system-installed one would not carry the patch).
 function(geode_patch_projectm projectm_dir)
     find_package(Git REQUIRED)
-    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.7-render-fbo-backport.patch")
-    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.7-render-clock.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-render-fbo-backport.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-render-clock.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-plasma-mediump.patch")
     geode_apply_patch("${projectm_dir}/vendor/projectm-eval" "${GEODE_PROJECTM_PATCH_DIR}/projectm-eval-render-clock.patch")
     set(ENABLE_SYSTEM_PROJECTM_EVAL OFF CACHE BOOL "" FORCE)
 endfunction()
