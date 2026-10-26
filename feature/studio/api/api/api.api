@@ -599,14 +599,17 @@ public final class dev/geode/feature/studio/api/PlaylistMode : java/lang/Enum {
 }
 
 public final class dev/geode/feature/studio/api/Project {
-	public synthetic fun <init> (JLjava/lang/String;JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JLjava/lang/String;JLjava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JLjava/lang/String;JLjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-tHJcqGc ()J
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3-CmsKos8 ()J
-	public final fun copy-sbyUVag (JLjava/lang/String;J)Ldev/geode/feature/studio/api/Project;
-	public static synthetic fun copy-sbyUVag$default (Ldev/geode/feature/studio/api/Project;JLjava/lang/String;JILjava/lang/Object;)Ldev/geode/feature/studio/api/Project;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun copy-6fxwCGc (JLjava/lang/String;JLjava/lang/String;)Ldev/geode/feature/studio/api/Project;
+	public static synthetic fun copy-6fxwCGc$default (Ldev/geode/feature/studio/api/Project;JLjava/lang/String;JLjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/studio/api/Project;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getCreatedAt-CmsKos8 ()J
+	public final fun getFolder ()Ljava/lang/String;
 	public final fun getId-tHJcqGc ()J
 	public final fun getName ()Ljava/lang/String;
 	public fun hashCode ()I
