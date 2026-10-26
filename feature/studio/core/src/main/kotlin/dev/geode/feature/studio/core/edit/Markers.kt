@@ -1,4 +1,4 @@
-package dev.geode.editor
+package dev.geode.feature.studio.core.edit
 
 import kotlin.math.abs
 
