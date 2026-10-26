@@ -116,16 +116,22 @@ internal class RecordingEncoder private constructor(
             when {
                 index == MediaCodec.INFO_TRY_AGAIN_LATER -> if (!ending || ++idle > MAX_END_WAITS) return
                 index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> track(codec.outputFormat, isVideo)
-                index >= 0 -> {
-                    val buffer = codec.getOutputBuffer(index)
-                    if (buffer != null) write(buffer, isVideo)
-                    codec.releaseOutputBuffer(index, false)
-                    if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                        if (isVideo) videoEnded = true else audioEnded = true
-                    }
-                }
+                index >= 0 -> take(codec, index, isVideo)
             }
         }
+    }
+
+    /** Writes the encoded buffer at [index] and gives it back; the end of the stream marks that track ended. */
+    private fun take(
+        codec: MediaCodec,
+        index: Int,
+        isVideo: Boolean,
+    ) {
+        val buffer = codec.getOutputBuffer(index)
+        if (buffer != null) write(buffer, isVideo)
+        codec.releaseOutputBuffer(index, false)
+        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM == 0) return
+        if (isVideo) videoEnded = true else audioEnded = true
     }
 
     private fun track(

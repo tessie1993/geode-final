@@ -25,6 +25,9 @@ public:
     static constexpr size_t kPushFrames = 256;
     // The analysis' rate until a source says otherwise.
     static constexpr int kInitialRateHz = 48000;
+    // How far before the frame heard now an analysis that slept starts again: enough for its window and
+    // a few hops, little enough to catch up within the next Visual frame.
+    static constexpr float kWakeLookbackSeconds = 0.25f;
 
     Feed();
     ~Feed();
@@ -58,6 +61,7 @@ private:
     int analysisRate_ = kInitialRateHz;
     uint32_t analysedEpoch_ = 0;
     bool resetPending_ = true;
+    bool wakePending_ = false;
     uint64_t cursor_ = 0;
     std::vector<float> scratch_;
     std::atomic<bool> active_{false};

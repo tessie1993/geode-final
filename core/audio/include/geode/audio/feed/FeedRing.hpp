@@ -45,6 +45,8 @@ struct ReadPoint {
 //
 // The Sensitivity (setGainDb) is a gain on everything read out, so it reaches the analysis and every
 // Style's audio, MilkDrop's PCM included, at once and the same for every source.
+// A source's window gain (setWindowGain: Live input's level evened out) comes after it, on copy() alone:
+// it raises only what the scenes draw, never what the analysis hears.
 //
 // write() never blocks or allocates, so the native player's audio callback calls it directly. A write
 // that finds another one under way is dropped rather than waited for; that happens only around a
@@ -64,6 +66,8 @@ public:
     // The Sensitivity's range, in dB of gain on what is read.
     static constexpr float kMinGainDb = -12.0f;
     static constexpr float kMaxGainDb = 24.0f;
+    // The most a window may be raised: 24 dB.
+    static constexpr float kMaxWindowGain = 16.0f;
 
     // capacityFrames is rounded up to a power of two, and to at least 4 * kMaxWriteFrames.
     explicit FeedRing(size_t capacityFrames);
@@ -88,6 +92,11 @@ public:
     // The Sensitivity: a gain in dB (kMinGainDb..kMaxGainDb; not a number is 0) on every frame read out.
     void setGainDb(float db);
     float gain() const { return gain_.load(std::memory_order_relaxed); }
+    // The gain copy() applies to the source's frames (the window the scenes draw, MilkDrop's PCM), never
+    // copyRange() (the analysis): after the Sensitivity, so the two multiply. 1 leaves the window as the
+    // Sensitivity left it; any other gain is clamped to [0, kMaxWindowGain] and its output limited to [-1, 1].
+    void setWindowGain(FeedSource source, float gain);
+    float windowGain(FeedSource source) const;
 
     // Writers. Returns the frames stored: 0 when `source` is not the one listened to, when another write
     // is under way, or for an unusable format. Mono is heard on both channels; past two channels only
@@ -106,6 +115,11 @@ public:
     size_t copyRange(uint64_t from, size_t frames, float* out) const;
     // The oldest frame still safe to read in the current epoch.
     uint64_t oldestReadable() const;
+    // Where a reader that stopped following the ring (an analysis that slept) picks up again at nowNs:
+    // lookbackFrames before the frame heard now (locate(nowNs), with no look ahead to a present time, so
+    // the frames a Visual reads a frame later are analysed too), catching up within a few hops rather
+    // than working through all the ring still holds, and never before oldestReadable().
+    uint64_t resumeFrom(int64_t nowNs, uint64_t lookbackFrames) const;
 
     uint64_t written() const { return written_.load(std::memory_order_acquire); }
     uint64_t begin() const { return begin_.load(std::memory_order_acquire); }
@@ -140,6 +154,7 @@ private:
     std::atomic<int> route_{static_cast<int>(OutputRoute::Unknown)};
     std::atomic<int64_t> userOffsetNs_{0};
     std::atomic<float> gain_{1.0f};
+    std::array<std::atomic<float>, kSources> windowGain_{};
 };
 
 }  // namespace geode::audio::feed

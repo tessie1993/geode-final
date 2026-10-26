@@ -58,6 +58,9 @@ uniform float uSolarize;
 
 float aband(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float awave(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
+// The scope's left and right rows (AudioInputs: rows 3 and 4 of 8), over the same aligned span.
+float awaveL(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.4375)).r; }
+float awaveR(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.5625)).r; }
 
 vec2 view() {
     vec2 uv = vUv * 2.0 - 1.0;
@@ -157,7 +160,8 @@ vec3 grade(vec3 col) {
     return mix(col, max(vec3(1.0) - col, 0.0), uInvert);
 }
 
-// Vectorscope / Lissajous: the waveform drawn against itself.
+// Vectorscope / Lissajous: the left channel against the right, so the stereo image shows: a mono
+// sound is a diagonal line, a wide one opens out.
 void main() {
     vec2 uv = view();
     float md = 10.0;
@@ -166,7 +170,7 @@ void main() {
     for (float i = 0.0; i < 128.0; i++) {
         if (i >= points) break;
         float s = i / points;
-        vec2 p = vec2(awave(s) * 2.0 - 1.0, awave(fract(s + 0.25)) * 2.0 - 1.0) * 0.75 * xm(uXScale);
+        vec2 p = vec2(awaveL(s) * 2.0 - 1.0, awaveR(s) * 2.0 - 1.0) * 0.75 * xm(uXScale);
         float d = length(uv - p);
         md = min(md, d);
         bright += exp(-d * 30.0 / xm(uXSize)) * 0.12;

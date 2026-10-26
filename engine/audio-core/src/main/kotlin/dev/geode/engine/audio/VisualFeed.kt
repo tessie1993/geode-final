@@ -72,6 +72,16 @@ class VisualFeed internal constructor(
      */
     fun setSensitivity(gainDb: Float) = backend.call("feedSetGain") { h -> GeodeNative.feedSetGain(h, gainDb) }
 
+    /**
+     * The gain on [source]'s window for the scenes (MilkDrop's PCM, the Styles' waves), never on what the
+     * analysis hears. It comes after the Sensitivity, so the two multiply; 1 leaves the window
+     * as the Sensitivity left it.
+     */
+    fun setWindowGain(
+        source: FeedSource,
+        gain: Float,
+    ) = backend.call("feedSetWindowGain") { h -> GeodeNative.feedSetWindowGain(h, source.code, gain) }
+
     fun setTuning(
         sensitivity: Float,
         refractoryMs: Float,

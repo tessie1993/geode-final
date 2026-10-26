@@ -77,6 +77,10 @@ void geode_feed_set_gain(geode_feed* f, float gain_db) {
     if (f) f->feed->ring().setGainDb(gain_db);
 }
 
+void geode_feed_set_window_gain(geode_feed* f, int source, float gain) {
+    if (f) f->feed->ring().setWindowGain(sourceOf(source), gain);
+}
+
 size_t geode_feed_write(geode_feed* f, int source, const float* interleaved, size_t frames, int channels, int sample_rate) {
     if (!f) return 0;
     return f->feed->ring().write(sourceOf(source), interleaved, frames, channels, sample_rate, geode::api::Feed::nowNs());

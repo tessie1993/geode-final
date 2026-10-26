@@ -365,6 +365,105 @@ TEST(FeedRingTest, TheOldestReadableFrameIsNeverBeforeTheEpoch) {
     EXPECT_EQ(ring.oldestReadable(), 100u);
 }
 
+TEST(FeedRingTest, AReaderResumesALookbackBeforeTheFrameHeardNow) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 10000, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 9000u);
+    EXPECT_EQ(ring.resumeFrom(0, 0), 10000u);
+    EXPECT_EQ(ring.resumeFrom(0, 9999), 1u);
+}
+
+TEST(FeedRingTest, AReaderResumesBehindTheSpeakerForASourceThatRunsAhead) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    writeRamp(ring, 0, 10000, 0);
+    // 100 ms at 48 kHz is 4,800 frames between the newest frame and the speaker.
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 10000u - 4800u - 1000u);
+}
+
+TEST(FeedRingTest, AReaderNeverResumesBeforeTheOldestReadableFrame) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 100, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
+    ring.flush(FeedSource::Player);
+    writeRamp(ring, 0, 50, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 100u);
+    writeRamp(ring, 0, 3 * kSmall, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 150u + 3 * kSmall - 1000u);
+    EXPECT_EQ(ring.resumeFrom(0, 2 * kSmall), ring.oldestReadable());
+    EXPECT_GT(ring.oldestReadable(), 100u);
+}
+
+TEST(FeedRingTest, AReaderResumesFromTheStartWhenNothingIsSelected) {
+    FeedRing ring(kSmall);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
+}
+
+TEST(FeedRingTest, AWindowGainRaisesTheWindowOnlyAndIsLimited) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Live);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 1.0f);
+    const float pcm[4] = {0.1f, -0.2f, 0.6f, -0.6f};
+    ring.write(FeedSource::Live, pcm, 2, 2, kRate, 0);
+    ring.setWindowGain(FeedSource::Live, 2.0f);
+    float out[6] = {9, 9, 9, 9, 9, 9};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 3), 2u);
+    // The frame before the epoch stays silent; the rest are raised and held within [-1, 1].
+    EXPECT_EQ(out[0], 0.0f);
+    EXPECT_EQ(out[1], 0.0f);
+    EXPECT_FLOAT_EQ(out[2], 0.2f);
+    EXPECT_FLOAT_EQ(out[3], -0.4f);
+    EXPECT_FLOAT_EQ(out[4], 1.0f);
+    EXPECT_FLOAT_EQ(out[5], -1.0f);
+    // What the analysis reads is as written.
+    float raw[4] = {};
+    EXPECT_EQ(ring.copyRange(0, 2, raw), 2u);
+    EXPECT_FLOAT_EQ(raw[2], 0.6f);
+    EXPECT_FLOAT_EQ(raw[3], -0.6f);
+}
+
+TEST(FeedRingTest, AWindowGainBelongsToItsSourceAndIsClamped) {
+    FeedRing ring(kSmall);
+    ring.setWindowGain(FeedSource::Live, 100.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), FeedRing::kMaxWindowGain);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Player), 1.0f);
+    ring.setWindowGain(FeedSource::Live, -1.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 0.0f);
+    ring.setWindowGain(FeedSource::Live, std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 1.0f);
+    ring.setWindowGain(FeedSource::None, 4.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::None), 1.0f);
+    // The player's window is untouched by the microphone's gain.
+    ring.setWindowGain(FeedSource::Live, 4.0f);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 3, 1, 0);
+    float out[2] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 1), 1u);
+    EXPECT_FLOAT_EQ(out[0], 3.0f);
+}
+
+TEST(FeedRingTest, TheWindowGainComesAfterTheSensitivityAndOnlyOnTheWindow) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Live);
+    const float pcm[2] = {0.1f, -0.05f};
+    ring.write(FeedSource::Live, pcm, 1, 2, kRate, 0);
+    ring.setGainDb(20.0f * std::log10(2.0f));
+    ring.setWindowGain(FeedSource::Live, 3.0f);
+    float out[2] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 1), 1u);
+    // Both gains multiply on the window: 0.1 x 2 x 3.
+    EXPECT_NEAR(out[0], 0.6f, 1e-5f);
+    EXPECT_NEAR(out[1], -0.3f, 1e-5f);
+    // The analysis gets the Sensitivity alone.
+    float raw[2] = {};
+    EXPECT_EQ(ring.copyRange(0, 1, raw), 1u);
+    EXPECT_NEAR(raw[0], 0.2f, 1e-5f);
+    EXPECT_NEAR(raw[1], -0.1f, 1e-5f);
+}
+
 TEST(FeedRingTest, AnUnmeasuredDelayIsToppedUpWithTheRoute) {
     FeedRing ring(2 * kSmall);
     ring.select(FeedSource::Player);

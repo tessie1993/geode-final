@@ -383,6 +383,10 @@ GEODE_API void        geode_feed_set_user_offset(geode_feed*, int64_t offset_us)
 /* The Sensitivity, in dB (-12 to +24; 0 leaves the sound as it is): a gain on the audio before the analysis
  * and every Style reads it, MilkDrop's PCM included, so quiet sources react like loud ones. */
 GEODE_API void        geode_feed_set_gain(geode_feed*, float gain_db);
+/* The gain on `source`'s window for the Visual's scenes (MilkDrop's PCM), never on what the analysis hears,
+ * applied after the Sensitivity (geode_feed_set_gain); 1 by default, clamped to [0, 16]. A raised window
+ * is limited to [-1, 1]. */
+GEODE_API void        geode_feed_set_window_gain(geode_feed*, int source, float gain);
 /* Interleaved float PCM; returns the frames taken, 0 when `source` is not the one listened to. */
 GEODE_API size_t      geode_feed_write(geode_feed*, int source, const float* interleaved, size_t frames, int channels,
                                        int sample_rate);

@@ -195,19 +195,24 @@ class TrackPcm(
                         } ?: throw IllegalArgumentException("No audio track in file")
                     val format = extractor.getTrackFormat(track)
                     extractor.selectTrack(track)
-                    val codec = MediaCodec.createDecoderByType(requireNotNull(format.getString(MediaFormat.KEY_MIME)))
-                    try {
-                        codec.configure(format, null, null, 0)
-                        codec.start()
-                    } catch (failed: IllegalStateException) {
-                        codec.release()
-                        throw failed
-                    }
-                    return CodecSource(extractor, codec)
+                    return CodecSource(extractor, startedDecoder(format))
                 } catch (failed: Exception) {
                     extractor.release()
                     throw failed
                 }
+            }
+
+            /** A running decoder for [format]; released again if it will not start. */
+            private fun startedDecoder(format: MediaFormat): MediaCodec {
+                val codec = MediaCodec.createDecoderByType(requireNotNull(format.getString(MediaFormat.KEY_MIME)))
+                try {
+                    codec.configure(format, null, null, 0)
+                    codec.start()
+                } catch (failed: IllegalStateException) {
+                    codec.release()
+                    throw failed
+                }
+                return codec
             }
         }
     }

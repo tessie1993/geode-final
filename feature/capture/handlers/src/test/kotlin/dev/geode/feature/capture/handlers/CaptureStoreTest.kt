@@ -125,6 +125,16 @@ class CaptureStoreTest {
         }
 
     @Test
+    fun `a lost capture resumes when the adapter runs it again`() {
+        store.send(CaptureCommand.Start(CaptureSource.MICROPHONE))
+        audio.announce(CaptureAnnouncement.Lost(AdapterSource.MICROPHONE))
+
+        audio.announce(CaptureAnnouncement.Running(AdapterSource.MICROPHONE))
+
+        assertEquals(CaptureState.Capturing(CaptureSource.MICROPHONE, quiet = false), store.state.value)
+    }
+
+    @Test
     fun `the adapter's quiet announcements reach the state`() {
         store.send(CaptureCommand.Start(CaptureSource.MICROPHONE))
 

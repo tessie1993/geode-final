@@ -415,6 +415,11 @@ Java_dev_geode_engine_bridge_GeodeNative_feedSetGain(JNIEnv* env, jobject, jlong
     return feedCall(env, "feedSetGain", handle, [&](geode_feed* f) { geode_feed_set_gain(f, gainDb); });
 }
 
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetWindowGain(JNIEnv* env, jobject, jlong handle, jint source, jfloat gain) {
+    return feedCall(env, "feedSetWindowGain", handle, [&](geode_feed* f) { geode_feed_set_window_gain(f, source, gain); });
+}
+
 // The frames taken: 0 when the source is not the one listened to, or the engine threw.
 JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_feedWrite(JNIEnv* env, jobject, jlong handle, jint source, jfloatArray interleaved,

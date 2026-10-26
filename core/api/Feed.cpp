@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <chrono>
 
+#include "geode/analysis/Decimator.hpp"
+
 namespace geode::api {
 
 namespace {
@@ -38,8 +40,13 @@ void Feed::setActive(bool active) {
     if (active_.exchange(active, std::memory_order_acq_rel) == active) return;
     {
         std::lock_guard<std::mutex> guard(analysisLock_);
-        // What was analysed before nobody watched is stale by the time someone does again.
-        if (active) resetPending_ = true;
+        // What was analysed before nobody watched is stale by the time someone does again: none of it
+        // may be drawn, and the analysis starts again just before what is heard now.
+        if (active) {
+            resetPending_ = true;
+            wakePending_ = true;
+            history_.clear();
+        }
     }
     // Taken and dropped so a worker between its check and its wait cannot miss the wake-up.
     { std::lock_guard<std::mutex> guard(wakeLock_); }
@@ -96,7 +103,14 @@ void Feed::analyse() {
         history_.clear();
         resetPending_ = false;
         analysedEpoch_ = epoch;
-        cursor_ = ring_.oldestReadable();
+        if (wakePending_) {
+            const int rate = ring_.rateHz() > 0 ? ring_.rateHz() : kInitialRateHz;
+            const auto lookback = static_cast<uint64_t>(kFftSize + static_cast<int>(rate * kWakeLookbackSeconds));
+            cursor_ = ring_.resumeFrom(nowNs(), lookback);
+        } else {
+            cursor_ = ring_.oldestReadable();
+        }
+        wakePending_ = false;
     }
     const int rate = ring_.rateHz();
     if (rate <= 0) return;
@@ -105,7 +119,8 @@ void Feed::analyse() {
         analysisRate_ = rate;
     }
     cursor_ = std::max(cursor_, ring_.oldestReadable());
-    const uint64_t half = static_cast<uint64_t>(kFftSize / 2);
+    // A hi-res source is decimated before the analysis, so one window spans that many more of its frames.
+    const uint64_t half = static_cast<uint64_t>(kFftSize) * static_cast<uint64_t>(analysis::decimationFor(rate)) / 2;
     GeodeFeatureFrame frame{};
     while (cursor_ < written) {
         const size_t n = static_cast<size_t>(std::min<uint64_t>(written - cursor_, kPushFrames));

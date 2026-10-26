@@ -141,12 +141,15 @@ fun isOwnSection(length: RenderLength): Boolean = length is RenderLength.Section
  */
 fun parseClock(text: String): Millis? {
     val parts = text.trim().split(':')
-    if (parts.size > MAX_CLOCK_PARTS || parts.any { it.isEmpty() || it.length > MAX_PART_DIGITS || !it.all(Char::isDigit) }) return null
+    if (parts.size > MAX_CLOCK_PARTS || !parts.all(::isClockPart)) return null
     val numbers = parts.map { it.toLong() }
     if (numbers.drop(1).any { it >= SIXTY }) return null
     val seconds = numbers.fold(0L) { total, part -> total * SIXTY + part }
     return Millis(seconds * MILLIS_PER_SECOND)
 }
+
+/** One part of a clock: one to [MAX_PART_DIGITS] digits. */
+private fun isClockPart(part: String): Boolean = part.length in 1..MAX_PART_DIGITS && part.all(Char::isDigit)
 
 private const val MAX_CLOCK_PARTS = 3
 private const val MAX_PART_DIGITS = 5

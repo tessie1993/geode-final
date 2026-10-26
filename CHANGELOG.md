@@ -11,6 +11,56 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Spectrum and oscilloscope inputs Styles can trust (#300).** `uAudioTex`
+  grows to 512 x 8 (`AudioInputs`), keeping the old reads at y = 0.25 and
+  0.75: the spectrum is now measured on each frame's stereo window, 30 Hz to
+  16 kHz on a log scale, on one level scale for the whole spectrum under a
+  ceiling that follows the loudest texel, with a noise floor, a fast attack
+  and a slower decay, so bass-heavy music looks bass-heavy; a peak-hold row
+  holds each texel's peak, then lets it fall, and freezes through silence.
+  The scope is a fixed span of the window aligned to the previous frame by
+  searching on the mid, the same offset for left and right, so a steady tone
+  stands still, with left and right rows of their own. `lib_scene_uniforms`
+  adds `apeak()`, `awaveL()` and `awaveR()`, and the Lissajous Style draws
+  left against right. Offline Renders, which have no window, read the
+  analysis' bands and waveform as before.
+
+- **Hi-res and 24-bit files analyse correctly (#299).** The analysis takes
+  audio above 48 kHz down to 48 kHz or less by a whole factor first
+  (`Decimator`: a windowed-sinc low-pass, flat to 16 kHz, with anything
+  that would fold back below 22 kHz at least 75 dB down), so the bands, the
+  hop and the tempo read the same at 44.1, 48, 96 and 192 kHz (the tempo
+  used to read x0.64 at 192 kHz). The live feed stamps and the offline
+  timeline time hops and windows in the source's own frames to match. The
+  native decoder and the offline analysis ask MediaCodec for float PCM, so
+  24-bit files keep their precision, and fall back to 16-bit where a
+  decoder will not. Cached analyses are re-made (analysis version 5).
+
+- **Live input survives real life (#297).** The built-in microphone is
+  chosen explicitly and chosen again if the system routes elsewhere, so a
+  plugged-in headset no longer takes over. Another app taking the
+  microphone, the privacy toggle or going to the background is reported as
+  lost at once (from the recording callbacks, not after four quiet seconds),
+  and Live input resumes by itself when the microphone is free; dismissing
+  the notice stops it. The microphone is let go when the app stops, since
+  there is no microphone foreground service. A failed read reopens the
+  capture up to six times (100 ms doubling to 1 s) and starts a new audio
+  epoch. 48 kHz is asked for first, reads are 256 frames, and the window the
+  scenes draw (MilkDrop's PCM) is raised 6 dB, or 24 dB for the UNPROCESSED
+  source, so the analysis hears the microphone as it is
+  (`geode_feed_set_window_gain`). It applies after the Sensitivity, which
+  reaches the analysis too, so the two multiply on the window.
+
+- **The analysis sleeps when no Visual is shown (#298).** The live Visual
+  watches the audio feed only while it is on screen (the Visuals tab, full
+  screen or picture-in-picture) and the app is started, so another tab, the
+  lock screen or a screen turned off runs no analysis (a Recording keeps
+  it awake while it runs); the log notes
+  "analysis sleeps" and "analysis runs". On waking, the analysis drops what
+  it had before and starts a quarter of a second before the audio heard now,
+  so the Visual has fresh features within a frame rather than replaying old
+  ones or working through seconds of backlog.
+
 - **Vortex Forge (#323).** A new Style: fire and smoke shells spiralling
   down a funnel into a white-hot core, seen from above and circled slowly by
   its own camera, with far stars, god rays and star streaks from the core and
@@ -21,6 +71,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   over 1.6 s): many more sparks fly out of the core and the shells are blown
   outward, without brightening the frame. Its variant turns the smoke into a
   blue galaxy.
+- **A 3D toolkit for Styles, shown in Polyhedra Cathedral (#322).** Three new
+  shader libraries any Style can include: `lib_march3` (an over-relaxed
+  raymarch whose steps lengthen with distance and are checked after the fact,
+  neon glow gathered along the ray, cheap ambient occlusion, and distance and
+  height fog in closed form), `lib_poly3` (icosahedron, dodecahedron,
+  tetrahedron and merkaba solids, their exact wireframes, geodesic sphere
+  tiling and facets, and polar, octahedral and icosahedral folds) and
+  `lib_path3` (Catmull-Rom camera paths, an endless wandering path, a banked
+  camera frame). The new Polyhedra Cathedral flies down a neon lattice nave
+  past wireframe polyhedra with faceted golden hearts under geodesic lanterns;
+  the treble lifts the lattice's light, hits swell the polyhedra and the bass
+  pushes the flight.
 
 - **Shared Style inputs (#312).** A shader Style can declare, in its
   manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D
