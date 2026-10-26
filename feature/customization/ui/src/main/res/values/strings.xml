@@ -101,6 +101,7 @@
     <!-- Sliders -->
     <string name="customize_value">%1$.2f</string>
     <string name="customize_whole_value">%1$d</string>
+    <string name="customize_reset_value">Put %1$s back to the Style\'s own value</string>
     <string name="customize_no_extras">This Style has no Extras of its own.</string>
 
     <!-- Macros -->

@@ -18,6 +18,9 @@ import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.ValueKind
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 /**
  * The Shared core effects the basic view offers as on/off toggles (#12): each is on while it is above
@@ -85,8 +88,23 @@ data class EffectToggle(
 )
 
 /**
+ * The multiplicative controls (#285): their sliders move by ratios, as MilkDrop steps them, so each
+ * default sits near the middle of the travel and every stretch of it feels the same.
+ */
+internal val RATIO_PROPERTIES: Set<SharedProperty> =
+    setOf(
+        SharedProperty.ZOOM,
+        SharedProperty.DIVE_SPEED,
+        SharedProperty.CYCLE_SPEED,
+        SharedProperty.SPEED,
+        SharedProperty.AUDIO_DRIVE,
+        SharedProperty.PARTICLE_SIZE,
+        SharedProperty.GAMMA,
+    )
+
+/**
  * One slider of the Advanced view: a Shared core property in its own units ([min]..[max]), or an
- * Extra as 0..1. [linked] says whether a Reaction moves it.
+ * Extra as 0..1. [linked] says whether a Reaction moves it; [ratio] that it moves by ratios.
  */
 @Immutable
 data class SliderRow(
@@ -96,7 +114,25 @@ data class SliderRow(
     val max: Float,
     val kind: ValueKind,
     val linked: Boolean,
-)
+    val ratio: Boolean = false,
+) {
+    /**
+     * Where [value] sits along the slider, 0..1 of its travel: by the ratio of [value] to [min] on a
+     * [ratio] row (a log curve), evenly otherwise.
+     */
+    fun position(value: Float): Float {
+        val clamped = value.coerceIn(min, max)
+        val at = if (ratio) ln(clamped / min) / ln(max / min) else (clamped - min) / (max - min)
+        return at.coerceIn(0f, 1f)
+    }
+
+    /** The value at [position] (0..1) along the slider, the reverse of [position]; a whole number on a stepped row. */
+    fun valueAt(position: Float): Float {
+        val at = position.coerceIn(0f, 1f)
+        val value = if (ratio) min * (max / min).pow(at) else min + at * (max - min)
+        return if (kind == ValueKind.STEPPED) value.roundToInt().toFloat() else value.coerceIn(min, max)
+    }
+}
 
 /** One link of the link list, with its [live] meter. */
 @Immutable
@@ -164,7 +200,15 @@ fun CustomizationState.toCustomizeModel(
 
     fun sharedRow(property: SharedProperty) =
         Target.Shared(property).let { target ->
-            SliderRow(target, sharedValue(property), property.min, property.max, property.kind, target in linkedTargets)
+            SliderRow(
+                target,
+                sharedValue(property),
+                property.min,
+                property.max,
+                property.kind,
+                target in linkedTargets,
+                ratio = property in RATIO_PROPERTIES,
+            )
         }
     val extraKinds = ExtraKind.entries.filter { it in customization.extras }
     val listeners = reactions.mapNotNull { (it.source as? ReactionSource.Generated)?.modulator }.toSet()

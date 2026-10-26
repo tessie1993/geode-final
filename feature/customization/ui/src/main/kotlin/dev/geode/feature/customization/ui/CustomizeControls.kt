@@ -22,8 +22,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -31,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -118,8 +121,10 @@ private fun valueText(
     }
 
 /**
- * One slider of the Advanced view. It follows the finger and sets the value when let go, so one drag
- * is one undo step. A switch for on/off properties. A long-press on its name offers "React to…".
+ * One slider of the Advanced view (#285). While it is dragged the Visual follows the finger
+ * ([onPreview]), and letting go sets the value ([onSet]), so one drag is one undo step. A multiplicative
+ * control moves by ratios ([SliderRow.ratio]). A switch for on/off properties. The reset button puts
+ * the value back to the Style's own ([onReset]); a long-press on its name offers "React to…".
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -127,9 +132,13 @@ internal fun ValueSlider(
     row: SliderRow,
     label: String,
     onSet: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
+    onReset: () -> Unit,
     onReactTo: () -> Unit,
 ) {
-    var held by remember(row.value) { mutableFloatStateOf(row.value) }
+    var dragging by remember { mutableStateOf(false) }
+    var held by remember { mutableFloatStateOf(row.value) }
+    val shown = if (dragging) held else row.value
     val colors = LocalForestColors.current
     val reactTo = stringResource(R.string.customize_react_to)
     Column(Modifier.fillMaxWidth()) {
@@ -151,16 +160,25 @@ internal fun ValueSlider(
             if (row.kind == ValueKind.SWITCH) {
                 Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) })
             } else {
-                Text(valueText(row.kind, held), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                Text(valueText(row.kind, shown), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+            }
+            IconButton(onClick = onReset) {
+                Icon(Icons.Filled.Restore, contentDescription = stringResource(R.string.customize_reset_value, label))
             }
         }
         if (row.kind != ValueKind.SWITCH) {
             Slider(
-                value = held,
-                onValueChange = { held = it },
-                valueRange = row.min..row.max,
+                value = row.position(shown),
+                onValueChange = { position ->
+                    dragging = true
+                    held = row.valueAt(position)
+                    onPreview(held)
+                },
                 steps = if (row.kind == ValueKind.STEPPED) ((row.max - row.min).roundToInt() - 1).coerceAtLeast(0) else 0,
-                onValueChangeFinished = { onSet(held) },
+                onValueChangeFinished = {
+                    if (dragging) onSet(held)
+                    dragging = false
+                },
             )
         }
     }
@@ -205,7 +223,8 @@ internal fun Meter(
 
 /**
  * One Macro knob of the basic view: its ring shows the set value, and an inner ring its live value as
- * the music moves it. Drag up or down to turn it; a long-press opens its editor.
+ * the music moves it. Drag up or down to turn it: the Visual follows the drag ([onPreview]) and
+ * letting go sets the value ([onSet]), one undo step. A long-press opens its editor.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -213,27 +232,46 @@ internal fun MacroKnobView(
     knob: MacroKnob,
     driver: String?,
     onSet: (Float) -> Unit,
+    onPreview: (Float) -> Unit,
     onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var held by remember(knob.value) { mutableFloatStateOf(knob.value) }
+    var dragging by remember { mutableStateOf(false) }
+    var held by remember { mutableFloatStateOf(knob.value) }
+    val latest by rememberUpdatedState(knob.value)
     val set by rememberUpdatedState(onSet)
+    val preview by rememberUpdatedState(onPreview)
+    val shown = if (dragging) held else knob.value
     val colors = LocalForestColors.current
-    val percent = (held * 100).roundToInt()
+    val percent = (shown * 100).roundToInt()
     val description = stringResource(R.string.customize_macro_knob, knob.name, percent)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
                 .size(CustomizeDimens.knob)
-                .pointerInput(knob.index, knob.value) {
-                    detectVerticalDragGestures(onDragEnd = { set(held) }) { change, dragged ->
+                .pointerInput(knob.index) {
+                    detectVerticalDragGestures(
+                        onDragStart = {
+                            held = latest
+                            dragging = true
+                        },
+                        onDragEnd = {
+                            dragging = false
+                            set(held)
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            set(held)
+                        },
+                    ) { change, dragged ->
                         change.consume()
                         held = (held - dragged / (size.height * 2f)).coerceIn(0f, 1f)
+                        preview(held)
                     }
                 }.combinedClickable(onClick = {}, onLongClick = onEdit)
                 .semantics {
                     contentDescription = description
-                    progressBarRangeInfo = ProgressBarRangeInfo(held, 0f..1f)
+                    progressBarRangeInfo = ProgressBarRangeInfo(shown, 0f..1f)
                     setProgress { value ->
                         set(value.coerceIn(0f, 1f))
                         true
@@ -244,7 +282,7 @@ internal fun MacroKnobView(
             Canvas(Modifier.fillMaxSize()) {
                 val stroke = CustomizeDimens.knobStroke.toPx()
                 ring(colors.textSecondary.copy(alpha = QUIET_ALPHA), 1f, stroke, inset = stroke / 2)
-                ring(colors.accent, held, stroke, inset = stroke / 2)
+                ring(colors.accent, shown, stroke, inset = stroke / 2)
                 knob.live?.let { live ->
                     val thin = CustomizeDimens.liveStroke.toPx()
                     ring(colors.highlight, live, thin, inset = stroke + thin)

@@ -130,6 +130,18 @@ class CustomizeActionsTest {
     }
 
     @Test
+    fun `a dragged slider previews its edit, except in Learn mode`() {
+        val target = Target.Shared(SharedProperty.RIPPLE)
+
+        assertEquals(
+            CustomizationCommand.Preview(CustomizationCommand.SetShared(SharedProperty.RIPPLE, 0.8f)),
+            previewCommand(null, target, 0.8f),
+        )
+        assertNull(previewCommand(ReactionSource.Sound(SoundSignal.KICK), target, 0.8f))
+        assertNull(previewCommand(null, Target.ModulatorField(ModulatorId(1), ModulatorParameter.RATE), 0.8f))
+    }
+
+    @Test
     fun `a new Modulator of each kind starts from a calm shape, run while playing`() {
         val lfo = newModulator(ModulatorKind.LFO)
         assertEquals(ModulatorShape.Lfo(Wave.SINE, Millis(4_000)), lfo.shape)

@@ -40,6 +40,7 @@ internal fun BasicView(panel: PanelState) {
                     knob = knob,
                     driver = driverTag(knob, model),
                     onSet = { panel.send(CustomizationCommand.SetMacro(knob.index, it)) },
+                    onPreview = { panel.send(CustomizationCommand.Preview(CustomizationCommand.SetMacro(knob.index, it))) },
                     onEdit = { panel.open(CustomizePage.Advanced(AdvancedSection.MACROS, knob.index)) },
                     modifier = Modifier.weight(1f),
                 )
