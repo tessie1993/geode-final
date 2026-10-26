@@ -4,8 +4,8 @@ import android.app.Application
 import android.net.Uri
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.data.ExportDefaults
-import dev.geode.editor.AnimatableParams
-import dev.geode.editor.KeyframeSheet
+import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.export.DriftStop
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
@@ -22,7 +22,6 @@ import dev.geode.export.ProjectComposition
 import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
 import dev.geode.render.SceneFactory
-import dev.geode.render.scene.SceneParams
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -78,14 +77,12 @@ class ExportController internal constructor(
         /** What new renders start with, from Settings. */
         val exportDefaults: ExportDefaults
 
-        val sceneParams: SceneParams
-
-        fun lfoConfigs(): List<dev.geode.render.LfoConfig>
-
-        fun adsrConfigs(): List<dev.geode.render.AdsrConfig>
-
-        /** The open editor project's tracks; programme-level scene tracks animate the export. */
-        fun keyframes(): KeyframeSheet
+        /**
+         * The look a render draws: the current Customization moved by [drift], as the engine reads it
+         * (#337). The open editor's scene keyframes no longer animate a render: the Customization's plan
+         * sets every parameter they did, and its lanes, Modulators and Reactions move a look over time.
+         */
+        fun look(drift: DriftStop): CustomizationSnapshot
     }
 
     private val exporter = VideoExporter(application)
@@ -177,42 +174,23 @@ class ExportController internal constructor(
                             gui.effectiveBeatMinIntervalMs,
                         )
                     val name = "geode_${System.currentTimeMillis()}.mp4"
-                    val sheet = host.keyframes()
-                    val animated =
-                        sheet.tracks.any {
-                            it.enabled &&
-                                it.clipId == null &&
-                                AnimatableParams
-                                    .find(
-                                        it.paramId,
-                                    )?.isScene == true
-                        }
-                    val clipStartMs = range?.startMs ?: 0L
-                    val paramsAt: ((Long) -> SceneParams)? =
-                        if (animated) {
-                            { ms: Long ->
-                                AnimatableParams.applyToScene(host.sceneParams, sheet.valuesAt(clipStartMs + ms))
-                            }
-                        } else {
-                            null
-                        }
-                    val result =
-                        exporter.export(
+                    val job =
+                        VideoExporter.Job(
                             audioUri = uri,
                             timeline = t,
                             sceneFactory = sceneFactory,
+                            look = host.look(DriftStop.NONE),
                             aspect = aspect,
-                            fileName = name,
-                            sceneParams = host.sceneParams,
-                            lfoConfigs = host.lfoConfigs(),
-                            adsrConfigs = host.adsrConfigs(),
-                            reducedMotion = gui.reducedMotion,
-                            requestedFps = fps,
-                            paramsAt = paramsAt,
-                            loopSafe = loopSafe,
+                            fps = fps,
                             range = range,
-                            destination = destination,
+                            loopSafe = loopSafe,
                             codec = codec,
+                        )
+                    val result =
+                        exporter.export(
+                            job = job,
+                            fileName = name,
+                            destination = destination,
                             loudnessTarget = defaultLoudnessTarget(),
                             onProgress = { p ->
                                 val overall = 0.2f + p * 0.8f
@@ -423,7 +401,6 @@ class ExportController internal constructor(
                             .analyze(uri) { p ->
                                 publishLoopProgress(p * ANALYSIS_SPAN)
                             }.also { if (host.exportUri == uri) host.cachedTimeline = it }
-                    val gui = host.guiPrefs
                     val spec = LoopSpec.of(loopMs, crossfadeMs, fps = fps, bpm = analysed.bpm)
                     val renderResult =
                         loopRenderer.render(
@@ -431,11 +408,8 @@ class ExportController internal constructor(
                             sceneFactory = sceneFactory,
                             aspect = aspect,
                             spec = spec,
-                            sceneParams = host.sceneParams,
+                            look = host::look,
                             drift = drift,
-                            lfoConfigs = host.lfoConfigs(),
-                            adsrConfigs = host.adsrConfigs(),
-                            reducedMotion = gui.reducedMotion,
                             codec = codec,
                             onProgress = { p -> publishLoopProgress(ANALYSIS_SPAN + p * RENDER_SPAN) },
                             isCancelled = { loopCancelled || ExportRun.cancelRequested },

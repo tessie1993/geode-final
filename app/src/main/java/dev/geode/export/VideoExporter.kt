@@ -12,10 +12,10 @@ import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
-import dev.geode.render.scene.SceneParams
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -94,15 +94,40 @@ class VideoExporter(
     private val context: Context,
 ) {
     companion object {
-        private const val FPS: Int = 60
+        const val FPS: Int = 60
         private const val TIMEOUT_US: Long = 10_000
 
         private const val FLUSH_ATTEMPT_LIMIT = 1_000
+
+        /**
+         * The frame rates a Render may ask for. A Render is not bound to real time, so the range is wide;
+         * a rate the encoder refuses falls back to 30 fps (see [encodeInto]).
+         */
+        val FRAME_RATES: IntRange = 12..120
     }
+
+    /**
+     * One video to make: the track and its whole-song analysis (ADR-0001), the Style ([sceneFactory])
+     * and the look to draw it with, and its format. [look] is the frozen Customization as the engine
+     * reads it (#337): a Render draws everything the live Visual would for it.
+     */
+    class Job(
+        val audioUri: Uri,
+        val timeline: FeatureTimeline,
+        val sceneFactory: SceneFactory,
+        val look: CustomizationSnapshot,
+        val aspect: ExportAspect,
+        val fps: Int = FPS,
+        val range: ExportRange? = null,
+        val loopSafe: Boolean = false,
+        val codec: ExportCodec = ExportCodec.H264,
+    )
 
     sealed interface Result {
         data class Saved(
             val uri: Uri,
+            /** How long the finished video runs. */
+            val lengthMs: Long,
             /**
              * How the finished file's loudness compares to [loudnessTarget], or null when it could
              * not be measured (e.g. no audio track). Geode cannot yet apply the resulting gain — see
@@ -118,47 +143,24 @@ class VideoExporter(
         data object Cancelled : Result
     }
 
+    /**
+     * Makes [job]'s video: into [destination] when one is given, otherwise as [fileName] in the phone's
+     * Videos library under `Movies/Geode`. [pace] runs after every frame, so a caller can slow the
+     * Render while the live Visual is on screen (ADR-0004).
+     */
     suspend fun export(
-        audioUri: Uri,
-        timeline: FeatureTimeline,
-        sceneFactory: SceneFactory,
-        aspect: ExportAspect,
+        job: Job,
         fileName: String,
-        sceneParams: SceneParams,
-        lfoConfigs: List<dev.geode.render.LfoConfig> = emptyList(),
-        adsrConfigs: List<dev.geode.render.AdsrConfig> = emptyList(),
-        reducedMotion: Boolean = false,
-        requestedFps: Int = FPS,
-        range: ExportRange? = null,
-        paramsAt: ((Long) -> SceneParams)? = null,
-        loopSafe: Boolean = false,
         destination: Uri? = null,
-        codec: ExportCodec = ExportCodec.H264,
         loudnessTarget: LoudnessTarget = LoudnessTarget.LeaveAsIs,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
+        pace: () -> Unit = {},
     ): Result =
         withContext(Dispatchers.Default) {
+            val encode = { pfd: ParcelFileDescriptor -> encodeInto(pfd, job, onProgress, isCancelled, pace) }
             if (destination != null) {
-                return@withContext exportToDestination(
-                    destination,
-                    audioUri,
-                    timeline,
-                    sceneFactory,
-                    aspect,
-                    sceneParams,
-                    lfoConfigs,
-                    adsrConfigs,
-                    reducedMotion,
-                    requestedFps,
-                    paramsAt,
-                    loopSafe,
-                    range,
-                    codec,
-                    loudnessTarget,
-                    onProgress,
-                    isCancelled,
-                )
+                return@withContext exportToDestination(destination, encode, loudnessTarget, isCancelled)
             }
             val resolver = context.contentResolver
             val values =
@@ -180,33 +182,14 @@ class VideoExporter(
                 return@withContext Result.Failed("The new file in your Videos library could not be opened for writing.")
             }
             try {
-                pfd.use {
-                    encodeInto(
-                        it,
-                        audioUri,
-                        timeline,
-                        sceneFactory,
-                        aspect,
-                        sceneParams,
-                        lfoConfigs,
-                        adsrConfigs,
-                        reducedMotion,
-                        requestedFps,
-                        paramsAt,
-                        loopSafe,
-                        range,
-                        codec,
-                        onProgress,
-                        isCancelled,
-                    )
-                }
+                val lengthMs = pfd.use(encode)
                 if (isCancelled()) {
                     bestEffort(TAG, "resolver.delete(outUri, null, null)") { resolver.delete(outUri, null, null) }
                     Result.Cancelled
                 } else {
                     val done = ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) }
                     resolver.update(outUri, done, null, null)
-                    Result.Saved(outUri, measureLoudness(outUri, loudnessTarget))
+                    Result.Saved(outUri, lengthMs, measureLoudness(outUri, loudnessTarget))
                 }
             } catch (e: Exception) {
                 bestEffort(TAG, "resolver.delete(outUri, null, null)") { resolver.delete(outUri, null, null) }
@@ -216,21 +199,8 @@ class VideoExporter(
 
     private suspend fun exportToDestination(
         destination: Uri,
-        audioUri: Uri,
-        timeline: FeatureTimeline,
-        sceneFactory: SceneFactory,
-        aspect: ExportAspect,
-        sceneParams: SceneParams,
-        lfoConfigs: List<dev.geode.render.LfoConfig>,
-        adsrConfigs: List<dev.geode.render.AdsrConfig>,
-        reducedMotion: Boolean,
-        requestedFps: Int,
-        paramsAt: ((Long) -> SceneParams)?,
-        loopSafe: Boolean,
-        range: ExportRange?,
-        codec: ExportCodec,
+        encode: (ParcelFileDescriptor) -> Long,
         loudnessTarget: LoudnessTarget,
-        onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
     ): Result {
         val resolver = context.contentResolver
@@ -241,26 +211,7 @@ class VideoExporter(
                         "this; try your Videos library or a folder on the device.",
                 )
         return try {
-            pfd.use {
-                encodeInto(
-                    it,
-                    audioUri,
-                    timeline,
-                    sceneFactory,
-                    aspect,
-                    sceneParams,
-                    lfoConfigs,
-                    adsrConfigs,
-                    reducedMotion,
-                    requestedFps,
-                    paramsAt,
-                    loopSafe,
-                    range,
-                    codec,
-                    onProgress,
-                    isCancelled,
-                )
-            }
+            val lengthMs = pfd.use(encode)
             if (isCancelled()) {
                 bestEffort(
                     TAG,
@@ -268,7 +219,7 @@ class VideoExporter(
                 ) { DocumentsContract.deleteDocument(resolver, destination) }
                 Result.Cancelled
             } else {
-                Result.Saved(destination, measureLoudness(destination, loudnessTarget))
+                Result.Saved(destination, lengthMs, measureLoudness(destination, loudnessTarget))
             }
         } catch (e: Exception) {
             bestEffort(TAG, "DocumentsContract.deleteDocument(resolver, de...") { DocumentsContract.deleteDocument(resolver, destination) }
@@ -311,24 +262,17 @@ class VideoExporter(
         return (result as? LoudnessResult.Measured)?.let { LoudnessTargets.advise(it.report, target) }
     }
 
+    /** Encodes [job] into [pfd] and returns how long the video runs, in milliseconds. */
     private fun encodeInto(
         pfd: ParcelFileDescriptor,
-        audioUri: Uri,
-        timeline: FeatureTimeline,
-        sceneFactory: SceneFactory,
-        aspect: ExportAspect,
-        sceneParams: SceneParams,
-        lfoConfigs: List<dev.geode.render.LfoConfig>,
-        adsrConfigs: List<dev.geode.render.AdsrConfig>,
-        reducedMotion: Boolean,
-        requestedFps: Int,
-        paramsAt: ((Long) -> SceneParams)?,
-        loopSafe: Boolean,
-        range: ExportRange?,
-        codec: ExportCodec,
+        job: Job,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
-    ) {
+        pace: () -> Unit,
+    ): Long {
+        val aspect = job.aspect
+        val timeline = job.timeline
+        val range = job.range
         var encoderRef: MediaCodec? = null
         var inputSurfaceRef: android.view.Surface? = null
         var muxerRef: MediaMuxer? = null
@@ -339,10 +283,10 @@ class VideoExporter(
         var muxerStarted = false
         var muxerStopped = false
         try {
-            val requestedFpsBounded = requestedFps.coerceIn(24, 60)
+            val requestedFpsBounded = job.fps.coerceIn(FRAME_RATES)
             // The requested codec at the requested rate first, then its reduced form, then the same pair on H.264.
             val attempts =
-                listOf(codec.available(), ExportCodec.H264).distinct().flatMap { c ->
+                listOf(job.codec.available(), ExportCodec.H264).distinct().flatMap { c ->
                     listOf(EncoderAttempt(c, requestedFpsBounded, aspect.bitRate), EncoderAttempt(c, 30, aspect.bitRate * 2 / 3))
                 }
             val (encoder, fps) = openEncoder(aspect, attempts)
@@ -355,7 +299,7 @@ class VideoExporter(
             val aac =
                 AudioTranscoder(context)
                     .transcode(
-                        uri = audioUri,
+                        uri = job.audioUri,
                         maxDurationMs = range?.durationMs ?: 0L,
                         startMs = rangeStartMs,
                         isCancelled = isCancelled,
@@ -366,7 +310,7 @@ class VideoExporter(
 
             val sourceDurationUs = if (aac.durationUs > 0) aac.durationUs else timeline.durationMs * 1000
             val exportDurationUs =
-                if (loopSafe) {
+                if (job.loopSafe) {
                     dev.geode.analysis.BarTrim
                         .trimToBars(sourceDurationUs, timeline.bpm)
                 } else {
@@ -378,7 +322,7 @@ class VideoExporter(
             val renderer =
                 OffscreenSceneRenderer(
                     context = context,
-                    sceneFactory = sceneFactory,
+                    sceneFactory = job.sceneFactory,
                     timeline = timeline,
                     spec =
                         OffscreenRenderSpec(
@@ -387,11 +331,7 @@ class VideoExporter(
                             fps = fps,
                             totalFrames = totalFrames,
                             rangeStartMs = rangeStartMs,
-                            baseParams = sceneParams,
-                            lfoConfigs = lfoConfigs,
-                            adsrConfigs = adsrConfigs,
-                            reducedMotion = reducedMotion,
-                            paramsAt = paramsAt,
+                            look = job.look,
                         ),
                 ).also { rendererRef = it }
             renderer.prepare()
@@ -428,6 +368,7 @@ class VideoExporter(
                     feed.writeUpTo(timeMs * 1000L)
                 }
                 onProgress(0.1f + frame / totalFrames.toFloat() * 0.85f)
+                pace()
             }
             encoder.signalEndOfInputStream()
             var flushAttempts = 0
@@ -466,6 +407,7 @@ class VideoExporter(
                 muxer.stop()
                 muxerStopped = true
             }
+            return exportDurationUs / MICROS_PER_MILLI
         } finally {
             bestEffort(TAG, "rendererRef?.release()") { rendererRef?.release() }
             bestEffort(TAG, "audioFeedRef?.close()") { audioFeedRef?.close() }
@@ -572,3 +514,4 @@ class VideoExporter(
 }
 
 private const val TAG = "VideoExporter"
+private const val MICROS_PER_MILLI = 1_000L
