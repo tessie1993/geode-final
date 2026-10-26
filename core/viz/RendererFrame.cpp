@@ -42,6 +42,9 @@ float Renderer::beginFrame(double timeSeconds) {
     }
     applyMilkRequests();
     applyOverlayUploads();
+#ifdef GEODE_STYLE_HOT_RELOAD
+    pollStyleLab();
+#endif
     return dt;
 }
 

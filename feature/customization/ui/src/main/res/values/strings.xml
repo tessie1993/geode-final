@@ -435,7 +435,7 @@
     <string name="customize_help_property_gamma">Lifts or deepens the mid-tones.</string>
     <string name="customize_help_property_temperature">Warms the colours toward orange, or cools them toward blue.</string>
     <string name="customize_help_property_invert">Swaps every colour for its opposite.</string>
-    <string name="customize_help_property_anaglyph">Red/blue 3D for red/cyan glasses; it fades in and out.</string>
+    <string name="customize_help_property_anaglyph">Red/blue 3D for anaglyph glasses. Fades in and out gently.</string>
     <string name="customize_help_property_layer_opacity">How strongly Layer 2 is laid over the Style.</string>
     <string name="customize_help_property_layer_influence">How strongly Layer 2 bends, cuts or tints the Style.</string>
     <string name="customize_help_property_layer_swap">Trades which layer sits on top; between, a crossfade.</string>

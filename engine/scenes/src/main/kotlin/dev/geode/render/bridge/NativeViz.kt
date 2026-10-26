@@ -83,6 +83,9 @@ class NativeViz(
             if (h == 0L) otherwise else block(h)
         }
 
+    /** Runs [block] with the live native handle under the read lock, or not at all without one (the debug Style lab). */
+    internal fun withHandle(block: (Long) -> Unit) = live(block)
+
     fun knows(sceneId: SceneId): Boolean = liveOr(false) { h -> GeodeNative.vizKnows(h, sceneId.value) }
 
     fun sceneIds(): List<SceneId> {

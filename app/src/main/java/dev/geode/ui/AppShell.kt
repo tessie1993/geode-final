@@ -77,6 +77,7 @@ import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
@@ -182,7 +183,8 @@ fun AppRoot() {
                 }
             }
     }
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
+    val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
+    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings, surface)
     // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
     var reactionsHeld by remember { mutableStateOf(false) }
     LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }

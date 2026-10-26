@@ -192,6 +192,19 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetMilkTextureDir(JNIEnv* env, jobje
     });
 }
 
+#ifdef GEODE_STYLE_HOT_RELOAD
+// The debug build's Style lab (DebugStyleLab.kt in :engine:scenes' debug source set). A release build
+// has neither this entry point nor the Kotlin class that calls it.
+JNIEXPORT jint JNICALL
+Java_dev_geode_render_DebugStyleLab_nativeAttach(JNIEnv* env, jobject, jlong handle, jstring dir) {
+    return vizCall(env, "styleLabAttach", handle, [&](geode_viz* v) {
+        Utf8Chars path(env, dir);
+        geode_viz_set_style_lab(v, path.get());
+        return GEODE_STATUS_OK;
+    });
+}
+#endif
+
 JNIEXPORT jstring JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizTakeMilkPresetLoaded(JNIEnv* env, jobject, jlong handle) {
     // The take is destructive, so it is called once: a length query first would consume the path and leave

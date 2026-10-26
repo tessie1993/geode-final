@@ -31,6 +31,9 @@
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
 #include "geode/render/ShaderSource.hpp"
+#ifdef GEODE_STYLE_HOT_RELOAD
+#include "geode/viz/StyleLab.hpp"
+#endif
 #include "geode/viz/ThermalGovernor.hpp"
 #include "geode/viz/TouchField.hpp"
 #include "geode/viz/TrailPass.hpp"
@@ -84,6 +87,11 @@ public:
     std::string lastError() const;
     bool knows(const std::string& sceneId) const { return registry_.knows(sceneId); }
     std::vector<std::string> availableSceneIds() const { return registry_.availableIds(); }
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Any thread, debug builds only (RendererStyleLab.cpp): the Style lab folder to watch, `<dir>/<id>/`
+    // per Style; "" stops watching.
+    void setStyleLab(const std::string& dir);
+#endif
 
     // GL thread.
     void onSurfaceCreated();
@@ -152,6 +160,13 @@ private:
     void notePresetLoaded(const std::string& path);
     static double monotonicSeconds();
     void fail(const std::string& message);
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // GL thread, from beginFrame: reloads each Style whose lab folder changed.
+    void pollStyleLab();
+    void reloadStyle(const std::string& id, const std::string& folder, const std::string& shaderFile);
+    // Frees a built scene so the next frame builds it again from its pack.
+    void dropScene(const std::string& id);
+#endif
 
     ShaderSource assets_;
     std::string cacheDir_;
@@ -268,6 +283,13 @@ private:
     std::string frameTransitionId_ = "fade";
     int64_t frameTransitionDurationMs_ = 1200;
     std::string lastError_;
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // Under stateLock_.
+    std::string styleLabDir_;
+    // GL thread only.
+    lab::ReloadWatch styleLab_;
+    bool styleLabFailed_ = false;
+#endif
 };
 
 }  // namespace geode::viz
