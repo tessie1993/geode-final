@@ -170,7 +170,7 @@ vec3 rgCamera(float f) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float bass = min(uBassSmooth, 1.3);
     float mid = min(uMidSmooth, 1.3);
     float treb = min(uTrebleSmooth, 1.3);

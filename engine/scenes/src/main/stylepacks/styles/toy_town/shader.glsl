@@ -149,7 +149,7 @@ vec3 ttTone(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float hue = 0.02 + 0.25 * uFormPhase;
 
     // The tram's travel along the avenue, wrapped by the city's 1000-unit period.

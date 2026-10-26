@@ -10,179 +10,183 @@ out vec4 fragColor;
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
+//#include lib_sdf3
+//#include lib_march3
+//#include lib_poly3
 //#include lib_touch
+//#include lib_camera
 
-// Merkaba Grid: a cathedral of sacred geometry. A triangulated web fills the
-// depth, wire-frame geodesic spheres sit along the floor, star tetrahedra hang
-// in the field with a glint at every vertex, and a column of light runs up the
-// middle and blooms at the top. Everything is drawn in a receding
-// perspective, so the whole thing reads as a hall rather than as a pattern.
+// Merkaba Grid: a flight down a hall of sacred geometry and up through its sky. The floor is a web of
+// glowing triangles running to the horizon; wire geodesic spheres stand on it in two rows; star
+// tetrahedra (merkabas) hang in the air turning slowly, a glint at every point; overhead the sky is
+// another web, coarser and dimmer, and far ahead a column of light rises from the horizon and blooms
+// where it meets the sky.
 //
-// uv -> mirror -> perspective bands -> web + spheres + merkabas + column.
+// The two webs are planes met analytically (a ray meets a plane once), so their lines cost nothing to
+// march; the spheres and the merkabas are wire, gathered as light along the ray (lib_march3's
+// glowLine) by a march through the hall that repeats every HALL units along z. The column is at
+// infinity, read off the ray's direction, so it stays put on the horizon however far the camera flies.
 //
-// Nothing here marches: the depth is a 1/y perspective divide, so this stays
-// off the marched Styles (manifest "detail": "march") and never spends the Detail budget.
+// ---- the camera ------------------------------------------------------------------------------------
 //
-// The audio contract is the one in lib_scene_motion. Bass breathes the web
-// spacing through uBassSmooth, treble picks out the glints, and a transient
-// re-aims the drift (uMoveDir), re-seeds which lattice nodes are lit
-// (uSpawnSeed) and steps the web's fold count to a new plateau (uFormPhase).
-// No term in this file can reach its peak inside one frame.
+// The flight runs on its own monotonic clock (uFlowPhase) and rises and dips between the floor and the
+// sky; the Camera's travel and push-in add to it and the orbit turns the gaze (cameraFlight), so
+// pitching up flies the view through the sky's web. The lens and the roll come through cameraView().
+// Everything repeats in 1000 units of z, the Camera's travel wrap.
+//
+// ---- the music ---------------------------------------------------------------------------------------
+//
+// uBassSmooth breathes the floor web's spacing and the column, uTrebleSmooth lights the glints, uSwell
+// widens the column over seconds. A spike re-seeds which web nodes are lit (uSpawnSeed, grown in over a
+// second), steps the web's subdivision to a new plateau (uFormPhase), steers its drift (uMoveDir) and
+// swells the glints and the bloom on uSpike, which rises over a tenth of a second.
 
 #define MG_TAU 6.2831853
-#define MG_ROWS 7.0
+/** One stretch of the hall along z; 1000 / HALL is whole. */
+#define MG_HALL 8.0
+#define MG_SKY 7.0
+#define MG_SPHERE_X 2.7
+#define MG_SPHERE_R 0.95
+#define MG_MERKABA_X 1.5
+#define MG_MERKABA_Y 2.6
+#define MG_FOCAL 1.3
+#define MG_FAR 30.0
+#define MG_MAX_STEPS 64
 
-float hash11(float n) { return fract(sin(n * 127.1) * 43758.5453); }
+// Set once per pixel in main().
+float gDensity;
+float gSpin;
 
-float hash21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-
-vec2 rot(vec2 p, float a) { return mat2(cos(a), -sin(a), sin(a), cos(a)) * p; }
-
-// One line of a wire frame: bright on the line, dark off it, with the width in
-// the same units as the coordinate so a receding copy thins out by itself.
-float wire(float d, float width) {
-    return smoothstep(width, width * 0.25, abs(d));
+/** A triangular web on a plane: the distance (in the plane's units) to its nearest line. */
+float web(vec2 p) {
+    float a = abs(fract(p.x) - 0.5);
+    vec2 r1 = rot2(1.0471976) * p;
+    vec2 r2 = rot2(-1.0471976) * p;
+    float b = abs(fract(r1.x) - 0.5);
+    float c = abs(fract(r2.x) - 0.5);
+    return min(a, min(b, c));
 }
 
-// The triangulated web that fills the background: three line families at 60
-// degrees, which is the tiling every geodesic in the reference is built from.
-float web(vec2 p, float width) {
-    float a = wire(fract(p.x) - 0.5, width);
-    float b = wire(fract(rot(p, 1.0472).x) - 0.5, width);
-    float c = wire(fract(rot(p, -1.0472).x) - 0.5, width);
-    return max(max(a, b), c);
+/** The wire in the hall: x the spheres, y the merkabas, z the distance to the nearest merkaba point. */
+vec3 wires(vec3 p) {
+    float cell = floor(p.z / MG_HALL);
+    float zc = (cell + 0.5) * MG_HALL;
+    // Two rows of geodesic spheres standing on the floor.
+    vec3 sq = vec3(abs(p.x) - MG_SPHERE_X, p.y - MG_SPHERE_R, p.z - zc);
+    float sphere = wireGeodesic(sq, MG_SPHERE_R, gDensity);
+    // Merkabas hanging between the rows, half a stretch on, each turning its own way.
+    float mc = floor(p.z / MG_HALL + 0.5);
+    float side = p.x < 0.0 ? -1.0 : 1.0;
+    float seed = hash11(mod(mc, 125.0) * 7.31 + side);
+    vec3 mq = vec3(abs(p.x) - MG_MERKABA_X, p.y - MG_MERKABA_Y - 0.4 * seed, p.z - mc * MG_HALL);
+    mq.xz = rot2(gSpin * (0.6 + 0.6 * seed) + seed * MG_TAU) * mq.xz;
+    mq.xy = rot2(gSpin * 0.4 + seed) * mq.xy;
+    float size = 0.55 + 0.25 * seed;
+    float merkaba = wireMerkaba(mq, size);
+    // Its eight points sit on the cube's corners.
+    float points = length(abs(mq) - vec3(size * 0.57735027));
+    return vec3(sphere, merkaba, points);
 }
 
-// A wire-frame geodesic sphere: the web wrapped over a hemisphere, so the
-// spacing crowds toward the limb the way a real projection does.
-float geodesic(vec2 p, float radius, float density, float width) {
-    float rr = length(p) / max(radius, 1e-4);
-    if (rr > 1.0) return 0.0;
-    // z of the unit hemisphere, which is what compresses the wires at the edge.
-    float z = sqrt(max(0.0, 1.0 - rr * rr));
-    vec2 s = vec2(atan(p.y, p.x) / MG_TAU, z);
-    float lines = web(s * density, width * 1.6);
-    // Latitude rings, denser near the limb.
-    lines = max(lines, wire(fract(z * density * 0.55) - 0.5, width * 1.4));
-    // A soft skin under the wires so the sphere reads as a solid volume.
-    return lines * (0.35 + 0.65 * z) + 0.06 * z;
-}
-
-// A star tetrahedron seen flat: two opposed triangles. Returns the edge glow;
-// `glint` is the extra brightness at the six points.
-float merkaba(vec2 p, float size, float width, out float glint) {
-    float best = 1e9;
-    float tip = 0.0;
-    for (int i = 0; i < 6; i++) {
-        // Six vertices, the two triangles interleaved.
-        float a = float(i) * (MG_TAU / 6.0);
-        vec2 v = vec2(cos(a), sin(a)) * size;
-        // Each edge joins a vertex to the one two steps round, which is what
-        // draws two triangles rather than a hexagon.
-        float b = a + 2.0 * (MG_TAU / 6.0);
-        vec2 w = vec2(cos(b), sin(b)) * size;
-        vec2 e = w - v;
-        float t = clamp(dot(p - v, e) / max(dot(e, e), 1e-6), 0.0, 1.0);
-        best = min(best, length(p - v - e * t));
-        tip = max(tip, smoothstep(size * 0.22, 0.0, length(p - v)));
-    }
-    glint = tip;
-    return wire(best, width);
+/**
+ * The light of a web met at `at` on its plane: lines, and a sparse set of lit nodes. `footprint` is how
+ * much of the plane one pixel covers there.
+ */
+vec3 webLight(vec2 at, float scale, float width, float footprint, vec3 lineCol, vec3 nodeA, vec3 nodeB, float lift) {
+    vec2 w = at * scale;
+    float d = web(w) / scale;
+    // Far lines are wider than a pixel's footprint allows: they fade toward their average, not into moire.
+    float line = smoothstep(width + footprint, width * 0.2, d) * width / (width + footprint);
+    vec2 node = floor(w);
+    float lit = step(0.82, hash13(vec3(mod(node, 400.0), floor(uSpawnSeed * 97.0))));
+    vec3 col = lineCol * line * (0.35 + 0.25 * lift);
+    col += mix(nodeA, nodeB, hash13(vec3(mod(node, 400.0), 3.0))) * line * lit * (0.5 + 0.7 * lift) * spawnGrow(1.2);
+    return col;
 }
 
 void main() {
-    vec2 uv = view();
-    // Mirrored left to right: the reference is a symmetric hall.
-    vec2 m = vec2(abs(uv.x), uv.y);
+    vec2 uv = cameraView();
 
     float bass = clamp(uBassSmooth, 0.0, 1.5);
     float treb = clamp(uTrebleSmooth, 0.0, 1.5);
     float swell = clamp(uSwell, 0.0, 1.5);
-    // A spike steps the web between 5, 6 and 7 subdivisions and holds it there.
-    float density = xcount(5.0) + floor(uFormPhase * 3.0);
+    gDensity = floor(clamp(xcount(2.0) + floor(uFormPhase * 3.0), 1.0, 7.0) + 0.5);
+    gSpin = uFlowPhase * 0.35;
 
-    // ---- the field ---------------------------------------------------------
-    //
-    // 1/y perspective: the plane recedes toward the top of the frame, so a
-    // constant step in `field` is a shrinking step on screen.
-    float persp = 1.0 / (1.28 - 0.42 * clamp(m.y, -1.0, 1.0));
-    // Advected along the travel direction, through the integrated phase, so a
-    // change of pace never slides the hall sideways in one frame.
-    vec2 field = fluidWarp(m * persp * 2.2, 0.8, 0.06) + flowOffset(0.30);
-    field *= 1.0 + 0.06 * bass;
+    // ---- the flight ----------------------------------------------------------------------------------
+    vec2 lens = uv;
+    if (!touchIdle()) lens -= touchAnchor() * (0.3 * touchStrength());
+    vec3 ro = vec3(0.0, 0.0, mod(uFlowPhase * 1.2, 1000.0));
+    vec3 rd = normalize(vec3(lens, MG_FOCAL));
+    rd = rotX(-0.1) * rd;
+    cameraFlight(ro, rd);
+    ro.z = mod(ro.z, 1000.0);
+    // Rising and dipping between the floor and the sky, on a period that divides the travel wrap.
+    ro.y = 1.7 + 0.9 * sin(ro.z * MG_TAU / 125.0);
+    rd = normalize(rd);
+    float cone = 2.0 / (uResolution.y * MG_FOCAL);
 
-    float width = 0.02 + 0.012 * persp;
-    float lattice = web(field * density * 0.5, width);
-    vec3 col = pal(0.58) * lattice * (0.18 + 0.30 * persp);
-    // Lit nodes: a sparse subset of the lattice cells, re-chosen on every spawn
-    // and grown in over a second so a new constellation never appears at once.
-    vec2 node = floor(field * density * 0.5);
-    float lit = step(0.80, hash21(node + floor(uSpawnSeed * 97.0)));
-    float nodeGlow = lattice * lit * (0.4 + 0.8 * treb) * spawnGrow(1.2);
-    col += mix(pal(0.44), pal(0.86), hash21(node)) * nodeGlow * 0.55;
+    // ---- the planes ------------------------------------------------------------------------------------
+    vec2 drift = uMoveDir * (uFlowPhase * 0.05);
+    float tFloor = rd.y < -1e-4 ? -ro.y / rd.y : 1e9;
+    float tSky = rd.y > 1e-4 ? (MG_SKY - ro.y) / rd.y : 1e9;
+    float tPlane = min(tFloor, tSky);
 
-    // ---- geodesic spheres along the floor ----------------------------------
-    //
-    // Three rows receding, each row offset so they read as scattered rather
-    // than as a grid of the same ball.
-    for (int i = 0; i < 3; i++) {
-        float fi = float(i);
-        float depth = 0.55 + fi * 0.30;
-        float y = -0.95 + fi * 0.34;
-        float x = mod(fi * 0.47 + uFlowPhase * 0.05, 1.0) * 1.3;
-        vec2 c = (m - vec2(x, y)) / depth;
-        float radius = 0.62 - 0.10 * fi;
-        float shell = geodesic(c, radius, density * 2.2, width * 1.4 / depth);
-        vec3 tint = mix(pal(0.55), pal(0.40), fi / 3.0);
-        // Nearer spheres sit in front, so a later row cannot draw over an
-        // earlier one: max() on the coverage is enough at this depth spread.
-        col = mix(col, tint * (0.25 + 0.9 * shell), min(shell * 1.4, 1.0));
+    // ---- the wire, gathered along the ray up to the planes ------------------------------------------------
+    vec3 sphereCol = pal(0.55);
+    vec3 merkCol = pal(0.30);
+    vec3 glintCol = mix(vec3(1.0), pal(0.86), 0.35);
+    vec3 glow = vec3(0.0);
+    March3 m = marchStart(0.05, 1.3, 0.01);
+    float limit = min(tPlane, MG_FAR);
+    for (int i = 0; i < MG_MAX_STEPS; i++) {
+        if (float(i) >= uSteps * 0.6) break;
+        vec3 p = ro + rd * m.t;
+        vec3 w = wires(p);
+        float fade = exp(-m.t * 0.07);
+        glow += sphereCol * glowLine(w.x, 0.02, m.step) * 0.55 * fade;
+        glow += merkCol * glowLine(w.y, 0.02, m.step) * 0.7 * fade;
+        glow += glintCol * glowLine(w.z, 0.02, m.step) * (0.3 + 0.8 * treb + 0.5 * uSpike) * fade;
+        float d = min(min(w.x, w.y), w.z);
+        if (marchStep(m, max(d, 0.004), cone) || m.t > limit) break;
     }
 
-    // ---- hanging star tetrahedra -------------------------------------------
-    for (int i = 0; i < 5; i++) {
-        float fi = float(i);
-        float seed = hash11(fi * 7.31 + floor(uSpawnSeed * 31.0));
-        float depth = 0.5 + seed * 0.7;
-        // Each drifts on its own slow orbit, plus the shared travel offset.
-        vec2 c = m - vec2(0.15 + seed * 1.25, 0.15 + fract(seed * 3.7) * 0.9);
-        c -= flowOffset(0.12) * (0.4 + seed);
-        c += 0.05 * vec2(sin(uTime * (0.11 + seed * 0.07)), cos(uTime * (0.09 + seed * 0.05)));
-        c = rot(c / depth, uFlowPhase * (0.3 + seed * 0.4));
-        float glint;
-        float edge = merkaba(c, 0.30, 0.026, glint);
-        vec3 tint = mix(pal(0.30), pal(0.90), seed);
-        float show = spawnGrow(0.8 + seed);
-        col += tint * edge * 0.55 * show;
-        // The glint is keyed off uSpike, so a hit swells the points over
-        // ~120ms rather than lighting them on a single frame.
-        col += mix(vec3(1.0), tint, 0.35) * glint * (0.25 + 0.8 * treb + 0.6 * uSpike) * show;
+    // ---- what lies beyond --------------------------------------------------------------------------------
+    vec3 col = mix(vec3(0.0, 0.0, 0.02), pal(0.58) * 0.06, smoothstep(-0.2, 0.5, rd.y));
+    if (tFloor < tSky && tFloor < 1e8) {
+        vec3 at = ro + rd * tFloor;
+        float spacing = 0.55 * (1.0 + 0.06 * bass);
+        float footF = tFloor * cone / max(-rd.y, 0.02) / spacing;
+        vec3 lightF = webLight(at.xz / spacing + drift, 1.0, 0.03 / spacing, footF, pal(0.58), pal(0.44), pal(0.86), treb);
+        col = mix(lightF + col * 0.3, col, fogDistance(tFloor, 0.045));
+    } else if (tSky < 1e8) {
+        vec3 at = ro + rd * tSky;
+        float footS = tSky * cone / max(rd.y, 0.02) / 1.6;
+        vec3 lightS = webLight(at.xz / 1.6 + drift * 0.5, 1.0, 0.025, footS, pal(0.52), pal(0.40), pal(0.90), swell);
+        col = mix(lightS * 0.7 + col, col, fogDistance(tSky, 0.03));
     }
 
-    // ---- the column of light -----------------------------------------------
-    //
-    // A narrow vertical shaft that blooms where it leaves the top of the hall.
-    float shaft = exp(-m.x * m.x * (150.0 - 60.0 * swell));
-    float rise = smoothstep(-0.9, 0.95, uv.y);
-    col += pal(0.52) * shaft * rise * (0.35 + 0.5 * bass);
-    // The burst at the top: a soft disc plus radial spokes that turn with the
-    // travel phase.
-    vec2 burst = m - vec2(0.0, 0.86);
+    // The column at the horizon ahead, rising into the bloom where it meets the sky.
+    float across = atan(rd.x, max(rd.z, 1e-3));
+    float up = rd.y / max(length(rd.xz), 1e-3);
+    float ahead = smoothstep(0.0, 0.3, rd.z);
+    float shaft = exp(-across * across * (900.0 - 300.0 * swell)) * smoothstep(-0.05, 0.25, up);
+    col += pal(0.52) * shaft * (0.35 + 0.4 * bass) * ahead;
+    vec2 burst = vec2(across, up - 0.62);
     float br = length(burst);
     float spokes = 0.55 + 0.45 * cos(atan(burst.y, burst.x) * 12.0 + uFlowPhase * 2.0);
-    col += mix(vec3(1.0), pal(0.50), 0.4) * exp(-br * 7.0) * spokes * (0.5 + 0.55 * uSpike);
-    col += vec3(1.0) * exp(-br * br * 220.0) * 1.6;
+    col += mix(vec3(1.0), pal(0.50), 0.4) * exp(-br * 9.0) * spokes * (0.4 + 0.4 * uSpike) * ahead;
+    col += vec3(1.0) * exp(-br * br * 400.0) * 1.2 * ahead;
 
-    // ---- the particle layer -------------------------------------------------
-    //
-    // Motes riding the same curl field the lattice is warped by: the fluid half
-    // of the look, drifting through the hall rather than pinned to it.
-    col += mix(pal(0.48), vec3(1.0), 0.3) * fluidMotes(uv * 0.85, 5.5, 0.15) * 0.28;
+    col += glow;
 
+    // ---- on the glass ------------------------------------------------------------------------------------
+    col += mix(pal(0.48), vec3(1.0), 0.3) * fluidMotes(uv * 0.85, 5.5, 0.15) * 0.18;
     if (!touchIdle()) {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
     }
-    // Vignette, so the hall falls into the dark at the corners.
-    col *= 0.62 + 0.38 * smoothstep(2.1, 0.4, length(uv));
+    col = col / (1.0 + 0.3 * col);
+    vec2 sv = (vUv - 0.5) * vec2(uResolution.x / max(uResolution.y, 1.0), 1.0) * 2.0;
+    col *= 0.62 + 0.38 * smoothstep(2.1, 0.4, length(sv));
     fragColor = vec4(grade(col), 1.0);
 }

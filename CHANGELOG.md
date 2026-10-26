@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The legacy app code is gone (#334).** The old player session and
+  screens, their settings plumbing, the old export and loop-render dialogs
+  and their controller, the export presets and the legacy quality, ratio
+  and codec enums are deleted, with their tests and strings. What Studio's
+  Renders still use — the encoder, the loop render and extender, loudness,
+  chapters — now lives under `studio/media`, and the render service is
+  `studio/RenderService`. The Timeline's auto-cut reads the playing song's
+  analysis when a Render has already made one, instead of an export that no
+  longer exists. Importing earlier videos and v1 editor projects is
+  unchanged.
+
 - **Multi-pass Styles (#332).** A shader Style can declare `multipass` and the
   engine draws it in passes: its camera into a tiny target, an optional coarse
   prepass that lets each ray start near its surface, the march at half the
@@ -32,6 +43,24 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   the glare. The bass and the passage's swell bend the crystal harder and
   widen the split; loudness and the bass speed the flight and the light
   streaming down the rails.
+- **Camera v2: field of view, roll and speed ramp (#330).** Three new
+  Camera controls, each one a Reaction, Macro and Automation target: the
+  field of view springs wide fast and settles slowly, so linked to a hit it
+  punches; the roll turns the camera about the way it looks, speeding up and
+  slowing down smoothly and levelling out when set back to 0; the speed ramp
+  surges the flight and eases off. Every Style that draws a 3D world now
+  turns, widens and rolls a real camera with them; flat pictures roll and
+  narrow. Reduced motion calms all three. Two new Camera moves on the beat:
+  Lens punch and Speed ramp.
+
+- **Five Styles become flyable 3D worlds (#335).** Spiral Eye is a real
+  volume of spiral gas round an iridescent eye that the camera circles;
+  Fractal Temple is a walk down a causeway through a nave of geodesic domes,
+  lamp rings and filigree spires; Blacklight Bloom flies through UV-ink
+  lattices into soap bubbles and out the other side; Merkaba Grid flies a
+  hall of geodesic spheres and turning merkabas under a web sky; Vanishing's
+  falling stack of shells now follows the Camera. Their Extras keep their
+  names, so saved presets load as before.
 
 - **Style packs ship their own images (#391).** A shader Style may declare
   up to four PNGs in its folder under `textures`, each with a wrap

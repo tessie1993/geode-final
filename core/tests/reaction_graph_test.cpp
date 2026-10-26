@@ -44,7 +44,9 @@ ModulatorSpec saw(float periodSeconds) {
 }
 
 TEST(SharedCore, TheTableFollowsTheKotlinModel) {
-    EXPECT_EQ(kSharedCount, 65u);
+    EXPECT_EQ(kSharedCount, 68u);
+    EXPECT_STREQ(spec(Shared::FieldOfView).name, "FIELD_OF_VIEW");
+    EXPECT_STREQ(spec(Shared::SpeedRamp).name, "SPEED_RAMP");
     EXPECT_STREQ(spec(Shared::EchoCopy).name, "ECHO_COPY");
     EXPECT_STREQ(spec(Shared::EchoCopyFlip).name, "ECHO_COPY_FLIP");
     EXPECT_TRUE(spec(Shared::EchoCopy).luminous);

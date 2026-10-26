@@ -1,4 +1,4 @@
-package dev.geode.editor
+package dev.geode.studio
 
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.FeatureTimeline

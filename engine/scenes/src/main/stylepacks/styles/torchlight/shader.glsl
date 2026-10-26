@@ -197,7 +197,7 @@ vec3 tonemap(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float bassA = clamp(uBassSmooth, 0.0, 1.3);
     float midA = clamp(uMidSmooth, 0.0, 1.3);
 

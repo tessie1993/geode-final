@@ -174,7 +174,7 @@ vec4 mcMandala(vec2 m, float hue, float seed, float aa, float edge, float sparkl
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float trebA = min(uTrebleSmooth, 1.3);
 
     // ---- camera -----------------------------------------------------------------

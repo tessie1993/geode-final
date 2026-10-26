@@ -130,7 +130,7 @@ float wdLine(float dist, float width, float pixel) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float enA = min(uEnergySmooth, 1.3);
     float bassA = min(uBassSmooth, 1.3);
     float trebA = min(uTrebleSmooth, 1.3);

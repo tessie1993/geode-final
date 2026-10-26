@@ -8,7 +8,6 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.net.Uri
 import dev.geode.R
-import dev.geode.export.ExportService
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.studio.api.Studio
@@ -43,7 +42,7 @@ class RenderAlerts(
     private fun wanted(): Boolean = (settings.state.value as? SettingsState.Ready)?.values?.export?.finishedAlerts ?: true
 
     private fun alert(video: Video) {
-        ExportService.ensureChannel(context)
+        RenderService.ensureChannel(context)
         val uri = Uri.parse(video.file)
         // Both taps go to Geode's own RenderAlertActivity by name; the implicit view and share intents
         // are only made there.
@@ -52,7 +51,7 @@ class RenderAlerts(
         val id = NOTIFICATION_BASE + (video.id.value % NOTIFICATION_SPAN).toInt()
         val notification =
             Notification
-                .Builder(context, ExportService.CHANNEL_ID)
+                .Builder(context, RenderService.CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.render_finished_title))
                 .setContentText(video.name)
                 .setSmallIcon(R.drawable.ic_stat_capture)

@@ -43,8 +43,11 @@ class LyricsController internal constructor(
     init {
         scope.launch {
             playback.state
-                .map { OldScreenModels.queueOf(it.player)?.current?.id }
-                .distinctUntilChanged()
+                .map {
+                    it.player.currentQueue
+                        ?.current
+                        ?.id
+                }.distinctUntilChanged()
                 .collect { loadLyricsFor(it?.toUri()) }
         }
     }

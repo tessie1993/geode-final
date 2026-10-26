@@ -242,6 +242,19 @@ TEST(TileCompositeIdentity, PushInAndOrbitCountOnlyWhereTheCompositeMovesThePict
     EXPECT_FALSE(compositeIsIdentity(both));
 }
 
+TEST(TileCompositeIdentity, TheRollCountsEitherWayOnlyWhereTheCompositeMovesThePicture) {
+    for (const float sign : {1.0f, -1.0f}) {
+        CompositeLook roll = gated();
+        roll.camRoll = 0.00011f * sign;
+        EXPECT_FALSE(compositeIsIdentity(roll)) << sign;
+        roll.camRoll = 0.0001f * sign;
+        EXPECT_TRUE(compositeIsIdentity(roll)) << sign;
+        roll.camRoll = 0.5f * sign;
+        roll.camMoves = 0.5f;
+        EXPECT_TRUE(compositeIsIdentity(roll)) << sign << " on a Style with its own camera";
+    }
+}
+
 TEST(TileCompositeIdentity, TheShakeAddsItsThreeAxesBeforeTheThreshold) {
     CompositeLook look;
     look.camShakeX = 0.0000004f;

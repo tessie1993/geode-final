@@ -72,6 +72,18 @@ enum class SharedProperty(
     ENDLESS_ZOOM(SharedGroup.CAMERA, 0f, 1f, 0f, ValueKind.SWITCH),
     DIVE_SPEED(SharedGroup.CAMERA, 0.05f, 1.2f, 0.3f),
 
+    /**
+     * Widens (above 0) or narrows the camera's lens. It springs open fast and settles slowly, so a
+     * Reaction on it is a FOV punch; a flat picture can only narrow.
+     */
+    FIELD_OF_VIEW(SharedGroup.CAMERA, -1f, 1f, 0f),
+
+    /** Rolls the camera about the way it looks, at this rate either way; the rate speeds up and slows down smoothly. */
+    ROLL(SharedGroup.CAMERA, -1f, 1f, 0f),
+
+    /** Speeds the flight up beyond its cruise, ramping in and easing off. */
+    SPEED_RAMP(SharedGroup.CAMERA, 0f, 1f, 0f),
+
     PALETTE(SharedGroup.COLOUR, 0f, 20f, 0f, ValueKind.STEPPED),
     PALETTE_2(SharedGroup.COLOUR, 0f, 20f, 1f, ValueKind.STEPPED),
     PALETTE_MIX(SharedGroup.COLOUR, 0f, 1f, 0f),

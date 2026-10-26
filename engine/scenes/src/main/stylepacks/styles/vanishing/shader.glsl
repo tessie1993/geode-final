@@ -23,6 +23,7 @@ out vec4 fragColor;
 //#include lib_touch
 //#include lib_gravity
 //#include lib_dmt
+//#include lib_camera
 
 // ===========================================================================
 // VANISHING - the Droste effect, volumetric.
@@ -81,6 +82,12 @@ out vec4 fragColor;
 //      column of holes punched up the axis. With it the bound is a constant.
 //      The spiral shear is well behaved at the poles for the same reason: its
 //      contribution carries the same sin(theta) and dies there.
+//
+// THE CAMERA. It sits on the pole and falls, so the Camera moves it the way a fall can be moved
+// (lib_camera): push-in drops it CAM_PUSH bands deeper, travel adds to the fall (TRAVEL_BANDS a unit,
+// so the Camera's 1000-unit wrap is a whole number of BAND_CYCLEs and never shows), the orbit turns
+// its gaze off the axis and into the shell walls around it, and the lens and the roll come through
+// cameraView(). A Speed ramp arrives in the travel, so the corridor rushes past.
 //
 // SHELL-SEAM DISCONTINUITY. A tiled field only knows the contents of its own
 // tile, so the shell in the next band is invisible to it and the seam between
@@ -158,6 +165,9 @@ const float BAND_CYCLE = 6.0;
  */
 const float FALL_RATE = 0.18;
 const float FALL_SURGE = 0.20;
+/** Bands of fall per unit of the Camera's travel (1000 units is 300 bands, 50 whole cycles), and per full push-in. */
+const float TRAVEL_BANDS = 0.3;
+const float CAM_PUSH = 0.6;
 
 // ---- the prototype shell --------------------------------------------------
 
@@ -569,7 +579,7 @@ void main() {
     // view() first, so Zoom, Rotation, Drift, Kaleido, Tile, Pixelate, Shake,
     // Twist, Warp, Ripple, Sway, Morph, Mirror and the beat pulse all mean here
     // what they mean everywhere else.
-    vec2 uv = view();
+    vec2 uv = cameraView();
 
     // ---- the fingers ------------------------------------------------------
     //
@@ -614,7 +624,8 @@ void main() {
     // because the stack and the hue are both periodic at BAND_CYCLE.
     // A spike re-aims the fall rather than surging it: uFlowPhase only advances,
     // so a loud passage descends faster and never jumps a band.
-    gFall = mod(uXFlightTime * FALL_RATE + uFlowPhase * FALL_SURGE + FALL_SURGE * bassAmt * 0.3, BAND_CYCLE) + pull;
+    gFall = mod(uXFlightTime * FALL_RATE + uFlowPhase * FALL_SURGE + uCamTravel * TRAVEL_BANDS + FALL_SURGE * bassAmt * 0.3,
+                BAND_CYCLE) + pull + uCamPush * CAM_PUSH;
     // Mids steer: they set how hard the stack spirals, which is the direction
     // the corridor screws away in.
     gSpiral = clamp(
@@ -640,7 +651,7 @@ void main() {
     // ---- march ------------------------------------------------------------
     vec2 w = uv - vp;
     vec3 ro = vec3(0.0, 0.0, -CAM_DIST);
-    vec3 rd = tiltLook(normalize(vec3(w * FOV, 1.0)));
+    vec3 rd = tiltLook(uCamRot * normalize(vec3(w * FOV, 1.0)));
 
     float t = 0.05;
     float hitT = -1.0;
@@ -667,21 +678,24 @@ void main() {
 
     // ---- the light at the end ---------------------------------------------
     //
-    // Built on w, the lens-shifted screen offset, so it is the projection of
-    // the map's centre and travels with the finger for free. Two lobes: a tight
-    // one that is the vanishing point itself, and a wide constant halo that
-    // keeps a silent frame from being a black rectangle.
-    float ga = length(w) * FOV / CORE_ANG;
+    // Built on the ray's slope off the corridor's axis, so it is the projection
+    // of the map's centre: it travels with the finger (the ray is lens-shifted),
+    // stays down the corridor when the Camera turns away from it, and the far
+    // end behind is the same light. Two lobes: a tight one that is the
+    // vanishing point itself, and a wide constant halo that keeps a silent
+    // frame from being a black rectangle.
+    vec2 axisView = rd.xy / max(abs(rd.z), 0.05);
+    float ga = length(axisView) / CORE_ANG;
     float tight = exp(-ga * ga);
     float halo = exp(-ga * ga * 0.05);
     vec3 core = pal(HUE_BASE + 0.42 + 0.10 * midAmt) *
         (CORE_GAIN * tight * (0.85 + 0.95 * energyAmt) + HALO_GAIN * halo);
-    // The light at the end is the chrysanthemum: the mandala on the shifted
-    // screen direction, so it is centred on the vanishing point and travels
+    // The light at the end is the chrysanthemum: the mandala on the same
+    // slope, so it is centred on the vanishing point and travels
     // with the finger like the core does, and the regress is falling INTO
     // it. It carries its own floor, so an untouched silent frame is a dark
     // room and not a fault.
-    vec3 backdrop = dmtChrysanthemum(vec3(w * FOV, 1.0), HUE_BASE + 0.62, energyAmt) + core;
+    vec3 backdrop = dmtChrysanthemum(vec3(axisView, 1.0), HUE_BASE + 0.62, energyAmt) + core;
 
     // The bank, marched on its own toward the centre. Its hit is taken over
     // the stack's whenever it is nearer, and fades toward the core the way a

@@ -4,8 +4,6 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import dev.geode.ui.GuiPrefs
-import dev.geode.ui.ThemeStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -109,12 +107,5 @@ class RetiredFeatureDataRobolectricTest {
         RetiredFeatureData.directories.forEach { dir ->
             assertFalse(File(context.filesDir, dir).exists())
         }
-    }
-
-    @Test
-    fun `stale settings keys are ignored before the sweep runs`() {
-        seedStaleData()
-
-        assertEquals(GuiPrefs(), ThemeStore(prefs(GeodePrefsFiles.GENERAL)).loadGui())
     }
 }
