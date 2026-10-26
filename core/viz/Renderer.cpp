@@ -47,12 +47,11 @@ void Renderer::setFeatures(const GeodeFeatureFrame& features) {
     features_ = features;
 }
 
-void Renderer::setTransition(const std::string& id, int64_t durationMs) {
+void Renderer::setTransition(const std::string& id, int64_t durationMs, uint64_t seed) {
     std::lock_guard<std::mutex> lock(stateLock_);
     transitionId_ = safety::transitionId(id);
-    // A 0ms (or negative) duration turns the progress fraction in
-    // drawSecondaryTargets into 0.0/0 == NaN, and NaN never satisfies
-    // `progress >= 1.0f`, so the outgoing scene would never be released.
+    transitionSeed_ = seed;
+    // transition::Progress holds every change to half a second at least, whatever is asked here.
     transitionDurationMs_ = std::max<int64_t>(durationMs, 1);
 }
 
@@ -425,6 +424,7 @@ void Renderer::warmTransition(const std::string& id) { compositePass_.warmTransi
 void Renderer::cut() {
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
+    switchGate_.cancel();
     outgoingParams_.reset();
     layerScene_ = nullptr;
     layerDrawn_ = nullptr;
@@ -479,6 +479,7 @@ void Renderer::releaseScenes() {
     scenes_.clear();
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
+    switchGate_.cancel();
     layerScene_ = nullptr;
     layerDrawn_ = nullptr;
 }

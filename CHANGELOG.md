@@ -27,6 +27,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   the audio texture for that frame, and the render check no longer draws a
   Style that reads its last frame into a feedback loop of its own. See
   docs/style-packs.md, "Feedback".
+- **Changes of Style follow the music (#309, #255).** A change of Style, the
+  person's or Style switching's, now starts on the next downbeat while a tempo
+  is heard (at once while none is, and after a bar and a beat at most when the
+  downbeat is missed), runs eased, and moves on a step with each kick while
+  still ending on time without drums. Settings > Application preferences >
+  Changing Style picks its look from 17 No-flash safe looks (the fade by
+  default) or a seeded Random that never repeats the last; there is no hard
+  cut. The new Style starts from the old one's picture, trails and echo
+  included, instead of from black, and the old one keeps its trails on its way
+  out. `glslcheck --effects` draws every look along its progress and fails one
+  that dips to black or washes to white.
 
 - **The picture follows the music's structure, rhythm, timbre and space (#294).**
   One feature bus in the engine reads everything the analysis hears beyond the
