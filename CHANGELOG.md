@@ -11,6 +11,20 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Third-party notices are complete and true (#293).** The notices now cover
+  TagLib (with both of its licence options and the choice marked pending,
+  #274), utfcpp, KISS FFT, Oboe, Dagger and Hilt, the AndroidX, Kotlin, Guava,
+  Okio, protobuf-lite and Checker Framework libraries the app pulls in, and
+  the Hash without Sine shader hash. projectM is described as the modified
+  library it is; its four patches ship inside the app
+  (`assets/third_party/projectm/`); projectm-eval is MIT, not LGPL; the
+  gl-transitions BSD notices and the colour maps' MIT notice are quoted in
+  full; the stale woscope entry is gone; the MPL-1.1 and Apache-2.0 texts are
+  appended. The in-app copy is identical to `THIRD_PARTY_NOTICES`, and a new
+  CI check (`tools/ci/check_notices.py`) keeps it so, along with the shipped
+  patches, every submodule and every shipped dependency group. Dependency
+  review now also fails on a licence outside the permissive allow list.
+
 - **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
   feed, Freeze reactions is held in the engine: every Style, MilkDrop
   included, keeps the Sound signals and audio window of the first held frame

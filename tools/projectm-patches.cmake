@@ -1,6 +1,8 @@
 # Geode's copy of projectM: the third_party/projectm submodule, pinned to the stock v4.1.8 tag, plus
 # these local patches, applied at configure time so the submodule itself stays unmodified
 # (tools/build-projectm.md). LGPL-2.1: the patches are the corresponding source of the modification.
+# The app ships byte-identical copies in app/src/main/assets/third_party/projectm/ (THIRD_PARTY_NOTICES);
+# tools/ci/check_notices.py fails when the two sets differ, so change or add a patch in both places.
 #
 #   projectm-v4.1.8-render-fbo-backport.patch  projectm_opengl_render_frame_fbo, backported from master;
 #                                              MilkdropScene renders into its own framebuffer with it.
