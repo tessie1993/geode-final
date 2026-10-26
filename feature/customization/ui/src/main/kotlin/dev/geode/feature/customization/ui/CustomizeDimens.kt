@@ -1,39 +1,40 @@
 package dev.geode.feature.customization.ui
 
 import androidx.compose.ui.unit.dp
-import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.GlassSpacing
 
-/** The sizes of the Customize panel, on top of the design system's spacing (ForestSpacing). */
+/** The sizes of the Customize panel, on top of the design system's spacing (GlassSpacing). */
 internal object CustomizeDimens {
     /** A Macro knob: large, as the basic view's main control. */
-    val knob = ForestSpacing.TapTarget + ForestSpacing.Section
-    val knobStroke = ForestSpacing.Small
-    val liveStroke = ForestSpacing.ExtraSmall
+    val knob = GlassSize.TapTarget + GlassSpacing.Section
+    val knobStroke = GlassSpacing.Small
+    val liveStroke = GlassSpacing.ExtraSmall
 
     /** The right-hand panel in landscape and on tablets, so the Visual keeps its full height. */
     val sidePanelWidth = 400.dp
 
-    val handleWidth = ForestSpacing.Section + ForestSpacing.ExtraSmall
-    val handleHeight = ForestSpacing.ExtraSmall
+    val handleWidth = GlassSpacing.Section + GlassSpacing.ExtraSmall
+    val handleHeight = GlassSpacing.ExtraSmall
 
     /** How far the handle must be dragged before the sheet grows, shrinks or hides. */
-    val dragThreshold = ForestSpacing.TapTarget
+    val dragThreshold = GlassSize.TapTarget
 
     /** How far a link must be swiped before it is removed. */
     val swipeThreshold = 96.dp
 
     /** One row of the patch-cable board, and the width of its label columns. */
-    val boardRow = ForestSpacing.TapTarget
+    val boardRow = GlassSize.TapTarget
     val boardLabel = 128.dp
     val boardCable = 2.dp
     val boardNode = 5.dp
 
     /** A Modulator's picture. */
-    val picture = ForestSpacing.TapTarget + ForestSpacing.Medium
+    val picture = GlassSize.TapTarget + GlassSpacing.Medium
     val pictureStroke = 2.dp
 
     /** The bar of a link's live meter. */
-    val meter = ForestSpacing.ExtraSmall
+    val meter = GlassSpacing.ExtraSmall
 }
 
 /** In portrait, the basic view's sheet stays below this share of the screen, so the Visual shows above it. */

@@ -6,23 +6,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import dev.geode.design.forest.ForestMode
-import dev.geode.design.forest.ForestTheme
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassTheme
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SoundSignal
 
-// The Customize panel's previews (ADR-0003), in the water, forest and stone theme (:design).
+// The Customize panel's previews (ADR-0003), in the glass theme (:design).
 // The plain ground behind the panel stands in for the live Visual, which the previews never show.
 
 @Composable
 private fun CustomizePreview(
     model: CustomizeModel = PreviewModels.editing,
     start: CustomizePage = CustomizePage.Basic,
-    mode: ForestMode = ForestMode.Dark,
+    dark: Boolean = true,
 ) {
-    ForestTheme(mode = mode) {
-        Box(Modifier.fillMaxSize().background(LocalForestColors.current.base)) {
+    GlassTheme(dark = dark) {
+        Box(Modifier.fillMaxSize().background(LocalGlassStyle.current.colors.base)) {
             CustomizeScreen(model, onAction = {}, start = start)
         }
     }
@@ -36,7 +35,7 @@ internal fun CustomizeBasicPreview() = CustomizePreview()
 
 @Preview(name = "Basic view, light", widthDp = 411, heightDp = 891)
 @Composable
-internal fun CustomizeBasicLightPreview() = CustomizePreview(mode = ForestMode.Light)
+internal fun CustomizeBasicLightPreview() = CustomizePreview(dark = false)
 
 @Preview(name = "Basic view, a fresh Style", widthDp = 411, heightDp = 891)
 @Composable
@@ -68,8 +67,8 @@ internal fun ModulatorsAutomationFreshPreview() = ModulatorsAutomationPreviewOf(
 
 @Composable
 private fun ModulatorsAutomationPreviewOf(model: CustomizeModel) {
-    ForestTheme(mode = ForestMode.Dark) {
-        Box(Modifier.fillMaxSize().background(LocalForestColors.current.base)) {
+    GlassTheme(dark = true) {
+        Box(Modifier.fillMaxSize().background(LocalGlassStyle.current.colors.base)) {
             ModulatorsAutomationScreen(model, onAction = {})
         }
     }

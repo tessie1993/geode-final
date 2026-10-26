@@ -19,13 +19,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Redo
+import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -40,15 +40,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import dev.geode.design.forest.ForestGlass
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
@@ -146,7 +148,7 @@ fun CustomizeScreen(
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
                     .width(CustomizeDimens.sidePanelWidth)
-                    .padding(ForestSpacing.Small),
+                    .padding(GlassSpacing.Small),
             ) {
                 Panel(panel, side = true)
             }
@@ -189,14 +191,15 @@ private fun Panel(
     panel: PanelState,
     side: Boolean,
 ) {
-    val colors = LocalForestColors.current
+    // Over the live Visual: matte glass until the engine frosts it (#349).
+    val shape = if (side) MaterialTheme.shapes.large else MaterialTheme.shapes.extraLarge
     Surface(
-        shape = if (side) ForestShapes.Card else ForestShapes.Sheet,
-        color = ForestGlass.textGlass(colors),
-        contentColor = colors.textPrimary,
-        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        color = Color.Transparent,
+        contentColor = LocalGlassStyle.current.colors.textPrimary,
+        modifier = Modifier.fillMaxWidth().glassSurface(GlassKind.SHEET, shape, GlassBackdrop.Visual),
     ) {
-        Column(Modifier.padding(horizontal = ForestSpacing.Large)) {
+        Column(Modifier.padding(horizontal = GlassSpacing.Large)) {
             if (!side) DragHandle(panel)
             TopBar(panel)
             val learning = panel.learning
@@ -205,7 +208,7 @@ private fun Panel(
                 Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(bottom = ForestSpacing.ExtraLarge),
+                    .padding(bottom = GlassSpacing.ExtraLarge),
             ) {
                 when (val page = panel.page) {
                     CustomizePage.Basic -> BasicView(panel)
@@ -232,7 +235,7 @@ private fun DragHandle(panel: PanelState) {
     Box(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = ForestSpacing.Small)
+            .padding(vertical = GlassSpacing.Small)
             .semantics { contentDescription = description }
             .draggable(
                 rememberDraggableState { dragged += it },
@@ -252,7 +255,7 @@ private fun DragHandle(panel: PanelState) {
         Box(
             Modifier
                 .size(CustomizeDimens.handleWidth, CustomizeDimens.handleHeight)
-                .background(LocalForestColors.current.textSecondary, ForestShapes.Chip),
+                .background(LocalGlassStyle.current.colors.textSecondary, MaterialTheme.shapes.small),
         )
     }
 }
@@ -264,24 +267,24 @@ private fun TopBar(panel: PanelState) {
     val basic = panel.page == CustomizePage.Basic
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         if (!basic) {
-            BarButton(Icons.AutoMirrored.Filled.ArrowBack, R.string.customize_back) { panel.open(back(panel.page)) }
+            BarButton(Icons.AutoMirrored.Rounded.ArrowBack, R.string.customize_back) { panel.open(back(panel.page)) }
         }
         Text(
             stringResource(if (basic) R.string.customize_title else R.string.customize_advanced_title),
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.weight(1f).padding(start = ForestSpacing.ExtraSmall),
+            modifier = Modifier.weight(1f).padding(start = GlassSpacing.ExtraSmall),
         )
-        BarButton(Icons.AutoMirrored.Filled.Undo, R.string.customize_undo, enabled = model.canUndo) {
+        BarButton(Icons.AutoMirrored.Rounded.Undo, R.string.customize_undo, enabled = model.canUndo) {
             panel.send(CustomizationCommand.Undo)
         }
-        BarButton(Icons.AutoMirrored.Filled.Redo, R.string.customize_redo, enabled = model.canRedo) {
+        BarButton(Icons.AutoMirrored.Rounded.Redo, R.string.customize_redo, enabled = model.canRedo) {
             panel.send(CustomizationCommand.Redo)
         }
-        BarButton(Icons.Filled.Save, R.string.customize_save) { panel.open(CustomizePage.SavePreset) }
-        BarButton(Icons.Filled.AutoAwesome, R.string.customize_surprise) { panel.onAction(CustomizeAction.SurpriseMe) }
-        BarButton(Icons.Filled.Share, R.string.customize_share) { panel.onAction(CustomizeAction.Share) }
+        BarButton(Icons.Rounded.Save, R.string.customize_save) { panel.open(CustomizePage.SavePreset) }
+        BarButton(Icons.Rounded.AutoAwesome, R.string.customize_surprise) { panel.onAction(CustomizeAction.SurpriseMe) }
+        BarButton(Icons.Rounded.Share, R.string.customize_share) { panel.onAction(CustomizeAction.Share) }
         if (basic) {
-            BarButton(Icons.Filled.Tune, R.string.customize_open_advanced) {
+            BarButton(Icons.Rounded.Tune, R.string.customize_open_advanced) {
                 panel.open(CustomizePage.Advanced(AdvancedSection.REACTIONS))
             }
         }
@@ -339,13 +342,13 @@ private fun LearningBanner(
     source: String,
     onCancel: () -> Unit,
 ) {
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = ForestSpacing.ExtraSmall)
-            .background(colors.accent, ForestShapes.Card)
-            .padding(horizontal = ForestSpacing.Medium),
+            .padding(vertical = GlassSpacing.ExtraSmall)
+            .background(colors.accent, MaterialTheme.shapes.large)
+            .padding(horizontal = GlassSpacing.Medium),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

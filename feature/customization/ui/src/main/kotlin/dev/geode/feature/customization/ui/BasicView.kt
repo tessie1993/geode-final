@@ -13,8 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.CompareSlot
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.SharedProperty
@@ -32,7 +32,7 @@ internal fun BasicView(panel: PanelState) {
     SectionTitle(stringResource(R.string.customize_macros))
     model.macros.chunked(KNOBS_PER_ROW).forEach { row ->
         Row(
-            Modifier.fillMaxWidth().padding(vertical = ForestSpacing.ExtraSmall),
+            Modifier.fillMaxWidth().padding(vertical = GlassSpacing.ExtraSmall),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             row.forEach { knob ->
@@ -88,7 +88,7 @@ internal fun BasicView(panel: PanelState) {
         Text(
             stringResource(R.string.customize_no_presets),
             style = MaterialTheme.typography.bodySmall,
-            color = LocalForestColors.current.textSecondary,
+            color = LocalGlassStyle.current.colors.textSecondary,
         )
     } else {
         ChipStrip {
@@ -113,7 +113,7 @@ internal fun BasicView(panel: PanelState) {
 private fun ChipStrip(content: @Composable () -> Unit) {
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
     ) { content() }
 }
 

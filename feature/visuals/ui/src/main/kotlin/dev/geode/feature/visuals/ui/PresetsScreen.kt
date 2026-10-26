@@ -17,12 +17,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.FileOpen
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -45,8 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.GlassSpacing
 import dev.geode.feature.visuals.api.ImportProblem
 import dev.geode.feature.visuals.api.PresetFolderPath
 
@@ -65,8 +65,8 @@ fun PresetsScreen(
 ) {
     LazyColumn(
         modifier.fillMaxSize(),
-        contentPadding = PaddingValues(ForestSpacing.Large),
-        verticalArrangement = Arrangement.spacedBy(ForestSpacing.Medium),
+        contentPadding = PaddingValues(GlassSpacing.Large),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.Medium),
     ) {
         item { PresetsHeader(model, onAction) }
         model.notice?.let { notice -> item { Notice(notice, onAction) } }
@@ -92,12 +92,12 @@ private fun LazyListScope.page(
         item {
             FolderRow(
                 PresetFolderItem(PresetPlace.BuiltIn, stringResource(R.string.presets_built_in), model.builtInCount),
-                Icons.Filled.AutoAwesome,
+                Icons.Rounded.AutoAwesome,
                 onAction,
             )
         }
     }
-    items(model.folders, key = { "folder-${it.place.key()}" }) { folder -> FolderRow(folder, Icons.Filled.Folder, onAction) }
+    items(model.folders, key = { "folder-${it.place.key()}" }) { folder -> FolderRow(folder, Icons.Rounded.Folder, onAction) }
     if (model.presets.isNotEmpty() && model.place == PresetPlace.TOP) {
         item { SectionTitle(stringResource(R.string.presets_saved)) }
     }
@@ -121,7 +121,7 @@ private fun PresetsHeader(
     model: PresetsModel,
     onAction: (PresetsAction) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().glass().padding(ForestSpacing.Large), verticalArrangement = Arrangement.spacedBy(ForestSpacing.Small)) {
+    Column(Modifier.fillMaxWidth().glass().padding(GlassSpacing.Large), verticalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
         Text(stringResource(R.string.presets_title), style = MaterialTheme.typography.headlineMedium)
         model.currentName?.let {
             Text(
@@ -130,14 +130,14 @@ private fun PresetsHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small)) {
-            FilledTonalButton(onClick = { onAction(PresetsAction.PasteLink) }, shape = ForestShapes.Button) {
-                Icon(Icons.Filled.ContentPaste, contentDescription = null)
-                Text(stringResource(R.string.presets_paste_link), Modifier.padding(start = ForestSpacing.Small))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
+            FilledTonalButton(onClick = { onAction(PresetsAction.PasteLink) }) {
+                Icon(Icons.Rounded.ContentPaste, contentDescription = null)
+                Text(stringResource(R.string.presets_paste_link), Modifier.padding(start = GlassSpacing.Small))
             }
-            FilledTonalButton(onClick = { onAction(PresetsAction.OpenFile) }, shape = ForestShapes.Button) {
-                Icon(Icons.Filled.FileOpen, contentDescription = null)
-                Text(stringResource(R.string.presets_open_file), Modifier.padding(start = ForestSpacing.Small))
+            FilledTonalButton(onClick = { onAction(PresetsAction.OpenFile) }) {
+                Icon(Icons.Rounded.FileOpen, contentDescription = null)
+                Text(stringResource(R.string.presets_open_file), Modifier.padding(start = GlassSpacing.Small))
             }
         }
     }
@@ -158,10 +158,10 @@ private fun Notice(
                 }
             PresetNotice.ClipboardEmpty -> stringResource(R.string.presets_clipboard_empty)
         }
-    Row(Modifier.fillMaxWidth().glass().padding(start = ForestSpacing.Large), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().glass().padding(start = GlassSpacing.Large), verticalAlignment = Alignment.CenterVertically) {
         Text(text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
         IconButton(onClick = { onAction(PresetsAction.DismissNotice) }) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.presets_dismiss))
+            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.presets_dismiss))
         }
     }
 }
@@ -222,14 +222,14 @@ private fun FolderRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = ForestSpacing.TapTarget)
+            .heightIn(min = GlassSize.TapTarget)
             .glass()
             .clickable { onAction(PresetsAction.Open(folder.place)) }
-            .padding(horizontal = ForestSpacing.Large, vertical = ForestSpacing.Small),
+            .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f).padding(start = ForestSpacing.Medium)) {
+        Column(Modifier.weight(1f).padding(start = GlassSpacing.Medium)) {
             Text(folder.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 stringResource(R.string.visuals_folder_count, folder.count),
@@ -240,7 +240,7 @@ private fun FolderRow(
         if (saved != null) {
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.visuals_more, folder.name))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, folder.name))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
@@ -291,11 +291,11 @@ private fun PresetRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = ForestSpacing.TapTarget)
+            .heightIn(min = GlassSize.TapTarget)
             .glass()
             .clickable { onAction(PresetsAction.Apply(preset.id)) }
-            .padding(start = ForestSpacing.Large, end = ForestSpacing.Small)
-            .padding(vertical = ForestSpacing.Small),
+            .padding(start = GlassSpacing.Large, end = GlassSpacing.Small)
+            .padding(vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -313,7 +313,7 @@ private fun PresetRow(
         if (!preset.builtIn) {
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.visuals_more, preset.name))
+                    Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.visuals_more, preset.name))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     MenuItem(R.string.presets_rename) {
@@ -391,7 +391,7 @@ private fun MoveDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.presets_move_title, preset.name)) },
         text = {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
                 for (target in targets) {
                     FilterChip(
                         selected = false,

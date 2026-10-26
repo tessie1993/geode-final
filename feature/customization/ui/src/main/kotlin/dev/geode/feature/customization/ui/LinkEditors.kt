@@ -19,8 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassSpacing
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.PresetPart
@@ -44,7 +43,7 @@ internal fun ChooseSource(
     Text(
         stringResource(if (page.learn) R.string.customize_step_learn else R.string.customize_step_source),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(vertical = ForestSpacing.Small),
+        modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
     val pick = { source: ReactionSource ->
         when {
@@ -76,7 +75,7 @@ internal fun ChooseTarget(
     Text(
         stringResource(if (page.macro != null) R.string.customize_step_macro_target else R.string.customize_step_target),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(vertical = ForestSpacing.Small),
+        modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
     val pick = { target: Target ->
         val macro = page.macro
@@ -129,12 +128,12 @@ internal fun ReactionEditor(
     Text(
         stringResource(if (page.isNew) R.string.customize_step_shape else R.string.customize_edit_link),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = ForestSpacing.Small),
+        modifier = Modifier.padding(top = GlassSpacing.Small),
     )
     Text(
         stringResource(R.string.customize_link_path, sourceName(reaction.source, model), targetName(reaction.target, model)),
         style = MaterialTheme.typography.bodyLarge,
-        modifier = Modifier.padding(vertical = ForestSpacing.Small),
+        modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
     HeldSlider(
         label = stringResource(R.string.customize_amount),
@@ -180,8 +179,8 @@ internal fun ReactionEditor(
     }
     if (isLuminous(reaction.target)) QuietText(stringResource(R.string.customize_no_flash))
     Row(
-        Modifier.fillMaxWidth().padding(top = ForestSpacing.Medium),
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
+        Modifier.fillMaxWidth().padding(top = GlassSpacing.Medium),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (!page.isNew) {
@@ -200,7 +199,6 @@ internal fun ReactionEditor(
                 panel.send(saveReaction(reaction, page.isNew))
                 panel.open(back(page))
             },
-            shape = ForestShapes.Button,
         ) { Text(stringResource(R.string.customize_done)) }
     }
 }
@@ -216,7 +214,7 @@ internal fun SavePresetPage(panel: PanelState) {
     Text(
         stringResource(R.string.customize_save_title),
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(vertical = ForestSpacing.Small),
+        modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
     OutlinedTextField(
         value = name,
@@ -233,7 +231,7 @@ internal fun SavePresetPage(panel: PanelState) {
     }
     val save = savePreset(name, parts)
     Row(
-        Modifier.fillMaxWidth().padding(top = ForestSpacing.Medium),
+        Modifier.fillMaxWidth().padding(top = GlassSpacing.Medium),
         horizontalArrangement = Arrangement.End,
     ) {
         TextButton(onClick = { panel.open(CustomizePage.Basic) }) { Text(stringResource(R.string.customize_cancel)) }
@@ -243,14 +241,13 @@ internal fun SavePresetPage(panel: PanelState) {
                 panel.open(CustomizePage.Basic)
             },
             enabled = save != null,
-            shape = ForestShapes.Button,
         ) { Text(stringResource(R.string.customize_save_confirm)) }
     }
 }
 
 @Composable
 private fun CancelButton(panel: PanelState) {
-    TextButton(onClick = { panel.open(back(panel.page)) }, modifier = Modifier.padding(top = ForestSpacing.Medium)) {
+    TextButton(onClick = { panel.open(back(panel.page)) }, modifier = Modifier.padding(top = GlassSpacing.Medium)) {
         Text(stringResource(R.string.customize_cancel))
     }
 }

@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +53,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.ModulatorShape
 import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.abs
@@ -76,8 +75,8 @@ internal fun SectionTitle(
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
-        color = LocalForestColors.current.textSecondary,
-        modifier = modifier.padding(top = ForestSpacing.Medium, bottom = ForestSpacing.ExtraSmall),
+        color = LocalGlassStyle.current.colors.textSecondary,
+        modifier = modifier.padding(top = GlassSpacing.Medium, bottom = GlassSpacing.ExtraSmall),
     )
 }
 
@@ -86,8 +85,8 @@ internal fun SectionTitle(
 @Composable
 internal fun ChipFlow(content: @Composable () -> Unit) {
     FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(ForestSpacing.Small),
-        verticalArrangement = Arrangement.spacedBy(ForestSpacing.ExtraSmall),
+        horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Small),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.ExtraSmall),
     ) { content() }
 }
 
@@ -102,7 +101,7 @@ internal fun ChoiceChip(
         selected = selected,
         onClick = onClick,
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        shape = ForestShapes.Chip,
+        shape = MaterialTheme.shapes.small,
     )
 }
 
@@ -130,7 +129,7 @@ internal fun ValueSlider(
     onReactTo: () -> Unit,
 ) {
     var held by remember(row.value) { mutableFloatStateOf(row.value) }
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     val reactTo = stringResource(R.string.customize_react_to)
     Column(Modifier.fillMaxWidth()) {
         Row(
@@ -142,10 +141,10 @@ internal fun ValueSlider(
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             if (row.linked) {
                 Icon(
-                    Icons.Filled.Link,
+                    Icons.Rounded.Link,
                     contentDescription = stringResource(R.string.customize_linked),
                     tint = colors.accent,
-                    modifier = Modifier.padding(end = ForestSpacing.Small).size(ForestSpacing.Large),
+                    modifier = Modifier.padding(end = GlassSpacing.Small).size(GlassSpacing.Large),
                 )
             }
             if (row.kind == ValueKind.SWITCH) {
@@ -196,10 +195,10 @@ internal fun Meter(
     level: Float,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     Canvas(modifier.fillMaxWidth().height(CustomizeDimens.meter)) {
         drawRect(colors.textSecondary.copy(alpha = QUIET_ALPHA))
-        drawRect(colors.highlight, size = Size(size.width * level.coerceIn(0f, 1f), size.height))
+        drawRect(colors.warm, size = Size(size.width * level.coerceIn(0f, 1f), size.height))
     }
 }
 
@@ -218,7 +217,7 @@ internal fun MacroKnobView(
 ) {
     var held by remember(knob.value) { mutableFloatStateOf(knob.value) }
     val set by rememberUpdatedState(onSet)
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     val percent = (held * 100).roundToInt()
     val description = stringResource(R.string.customize_macro_knob, knob.name, percent)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -247,7 +246,7 @@ internal fun MacroKnobView(
                 ring(colors.accent, held, stroke, inset = stroke / 2)
                 knob.live?.let { live ->
                     val thin = CustomizeDimens.liveStroke.toPx()
-                    ring(colors.highlight, live, thin, inset = stroke + thin)
+                    ring(colors.warm, live, thin, inset = stroke + thin)
                 }
             }
             Text(stringResource(R.string.customize_percent, percent), style = MaterialTheme.typography.titleMedium)
@@ -261,9 +260,9 @@ internal fun MacroKnobView(
                 maxLines = 1,
                 modifier =
                     Modifier
-                        .padding(top = ForestSpacing.Hairline)
-                        .background(colors.accent, ForestShapes.Chip)
-                        .padding(horizontal = ForestSpacing.Small, vertical = ForestSpacing.Hairline),
+                        .padding(top = GlassSpacing.Hairline)
+                        .background(colors.accent, MaterialTheme.shapes.small)
+                        .padding(horizontal = GlassSpacing.Small, vertical = GlassSpacing.Hairline),
             )
         }
     }
@@ -293,7 +292,7 @@ internal fun ModulatorPicture(
     shape: ModulatorShape,
     modifier: Modifier = Modifier,
 ) {
-    val colors = LocalForestColors.current
+    val colors = LocalGlassStyle.current.colors
     Canvas(modifier.fillMaxWidth().height(CustomizeDimens.picture)) {
         val stroke = CustomizeDimens.pictureStroke.toPx()
         when (shape) {
