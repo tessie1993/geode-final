@@ -17,8 +17,8 @@ import androidx.media3.effect.SingleColorLut
 import androidx.media3.effect.StaticOverlaySettings
 import androidx.media3.effect.TextOverlay
 import dev.geode.feature.studio.api.RenderFormat
-import dev.geode.feature.studio.core.RenderPlan
 import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.core.RenderPlan
 
 /*
  * A clip's edit (#318) as the Media3 effects that carry it out. The edit itself is data in Studio's

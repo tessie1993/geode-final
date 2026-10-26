@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.core
 
+import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RecordingCommand
@@ -28,7 +29,7 @@ import dev.geode.kernel.ReportFailure
  *
  * The render queue's rules are [RenderQueue]'s (#338); the saved Renders that had not finished come
  * back with the library and start once it is read. Recordings of the live Visual are [Recordings]'
- * (#317).
+ * (#317), and the editors are [Edits]' (#318).
  */
 object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
     override fun reduce(
@@ -68,6 +69,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioEvent.RenderProgress -> RenderQueue.progress(state, event)
             is StudioEvent.RenderEnded -> RenderQueue.ended(state, event)
             is RecordingEvent -> Recordings.event(state, event)
+            is EditEvent -> Edits.event(state, event)
         }
 
     /** The library is read: carry out the Commands that waited for it, in order, then start the queue. */
@@ -108,6 +110,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioCommand.CancelRenders -> RenderQueue.cancel(state, command.renders)
             StudioCommand.ClearFinishedRenders -> RenderQueue.clearFinished(state)
             is RecordingCommand -> Recordings.command(state, command)
+            is EditCommand -> Edits.command(state, command)
         }
 
     private fun create(
