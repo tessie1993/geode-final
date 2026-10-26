@@ -25,6 +25,7 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/feed/FeedRing.cpp
     audio/feed/FeatureHistory.cpp
     audio/feed/HeardClock.cpp
+    audio/feed/FeedTap.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp

@@ -1,7 +1,7 @@
 package dev.geode.export
 
 import android.net.Uri
-import dev.geode.editor.MarkerSet
+import dev.geode.feature.studio.core.edit.MarkerSet
 import java.io.IOException
 import java.io.OutputStream
 import java.util.Locale

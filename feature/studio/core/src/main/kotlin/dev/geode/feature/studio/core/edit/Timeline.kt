@@ -1,6 +1,5 @@
-package dev.geode.editor
+package dev.geode.feature.studio.core.edit
 
-import dev.geode.export.ClipEdit
 import kotlin.math.abs
 
 /*

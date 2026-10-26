@@ -1,7 +1,12 @@
-package dev.geode.editor
+package dev.geode.feature.studio.core.edit
 
-import dev.geode.ui.LyricLine
 import java.util.Locale
+
+/** One line of a song's lyrics at the moment it is sung; [timeMs] below 0 when it is not synced. */
+data class TimedLyric(
+    val timeMs: Long,
+    val text: String,
+)
 
 data class SubtitleCue(
     val startMs: Long,
@@ -41,7 +46,7 @@ object Subtitles {
 
     /** Each synced line shows until the next one starts, at most [MAX_LYRIC_CUE_MS]; the last runs to [endMs]. */
     fun fromLyrics(
-        lines: List<LyricLine>,
+        lines: List<TimedLyric>,
         endMs: Long,
     ): List<SubtitleCue> {
         val timed = lines.filter { it.timeMs >= 0 && it.text.isNotBlank() }.sortedBy { it.timeMs }

@@ -124,7 +124,9 @@ class RoomStudioStorageRobolectricTest {
     @Test
     fun `a queued Render reads back exactly as it was queued, with its look, after a restart`() =
         runBlocking {
-            val first = render(listOf(night), RenderLook.Preset(PresetId("Calm")), RenderLength.Section(Millis(1_000), Millis(59_000)))
+            val first =
+                render(listOf(night), RenderLook.Preset(PresetId("Calm")), RenderLength.Section(Millis(1_000), Millis(59_000)))
+                    .copy(milkdrop = "Geiss - Cosmic Dust.milk")
             val second = render(listOf(night, tide), RenderLook.Current, RenderLength.WholeTrack)
 
             val queued = storage.queueRenders(listOf(first, second), FrozenLook("{\"style\":\"fluid_ink\"}"), Millis(7))
@@ -161,5 +163,34 @@ class RoomStudioStorageRobolectricTest {
                 )
             assertEquals(later.single().id, later.single().batch)
             assertEquals(emptyList<RenderJob>(), storage.queueRenders(emptyList(), FrozenLook("look"), Millis(3)))
+        }
+
+    @Test
+    fun `a made Render's video keeps the setup it was made from, and its look, after a restart`() =
+        runBlocking {
+            val trip = storage.createProject("Trip", Millis(1), makeDefault = true)
+            val chosen = render(listOf(night), RenderLook.Preset(PresetId("Calm")), RenderLength.WholeTrack).copy(milkdrop = "a.milk")
+            val made = storage.queueRenders(listOf(chosen), FrozenLook("calm look"), Millis(1)).single()
+            val file = "content://media/video/9"
+            storage.renderSaved(made.id, file)
+            val video = take.copy(kind = VideoKind.RENDER, file = file, madeWith = chosen.toSpec())
+
+            assertEquals(chosen.toSpec(), storage.addVideos(trip.id, listOf(video)).single().madeWith)
+            val reread = RoomStudioStorage(database.dao())
+            assertEquals(listOf(chosen.toSpec(), null), (reread.videos() + reread.addVideos(trip.id, listOf(take))).map { it.madeWith })
+            assertEquals(FrozenLook("calm look"), reread.lookOfVideo(file))
+            assertEquals(null, reread.lookOfVideo("content://media/video/1"))
+        }
+
+    @Test
+    fun `a loop and an N-minute Render read back as queued`() =
+        runBlocking {
+            val loop = render(listOf(night), RenderLook.Current, RenderLength.Loop)
+            val hour = render(listOf(tide), RenderLook.Current, RenderLength.Minutes(60))
+
+            val queued = storage.queueRenders(listOf(loop, hour), FrozenLook("look"), Millis(4))
+
+            assertEquals(queued, RoomStudioStorage(database.dao()).unfinishedRenders())
+            assertEquals(listOf(RenderLength.Loop, RenderLength.Minutes(60)), queued.map { it.length })
         }
 }

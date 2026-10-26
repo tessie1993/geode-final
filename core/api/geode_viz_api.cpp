@@ -239,6 +239,10 @@ void geode_viz_set_frame_load(geode_viz* v, int frames, float p95_ms) {
     if (v) v->renderer.setFrameLoad(frames, p95_ms);
 }
 
+void geode_viz_set_export_supersample(geode_viz* v, float factor) {
+    if (v) v->renderer.setExportSupersample(factor);
+}
+
 void geode_viz_set_offscreen(geode_viz* v, int on) {
     if (!v) return;
     if (on) {
@@ -368,6 +372,12 @@ static void readFeed(geode_viz* v) {
     v->renderer.setFramePcm(held ? v->heldPcm.data() : v->feedPcm.data(), GEODE_FEED_SPAN_FRAMES, held ? 0 : fresh);
     std::lock_guard<std::mutex> lock(v->configLock);
     v->features = shown;
+}
+
+void geode_viz_set_frame_pcm(geode_viz* v, const float* stereo, int frames, int fresh) {
+    if (!v || !stereo || frames <= 0) return;
+    // The renderer keeps the newest frames of a longer span, as it does for a feed's.
+    v->renderer.setFramePcm(stereo, frames, fresh);
 }
 
 void geode_viz_set_reactions_held(geode_viz* v, int held) {

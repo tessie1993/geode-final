@@ -54,11 +54,23 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 - **The analysis sleeps when no Visual is shown (#298).** The live Visual
   watches the audio feed only while it is on screen (the Visuals tab, full
   screen or picture-in-picture) and the app is started, so another tab, the
-  lock screen or a screen turned off runs no analysis; the log notes
+  lock screen or a screen turned off runs no analysis (a Recording keeps
+  it awake while it runs); the log notes
   "analysis sleeps" and "analysis runs". On waking, the analysis drops what
   it had before and starts a quarter of a second before the audio heard now,
   so the Visual has fresh features within a frame rather than replaying old
   ones or working through seconds of backlog.
+
+- **Vortex Forge (#323).** A new Style: fire and smoke shells spiralling
+  down a funnel into a white-hot core, seen from above and circled slowly by
+  its own camera, with far stars, god rays and star streaks from the core and
+  the 3D particle layer streaming past. Its spiral never winds up: the shells
+  are read in a log-polar frame that slides inward, so they drain into the
+  core forever. Drops and arrivals throw a spark burst (the Surge and Change
+  Reactions push its Force Extra, rising over the No-flash rise and settling
+  over 1.6 s): many more sparks fly out of the core and the shells are blown
+  outward, without brightening the frame. Its variant turns the smoke into a
+  blue galaxy.
 
 - **Shared Style inputs (#312).** A shader Style can declare, in its
   manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D

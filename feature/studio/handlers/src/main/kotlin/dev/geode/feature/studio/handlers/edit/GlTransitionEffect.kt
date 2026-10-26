@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.feature.studio.handlers.edit
 
 import android.content.Context
 import android.opengl.GLES20
@@ -9,7 +9,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BaseGlShaderProgram
 import androidx.media3.effect.GlEffect
 import androidx.media3.effect.GlShaderProgram
-import dev.geode.render.TransitionCatalog
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -30,7 +29,7 @@ class TransitionCaptureEffect(
  */
 @UnstableApi
 class GlTransitionEffect(
-    private val def: TransitionCatalog.Def,
+    private val def: TransitionShader,
     private val durationUs: Long,
     private val store: TransitionFrameStore,
 ) : GlEffect {
@@ -109,7 +108,7 @@ private class TransitionCaptureProgram(
 
 @UnstableApi
 private class GlTransitionProgram(
-    private val def: TransitionCatalog.Def,
+    private val def: TransitionShader,
     private val durationUs: Long,
     private val store: TransitionFrameStore,
     useHdr: Boolean,
@@ -164,7 +163,7 @@ private class GlTransitionProgram(
     }
 
     // A parameter the compiler optimised out is not an active uniform, and GlProgram refuses names it does not know.
-    private fun setParam(param: TransitionCatalog.Param) {
+    private fun setParam(param: TransitionParam) {
         val v = param.values
         runCatching {
             when (param.type) {
@@ -202,7 +201,7 @@ private fun GlProgram.bindQuad() {
     setBufferAttribute("aFramePosition", GlUtil.getNormalizedCoordinateBounds(), GlUtil.HOMOGENEOUS_COORDINATE_VECTOR_SIZE)
 }
 
-private fun fragmentFor(def: TransitionCatalog.Def): String =
+private fun fragmentFor(def: TransitionShader): String =
     """
     #version 300 es
     precision highp float;

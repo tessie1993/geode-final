@@ -1,4 +1,4 @@
-package dev.geode.editor
+package dev.geode.feature.studio.core.edit
 
 /**
  * The transition a clip opens with, from whatever ended on the same lane before it. [id] names an

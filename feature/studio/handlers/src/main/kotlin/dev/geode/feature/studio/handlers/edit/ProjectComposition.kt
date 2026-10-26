@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.feature.studio.handlers.edit
 
 import android.content.Context
 import androidx.media3.common.Effect
@@ -10,27 +10,24 @@ import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
-import dev.geode.R
-import dev.geode.data.ExportDefaults
-import dev.geode.editor.AnimatableParams
-import dev.geode.editor.Clip
-import dev.geode.editor.ClipContent
-import dev.geode.editor.ClipTransition
-import dev.geode.editor.EditorProject
-import dev.geode.editor.KeyframeSheet
-import dev.geode.editor.Lane
-import dev.geode.editor.LaneKind
-import dev.geode.editor.ParamId
-import dev.geode.editor.SubtitleCue
-import dev.geode.editor.Subtitles
-import dev.geode.render.TransitionCatalog
+import dev.geode.feature.studio.core.edit.Clip
+import dev.geode.feature.studio.core.edit.ClipContent
+import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.core.edit.ClipParams
+import dev.geode.feature.studio.core.edit.ClipTransition
+import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.core.edit.KeyframeSheet
+import dev.geode.feature.studio.core.edit.Lane
+import dev.geode.feature.studio.core.edit.LaneKind
+import dev.geode.feature.studio.core.edit.SubtitleCue
+import dev.geode.feature.studio.core.edit.Subtitles
 
 /**
  * The editor project as one Media3 [Composition]: every media lane end to end (gaps closed) and
  * layered over the first, each clip's grade, transition and speed ramp on its own item, and every
- * unmuted audio lane mixed underneath. The persisted export defaults ([ExportDefaults]) drive the
- * output ratio and frame rate, and a loop-safe export trims the tail of the primary lane to a
- * whole frame so a looped playback doesn't hitch on a partial one.
+ * unmuted audio lane mixed underneath. The [EditOutput] drives the output shape and frame rate, and a
+ * loop-safe export trims the tail of the primary lane to a whole frame so a looped playback doesn't
+ * hitch on a partial one. Transitions are drawn from the [TransitionShaders] `:app` provides (#318).
  */
 @UnstableApi
 object ProjectComposition {
@@ -47,40 +44,34 @@ object ProjectComposition {
      * What [buildWithReport] had to leave out of the composition: clip kinds a media lane cannot
      * carry (a project can end up with, for example, an [ClipContent.Overlay] clip sitting on a
      * Media lane after a lane-kind edit went astray) are skipped rather than thrown for, and their
-     * kinds are collected here instead.
+     * kinds are collected here instead, for the caller to tell the person.
      */
     data class Report(
         val skippedClipKinds: Set<String> = emptySet(),
     ) {
         val hasSkips: Boolean get() = skippedClipKinds.isNotEmpty()
-
-        /** A user-facing summary of [skippedClipKinds], or null when nothing was skipped. */
-        fun message(context: Context): String? =
-            if (skippedClipKinds.isEmpty()) {
-                null
-            } else {
-                context.getString(R.string.editor_export_skipped_kinds, skippedClipKinds.sorted().joinToString(", "))
-            }
     }
 
     /** [buildWithReport] without the report, for callers that only need the [Outcome]. */
     fun build(
         context: Context,
         project: EditorProject,
-        defaults: ExportDefaults,
-    ): Outcome = buildWithReport(context, project, defaults).first
+        output: EditOutput,
+        shaders: TransitionShaders,
+    ): Outcome = buildWithReport(context, project, output, shaders).first
 
     fun buildWithReport(
         context: Context,
         project: EditorProject,
-        defaults: ExportDefaults,
+        output: EditOutput,
+        shaders: TransitionShaders,
     ): Pair<Outcome, Report> {
         val mediaLanes = project.timeline.lanes.filter { it.kind == LaneKind.Media && it.clips.any(Clip::enabled) }
         if (mediaLanes.isEmpty()) return Outcome.NoVideo to Report()
 
         val cues = Subtitles.cuesFrom(project.timeline.lanes)
         val skippedKinds = mutableSetOf<String>()
-        val frameUs = 1_000_000L / defaults.fps
+        val frameUs = 1_000_000L / output.fps
         // The lane that will actually seed the composition's reported duration: the first media
         // lane carrying playable (Video/Still) content, not just the first media lane by index,
         // since an earlier lane can hold nothing but content a media lane can't carry (see [Report]).
@@ -88,16 +79,17 @@ object ProjectComposition {
         val rawDurationMs = primaryLane.clips.filter(::isPlayable).sumOf(Clip::durationMs)
         // A remainder shorter than one output frame, dropped from the primary lane's last playable
         // clip so a looped render doesn't repeat (or stutter on) a partial final frame.
-        val trimTailMs = if (defaults.loopSafe) (rawDurationMs * 1000L % frameUs) / 1000L else 0L
+        val trimTailMs = if (output.loopSafe) (rawDurationMs * 1000L % frameUs) / 1000L else 0L
 
         val videoSequences =
             mediaLanes.mapNotNull { lane ->
                 videoSequenceFor(
                     context = context,
+                    shaders = shaders,
                     lane = lane,
                     cues = cues,
                     sheet = project.keyframes,
-                    fps = defaults.fps,
+                    fps = output.fps,
                     trimTailMs = if (lane.id == primaryLane.id) trimTailMs else 0L,
                     skippedKinds = skippedKinds,
                 )
@@ -113,15 +105,15 @@ object ProjectComposition {
         val composition =
             Composition
                 .Builder(videoSequences + audioSequences)
-                .setEffects(Effects(emptyList(), listOf(ratioEffect(defaults))))
+                .setEffects(Effects(emptyList(), listOf(ratioEffect(output))))
                 .build()
         return Outcome.Ready(composition, durationMs) to Report(skippedKinds)
     }
 
-    /** The output aspect ratio from the persisted export defaults, cropping to fill rather than letterboxing. */
-    private fun ratioEffect(defaults: ExportDefaults): Effect =
+    /** The output's shape, cropping to fill rather than letterboxing. */
+    private fun ratioEffect(output: EditOutput): Effect =
         Presentation.createForAspectRatio(
-            defaults.ratio.wRatio.toFloat() / defaults.ratio.hRatio,
+            output.aspect.wide.toFloat() / output.aspect.high,
             Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP,
         )
 
@@ -131,6 +123,7 @@ object ProjectComposition {
     /** One media lane as a video sequence, or null if it has no playable clip once unsupported content is dropped. */
     private fun videoSequenceFor(
         context: Context,
+        shaders: TransitionShaders,
         lane: Lane,
         cues: List<SubtitleCue>,
         sheet: KeyframeSheet,
@@ -149,7 +142,7 @@ object ProjectComposition {
         clips.forEachIndexed { index, clip ->
             val incoming =
                 stores[index]?.let { store ->
-                    clip.transition?.let { transition -> transitionEffect(context, clip, transition, store) }
+                    clip.transition?.let { transition -> transitionEffect(shaders, clip, transition, store) }
                 }
             val outgoing = stores.getOrNull(index + 1)?.let(::TransitionCaptureEffect)
             val captions = captionsFor(clip, cues)
@@ -214,8 +207,8 @@ object ProjectComposition {
         val edit = content.edit
         val lut = edit.lutUri?.let { CubeLut.load(context, it) }
         val tracks = sheet.tracksFor(clip.id).filter { it.enabled && !it.isEmpty }
-        val ramp = tracks.firstOrNull { it.paramId == SPEED }?.let { SpeedRamp.fromTrack(it, clip) }
-        val graded = tracks.any { it.paramId != SPEED }
+        val ramp = tracks.firstOrNull { it.paramId == ClipParams.SPEED }?.let { SpeedRamp.fromTrack(it, clip) }
+        val graded = tracks.any { it.paramId != ClipParams.SPEED }
         val sourceSpanMs = ramp?.let { it.sourceSpanUs / 1000L } ?: (clip.durationMs * edit.speed).toLong()
         val sourceOutMs =
             (clip.sourceInMs + sourceSpanMs).let { if (clip.hasBoundedSource) it.coerceAtMost(clip.sourceDurationMs) else it }
@@ -252,19 +245,19 @@ object ProjectComposition {
         sheet: KeyframeSheet,
         lut: CubeLut?,
     ): List<Effect> {
-        val editAt: (Long) -> ClipEdit = { ms -> AnimatableParams.applyToClip(edit, sheet.valuesAt(clip.startMs + ms, clip.id)) }
+        val editAt: (Long) -> ClipEdit = { ms -> ClipParams.applyTo(edit, sheet.valuesAt(clip.startMs + ms, clip.id)) }
         val statics = edit.copy(brightness = 0f, contrast = 0f, saturation = 0f, hueDegrees = 0f, rotationDegrees = 0f).gradeEffects(lut)
         val sourceInUs = clip.sourceInMs.coerceAtLeast(0L) * 1000L
         return listOf(KeyframedGrade(sourceInUs, editAt), KeyframedRotation(sourceInUs) { ms -> editAt(ms).rotationDegrees }) + statics
     }
 
     private fun transitionEffect(
-        context: Context,
+        shaders: TransitionShaders,
         clip: Clip,
         transition: ClipTransition,
         store: TransitionFrameStore,
     ): Effect? {
-        val def = TransitionCatalog.definition(context, transition.id) ?: return null
+        val def = shaders.shader(transition.id) ?: return null
         val durationMs = transition.boundedDurationMs.coerceAtMost(clip.durationMs)
         return GlTransitionEffect(def, durationMs * 1000L, store)
     }
@@ -290,6 +283,4 @@ object ProjectComposition {
         }
         return if (added > 0) builder.build() else null
     }
-
-    private val SPEED = ParamId("clip.speed")
 }

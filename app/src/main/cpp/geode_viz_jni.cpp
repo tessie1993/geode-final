@@ -304,6 +304,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetOffscreen(JNIEnv* env, jobject, j
     });
 }
 
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetExportSupersample(JNIEnv* env, jobject, jlong handle, jfloat factor) {
+    return vizCall(env, "vizSetExportSupersample", handle, [&](geode_viz* v) {
+        geode_viz_set_export_supersample(v, factor);
+        return GEODE_STATUS_OK;
+    });
+}
+
 JNIEXPORT jboolean JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizKnows(JNIEnv* env, jobject, jlong handle, jstring sceneId) {
     return valueCall(env, "vizKnows", jboolean{JNI_FALSE}, [&]() -> jboolean {
@@ -409,6 +417,17 @@ JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetReactionsHeld(JNIEnv* env, jobject, jlong handle, jboolean held) {
     return vizCall(env, "vizSetReactionsHeld", handle, [&](geode_viz* v) {
         geode_viz_set_reactions_held(v, held ? 1 : 0);
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetFramePcm(JNIEnv* env, jobject, jlong handle, jfloatArray stereo, jint frames,
+                                                       jint fresh) {
+    return vizCall(env, "vizSetFramePcm", handle, [&](geode_viz* v) {
+        FloatElements data(env, stereo);
+        if (!data.get() || frames < 0 || data.length() < static_cast<jsize>(frames) * 2) return GEODE_STATUS_INVALID_ARGUMENT;
+        geode_viz_set_frame_pcm(v, data.get(), static_cast<int>(frames), static_cast<int>(fresh));
         return GEODE_STATUS_OK;
     });
 }

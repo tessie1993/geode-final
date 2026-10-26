@@ -41,10 +41,11 @@ class OfflineAnalyzer(
         beatSensitivity: Float = BeatTuning.SENSITIVITY_DEFAULT,
         beatMinIntervalMs: Float = BeatTuning.INTERVAL_MS_DEFAULT,
         onProgress: (Float) -> Unit = {},
+        profile: AnalysisProfile = AnalysisProfile.LIVE,
         stillWanted: () -> Boolean = { true },
     ): FeatureTimeline {
         dev.geode.audio.AiffPcm.open(context, uri)?.let { aiff ->
-            val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs)
+            val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs, profile)
             try {
                 val buf = ShortArray(16384)
                 var last = 0f
@@ -66,7 +67,7 @@ class OfflineAnalyzer(
         }
         val extractor = MediaExtractor()
         var codecRef: MediaCodec? = null
-        val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs)
+        val pipeline = StreamingPipeline(beatSensitivity, beatMinIntervalMs, profile)
         // pipeline.use ensures the native analysis handle is released on every exit path
         // (normal completion, "No audio track in file", a codec error, or cancellation),
         // not only on the success path.
@@ -167,6 +168,7 @@ class OfflineAnalyzer(
     internal class StreamingPipeline(
         sigma: Float,
         minIntervalMs: Float,
+        private val profile: AnalysisProfile = AnalysisProfile.LIVE,
     ) : AutoCloseable {
         private val analyzer =
             ReactiveAnalyzer(
@@ -180,7 +182,7 @@ class OfflineAnalyzer(
                 it.releaseSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_DECAY)
             }
 
-        private val frames = FrameAccumulator()
+        private val frames = FrameAccumulator(profile.maxFrames)
         private var scratch = FloatArray(AnalysisEngine.DEFAULT_FFT_SIZE * 4)
         private var sampleRate = 44100
         private var hopSamples = AnalysisHop.samples(sampleRate, AnalysisEngine.DEFAULT_FFT_SIZE)
@@ -236,7 +238,7 @@ class OfflineAnalyzer(
         private fun snapshot(): AudioFeatures =
             AudioFeatures(
                 bands = analyzer.bands.copyOf(),
-                waveform = analyzer.waveform.copyOf(),
+                waveform = if (profile.keepsWaveform) analyzer.waveform.copyOf() else NO_WAVEFORM,
                 rms = analyzer.rms,
                 bass = analyzer.bass,
                 mid = analyzer.mid,
@@ -295,6 +297,9 @@ class OfflineAnalyzer(
 
     companion object {
         const val OFFLINE_HOP_RATE_HZ = AnalysisHop.RATE_HZ
+
+        /** What a hop of the Render profile holds for a waveform: nothing, shared. */
+        private val NO_WAVEFORM = FloatArray(0)
     }
 }
 

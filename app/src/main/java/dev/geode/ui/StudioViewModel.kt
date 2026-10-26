@@ -4,20 +4,21 @@ import android.net.Uri
 import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.geode.editor.ClipId
-import dev.geode.editor.EditResult
-import dev.geode.editor.EditorProject
-import dev.geode.editor.KeyframeId
-import dev.geode.editor.MarkerId
-import dev.geode.editor.SubtitleCue
-import dev.geode.editor.Subtitles
 import dev.geode.editor.TransientEnvelope
 import dev.geode.editor.TransientSource
 import dev.geode.engine.types.Millis
-import dev.geode.export.ClipEdit
 import dev.geode.export.StudioClip
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.core.edit.ClipId
+import dev.geode.feature.studio.core.edit.EditResult
+import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.core.edit.KeyframeId
+import dev.geode.feature.studio.core.edit.MarkerId
+import dev.geode.feature.studio.core.edit.SubtitleCue
+import dev.geode.feature.studio.core.edit.Subtitles
+import dev.geode.feature.studio.core.edit.TimedLyric
 import dev.geode.render.scene.SceneParams
 import dev.geode.ui.studio.EditorActions
 import kotlinx.coroutines.flow.StateFlow
@@ -90,7 +91,7 @@ class StudioViewModel
         override fun lyricCues(): List<SubtitleCue>? =
             lyrics.lyrics.value
                 ?.takeIf { it.synced }
-                ?.let { Subtitles.fromLyrics(it.lines, trackDurationMs()) }
+                ?.let { found -> Subtitles.fromLyrics(found.lines.map { TimedLyric(it.timeMs, it.text) }, trackDurationMs()) }
                 ?.takeIf { it.isNotEmpty() }
 
         val exportState: StateFlow<ExportUiState> get() = exportController.exportState

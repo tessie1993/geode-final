@@ -203,6 +203,14 @@ abstract class StudioDao {
     @Query("SELECT look FROM renders WHERE id = :id")
     abstract suspend fun lookOf(id: Long): String?
 
+    /** The Renders that made a video, oldest first. */
+    @Query("SELECT * FROM renders WHERE videoFile IS NOT NULL ORDER BY id")
+    abstract suspend fun finishedRenders(): List<RenderEntity>
+
+    /** The look of the newest Render that made [file]. */
+    @Query("SELECT look FROM renders WHERE videoFile = :file ORDER BY id DESC LIMIT 1")
+    abstract suspend fun lookOfVideo(file: String): String?
+
     @Query("UPDATE renders SET videoFile = :file WHERE id = :id")
     abstract suspend fun renderSaved(
         id: Long,
