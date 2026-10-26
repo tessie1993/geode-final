@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "night_drive",
+  "label": "Night Drive",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.7,
+  "detail": "march"
+}
