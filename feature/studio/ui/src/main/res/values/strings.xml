@@ -69,7 +69,20 @@
         <item quantity="one">%1$s · %2$d track</item>
         <item quantity="other">%1$s · %2$d tracks</item>
     </plurals>
-    <string name="studio_render_one_per_track">One video per track, each saved as its own Render. One continuous video of a playlist comes later.</string>
+    <string name="studio_render_one_per_track">One video per track, each saved as its own Render.</string>
+    <string name="studio_render_per_track">A video per track</string>
+    <string name="studio_render_continuous">One continuous video</string>
+    <string name="studio_render_continuous_note">Every track in one video, joined %1$s as in Playback settings. The Visual moves to each track\'s look on its first downbeat, and the video has a chapter per track.</string>
+    <plurals name="studio_render_join_crossfade">
+        <item quantity="one">with a %1$d-second crossfade</item>
+        <item quantity="other">with a %1$d-second crossfade</item>
+    </plurals>
+    <string name="studio_render_join_gapless">gaplessly</string>
+    <string name="studio_render_continuous_length">Every track plays whole: the video is as long as the playlist, limited only by free storage.</string>
+    <string name="studio_render_track_looks">Look for each track</string>
+    <string name="studio_render_track_looks_note">Each track can have its own Customization; the look above is the one for every track you leave as it is.</string>
+    <string name="studio_render_look_current_short">Current</string>
+    <string name="studio_render_track_row">%1$d. %2$s</string>
     <string name="studio_render_look">Look</string>
     <string name="studio_render_look_current">The current Customization</string>
     <string name="studio_render_milkdrop">MilkDrop preset</string>
@@ -140,6 +153,7 @@
     <string name="studio_render_problem_track">the track could not be read</string>
     <string name="studio_render_problem_encoder">the phone would not encode it at this size or frame rate</string>
     <string name="studio_render_problem_saved">the video could not be saved</string>
+    <string name="studio_render_problem_space">the phone\'s storage is too full for the video</string>
     <string name="studio_render_problem_engine">the engine stopped unexpectedly</string>
     <!-- Make Short, Export as and Share (#328) -->
     <string name="studio_make_short">Make Short</string>

@@ -116,13 +116,31 @@ sealed interface RenderLength {
 
 /**
  * How a playlist renders (#267). One video per track queues an ordinary Render for each. One
- * continuous video is a single Render of every track; how it behaves between tracks is still being
- * decided (#273), so Studio does not make one yet (#326).
+ * continuous video is a single Render of every track, each whole (#326, as the owner decided on #273):
+ * the sound joins as the Playback settings' crossfade joins it, the Visual moves to the next track's own
+ * Customization on the first downbeat of that track, and the video has a chapter per track. It is as long
+ * as the playlist, limited only by the phone's free storage.
  */
 enum class PlaylistMode {
     ONE_VIDEO_PER_TRACK,
     ONE_CONTINUOUS_VIDEO,
 }
+
+/** The shape of a crossfade, as the Playback settings offer it: how the two songs' levels cross. */
+enum class FadeCurve {
+    LINEAR,
+    EQUAL_POWER,
+    SMOOTH,
+}
+
+/**
+ * How one continuous video's tracks join (#326): the Playback settings' crossfade, its [crossfade] length
+ * (none joins them gaplessly) and its [curve]. Kept with the Render, so making it again joins them the same.
+ */
+data class TrackJoin(
+    val crossfade: Millis = Millis.ZERO,
+    val curve: FadeCurve = FadeCurve.EQUAL_POWER,
+)
 
 /** The loudness a Render's sound is levelled to (#329): measured over the Track, then a gain applied. */
 enum class RenderLoudness {
@@ -168,7 +186,9 @@ data class RenderTrack(
  * order; the [look]; the [format]; the [length]; the [project] the videos land in (the default Project
  * when null); how a playlist renders; the [extras]; and the MilkDrop preset a MilkDrop look plays
  * ([milkdrop], its file name in the MilkDrop folder; none plays MilkDrop's own idle picture, #341).
- * These choices belong to the Render, never to the song.
+ * One continuous video (#326) also has a look for each track ([trackLooks], in the tracks' order; a
+ * track without one takes [look]) and how its tracks [join], the Playback settings' crossfade as it
+ * was when it was set up. These choices belong to the Render, never to the song.
  */
 data class RenderSpec(
     val tracks: List<RenderTrack>,
@@ -179,7 +199,15 @@ data class RenderSpec(
     val playlist: PlaylistMode = PlaylistMode.ONE_VIDEO_PER_TRACK,
     val extras: RenderExtras = RenderExtras(),
     val milkdrop: String? = null,
+    val trackLooks: List<RenderLook> = emptyList(),
+    val join: TrackJoin = TrackJoin(),
 ) {
+    /** Whether it makes one continuous video of several tracks (#326). */
+    val continuous: Boolean get() = playlist == PlaylistMode.ONE_CONTINUOUS_VIDEO && tracks.size > 1
+
+    /** The look of each track, in order: its own, or [look] where it has none. */
+    val looksOfTracks: List<RenderLook> get() = looksOf(tracks, trackLooks, look)
+
     /** [preset] applied: what it sets is filled in, and what it does not set stays as chosen. */
     fun withPreset(preset: RenderPreset): RenderSpec =
         copy(
@@ -250,6 +278,9 @@ enum class RenderProblem {
     /** The phone's encoder would not make the video at this size or frame rate. */
     ENCODER_REFUSED,
 
+    /** The phone's free storage would not hold the video (#326). */
+    NO_SPACE,
+
     /** The finished video could not be saved. */
     NOT_SAVED,
 
@@ -293,7 +324,8 @@ data class MadeFrom(
 
 /**
  * One video the queue makes (#338): its [tracks] (one Track, or a whole playlist for one continuous
- * video) with the choices of the [RenderSpec] it was queued from. [batch] is the first Render queued
+ * video, #326, with each track's look in [trackLooks] and how they [join]) with the
+ * choices of the [RenderSpec] it was queued from. [batch] is the first Render queued
  * with it, so every track of one playlist shares it; [project] is the Project its video lands in;
  * [milkdrop] the MilkDrop preset it plays when its look is MilkDrop (#341). An Edit's export (#318)
  * waits in the same queue: it has an [edit] and no tracks, and its video is cut, not drawn, so it runs
@@ -313,7 +345,12 @@ data class RenderJob(
     val milkdrop: String? = null,
     val edit: EditJob? = null,
     val madeFrom: MadeFrom? = null,
+    val trackLooks: List<RenderLook> = emptyList(),
+    val join: TrackJoin = TrackJoin(),
 ) {
+    /** The look of each track, in order: its own, or [look] where it has none. */
+    val looksOfTracks: List<RenderLook> get() = looksOf(tracks, trackLooks, look)
+
     /** The video's name: its Track's title, every title of a continuous playlist, or the Edit's name. */
     val title: String get() = edit?.name ?: tracks.joinToString(TITLE_SEPARATOR) { it.title }
 
@@ -324,3 +361,10 @@ data class RenderJob(
         const val TITLE_SEPARATOR = " · "
     }
 }
+
+/** The look of each of [tracks]: its own in [own], in order, or [fallback] where it has none. */
+private fun looksOf(
+    tracks: List<RenderTrack>,
+    own: List<RenderLook>,
+    fallback: RenderLook,
+): List<RenderLook> = tracks.indices.map { own.getOrNull(it) ?: fallback }

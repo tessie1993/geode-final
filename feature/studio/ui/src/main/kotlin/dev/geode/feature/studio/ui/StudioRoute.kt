@@ -141,6 +141,10 @@ fun StudioRoute(
             is StudioAction.RenderAgain ->
                 draft = state.videos.firstOrNull { it.id == action.video }?.let { RenderDraft.again(it, state) }
             is StudioAction.Share -> share(context, action.video, shareTitle)
+            is StudioAction.SaveChapters -> {
+                chapters = action.video.chapters(action.file)
+                chapterSavers.getValue(action.file).launch("geode_chapters_${System.currentTimeMillis()}.${action.file.extension}")
+            }
             StudioAction.Back -> if (video != null) video = null else project = null
         }
     }
@@ -168,7 +172,7 @@ fun StudioRoute(
             },
             onDismiss = { draft = null },
             onSaveChapters = { file ->
-                chapters = chapterText(open.spec.tracks, file)
+                chapters = chapterText(open.spec.tracks, file, open.spec.join.crossfade)
                 chapterSavers.getValue(file).launch("geode_chapters_${System.currentTimeMillis()}.${file.extension}")
             },
         )

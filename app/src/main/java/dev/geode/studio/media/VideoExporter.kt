@@ -17,6 +17,7 @@ import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
+import dev.geode.render.offscreen.RenderCues
 import dev.geode.render.offscreen.StyleSwitches
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +68,8 @@ class VideoExporter(
         val switches: StyleSwitches? = null,
         /** The gain that levels the sound to the Render's loudness target (#329); 0 leaves it as mixed. */
         val gainDb: Double = 0.0,
+        /** Changes of look at moments of the Render's own, such as a continuous video's next track (#326). */
+        val cues: RenderCues? = null,
     )
 
     sealed interface Result {
@@ -277,6 +280,7 @@ class VideoExporter(
                     timeline = timeline,
                     pcm = pcm,
                     switches = job.switches,
+                    cues = job.cues,
                     spec =
                         OffscreenRenderSpec(
                             width = aspect.width,

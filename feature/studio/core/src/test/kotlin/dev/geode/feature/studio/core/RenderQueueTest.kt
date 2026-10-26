@@ -3,6 +3,7 @@ package dev.geode.feature.studio.core
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
@@ -24,6 +25,7 @@ import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
@@ -95,6 +97,9 @@ class RenderQueueTest {
     ) = Row(name, from, event, Next(to, effects.toList()))
 
     private val newRenders = RenderPlan.rendersOf(spec, trip.id)
+    private val calm = RenderLook.Preset(PresetId("Night"))
+    private val join = TrackJoin(Millis(4_000), FadeCurve.SMOOTH)
+    private val continuous = spec.copy(playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO, trackLooks = listOf(calm), join = join)
 
     private val queueRows: List<Row> =
         listOf(
@@ -141,11 +146,26 @@ class RenderQueueTest {
                 ReportFailure(VISUALS_OFF_REFUSAL),
             ),
             row(
-                "one continuous video of a playlist is not made yet",
+                "one continuous video of a playlist queues a single Render of every track",
                 ready,
-                queue(spec.copy(playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO)),
+                queue(continuous),
                 ready,
-                ReportFailure(CONTINUOUS_REFUSAL),
+                Perform(
+                    StudioWork.QueueRenders(
+                        listOf(
+                            NewRender(
+                                listOf(night, tide),
+                                look,
+                                format,
+                                RenderLength.WholeTrack,
+                                trip.id,
+                                extras,
+                                trackLooks = listOf(calm, look),
+                                join = join,
+                            ),
+                        ),
+                    ),
+                ),
             ),
             row("nothing to render queues nothing", ready, queue(spec.copy(tracks = emptyList())), ready),
             row("a frame rate under the range queues nothing", ready, queue(spec.copy(format = format.copy(fps = 11))), ready),
@@ -228,6 +248,12 @@ class RenderQueueTest {
                 waiting,
                 StudioEvent.RenderSettingsChanged(RenderSettings(true, format, extras)),
                 waiting.copy(visualsOff = true, renderFormat = format, renderExtras = extras),
+            ),
+            row(
+                "Settings give how a new continuous video joins its tracks",
+                waiting.copy(visualsOff = true),
+                StudioEvent.RenderSettingsChanged(RenderSettings(true, format, extras, join = join)),
+                waiting.copy(visualsOff = true, renderFormat = format, renderExtras = extras, renderJoin = join),
             ),
             row(
                 "turning Visuals off off starts the queue again",
@@ -388,8 +414,37 @@ class RenderQueueTest {
             ),
         )
 
+    private val joined =
+        rendered.copy(
+            id = VideoId(7),
+            file = "content://media/video/7",
+            madeWith = continuous.copy(project = trip.id, length = RenderLength.WholeTrack, trackLooks = listOf(calm, look)),
+        )
+
     private val againRows: List<Row> =
         listOf(
+            row(
+                "a continuous video is made again with every track, the look of each and how they join",
+                withVideos.copy(videos = listOf(joined)),
+                again(7, againSpec.copy(length = RenderLength.Loop)),
+                withVideos.copy(videos = listOf(joined)),
+                Perform(
+                    StudioWork.QueueRenderAgain(
+                        joined.file,
+                        NewRender(
+                            listOf(night, tide),
+                            look,
+                            square,
+                            RenderLength.WholeTrack,
+                            trip.id,
+                            RenderExtras(),
+                            "deep.milk",
+                            trackLooks = listOf(calm, look),
+                            join = join,
+                        ),
+                    ),
+                ),
+            ),
             row(
                 "a Render is made again with the new choices, its own Track and its frozen look",
                 withVideos,
@@ -505,8 +560,12 @@ class RenderQueueTest {
     fun `a Render's video keeps the setup it was made from`() {
         val single = NewRender(listOf(night), look, format, section, trip.id, extras, "deep.milk")
         assertEquals(madeWith.copy(milkdrop = "deep.milk"), single.toSpec())
-        val playlist = single.copy(tracks = listOf(night, tide))
+        val playlist = single.copy(tracks = listOf(night, tide), trackLooks = listOf(calm, look), join = join)
         assertEquals(PlaylistMode.ONE_CONTINUOUS_VIDEO, playlist.toSpec().playlist)
+        assertEquals(listOf(calm, look), playlist.toSpec().trackLooks)
+        assertEquals(join, playlist.toSpec().join)
+        assertEquals(playlist, playlist.queuedAs(RenderId(4), RenderId(4)).toNewRender())
+        assertEquals(listOf(calm, look), playlist.queuedAs(RenderId(4), RenderId(4)).trackLooks)
         assertEquals(single, single.queuedAs(RenderId(3), RenderId(3)).toNewRender())
     }
 
@@ -519,5 +578,9 @@ class RenderQueueTest {
             describe(RenderProblem.ENCODER_REFUSED, "Night Drive"),
         )
         assertEquals("The Render of “Low Tide” failed: the video could not be saved", describe(RenderProblem.NOT_SAVED, "Low Tide"))
+        assertEquals(
+            "The Render of “Low Tide” failed: the phone's storage is too full for the video",
+            describe(RenderProblem.NO_SPACE, "Low Tide"),
+        )
     }
 }

@@ -139,7 +139,7 @@ The one folder on the device where every Project lives, chosen by the user durin
 _Avoid_: export path, output directory
 
 **Render**:
-A video file made offline from a Track or playlist with a Customization. It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
+A video file made offline from a Track or playlist with a Customization (one per track when a playlist is one continuous video). It remembers both, and its own render settings, so it can be made again at another shape or quality. Those settings belong to the Render, never to the song: the next Render of the same song starts from the user's chosen starting point.
 _Avoid_: Export, take, clip
 
 **Recording**:

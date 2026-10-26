@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.api
 
+import dev.geode.engine.types.Millis
 import java.util.Locale
 
 /** One chapter of a playlist video: where it starts, how long it runs, and what it is called. */
@@ -14,18 +15,41 @@ data class TrackChapter(
 /**
  * Chapter markers for a playlist Render (#329): one per song, at the moment it starts when the songs play
  * one after another, as a description to paste under a video, WebVTT, and FFmetadata. Geode writes them
- * beside the video, since the phone's muxer cannot put a chapter track inside it.
+ * beside the video, since the phone's muxer cannot put a chapter track inside it. One continuous video
+ * (#326) joins its songs with the Playback settings' crossfade: each song starts as the one before it
+ * begins to fade out.
  */
 object Chapters {
-    /** One chapter per track of [tracks] in order, each named after its song and artist; none for a single track. */
-    fun of(tracks: List<RenderTrack>): List<TrackChapter> {
+    /**
+     * One chapter per track of [tracks] in order, each named after its song and artist; none for a single
+     * track. With a [crossfade], each song starts that long before the one before it ends (see [overlap]),
+     * and each chapter runs until the next one starts, so the chapters tile the video.
+     */
+    fun of(
+        tracks: List<RenderTrack>,
+        crossfade: Millis = Millis.ZERO,
+    ): List<TrackChapter> {
         if (tracks.size < 2) return emptyList()
+        val lengths = tracks.map { it.length.value.coerceAtLeast(0L) }
         var start = 0L
         return tracks.mapIndexed { index, track ->
-            val length = track.length.value.coerceAtLeast(0L)
-            TrackChapter(start, length, titleOf(track, index)).also { start += length }
+            val length = lengths[index]
+            val next = lengths.getOrNull(index + 1)
+            val shared = if (next == null) 0L else overlap(crossfade, Millis(length), Millis(next)).value
+            TrackChapter(start, length - shared, titleOf(track, index)).also { start += length - shared }
         }
     }
+
+    /**
+     * How long the song [before] and the song [after] it sound together when a playlist is joined with
+     * [crossfade] (#326): the crossfade, but never more than half of either song, so no song is ever heard
+     * with two others at once. Nothing for no crossfade, or a song whose length is not known.
+     */
+    fun overlap(
+        crossfade: Millis,
+        before: Millis,
+        after: Millis,
+    ): Millis = Millis(minOf(crossfade.value, before.value / 2, after.value / 2).coerceAtLeast(0L))
 
     /** `0:00 Song — Artist`, a line per chapter: what a listener pastes into a video description. */
     fun description(chapters: List<TrackChapter>): String =

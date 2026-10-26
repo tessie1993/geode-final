@@ -1,9 +1,12 @@
 package dev.geode.feature.studio.ui
 
 import dev.geode.engine.types.Millis
+import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 import org.junit.Assert.assertEquals
@@ -84,6 +87,20 @@ class StudioModelTest {
         assertTrue(checkNotNull(withShort.toVideoModel(first.id)).copy(video = first.copy(kind = VideoKind.RECORDING)).canMakeShort)
         assertTrue(checkNotNull(withShort.toVideoModel(first.id)).copy(video = first.copy(kind = VideoKind.RENDER)).canMakeShort)
         assertFalse(checkNotNull(withShort.toVideoModel(first.id)).copy(video = first.copy(kind = VideoKind.EDIT)).canMakeShort)
+    }
+
+    @Test
+    fun `a continuous video's page offers its chapters, one per track, where each fades in`() {
+        val first = state.videos.first()
+        val tracks = listOf(PreviewStudio.night, PreviewStudio.tide)
+        val spec = RenderSpec(tracks, playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO, join = TrackJoin(Millis(4_000)))
+        val joined = first.copy(madeWith = spec)
+        val page = checkNotNull(state.copy(videos = listOf(joined)).toVideoModel(joined.id))
+        assertEquals("0:00 Midnight City\n4:00 Teardrop\n", page.chapters(ChapterFile.DESCRIPTION))
+        val single =
+            checkNotNull(state.copy(videos = listOf(first.copy(madeWith = spec.copy(tracks = tracks.take(1))))).toVideoModel(first.id))
+        assertEquals("", single.chapters(ChapterFile.DESCRIPTION))
+        assertEquals("", page.copy(video = first.copy(madeWith = null)).chapters(ChapterFile.WEB_VTT))
     }
 
     @Test

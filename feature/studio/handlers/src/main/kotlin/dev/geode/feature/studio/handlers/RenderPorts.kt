@@ -1,5 +1,7 @@
 package dev.geode.feature.studio.handlers
 
+import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
 import dev.geode.feature.settings.api.ExportQuality
@@ -8,6 +10,7 @@ import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderExtras
@@ -18,6 +21,7 @@ import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderSettings
@@ -49,13 +53,16 @@ fun interface RenderLooks {
 /**
  * Makes one Render's video (#316). `:app` fills it with the whole-track analysis, the offscreen
  * renderer on its own engine instance (ADR-0004), the encoder and the sound, and saves the video. It
- * reports [progress] (0..1 of the whole Render) as it goes, stops soon after [isCancelled] turns true,
- * and says how it ended. It may throw; the handlers report that as an engine failure.
+ * draws with the frozen [look]; one continuous video of a playlist (#326) draws each track with its own,
+ * [trackLooks], in the tracks' order (empty for any other Render). It reports [progress] (0..1 of the
+ * whole Render) as it goes, stops soon after [isCancelled] turns true, and says how it ended. It may
+ * throw; the handlers report that as an engine failure.
  */
 fun interface RenderEngine {
     suspend fun render(
         job: RenderJob,
         look: FrozenLook,
+        trackLooks: List<FrozenLook>,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): RenderEnd
@@ -97,7 +104,8 @@ fun renderSettingsOf(settings: Settings): Flow<RenderSettings> =
 
 /**
  * What a new Render starts from in [values] (#22, #28), whether Visuals off is on (#196), Renders keep
- * going (#28), and what a saved Edit does with its videos (#318).
+ * going (#28), what a saved Edit does with its videos (#318), and how a continuous video joins its tracks:
+ * the Playback settings' crossfade, its length and curve (#326).
  */
 fun renderSettingsOf(values: SettingsValues): RenderSettings {
     val export = values.export
@@ -114,8 +122,20 @@ fun renderSettingsOf(values: SettingsValues): RenderSettings {
         RenderExtras(loudnessOf(export.loudness)),
         values.background.renders,
         sourcesOf(export.editSources),
+        TrackJoin(values.playback.crossfade.coerceIn(Millis.ZERO, MAX_JOIN_CROSSFADE), curveOf(values.playback.crossfadeCurve)),
     )
 }
+
+/** The longest crossfade a continuous video joins with: the longest Playback plays (`MAX_CROSSFADE`). */
+private val MAX_JOIN_CROSSFADE = Millis(12_000)
+
+/** The Playback settings' crossfade curve, as a continuous video's join reads it (#326). */
+private fun curveOf(curve: CrossfadeCurve): FadeCurve =
+    when (curve) {
+        CrossfadeCurve.LINEAR -> FadeCurve.LINEAR
+        CrossfadeCurve.EQUAL_POWER -> FadeCurve.EQUAL_POWER
+        CrossfadeCurve.SMOOTH -> FadeCurve.SMOOTH
+    }
 
 /** Settings' choice of what a saved Edit does with its videos, as Studio reads it (#318). */
 private fun sourcesOf(sources: SettingsEditSources): EditSources =

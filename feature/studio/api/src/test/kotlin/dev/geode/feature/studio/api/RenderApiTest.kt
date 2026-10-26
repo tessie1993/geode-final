@@ -112,4 +112,45 @@ class RenderApiTest {
         assertFalse(StudioState(appInFront = false).rendersHeld)
         assertTrue(StudioState(rendersKeepGoing = false, appInFront = false).rendersHeld)
     }
+
+    @Test
+    fun `one continuous video has a look for each track, the setup's look where none is chosen`() {
+        val calm =
+            RenderLook.Preset(
+                dev.geode.engine.types
+                    .PresetId("calm"),
+            )
+        val spec =
+            RenderSpec(
+                listOf(night, tide),
+                playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO,
+                trackLooks = listOf(calm),
+                join = TrackJoin(Millis(3_000), FadeCurve.SMOOTH),
+            )
+        assertTrue(spec.continuous)
+        assertEquals(listOf(calm, RenderLook.Current), spec.looksOfTracks)
+        assertFalse(spec.copy(playlist = PlaylistMode.ONE_VIDEO_PER_TRACK).continuous)
+        assertFalse(spec.copy(tracks = listOf(night)).continuous)
+        assertEquals(listOf(RenderLook.Current, RenderLook.Current), RenderSpec(listOf(night, tide)).looksOfTracks)
+        assertEquals(listOf(calm), spec.copy(tracks = listOf(night), trackLooks = listOf(calm, calm)).looksOfTracks)
+        assertEquals(TrackJoin(Millis.ZERO, FadeCurve.EQUAL_POWER), RenderSpec(listOf(night)).join)
+    }
+
+    @Test
+    fun `a continuous Render job keeps the look of each track and the crossfade between them`() {
+        val calm =
+            RenderLook.Preset(
+                dev.geode.engine.types
+                    .PresetId("calm"),
+            )
+        val joined =
+            job(
+                1,
+                RenderStatus.Queued,
+                tracks = listOf(night, tide),
+            ).copy(trackLooks = listOf(calm), join = TrackJoin(Millis(2_000)))
+        assertEquals(listOf(calm, RenderLook.Current), joined.looksOfTracks)
+        assertEquals(TrackJoin(Millis(2_000)), joined.join)
+        assertEquals(listOf(RenderLook.Current), job(1, RenderStatus.Queued).looksOfTracks)
+    }
 }

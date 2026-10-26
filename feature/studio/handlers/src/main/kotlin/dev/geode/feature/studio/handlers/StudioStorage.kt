@@ -59,12 +59,14 @@ interface StudioStorage {
 
     /**
      * Saves [renders], all with [look], as one batch queued at [queuedAt]; returns them waiting, with
-     * their ids, in the same order.
+     * their ids, in the same order. A continuous video of a playlist (#326) is saved with the look of each
+     * of its tracks too, [trackLooks].
      */
     suspend fun queueRenders(
         renders: List<NewRender>,
         look: FrozenLook,
         queuedAt: Millis,
+        trackLooks: List<FrozenLook> = emptyList(),
     ): List<RenderJob>
 
     /** The Renders that have not finished, oldest first: the queue to carry on after a restart. */
@@ -75,6 +77,12 @@ interface StudioStorage {
 
     /** The look frozen for the Render whose video is [file], or null when no kept Render made it (#327). */
     suspend fun lookOfVideo(file: String): FrozenLook?
+
+    /** The look frozen for each track of [render], a continuous video (#326); empty for any other Render. */
+    suspend fun trackLooksOf(render: RenderId): List<FrozenLook>
+
+    /** The look frozen for each track of the continuous video [file] (#326); empty for any other video. */
+    suspend fun trackLooksOfVideo(file: String): List<FrozenLook>
 
     /** [render] was made as [file]: it is kept, with its choices and look, so it can be made again. */
     suspend fun renderSaved(
@@ -167,10 +175,19 @@ class RoomStudioStorage(
         renders: List<NewRender>,
         look: FrozenLook,
         queuedAt: Millis,
+        trackLooks: List<FrozenLook>,
     ): List<RenderJob> {
+        val looks = if (trackLooks.isEmpty()) null else TrackLooksFormat.encode(trackLooks)
         val rows =
             renders.map {
-                RenderEntity(batch = 0, spec = RenderSpecFormat.encode(it), look = look.text, videoFile = null, queuedAtMs = queuedAt.value)
+                RenderEntity(
+                    batch = 0,
+                    spec = RenderSpecFormat.encode(it),
+                    look = look.text,
+                    videoFile = null,
+                    queuedAtMs = queuedAt.value,
+                    trackLooks = looks,
+                )
             }
         val ids = dao.queueRenders(rows)
         val batch = RenderId(ids.firstOrNull() ?: 0)
@@ -183,6 +200,10 @@ class RoomStudioStorage(
     override suspend fun lookOf(render: RenderId): FrozenLook? = dao.lookOf(render.value)?.let(::FrozenLook)
 
     override suspend fun lookOfVideo(file: String): FrozenLook? = dao.lookOfVideo(file)?.let(::FrozenLook)
+
+    override suspend fun trackLooksOf(render: RenderId): List<FrozenLook> = TrackLooksFormat.decode(dao.trackLooksOf(render.value))
+
+    override suspend fun trackLooksOfVideo(file: String): List<FrozenLook> = TrackLooksFormat.decode(dao.trackLooksOfVideo(file))
 
     override suspend fun renderSaved(
         render: RenderId,

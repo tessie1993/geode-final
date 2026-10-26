@@ -7,6 +7,7 @@ import dev.geode.feature.studio.api.EditCut
 import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderExtras
@@ -15,6 +16,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.NewRender
 import dev.geode.feature.studio.handlers.edit.EditorProjectFormat
@@ -26,7 +28,8 @@ import org.json.JSONObject
  * JSON (ADR-0004), so a queued Render resumes after the app is killed and a finished one can be made
  * again (#327). A value this version does not know falls back to the default rather than losing the
  * Render. An Edit's export (#318) keeps its cut here too: the clip editor's video and edit, or the
- * Timeline's whole project, with whether its videos were copied.
+ * Timeline's whole project, with whether its videos were copied. A continuous video of a playlist (#326)
+ * keeps the look chosen for each track and how its tracks join; their frozen looks are kept beside it.
  */
 internal object RenderSpecFormat {
     private const val CURRENT_VERSION = 1
@@ -51,6 +54,8 @@ internal object RenderSpecFormat {
             .putOpt(MILKDROP, render.milkdrop)
             .putOpt(EDIT, render.edit?.let(::edit))
             .putOpt(MADE_FROM, render.madeFrom?.let(::madeFrom))
+            .putOpt(TRACK_LOOKS, render.trackLooks.takeIf { it.isNotEmpty() }?.let { looks -> JSONArray(looks.map(::look)) })
+            .putOpt(JOIN, render.join.takeIf { it != TrackJoin() }?.let(::join))
             .toString()
     }
 
@@ -83,8 +88,15 @@ internal object RenderSpecFormat {
             milkdrop = if (o.has(MILKDROP)) o.getString(MILKDROP) else null,
             edit = o.optJSONObject(EDIT)?.let(::editOf),
             madeFrom = o.optJSONObject(MADE_FROM)?.let(::madeFromOf),
+            trackLooks = o.optJSONArray(TRACK_LOOKS)?.let { looks -> List(looks.length()) { lookOf(looks.optJSONObject(it)) } }.orEmpty(),
+            join = o.optJSONObject(JOIN)?.let(::joinOf) ?: TrackJoin(),
         )
     }
+
+    private fun join(join: TrackJoin): JSONObject = JSONObject().put(CROSSFADE_MS, join.crossfade.value).put(CURVE, join.curve.name)
+
+    private fun joinOf(o: JSONObject): TrackJoin =
+        TrackJoin(Millis(o.optLong(CROSSFADE_MS).coerceAtLeast(0L)), enumOr(o.optString(CURVE), FadeCurve.EQUAL_POWER))
 
     private fun madeFrom(made: MadeFrom): JSONObject = JSONObject().put(FILE, made.file).put(KIND, made.kind.name)
 
@@ -219,4 +231,8 @@ internal object RenderSpecFormat {
     private const val TITLE_CARD = "titleCard"
     private const val END_CARD = "endCard"
     private const val ARTIST = "artist"
+    private const val TRACK_LOOKS = "trackLooks"
+    private const val JOIN = "join"
+    private const val CROSSFADE_MS = "crossfadeMs"
+    private const val CURVE = "curve"
 }

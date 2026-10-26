@@ -175,6 +175,45 @@ class StudioDatabaseMigrationRobolectricTest {
         }
 
     @Test
+    fun `a version 4 database keeps its library and queue, and its Renders have no track looks yet`() =
+        runBlocking {
+            val name = "studio-v4-sample.db"
+            writeSample(name, version = 4, script = "db/studio-v4.sql")
+
+            val database = StudioDatabase.open(context, name)
+            val storage = RoomStudioStorage(database.dao())
+            try {
+                val videos = storage.videos()
+                assertEquals(listOf("Night Drive", "Night Drive Short"), videos.map { it.name })
+                assertEquals(listOf(null, VideoId(1)), videos.map { it.source })
+                val tide = RenderTrack(TrackId("content://media/7"), "Low Tide", Millis(187_000))
+                val waiting = storage.unfinishedRenders().single()
+                assertEquals(listOf(tide), waiting.tracks)
+                assertEquals(FrozenLook("{\"style\":\"fluid_ink\"}"), storage.lookOf(waiting.id))
+                assertEquals(emptyList<FrozenLook>(), storage.trackLooksOf(waiting.id))
+                assertEquals(emptyList<FrozenLook>(), storage.trackLooksOfVideo("content://media/external/video/media/41"))
+                // Version 5 keeps the look of each track of a continuous video (#326).
+                val night = RenderTrack(TrackId("content://media/12"), "Night Drive", Millis(215_000))
+                val joined =
+                    NewRender(
+                        listOf(night, tide),
+                        RenderLook.Current,
+                        RenderFormat(),
+                        RenderLength.WholeTrack,
+                        ProjectId(1),
+                        RenderExtras(),
+                        trackLooks = listOf(RenderLook.Current, RenderLook.Current),
+                    )
+                val looks = listOf(FrozenLook("{}"), FrozenLook("{}"))
+                val queued = storage.queueRenders(listOf(joined), FrozenLook("{}"), Millis(1), looks).single()
+                assertEquals(looks, storage.trackLooksOf(queued.id))
+                assertEquals(listOf(waiting, queued), storage.unfinishedRenders())
+            } finally {
+                database.close()
+            }
+        }
+
+    @Test
     fun `the database is at the version the samples lead up to`() {
         assertEquals(1 + StudioDatabase.MIGRATIONS.size, StudioDatabase.VERSION)
     }

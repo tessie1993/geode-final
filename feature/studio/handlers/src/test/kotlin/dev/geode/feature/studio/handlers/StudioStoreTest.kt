@@ -3,6 +3,7 @@ package dev.geode.feature.studio.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportFrameRate
 import dev.geode.feature.settings.api.ExportLoudness
@@ -12,6 +13,7 @@ import dev.geode.feature.settings.api.ExportSettings
 import dev.geode.feature.settings.api.FolderSettings
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.PerformanceSettings
+import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
@@ -22,6 +24,7 @@ import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSession
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
@@ -46,6 +49,7 @@ import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
@@ -521,6 +525,69 @@ class StudioStoreTest {
     }
 
     @Test
+    fun `a continuous video is one Render of every track, each drawn with its own look, frozen once each`() {
+        val (studio, _) = renderingStore()
+        val calm = RenderLook.Preset(PresetId("Calm"))
+        val spec =
+            RenderSpec(
+                listOf(night, tide, night),
+                playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO,
+                trackLooks = listOf(calm, RenderLook.Current, calm),
+                join = TrackJoin(Millis(3_000)),
+            )
+
+        studio.send(StudioCommand.QueueRender(spec))
+
+        // The setup's look, then each distinct look of the tracks once.
+        assertEquals(listOf(RenderLook.Current, calm, RenderLook.Current), looks.frozen)
+        val job = engine.made.single().first
+        assertEquals(listOf(night, tide, night), job.tracks)
+        assertEquals(TrackJoin(Millis(3_000)), job.join)
+        assertEquals(listOf(listOf(FrozenLook("look 2"), FrozenLook("look 3"), FrozenLook("look 2"))), engine.trackLooks)
+        val video =
+            studio.state.value.videos
+                .single()
+        assertEquals("Night Drive · Low Tide · Night Drive", video.name)
+        assertEquals(PlaylistMode.ONE_CONTINUOUS_VIDEO, video.madeWith?.playlist)
+        assertEquals(listOf(calm, RenderLook.Current, calm), video.madeWith?.trackLooks)
+        assertTrue(failures.isEmpty())
+
+        // Made again, it keeps every track's frozen look.
+        studio.send(StudioCommand.RenderAgain(video.id, checkNotNull(video.madeWith)))
+        assertEquals(3, looks.frozen.size)
+        assertEquals(engine.trackLooks.first(), engine.trackLooks.last())
+        assertEquals(
+            listOf(night, tide, night),
+            engine.made
+                .last()
+                .first.tracks,
+        )
+    }
+
+    @Test
+    fun `a continuous video whose track looks are gone is not drawn`() {
+        val (studio, _) = renderingStore()
+        val gate = engine.hold()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night)))) // holds the queue
+        studio.send(
+            StudioCommand.QueueRender(
+                RenderSpec(listOf(night, tide), playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO),
+            ),
+        )
+        storage.loseTrackLooks = true
+        engine.release()
+        gate.complete(Unit)
+
+        assertEquals(
+            RenderStatus.Failed(RenderProblem.LOOK_UNAVAILABLE),
+            studio.state.value.renders
+                .last()
+                .status,
+        )
+        assertEquals(1, engine.made.size)
+    }
+
+    @Test
     fun `the running Render reports its progress and can be cancelled, leaving no Render behind`() {
         val (studio, _) = renderingStore()
         val gate = engine.hold()
@@ -740,6 +807,24 @@ class StudioStoreTest {
             RenderSettings(true, RenderFormat(), RenderExtras()),
             renderSettingsOf(SettingsValues(performance = PerformanceSettings(visualsOff = true))),
         )
+    }
+
+    @Test
+    fun `a continuous video joins its tracks with the Playback settings' crossfade`() {
+        val curves =
+            CrossfadeCurve.entries.map {
+                renderSettingsOf(
+                    SettingsValues(playback = PlaybackSettings(crossfadeCurve = it)),
+                ).join.curve
+            }
+        assertEquals(listOf(FadeCurve.LINEAR, FadeCurve.EQUAL_POWER, FadeCurve.SMOOTH), curves)
+        assertEquals(Millis(4_000), renderSettingsOf(SettingsValues(playback = PlaybackSettings(crossfade = Millis(4_000)))).join.crossfade)
+        assertEquals(
+            Millis(12_000),
+            renderSettingsOf(SettingsValues(playback = PlaybackSettings(crossfade = Millis(60_000)))).join.crossfade,
+        )
+        assertEquals(Millis.ZERO, renderSettingsOf(SettingsValues(playback = PlaybackSettings(crossfade = Millis(-1)))).join.crossfade)
+        assertEquals(TrackJoin(), renderSettingsOf(SettingsValues()).join)
     }
 
     @Test
@@ -1090,6 +1175,7 @@ private class FakeRenderLooks : RenderLooks {
  */
 private class FakeRenderEngine : RenderEngine {
     val made = mutableListOf<Pair<RenderJob, FrozenLook>>()
+    val trackLooks = mutableListOf<List<FrozenLook>>()
     var progress: ((RenderPhase, Float) -> Unit)? = null
     var cancelled: (() -> Boolean)? = null
     var broken = false
@@ -1107,10 +1193,12 @@ private class FakeRenderEngine : RenderEngine {
     override suspend fun render(
         job: RenderJob,
         look: FrozenLook,
+        trackLooks: List<FrozenLook>,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): RenderEnd {
         made += job to look
+        this.trackLooks += trackLooks
         this.progress = progress
         cancelled = isCancelled
         check(!broken) { "engine crashed" }
@@ -1128,6 +1216,7 @@ private data class StoredRender(
     val job: RenderJob,
     val look: FrozenLook,
     val file: String?,
+    val trackLooks: List<FrozenLook> = emptyList(),
 )
 
 private class FakeStudioStorage : StudioStorage {
@@ -1137,6 +1226,7 @@ private class FakeStudioStorage : StudioStorage {
     private var default: ProjectId? = null
     var broken = false
     var loseLooks = false
+    var loseTrackLooks = false
     private var nextId = 1L
 
     private fun ensureWorking() = check(!broken) { "storage broken" }
@@ -1229,11 +1319,12 @@ private class FakeStudioStorage : StudioStorage {
         renders: List<NewRender>,
         look: FrozenLook,
         queuedAt: Millis,
+        trackLooks: List<FrozenLook>,
     ): List<RenderJob> {
         ensureWorking()
         val batch = RenderId(nextId)
         return renders.map { render ->
-            render.queuedAs(RenderId(nextId++), batch).also { rendersById[it.id] = StoredRender(it, look, null) }
+            render.queuedAs(RenderId(nextId++), batch).also { rendersById[it.id] = StoredRender(it, look, null, trackLooks) }
         }
     }
 
@@ -1252,6 +1343,19 @@ private class FakeStudioStorage : StudioStorage {
     override suspend fun lookOfVideo(file: String): FrozenLook? {
         ensureWorking()
         return if (loseLooks) null else rendersById.values.lastOrNull { it.file == file }?.look
+    }
+
+    override suspend fun trackLooksOf(render: RenderId): List<FrozenLook> {
+        ensureWorking()
+        return if (loseTrackLooks) emptyList() else rendersById[render]?.trackLooks.orEmpty()
+    }
+
+    override suspend fun trackLooksOfVideo(file: String): List<FrozenLook> {
+        ensureWorking()
+        return rendersById.values
+            .lastOrNull { it.file == file }
+            ?.trackLooks
+            .orEmpty()
     }
 
     override suspend fun renderSaved(

@@ -178,6 +178,7 @@ private fun problemText(problem: RenderProblem): String =
             RenderProblem.TRACK_UNREADABLE -> R.string.studio_render_problem_track
             RenderProblem.ENCODER_REFUSED -> R.string.studio_render_problem_encoder
             RenderProblem.NOT_SAVED -> R.string.studio_render_problem_saved
+            RenderProblem.NO_SPACE -> R.string.studio_render_problem_space
             RenderProblem.ENGINE_FAILED -> R.string.studio_render_problem_engine
         },
     )
@@ -185,8 +186,9 @@ private fun problemText(problem: RenderProblem): String =
 /**
  * The Render setup (#22, #316, #325): a Track or a playlist, the look, a platform preset or the shape,
  * size, frame rate, quality and codec by hand, the length, the extras (#329) and the Project; then Render
- * queues it. A playlist's chapters can be copied or saved as files ([onSaveChapters]). Stateless: the
- * route keeps the [draft] (ADR-0003).
+ * queues it. A playlist makes a video per track or one continuous video (#326), with a look for each
+ * track and its chapters, which can be copied or saved as files ([onSaveChapters]). Stateless: the route
+ * keeps the [draft] (ADR-0003).
  */
 @Composable
 fun RenderSetupDialog(
@@ -209,13 +211,14 @@ fun RenderSetupDialog(
                 if (draft.again == null) {
                     SourcePicker(draft, choices, onDraft)
                     LookPicker(draft, choices, onDraft)
+                    if (draft.continuous) TrackLooksPicker(draft, choices, onDraft)
                 } else {
                     Note(stringResource(R.string.studio_render_again_note, draft.againName))
                 }
                 MilkdropPicker(draft, choices, onDraft)
                 FormatPicker(draft, onDraft)
                 ExtrasPicker(draft, onDraft)
-                if (draft.spec.tracks.size > 1) PlaylistChapters(draft, onSaveChapters)
+                if (draft.continuous) PlaylistChapters(draft, onSaveChapters)
                 ProjectPicker(draft, projects, onDraft)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.studio_cancel)) }
@@ -265,7 +268,7 @@ private fun SourcePicker(
                 )
             }
         }
-        if (draft.playlist != null) Note(stringResource(R.string.studio_render_one_per_track))
+        if (draft.playlist != null) PlaylistModePicker(draft, onDraft)
     } else {
         OutlinedTextField(filter, { filter = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.studio_render_find)) })
         val shown = choices.tracks.filter { it.title.contains(filter.trim(), ignoreCase = true) }
@@ -291,11 +294,64 @@ private fun LookPicker(
     val spec = draft.spec
     Heading(stringResource(R.string.studio_render_look))
     Choice(stringResource(R.string.studio_render_look_current), spec.look == RenderLook.Current) {
-        onDraft(draft.copy(spec = spec.copy(look = RenderLook.Current)))
+        onDraft(draft.look(RenderLook.Current))
     }
     choices.presets.forEach { choice ->
         val look = RenderLook.Preset(choice.preset)
-        Choice(choice.name, spec.look == look) { onDraft(draft.copy(spec = spec.copy(look = look))) }
+        Choice(choice.name, spec.look == look) { onDraft(draft.look(look)) }
+    }
+}
+
+/**
+ * A playlist as a video per track or as one continuous video (#326), and how the continuous video joins
+ * its tracks: the Playback settings' crossfade, the Visual moving on at the next downbeat.
+ */
+@Composable
+private fun PlaylistModePicker(
+    draft: RenderDraft,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        FilterChip(
+            selected = !draft.continuous,
+            onClick = { onDraft(draft.continuous(false)) },
+            label = { Text(stringResource(R.string.studio_render_per_track)) },
+        )
+        FilterChip(
+            selected = draft.continuous,
+            onClick = { onDraft(draft.continuous(true)) },
+            label = { Text(stringResource(R.string.studio_render_continuous)) },
+        )
+    }
+    if (!draft.continuous) return Note(stringResource(R.string.studio_render_one_per_track))
+    val seconds = draft.spec.join.crossfade.value / MILLIS_PER_SECOND
+    val join =
+        if (draft.spec.join.crossfade.value > 0) {
+            pluralStringResource(R.plurals.studio_render_join_crossfade, seconds.toInt(), seconds)
+        } else {
+            stringResource(R.string.studio_render_join_gapless)
+        }
+    Note(stringResource(R.string.studio_render_continuous_note, join))
+}
+
+/** One Customization per track of a continuous video (#326): each track's look, the video's look by default. */
+@Composable
+private fun TrackLooksPicker(
+    draft: RenderDraft,
+    choices: RenderChoices,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    val options = listOf<RenderLook>(RenderLook.Current) + choices.presets.map { RenderLook.Preset(it.preset) }
+    val names: Map<RenderLook, String> = choices.presets.associate { RenderLook.Preset(it.preset) to it.name }
+    val current = stringResource(R.string.studio_render_look_current_short)
+    Heading(stringResource(R.string.studio_render_track_looks))
+    Note(stringResource(R.string.studio_render_track_looks_note))
+    draft.spec.looksOfTracks.forEachIndexed { index, look ->
+        Text(
+            stringResource(R.string.studio_render_track_row, index + 1, draft.spec.tracks[index].title),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Chips(options, { it == look }, { names[it] ?: current }) { onDraft(draft.trackLook(index, it)) }
     }
 }
 
@@ -346,6 +402,8 @@ private fun FormatPicker(
     Heading(stringResource(R.string.studio_render_codec))
     Chips(RenderCodec.entries, { format.codec == it }, { codecLabel(it) }) { set(format.copy(codec = it)) }
     Heading(stringResource(R.string.studio_render_length))
+    // A continuous video plays every track whole, as long as the playlist (#326).
+    if (draft.continuous) return Note(stringResource(R.string.studio_render_continuous_length))
     val lengths = listOf(RenderLength.WholeTrack, FIRST_MINUTE, FIRST_SECTION, RenderLength.Loop, AN_HOUR)
     Chips(lengths, { lengthChosen(it, spec.length) }, { lengthLabel(it) }) {
         onDraft(draft.custom(spec.copy(length = it)))
@@ -452,7 +510,7 @@ private fun PlaylistChapters(
     draft: RenderDraft,
     onSave: (ChapterFile) -> Unit,
 ) {
-    val text = chapterText(draft.spec.tracks, ChapterFile.DESCRIPTION)
+    val text = chapterText(draft.spec.tracks, ChapterFile.DESCRIPTION, draft.spec.join.crossfade)
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val label = stringResource(R.string.studio_render_chapters)
@@ -602,4 +660,5 @@ private fun lengthLabel(length: RenderLength): String =
     )
 
 private const val PERCENT = 100
+private const val MILLIS_PER_SECOND = 1_000L
 private const val SECONDS_PER_MINUTE = 60L

@@ -25,9 +25,11 @@ import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.core.ContinuousPlan
 import dev.geode.feature.studio.core.LongForm
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderPlan
+import dev.geode.feature.studio.core.TrackCues
 import dev.geode.feature.studio.handlers.FrozenLook
 import dev.geode.feature.studio.handlers.RenderEngine
 import dev.geode.feature.visuals.handlers.FileMilkdropFolder
@@ -43,6 +45,7 @@ import dev.geode.studio.media.LoopExtend
 import dev.geode.studio.media.LoopRender
 import dev.geode.studio.media.LoopSpec
 import dev.geode.studio.media.MixClip
+import dev.geode.studio.media.PlaylistSound
 import dev.geode.studio.media.VideoExporter
 import dev.geode.visuals.EngineSnapshots
 import dev.geode.visuals.StyleTargets
@@ -81,10 +84,11 @@ class NativeRenderEngine(
     override suspend fun render(
         job: RenderJob,
         look: FrozenLook,
+        trackLooks: List<FrozenLook>,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): RenderEnd {
-        // One continuous video of a playlist is not made yet (#326); the queue never asks for one.
+        if (job.tracks.size > 1) return renderContinuous(job, trackLooks, progress, isCancelled)
         val track = job.tracks.singleOrNull() ?: return RenderEnd.Failed(RenderProblem.ENGINE_FAILED)
         val values = (settings.state.value as? SettingsState.Ready)?.values ?: SettingsValues()
         progress(RenderPhase.PREPARING, 0f)
@@ -120,8 +124,123 @@ class NativeRenderEngine(
                 supersample = RenderPlan.supersampleOf(format),
                 gainDb = gainDb,
             )
-        val result = encode(made, track, progress, isCancelled) ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
-        return endOf(result, track, frame.width, frame.height)
+        val result = encode(made, track.title, progress, isCancelled) ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
+        return endOf(result, track.title, frame.width, frame.height)
+    }
+
+    /**
+     * One continuous video of a playlist (#326, as the owner decided on #273). Each track is measured and
+     * levelled to the Render's loudness target on its own (#329), then the tracks are joined into one sound
+     * with the Playback settings' crossfade ([PlaylistSound]); that sound is analysed whole (ADR-0001) and
+     * drawn as one Track would be. The Visual starts with the first track's Customization and moves to each
+     * next track's on the first downbeat once that track has come in ([ContinuousPlan.changesAt]), crossfading
+     * as any change of Style does (#309); each track's own Style switching runs while it plays (#343). It is
+     * as long as the playlist, refused only when the phone's free storage would not hold it.
+     */
+    private suspend fun renderContinuous(
+        job: RenderJob,
+        trackLooks: List<FrozenLook>,
+        progress: (RenderPhase, Float) -> Unit,
+        isCancelled: () -> Boolean,
+    ): RenderEnd {
+        val values = (settings.state.value as? SettingsState.Ready)?.values ?: SettingsValues()
+        progress(RenderPhase.PREPARING, 0f)
+        val looks = trackLooks.map { lookOf(it) ?: return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE) }
+        if (looks.size != job.tracks.size) return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
+        val contexts = trackLooks.map { runCatching { RenderLookFormat.decodeContext(it.text) }.getOrDefault(SwitchingContext()) }
+        if (!roomFor(job)) return RenderEnd.Failed(RenderProblem.NO_SPACE)
+        val joined =
+            joinedSound(job, isCancelled) { progress(RenderPhase.PREPARING, it * JOIN_SHARE) }
+                ?: return if (isCancelled()) RenderEnd.Cancelled else RenderEnd.Failed(RenderProblem.TRACK_UNREADABLE)
+        try {
+            // The joined sound is made for this Render alone, so its analysis is not cached.
+            val timeline =
+                timelineOf(joined.uri, values, isCancelled, cache = false) { progress(RenderPhase.ANALYSING, JOIN_SHARE + it * JOIN_SHARE) }
+                    ?: return if (isCancelled()) RenderEnd.Cancelled else RenderEnd.Failed(RenderProblem.TRACK_UNREADABLE)
+            if (isCancelled()) return RenderEnd.Cancelled
+            val downbeats = timeline.frames.filter { it.features.downbeat }.map { it.timeMs }
+            val cues = TrackCues(ContinuousPlan.changesAt(joined.startsMs, joined.overlapsMs, downbeats, timeline.bpm))
+            val switching =
+                PlaylistSwitches(
+                    cues,
+                    switchTo = { track -> trackSwitch(looks[track], job, values) },
+                    stylesOf = { track -> switchesOf(looks[track], contexts[track], values) },
+                )
+            val format = job.format
+            val frame = RenderPlan.frameOf(format)
+            val made =
+                VideoExporter.Job(
+                    audioUri = joined.uri,
+                    timeline = timeline,
+                    sceneFactory = sceneOf(looks.first(), job),
+                    look = EngineSnapshots.forRender(looks.first(), values),
+                    aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
+                    fps = format.fps,
+                    codec = format.codec,
+                    supersample = RenderPlan.supersampleOf(format),
+                    switches = switching,
+                    cues = switching,
+                )
+            val result =
+                encode(made, job.title, progress, isCancelled, from = 2 * JOIN_SHARE)
+                    ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
+            return endOf(result, job.title, frame.width, frame.height)
+        } finally {
+            joined.delete()
+        }
+    }
+
+    /**
+     * Whether the phone's free storage holds a continuous video of [job] while it is made: its only limit
+     * (#273). The video goes to shared storage and its joined sound to the cache, so both must have room.
+     */
+    private fun roomFor(job: RenderJob): Boolean {
+        val needed = ContinuousPlan.bytesNeeded(job.format, ContinuousPlan.lengthOf(job.tracks, job.join))
+        val cache = context.cacheDir.usableSpace
+        val shared = context.getExternalFilesDir(null)?.usableSpace ?: cache
+        val free = minOf(cache, shared)
+        if (free >= needed) return true
+        RingLog.note(TAG, "a continuous video needs $needed bytes free and the phone has $free")
+        return false
+    }
+
+    /**
+     * A continuous video's sound (#326): each track levelled to the Render's loudness target on its own, then
+     * all joined by the Render's crossfade. Null when it could not be made, or the Render was cancelled.
+     */
+    private suspend fun joinedSound(
+        job: RenderJob,
+        isCancelled: () -> Boolean,
+        onProgress: (Float) -> Unit,
+    ): PlaylistSound.Joined? {
+        val tracks =
+            job.tracks.map { track ->
+                val uri = track.id.toUri()
+                PlaylistSound.Track(uri, track.length.value, loudness.gainDb(uri, job.extras.loudness, isCancelled))
+            }
+        if (isCancelled()) return null
+        return when (val result = withContext(work) { PlaylistSound(context).join(tracks, job.join, isCancelled, onProgress) }) {
+            is PlaylistSound.Result.Made -> result.joined
+            is PlaylistSound.Result.Failed -> {
+                RingLog.note(TAG, "the playlist's sound could not be joined: ${result.message}")
+                null
+            }
+            PlaylistSound.Result.Cancelled -> null
+        }
+    }
+
+    /**
+     * The change to a track's own Customization in a continuous video (#326): its Style, drawn with its look,
+     * crossfading over its Style switching's transition, and the MilkDrop preset it plays.
+     */
+    private fun trackSwitch(
+        customization: Customization,
+        job: RenderJob,
+        values: SettingsValues,
+    ): RenderSwitch {
+        val scene = sceneOf(customization, job)
+        val transition = customization.automations.style?.transition ?: StyleSwitching.DEFAULT_TRANSITION
+        return RenderSwitch(scene.sceneId, EngineSnapshots.forRender(customization, values), transition, scene.milkPresetPath)
     }
 
     /** What a long-form Render draws: its Track and analysis, its Style and look, its format, and its sound's gain. */
@@ -185,7 +304,7 @@ class NativeRenderEngine(
                 LoopExtend(context).extend(
                     reel = reel,
                     audio = audio,
-                    fileName = fileNameOf(drawn.track),
+                    fileName = fileNameOf(drawn.track.title),
                     onProgress = { progress(RenderPhase.SAVING, REPEAT_FROM + it * (1f - REPEAT_FROM)) },
                     isCancelled = isCancelled,
                     maxDurationUs = totalUs,
@@ -193,7 +312,7 @@ class NativeRenderEngine(
                 )
             return when (extended) {
                 is LoopExtend.Result.Saved ->
-                    RenderEnd.Saved(videoOf(drawn.track, extended.uri, extended.durationMs, frame.width, frame.height))
+                    RenderEnd.Saved(videoOf(drawn.track.title, extended.uri, extended.durationMs, frame.width, frame.height))
                 is LoopExtend.Result.Failed -> {
                     RingLog.note(TAG, "the Render's long video was not saved: ${extended.message}")
                     RenderEnd.Failed(RenderProblem.NOT_SAVED)
@@ -239,15 +358,19 @@ class NativeRenderEngine(
             null
         }
 
-    /** The Track's analysis, or null when it cannot be read or the Render was cancelled meanwhile. */
+    /**
+     * The Track's analysis, or null when it cannot be read or the Render was cancelled meanwhile; read from
+     * and kept in the cache unless [cache] is off.
+     */
     private suspend fun timelineOf(
         uri: Uri,
         values: SettingsValues,
         isCancelled: () -> Boolean,
+        cache: Boolean = true,
         onProgress: (Float) -> Unit,
     ): FeatureTimeline? =
         try {
-            analyse(uri, values, isCancelled, onProgress)
+            analyse(uri, values, isCancelled, cache, onProgress)
         } catch (stopped: CancellationException) {
             if (!isCancelled()) throw stopped
             null
@@ -259,18 +382,22 @@ class NativeRenderEngine(
             null
         }
 
-    /** [made] encoded, or null when the encoder would not take its format. */
+    /**
+     * [made] encoded as a video named [title], or null when the encoder would not take its format. Its
+     * progress fills the Render's from [from] on.
+     */
     private suspend fun encode(
         made: VideoExporter.Job,
-        track: RenderTrack,
+        title: String,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
+        from: Float = ANALYSIS_SHARE,
     ): VideoExporter.Result? =
         try {
             exporter.export(
                 job = made,
-                fileName = fileNameOf(track),
-                onProgress = { progress(phaseAt(it), ANALYSIS_SHARE + it * (1f - ANALYSIS_SHARE)) },
+                fileName = fileNameOf(title),
+                onProgress = { progress(phaseAt(it), from + it * (1f - from)) },
                 isCancelled = isCancelled,
                 pace = { pace(isCancelled) },
             )
@@ -287,12 +414,12 @@ class NativeRenderEngine(
 
     private fun endOf(
         result: VideoExporter.Result,
-        track: RenderTrack,
+        title: String,
         width: Int,
         height: Int,
     ): RenderEnd =
         when (result) {
-            is VideoExporter.Result.Saved -> RenderEnd.Saved(videoOf(track, result.uri, result.lengthMs, width, height))
+            is VideoExporter.Result.Saved -> RenderEnd.Saved(videoOf(title, result.uri, result.lengthMs, width, height))
             is VideoExporter.Result.Failed -> {
                 RingLog.note(TAG, "the Render was not saved: ${result.message}")
                 RenderEnd.Failed(RenderProblem.NOT_SAVED)
@@ -300,9 +427,9 @@ class NativeRenderEngine(
             VideoExporter.Result.Cancelled -> RenderEnd.Cancelled
         }
 
-    /** A finished Render's video, named after its Track. */
+    /** A finished Render's video, named [title] after its Track, or every track of a continuous video. */
     private fun videoOf(
-        track: RenderTrack,
+        title: String,
         uri: Uri,
         lengthMs: Long,
         width: Int,
@@ -310,13 +437,13 @@ class NativeRenderEngine(
     ): NewVideo =
         NewVideo(
             kind = VideoKind.RENDER,
-            name = track.title,
+            name = title,
             file = uri.toString(),
             thumbnail = null,
             length = Millis(lengthMs),
             width = width,
             height = height,
-            song = track.title,
+            song = title,
         )
 
     /**
@@ -328,18 +455,24 @@ class NativeRenderEngine(
         uri: Uri,
         values: SettingsValues,
         isCancelled: () -> Boolean,
+        cache: Boolean,
         onProgress: (Float) -> Unit,
     ): FeatureTimeline {
         val sensitivity = values.analysis.beatSensitivity
         val gap = BeatTuning.clampIntervalMs(values.analysis.beatMinIntervalMs)
+        // A fresh analysis is drawn at the precision the cache keeps, so a Render of it and a Render of it
+        // read back from the cache are the same (#302).
+        val fresh = {
+            AnalysisCache.stored(analyzer.analyzeBlocking(uri, sensitivity, gap, onProgress, AnalysisProfile.RENDER) { !isCancelled() })
+        }
         val analysed =
             withContext(work) {
-                // A fresh analysis is drawn at the precision the cache keeps, so a Render of it and a Render
-                // of it read back from the cache are the same (#302).
-                AnalysisCache.load(context, uri, sensitivity, gap, AnalysisProfile.RENDER)
-                    ?: AnalysisCache
-                        .stored(analyzer.analyzeBlocking(uri, sensitivity, gap, onProgress, AnalysisProfile.RENDER) { !isCancelled() })
-                        .also { AnalysisCache.save(context, uri, it, AnalysisProfile.RENDER) }
+                if (!cache) {
+                    fresh()
+                } else {
+                    AnalysisCache.load(context, uri, sensitivity, gap, AnalysisProfile.RENDER)
+                        ?: fresh().also { AnalysisCache.save(context, uri, it, AnalysisProfile.RENDER) }
+                }
             }
         onProgress(1f)
         // The whole track is known before the first frame: the Song map puts hits, bars, sections and
@@ -405,6 +538,9 @@ class NativeRenderEngine(
         /** How much of a Render's progress the analysis takes; the encoder's own progress shares the rest. */
         const val ANALYSIS_SHARE = 0.1f
 
+        /** How much of a continuous video's progress joining its sound takes, and then analysing it (#326). */
+        const val JOIN_SHARE = 0.1f
+
         /** How much of a long-form Render's progress drawing its loop takes; repeating it takes the rest. */
         const val LOOP_SHARE = 0.8f
         const val REPEAT_FROM = ANALYSIS_SHARE + LOOP_SHARE
@@ -431,15 +567,15 @@ class NativeRenderEngine(
                 else -> RenderPhase.SAVING
             }
 
-        /** The video's file name: its Track's title, without characters a file name cannot hold. */
-        fun fileNameOf(track: RenderTrack): String {
-            val title =
-                track.title
+        /** The video's file name: its [title], without characters a file name cannot hold. */
+        fun fileNameOf(title: String): String {
+            val name =
+                title
                     .replace(Regex("[\\\\/:*?\"<>|]"), " ")
                     .trim()
                     .take(MAX_NAME)
                     .ifBlank { "Render" }
-            return "$title (Geode).mp4"
+            return "$name (Geode).mp4"
         }
     }
 }

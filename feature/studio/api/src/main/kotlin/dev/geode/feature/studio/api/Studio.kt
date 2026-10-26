@@ -127,7 +127,9 @@ sealed interface SaveFolder {
  *
  * [renders] is the render queue (#338): what waits and runs, oldest first, and what finished since the
  * app started. [visualsOff] is Settings' Visuals off, while which no Render can be made (#196).
- * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
+ * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences;
+ * [renderJoin] is how a new continuous video of a playlist joins its tracks, the Playback settings'
+ * crossfade (#326).
  * [recording] is the Recording of the live Visual, if one runs or waits for its Project (#317).
  * [rendersKeepGoing] is Settings' Renders keep going switch (#28), and [appInFront] whether the app is
  * what the person sees: with the switch off, Renders only run while the app is in front. [edit] is the
@@ -154,6 +156,7 @@ data class StudioState(
     val editSources: EditSources = EditSources.REFERENCE,
     val cutRevision: Long = 0L,
     val savedCuts: List<String> = emptyList(),
+    val renderJoin: TrackJoin = TrackJoin(),
 ) {
     /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
     val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront

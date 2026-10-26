@@ -20,6 +20,7 @@ import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderQuality
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.NewRender
 import kotlinx.coroutines.runBlocking
@@ -192,5 +193,34 @@ class RoomStudioStorageRobolectricTest {
 
             assertEquals(queued, RoomStudioStorage(database.dao()).unfinishedRenders())
             assertEquals(listOf(RenderLength.Loop, RenderLength.Minutes(60)), queued.map { it.length })
+        }
+
+    @Test
+    fun `a continuous video keeps the look of each track, queued, made and made again`() =
+        runBlocking {
+            val calm = RenderLook.Preset(PresetId("Calm"))
+            val joined =
+                render(listOf(night, tide), RenderLook.Current, RenderLength.WholeTrack)
+                    .copy(trackLooks = listOf(calm, RenderLook.Current), join = TrackJoin(Millis(4_000)))
+            val looks = listOf(FrozenLook("calm look"), FrozenLook("current look"))
+
+            val queued = storage.queueRenders(listOf(joined), FrozenLook("current look"), Millis(1), looks).single()
+
+            val reread = RoomStudioStorage(database.dao())
+            assertEquals(listOf(queued), reread.unfinishedRenders())
+            assertEquals(looks, reread.trackLooksOf(queued.id))
+            val file = "content://media/video/12"
+            reread.renderSaved(queued.id, file)
+            assertEquals(looks, reread.trackLooksOfVideo(file))
+            // Any other Render has none.
+            val single =
+                storage.queueRenders(
+                    listOf(render(listOf(night), calm, RenderLength.WholeTrack)),
+                    FrozenLook("calm look"),
+                    Millis(2),
+                )
+            assertEquals(emptyList<FrozenLook>(), storage.trackLooksOf(single.single().id))
+            assertEquals(emptyList<FrozenLook>(), storage.trackLooksOf(RenderId(99)))
+            assertEquals(emptyList<FrozenLook>(), storage.trackLooksOfVideo("content://media/video/1"))
         }
 }

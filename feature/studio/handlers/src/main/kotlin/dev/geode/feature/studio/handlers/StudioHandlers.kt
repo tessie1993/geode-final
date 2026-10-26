@@ -6,6 +6,7 @@ import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderJob
+import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.SaveFolder
@@ -191,28 +192,46 @@ class StudioHandlers(
         val videos: ImportedVideos?,
     )
 
-    /** Freezes the look once, then saves the Renders with it: only a saved Render waits in the queue. */
+    /**
+     * Freezes the look once, then saves the Renders with it: only a saved Render waits in the queue. A
+     * continuous video (#326) also freezes the look of each of its tracks, each look once.
+     */
     private suspend fun queue(
         work: StudioWork.QueueRenders,
         results: Results<StudioEvent>,
     ) {
         val first = work.renders.firstOrNull() ?: return
         val look = attempt { sources.renders.looks.freeze(first.look) }
-        if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
+        val trackLooks = attempt { frozenEach(first.trackLooks) }
+        if (look == null || trackLooks == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
         guarded(results, StudioFailure.QUEUE_RENDER) {
-            results.report(StudioEvent.RendersQueued(storage.queueRenders(work.renders, look, sources.now())))
+            results.report(StudioEvent.RendersQueued(storage.queueRenders(work.renders, look, sources.now(), trackLooks)))
         }
     }
 
-    /** Reads back the look frozen for the Render being made again, then saves the new Render with it (#327). */
+    /** Each of [looks] frozen, in order, every distinct look once. */
+    private suspend fun frozenEach(looks: List<RenderLook>): List<FrozenLook> {
+        val frozen = HashMap<RenderLook, FrozenLook>()
+        return looks.map { look ->
+            frozen[look] ?: sources.renders.looks
+                .freeze(look)
+                .also { frozen[look] = it }
+        }
+    }
+
+    /**
+     * Reads back the look frozen for the Render being made again, and those of a continuous video's tracks
+     * (#326), then saves the new Render with them (#327).
+     */
     private suspend fun queueAgain(
         work: StudioWork.QueueRenderAgain,
         results: Results<StudioEvent>,
     ) {
         val look = attempt { storage.lookOfVideo(work.file) }
-        if (look == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
+        val trackLooks = attempt { storage.trackLooksOfVideo(work.file) }
+        if (look == null || trackLooks == null) return results.report(StudioEvent.Failed(StudioFailure.FREEZE_LOOK))
         guarded(results, StudioFailure.QUEUE_RENDER) {
-            results.report(StudioEvent.RendersQueued(storage.queueRenders(listOf(work.render), look, sources.now())))
+            results.report(StudioEvent.RendersQueued(storage.queueRenders(listOf(work.render), look, sources.now(), trackLooks)))
         }
     }
 
@@ -244,7 +263,10 @@ class StudioHandlers(
         val edit = job.edit
         if (edit != null) return sources.edits.engine.export(edit, job.format, progress::report, stop)
         val look = storage.lookOf(job.id) ?: return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
-        return sources.renders.engine.render(job, look, progress::report, stop)
+        // A continuous video (#326) draws every track with its own look, so each must be there.
+        val trackLooks = if (job.trackLooks.isEmpty()) emptyList() else storage.trackLooksOf(job.id)
+        if (trackLooks.size != job.trackLooks.size) return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
+        return sources.renders.engine.render(job, look, trackLooks, progress::report, stop)
     }
 
     private suspend fun delete(

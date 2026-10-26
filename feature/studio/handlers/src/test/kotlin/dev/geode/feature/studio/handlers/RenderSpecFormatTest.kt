@@ -1,11 +1,13 @@
 package dev.geode.feature.studio.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.studio.api.EditCut
 import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
@@ -15,6 +17,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.api.edit.ClipEdit
 import dev.geode.feature.studio.core.NewRender
@@ -76,5 +79,47 @@ class RenderSpecFormatTest {
         assertEquals(RenderExtras(RenderLoudness.MINUS_11_LUFS), read.extras)
         assertEquals("", read.tracks.single().artist)
         assertNull(read.madeFrom)
+    }
+
+    @Test
+    fun `a continuous video keeps the look of each track and how its tracks join`() {
+        val tide = RenderTrack(TrackId("content://media/7"), "Low Tide", Millis(187_000))
+        val calm = RenderLook.Preset(PresetId("Calm"))
+        val render =
+            NewRender(
+                listOf(night, tide),
+                RenderLook.Current,
+                RenderFormat(),
+                RenderLength.WholeTrack,
+                ProjectId(1),
+                RenderExtras(),
+                trackLooks = listOf(calm, RenderLook.Current),
+                join = TrackJoin(Millis(6_000), FadeCurve.SMOOTH),
+            )
+
+        assertEquals(render, RenderSpecFormat.decode(RenderSpecFormat.encode(render)))
+    }
+
+    @Test
+    fun `a Render saved before continuous videos joins nothing, and an unknown curve is equal power`() {
+        val old =
+            JSONObject()
+                .put("version", 1)
+                .put("tracks", org.json.JSONArray().put(JSONObject().put("id", "content://media/12").put("title", "Night Drive")))
+                .put("project", 1)
+        val read = RenderSpecFormat.decode(old.toString())
+        assertEquals(emptyList<RenderLook>(), read.trackLooks)
+        assertEquals(TrackJoin(), read.join)
+
+        val odd = old.put("join", JSONObject().put("crossfadeMs", -5).put("curve", "WOBBLE"))
+        assertEquals(TrackJoin(Millis.ZERO, FadeCurve.EQUAL_POWER), RenderSpecFormat.decode(odd.toString()).join)
+    }
+
+    @Test
+    fun `the looks of a continuous video's tracks are kept in order`() {
+        val looks = listOf(FrozenLook("{\"style\":\"fluid_ink\"}"), FrozenLook("calm"), FrozenLook("calm"))
+        assertEquals(looks, TrackLooksFormat.decode(TrackLooksFormat.encode(looks)))
+        assertEquals(emptyList<FrozenLook>(), TrackLooksFormat.decode(null))
+        assertEquals(emptyList<FrozenLook>(), TrackLooksFormat.decode("not a list"))
     }
 }

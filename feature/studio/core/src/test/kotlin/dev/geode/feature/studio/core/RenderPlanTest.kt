@@ -1,7 +1,9 @@
 package dev.geode.feature.studio.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
@@ -9,10 +11,12 @@ import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderLength
+import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderQuality
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.TrackJoin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -45,9 +49,35 @@ class RenderPlanTest {
     }
 
     @Test
-    fun `one continuous video would be a single Render of every track`() {
-        val spec = RenderSpec(listOf(night, tide), playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO)
-        assertEquals(listOf(listOf(night, tide)), RenderPlan.rendersOf(spec, project).map { it.tracks })
+    fun `one continuous video is a single Render of every track, each whole, with each track's look and the join`() {
+        val calm = RenderLook.Preset(PresetId("calm"))
+        val join = TrackJoin(Millis(4_000), FadeCurve.LINEAR)
+        val spec =
+            RenderSpec(
+                listOf(night, tide),
+                length = RenderLength.Loop,
+                playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO,
+                trackLooks = listOf(calm),
+                join = join,
+            )
+        val render = RenderPlan.rendersOf(spec, project).single()
+        assertEquals(listOf(night, tide), render.tracks)
+        assertEquals(RenderLength.WholeTrack, render.length)
+        assertEquals(listOf(calm, RenderLook.Current), render.trackLooks)
+        assertEquals(join, render.join)
+    }
+
+    @Test
+    fun `a continuous video of one track is an ordinary Render of it`() {
+        val spec = RenderSpec(listOf(night), length = RenderLength.Loop, playlist = PlaylistMode.ONE_CONTINUOUS_VIDEO)
+        val render = RenderPlan.rendersOf(spec, project).single()
+        assertEquals(RenderLength.Loop, render.length)
+        assertEquals(emptyList<RenderLook>(), render.trackLooks)
+        assertEquals(TrackJoin(), render.join)
+        // One video per track keeps no join or per-track looks either.
+        val perTrack = RenderSpec(listOf(night, tide), trackLooks = listOf(RenderLook.Current), join = TrackJoin(Millis(1)))
+        assertEquals(listOf(TrackJoin(), TrackJoin()), RenderPlan.rendersOf(perTrack, project).map { it.join })
+        assertEquals(listOf(emptyList<RenderLook>(), emptyList()), RenderPlan.rendersOf(perTrack, project).map { it.trackLooks })
     }
 
     @Test

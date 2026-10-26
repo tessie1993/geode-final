@@ -11,6 +11,19 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **A playlist renders as one continuous video (#326).** The Render setup
+  offers "One continuous video" beside "A video per track". The tracks'
+  sound is levelled one by one, then joined with the Playback settings'
+  crossfade (length and curve; none joins them gaplessly) into one sound
+  that is analysed whole. Each track has its own Customization, and the
+  Visual moves to the next track's on the first downbeat after the two
+  songs cross over, crossfading as a change of Style does. Chapters (one
+  per track, where it fades in) can be copied or saved at setup and from
+  the finished video's page. The video is as long as the playlist; it is
+  refused only when free storage would not hold it. The Render keeps the
+  playlist, each track's frozen look and the join, so it can be made
+  again; Studio's database is at version 5 for the per-track looks.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio

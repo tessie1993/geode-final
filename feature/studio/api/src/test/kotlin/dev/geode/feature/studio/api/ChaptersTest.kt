@@ -75,4 +75,32 @@ class ChaptersTest {
         val split = Chapters.of(listOf(night.copy(title = "Night\nDrive", artist = ""), tide))
         assertTrue(Chapters.ffmetadata(split).contains("title=Night Drive\n"))
     }
+
+    @Test
+    fun `with a crossfade each song starts as the one before it fades out, and the chapters tile the video`() {
+        // 215 s and 187.5 s overlap by the 4 s crossfade; 187.5 s and 3600 s too.
+        val joined = Chapters.of(listOf(night, tide, blank), Millis(4_000))
+        assertEquals(
+            listOf(
+                TrackChapter(0L, 211_000L, "Night Drive — The Neon"),
+                TrackChapter(211_000L, 183_500L, "Low Tide"),
+                TrackChapter(394_500L, 3_600_000L, "Track 3"),
+            ),
+            joined,
+        )
+        assertEquals(3_994_500L, joined.last().endMs)
+    }
+
+    @Test
+    fun `a crossfade never takes more than half of either song`() {
+        assertEquals(Millis(4_000), Chapters.overlap(Millis(4_000), Millis(215_000), Millis(187_500)))
+        assertEquals(Millis(3_000), Chapters.overlap(Millis(12_000), Millis(6_000), Millis(187_500)))
+        assertEquals(Millis(2_500), Chapters.overlap(Millis(12_000), Millis(187_500), Millis(5_000)))
+        assertEquals(Millis.ZERO, Chapters.overlap(Millis.ZERO, Millis(215_000), Millis(187_500)))
+        assertEquals(Millis.ZERO, Chapters.overlap(Millis(-1_000), Millis(215_000), Millis(187_500)))
+        assertEquals(Millis.ZERO, Chapters.overlap(Millis(4_000), Millis.ZERO, Millis(187_500)))
+        assertEquals(Millis.ZERO, Chapters.overlap(Millis(4_000), Millis(215_000), Millis(-5)))
+        val short = tide.copy(length = Millis(6_000))
+        assertEquals(listOf(0L, 212_000L), Chapters.of(listOf(night, short), Millis(12_000)).map { it.startMs })
+    }
 }

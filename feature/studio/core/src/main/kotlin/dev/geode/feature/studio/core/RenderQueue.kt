@@ -5,11 +5,11 @@ import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSources
 import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.NewVideo
-import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderJob
+import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderStatus
@@ -23,7 +23,6 @@ import dev.geode.kernel.ReportFailure
 /** What the banner says when a Render is refused. */
 const val VISUALS_OFF_REFUSAL = "No Render can be made while Visuals off is on"
 const val NO_PROJECT_REFUSAL = "Choose a Project for the Render first"
-const val CONTINUOUS_REFUSAL = "One continuous video of a playlist is not available yet: render one video per track"
 
 /**
  * Studio's render queue (#338, ADR-0004): Renders run one at a time, in the order they were queued,
@@ -40,12 +39,7 @@ internal object RenderQueue {
         spec: RenderSpec,
     ): Next<StudioState, StudioEffect> {
         if (spec.tracks.isEmpty() || spec.format.fps !in RenderFormat.FRAME_RATES) return Next(state)
-        val refusal =
-            when {
-                state.visualsOff -> VISUALS_OFF_REFUSAL
-                spec.playlist == PlaylistMode.ONE_CONTINUOUS_VIDEO -> CONTINUOUS_REFUSAL
-                else -> null
-            }
+        val refusal = if (state.visualsOff) VISUALS_OFF_REFUSAL else null
         val project = state.projectFor(spec.project)
         if (refusal != null || project == null) return Next(state, listOf(ReportFailure(refusal ?: NO_PROJECT_REFUSAL)))
         return Next(state, listOf(Perform(StudioWork.QueueRenders(RenderPlan.rendersOf(spec, project)))))
@@ -53,8 +47,9 @@ internal object RenderQueue {
 
     /**
      * Makes the Render [video] again with [spec]'s choices (#327): the same Track and the look frozen for
-     * it, so it reproduces the Render at another shape or quality. A video Studio did not render does
-     * nothing; the refusals are [queue]'s.
+     * it, so it reproduces the Render at another shape or quality. A continuous video (#326) keeps every
+     * track, each whole, the look of each and how they join. A video Studio did not render does nothing;
+     * the refusals are [queue]'s.
      */
     fun again(
         state: StudioState,
@@ -67,7 +62,19 @@ internal object RenderQueue {
         val project = state.projectFor(spec.project)
         val refusal = if (state.visualsOff) VISUALS_OFF_REFUSAL else null
         if (refusal != null || project == null) return Next(state, listOf(ReportFailure(refusal ?: NO_PROJECT_REFUSAL)))
-        val render = NewRender(from.tracks, from.look, spec.format, spec.length, project, spec.extras, spec.milkdrop)
+        val length = if (from.continuous) RenderLength.WholeTrack else spec.length
+        val render =
+            NewRender(
+                from.tracks,
+                from.look,
+                spec.format,
+                length,
+                project,
+                spec.extras,
+                spec.milkdrop,
+                trackLooks = from.trackLooks,
+                join = from.join,
+            )
         return Next(state, listOf(Perform(StudioWork.QueueRenderAgain(made.file, render))))
     }
 
@@ -85,6 +92,7 @@ internal object RenderQueue {
                 visualsOff = settings.visualsOff,
                 renderFormat = settings.format,
                 renderExtras = settings.extras,
+                renderJoin = settings.join,
                 rendersKeepGoing = settings.keepGoing,
                 editSources = settings.editSources,
             ),

@@ -68,6 +68,15 @@ data class VideoModel(
 
     /** Every Project, where a sibling may land. */
     val projects: List<Project> get() = listOf(project) + others
+
+    /**
+     * The chapters of a continuous video of a playlist (#326, #329) as [file]'s text: one per track, where
+     * it fades in. Empty for any other video.
+     */
+    fun chapters(file: ChapterFile): String {
+        val made = video.madeWith?.takeIf { it.continuous } ?: return ""
+        return chapterText(made.tracks, file, made.join.crossfade)
+    }
 }
 
 /**
@@ -190,6 +199,12 @@ sealed interface StudioAction {
     /** Open the Render setup to make [video], a Render, again at another shape or quality (#327). */
     data class RenderAgain(
         val video: VideoId,
+    ) : StudioAction
+
+    /** Save the chapters of [video], a continuous video (#326), as [file]. */
+    data class SaveChapters(
+        val video: VideoModel,
+        val file: ChapterFile,
     ) : StudioAction
 
     /** Share [video] through the system's share sheet (#328); the app stays offline. */

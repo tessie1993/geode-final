@@ -100,6 +100,18 @@ fun interface StyleSwitches {
 }
 
 /**
+ * Changes of look a Render makes at moments of its own (#326): asked before each frame is drawn with the
+ * end of that frame's window (half a frame after it shows, in the track's milliseconds), it gives the
+ * change that falls due by then, or null. One continuous video of a playlist moves to each track's own
+ * Customization on the downbeat it chose; the change is handed over before that frame, so the engine's own
+ * wait for a downbeat (#309) hears the downbeat on that very frame. Asked on the Render's own thread, in
+ * frame order.
+ */
+fun interface RenderCues {
+    fun dueBy(untilMs: Long): RenderSwitch?
+}
+
+/**
  * Draws an analysed track to a GL target, one frame at a time, through its own native renderer.
  *
  * Callers own the EGL context, the surface and whatever they do with the rendered frames; the
@@ -111,8 +123,8 @@ fun interface StyleSwitches {
  * runs as it does live (#343): each time the engine's count of due switches rises, the Render changes
  * Style, crossfading over the switching's transition, and hands the engine the switched look. The
  * engine runs that change as it runs a live one (#309): from the next downbeat the track's analysis
- * hears, eased, a step on with each kick. Not
- * thread-safe, and every call must happen on the thread holding the GL context.
+ * hears, eased, a step on with each kick. With [cues], it also changes look at the moments they name
+ * (#326), the same way. Not thread-safe, and every call must happen on the thread holding the GL context.
  */
 class OffscreenSceneRenderer(
     private val context: Context,
@@ -121,6 +133,7 @@ class OffscreenSceneRenderer(
     private val spec: OffscreenRenderSpec,
     private val pcm: FramePcm? = null,
     private val switches: StyleSwitches? = null,
+    private val cues: RenderCues? = null,
 ) {
     private var native: NativeViz? = null
     private var snapshots: NativeSnapshots? = null
@@ -176,6 +189,7 @@ class OffscreenSceneRenderer(
             val heard = sound.spanAt(g * MICROS_PER_SECOND / spec.fps, span)
             if (heard.frames > 0) viz.setFramePcm(span, heard.frames, heard.fresh)
         }
+        cues?.dueBy(halfwayBeforeMs(g + 1))?.let { switchTo(viz, it) }
         // The render clock is exact: frame g is drawn g / fps seconds into the track, so every step is
         // one frame long, where whole milliseconds would alternate 16 and 17 ms at 60 fps, and a ranged
         // sequence keeps the clock a whole-track Render has at the same frame.

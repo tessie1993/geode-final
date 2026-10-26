@@ -1,7 +1,6 @@
 package dev.geode.feature.studio.core
 
 import dev.geode.engine.types.Millis
-import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderFormat
@@ -64,15 +63,32 @@ object RenderPlan {
 
     /**
      * The Renders [spec] queues into [project] (#325): one per track, in order, when each track gets its
-     * own video. One continuous video (#326) would be a single Render of every track; the reducer does
-     * not queue one yet.
+     * own video. One continuous video of several tracks (#326) is a single Render of every track, each
+     * whole, with the look of each and how they join; a continuous video of one track is an ordinary
+     * Render of it.
      */
     fun rendersOf(
         spec: RenderSpec,
         project: ProjectId,
     ): List<NewRender> {
-        val groups = if (spec.playlist == PlaylistMode.ONE_VIDEO_PER_TRACK) spec.tracks.map(::listOf) else listOf(spec.tracks)
-        return groups.map { tracks -> NewRender(tracks, spec.look, spec.format, spec.length, project, spec.extras, spec.milkdrop) }
+        if (spec.continuous) {
+            val joined =
+                NewRender(
+                    spec.tracks,
+                    spec.look,
+                    spec.format,
+                    RenderLength.WholeTrack,
+                    project,
+                    spec.extras,
+                    spec.milkdrop,
+                    trackLooks = spec.looksOfTracks,
+                    join = spec.join,
+                )
+            return listOf(joined)
+        }
+        return spec.tracks.map { track ->
+            NewRender(listOf(track), spec.look, spec.format, spec.length, project, spec.extras, spec.milkdrop)
+        }
     }
 
     /**

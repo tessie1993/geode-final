@@ -10,6 +10,7 @@ import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderJob
 import dev.geode.feature.studio.api.RenderLength
+import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderStatus
@@ -65,10 +66,31 @@ data class RenderDraft(
     val againName: String = "",
 ) {
     /** [spec]'s tracks as one Track, replacing any playlist. */
-    fun track(track: RenderTrack): RenderDraft = copy(spec = spec.copy(tracks = listOf(track)), playlist = null)
+    fun track(track: RenderTrack): RenderDraft = copy(spec = spec.copy(tracks = listOf(track), trackLooks = emptyList()), playlist = null)
 
+    /** [playlist]'s tracks, rendered as chosen: a video per track, or one continuous video (#326). */
     fun playlist(playlist: RenderPlaylist): RenderDraft =
-        copy(spec = spec.copy(tracks = playlist.tracks, playlist = PlaylistMode.ONE_VIDEO_PER_TRACK), playlist = playlist.name)
+        copy(spec = spec.copy(tracks = playlist.tracks, trackLooks = emptyList()), playlist = playlist.name)
+
+    /** Whether it makes one continuous video of a playlist (#326). */
+    val continuous: Boolean get() = spec.continuous
+
+    /** One continuous video of the playlist when [on], one video per track when not (#326). */
+    fun continuous(on: Boolean): RenderDraft =
+        copy(spec = spec.copy(playlist = if (on) PlaylistMode.ONE_CONTINUOUS_VIDEO else PlaylistMode.ONE_VIDEO_PER_TRACK))
+
+    /** The look for the whole video: every track of a continuous video takes it (#326). */
+    fun look(look: RenderLook): RenderDraft = copy(spec = spec.copy(look = look, trackLooks = emptyList()))
+
+    /** [look] for the track at [index] of a continuous video (#326): one Customization per track. */
+    fun trackLook(
+        index: Int,
+        look: RenderLook,
+    ): RenderDraft {
+        if (index !in spec.tracks.indices) return this
+        val looks = spec.looksOfTracks.toMutableList().also { it[index] = look }
+        return copy(spec = spec.copy(trackLooks = looks))
+    }
 
     /** [preset]'s values filled in; it shows as chosen until a value is changed by hand. */
     fun preset(preset: RenderPreset): RenderDraft = copy(spec = spec.withPreset(preset), preset = preset)
@@ -108,7 +130,10 @@ data class RenderDraft(
             return RenderDraft(made.copy(project = project), again = video.id, againName = video.name)
         }
 
-        /** A new setup starts from Settings' Export preferences and the default Project (#22). */
+        /**
+         * A new setup starts from Settings' Export preferences and the default Project (#22), and a
+         * continuous video joins its tracks with the Playback settings' crossfade (#326).
+         */
         fun startingFrom(state: StudioState): RenderDraft =
             RenderDraft(
                 RenderSpec(
@@ -116,6 +141,7 @@ data class RenderDraft(
                     format = state.renderFormat,
                     extras = state.renderExtras,
                     project = state.defaultProject ?: state.projects.firstOrNull()?.id,
+                    join = state.renderJoin,
                 ),
             )
     }
@@ -123,13 +149,14 @@ data class RenderDraft(
 
 /**
  * The chapters of a video of [tracks], one song after another (#329), as [file]'s text: one per song at
- * the moment it starts. Empty for a single Track.
+ * the moment it starts, fading in over the one before by [crossfade] (#326). Empty for a single Track.
  */
 fun chapterText(
     tracks: List<RenderTrack>,
     file: ChapterFile,
+    crossfade: Millis = Millis.ZERO,
 ): String {
-    val chapters = Chapters.of(tracks)
+    val chapters = Chapters.of(tracks, crossfade)
     if (chapters.isEmpty()) return ""
     return when (file) {
         ChapterFile.DESCRIPTION -> Chapters.description(chapters)

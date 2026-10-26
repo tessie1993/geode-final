@@ -1,6 +1,8 @@
 package dev.geode.feature.studio.ui
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.feature.studio.api.FadeCurve
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
@@ -8,12 +10,14 @@ import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderLength
+import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.StudioCommand
+import dev.geode.feature.studio.api.TrackJoin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -160,5 +164,51 @@ class RenderModelTest {
         assertTrue(chapterText(tracks, ChapterFile.WEB_VTT).startsWith("WEBVTT"))
         assertTrue(chapterText(tracks, ChapterFile.FFMETADATA).startsWith(";FFMETADATA1"))
         assertEquals("", chapterText(listOf(PreviewStudio.night), ChapterFile.WEB_VTT))
+    }
+
+    @Test
+    fun `a playlist can be one continuous video, joined by the Playback settings' crossfade`() {
+        val join = TrackJoin(Millis(4_000), FadeCurve.SMOOTH)
+        val start = RenderDraft.startingFrom(state.copy(renderJoin = join))
+        assertEquals(join, start.spec.join)
+        val list = start.playlist(playlist)
+        assertFalse(list.continuous)
+        val joined = list.continuous(true)
+        assertTrue(joined.continuous)
+        assertEquals(PlaylistMode.ONE_CONTINUOUS_VIDEO, joined.spec.playlist)
+        assertFalse(joined.continuous(false).continuous)
+        // Choosing another playlist keeps the choice; a single Track is never continuous.
+        assertTrue(joined.playlist(playlist).continuous)
+        assertFalse(joined.track(PreviewStudio.night).continuous)
+    }
+
+    @Test
+    fun `each track of a continuous video can have its own look, and a new playlist starts afresh`() {
+        val calm = RenderLook.Preset(PresetId("Calm"))
+        val joined = RenderDraft.startingFrom(state).playlist(playlist).continuous(true)
+        val second = joined.trackLook(1, calm)
+        assertEquals(listOf(RenderLook.Current, calm), second.spec.looksOfTracks.take(2))
+        assertEquals(
+            calm,
+            second
+                .trackLook(0, calm)
+                .spec.looksOfTracks
+                .first(),
+        )
+        // Choosing the look for the whole video gives it to every track.
+        val all = second.look(calm)
+        assertEquals(calm, all.spec.look)
+        assertEquals(List(playlist.tracks.size) { calm }, all.spec.looksOfTracks)
+        assertEquals(emptyList<RenderLook>(), second.playlist(playlist).spec.trackLooks)
+        assertEquals(emptyList<RenderLook>(), second.track(PreviewStudio.night).spec.trackLooks)
+        // A track past the playlist changes nothing.
+        assertEquals(joined, joined.trackLook(playlist.tracks.size, calm))
+        assertEquals(joined, joined.trackLook(-1, calm))
+    }
+
+    @Test
+    fun `a continuous video's chapters start where each track fades in`() {
+        val tracks = listOf(PreviewStudio.night, PreviewStudio.tide)
+        assertEquals("0:00 Midnight City\n4:00 Teardrop\n", chapterText(tracks, ChapterFile.DESCRIPTION, Millis(4_000)))
     }
 }

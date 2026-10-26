@@ -20,6 +20,7 @@ import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
+import dev.geode.feature.studio.api.TrackJoin
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.edit.SubtitleCue
@@ -126,7 +127,8 @@ sealed interface RenderEnd {
 /**
  * What Studio's Renders read from Settings: [visualsOff] (no Render while it is on, #196), what a new
  * Render starts from in Export preferences (#22, #28), Run in background's Renders keep going switch
- * ([keepGoing], #28), and what a saved Edit does with its videos ([editSources], #318).
+ * ([keepGoing], #28), what a saved Edit does with its videos ([editSources], #318), and how a new
+ * continuous video joins its tracks ([join], the Playback settings' crossfade, #326).
  */
 data class RenderSettings(
     val visualsOff: Boolean,
@@ -134,13 +136,15 @@ data class RenderSettings(
     val extras: RenderExtras,
     val keepGoing: Boolean = true,
     val editSources: EditSources = EditSources.REFERENCE,
+    val join: TrackJoin = TrackJoin(),
 )
 
 /**
  * A Render about to be queued: a [RenderJob] before Studio's database gives it its id and batch. Every
  * Render queued together has the same [look]; [milkdrop] is the MilkDrop preset it plays (#341). An
  * Edit's export (#318) has its [edit] and no tracks. [madeFrom] is the video a Short, an Export as
- * sibling or a finishing Edit is made from (#328, #329).
+ * sibling or a finishing Edit is made from (#328, #329). One continuous video (#326) has the look of each of
+ * its tracks in [trackLooks] and how they [join].
  */
 data class NewRender(
     val tracks: List<RenderTrack>,
@@ -152,13 +156,29 @@ data class NewRender(
     val milkdrop: String? = null,
     val edit: EditJob? = null,
     val madeFrom: MadeFrom? = null,
+    val trackLooks: List<RenderLook> = emptyList(),
+    val join: TrackJoin = TrackJoin(),
 ) {
     /** It as saved: its [id], and the [batch] it was queued in. It waits until the queue starts it. */
     fun queuedAs(
         id: RenderId,
         batch: RenderId,
     ): RenderJob =
-        RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop, edit = edit, madeFrom = madeFrom)
+        RenderJob(
+            id,
+            batch,
+            tracks,
+            look,
+            format,
+            length,
+            project,
+            extras,
+            milkdrop = milkdrop,
+            edit = edit,
+            madeFrom = madeFrom,
+            trackLooks = trackLooks,
+            join = join,
+        )
 
     /** The setup it was made from, as its video keeps it to be made again (#327). */
     fun toSpec(): RenderSpec =
@@ -171,11 +191,14 @@ data class NewRender(
             playlist = if (tracks.size > 1) PlaylistMode.ONE_CONTINUOUS_VIDEO else PlaylistMode.ONE_VIDEO_PER_TRACK,
             extras = extras,
             milkdrop = milkdrop,
+            trackLooks = trackLooks,
+            join = join,
         )
 }
 
 /** [this] Render before it was queued: its choices without its id, batch or status. */
-internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop, edit, madeFrom)
+internal fun RenderJob.toNewRender(): NewRender =
+    NewRender(tracks, look, format, length, project, extras, milkdrop, edit, madeFrom, trackLooks, join)
 
 /** What went wrong in the handlers. */
 enum class StudioFailure {
@@ -340,6 +363,7 @@ fun describe(
             RenderProblem.TRACK_UNREADABLE -> "the track could not be read"
             RenderProblem.ENCODER_REFUSED -> "the phone would not encode it at this size or frame rate"
             RenderProblem.NOT_SAVED -> "the video could not be saved"
+            RenderProblem.NO_SPACE -> "the phone's storage is too full for the video"
             RenderProblem.ENGINE_FAILED -> "the engine stopped unexpectedly"
         }
     return "The Render of “$title” failed: $why"

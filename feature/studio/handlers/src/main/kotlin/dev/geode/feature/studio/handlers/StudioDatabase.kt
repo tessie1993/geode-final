@@ -19,8 +19,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Studio's own database (ADR-0004): the Projects, the videos in them with only the common fields
  * (#21), the user's default Project, since version 2 the Renders: the queue, and each finished
  * Render's choices and frozen look so it can be made again (#338, #327), since version 3 which
- * one-time imports are done (#347), and since version 4 the video a Short or sibling was made from
- * (#328).
+ * one-time imports are done (#347), since version 4 the video a Short or sibling was made from
+ * (#328), and since version 5 the look of each track of a continuous video of a playlist (#326).
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`.
@@ -34,11 +34,11 @@ abstract class StudioDatabase : RoomDatabase() {
     abstract fun dao(): StudioDao
 
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
         const val NAME = "studio.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports, AddVideoSources)
+        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports, AddVideoSources, AddTrackLooks)
 
         fun open(
             context: Context,
@@ -73,6 +73,13 @@ object AddImports : Migration(2, 3) {
 object AddVideoSources : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `videos` ADD COLUMN `sourceId` INTEGER")
+    }
+}
+
+/** Version 5 (#326): the look of each track of a continuous video of a playlist. */
+object AddTrackLooks : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `renders` ADD COLUMN `trackLooks` TEXT")
     }
 }
 
@@ -114,7 +121,8 @@ data class StudioChoiceEntity(
 /**
  * One Render (#338). [spec] is its choices in [RenderSpecFormat]; [look] its frozen look; [batch] the
  * first Render queued with it. [videoFile] is the video once it is made: a Render without one has not
- * finished, and resumes after a restart.
+ * finished, and resumes after a restart. [trackLooks] is, for a continuous video of a playlist (#326),
+ * the frozen look of each of its tracks in [TrackLooksFormat]; null for any other Render.
  */
 @Entity(tableName = "renders")
 data class RenderEntity(
@@ -124,6 +132,7 @@ data class RenderEntity(
     val look: String,
     val videoFile: String?,
     val queuedAtMs: Long,
+    val trackLooks: String? = null,
 )
 
 /** A one-time import that is done (#347), by its [name]: it is never done again. */
@@ -232,6 +241,13 @@ abstract class StudioDao {
 
     @Query("SELECT look FROM renders WHERE id = :id")
     abstract suspend fun lookOf(id: Long): String?
+
+    @Query("SELECT trackLooks FROM renders WHERE id = :id")
+    abstract suspend fun trackLooksOf(id: Long): String?
+
+    /** The track looks of the newest Render that made [file]. */
+    @Query("SELECT trackLooks FROM renders WHERE videoFile = :file ORDER BY id DESC LIMIT 1")
+    abstract suspend fun trackLooksOfVideo(file: String): String?
 
     /** The Renders that made a video, oldest first. */
     @Query("SELECT * FROM renders WHERE videoFile IS NOT NULL ORDER BY id")

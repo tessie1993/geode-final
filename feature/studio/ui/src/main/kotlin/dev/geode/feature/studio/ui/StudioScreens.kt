@@ -502,11 +502,29 @@ fun VideoScreen(
                 Text(stringResource(R.string.studio_render_again))
             }
         }
+        if (video.madeWith?.continuous == true) VideoChapters(model, onAction)
     }
     if (exporting) {
         ExportAsDialog(model) { command ->
             exporting = false
             command?.let { onAction(StudioAction.Send(it)) }
+        }
+    }
+}
+
+/** A continuous video's chapters (#326, #329): one per track, saved as a file to paste or upload beside it. */
+@Composable
+private fun VideoChapters(
+    model: VideoModel,
+    onAction: (StudioAction) -> Unit,
+) {
+    Text(stringResource(R.string.studio_render_chapters), style = MaterialTheme.typography.titleMedium)
+    Text(model.chapters(ChapterFile.DESCRIPTION).trimEnd(), style = MaterialTheme.typography.bodySmall)
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        ChapterFile.entries.forEach { file ->
+            TextButton(onClick = { onAction(StudioAction.SaveChapters(model, file)) }) {
+                Text(stringResource(R.string.studio_render_chapters_save, file.extension))
+            }
         }
     }
 }
