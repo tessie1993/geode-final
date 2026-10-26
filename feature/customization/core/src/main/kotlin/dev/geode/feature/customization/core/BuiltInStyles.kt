@@ -313,6 +313,7 @@ object BuiltInStyles {
             shader("origami_peaks", true, emptyList()),
             shader("rain_glass", true, emptyList()),
             shader("sea_cave", true, emptyList()),
+            shader("pulsar_orbit", true, emptyList()),
         )
 
     private fun life(
