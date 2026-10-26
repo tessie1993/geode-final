@@ -4,6 +4,7 @@
     <string name="edit_section">Edit</string>
     <string name="edit_open_video">Cut a video…</string>
     <string name="edit_open_cut">Timeline</string>
+    <string name="edit_earlier_cuts">Cuts from the earlier editor</string>
     <string name="edit_this_video">Edit this video</string>
     <string name="edit_reading">Opening the video…</string>
     <string name="edit_loading_cut">Opening your cut…</string>

@@ -86,6 +86,15 @@ sealed interface StudioEvent {
         val render: RenderId,
         val end: RenderEnd,
     ) : StudioEvent
+
+    /**
+     * The old Studio's videos in `Movies/Geode` were imported, once (#347): [videos] were saved into the
+     * new [project] made for them.
+     */
+    data class OldVideosImported(
+        val project: Project,
+        val videos: List<Video>,
+    ) : StudioEvent
 }
 
 /** How a Render ended. */
@@ -177,6 +186,9 @@ enum class StudioFailure {
 
     /** An Edit's videos could not be copied beside it, so it was not queued (#318). */
     COPY_SOURCES,
+
+    /** The old Studio's videos could not be brought into the library (#347); it tries again next start. */
+    IMPORT_OLD_VIDEOS,
 }
 
 /** Work for Studio's handlers. */
@@ -261,6 +273,14 @@ sealed interface StudioWork {
     data class ForgetRender(
         val render: RenderId,
     ) : StudioWork
+
+    /**
+     * Import the old Studio's videos in `Movies/Geode` that the library does not hold yet into a new
+     * Project named [OLD_VIDEOS_PROJECT], unless that was done before (#347). Only the first time counts:
+     * an import with nothing to bring is done too. What was brought comes back in
+     * [StudioEvent.OldVideosImported].
+     */
+    data object ImportOldVideos : StudioWork
 }
 
 typealias StudioEffect = Effect<StudioWork, StudioEvent, StudioFact>
@@ -278,7 +298,11 @@ fun describe(failure: StudioFailure): String =
         StudioFailure.LOAD_CUT -> "Could not read the saved cut, so the Timeline starts empty"
         StudioFailure.SAVE_CUT -> "Could not save the last change to the cut"
         StudioFailure.COPY_SOURCES -> "Could not copy the Edit's videos, so it was not exported"
+        StudioFailure.IMPORT_OLD_VIDEOS -> "Could not bring the earlier Studio's videos into the library"
     }
+
+/** The Project the old Studio's videos are imported into (#347). */
+const val OLD_VIDEOS_PROJECT = "Earlier videos"
 
 /** How the reducer describes a Render of [title] that failed with [problem], on the app-wide banner. */
 fun describe(

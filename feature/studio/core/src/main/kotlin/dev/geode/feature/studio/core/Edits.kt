@@ -53,9 +53,18 @@ sealed interface EditEvent : StudioEvent {
         val source: EditSource?,
     ) : EditEvent
 
-    /** The Timeline's saved cut, or an empty one when there is none or it could not be read. */
+    /**
+     * The Timeline's saved cut, or the earlier editor's cut [name] (#347); an empty one when there is none
+     * or it could not be read.
+     */
     data class CutLoaded(
         val project: EditorProject,
+        val name: String? = null,
+    ) : EditEvent
+
+    /** The names of the cuts the earlier editor kept besides the Timeline's own (#347). */
+    data class CutsListed(
+        val names: List<String>,
     ) : EditEvent
 }
 
@@ -66,17 +75,24 @@ sealed interface EditWork : StudioWork {
         val file: String,
     ) : EditWork
 
-    /** Read the Timeline's saved cut; it comes back in [EditEvent.CutLoaded]. */
-    data object LoadCut : EditWork
+    /** Read the Timeline's saved cut, or the earlier editor's cut [name]; it comes back in [EditEvent.CutLoaded]. */
+    data class LoadCut(
+        val name: String? = null,
+    ) : EditWork
 
     /**
-     * Keep [project] as the Timeline's cut, so it is there next time. [revision] numbers the saves in the
-     * order the changes were made: a save is never written over a newer one.
+     * Keep [project] as the Timeline's cut, or as the earlier editor's cut [name], so it is there next
+     * time. [revision] numbers the saves in the order the changes were made: a save is never written over
+     * a newer one.
      */
     data class SaveCut(
         val project: EditorProject,
         val revision: Long,
+        val name: String? = null,
     ) : EditWork
+
+    /** List the cuts the earlier editor kept (#347); they come back in [EditEvent.CutsListed]. */
+    data object ListCuts : EditWork
 
     /**
      * Save [render], an Edit's export, to the queue; with [EditSources.COPY] its videos are copied into
@@ -110,12 +126,8 @@ internal object Edits {
                     Next(state.copy(edit = EditSession.Reading), listOf(Perform(EditWork.ReadSource(command.file))))
                 }
             is EditCommand.ChangeClip -> changeClip(state, command.edit)
-            EditCommand.OpenCut ->
-                if (state.edit is EditSession.Cut) {
-                    Next(state)
-                } else {
-                    Next(state.copy(edit = EditSession.LoadingCut), listOf(Perform(EditWork.LoadCut)))
-                }
+            EditCommand.OpenCut -> openCut(state, null)
+            is EditCommand.OpenSavedCut -> if (command.name in state.savedCuts) openCut(state, command.name) else Next(state)
             is EditCommand.Export -> export(state, command.project)
             EditCommand.Close -> Next(state.copy(edit = EditSession.Closed))
             else -> onCut(state, command)
@@ -129,11 +141,22 @@ internal object Edits {
             is EditEvent.SourceRead -> sourceRead(state, event.source)
             is EditEvent.CutLoaded ->
                 if (state.edit == EditSession.LoadingCut) {
-                    Next(state.copy(edit = EditSession.Cut(EditorHistory(event.project.fitted()))))
+                    Next(state.copy(edit = EditSession.Cut(EditorHistory(event.project.fitted()), name = event.name)))
                 } else {
                     Next(state)
                 }
+            is EditEvent.CutsListed -> Next(state.copy(savedCuts = event.names))
         }
+
+    /** Opens the Timeline on its own cut ([name] null) or an earlier one, unless that one is open already. */
+    private fun openCut(
+        state: StudioState,
+        name: String?,
+    ): Next<StudioState, StudioEffect> {
+        val open = state.edit
+        if (open is EditSession.Cut && open.name == name) return Next(state)
+        return Next(state.copy(edit = EditSession.LoadingCut), listOf(Perform(EditWork.LoadCut(name))))
+    }
 
     private fun openVideo(
         state: StudioState,
@@ -178,7 +201,8 @@ internal object Edits {
                 else -> null
             }
         if (refusal != null || into == null) return Next(state, listOf(ReportFailure(refusal ?: NO_EDIT_PROJECT_REFUSAL)))
-        val job = EditJob(cut.name(), cut, state.editSources)
+        val name = (state.edit as? EditSession.Cut)?.name?.takeIf { it.isNotBlank() } ?: cut.name()
+        val job = EditJob(name, cut, state.editSources)
         val render =
             NewRender(
                 tracks = emptyList(),
@@ -222,7 +246,7 @@ internal object Edits {
         val revision = state.cutRevision + 1
         return Next(
             state.copy(edit = session.copy(history = history, refused = null), cutRevision = revision),
-            listOf(Perform(EditWork.SaveCut(history.present, revision))),
+            listOf(Perform(EditWork.SaveCut(history.present, revision, session.name))),
         )
     }
 

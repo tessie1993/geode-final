@@ -34,10 +34,11 @@ import org.json.JSONObject
 /**
  * The saved shape of an [EditorProject] (#318): the Timeline's draft in `files/editor`, and an Edit's
  * cut as the render queue keeps it until it is exported. Variants carry a "type"/"kind" tag; unknown
- * tags fail the read. Versioned JSON (ADR-0004).
+ * tags fail the read. Versioned JSON (ADR-0004): version 1 is the old editor's, which only
+ * [OldEditorProjects] reads, bringing it up to this version first (#347).
  */
 object EditorProjectFormat {
-    const val VERSION = 1
+    const val VERSION = 2
 
     fun toJson(project: EditorProject): String = toObject(project).toString(2)
 
@@ -62,11 +63,13 @@ object EditorProjectFormat {
         o: JSONObject,
         scene: (String) -> String = { it },
     ): EditorProject {
-        require(o.optInt("version", VERSION) <= VERSION) { "editor project from a newer app" }
+        val version = o.optInt("version", OldEditorProjects.VERSION)
+        require(version <= VERSION) { "editor project from a newer app" }
+        val current = if (version < VERSION) OldEditorProjects.upgrade(o) else o
         return EditorProject(
-            timeline = timeline(o.getJSONObject("timeline"), scene),
-            markers = MarkerSet().addAll(o.optJSONArray("markers").items(::marker)),
-            keyframes = KeyframeSheet().withTracks(o.optJSONArray("keyframes").items(::track)),
+            timeline = timeline(current.getJSONObject("timeline"), scene),
+            markers = MarkerSet().addAll(current.optJSONArray("markers").items(::marker)),
+            keyframes = KeyframeSheet().withTracks(current.optJSONArray("keyframes").items(::track)),
         )
     }
 

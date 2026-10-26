@@ -17,14 +17,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Studio's own database (ADR-0004): the Projects, the videos in them with only the common fields
- * (#21), the user's default Project, and since version 2 the Renders: the queue, and each finished
- * Render's choices and frozen look so it can be made again (#338, #327).
+ * (#21), the user's default Project, since version 2 the Renders: the queue, and each finished
+ * Render's choices and frozen look so it can be made again (#338, #327), and since version 3 which
+ * one-time imports are done (#347).
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`.
  */
 @Database(
-    entities = [ProjectEntity::class, VideoEntity::class, StudioChoiceEntity::class, RenderEntity::class],
+    entities = [ProjectEntity::class, VideoEntity::class, StudioChoiceEntity::class, RenderEntity::class, ImportEntity::class],
     version = StudioDatabase.VERSION,
     exportSchema = false,
 )
@@ -32,11 +33,11 @@ abstract class StudioDatabase : RoomDatabase() {
     abstract fun dao(): StudioDao
 
     companion object {
-        const val VERSION = 2
+        const val VERSION = 3
         const val NAME = "studio.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders)
+        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports)
 
         fun open(
             context: Context,
@@ -57,6 +58,13 @@ object AddRenders : Migration(1, 2) {
                 "`batch` INTEGER NOT NULL, `spec` TEXT NOT NULL, `look` TEXT NOT NULL, `videoFile` TEXT, " +
                 "`queuedAtMs` INTEGER NOT NULL)",
         )
+    }
+}
+
+/** Version 3 (#347): which one-time imports are done. */
+object AddImports : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `imports` (`name` TEXT NOT NULL, PRIMARY KEY(`name`))")
     }
 }
 
@@ -106,6 +114,18 @@ data class RenderEntity(
     val look: String,
     val videoFile: String?,
     val queuedAtMs: Long,
+)
+
+/** A one-time import that is done (#347), by its [name]: it is never done again. */
+@Entity(tableName = "imports")
+data class ImportEntity(
+    @PrimaryKey val name: String,
+)
+
+/** What an import saved: the new Project's id, and the videos' ids in order. */
+class ImportedRows(
+    val projectId: Long,
+    val videoIds: List<Long>,
 )
 
 @Dao
@@ -219,4 +239,26 @@ abstract class StudioDao {
 
     @Query("DELETE FROM renders WHERE id = :id")
     abstract suspend fun forgetRender(id: Long)
+
+    @Query("SELECT COUNT(*) FROM imports WHERE name = :name")
+    abstract suspend fun importsNamed(name: String): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun markImported(row: ImportEntity)
+
+    /**
+     * Saves [project] and [videos] in it (their Project ids are set here) and marks the import [name]
+     * done, all together, so an import is either wholly kept or tried again.
+     */
+    @Transaction
+    open suspend fun importVideos(
+        name: String,
+        project: ProjectEntity,
+        videos: List<VideoEntity>,
+    ): ImportedRows {
+        val projectId = insertProject(project)
+        val ids = insertVideos(videos.map { it.copy(projectId = projectId) })
+        markImported(ImportEntity(name))
+        return ImportedRows(projectId, ids)
+    }
 }

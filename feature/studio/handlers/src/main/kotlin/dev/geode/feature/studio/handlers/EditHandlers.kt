@@ -25,8 +25,8 @@ internal class EditHandlers(
 ) {
     private val tools: EditTools get() = sources.edits
 
-    // Every save of the cut goes through here, one at a time and the newest winning.
-    private val cuts = CutWriter<EditorProject> { tools.drafts.save(it) }
+    // Every save of a cut goes through its writer, one at a time and the newest winning.
+    private val writers = HashMap<String?, CutWriter<EditorProject>>()
 
     suspend fun run(
         work: EditWork,
@@ -34,19 +34,28 @@ internal class EditHandlers(
     ) {
         when (work) {
             is EditWork.ReadSource -> results.report(EditEvent.SourceRead(attempt { tools.videos.read(work.file) }))
-            EditWork.LoadCut -> load(results)
+            is EditWork.LoadCut -> load(work.name, results)
             is EditWork.SaveCut ->
-                if (attempt { cuts.offer(work.revision, work.project) } == null) results.report(StudioEvent.Failed(StudioFailure.SAVE_CUT))
+                if (attempt { writerOf(work.name).offer(work.revision, work.project) } == null) {
+                    results.report(StudioEvent.Failed(StudioFailure.SAVE_CUT))
+                }
+            EditWork.ListCuts -> results.report(EditEvent.CutsListed(attempt { tools.drafts.names() }.orEmpty()))
             is EditWork.QueueEdit -> queue(work, results)
         }
     }
 
-    /** The saved cut, or an empty one when there is none; one that cannot be read is reported too. */
-    private suspend fun load(results: Results<StudioEvent>) {
-        val loaded = attempt { cuts.read { Loaded(tools.drafts.load()) } }
+    /** The cut kept as [name], or an empty one when there is none; one that cannot be read is reported too. */
+    private suspend fun load(
+        name: String?,
+        results: Results<StudioEvent>,
+    ) {
+        val loaded = attempt { writerOf(name).read { Loaded(tools.drafts.load(name)) } }
         if (loaded == null) results.report(StudioEvent.Failed(StudioFailure.LOAD_CUT))
-        results.report(EditEvent.CutLoaded(loaded?.project ?: EditorProject()))
+        results.report(EditEvent.CutLoaded(loaded?.project ?: EditorProject(), name))
     }
+
+    private fun writerOf(name: String?): CutWriter<EditorProject> =
+        synchronized(writers) { writers.getOrPut(name) { CutWriter { tools.drafts.save(it, name) } } }
 
     private suspend fun queue(
         work: EditWork.QueueEdit,

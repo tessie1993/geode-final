@@ -19,10 +19,12 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ContentCut
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -109,6 +111,7 @@ fun ProjectListScreen(
                 Text(stringResource(R.string.edit_open_cut))
             }
         }
+        if (model.savedCuts.isNotEmpty()) SavedCuts(model.savedCuts, onAction)
         if (queue.visualsOff) Note(stringResource(R.string.studio_render_visuals_off))
         RenderQueue(queue, onAction)
         if (model.folderMissing) FolderMissing(onAction)
@@ -142,6 +145,26 @@ fun ProjectListScreen(
         NewProjectDialog(model.newIsDefault) { command ->
             naming = false
             command?.let { onAction(StudioAction.Send(it)) }
+        }
+    }
+}
+
+/** The earlier editor's cuts (#347), each opening in the Timeline. */
+@Composable
+private fun SavedCuts(
+    names: List<String>,
+    onAction: (StudioAction) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        Note(stringResource(R.string.edit_earlier_cuts))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+            names.forEach { name ->
+                AssistChip(
+                    onClick = { onAction(StudioAction.Send(EditCommand.OpenSavedCut(name))) },
+                    label = { Text(name) },
+                    leadingIcon = { Icon(Icons.Rounded.ContentCut, contentDescription = null) },
+                )
+            }
         }
     }
 }

@@ -22,7 +22,8 @@ data class ProjectRow(
 
 /**
  * What the Project list draws (ADR-0003: an immutable screen model). [folderMissing] when Settings say
- * no save folder is picked yet; [noDefault] when Projects exist but none is the default.
+ * no save folder is picked yet; [noDefault] when Projects exist but none is the default. [savedCuts]
+ * are the earlier editor's cuts the Timeline can open (#347).
  */
 @Immutable
 data class ProjectListModel(
@@ -30,6 +31,7 @@ data class ProjectListModel(
     val projects: List<ProjectRow>,
     val folderMissing: Boolean,
     val noDefault: Boolean,
+    val savedCuts: List<String> = emptyList(),
 ) {
     /** Whether a new Project starts out as the default: when there is none yet. */
     val newIsDefault: Boolean get() = projects.none { it.isDefault }
@@ -83,6 +85,7 @@ fun StudioState.toProjectList(): ProjectListModel {
         projects = rows,
         folderMissing = saveFolder == SaveFolder.NotChosen,
         noDefault = rows.isNotEmpty() && rows.none { it.isDefault },
+        savedCuts = savedCuts,
     )
 }
 

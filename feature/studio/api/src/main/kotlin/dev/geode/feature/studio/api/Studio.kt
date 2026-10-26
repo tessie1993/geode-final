@@ -62,7 +62,7 @@ fun shapeOf(
 /**
  * A finished video that is not in the library yet, as whatever made it hands it to Studio with
  * [StudioCommand.AddVideos]: a Render (#22), a Recording (#23), an Edit or Short (#24, #25), or an old
- * Studio export imported once at the switch-over (#17). [file] and [thumbnail] are content uris; [song]
+ * Studio export imported once after the upgrade (#347). [file] and [thumbnail] are content uris; [song]
  * is the title of the song it was made to, blank when there was none or it is not known. [madeWith] is,
  * for a Render Studio made, the setup it was made from, so it can be made again (#327); null otherwise.
  */
@@ -129,7 +129,8 @@ sealed interface SaveFolder {
  * what the person sees: with the switch off, Renders only run while the app is in front. [edit] is the
  * editor open on an Edit (#318), and [editSources] Settings' choice of what a saved Edit does with its
  * videos. [cutRevision] counts the changes to the Timeline's cut saved since the app started: each save
- * carries its number, so a slower, older save is never written over a newer one.
+ * carries its number, so a slower, older save is never written over a newer one. [savedCuts] are the
+ * names of the cuts the earlier editor kept besides the Timeline's own, which the Timeline opens (#347).
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -148,6 +149,7 @@ data class StudioState(
     val edit: EditSession = EditSession.Closed,
     val editSources: EditSources = EditSources.REFERENCE,
     val cutRevision: Long = 0L,
+    val savedCuts: List<String> = emptyList(),
 ) {
     /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
     val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront

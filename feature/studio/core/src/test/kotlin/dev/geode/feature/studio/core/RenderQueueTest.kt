@@ -214,6 +214,8 @@ class RenderQueueTest {
                 StudioEvent.Loaded(listOf(trip, gigs), emptyList(), gigs.id, listOf(first, second)),
                 busy,
                 Perform(StudioWork.Render(firstRunning)),
+                Perform(StudioWork.ImportOldVideos),
+                Perform(EditWork.ListCuts),
             ),
             row(
                 "a Render waiting before the library is read does not start",

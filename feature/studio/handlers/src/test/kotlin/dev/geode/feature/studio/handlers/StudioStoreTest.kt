@@ -100,6 +100,7 @@ class StudioStoreTest {
     private val drafts = FakeEditDrafts()
     private val editVideos = FakeEditVideos()
     private val editEngine = FakeEditEngine()
+    private val oldVideos = FakeOldVideos()
 
     private fun store() =
         studioStore(
@@ -110,6 +111,7 @@ class StudioStoreTest {
                 { Millis(500) },
                 RenderSources(renderSettingsOf(settings), looks, engine),
                 edits = EditTools(drafts, editVideos, editEngine),
+                oldVideos = oldVideos,
             ),
             inPlaceRuntime(failures = failures),
         )
@@ -320,6 +322,87 @@ class StudioStoreTest {
         studio.send(StudioCommand.SetDefaultProject(gigs.id))
 
         assertEquals(3, failures.count { it.message == "Could not save the change to the Studio library" })
+    }
+
+    @Test
+    fun `the old Studio's videos come once into a Project of their own, without the library's own`() {
+        val trip = Project(ProjectId(50), "Trip", Millis(1))
+        storage.projectsById[trip.id] = trip
+        val rendered = Video(VideoId(51), trip.id, VideoKind.RENDER, "night.mp4", "content://media/1", null, Millis(9), 1920, 1080, "")
+        storage.videosById[rendered.id] = rendered
+        val old = NewVideo(VideoKind.RENDER, "old.mp4", "content://media/2", null, Millis(5_000), 1080, 1920, "")
+        oldVideos.found = listOf(NewVideo(VideoKind.RENDER, "night.mp4", "content://media/1", null, Millis(9), 1920, 1080, ""), old, old)
+
+        val studio = store()
+
+        val earlier =
+            studio.state.value.projects
+                .single { it.name == "Earlier videos" }
+        assertEquals(
+            listOf("content://media/2"),
+            studio.state.value
+                .videosIn(earlier.id)
+                .map { it.file },
+        )
+        assertEquals(Millis(500), earlier.createdAt)
+
+        val again = store()
+        assertEquals(
+            1,
+            again.state.value.projects
+                .count { it.name == "Earlier videos" },
+        )
+        assertEquals(2, again.state.value.videos.size)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `with no old Studio videos no Project is made, and the import is done`() {
+        store()
+
+        assertTrue(storage.projectsById.isEmpty())
+        assertEquals(setOf("old-studio-videos"), storage.imports)
+    }
+
+    @Test
+    fun `an old Studio import that fails is reported and tried again next start`() {
+        oldVideos.broken = true
+        oldVideos.found = listOf(NewVideo(VideoKind.RENDER, "old.mp4", "content://media/2", null, Millis(5_000), 1080, 1920, ""))
+        store()
+        assertEquals(listOf("Could not bring the earlier Studio's videos into the library"), failures.map { it.message })
+        assertTrue(storage.imports.isEmpty())
+
+        oldVideos.broken = false
+        val studio = store()
+
+        assertEquals(
+            listOf("old.mp4"),
+            studio.state.value.videos
+                .map { it.name },
+        )
+    }
+
+    @Test
+    fun `the earlier editor's cuts are listed and open in the Timeline, each kept under its name`() {
+        settings.ready(null)
+        val gig = EditorProject(Timeline(listOf(Lane(LaneId("lane-1"), LaneKind.Media, "Media 1"))))
+        drafts.named["Gig"] = gig
+        val studio = store()
+        assertEquals(listOf("Gig"), studio.state.value.savedCuts)
+
+        studio.send(EditCommand.OpenSavedCut("Gig"))
+        assertEquals(EditSession.Cut(EditorHistory(gig), name = "Gig"), studio.state.value.edit)
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+
+        assertEquals(
+            2,
+            drafts.named["Gig"]
+                ?.timeline
+                ?.lanes
+                ?.size,
+        )
+        assertEquals(null, drafts.kept)
+        assertTrue(failures.isEmpty())
     }
 
     @Test
@@ -1075,21 +1158,61 @@ private class FakeStudioStorage : StudioStorage {
         ensureWorking()
         rendersById.remove(render)
     }
-}
 
-/** Keeps the Timeline's cut in memory, or throws when [broken]. */
-private class FakeEditDrafts : EditDrafts {
-    var kept: EditorProject? = null
-    var broken = false
+    val imports = mutableSetOf<String>()
 
-    override suspend fun load(): EditorProject? {
-        check(!broken) { "no draft" }
-        return kept
+    override suspend fun imported(name: String): Boolean {
+        ensureWorking()
+        return name in imports
     }
 
-    override suspend fun save(project: EditorProject) {
+    override suspend fun import(
+        name: String,
+        projectName: String,
+        createdAt: Millis,
+        videos: List<NewVideo>,
+    ): ImportedVideos? {
+        ensureWorking()
+        imports += name
+        if (videos.isEmpty()) return null
+        val project = Project(ProjectId(nextId++), projectName, createdAt).also { projectsById[it.id] = it }
+        return ImportedVideos(project, addVideos(project.id, videos))
+    }
+}
+
+/** The old Studio's videos, or a failure while [broken]. */
+private class FakeOldVideos : OldVideos {
+    var found: List<NewVideo> = emptyList()
+    var broken = false
+
+    override suspend fun list(): List<NewVideo> {
+        check(!broken) { "no media index" }
+        return found
+    }
+}
+
+/** Keeps the Timeline's cut, and the earlier editor's cuts in [named], in memory, or throws when [broken]. */
+private class FakeEditDrafts : EditDrafts {
+    var kept: EditorProject? = null
+    val named = mutableMapOf<String, EditorProject>()
+    var broken = false
+
+    override suspend fun load(name: String?): EditorProject? {
         check(!broken) { "no draft" }
-        kept = project
+        return if (name == null) kept else named[name]
+    }
+
+    override suspend fun save(
+        project: EditorProject,
+        name: String?,
+    ) {
+        check(!broken) { "no draft" }
+        if (name == null) kept = project else named[name] = project
+    }
+
+    override suspend fun names(): List<String> {
+        check(!broken) { "no drafts" }
+        return named.keys.sorted()
     }
 }
 

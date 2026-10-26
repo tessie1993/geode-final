@@ -88,12 +88,14 @@ sealed interface EditSession {
 
     /**
      * The Timeline on [history]'s present cut, with its undo and redo, the playhead at [playheadMs], and
-     * why the last change was refused ([refused]), until the next one is made.
+     * why the last change was refused ([refused]), until the next one is made. [name] is the earlier
+     * editor's cut it was opened on (#347), kept under that name; null for the Timeline's own cut.
      */
     data class Cut(
         val history: EditorHistory,
         val playheadMs: Long = 0L,
         val refused: EditError? = null,
+        val name: String? = null,
     ) : EditSession {
         val project: EditorProject get() = history.present
     }
@@ -122,6 +124,14 @@ sealed interface EditCommand : StudioCommand {
 
     /** Opens the Timeline on its saved cut. */
     data object OpenCut : EditCommand
+
+    /**
+     * Opens the Timeline on [name], one of the cuts the earlier editor kept ([StudioState.savedCuts],
+     * #347); its changes are kept under that name.
+     */
+    data class OpenSavedCut(
+        val name: String,
+    ) : EditCommand
 
     /** A new lane of [kind], named [name], under the others. */
     data class AddLane(
