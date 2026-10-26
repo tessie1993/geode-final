@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 import android.net.Uri
 import dev.geode.feature.studio.api.edit.MarkerSet

@@ -2,6 +2,7 @@ package dev.geode.wallpaper
 
 import android.app.WallpaperManager
 import android.content.Context
+import android.content.SharedPreferences
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.os.Handler
@@ -20,7 +21,6 @@ import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
 import dev.geode.ui.SurfaceDrawing
-import dev.geode.ui.ThemeStore
 import dev.geode.util.bestEffort
 import javax.inject.Inject
 
@@ -112,7 +112,7 @@ class VisualizerWallpaperService : WallpaperService() {
             // Settings, once read; before then, what the old settings file said.
             engine.reducedMotion =
                 (settings.state.value as? SettingsState.Ready)?.values?.behavior?.reducedMotion
-                    ?: ThemeStore(prefsFiles.general).loadGui().reducedMotion
+                    ?: legacyReducedMotion(prefsFiles.general)
         }
 
         // The app's one audio feed, read natively by the renderer each frame: what plays in the app, or
@@ -261,6 +261,13 @@ class VisualizerWallpaperService : WallpaperService() {
 
     private companion object {
         const val TAG = "VisualizerWallpaper"
+
+        /**
+         * Reduced motion as the old settings file kept it: its own switch, or the old first-run
+         * question's answer that asked for it.
+         */
+        fun legacyReducedMotion(prefs: SharedPreferences): Boolean =
+            prefs.getBoolean("gui_reduced_motion", false) || prefs.getString("gui_safety_choice", null) == "REDUCED_MOTION"
 
         /** Bounded on purpose: a wedged GL thread must not turn teardown into an ANR. */
         const val GL_RELEASE_WAIT_MS = 200L

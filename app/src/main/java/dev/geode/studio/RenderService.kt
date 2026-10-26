@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -16,6 +16,7 @@ import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.studio.media.RenderEta
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +35,7 @@ import javax.inject.Inject
  * service again, which brings Studio's store back, and the store resumes the queue from its database.
  */
 @AndroidEntryPoint
-class ExportService : Service() {
+class RenderService : Service() {
     // Without @JvmSuppressWildcards the field's Java type gets ? super / ? extends for Feature's
     // in/out parameters, which the provided Studio lacks (as in GeodePlaybackService).
     @Inject
@@ -156,10 +157,10 @@ class ExportService : Service() {
 
         fun start(context: Context) {
             runCatching {
-                context.startForegroundService(Intent(context, ExportService::class.java))
+                context.startForegroundService(Intent(context, RenderService::class.java))
             }
         }
     }
 }
 
-private const val TAG = "ExportService"
+private const val TAG = "RenderService"

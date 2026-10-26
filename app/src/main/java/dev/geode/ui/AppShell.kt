@@ -82,6 +82,8 @@ import dev.geode.design.glass.rememberGlassSource
 import dev.geode.engine.types.Millis
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.ui.LibraryRoute
+import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.playback.ui.ListeningRoute
@@ -92,8 +94,9 @@ import dev.geode.feature.playback.ui.QueueRoute
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
+import dev.geode.feature.settings.api.LookSettings
+import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.SettingsState
-import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.studio.ui.StudioRoute
@@ -119,12 +122,11 @@ private const val CRASH_REPORT_MAX_BYTES = 64 * 1024
  * The app's root: the App UI shell (#17). The App UI reducer (#182) decides where the person is and
  * what covers it, and this draws that: the Bar (Music, Visuals, Home, Studio, Settings, for everyone),
  * the Mini-player on every page but Home, the full-screen Visual, the Queue and Tools sheets, and the
- * failure banner. Pages whose feature has not switched over yet still show their old screen.
+ * failure banner.
  */
 @Composable
 fun AppRoot() {
-    val viewModel: PlayerViewModel = geodeViewModel()
-    val settingsViewModel: SettingsViewModel = geodeViewModel()
+    val engineHold: EngineHoldViewModel = geodeViewModel()
     val shell: ShellViewModel = geodeViewModel()
     val appUi = shell.appUi
     val context = LocalContext.current
@@ -164,7 +166,6 @@ fun AppRoot() {
             visualizerView.onPause()
         }
     }
-    val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
     val ui by appUi.state.collectAsStateWithLifecycle()
     val playing by shell.playback.state.collectAsStateWithLifecycle()
     val loaded = playing.player != PlayerState.Idle
@@ -221,7 +222,9 @@ fun AppRoot() {
     val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
         if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
     }
-    GeodeTheme(look?.themeMode ?: ThemeMode.SYSTEM, look?.reduceTransparency ?: false, visualsOff, gui) {
+    // Settings' defaults while the stored ones are being read.
+    val reducedMotion = settingsValues?.behavior?.reducedMotion ?: false
+    GeodeTheme(look ?: LookSettings(), reducedMotion, visualsOff) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }
         // What the bars and sheets frost: the page and its backdrop (#324).
         val source = rememberGlassSource()
@@ -236,7 +239,7 @@ fun AppRoot() {
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
         val page: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             when (ui.place) {
-                Place.HOME -> HomeScreen(shell, loaded, onResume = viewModel::resumeLastPlayed, onOpen = open)
+                Place.HOME -> HomeScreen(shell, loaded, onResume = { resumeLastPlayed(shell.playback) }, onOpen = open)
                 Place.MUSIC ->
                     if (twoPane) {
                         Row(Modifier.fillMaxSize()) {
@@ -263,7 +266,7 @@ fun AppRoot() {
         }
         val content: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             Column {
-                PlaybackNoticeBanner(viewModel)
+                PlaybackNoticeBanner(engineHold)
                 page(twoPane)
             }
         }
@@ -271,7 +274,15 @@ fun AppRoot() {
             val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
             val backdrop: @Composable () -> Unit = { PlaceBackdrop(ui.place, artwork) }
             if (widthClass == WindowWidthSizeClass.COMPACT) {
-                AppShellCompact(ui.place, open, gui, miniPlayer, source, backdrop, content = { content(false) })
+                AppShellCompact(
+                    ui.place,
+                    open,
+                    look?.playerPosition ?: PlayerPosition.BOTTOM,
+                    miniPlayer,
+                    source,
+                    backdrop,
+                    content = { content(false) },
+                )
             } else {
                 AppShellExpanded(ui.place, open, miniPlayer, backdrop, content = { content(true) })
             }
@@ -346,6 +357,17 @@ private const val TILT_SUBTLE = 0.5f
 
 /** The monotonic clock Playback's marks use (ADR-0004). */
 private fun elapsedNow(): Millis = Millis(SystemClock.elapsedRealtime())
+
+/** Home's Resume: plays what is loaded, or the song played last when nothing is. */
+private fun resumeLastPlayed(playback: Playback) {
+    val state = playback.state.value
+    if (state.player.currentQueue != null) {
+        playback.send(PlaybackCommand.Resume)
+        return
+    }
+    val last = state.history.firstOrNull()?.track ?: return
+    playback.send(PlaybackCommand.Play(listOf(last)))
+}
 
 internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
@@ -563,14 +585,14 @@ private fun FailureBanner(
 private fun AppShellCompact(
     place: Place,
     onOpen: (Place) -> Unit,
-    gui: GuiPrefs,
+    playerPosition: PlayerPosition,
     miniPlayer: (@Composable () -> Unit)?,
     source: GlassSource,
     backdrop: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
     val live = place != Place.VISUALS
-    val top = miniPlayer.takeIf { gui.playerPosition == PlayerPosition.TOP }
+    val top = miniPlayer.takeIf { playerPosition == PlayerPosition.TOP }
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -585,7 +607,7 @@ private fun AppShellCompact(
                 place,
                 onOpen,
                 backdrop = if (live) GlassBackdrop.Live(source) else GlassBackdrop.Baked,
-                above = miniPlayer.takeIf { gui.playerPosition == PlayerPosition.BOTTOM },
+                above = miniPlayer.takeIf { playerPosition == PlayerPosition.BOTTOM },
             )
         },
     ) { pad ->
@@ -709,7 +731,7 @@ private fun Shortcut(
 }
 
 @Composable
-private fun PlaybackNoticeBanner(viewModel: PlayerViewModel) {
+private fun PlaybackNoticeBanner(viewModel: EngineHoldViewModel) {
     val notice by viewModel.playbackNotice.collectAsStateWithLifecycle()
     val message = notice ?: return
 

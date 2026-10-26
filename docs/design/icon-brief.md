@@ -279,7 +279,7 @@ These follow Android's own rules, so they are simpler than the in-app icons.
 |---|---|---|---|
 | `widget_play`, `widget_pause`, `widget_previous`, `widget_next` | Transport buttons on the home-screen widget | Drawable `ic_widget_play`, `ic_widget_pause`, `ic_widget_prev`, `ic_widget_next` (`widget/NowPlayingWidget.kt`) | Same drawings as the in-app transport icons, filled, at 24dp |
 | `widget_art_placeholder` | Widget artwork when a track has none | Drawable `ic_widget_art` | As `album_placeholder` |
-| `stat_capture` | Status-bar icon while capturing audio or exporting video | Drawable `ic_stat_capture` (`audio/PlaybackCaptureService.kt`, `export/ExportService.kt`) | White on transparent, a single flat silhouette with no fine detail, 24dp with a 22dp live area. Android shows only its shape. |
+| `stat_capture` | Status-bar icon while capturing audio or exporting video | Drawable `ic_stat_capture` (`audio/PlaybackCaptureService.kt`, `studio/RenderService.kt`) | White on transparent, a single flat silhouette with no fine detail, 24dp with a 22dp live area. Android shows only its shape. |
 | `stat_playing` | Status-bar icon while music plays | New | As `stat_capture` |
 
 The home-screen app icon is part of this commission, with its own rules in section 9.

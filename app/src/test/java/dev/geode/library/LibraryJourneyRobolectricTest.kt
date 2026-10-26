@@ -10,7 +10,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import dev.geode.audio.adapter.FakeAudioAdapter
-import dev.geode.data.SmartPlaylistStore
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.TrackId
 import dev.geode.feature.library.api.GroupKey
@@ -18,6 +17,7 @@ import dev.geode.feature.library.api.GroupKind
 import dev.geode.feature.library.api.Library
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.LibraryView
+import dev.geode.feature.library.api.Pick
 import dev.geode.feature.library.api.Place
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.library.handlers.LibrarySources
@@ -32,37 +32,27 @@ import dev.geode.feature.playback.handlers.PlaybackClocks
 import dev.geode.feature.playback.handlers.playbackStore
 import dev.geode.feature.playback.ui.MiniPlayerRoute
 import dev.geode.feature.playback.ui.PlayerRoute
-import dev.geode.feature.settings.api.Settings
-import dev.geode.feature.settings.api.SettingsCommand
-import dev.geode.feature.settings.api.SettingsState
 import dev.geode.kernel.FakeClock
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
 import dev.geode.playback.MemoryPlaybackStorage
-import dev.geode.ui.OldScreenLibrary
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /**
- * The Library slice of the switch-over (#17): the old Library screens play through the one app-scoped
- * Library store, which hands the songs to Playback, and where the user is browsing lives in that store,
- * so it survives the places moving the way navigation moves them.
+ * The Library slice of the switch-over (#17): the Library plays through the one app-scoped Library
+ * store, which hands the songs to Playback, and where the user is browsing lives in that store, so it
+ * survives the places moving the way navigation moves them.
  *
  * Both stores are built as `:app` builds them, over in-memory storage and the audio adapter's fake. The
  * plain Application keeps Robolectric away from GeodeApp, which loads the engine.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class)
 class LibraryJourneyRobolectricTest {
@@ -87,13 +77,6 @@ class LibraryJourneyRobolectricTest {
             file: String,
             text: String,
         ) = error("no files here")
-    }
-
-    private class NoSettings : Settings {
-        override val state = MutableStateFlow<SettingsState>(SettingsState.Loading())
-        override val events: Flow<Nothing> = emptyFlow()
-
-        override fun send(command: SettingsCommand) = Unit
     }
 
     private fun song(
@@ -127,41 +110,16 @@ class LibraryJourneyRobolectricTest {
             LibrarySources(PhoneMusic(listOf(alpha, beta, gamma)), TagReader.NONE, MemoryLibraryStorage(), NoFiles()),
             inPlaceRuntime(failures = failures),
         )
-    private val app = RuntimeEnvironment.getApplication()
-    private val oldScreens =
-        OldScreenLibrary(library, playback, NoSettings(), SmartPlaylistStore(app), CoroutineScope(UnconfinedTestDispatcher()))
-
     private val where: MutableState<Where> = mutableStateOf(Where.LIBRARY)
 
     @Test
-    fun `a playlist made empty in the old Library is filled, reordered, cut and renamed in Playback`() {
-        oldScreens.createPlaylist("Later", emptyList())
-        oldScreens.addToPlaylist("Later", listOf(alpha.id, beta.id, gamma.id))
-        oldScreens.moveInPlaylist("Later", from = 2, to = 0)
-        oldScreens.removeFromPlaylist("Later", index = 1)
-        oldScreens.renamePlaylist("Later", "Dusk")
-
-        val playlist =
-            library.state.value.playlists
-                .single()
-        assertEquals("Dusk", playlist.name)
-        assertEquals(listOf(gamma.id, beta.id), playlist.songs)
-        assertEquals(
-            listOf(gamma.id, beta.id),
-            playback.state.value.playlists
-                .single()
-                .tracks
-                .map { it.id },
-        )
-        assertEquals(emptyList<FeatureFailure>(), failures)
-    }
-
-    @Test
-    fun `a song played from the old Library reaches Playback, with the list it was in`() {
-        val shown = oldScreens.deviceTracks.value.map { it.uri }
+    fun `a song played from the Library reaches Playback, with the list it was in`() {
+        val shown =
+            library.state.value.songs
+                .map { it.id }
         assertEquals(listOf(alpha.id, beta.id, gamma.id), shown)
 
-        oldScreens.play(shown, from = beta.id)
+        library.send(LibraryCommand.Play(Pick.Songs(shown), from = beta.id))
 
         val loading = playback.state.value.player as PlayerState.Loading
         assertEquals(listOf(alpha.id, beta.id, gamma.id), loading.queue.tracks.map { it.id })
@@ -173,8 +131,8 @@ class LibraryJourneyRobolectricTest {
     fun `where the user browses, the favourites and the music survive the places moving`() {
         library.send(LibraryCommand.Show(LibraryView.ALBUMS))
         library.send(LibraryCommand.Open(GroupKey(GroupKind.ALBUM, "First")))
-        oldScreens.toggleFavourite(gamma.id)
-        oldScreens.play(listOf(alpha.id, beta.id), from = alpha.id)
+        library.send(LibraryCommand.ToggleFavourite(gamma.id))
+        library.send(LibraryCommand.Play(Pick.Songs(listOf(alpha.id, beta.id)), from = alpha.id))
         val browsing = library.state.value
         val music = playback.state.value.player
 
@@ -188,19 +146,20 @@ class LibraryJourneyRobolectricTest {
 
         assertEquals(Place.Group(LibraryView.ALBUMS, GroupKey(GroupKind.ALBUM, "First")), library.state.value.place)
         assertEquals(browsing, library.state.value)
-        assertEquals(setOf(gamma.id), oldScreens.favourites.value)
+        assertEquals(setOf(gamma.id), library.state.value.favourites)
         assertEquals(music, playback.state.value.player)
         assertEquals(emptyList<FeatureFailure>(), failures)
     }
 
-    /** A stand-in for the app shell: the old Library reading the store, the player, and full screen. */
+    /** A stand-in for the app shell: the Library's songs, the player, and full screen. */
     @Composable
     private fun App() {
-        val tracks = oldScreens.deviceTracks.collectAsState()
+        val browsing = library.state.collectAsState()
         Column {
             when (where.value) {
                 Where.LIBRARY -> {
-                    tracks.value.forEach { Text(it.title) }
+                    browsing.value.songs
+                        .forEach { Text(it.title) }
                     MiniPlayerRoute(playback, elapsedNow = { clock.now }, onExpand = { where.value = Where.PLAYER })
                 }
                 Where.PLAYER -> PlayerRoute(playback, elapsedNow = { clock.now })

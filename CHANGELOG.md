@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The legacy app code is gone (#334).** The old player session and
+  screens, their settings plumbing, the old export and loop-render dialogs
+  and their controller, the export presets and the legacy quality, ratio
+  and codec enums are deleted, with their tests and strings. What Studio's
+  Renders still use — the encoder, the loop render and extender, loudness,
+  chapters — now lives under `studio/media`, and the render service is
+  `studio/RenderService`. The Timeline's auto-cut reads the playing song's
+  analysis when a Render has already made one, instead of an export that no
+  longer exists. Importing earlier videos and v1 editor projects is
+  unchanged.
+
 - **Style packs ship their own images (#391).** A shader Style may declare
   up to four PNGs in its folder under `textures`, each with a wrap
   (`repeat`, `mirror`, `clamp`) and a filter (`linear`, `nearest`,

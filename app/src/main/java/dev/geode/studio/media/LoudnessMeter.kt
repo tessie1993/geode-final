@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.studio.media
 
 import android.content.Context
 import android.media.AudioFormat

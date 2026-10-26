@@ -18,6 +18,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.geode.R
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.Pick
+import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.core.PresetLinks
@@ -26,8 +27,6 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val settingsViewModel: SettingsViewModel by viewModels()
-
     private val shell: ShellViewModel by viewModels()
 
     private fun playFromSearch(intent: Intent?) {
@@ -74,7 +73,7 @@ class MainActivity : ComponentActivity() {
         content.viewTreeObserver.addOnPreDrawListener(
             object : ViewTreeObserver.OnPreDrawListener {
                 override fun onPreDraw(): Boolean {
-                    val ready = settingsViewModel.userDataLoaded.value
+                    val ready = shell.settings.state.value is SettingsState.Ready
                     if (ready) content.viewTreeObserver.removeOnPreDrawListener(this)
                     return ready
                 }

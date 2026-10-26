@@ -59,9 +59,9 @@ class GeodeContainer(
 
     /**
      * Deletes MediaStore rows a render left `IS_PENDING` when its process died mid-write — a
-     * crash, a force-stop, a low-memory kill of [dev.geode.export.ExportService] before it could
-     * finish. [dev.geode.export.VideoExporter], [dev.geode.feature.studio.handlers.edit.StudioExporter] and
-     * [dev.geode.export.LoopExtend] all insert with `IS_PENDING` set and clear it on success or
+     * crash, a force-stop, a low-memory kill of [dev.geode.studio.RenderService] before it could
+     * finish. [dev.geode.studio.media.VideoExporter], [dev.geode.feature.studio.handlers.edit.StudioExporter] and
+     * [dev.geode.studio.media.LoopExtend] all insert with `IS_PENDING` set and clear it on success or
      * delete the row on a clean failure. A Studio Render the queue resumes after a restart starts
      * over with a new row, so a row that is still pending once the app restarts belongs to nobody
      * and never finishes on its own. It would otherwise sit in Movies/Geode or Pictures/Geode forever, a

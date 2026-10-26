@@ -7,7 +7,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.AppPresence
 import dev.geode.data.EditorProjectStore
-import dev.geode.export.ExportService
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.handlers.AndroidPresetPlaces
@@ -29,6 +28,7 @@ import dev.geode.studio.AppTransitionShaders
 import dev.geode.studio.LiveVisualRecorder
 import dev.geode.studio.NativeRenderEngine
 import dev.geode.studio.RenderAlerts
+import dev.geode.studio.RenderService
 import dev.geode.studio.TrackLoudness
 import dev.geode.ui.LiveVisualPresence
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +49,7 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 // Feature's Command and Fact are in/out, so Kotlin gives the store parameters Java wildcards the
-// provided stores lack; without this Dagger finds no binding for them (as in ExportModule).
+// provided stores lack; without this Dagger finds no binding for them (as in LibraryModule).
 @JvmSuppressWildcards
 object StudioModule {
     @Provides
@@ -105,7 +105,7 @@ object StudioModule {
                 studio.state
                     .map { state -> state.rendersKeepGoing && state.renders.any { it.active } }
                     .distinctUntilChanged()
-                    .collect { busy -> if (busy) ExportService.start(application) }
+                    .collect { busy -> if (busy) RenderService.start(application) }
             }
             scope.launch { RenderAlerts(application, studio, settings).follow() }
         }
