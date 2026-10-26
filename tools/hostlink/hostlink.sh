@@ -12,7 +12,8 @@
 #
 # What it does not prove: anything about the Android toolchain (clang, the
 # NDK's libc++, 16 KB page alignment, LTO), the rest of the audio/analysis/library trees
-# (they need kissfft, oboe, taglib and mediandk), or that anything runs.
+# (they need oboe, taglib and mediandk; only analysis/Spectrum and kissfft come along, for
+# viz's audio inputs), or that anything runs.
 #
 # Stubs, all named: android/asset_manager.h and android/log.h are replaced by
 # C-linkage declarations, projectM's two CMake-generated headers
@@ -97,6 +98,13 @@ mapfile -t SRCS < <(cat "$ROOT/core/CMakeLists.txt" "$ROOT/core/pure_sources.cma
   | grep -E '^\s+(viz|render|util)/' | tr -d ' ' | sort -u)
 PUBLIC_INCS=()
 for d in "$ROOT"/core/*/include; do PUBLIC_INCS+=(-I "$d"); done
+# viz's audio inputs (#300) take their spectrum from the analysis library's Spectrum, which wraps
+# kissfft: build that one analysis unit and kissfft's real FFT too, configured as the device build is
+# (float samples). The submodule must be checked out: git submodule update --init third_party/kissfft.
+KISS="$ROOT/third_party/kissfft"
+[[ -f "$KISS/kiss_fftr.h" ]] || { echo "hostlink: third_party/kissfft is not checked out"; exit 1; }
+PUBLIC_INCS+=(-I "$KISS" -Dkiss_fft_scalar=float)
+SRCS+=(analysis/Spectrum.cpp)
 echo "hostlink: compiling ${#SRCS[@]} translation units"
 fail=0
 for f in "${SRCS[@]}"; do
@@ -105,6 +113,9 @@ for f in "${SRCS[@]}"; do
   if ! g++ -std=c++20 -fvisibility=hidden -Wall -Wextra -fPIC -c -I "$ROOT/core/$lib" "${PUBLIC_INCS[@]}" -I "$WORK/inc" "$ROOT/core/$f" -o "$obj"; then
     echo "hostlink: COMPILE FAILED $f"; fail=1
   fi
+done
+for c in kiss_fft.c kiss_fftr.c; do
+  gcc -fPIC -O1 -Dkiss_fft_scalar=float -I "$KISS" -c "$KISS/$c" -o "$WORK/obj/kissfft_${c%.c}.o" || { echo "hostlink: COMPILE FAILED kissfft/$c"; fail=1; }
 done
 [[ $fail -eq 0 ]] || exit 1
 
