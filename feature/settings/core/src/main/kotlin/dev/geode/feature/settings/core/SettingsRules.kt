@@ -156,6 +156,7 @@ object SettingsRules {
             is BehaviorCommand.SetReducedMotion -> behavior.copy(reducedMotion = command.on)
             is BehaviorCommand.SetTilt -> behavior.copy(tilt = command.amount)
             is BehaviorCommand.SetStartLook -> behavior.copy(startLook = command.look)
+            is BehaviorCommand.SetTransitionLook -> behavior.copy(transitionLook = command.look)
         }
 
     private fun export(

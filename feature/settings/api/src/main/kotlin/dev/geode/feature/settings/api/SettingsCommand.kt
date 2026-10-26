@@ -198,6 +198,11 @@ sealed interface BehaviorCommand : SettingsCommand {
     data class SetStartLook(
         val look: StartLook,
     ) : BehaviorCommand
+
+    /** How every change of Style looks on the live Visual (#309). */
+    data class SetTransitionLook(
+        val look: TransitionLook,
+    ) : BehaviorCommand
 }
 
 sealed interface ExportCommand : SettingsCommand {

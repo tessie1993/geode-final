@@ -114,6 +114,9 @@ internal object SettingsKeys {
      */
     const val START_LOOK = "start_look"
 
+    /** New with #309, so in no old file: the look of a change of Style, by the engine's id for it. */
+    const val TRANSITION_LOOK = "gui_transition_look"
+
     /**
      * New with #394, so in no old file: a surface's own quality and frame rate, by name, one key each.
      * Absent when the surface follows [VISUAL_QUALITY] and [VISUAL_FRAME_RATE].
