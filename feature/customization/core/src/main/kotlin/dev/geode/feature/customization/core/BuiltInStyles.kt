@@ -316,6 +316,25 @@ object BuiltInStyles {
             shader("dune_sea", true, listOf(generic(FOG))),
         )
 
+    /**
+     * The camera-world shader Styles: each moves a real camera through a 3D world of its own (it reads
+     * the Camera through lib_camera.glsl, so push-in, orbit and travel move that camera) and wires its
+     * music in its shader, so none has Extras or default Reactions yet.
+     */
+    private val cameraWorldShaders: List<StyleManifest> =
+        listOf(
+            shader("hyper_lattice", true, emptyList()),
+            shader("dew_macro", true, emptyList()),
+            shader("monolith_plain", true, emptyList()),
+            shader("spiral_descent", true, emptyList()),
+            shader("glass_vines", true, emptyList()),
+            shader("swarm_chase", true, emptyList()),
+            shader("origami_peaks", true, emptyList()),
+            shader("rain_glass", true, emptyList()),
+            shader("sea_cave", true, emptyList()),
+            shader("pulsar_orbit", true, emptyList()),
+        )
+
     private fun life(
         id: String,
         grayScott: Boolean,
@@ -545,7 +564,7 @@ object BuiltInStyles {
 
     /** Every Style this version draws. */
     val all: List<StyleManifest> =
-        classicShaders + newerShaders + worldShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
+        classicShaders + newerShaders + worldShaders + cameraWorldShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
             listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     val catalogue: StyleCatalogue = StyleCatalogue(all)
