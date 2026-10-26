@@ -41,6 +41,11 @@ public:
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
     // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
     virtual void setQuality(const quality::Budget& budget) { (void) budget; }
+    // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just
+    // before draw(). A Style that draws through targets of its own comes back to this one from here
+    // rather than asking the driver: a glGet makes a threaded driver wait for its queue (#311). The
+    // viewport may be smaller than resize() said: the outgoing Style of a transition draws at half size.
+    virtual void setDrawTarget(GLuint fbo, int width, int height) { (void) fbo; (void) width; (void) height; }
     // True when the Style moves a camera of its own from the Camera (a raymarched world reading
     // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
     virtual bool ownsCamera() const { return false; }

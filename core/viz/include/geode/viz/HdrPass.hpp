@@ -26,17 +26,20 @@ public:
     void release();
     // The format of the composite and bloom targets, from the next allocation on.
     void setTargetFormat(Framebuffer::Format format);
-    // Makes the composite target at the output size. False when it cannot be made in RGBA16F (no
+    // Makes the composite target at the frame size (tile::frameSize). False when it cannot be made in RGBA16F (no
     // program, no memory, or no half-float targets here); the composite then draws straight into the
     // final target, dithered there.
     bool ensureComposite(int width, int height);
     GLuint compositeFbo() const { return composite_.fbo(); }
-    // Blooms and tonemaps the composite into `targetFbo` at the output size, leaving it bound.
-    void resolve(const tone::BloomSettings& bloom, GLuint targetFbo, GLuint quadVao);
+    GLuint compositeTex() const { return composite_.tex(); }
+    // Blooms and tonemaps `source` (the composite, or the scene target itself when the composite
+    // would not change it; TileFrame.hpp) into `targetFbo`, drawn at targetWidth x targetHeight and
+    // left bound. The bloom chain follows the size ensureComposite() was given.
+    void resolve(const tone::BloomSettings& bloom, GLuint source, GLuint targetFbo, int targetWidth, int targetHeight, GLuint quadVao);
 
 private:
     // Draws the bloom chain; returns how many levels it holds (0 when there is none this frame).
-    int drawBloom(const tone::BloomSettings& bloom, GLuint quadVao);
+    int drawBloom(const tone::BloomSettings& bloom, GLuint source, GLuint quadVao);
     static GLuint createBlackTexture();
 
     Framebuffer::Format format_ = Framebuffer::Format::Rgba8;

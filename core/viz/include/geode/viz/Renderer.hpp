@@ -36,6 +36,7 @@
 #include "geode/viz/StyleLab.hpp"
 #endif
 #include "geode/viz/ThermalGovernor.hpp"
+#include "geode/viz/TileFrame.hpp"
 #include "geode/viz/TouchField.hpp"
 #include "geode/viz/TrailPass.hpp"
 #include "geode/viz/VisualSafety.hpp"
@@ -142,7 +143,8 @@ private:
     // picture of a transition; its picture is then that target's (layerTexture()).
     void drawLayerTarget(const SceneParams& p, float dt);
     GLuint layerTexture() const;
-    void bindSecondaryTarget();
+    // Binds and clears the Layer's or the outgoing Style's target, which the composite then reads.
+    void bindSecondaryTarget(const Framebuffer& target);
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
     // The active Style's picture with the Shared core effects drawn over it, or the scene target as
     // it is while every effect is 0.
@@ -201,6 +203,10 @@ private:
     AdsrEngine adsr_;
     Framebuffer fboA_{"sceneA"};
     Framebuffer fboB_{"sceneB"};
+    // The outgoing Style's half-size target during a transition (tile::outgoingSize).
+    Framebuffer fboOut_{"sceneOutgoing"};
+    // What the composite reads as its second picture this frame: fboB_ or fboOut_.
+    GLuint secondaryTex_ = 0;
     // Layer 2's picture, allocated while Layer 2 draws.
     Framebuffer fboL_{"sceneL"};
     GLuint quadVao_ = 0;

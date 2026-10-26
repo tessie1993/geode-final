@@ -278,6 +278,7 @@ void Renderer::onSurfaceCreated() {
     }
     fboA_.release();
     fboB_.release();
+    fboOut_.release();
     fboL_.release();
     hdrPass_.release();
     compositePass_.releaseStaleTextures();
@@ -287,6 +288,7 @@ void Renderer::onSurfaceCreated() {
         half.renderable() && half.blendsAdditively ? Framebuffer::Format::Rgba16F : Framebuffer::Format::Rgba8;
     fboA_.setFormat(hdrFormat);
     fboB_.setFormat(hdrFormat);
+    fboOut_.setFormat(hdrFormat);
     fboL_.setFormat(hdrFormat);
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);

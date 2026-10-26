@@ -44,6 +44,9 @@ public:
     void forget();
     void discardContents(GLenum bindTarget = GL_FRAMEBUFFER) const;
     static void discardColorAttachments(GLenum bindTarget, int count);
+    // Invalidates the colour of `fbo`, already bound to GL_FRAMEBUFFER (0 for the window), before a
+    // pass that redraws all of it, so a tiled GPU never reloads what is about to be overwritten.
+    static void discardBound(GLuint fbo);
 
 private:
     bool alreadyAt(int w, int h) const { return ok() && width_ == w && height_ == h && allocated_ == format_; }

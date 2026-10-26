@@ -103,6 +103,8 @@ class VisualizerWallpaperService : WallpaperService() {
             glView =
                 WallpaperGlSurfaceView(this@VisualizerWallpaperService).apply {
                     setEGLContextClientVersion(3)
+                    // No depth or stencil, as VisualizerView: the window only takes the finished frame.
+                    setEGLConfigChooser(8, 8, 8, 0, 0, 0)
                     setRenderer(engine)
                     // The pacer asks for each frame; without a request the GL thread parks, which
                     // is how "invisible costs nothing" is enforced rather than merely intended.

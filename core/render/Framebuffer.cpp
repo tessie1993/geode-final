@@ -95,4 +95,10 @@ void Framebuffer::discardColorAttachments(GLenum bindTarget, int count) {
     glInvalidateFramebuffer(bindTarget, count, kColorAttachments);
 }
 
+void Framebuffer::discardBound(GLuint fbo) {
+    // The window names its colour buffer GL_COLOR; a framebuffer object names its attachment.
+    const GLenum attachment = fbo == 0 ? GL_COLOR : GL_COLOR_ATTACHMENT0;
+    glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &attachment);
+}
+
 }  // namespace geode::viz

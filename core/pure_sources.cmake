@@ -66,6 +66,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/BeatEnvelope.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
+    viz/TileFrame.cpp
     viz/StylePacks.cpp
     viz/StyleLab.cpp
     viz/StyleProfiles.cpp

@@ -30,6 +30,7 @@ GLuint SharedFxPass::apply(const SharedEffects& fx, GLuint sceneTex, int width, 
     if (!out_->ensure(width, height)) return sceneTex;
     if (!history_->resizePreserving(width, height) || history_->width() != width || history_->height() != height) return sceneTex;
     glBindFramebuffer(GL_FRAMEBUFFER, out_->fbo());
+    out_->discardContents();
     glViewport(0, 0, width, height);
     glDisable(GL_BLEND);
     glUseProgram(program_);
