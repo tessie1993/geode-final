@@ -297,6 +297,25 @@ object BuiltInStyles {
             shader("nectar_flow", true, listOf(generic(COMPLEXITY), generic(FOG)), listOf(react(BASS, FOG, 0.2f))),
         )
 
+    /**
+     * The 3D-world Styles. Each flies a camera of its own through a world it marches or intersects, so
+     * every one owns its flight and moves with the Camera (lib_camera.glsl). Their sound couplings are
+     * drawn in the shader; the Extras listed are the ones each shader reads.
+     */
+    private val worldShaders: List<StyleManifest> =
+        listOf(
+            shader("canyon_run", true, listOf(generic(TURN), generic(FOG))),
+            shader("lantern_river", true, listOf(generic(SIZE), generic(FOG))),
+            shader("ringed_giant", true, listOf(generic(SIZE))),
+            shader("crystal_shaft", true, listOf(generic(FOG))),
+            shader("night_drive", true, listOf(generic(FOG))),
+            shader("reef_glide", true, listOf(generic(FOG))),
+            shader("cloud_deck", true, listOf(generic(FOG))),
+            shader("gyro_core", true, listOf(generic(SPIN), generic(FOG))),
+            shader("endless_stacks", true, listOf(generic(FOG))),
+            shader("dune_sea", true, listOf(generic(FOG))),
+        )
+
     private fun life(
         id: String,
         grayScott: Boolean,
@@ -526,7 +545,7 @@ object BuiltInStyles {
 
     /** Every Style this version draws. */
     val all: List<StyleManifest> =
-        classicShaders + newerShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
+        classicShaders + newerShaders + worldShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
             listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     val catalogue: StyleCatalogue = StyleCatalogue(all)
