@@ -183,6 +183,9 @@ fun AppRoot() {
             }
     }
     if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
+    // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
+    var reactionsHeld by remember { mutableStateOf(false) }
+    LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }
     val element = settingsValues?.look?.element ?: Element.Default
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
@@ -264,7 +267,7 @@ fun AppRoot() {
                 )
             }
             if (ui.fullScreen) {
-                FullScreenVisual(shell, keepScreenOn, visual, inPip)
+                FullScreenVisual(shell, keepScreenOn, visual, inPip, reactionsHeld, onHeldChange = { reactionsHeld = it })
             }
             // The picture-in-picture window shows the Visual alone; what covered it comes back with the app.
             if (!inPip) {
@@ -377,7 +380,8 @@ private fun PlayerSheet(
 /**
  * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, and the way into the
  * Customize sheet. Leaving it is the App UI's Back. In picture-in-picture ([inPip], #287) the window
- * shows the Visual alone, with no App UI over it.
+ * shows the Visual alone, with no App UI over it. The freeze switch ([reactionsHeld], #366) holds the
+ * Sound signals while the picture keeps moving.
  */
 @Composable
 private fun FullScreenVisual(
@@ -385,6 +389,8 @@ private fun FullScreenVisual(
     keepScreenOn: Boolean,
     visual: @Composable () -> Unit,
     inPip: Boolean,
+    reactionsHeld: Boolean,
+    onHeldChange: (Boolean) -> Unit,
 ) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         visual()
@@ -398,6 +404,12 @@ private fun FullScreenVisual(
                 onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
                 modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp),
             ) { Text(stringResource(R.string.visuals_open_capture)) }
+            TextButton(
+                onClick = { onHeldChange(!reactionsHeld) },
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+            ) {
+                Text(stringResource(if (reactionsHeld) R.string.visuals_reactions_unfreeze else R.string.visuals_reactions_freeze))
+            }
         }
     }
 }

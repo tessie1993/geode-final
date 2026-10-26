@@ -485,6 +485,8 @@
     <string name="visuals_milkdrop">MilkDrop presets and textures</string>
     <string name="visuals_open_customize">Customize</string>
     <string name="visuals_open_capture">Live sound</string>
+    <string name="visuals_reactions_freeze">Freeze reactions</string>
+    <string name="visuals_reactions_unfreeze">Let it react</string>
     <string name="preset_shared_name">Shared look</string>
     <string name="preset_share_subject">Geode preset: %1$s</string>
     <string name="preset_share_title">Share preset</string>
