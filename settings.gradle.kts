@@ -53,10 +53,10 @@ include(
 )
 
 include(
-    ":feature:capture:api",
-    ":feature:capture:core",
-    ":feature:capture:handlers",
-    ":feature:capture:ui",
+    ":feature:liveinput:api",
+    ":feature:liveinput:core",
+    ":feature:liveinput:handlers",
+    ":feature:liveinput:ui",
 )
 
 // Settings (#38): today's settings on one store, in DataStore (ADR-0004).

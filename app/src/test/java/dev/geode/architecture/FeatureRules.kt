@@ -1,6 +1,6 @@
 package dev.geode.architecture
 
-/** One Gradle module and the modules its build file depends on, by path (`:feature:capture:core`). */
+/** One Gradle module and the modules its build file depends on, by path (`:feature:liveinput:core`). */
 data class Module(
     val path: String,
     val dependsOn: Set<String>,
@@ -104,7 +104,7 @@ object FeatureRules {
     private fun isPure(module: String): Boolean =
         module.startsWith(":arch:") || (featureOf(module) != null && module.substringAfterLast(':') in pureParts)
 
-    /** `capture` for `:feature:capture:core`; null for anything that is not part of a feature. */
+    /** `liveinput` for `:feature:liveinput:core`; null for anything that is not part of a feature. */
     private fun featureOf(module: String): String? =
         module
             .takeIf { it.startsWith(":feature:") }

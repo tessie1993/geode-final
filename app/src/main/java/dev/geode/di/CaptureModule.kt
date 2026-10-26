@@ -5,9 +5,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.audio.adapter.AudioAdapter
-import dev.geode.feature.capture.api.Capture
-import dev.geode.feature.capture.core.MusicControl
-import dev.geode.feature.capture.handlers.captureStore
+import dev.geode.feature.liveinput.api.Capture
+import dev.geode.feature.liveinput.core.MusicControl
+import dev.geode.feature.liveinput.handlers.captureStore
 import dev.geode.feature.playback.api.Playback
 import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlayerState

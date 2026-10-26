@@ -1,0 +1,177 @@
+public abstract interface class dev/geode/feature/liveinput/api/CaptureCommand {
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureCommand$ChooseMusic : dev/geode/feature/liveinput/api/CaptureCommand {
+	public fun <init> (Ldev/geode/feature/liveinput/api/MusicChoice;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/MusicChoice;
+	public final fun copy (Ldev/geode/feature/liveinput/api/MusicChoice;)Ldev/geode/feature/liveinput/api/CaptureCommand$ChooseMusic;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureCommand$ChooseMusic;Ldev/geode/feature/liveinput/api/MusicChoice;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureCommand$ChooseMusic;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getChoice ()Ldev/geode/feature/liveinput/api/MusicChoice;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureCommand$PermissionAnswered : dev/geode/feature/liveinput/api/CaptureCommand {
+	public fun <init> (Z)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Ldev/geode/feature/liveinput/api/CaptureCommand$PermissionAnswered;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureCommand$PermissionAnswered;ZILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureCommand$PermissionAnswered;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getGranted ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureCommand$Start : dev/geode/feature/liveinput/api/CaptureCommand {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;)Ldev/geode/feature/liveinput/api/CaptureCommand$Start;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureCommand$Start;Ldev/geode/feature/liveinput/api/CaptureSource;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureCommand$Start;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureCommand$Stop : dev/geode/feature/liveinput/api/CaptureCommand {
+	public static final field INSTANCE Ldev/geode/feature/liveinput/api/CaptureCommand$Stop;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureCommand$Toggle : dev/geode/feature/liveinput/api/CaptureCommand {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;)Ldev/geode/feature/liveinput/api/CaptureCommand$Toggle;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureCommand$Toggle;Ldev/geode/feature/liveinput/api/CaptureSource;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureCommand$Toggle;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/liveinput/api/CaptureFact {
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureFact$Lost : dev/geode/feature/liveinput/api/CaptureFact {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;)Ldev/geode/feature/liveinput/api/CaptureFact$Lost;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureFact$Lost;Ldev/geode/feature/liveinput/api/CaptureSource;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureFact$Lost;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureProblem : java/lang/Enum {
+	public static final field DID_NOT_START Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public static final field PERMISSION_DENIED Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public static final field SOURCE_LOST Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public static final field SOURCE_UNAVAILABLE Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public static fun values ()[Ldev/geode/feature/liveinput/api/CaptureProblem;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureSource : java/lang/Enum {
+	public static final field MICROPHONE Ldev/geode/feature/liveinput/api/CaptureSource;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/liveinput/api/CaptureSource;
+	public static fun values ()[Ldev/geode/feature/liveinput/api/CaptureSource;
+}
+
+public abstract interface class dev/geode/feature/liveinput/api/CaptureState {
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$AskingAboutMusic : dev/geode/feature/liveinput/api/CaptureState {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;)Ldev/geode/feature/liveinput/api/CaptureState$AskingAboutMusic;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureState$AskingAboutMusic;Ldev/geode/feature/liveinput/api/CaptureSource;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureState$AskingAboutMusic;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$AwaitingPermission : dev/geode/feature/liveinput/api/CaptureState {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/MusicChoice;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun component2 ()Ldev/geode/feature/liveinput/api/MusicChoice;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/MusicChoice;)Ldev/geode/feature/liveinput/api/CaptureState$AwaitingPermission;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureState$AwaitingPermission;Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/MusicChoice;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureState$AwaitingPermission;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMusic ()Ldev/geode/feature/liveinput/api/MusicChoice;
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$Capturing : dev/geode/feature/liveinput/api/CaptureState {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;Z)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun component2 ()Z
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;Z)Ldev/geode/feature/liveinput/api/CaptureState$Capturing;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureState$Capturing;Ldev/geode/feature/liveinput/api/CaptureSource;ZILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureState$Capturing;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getQuiet ()Z
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$Failed : dev/geode/feature/liveinput/api/CaptureState {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/CaptureProblem;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun component2 ()Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/CaptureProblem;)Ldev/geode/feature/liveinput/api/CaptureState$Failed;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureState$Failed;Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/CaptureProblem;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureState$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProblem ()Ldev/geode/feature/liveinput/api/CaptureProblem;
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$Off : dev/geode/feature/liveinput/api/CaptureState {
+	public static final field INSTANCE Ldev/geode/feature/liveinput/api/CaptureState$Off;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$Preparing : dev/geode/feature/liveinput/api/CaptureState {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;)Ldev/geode/feature/liveinput/api/CaptureState$Preparing;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureState$Preparing;Ldev/geode/feature/liveinput/api/CaptureSource;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureState$Preparing;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/CaptureState$Starting : dev/geode/feature/liveinput/api/CaptureState {
+	public fun <init> (Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/MusicChoice;)V
+	public final fun component1 ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public final fun component2 ()Ldev/geode/feature/liveinput/api/MusicChoice;
+	public final fun copy (Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/MusicChoice;)Ldev/geode/feature/liveinput/api/CaptureState$Starting;
+	public static synthetic fun copy$default (Ldev/geode/feature/liveinput/api/CaptureState$Starting;Ldev/geode/feature/liveinput/api/CaptureSource;Ldev/geode/feature/liveinput/api/MusicChoice;ILjava/lang/Object;)Ldev/geode/feature/liveinput/api/CaptureState$Starting;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMusic ()Ldev/geode/feature/liveinput/api/MusicChoice;
+	public final fun getSource ()Ldev/geode/feature/liveinput/api/CaptureSource;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/liveinput/api/MusicChoice : java/lang/Enum {
+	public static final field KEEP_PLAYING Ldev/geode/feature/liveinput/api/MusicChoice;
+	public static final field PAUSE Ldev/geode/feature/liveinput/api/MusicChoice;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/liveinput/api/MusicChoice;
+	public static fun values ()[Ldev/geode/feature/liveinput/api/MusicChoice;
+}
+

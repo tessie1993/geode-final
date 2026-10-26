@@ -117,7 +117,7 @@ One piece of music on the device, as the Library lists it and the player plays i
 _Avoid_: song, file
 
 **Live input**:
-The microphone as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording. There is no line or USB input.
+The microphone as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording. There is no line or USB input. Its feature is the Live input feature, the `:feature:liveinput` modules.
 _Avoid_: capture, mic mode
 
 ### Studio
@@ -161,7 +161,7 @@ _Avoid_: Reel, clip
 ### Architecture
 
 **Feature**:
-One part of the app (Playback, Library, Customization, Capture, Studio, Settings), built as four Gradle modules: its interface, its state machine, its handlers and its screens (ADR-0005). Other features and screens reach it only through its interface: its read-only state, `send(Command)` and its `events`.
+One part of the app (Playback, Library, Customization, Live input, Studio, Settings), built as four Gradle modules: its interface, its state machine, its handlers and its screens (ADR-0005). Other features and screens reach it only through its interface: its read-only state, `send(Command)` and its `events`.
 _Avoid_: slice, controller
 
 **Feature interface**:

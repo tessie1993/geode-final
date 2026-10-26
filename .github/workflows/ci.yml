@@ -190,10 +190,10 @@ jobs:
             task: ":arch:audio:pitest"
             dir: arch/audio
             name: arch-audio
-          - module: ":feature:capture:core"
-            task: ":feature:capture:core:pitest"
-            dir: feature/capture/core
-            name: capture-core
+          - module: ":feature:liveinput:core"
+            task: ":feature:liveinput:core:pitest"
+            dir: feature/liveinput/core
+            name: liveinput-core
           - module: ":feature:playback:core"
             task: ":feature:playback:core:pitest"
             dir: feature/playback/core

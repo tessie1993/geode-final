@@ -6,11 +6,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.geode.feature.capture.api.Capture
-import dev.geode.feature.capture.api.CaptureCommand
-import dev.geode.feature.capture.ui.CaptureAction
-import dev.geode.feature.capture.ui.CaptureScreen
-import dev.geode.feature.capture.ui.CaptureScreenModel
+import dev.geode.feature.liveinput.api.Capture
+import dev.geode.feature.liveinput.api.CaptureCommand
+import dev.geode.feature.liveinput.ui.CaptureAction
+import dev.geode.feature.liveinput.ui.CaptureScreen
+import dev.geode.feature.liveinput.ui.CaptureScreenModel
 
 /**
  * Capture's place as a sheet (ADR-0003): the only part that touches the Capture store and the
