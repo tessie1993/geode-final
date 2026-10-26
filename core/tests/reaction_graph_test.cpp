@@ -268,6 +268,37 @@ TEST(ReactionGraph, AnythingPointingOutsideThePlanIsLeftOut) {
     EXPECT_EQ(out[Shared::Vignette], 0.0f);
 }
 
+TEST(ReactionGraph, TheBeatModulatorsGiveTheSameFramesForTheSameBeatsAfterAReset) {
+    // A Render repeats (#319): the random one draws from its seed, both count only the beats heard.
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    ModulatorSpec random;
+    random.kind = ModulatorKind::RandomOnBeat;
+    random.attackSeconds = 0.1f;
+    random.seed = 11;
+    ModulatorSpec toggle = random;
+    toggle.kind = ModulatorKind::ToggleOnBeat;
+    toggle.stepCount = 2;
+    plan.add(fromModulator(plan.add(random), Target::shared(Shared::Warp)));
+    plan.add(fromModulator(plan.add(toggle), Target::shared(Shared::Ripple)));
+    const auto frame = [](int i) { return i % 20 == 0 ? heard(SoundSignal::Beat, 0.8f) : SignalFrame{}; };
+    ReactionGraph graph;
+    float warp[200];
+    float ripple[200];
+    for (int i = 0; i < 200; ++i) {
+        const Evaluated& out = graph.evaluate(plan, frame(i), kFrameDt);
+        warp[i] = out[Shared::Warp];
+        ripple[i] = out[Shared::Ripple];
+    }
+    EXPECT_NE(warp[199], warp[0]);
+    EXPECT_NE(ripple[199], ripple[10]);
+    graph.reset();
+    for (int i = 0; i < 200; ++i) {
+        const Evaluated& out = graph.evaluate(plan, frame(i), kFrameDt);
+        EXPECT_EQ(out[Shared::Warp], warp[i]) << i;
+        EXPECT_EQ(out[Shared::Ripple], ripple[i]) << i;
+    }
+}
+
 TEST(ReactionGraph, TheSamePlanAndSoundGiveTheSameFramesAfterAReset) {
     CustomizationPlan plan = CustomizationPlan::defaults();
     ModulatorSpec drift;
@@ -477,6 +508,30 @@ TEST(MacroDrift, AModulatorLinkedToAMacroMovesItAroundThePersonsValue) {
     EXPECT_GT(high, 0.6f + 0.2f);
     EXPECT_GE(low, 0.6f - 0.25f - kTolerance);
     EXPECT_LE(high, 0.6f + 0.25f + kTolerance);
+}
+
+TEST(MacroDrift, TheBeatModulatorsLinkToAMacroLikeTheOthers) {
+    // #319: a toggle on the beat swings the Macro to one side of the person's value and back, each beat.
+    for (const ModulatorKind kind : {ModulatorKind::ToggleOnBeat, ModulatorKind::RandomOnBeat}) {
+        CustomizationPlan plan = CustomizationPlan::defaults();
+        plan.macros[0] = 0.5f;
+        ModulatorSpec m;
+        m.kind = kind;
+        m.stepCount = 1;
+        m.attackSeconds = 0.0f;
+        m.seed = 5;
+        const int beats = plan.add(m);
+        plan.add(fromModulator(beats, Target::macro(0), 0.4f));
+        ReactionGraph graph;
+        const float before = graph.evaluate(plan, SignalFrame{}, kFrameDt).macros[0];
+        const float onBeat = graph.evaluate(plan, heard(SoundSignal::Beat, 1.0f), kFrameDt).macros[0];
+        EXPECT_TRUE(graph.evaluate(plan, SignalFrame{}, kFrameDt).running[static_cast<size_t>(beats)]);
+        EXPECT_NE(onBeat, before) << static_cast<int>(kind);
+        if (kind == ModulatorKind::ToggleOnBeat) {
+            EXPECT_NEAR(before, 0.3f, kTolerance);
+            EXPECT_NEAR(onBeat, 0.7f, kTolerance);
+        }
+    }
 }
 
 TEST(MacroDrift, MatchesTheKotlinReference) {

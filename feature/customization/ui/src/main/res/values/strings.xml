@@ -107,6 +107,7 @@
     <string name="customize_play">Play</string>
     <string name="customize_stop">Stop</string>
     <string name="customize_beat_sync">Beat sync</string>
+    <string name="customize_beats_between">Beats between changes</string>
     <string name="customize_remove_modulator">Remove Modulator</string>
 
     <!-- Sliders -->
@@ -279,6 +280,8 @@
     <string name="customize_modulator_kind_envelope">Hit envelope</string>
     <string name="customize_modulator_kind_sequencer">Step sequencer</string>
     <string name="customize_modulator_kind_drift">Random drift</string>
+    <string name="customize_modulator_kind_toggle_on_beat">Toggle on beat</string>
+    <string name="customize_modulator_kind_random_on_beat">Random on beat</string>
 
     <!-- PresetPart -->
     <string name="customize_part_style">Style</string>

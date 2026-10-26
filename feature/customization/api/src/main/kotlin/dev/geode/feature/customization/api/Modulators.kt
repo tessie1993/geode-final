@@ -27,7 +27,10 @@ enum class Wave {
     RANDOM,
 }
 
-/** The four kinds of Modulator (#11). They are generated, not measured, so they are not Sound signals. */
+/**
+ * The kinds of Modulator: the four of #11 and the two beat Modulators of #319. They are generated, not
+ * measured, so they are not Sound signals.
+ */
 sealed interface ModulatorShape {
     /** An LFO wave, one cycle per [period], or locked to the beat when [beatSync]. */
     data class Lfo(
@@ -55,6 +58,32 @@ sealed interface ModulatorShape {
     data class RandomDrift(
         val period: Millis,
     ) : ModulatorShape
+
+    /**
+     * Flips between 0 and 1 every [everyBeats] beats the analysis hears, gliding to each side over
+     * [glide]. It counts heard beats and never assumes a tempo; with no beat it holds.
+     */
+    data class ToggleOnBeat(
+        val everyBeats: Int = 1,
+        val glide: Millis = ModulatorShape.DEFAULT_GLIDE,
+    ) : ModulatorShape
+
+    /**
+     * Moves to a new random value 0..1 every [everyBeats] heard beats, gliding there over [glide]. The
+     * values come from the Modulator's own seed, so a Render gives the same ones every time.
+     */
+    data class RandomOnBeat(
+        val everyBeats: Int = 1,
+        val glide: Millis = ModulatorShape.DEFAULT_GLIDE,
+    ) : ModulatorShape
+
+    companion object {
+        /** The most beats a beat Modulator waits between changes: the engine's step count. */
+        const val MAX_EVERY_BEATS: Int = 16
+
+        /** A beat Modulator's glide unless the person sets another: quick, but never a step. */
+        val DEFAULT_GLIDE: Millis = Millis(120)
+    }
 }
 
 /** When a Modulator runs, once it is linked to something. */

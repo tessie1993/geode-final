@@ -4,5 +4,6 @@
   "label": "Train Window",
   "family": "shader",
   "shader": "shader.glsl",
-  "renderScale": 1.0
+  "renderScale": 1.0,
+  "reactivity": {"macro": ["energy"], "micro": ["bands", "spectrum"]}
 }

@@ -7,5 +7,6 @@
   "extras": [
     { "name": "scale", "min": 0, "max": 2, "default": 1 },
     { "name": "drift", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"meso": ["bar", "beat"], "micro": ["drums", "hits", "bands", "spectrum"]}
 }

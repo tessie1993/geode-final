@@ -10,5 +10,6 @@
     { "name": "complexity", "min": 0, "max": 2, "default": 1 },
     { "name": "thickness", "min": 0, "max": 2, "default": 1 },
     { "name": "fog", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

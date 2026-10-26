@@ -179,6 +179,17 @@ TEST(PlanCodec, ReadsAModulatorInItsPlace) {
     EXPECT_EQ(m.seed, 42u);
 }
 
+TEST(PlanCodec, ReadsTheBeatModulatorsAndKeepsAnUnknownKindInRange) {
+    std::vector<float> data = carried();
+    data[kModulatorsAt] = 4.0f;
+    data[kModulatorsAt + kModulatorFloats] = 5.0f;
+    data[kModulatorsAt + 2 * kModulatorFloats] = 9.0f;
+    const CustomizationPlan plan = decoded(data);
+    EXPECT_EQ(plan.modulators[0].kind, ModulatorKind::ToggleOnBeat);
+    EXPECT_EQ(plan.modulators[1].kind, ModulatorKind::RandomOnBeat);
+    EXPECT_EQ(plan.modulators[2].kind, ModulatorKind::RandomOnBeat);
+}
+
 TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     std::vector<float> data = carried();
     const float link[kMacroLinkFloats] = {5, 1, 12, 0, 0.8f, 0.2f};

@@ -23,5 +23,6 @@
     "eased": { "steps": 0.85 },
     "reduced": { "steps": 0.7, "off": ["streaks"] },
     "minimal": { "steps": 0.55, "off": ["streaks", "caps"] }
-  }
+  },
+  "reactivity": {"micro": ["onset", "bands"]}
 }

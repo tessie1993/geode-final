@@ -21,6 +21,10 @@
 //   space      stereo width and pan -> true left/right asymmetry, only where
 //              the Style is stereo-meaningful; correlation -> phase or
 //              duplication.
+//   bands      each band against its own usual level in the song (#319):
+//              level -> what that band moves now, hits -> a ripple or swell
+//              when it jumps, presence -> a slow lean while the passage has
+//              more or less of it than usual.
 //
 // Not everything on everything: a Style picks the few that mean something for
 // its picture, and reads them here by name (a host test holds every uniform
@@ -86,3 +90,17 @@ uniform float uStereoPan;
 /** 1 in phase .. -1 out of phase. */
 uniform float uStereoCorrelation;
 
+// ---- the bands against the song's usual level (#319) ------------------------
+
+/** Bass, mid and treble against their own usual level: 0.5 is usual, 1 twice it; quick, never a step. */
+uniform float uBassLevel;
+uniform float uMidLevel;
+uniform float uTrebleLevel;
+/** A hit envelope, 0..1, when a band jumps well above its usual level. */
+uniform float uBassHits;
+uniform float uMidHits;
+uniform float uTrebleHits;
+/** The same reading as the level, followed over seconds: how much of the band the passage has. */
+uniform float uBassPresence;
+uniform float uMidPresence;
+uniform float uTreblePresence;

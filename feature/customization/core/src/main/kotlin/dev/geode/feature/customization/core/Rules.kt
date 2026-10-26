@@ -75,15 +75,23 @@ object Rules {
         )
     }
 
-    /** [modulator] with its rate, depth and steps in range. */
-    fun modulator(modulator: Modulator): Modulator {
-        val shape = modulator.shape
-        return modulator.copy(
+    /** [modulator] with its rate, depth, steps and beats in range. */
+    fun modulator(modulator: Modulator): Modulator =
+        modulator.copy(
             rate = if (modulator.rate.isNaN()) Modulator.DEFAULT_RATE else modulator.rate.coerceIn(Modulator.MIN_RATE, Modulator.MAX_RATE),
             depth = unit(modulator.depth),
-            shape = if (shape is ModulatorShape.StepSequencer) shape.copy(steps = shape.steps.map(::unit)) else shape,
+            shape = shape(modulator.shape),
         )
-    }
+
+    private fun shape(shape: ModulatorShape): ModulatorShape =
+        when (shape) {
+            is ModulatorShape.StepSequencer -> shape.copy(steps = shape.steps.map(::unit))
+            is ModulatorShape.ToggleOnBeat -> shape.copy(everyBeats = beats(shape.everyBeats), glide = maxOf(shape.glide, Millis.ZERO))
+            is ModulatorShape.RandomOnBeat -> shape.copy(everyBeats = beats(shape.everyBeats), glide = maxOf(shape.glide, Millis.ZERO))
+            else -> shape
+        }
+
+    private fun beats(everyBeats: Int): Int = everyBeats.coerceIn(1, ModulatorShape.MAX_EVERY_BEATS)
 
     /** [trim] with its gain and floor in range. */
     fun trim(trim: SignalTrim): SignalTrim =

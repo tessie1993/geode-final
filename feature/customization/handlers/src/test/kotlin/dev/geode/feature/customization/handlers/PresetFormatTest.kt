@@ -101,6 +101,8 @@ class PresetFormatTest {
                         playing = true,
                     ),
                     Modulator(ModulatorId(4), ModulatorShape.RandomDrift(Millis(8_000))),
+                    Modulator(ModulatorId(5), ModulatorShape.ToggleOnBeat(everyBeats = 2, glide = Millis(150))),
+                    Modulator(ModulatorId(6), ModulatorShape.RandomOnBeat(everyBeats = 4, glide = Millis(60)), rate = 1.5f),
                 ),
             signals = mapOf(SoundSignal.BASS to SignalTrim(gain = 1.5f, floor = 0.1f), SoundSignal.TREBLE to SignalTrim.NEUTRAL),
         )

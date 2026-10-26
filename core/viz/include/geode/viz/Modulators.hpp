@@ -7,10 +7,11 @@
 namespace geode::viz::mod {
 
 // A Modulator (CONTEXT.md): a generated value 0..1 that moves targets the way a Sound signal does.
-// The four kinds and their start settings are the ones decided on #11 and modelled in
-// :feature:customization:api (Modulators.kt). Whether one runs at all (it does not until a Reaction
-// listens to it) is the ReactionGraph's call; this class is one Modulator's clock and shape.
-enum class ModulatorKind : uint8_t { Lfo, HitEnvelope, StepSequencer, RandomDrift };
+// The kinds and their start settings are the ones decided on #11 (and the two beat Modulators of #319)
+// and modelled in :feature:customization:api (Modulators.kt). Whether one runs at all (it does not
+// until a Reaction listens to it) is the ReactionGraph's call; this class is one Modulator's clock and
+// shape.
+enum class ModulatorKind : uint8_t { Lfo, HitEnvelope, StepSequencer, RandomDrift, ToggleOnBeat, RandomOnBeat };
 enum class Wave : uint8_t { Sine, Triangle, Saw, Square, Random };
 enum class StartMode : uint8_t { WhilePlaying, OnSound, ByHand };
 
@@ -23,6 +24,8 @@ constexpr float kMinPeriodSeconds = 0.05f;
 constexpr float kDefaultPeriodSeconds = 2.0f;
 // An OnSound start fires when its signal rises through this.
 constexpr float kStartThreshold = 0.5f;
+// A beat Modulator counts a beat each time the Beat signal rises above this: any beat heard at all.
+constexpr float kBeatHeard = 0.01f;
 
 struct ModulatorSpec {
     ModulatorKind kind = ModulatorKind::Lfo;
@@ -41,6 +44,11 @@ struct ModulatorSpec {
     std::array<float, kMaxSteps> steps{};
     int stepCount = 0;
     float stepSeconds = 0.25f;
+    // ToggleOnBeat and RandomOnBeat (#319) use two of the fields above, so the plan keeps its size:
+    // `stepCount` is how many heard beats pass between changes (1 when below 1), and `attackSeconds` the
+    // glide to each new value, which a full 0 -> 1 swing takes (0 jumps). The toggle flips between 0
+    // and 1; the random one moves to a new value drawn from `seed`, so a Render repeats. Neither assumes
+    // a tempo: they count the beats the analysis reports.
 
     StartMode start = StartMode::WhilePlaying;
     SoundSignal startSignal = SoundSignal::Beat;
@@ -73,6 +81,7 @@ private:
     float envelope(const ModulatorSpec& spec, const SignalFrame& frame, float rate, float dt);
     float sequence(const ModulatorSpec& spec, float cycles, float pattern);
     float drift(float segments);
+    float onBeat(const ModulatorSpec& spec, const SignalFrame& frame, float rate, float pattern, float dt);
     float random();
     void restart();
 
@@ -85,6 +94,9 @@ private:
     bool startArmed_ = true;
     float driftFrom_ = 0.0f;
     float driftTo_ = 0.0f;
+    // The beat Modulators: beats counted since the last change and the value they glide to.
+    int beats_ = 0;
+    float beatTarget_ = 0.0f;
     uint32_t rng_ = 0;
     bool seeded_ = false;
 };

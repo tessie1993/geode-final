@@ -45,6 +45,7 @@ void Modulator::restart() {
     driftFrom_ = driftFrom_ + (driftTo_ - driftFrom_) * smoothstep(phase_);
     phase_ = 0.0f;
     releasing_ = false;
+    beats_ = 0;
 }
 
 float Modulator::tick(const ModulatorSpec& spec, const ModulatorDrive& drive, const SignalFrame& frame, float dt) {
@@ -80,6 +81,8 @@ float Modulator::tick(const ModulatorSpec& spec, const ModulatorDrive& drive, co
             break;
         }
         case ModulatorKind::RandomDrift: shape = drift(advance / lengthOf(spec.periodSeconds)); break;
+        case ModulatorKind::ToggleOnBeat:
+        case ModulatorKind::RandomOnBeat: shape = onBeat(spec, frame, rate, pattern, step); break;
     }
     value_ = unit(depth * shape);
     return value_;
@@ -135,6 +138,24 @@ float Modulator::drift(float segments) {
         driftTo_ = random();
     }
     return driftFrom_ + (driftTo_ - driftFrom_) * smoothstep(phase_);
+}
+
+float Modulator::onBeat(const ModulatorSpec& spec, const SignalFrame& frame, float rate, float pattern, float dt) {
+    const bool hot = frame[SoundSignal::Beat] > kBeatHeard;
+    if (hot && armed_) {
+        const int every = std::clamp(spec.stepCount, 1, kMaxSteps);
+        // The pattern moves which beat of the `every` brings the change.
+        const int shift = static_cast<int>(std::lround(pattern * static_cast<float>(every)));
+        beats_ = (beats_ + 1) % every;
+        if ((beats_ + shift) % every == 0) {
+            beatTarget_ = spec.kind == ModulatorKind::ToggleOnBeat ? 1.0f - beatTarget_ : random();
+        }
+    }
+    armed_ = !hot;
+    // Glides, never steps: a full swing takes the glide, scaled by the rate.
+    const float most = stageStep(spec.attackSeconds, dt * rate);
+    envelope_ += std::clamp(beatTarget_ - envelope_, -most, most);
+    return envelope_;
 }
 
 }  // namespace geode::viz::mod

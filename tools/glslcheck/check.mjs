@@ -245,6 +245,10 @@ const SHADER_VALUES = {
   uPulseConfidence: 0.85, uTempoStability: 0.9, uNovelty: 0.3, uSection: 0.62, uBuildup: 0.2, uDrop: 0.4,
   uArrival: 0.1, uMacro: 0.5, uSectionHit: 0.05, uDropHit: 0.1, uArrivalHit: 0.0, uCentroid: 0.55,
   uHarmonicity: 0.6, uFlux: 0.35, uOnset: 0.3, uStereoWidth: 0.4, uStereoPan: 0.15, uStereoCorrelation: 0.7,
+  // The bands against their usual level (#319): a bass a little over its usual, a mid hit decaying, a
+  // passage light on treble.
+  uBassLevel: 0.6, uMidLevel: 0.55, uTrebleLevel: 0.4, uBassHits: 0.1, uMidHits: 0.3, uTrebleHits: 0.0,
+  uBassPresence: 0.55, uMidPresence: 0.5, uTreblePresence: 0.4,
 };
 
 // The shared inputs' textures: the noise as the engine seeds it (page.html mirrors StyleInputs.cpp),

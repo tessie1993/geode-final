@@ -8,5 +8,6 @@
     { "name": "count", "min": 0, "max": 2, "default": 1 },
     { "name": "size", "min": 0, "max": 2, "default": 1 },
     { "name": "scale", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["bands", "wave", "space"]}
 }
