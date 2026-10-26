@@ -44,19 +44,10 @@ class RenderAlerts(
     private fun alert(video: Video) {
         ExportService.ensureChannel(context)
         val uri = Uri.parse(video.file)
-        val open =
-            Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, VIDEO_MIME)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        val share =
-            Intent
-                .createChooser(
-                    Intent(Intent.ACTION_SEND)
-                        .setType(VIDEO_MIME)
-                        .putExtra(Intent.EXTRA_STREAM, uri)
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                    context.getString(R.string.render_finished_share),
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Both taps go to Geode's own RenderAlertActivity by name; the implicit view and share intents
+        // are only made there.
+        val open = RenderAlertActivity.intent(context, uri, share = false)
+        val share = RenderAlertActivity.intent(context, uri, share = true)
         val id = NOTIFICATION_BASE + (video.id.value % NOTIFICATION_SPAN).toInt()
         val notification =
             Notification
@@ -83,7 +74,6 @@ class RenderAlerts(
 
     private companion object {
         const val TAG = "RenderAlerts"
-        const val VIDEO_MIME = "video/mp4"
 
         // Apart from the progress notification's id; each video gets its own alert, and Share its own request.
         const val NOTIFICATION_BASE = 5_000
