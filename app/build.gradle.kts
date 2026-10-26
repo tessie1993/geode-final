@@ -251,8 +251,6 @@ dependencies {
     implementation(libs.datastore.preferences)
     // The App UI's design tokens, theme and common components.
     implementation(project(":design"))
-    // Water's touch is screenshot-tested here, like :design's components; wired in with #153.
-    testImplementation(project(":design:elements:water"))
 
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.common)

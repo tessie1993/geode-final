@@ -10,8 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import dev.geode.design.forest.ForestColors
-import dev.geode.design.forest.LocalForestColors
 import dev.geode.design.theme.CornerShapes
 
 /**
@@ -112,8 +110,7 @@ fun glassColorScheme(
 /**
  * The glass App UI's theme: the [dark] or light palette with the person's adjustments, Material's roles
  * mapped onto it ([glassColorScheme]), Inter, and the corner set the person chose ([shapes]). The [tier]
- * decides how much the glass may do. Screens built on the earlier forest roles get them from the glass
- * palette too, until they read the glass roles themselves.
+ * decides how much the glass may do.
  */
 @Composable
 fun GlassTheme(
@@ -132,24 +129,10 @@ fun GlassTheme(
         }
     val scheme = remember(style) { glassColorScheme(style.colors, style.dark) }
     val typography = remember { glassTypography() }
-    val forest = remember(style) { forestColorsOf(style.colors) }
     CompositionLocalProvider(
         LocalGlassStyle provides style,
-        LocalForestColors provides forest,
         LocalContentColor provides style.colors.textPrimary,
     ) {
         MaterialTheme(colorScheme = scheme, typography = typography, shapes = shapes, content = content)
     }
 }
-
-/** The glass palette in the forest roles, for the screens still drawn with them. */
-private fun forestColorsOf(colors: GlassColors): ForestColors =
-    ForestColors(
-        base = colors.base,
-        glass = colors.glass,
-        textPrimary = colors.textPrimary,
-        textSecondary = colors.textSecondary,
-        accent = colors.accent,
-        highlight = colors.warm,
-        onAccent = colors.onAccent,
-    )

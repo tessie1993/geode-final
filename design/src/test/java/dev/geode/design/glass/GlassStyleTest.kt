@@ -1,7 +1,6 @@
 package dev.geode.design.glass
 
 import androidx.compose.ui.graphics.Color
-import dev.geode.design.forest.WcagContrast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue

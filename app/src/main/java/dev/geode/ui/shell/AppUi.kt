@@ -10,7 +10,7 @@ import dev.geode.kernel.Feature
  */
 typealias AppUi = Feature<AppUiState, AppUiCommand, AppUiFact>
 
-/** The pages of the Bar, in the order it shows them (PR #186). The same for every person and every Element. */
+/** The pages of the Bar, in the order it shows them (PR #186). The same for every person. */
 enum class Place {
     MUSIC,
     VISUALS,

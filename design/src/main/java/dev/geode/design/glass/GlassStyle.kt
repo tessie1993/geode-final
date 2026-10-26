@@ -3,7 +3,6 @@ package dev.geode.design.glass
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import dev.geode.design.forest.WcagContrast
 import dev.geode.design.theme.ColorDerive
 import dev.geode.design.theme.toArgbInt
 

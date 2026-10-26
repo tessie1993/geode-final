@@ -25,12 +25,9 @@ dependencyResolutionManagement {
 rootProject.name = "geode"
 include(":app")
 
-// The App UI's design tokens, theme and common components (ADR-0005), never anything of the Visual.
+// The App UI's design tokens, theme and common components (ADR-0005), never anything of the Visual:
+// the frosted glass design system (#324).
 include(":design")
-
-// Each Element's own component library (#180, decision 3): its touch, motion and fluids, drawn from
-// plain inputs. Depends on :design only.
-include(":design:elements:water")
 
 include(
     ":engine:audio-core",
@@ -95,13 +92,6 @@ include(
     ":feature:diagnostics:core",
     ":feature:diagnostics:handlers",
     ":feature:diagnostics:ui",
-)
-
-// Home (#103): the Home tab, the App UI's places and the Element-styled bar. Screens only for now
-// (a placeholder until its Hero scene, #110), so just :api and :ui. Not yet wired into :app (ADR-0003).
-include(
-    ":feature:home:api",
-    ":feature:home:ui",
 )
 
 // Visuals (#43): the Visuals tab, where a Style is chosen, and full-screen visual mode, as routes over

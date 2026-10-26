@@ -1,5 +1,7 @@
 # Element motion components
 
+> **Superseded (#265, #333):** the Elements are retired and the App UI is frosted glass (`app-ui-design-system.md`). Nothing below is built any more. Kept as design history.
+
 How every motion component of the Element skins works in the App UI: what triggers it, how long it runs, how it is interrupted, what it sounds and feels like, what it does under reduced motion, what it may cost, how it is built, and what each of the 12 Elements does with it.
 
 **Sources, in order of precedence.** Where two disagree, the earlier one wins:

@@ -1,4 +1,4 @@
-package dev.geode.design.forest
+package dev.geode.design.glass
 
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals

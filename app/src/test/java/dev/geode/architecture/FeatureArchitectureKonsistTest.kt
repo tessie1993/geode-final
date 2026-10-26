@@ -30,8 +30,6 @@ class FeatureArchitectureKonsistTest {
         sourcesOf { it.startsWith(":arch:") || it.startsWith(":feature:") }
     }
 
-    private val elementSources: List<SourceFile> by lazy { sourcesOf { it.startsWith(":design:elements:") } }
-
     private fun sourcesOf(wanted: (String) -> Boolean): List<SourceFile> =
         modules
             .map { it.path }
@@ -50,12 +48,6 @@ class FeatureArchitectureKonsistTest {
         assertTrue("the kernel module was not found", modules.any { it.path == ":arch:kernel" })
         assertTrue("the design module was not found", modules.any { it.path == ":design" })
         assertTrue("no kernel source was read", pureSources.any { it.module == ":arch:kernel" })
-        assertTrue("no Water Element source was read", elementSources.any { it.module == ":design:elements:water" })
-    }
-
-    @Test
-    fun `Element modules draw only, with no feature, engine or audio`() {
-        assertEquals(emptyList<String>(), FeatureRules.elementModulesStayDrawOnly(elementSources))
     }
 
     @Test

@@ -2,8 +2,6 @@ package dev.geode.design.glass
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import dev.geode.design.forest.ContrastPair
-import dev.geode.design.forest.WcagContrast
 
 /**
  * The legibility maths of glass (#270, section 5.3). Text over glass is checked against the worst

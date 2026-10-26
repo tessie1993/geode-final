@@ -1,9 +1,24 @@
-package dev.geode.design.forest
+package dev.geode.design.glass
 
 import androidx.compose.ui.graphics.Color
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+
+/** One piece of text in one colour on one opaque ground, and the contrast it must keep. */
+data class ContrastPair(
+    /** What is drawn on what, for failure messages. */
+    val name: String,
+    val text: Color,
+    val ground: Color,
+    val minimum: Float,
+) {
+    /** The contrast this pair has. */
+    val ratio: Float get() = WcagContrast.ratio(text, ground)
+
+    /** Whether the pair keeps its [minimum]. */
+    val passes: Boolean get() = ratio >= minimum
+}
 
 /** The WCAG 2.x contrast formula, used to check the App UI's colour tokens. */
 object WcagContrast {

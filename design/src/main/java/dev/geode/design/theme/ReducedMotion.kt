@@ -6,11 +6,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
-import dev.geode.design.forest.ForestMotion
 
 /**
  * Whether the App UI should keep still: the person's "Reduce motion" preference, or Android's
- * "remove animations". Components and Element effects read it as their default.
+ * "remove animations". Components read it as their default.
  */
 val LocalReducedMotion = staticCompositionLocalOf { false }
 
@@ -18,7 +17,7 @@ val LocalReducedMotion = staticCompositionLocalOf { false }
 fun isMotionReduced(
     appPreference: Boolean,
     durationScale: Float,
-): Boolean = appPreference || ForestMotion.isAnimationRemoved(durationScale)
+): Boolean = appPreference || durationScale <= ANIMATIONS_REMOVED_SCALE
 
 /** Provides [LocalReducedMotion] from the app's [appPreference] and the system setting. */
 @Composable
@@ -30,3 +29,6 @@ fun ProvideReducedMotion(
     val durationScale = remember(resolver) { Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) }
     CompositionLocalProvider(LocalReducedMotion provides isMotionReduced(appPreference, durationScale), content = content)
 }
+
+/** The animator duration scale Android reports when the person removed animations. */
+private const val ANIMATIONS_REMOVED_SCALE = 0f
