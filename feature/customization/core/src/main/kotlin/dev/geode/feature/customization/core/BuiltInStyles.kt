@@ -311,6 +311,7 @@ object BuiltInStyles {
             shader("torchlight", true, emptyList(), listOf(react(BASS, SharedProperty.SHAKE, 0.1f))),
             shader("train_window", false, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
             shader("folding_city", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
+            shader("colonnade_cuts", false, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
         )
 
     private fun life(
