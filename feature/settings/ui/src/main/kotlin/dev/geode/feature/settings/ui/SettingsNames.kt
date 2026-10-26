@@ -2,6 +2,8 @@ package dev.geode.feature.settings.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import dev.geode.feature.settings.api.AccentTint
+import dev.geode.feature.settings.api.BackdropChoice
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.EditSources
@@ -28,6 +30,30 @@ internal fun themeModeName(mode: ThemeMode): String =
             ThemeMode.SYSTEM -> R.string.look_theme_system
             ThemeMode.DARK -> R.string.look_theme_dark
             ThemeMode.LIGHT -> R.string.look_theme_light
+        },
+    )
+
+@Composable
+internal fun accentTintName(tint: AccentTint): String =
+    stringResource(
+        when (tint) {
+            AccentTint.SKY -> R.string.look_accent_sky
+            AccentTint.TEAL -> R.string.look_accent_teal
+            AccentTint.MOSS -> R.string.look_accent_moss
+            AccentTint.VIOLET -> R.string.look_accent_violet
+            AccentTint.ROSE -> R.string.look_accent_rose
+        },
+    )
+
+@Composable
+internal fun backdropName(backdrop: BackdropChoice): String =
+    stringResource(
+        when (backdrop) {
+            BackdropChoice.ARTWORK -> R.string.look_backdrop_artwork
+            BackdropChoice.MIST -> R.string.look_backdrop_mist
+            BackdropChoice.DUSK -> R.string.look_backdrop_dusk
+            BackdropChoice.AURORA -> R.string.look_backdrop_aurora
+            BackdropChoice.PLAIN -> R.string.look_backdrop_plain
         },
     )
 

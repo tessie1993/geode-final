@@ -3,8 +3,10 @@ package dev.geode.feature.settings.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.settings.api.AccentTint
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.BackdropChoice
 import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
@@ -453,6 +455,34 @@ class SettingsCodecTest {
         assertEquals(true, stored["gui_reduce_transparency"])
         assertTrue(SettingsCodec.decode(stored).look.reduceTransparency)
         assertFalse(SettingsCodec.decode(today).look.reduceTransparency)
+    }
+
+    @Test
+    fun `the accent tint is kept by name in its own key, Sky when nothing or something unknown is stored`() {
+        assertEquals("SKY", newKeysAtDefaults["gui_accent_tint"])
+        for (tint in AccentTint.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(accentTint = tint)))
+            assertEquals(tint.name, stored["gui_accent_tint"])
+            assertEquals(tint, SettingsCodec.decode(stored).look.accentTint)
+        }
+        assertEquals(AccentTint.SKY, SettingsCodec.decode(mapOf("gui_accent_tint" to "GOLD")).look.accentTint)
+        assertEquals(AccentTint.SKY, SettingsCodec.decode(mapOf("gui_accent_tint" to 3)).look.accentTint)
+    }
+
+    @Test
+    fun `the backdrop is kept by name in its own key, the artwork when nothing or something unknown is stored`() {
+        assertEquals("ARTWORK", newKeysAtDefaults["gui_backdrop"])
+        for (backdrop in BackdropChoice.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(backdrop = backdrop)))
+            assertEquals(backdrop.name, stored["gui_backdrop"])
+            assertEquals(backdrop, SettingsCodec.decode(stored).look.backdrop)
+        }
+        assertEquals(BackdropChoice.ARTWORK, SettingsCodec.decode(mapOf("gui_backdrop" to "HERO")).look.backdrop)
+    }
+
+    @Test
+    fun `the accent tint and backdrop are new, so they are read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_accent_tint" in it || "gui_backdrop" in it })
     }
 
     @Test

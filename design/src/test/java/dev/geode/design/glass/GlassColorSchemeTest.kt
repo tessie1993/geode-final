@@ -9,22 +9,29 @@ import org.junit.Test
 /**
  * The screens use Material's own controls (#355), which read Material's colour roles, so the roles as
  * [glassColorScheme] maps them must keep WCAG AA too: every text role on every container it is drawn on,
- * in the dark and light modes, in every tier and with the person's adjustments. A translucent container
- * is checked over the worst backdrop it may cover: a matte one (menus, dialogs, sheets) over the worst
- * backdrop unclamped, a thin one (filled cards and fields) over the worst clamped backdrop.
+ * in the dark and light modes, in every tier, with every accent tint and backdrop (#398) and with the
+ * person's adjustments. A translucent container is checked over the worst backdrop it may cover: a matte
+ * one (menus, dialogs, sheets) over the worst backdrop unclamped, a thin one (filled cards and fields)
+ * over the worst clamped backdrop. The palette's own rules ([GlassContrastRules]) hold in every one too.
  */
 class GlassColorSchemeTest {
     private val styles =
         listOf(true, false).flatMap { dark ->
-            GlassTier.entries.map { tier -> GlassStyle.of(dark, tier) } +
-                listOf(
-                    GlassStyle.of(dark, GlassTier.FULL, accentIntensity = 0.5f),
-                    GlassStyle.of(dark, GlassTier.FULL, accentIntensity = 1.5f),
-                    GlassStyle.of(dark, GlassTier.FULL, dim = 1f, barOpacity = 1f),
-                )
+            GlassAccent.entries.flatMap { accent ->
+                val tinted =
+                    GlassTier.entries.flatMap { tier ->
+                        GlassBackdropChoice.entries.map { backdrop -> GlassStyle.of(dark, tier, accent = accent, backdrop = backdrop) }
+                    }
+                tinted +
+                    listOf(
+                        GlassStyle.of(dark, GlassTier.FULL, accentIntensity = 0.5f, accent = accent),
+                        GlassStyle.of(dark, GlassTier.FULL, accentIntensity = 1.5f, accent = accent),
+                        GlassStyle.of(dark, GlassTier.FULL, dim = 1f, barOpacity = 1f, accent = accent),
+                    )
+            }
         }
 
-    private fun mode(style: GlassStyle) = "${if (style.dark) "dark" else "light"} ${style.tier}"
+    private fun mode(style: GlassStyle) = "${if (style.dark) "dark" else "light"} ${style.tier} ${style.accent} ${style.backdrop}"
 
     /** What [container] looks like once drawn over the worst backdrop it may cover in [style]. */
     private fun ground(
@@ -88,6 +95,20 @@ class GlassColorSchemeTest {
             val failures = pairs(scheme, style).filterNot { it.passes }
             assertTrue(mode(style) + ": " + failures.joinToString { "${it.name} is ${it.ratio}:1" }, failures.isEmpty())
         }
+    }
+
+    @Test
+    fun `every tint, tier and backdrop keeps the palette's own contrast rules`() {
+        for (style in styles) {
+            val failures = GlassContrastRules.failures(style.colors, style.dark, style.clamp)
+            assertTrue(mode(style) + ": " + failures.joinToString { "${it.name} is ${it.ratio}:1" }, failures.isEmpty())
+        }
+    }
+
+    @Test
+    fun `every accent tint, tier and mode is checked`() {
+        val checked = styles.map { Triple(it.accent, it.tier, it.dark) }.toSet()
+        assertEquals(GlassAccent.entries.size * GlassTier.entries.size * 2, checked.size)
     }
 
     @Test

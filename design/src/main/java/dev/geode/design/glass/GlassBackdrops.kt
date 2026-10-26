@@ -26,7 +26,8 @@ import dev.geode.design.theme.LocalReducedMotion
 
 /**
  * The calm backdrop behind Library, Studio and Settings: the theme's base with a few large, soft fields
- * of colour, like light through frosted glass, and the grain. It never moves, so after its first frame it
+ * of colour (the backdrop the person picked, [GlassBackdropChoice]), like light through frosted glass,
+ * and the grain. It never moves, so after its first frame it
  * costs nothing to draw. Every text role stays legible straight on it ([GlassContrastRules]).
  */
 @Composable
@@ -51,7 +52,8 @@ fun Modifier.calmBackdrop(): Modifier {
 /**
  * The backdrop behind Home and the Player: the playing song's [artwork], blurred once and clamped toward
  * the theme's base so glass over it stays legible, with the grain. It cross-fades when the song changes.
- * Without art, and in the Matte tier, it is the [CalmBackdrop].
+ * Without art, in the Matte tier, and when the person picked a calm backdrop ([GlassBackdropChoice]),
+ * it is the [CalmBackdrop].
  */
 @Composable
 fun ArtworkBackdrop(
@@ -60,7 +62,7 @@ fun ArtworkBackdrop(
 ) {
     val style = LocalGlassStyle.current
     val reduced = LocalReducedMotion.current
-    val shown = artwork.takeIf { style.tier != GlassTier.MATTE }
+    val shown = artwork.takeIf { style.tier != GlassTier.MATTE && style.backdrop.showsArtwork }
     Crossfade(
         targetState = shown,
         modifier = modifier,

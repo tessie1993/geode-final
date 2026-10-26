@@ -87,6 +87,8 @@ internal object SettingsCodec {
         return LookSettings(
             themeMode = enum(K.THEME_MODE, default.themeMode),
             reduceTransparency = boolean(K.REDUCE_TRANSPARENCY, default.reduceTransparency),
+            accentTint = enum(K.ACCENT_TINT, default.accentTint),
+            backdrop = enum(K.BACKDROP, default.backdrop),
             accentIntensity = float(K.ACCENT_INTENSITY, default.accentIntensity),
             backgroundDim = float(K.BACKGROUND_DIM, default.backgroundDim),
             fontColor = int(K.FONT_COLOR)?.let(::Argb) ?: WHITE.takeIf { boolean(K.LEGACY_WHITE_FONT, false) },
@@ -237,6 +239,8 @@ internal object SettingsCodec {
         mapOf(
             K.THEME_MODE to look.themeMode.name,
             K.REDUCE_TRANSPARENCY to look.reduceTransparency,
+            K.ACCENT_TINT to look.accentTint.name,
+            K.BACKDROP to look.backdrop.name,
             K.ACCENT_INTENSITY to look.accentIntensity,
             K.BACKGROUND_DIM to look.backgroundDim,
             K.FONT_COLOR to look.fontColor?.value,

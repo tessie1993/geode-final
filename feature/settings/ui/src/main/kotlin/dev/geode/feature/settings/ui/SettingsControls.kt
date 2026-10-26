@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.semantics
 import dev.geode.design.glass.GlassCard
 import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSize
+import dev.geode.design.glass.LocalGlassHaptics
+import dev.geode.design.glass.rememberTicking
 
 /** Multiplies a fraction for showing it as a percentage. */
 internal const val PERCENT = 100
@@ -55,11 +57,15 @@ internal fun SwitchRow(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
+    val haptics = LocalGlassHaptics.current
     Row(
         Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = GlassSize.TapTarget)
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange),
+            .toggleable(value = checked, role = Role.Switch) {
+                haptics.toggle(it)
+                onChange(it)
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
@@ -67,6 +73,7 @@ internal fun SwitchRow(
     }
 }
 
+/** A setting picked from a range. Dragging it ticks gently every twentieth of the range. */
 @Composable
 internal fun SliderRow(
     label: String,
@@ -77,7 +84,12 @@ internal fun SliderRow(
     Column {
         Text(label, style = MaterialTheme.typography.labelMedium)
         // Named for accessibility too, so the slider is never read out as a bare percentage.
-        Slider(value = value, onValueChange = onChange, modifier = Modifier.semantics { contentDescription = label }, valueRange = range)
+        Slider(
+            value = value,
+            onValueChange = rememberTicking(value, range, onChange = onChange),
+            modifier = Modifier.semantics { contentDescription = label },
+            valueRange = range,
+        )
     }
 }
 
@@ -90,6 +102,7 @@ internal fun <T> ChoiceRow(
     name: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
+    val haptics = LocalGlassHaptics.current
     val scroll = rememberScrollState()
     var viewport by remember { mutableIntStateOf(0) }
     var chosen by remember { mutableStateOf(ChipSpan.NONE) }
@@ -107,7 +120,10 @@ internal fun <T> ChoiceRow(
                 val isChosen = option == selected
                 FilterChip(
                     selected = isChosen,
-                    onClick = { onSelect(option) },
+                    onClick = {
+                        haptics.press()
+                        onSelect(option)
+                    },
                     label = { Text(name(option)) },
                     modifier =
                         if (isChosen) {

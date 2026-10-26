@@ -77,13 +77,14 @@ fun GlassNavigationBar(
     backdrop: GlassBackdrop = GlassBackdrop.Baked,
     above: (@Composable () -> Unit)? = null,
 ) {
+    val haptics = LocalGlassHaptics.current
     Column(modifier.fillMaxWidth().glassSurface(GlassKind.BAR, RectangleShape, backdrop, GlassEdge.TOP)) {
         above?.invoke()
         NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
             items.forEachIndexed { index, item ->
                 NavigationBarItem(
                     selected = index == selected,
-                    onClick = { onSelect(index) },
+                    onClick = { pressed(haptics) { onSelect(index) } },
                     // The label already names the place, so the icon adds nothing for accessibility.
                     icon = { Icon(item.icon, contentDescription = null) },
                     label = { Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -102,6 +103,7 @@ fun GlassNavigationRail(
     modifier: Modifier = Modifier,
     backdrop: GlassBackdrop = GlassBackdrop.Baked,
 ) {
+    val haptics = LocalGlassHaptics.current
     NavigationRail(
         modifier = modifier.fillMaxHeight().glassSurface(GlassKind.BAR, RectangleShape, backdrop, GlassEdge.NONE),
         containerColor = Color.Transparent,
@@ -109,7 +111,7 @@ fun GlassNavigationRail(
         items.forEachIndexed { index, item ->
             NavigationRailItem(
                 selected = index == selected,
-                onClick = { onSelect(index) },
+                onClick = { pressed(haptics) { onSelect(index) } },
                 icon = { Icon(item.icon, contentDescription = null) },
                 label = { Text(item.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )

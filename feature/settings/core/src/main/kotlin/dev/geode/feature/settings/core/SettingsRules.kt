@@ -76,6 +76,8 @@ object SettingsRules {
         when (command) {
             is LookCommand.SetThemeMode -> look.copy(themeMode = command.mode)
             is LookCommand.SetReduceTransparency -> look.copy(reduceTransparency = command.on)
+            is LookCommand.SetAccentTint -> look.copy(accentTint = command.tint)
+            is LookCommand.SetBackdrop -> look.copy(backdrop = command.backdrop)
             is LookCommand.SetAccentIntensity -> look.copy(accentIntensity = command.intensity)
             is LookCommand.SetBackgroundDim -> look.copy(backgroundDim = command.dim)
             is LookCommand.SetFontColor -> look.copy(fontColor = command.color)

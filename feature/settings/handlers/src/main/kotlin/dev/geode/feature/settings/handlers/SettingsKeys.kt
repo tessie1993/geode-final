@@ -25,6 +25,10 @@ internal object SettingsKeys {
 
     /** Reduce transparency (#324), new so in no old file. */
     const val REDUCE_TRANSPARENCY = "gui_reduce_transparency"
+
+    /** The accent tint and the backdrop behind the glass (#398), new so in no old file. Stored by name. */
+    const val ACCENT_TINT = "gui_accent_tint"
+    const val BACKDROP = "gui_backdrop"
     const val ACCENT_INTENSITY = "gui_accent_intensity"
     const val BACKGROUND_DIM = "gui_background_dim"
     const val FONT_COLOR = "gui_font_color"

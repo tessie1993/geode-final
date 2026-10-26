@@ -19,7 +19,7 @@ The App UI's one material: frosted, translucent, matte panels with a fine grain 
 _Avoid_: glassmorphism, blur, theme
 
 **Backdrop**:
-What lies behind the glass on a page: the playing song's artwork, blurred and quietened, behind Home and the plain player; a calm, still field of soft colour behind the other pages; the Visual itself on the Visuals tab and in full screen. It never reacts to sound.
+What lies behind the glass on a page: the playing song's artwork, blurred and quietened, behind Home and the plain player; a calm, still field of soft colour behind the other pages; the Visual itself on the Visuals tab and in full screen. Where no Visual plays, the person may pick a calm Backdrop (Mist, Dusk, Aurora or Plain) everywhere instead of the artwork. It never reacts to sound.
 _Avoid_: wallpaper, background visual
 
 **Bar**:
@@ -47,7 +47,7 @@ The battery-saving setting, in Settings > Battery beside Visual quality and the 
 _Avoid_: low power mode, disable visualizer
 
 **Element**:
-Retired. Selectable nature skins for the App UI (Water, Wood, Stone, Bioluminescence) were replaced by the one Glass look; there is nothing to choose but light or dark.
+Retired. Selectable nature skins for the App UI (Water, Wood, Stone, Bioluminescence) were replaced by the one Glass look; there is nothing to choose but light or dark, an accent tint and a Backdrop.
 _Avoid_: using the word for anything current
 
 **Hero scene**:

@@ -43,10 +43,11 @@ fun GlassCard(
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(GlassSpacing.Medium),
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val haptics = LocalGlassHaptics.current
     Column(
         modifier
             .glassSurface(GlassKind.CARD, MaterialTheme.shapes.large, backdrop)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable { pressed(haptics, onClick) } else Modifier)
             .padding(contentPadding),
         verticalArrangement = verticalArrangement,
         content = content,
@@ -68,10 +69,12 @@ fun GlassButton(
 ) {
     val padding = if (compact) CompactPadding else ButtonDefaults.ContentPadding
     val sized = modifier.defaultMinSize(minHeight = if (compact) CompactHeight else GlassSize.TapTarget)
+    val haptics = LocalGlassHaptics.current
+    val press = { pressed(haptics, onClick) }
     if (filled) {
-        Button(onClick = onClick, modifier = sized, enabled = enabled, contentPadding = padding, content = content)
+        Button(onClick = press, modifier = sized, enabled = enabled, contentPadding = padding, content = content)
     } else {
-        FilledTonalButton(onClick = onClick, modifier = sized, enabled = enabled, contentPadding = padding, content = content)
+        FilledTonalButton(onClick = press, modifier = sized, enabled = enabled, contentPadding = padding, content = content)
     }
 }
 
@@ -84,9 +87,10 @@ fun GlassChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val haptics = LocalGlassHaptics.current
     FilterChip(
         selected = selected,
-        onClick = onClick,
+        onClick = { pressed(haptics, onClick) },
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         modifier = modifier,
         enabled = enabled,
@@ -108,11 +112,12 @@ fun GlassListRow(
     trailing: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
+    val haptics = LocalGlassHaptics.current
     Row(
         modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = if (supporting == null) GlassSize.RowOneLine else GlassSize.RowTwoLines)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.clickable { pressed(haptics, onClick) } else Modifier)
             .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Large),
@@ -133,11 +138,12 @@ fun GlassSwitchRow(
     supporting: String? = null,
     enabled: Boolean = true,
 ) {
+    val haptics = LocalGlassHaptics.current
     Row(
         modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = if (supporting == null) GlassSize.RowOneLine else GlassSize.RowTwoLines)
-            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch) { toggled(haptics, it, onCheckedChange) }
             .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Large),
@@ -147,7 +153,10 @@ fun GlassSwitchRow(
     }
 }
 
-/** A slider on glass: the accent fills the part chosen, the selection colour the rest. */
+/**
+ * A slider on glass: the accent fills the part chosen, the selection colour the rest. Dragging it ticks
+ * gently at each stop, or every twentieth of its range ([GlassTicks]).
+ */
 @Composable
 fun GlassSlider(
     value: Float,
@@ -160,7 +169,7 @@ fun GlassSlider(
 ) {
     Slider(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = rememberTicking(value, valueRange, steps, onValueChange),
         modifier = modifier,
         enabled = enabled,
         valueRange = valueRange,
@@ -201,6 +210,25 @@ private fun RowText(
             )
         }
     }
+}
+
+/** Plays the press haptic, then [onClick]. */
+internal fun pressed(
+    haptics: GlassHaptics,
+    onClick: () -> Unit,
+) {
+    haptics.press()
+    onClick()
+}
+
+/** Plays the toggle haptic for [on], then [onChange]. */
+internal fun toggled(
+    haptics: GlassHaptics,
+    on: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    haptics.toggle(on)
+    onChange(on)
 }
 
 /** A compact button's padding and drawn height; its touch area stays [GlassSize.TapTarget]. */

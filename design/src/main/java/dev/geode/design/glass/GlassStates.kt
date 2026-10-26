@@ -139,7 +139,8 @@ fun GlassNotice(
             color = content,
         )
         if (actionLabel != null && onAction != null) {
-            TextButton(onClick = onAction) { Text(actionLabel, color = content) }
+            val haptics = LocalGlassHaptics.current
+            TextButton(onClick = { pressed(haptics, onAction) }) { Text(actionLabel, color = content) }
         }
     }
 }

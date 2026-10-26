@@ -8,7 +8,8 @@ import dev.geode.design.theme.toArgbInt
 
 /**
  * Everything glass surfaces read: the colours in use, whether they are the dark or light ones, the
- * tier, and the person's adjustments. Provided by [GlassTheme] through [LocalGlassStyle].
+ * tier, the accent tint and backdrop the person picked, and their adjustments. Provided by [GlassTheme]
+ * through [LocalGlassStyle].
  */
 @Immutable
 data class GlassStyle(
@@ -19,6 +20,10 @@ data class GlassStyle(
     val clamp: Float = GlassTokens.BACKDROP_CLAMP,
     /** The bar's tint: its token, or more when the person asks for a more solid bar. */
     val barTintAlpha: Float = GlassKind.BAR.tintAlpha,
+    /** The accent tint the [colors] were made with. */
+    val accent: GlassAccent = GlassAccent.SKY,
+    /** The backdrop behind the glass when no Visual plays; its fields are the [colors]' fields. */
+    val backdrop: GlassBackdropChoice = GlassBackdropChoice.ARTWORK,
 ) {
     /** How opaque glass of [kind] is tinted over a clamped backdrop. */
     fun tintAlpha(kind: GlassKind): Float = if (kind == GlassKind.BAR) barTintAlpha else kind.tintAlpha
@@ -36,9 +41,10 @@ data class GlassStyle(
         fun barTintFor(opacity: Float): Float = opacity.coerceIn(GlassKind.BAR.tintAlpha, 1f)
 
         /**
-         * The style for the [dark] or light palette with the person's adjustments: the accent's
-         * [accentIntensity], a chosen [fontColor] (kept only where it stays legible), Background [dim]
-         * and Bar [barOpacity]. However they are set, every text role keeps 4.5:1 on every ground.
+         * The style for the [dark] or light palette with the person's choices: the [accent] tint and its
+         * [accentIntensity], the [backdrop], a chosen [fontColor] (kept only where it stays legible),
+         * Background [dim] and Bar [barOpacity]. However they are set, every text role keeps 4.5:1 on
+         * every ground.
          */
         fun of(
             dark: Boolean,
@@ -47,10 +53,13 @@ data class GlassStyle(
             dim: Float = 0f,
             barOpacity: Float = GlassKind.BAR.tintAlpha,
             fontColor: Color? = null,
+            accent: GlassAccent = GlassAccent.SKY,
+            backdrop: GlassBackdropChoice = GlassBackdropChoice.ARTWORK,
         ): GlassStyle {
             val clamp = clampFor(dim)
-            val colors = adjusted(GlassPalettes.of(dark), dark, accentIntensity, fontColor, clamp)
-            return GlassStyle(colors, dark, tier, clamp, barTintFor(barOpacity))
+            val palette = GlassPalettes.of(dark).withAccent(accent.colors(dark)).copy(fields = backdrop.fields(dark))
+            val colors = adjusted(palette, dark, accentIntensity, fontColor, clamp)
+            return GlassStyle(colors, dark, tier, clamp, barTintFor(barOpacity), accent, backdrop)
         }
 
         private fun adjusted(

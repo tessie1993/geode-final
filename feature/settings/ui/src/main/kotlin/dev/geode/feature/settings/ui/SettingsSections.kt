@@ -9,8 +9,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
+import dev.geode.feature.settings.api.AccentTint
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
+import dev.geode.feature.settings.api.BackdropChoice
 import dev.geode.feature.settings.api.BackgroundCommand
 import dev.geode.feature.settings.api.BeatTuning
 import dev.geode.feature.settings.api.BehaviorCommand
@@ -63,7 +65,7 @@ private const val MILLIBELS_PER_DECIBEL = 100f
 private const val BASS_BOOST_FULL = 1_000f
 private val NO_SLEEP_TIMER = Minutes(0)
 
-/** Theme (was Look): light or dark, transparency, accent, text and layout of the App UI. */
+/** Theme (was Look): light or dark, transparency, accent, backdrop, text and layout of the App UI. */
 internal fun LazyListScope.themeSection(
     look: LookSettings,
     fontColors: List<FontColorChoice>,
@@ -82,6 +84,13 @@ internal fun LazyListScope.themeSection(
     }
     item {
         SettingsGroup(stringResource(R.string.look_group_colour)) {
+            ChoiceRow(stringResource(R.string.look_accent_tint), AccentTint.entries, look.accentTint, { accentTintName(it) }) {
+                change(LookCommand.SetAccentTint(it))
+            }
+            ChoiceRow(stringResource(R.string.look_backdrop), BackdropChoice.entries, look.backdrop, { backdropName(it) }) {
+                change(LookCommand.SetBackdrop(it))
+            }
+            Note(stringResource(R.string.look_backdrop_note))
             SliderRow(
                 stringResource(R.string.look_accent_intensity, (look.accentIntensity * PERCENT).roundToInt()),
                 look.accentIntensity,

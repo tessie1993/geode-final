@@ -3,9 +3,11 @@ package dev.geode.feature.settings.core
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.settings.api.AccentTint
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
+import dev.geode.feature.settings.api.BackdropChoice
 import dev.geode.feature.settings.api.BackgroundCommand
 import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BeatTuning
@@ -79,6 +81,10 @@ class SettingsRulesTest {
             Row(LookCommand.SetThemeMode(ThemeMode.SYSTEM), defaults),
             Row(LookCommand.SetReduceTransparency(true), defaults.copy(look = look.copy(reduceTransparency = true))),
             Row(LookCommand.SetReduceTransparency(false), defaults),
+            Row(LookCommand.SetAccentTint(AccentTint.ROSE), defaults.copy(look = look.copy(accentTint = AccentTint.ROSE))),
+            Row(LookCommand.SetAccentTint(AccentTint.SKY), defaults),
+            Row(LookCommand.SetBackdrop(BackdropChoice.DUSK), defaults.copy(look = look.copy(backdrop = BackdropChoice.DUSK))),
+            Row(LookCommand.SetBackdrop(BackdropChoice.ARTWORK), defaults),
             Row(LookCommand.SetAccentIntensity(0.1f), defaults.copy(look = look.copy(accentIntensity = 0.5f))),
             Row(LookCommand.SetAccentIntensity(9f), defaults.copy(look = look.copy(accentIntensity = 1.5f))),
             Row(LookCommand.SetBackgroundDim(0.3f), defaults.copy(look = look.copy(backgroundDim = 0.3f))),

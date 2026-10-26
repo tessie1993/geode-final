@@ -49,9 +49,9 @@
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
     <!--
-      The theme pack's haptic cues name Android feedback constants, and the
-      newest of them landed after minSdk 31, so older devices fall back to the
-      vibration patterns the pack ships alongside them.
+      Haptic feedback on the App UI's controls (#398), as the privacy policy
+      lists it. The controls play it through the view's own touch feedback,
+      which follows Android's touch-feedback setting.
     -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- The live wallpaper is optional; the app is fully usable without a

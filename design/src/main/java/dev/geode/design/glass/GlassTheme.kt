@@ -21,11 +21,11 @@ import dev.geode.design.theme.CornerShapes
 fun glassColorScheme(
     colors: GlassColors,
     dark: Boolean,
+    inverseAccent: Color = GlassPalettes.of(!dark).accent,
 ): ColorScheme {
     val clear = Color.Transparent
     val thin = colors.glass.copy(alpha = GlassKind.CARD.tintAlpha)
     val matte = colors.glass.copy(alpha = GlassKind.SHEET.matteAlpha)
-    val inverseAccent = GlassPalettes.of(!dark).accent
     return if (dark) {
         darkColorScheme(
             primary = colors.accent,
@@ -110,7 +110,9 @@ fun glassColorScheme(
 /**
  * The glass App UI's theme: the [dark] or light palette with the person's adjustments, Material's roles
  * mapped onto it ([glassColorScheme]), Inter, and the corner set the person chose ([shapes]). The [tier]
- * decides how much the glass may do.
+ * decides how much the glass may do; the [accent] tints its highlights and the [backdrop] is what lies
+ * behind it when no Visual plays. Controls press, toggle and tick with the light haptics of
+ * [LocalGlassHaptics].
  */
 @Composable
 fun GlassTheme(
@@ -121,16 +123,19 @@ fun GlassTheme(
     backgroundDim: Float = 0f,
     barOpacity: Float = GlassKind.BAR.tintAlpha,
     fontColor: Color? = null,
+    accent: GlassAccent = GlassAccent.SKY,
+    backdrop: GlassBackdropChoice = GlassBackdropChoice.ARTWORK,
     content: @Composable () -> Unit,
 ) {
     val style =
-        remember(dark, tier, accentIntensity, backgroundDim, barOpacity, fontColor) {
-            GlassStyle.of(dark, tier, accentIntensity, backgroundDim, barOpacity, fontColor)
+        remember(dark, tier, accentIntensity, backgroundDim, barOpacity, fontColor, accent, backdrop) {
+            GlassStyle.of(dark, tier, accentIntensity, backgroundDim, barOpacity, fontColor, accent, backdrop)
         }
-    val scheme = remember(style) { glassColorScheme(style.colors, style.dark) }
+    val scheme = remember(style) { glassColorScheme(style.colors, style.dark, style.accent.colors(!style.dark).accent) }
     val typography = remember { glassTypography() }
     CompositionLocalProvider(
         LocalGlassStyle provides style,
+        LocalGlassHaptics provides rememberGlassHaptics(),
         LocalContentColor provides style.colors.textPrimary,
     ) {
         MaterialTheme(colorScheme = scheme, typography = typography, shapes = shapes, content = content)

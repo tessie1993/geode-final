@@ -11,6 +11,16 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Glass: haptics, accent tints and backdrops (#398).** The App UI's controls
+  press, toggle and tick (a slider every twentieth of its range, or at each
+  stop) with one light set of haptics through the view's own touch feedback,
+  so Android's touch-feedback setting turns them off; there are no UI sounds.
+  Settings > Theme picks an accent tint for the glass highlights (Sky, Teal,
+  Moss, Violet, Rose) and the backdrop behind the glass when no Visual plays
+  (Album art, Mist, Dusk, Aurora or Plain). `GlassColorSchemeTest` holds every
+  text role to 4.5:1 in every tint, tier, backdrop and mode. The Full, Calm
+  and Matte tiers stay automatic. The last Element docs are gone.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio

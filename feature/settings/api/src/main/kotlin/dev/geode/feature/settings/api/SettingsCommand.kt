@@ -18,6 +18,14 @@ sealed interface LookCommand : SettingsCommand {
         val on: Boolean,
     ) : LookCommand
 
+    data class SetAccentTint(
+        val tint: AccentTint,
+    ) : LookCommand
+
+    data class SetBackdrop(
+        val backdrop: BackdropChoice,
+    ) : LookCommand
+
     data class SetAccentIntensity(
         val intensity: Float,
     ) : LookCommand

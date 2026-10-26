@@ -91,11 +91,34 @@ enum class ThemeMode {
     LIGHT,
 }
 
+/** The tint of the glass highlights (#398): Sky, the default, or one of the others. */
+enum class AccentTint {
+    SKY,
+    TEAL,
+    MOSS,
+    VIOLET,
+    ROSE,
+}
+
+/**
+ * What lies behind the glass when no Visual plays (#398): the playing song's art behind Home and the
+ * plain player with a calm backdrop elsewhere ([ARTWORK], the default), or one calm backdrop everywhere.
+ */
+enum class BackdropChoice {
+    ARTWORK,
+    MIST,
+    DUSK,
+    AURORA,
+    PLAIN,
+}
+
 /** The Theme section (was Look): light or dark, transparency, accent, text and layout of the App UI. */
 data class LookSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     /** Turns the glass matte: no blur and no see-through panels (Android has no such setting for apps). */
     val reduceTransparency: Boolean = false,
+    val accentTint: AccentTint = AccentTint.SKY,
+    val backdrop: BackdropChoice = BackdropChoice.ARTWORK,
     val accentIntensity: Float = ACCENT_INTENSITY_DEFAULT,
     val backgroundDim: Float = BACKGROUND_DIM_DEFAULT,
     /** The text colour chosen over the theme's own, or null for the theme's. */
