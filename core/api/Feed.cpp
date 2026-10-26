@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <chrono>
 
+#include "geode/analysis/Decimator.hpp"
+
 namespace geode::api {
 
 namespace {
@@ -117,7 +119,8 @@ void Feed::analyse() {
         analysisRate_ = rate;
     }
     cursor_ = std::max(cursor_, ring_.oldestReadable());
-    const uint64_t half = static_cast<uint64_t>(kFftSize / 2);
+    // A hi-res source is decimated before the analysis, so one window spans that many more of its frames.
+    const uint64_t half = static_cast<uint64_t>(kFftSize) * static_cast<uint64_t>(analysis::decimationFor(rate)) / 2;
     GeodeFeatureFrame frame{};
     while (cursor_ < written) {
         const size_t n = static_cast<size_t>(std::min<uint64_t>(written - cursor_, kPushFrames));

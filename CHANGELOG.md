@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Hi-res and 24-bit files analyse correctly (#299).** The analysis takes
+  audio above 48 kHz down to 48 kHz or less by a whole factor first
+  (`Decimator`: a windowed-sinc low-pass, flat to 16 kHz, with anything
+  that would fold back below 22 kHz at least 75 dB down), so the bands, the
+  hop and the tempo read the same at 44.1, 48, 96 and 192 kHz (the tempo
+  used to read x0.64 at 192 kHz). The live feed stamps and the offline
+  timeline time hops and windows in the source's own frames to match. The
+  native decoder and the offline analysis ask MediaCodec for float PCM, so
+  24-bit files keep their precision, and fall back to 16-bit where a
+  decoder will not. Cached analyses are re-made (analysis version 4).
+
 - **Live input survives real life (#297).** The built-in microphone is
   chosen explicitly and chosen again if the system routes elsewhere, so a
   plugged-in headset no longer takes over. Another app taking the

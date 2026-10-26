@@ -4,7 +4,8 @@ import dev.geode.engine.audio.AnalysisHop
 
 object AnalysisIdentity {
     // 3: frames are stamped at the middle of their window (#302).
-    const val ALGORITHM_VERSION: Int = 3
+    // 4: hi-res files are decimated to 48 kHz or less and decoded as float before analysis (#299).
+    const val ALGORITHM_VERSION: Int = 4
 
     val CURRENT: String =
         "alg=$ALGORITHM_VERSION" +

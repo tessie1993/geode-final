@@ -24,8 +24,29 @@ class AnalysisHopTest {
 
     @Test
     fun `a hop never outgrows the analysis window`() {
-        // 192000 / 60 is 3200 samples, more than one 2048-sample window: the native session clamps it.
-        assertEquals(2048, AnalysisHop.samples(sampleRateHz = 192_000, fftSize = 2048))
+        // 48000 / 60 is 800 samples, more than one 512-sample window: the native session clamps it.
+        assertEquals(512, AnalysisHop.samples(sampleRateHz = 48_000, fftSize = 512))
+    }
+
+    @Test
+    fun `hi-res sources are decimated to 48 kHz or less before they are analysed`() {
+        assertEquals(1, AnalysisHop.decimation(44_100))
+        assertEquals(1, AnalysisHop.decimation(48_000))
+        assertEquals(2, AnalysisHop.decimation(48_001))
+        assertEquals(2, AnalysisHop.decimation(88_200))
+        assertEquals(2, AnalysisHop.decimation(96_000))
+        assertEquals(4, AnalysisHop.decimation(176_400))
+        assertEquals(4, AnalysisHop.decimation(192_000))
+    }
+
+    @Test
+    fun `a hi-res hop and window last as long as at 48 kHz`() {
+        // 192 kHz is analysed at 48 kHz: 800 hops of its samples, each 4 of the source's frames.
+        assertEquals(3200, AnalysisHop.samples(sampleRateHz = 192_000, fftSize = 2048))
+        assertEquals(1f / 60f, AnalysisHop.seconds(sampleRateHz = 192_000, fftSize = 2048), 1e-7f)
+        assertEquals(1470, AnalysisHop.samples(sampleRateHz = 88_200, fftSize = 2048))
+        assertEquals(8192, AnalysisHop.windowFrames(sampleRateHz = 192_000, fftSize = 2048))
+        assertEquals(2048, AnalysisHop.windowFrames(sampleRateHz = 48_000, fftSize = 2048))
     }
 
     @Test

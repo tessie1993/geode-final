@@ -27,6 +27,7 @@ set(GEODE_AUDIO_PURE_SOURCES
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
+    analysis/Decimator.cpp
     analysis/Spectrum.cpp
     analysis/AdaptiveRange.cpp
     analysis/LogBands.cpp
