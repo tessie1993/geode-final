@@ -11,6 +11,12 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
+  feed, Freeze reactions is held in the engine: every Style, MilkDrop
+  included, keeps the Sound signals and audio window of the first held frame
+  while the picture's own motion runs on, and beats that fire during the hold
+  are dropped rather than replayed when it ends.
+
 - **Fast Style authoring loop (#284).** Shaders are assembled with `#line`
   directives, so a compile error names the Style's file and line
   (`styles/kifs/shader.glsl:12`) on the phone, in the render check and in
