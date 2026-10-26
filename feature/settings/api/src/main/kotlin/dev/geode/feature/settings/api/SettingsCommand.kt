@@ -189,6 +189,10 @@ sealed interface BehaviorCommand : SettingsCommand {
     data class SetReducedMotion(
         val on: Boolean,
     ) : BehaviorCommand
+
+    data class SetTilt(
+        val amount: TiltAmount,
+    ) : BehaviorCommand
 }
 
 sealed interface ExportCommand : SettingsCommand {

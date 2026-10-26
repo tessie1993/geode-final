@@ -248,11 +248,20 @@ data class BehaviorSettings(
     val touchSmearStrength: Float = TOUCH_SMEAR_STRENGTH_DEFAULT,
     val touchTransform: Boolean = true,
     val reducedMotion: Boolean = false,
+    /** How much tilting the phone moves the live Visual (#315). Reduce motion stills it whatever this says. */
+    val tilt: TiltAmount = TiltAmount.SUBTLE,
 ) {
     companion object {
         const val TOUCH_SMEAR_STRENGTH_DEFAULT = 1f
         val TOUCH_SMEAR_STRENGTH: ClosedFloatingPointRange<Float> = 0.2f..2f
     }
+}
+
+/** How much tilting the phone moves the live Visual: not at all, a little (the default), or fully. */
+enum class TiltAmount {
+    OFF,
+    SUBTLE,
+    FULL,
 }
 
 /** The export sizes (#22), smallest first. Stored by name, so adding a size never moves another. */

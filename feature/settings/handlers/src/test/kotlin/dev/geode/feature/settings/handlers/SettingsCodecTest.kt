@@ -31,6 +31,7 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import org.junit.Assert.assertEquals
@@ -211,6 +212,18 @@ class SettingsCodecTest {
     @Test
     fun `settings are written in today's keys and formats`() {
         assertEquals(today + newKeysAtDefaults, SettingsCodec.encode(todayValues))
+    }
+
+    @Test
+    fun `tilt is kept by name in its own key, Subtle when nothing is stored`() {
+        assertEquals("SUBTLE", newKeysAtDefaults["gui_tilt"])
+        for (amount in TiltAmount.entries) {
+            val values = SettingsValues(behavior = BehaviorSettings(tilt = amount))
+            val stored = SettingsCodec.encode(values)
+            assertEquals(amount.name, stored["gui_tilt"])
+            assertEquals(amount, SettingsCodec.decode(stored).behavior.tilt)
+        }
+        assertEquals(TiltAmount.SUBTLE, SettingsCodec.decode(mapOf("gui_tilt" to "SIDEWAYS")).behavior.tilt)
     }
 
     @Test

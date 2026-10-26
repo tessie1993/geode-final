@@ -73,10 +73,12 @@ import dev.geode.feature.playback.ui.MiniPlayerRoute
 import dev.geode.feature.playback.ui.PlayerAction
 import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.feature.playback.ui.QueueRoute
+import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
@@ -182,8 +184,9 @@ fun AppRoot() {
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
     // Full-screen mode hands the host the double tap that shows and hides its controls; the Visuals
     // tab, where the tab UI is the thing being touched, passes none.
-    // Tilt is stilled under reduce motion, whatever the tilt setting says (#315).
-    val tilt = settingsValues?.behavior?.let { !it.reducedMotion } ?: false
+    // Settings' Tilt as the weight the engine fades to: Subtle is half, Full all. Reduce motion stills
+    // it whatever the setting says (#315); the host also stops it under Battery Saver.
+    val tilt = settingsValues?.behavior?.let(::tiltWeight) ?: 0f
     val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
         if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
     }
@@ -279,6 +282,21 @@ fun AppRoot() {
         }
     }
 }
+
+/** How strongly tilt moves the Visual for these Settings, 0 when it must not move it at all. */
+internal fun tiltWeight(behavior: BehaviorSettings): Float =
+    when {
+        behavior.reducedMotion -> 0f
+        else ->
+            when (behavior.tilt) {
+                TiltAmount.OFF -> 0f
+                TiltAmount.SUBTLE -> TILT_SUBTLE
+                TiltAmount.FULL -> 1f
+            }
+    }
+
+/** Subtle tilt: half of Full. */
+private const val TILT_SUBTLE = 0.5f
 
 /** The monotonic clock Playback's marks use (ADR-0004). */
 private fun elapsedNow(): Millis = Millis(SystemClock.elapsedRealtime())

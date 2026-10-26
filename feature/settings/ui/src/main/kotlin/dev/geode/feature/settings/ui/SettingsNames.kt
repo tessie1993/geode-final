@@ -13,6 +13,7 @@ import dev.geode.feature.settings.api.ExportQuality
 import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 
@@ -35,6 +36,16 @@ internal fun positionName(position: PlayerPosition): String =
         when (position) {
             PlayerPosition.TOP -> R.string.look_position_top
             PlayerPosition.BOTTOM -> R.string.look_position_bottom
+        },
+    )
+
+@Composable
+internal fun tiltName(amount: TiltAmount): String =
+    stringResource(
+        when (amount) {
+            TiltAmount.OFF -> R.string.behavior_tilt_off
+            TiltAmount.SUBTLE -> R.string.behavior_tilt_subtle
+            TiltAmount.FULL -> R.string.behavior_tilt_full
         },
     )
 

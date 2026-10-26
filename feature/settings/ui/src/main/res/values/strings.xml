@@ -142,6 +142,11 @@
     <string name="behavior_touch_smear">Smear the Visual with a finger</string>
     <string name="behavior_smear_strength">Smear strength  %1$d%%</string>
     <string name="behavior_touch_transform">Pinch and drag the Visual</string>
+    <string name="behavior_tilt">Tilt moves the Visual</string>
+    <string name="behavior_tilt_off">Off</string>
+    <string name="behavior_tilt_subtle">Subtle</string>
+    <string name="behavior_tilt_full">Full</string>
+    <string name="behavior_tilt_reduced_motion">Reduce motion is on, so tilting the phone moves nothing.</string>
     <string name="behavior_group_safety">Motion</string>
     <string name="behavior_flash_guidance">The Visual never flashes: fast changes in brightness are always limited.</string>
     <string name="behavior_slow_motion">Reduce motion</string>

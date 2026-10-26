@@ -73,6 +73,7 @@ internal object SettingsKeys {
     const val TOUCH_SMEAR_STRENGTH = "gui_touch_smear_strength"
     const val TOUCH_TRANSFORM = "gui_touch_transform"
     const val REDUCED_MOTION = "gui_reduced_motion"
+    const val TILT = "gui_tilt"
 
     // Export (geode-prefs).
     const val EXPORT_QUALITY = "export_quality"
