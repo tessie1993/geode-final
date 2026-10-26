@@ -110,7 +110,7 @@ float wrappedDelta(float from, float to, float period) {
 
 ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
                          inputs::Set inputs, std::optional<ShaderFeedback> feedback, std::vector<ShaderImage> images,
-                         std::optional<ShaderMultipass> multipass)
+                         std::optional<ShaderMultipass> multipass, std::optional<ShaderBuffers> buffers)
     : id_(std::move(id)),
       vertexSrc_(std::move(vertexSrc)),
       currentFragment_(std::move(fragmentSrc)),
@@ -119,9 +119,12 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
       inputs_(inputs),
       feedback_(std::move(feedback)),
       multipass_(std::move(multipass)),
-      images_(std::move(images)) {
+      images_(std::move(images)),
+      buffers_(std::move(buffers)) {
     pendingFragment_ = currentFragment_;
     if (images_.size() > imageTex_.size()) images_.resize(imageTex_.size());
+    // As many passes as the pack declares and brought a shader for, never more than there are buffers.
+    if (buffers_) bufferChain_ = bufferpass::Chain(std::min(buffers_->spec.count, static_cast<int>(buffers_->fragments.size())));
 }
 
 ShaderScene::~ShaderScene() { release(); }
@@ -142,6 +145,9 @@ void ShaderScene::init() {
     resolveProgram_ = 0;
     resolveUniforms_ = UniformCache(0);
     resolveBuilt_ = false;
+    bufferPrograms_.fill(0);
+    for (UniformCache& cache : bufferUniforms_) cache = UniformCache(0);
+    buffersBuilt_ = false;
     {
         std::lock_guard<std::mutex> lock(pendingLock_);
         pendingFragment_ = currentFragment_;
@@ -207,6 +213,8 @@ void ShaderScene::setSharedInputs(SharedInputs* shared) {
     passCoarse_.setFormat(format);
     for (Framebuffer& camera : passCamera_) camera.setFormat(format);
     passResolved_.setFormat(format);
+    // A buffer holds the Style's state: half float where the device renders it, else ten bits a channel.
+    for (Framebuffer& target : bufferTargets_) target.setFormat(feedbackFormat(format));
 }
 
 void ShaderScene::beginVisit() {
@@ -344,14 +352,40 @@ void ShaderScene::draw(float timeSeconds) {
     if (program_ == 0) return;
     buildWarpIfNeeded();
     buildResolveIfNeeded();
+    buildBuffersIfNeeded();
     feeding_ = feedback_.has_value() && warpFeedback();
     glDisable(GL_BLEND);
-    glUseProgram(program_);
+    // The spectrum and the scope, once a frame for every pass that reads them.
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, audioTex_.id());
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kAudioTexWidth, kAudioTexRows, GL_RED, GL_FLOAT, texData_.data());
-    uploadParams();
+    // The Style's own buffer passes first, in order; the image pass below reads what they left.
+    buffersReady_ = false;
+    if (buffers_) drawBuffers();
+    glUseProgram(program_);
+    uploadFrame();
     glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(width_), static_cast<float>(height_));
+    if (buffers_) bindBuffers(bufferpass::kImagePass);
+    // A single pass draws the picture from the camera, as a Style without passes does (lib_multipass).
+    set1f("uMpPass", kPassPicture);
+    set1f("uMpUseCoarse", 0.0f);
+    glUniform2f(uniforms_.loc("uMpJitter"), 0.0f, 0.0f);
+    const multipass::Plan passes = passPlan();
+    if (!passes.passes || !drawPasses(passes)) {
+        // Drawn in one pass at the target's size: nothing is kept for the next frame's resolve.
+        if (multipass_) passHistory_.lost();
+        glBindVertexArray(vao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+    }
+    // Every pass of the frame read the same frame number.
+    if (buffersReady_) bufferChain_.endFrame();
+    if (feeding_) presentFeedback();
+    captureHistory(feeding_ ? kept_.fbo() : drawFbo_);
+}
+
+void ShaderScene::uploadFrame() {
+    uploadParams();
     glUniform1i(uniforms_.loc("uAudioTex"), 0);
     if (flowTex_ != 0) {
         glActiveTexture(GL_TEXTURE1);
@@ -381,20 +415,6 @@ void ShaderScene::draw(float timeSeconds) {
     uploadFeatures();
     uploadInputs();
     uploadImages();
-    // A single pass draws the picture from the camera, as a Style without passes does (lib_multipass).
-    set1f("uMpPass", kPassPicture);
-    set1f("uMpUseCoarse", 0.0f);
-    glUniform2f(uniforms_.loc("uMpJitter"), 0.0f, 0.0f);
-    const multipass::Plan passes = passPlan();
-    if (!passes.passes || !drawPasses(passes)) {
-        // Drawn in one pass at the target's size: nothing is kept for the next frame's resolve.
-        if (multipass_) passHistory_.lost();
-        glBindVertexArray(vao_);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
-    }
-    if (feeding_) presentFeedback();
-    captureHistory(feeding_ ? kept_.fbo() : drawFbo_);
 }
 
 void ShaderScene::uploadParams() {
@@ -595,6 +615,7 @@ void ShaderScene::releaseHistory() {
     warped_.release();
     feeding_ = false;
     releasePasses();
+    releaseBuffers();
 }
 
 void ShaderScene::buildWarpIfNeeded() {
@@ -797,6 +818,90 @@ void ShaderScene::releasePasses() {
     passHistory_.lost();
 }
 
+void ShaderScene::buildBuffersIfNeeded() {
+    if (!buffers_ || buffersBuilt_) return;
+    // Once: a pass that does not compile is reported and its buffer stays black; the others draw on.
+    buffersBuilt_ = true;
+    for (int i = 0; i < bufferChain_.count(); ++i) {
+        std::string error;
+        const GLuint built = program::build(vertexSrc_, buffers_->fragments[static_cast<size_t>(i)], cache_, &error);
+        if (built == 0) {
+            host_.onShaderError(error);
+            continue;
+        }
+        bufferPrograms_[static_cast<size_t>(i)] = built;
+        bufferUniforms_[static_cast<size_t>(i)] = UniformCache(built);
+    }
+}
+
+void ShaderScene::drawBuffers() {
+    const int width = drawWidth_;
+    const int height = drawHeight_;
+    const int count = bufferChain_.count();
+    if (sharedInputs_ == nullptr || width <= 0 || height <= 0 || !bufferpass::fits(count, firstBufferUnit(), kGuaranteedUnits)) return;
+    // Each buffer follows the target's size keeping what it holds, as every picture that feeds the next
+    // frame does (ADR-0005); a buffer made for the first time this visit starts black. Both calls leave the
+    // framebuffer unbound. Made on the buffers' own first unit, which bindBuffers() binds again: making a
+    // texture binds it on the active unit, and unit 0 holds uAudioTex.
+    glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + firstBufferUnit()));
+    bool ready = true;
+    for (int i = 0; i < count && ready; ++i) {
+        const bufferpass::Size size = bufferpass::bufferSize(width, height, buffers_->spec.scale[static_cast<size_t>(i)]);
+        for (int which = 0; which < 2 && ready; ++which) {
+            Framebuffer& target = bufferTarget(i, which);
+            ready = target.resizePreserving(size.width, size.height) && target.width() == size.width && target.height() == size.height;
+        }
+    }
+    glActiveTexture(GL_TEXTURE0);
+    buffersReady_ = ready;
+    if (ready) {
+        glBindVertexArray(vao_);
+        for (int i = 0; i < count; ++i) {
+            const GLuint program = bufferPrograms_[static_cast<size_t>(i)];
+            if (program == 0) continue;
+            // It reads every buffer's newest picture, its own last frame's among them, and draws into the other.
+            Framebuffer& target = bufferTarget(i, bufferChain_.target(i));
+            glBindFramebuffer(GL_FRAMEBUFFER, target.fbo());
+            Framebuffer::discardBound(target.fbo());
+            glViewport(0, 0, target.width(), target.height());
+            glUseProgram(program);
+            // The pass's own cache stands in for the image pass's while its uniforms go up.
+            std::swap(uniforms_, bufferUniforms_[static_cast<size_t>(i)]);
+            uploadFrame();
+            glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(target.width()), static_cast<float>(target.height()));
+            glUniform2f(uniforms_.loc("uMpJitter"), 0.0f, 0.0f);
+            bindBuffers(static_cast<float>(i));
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            std::swap(uniforms_, bufferUniforms_[static_cast<size_t>(i)]);
+            bufferChain_.drawn(i);
+        }
+        glBindVertexArray(0);
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, feeding_ ? kept_.fbo() : drawFbo_);
+    glViewport(0, 0, width, height);
+}
+
+void ShaderScene::bindBuffers(float pass) {
+    const GLuint black = sharedInputs_ != nullptr ? sharedInputs_->black() : 0;
+    for (int i = 0; i < bufferChain_.count(); ++i) {
+        const GLint unit = bufferpass::unitOf(i, firstBufferUnit());
+        if (unit >= kGuaranteedUnits) break;
+        Framebuffer& latest = bufferTarget(i, bufferChain_.latest(i));
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + unit));
+        glBindTexture(GL_TEXTURE_2D, buffersReady_ && latest.ok() ? latest.tex() : black);
+        glUniform1i(uniforms_.loc(bufferpass::kSamplers[static_cast<size_t>(i)]), unit);
+    }
+    glActiveTexture(GL_TEXTURE0);
+    set1f("uBufFrame", static_cast<float>(bufferChain_.frame()));
+    set1f("uBufPass", pass);
+}
+
+void ShaderScene::releaseBuffers() {
+    for (Framebuffer& target : bufferTargets_) target.release();
+    bufferChain_.reset();
+    buffersReady_ = false;
+}
+
 void ShaderScene::set1f(const char* name, float value) {
     glUniform1f(uniforms_.loc(name), value);
 }
@@ -848,6 +953,12 @@ void ShaderScene::release() {
     resolveProgram_ = 0;
     resolveUniforms_ = UniformCache(0);
     resolveBuilt_ = false;
+    for (size_t i = 0; i < bufferPrograms_.size(); ++i) {
+        if (bufferPrograms_[i] != 0) glDeleteProgram(bufferPrograms_[i]);
+        bufferPrograms_[i] = 0;
+        bufferUniforms_[i] = UniformCache(0);
+    }
+    buffersBuilt_ = false;
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
     audioTex_.release();
     for (Texture& image : imageTex_) image.release();

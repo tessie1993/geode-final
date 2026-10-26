@@ -43,6 +43,8 @@ constexpr const char* kParticlesKey = "particles3d";
 constexpr const char* kFeedbackKey = "feedback";
 constexpr const char* kMultipassKey = "multipass";
 constexpr const char* kTexturesKey = "textures";
+constexpr const char* kBuffersKey = "buffers";
+constexpr const char* kScaleKey = "scale";
 constexpr const char* kFileKey = "file";
 constexpr const char* kWrapKey = "wrap";
 constexpr const char* kFilterKey = "filter";
@@ -615,6 +617,81 @@ std::optional<std::vector<TextureSpec>> parseTextures(const Value& manifest, con
     return textures;
 }
 
+struct Buffers {
+    bufferpass::Spec spec;
+    std::vector<std::string> shaderPaths;
+};
+
+// What a problem calls the pack's buffer `index`: buffer A to buffer D.
+std::string bufferName(size_t index) {
+    std::string name("buffer ");
+    name.push_back(static_cast<char>('A' + index));
+    return name;
+}
+
+// The fragment shader of one entry of "buffers": a file of its own in the Style's folder, never the image
+// pass's.
+std::optional<std::string> parseBufferShader(const Value& entry, const std::string& what, const StylePack& pack, const std::string& where,
+                                             std::vector<PackProblem>& problems) {
+    const std::string* shader = entry.kind() == Value::Kind::Object ? stringField(entry, kShaderKey) : nullptr;
+    if (shader == nullptr) {
+        report(problems, PackError::MissingField, where, what + " needs \"shader\", its own fragment shader");
+        return std::nullopt;
+    }
+    if (shader->find(kPathSeparator) != std::string::npos) {
+        report(problems, PackError::BadValue, where, what + " must be a file in the Style's own folder");
+        return std::nullopt;
+    }
+    std::string path = packFilePath(pack.id, *shader);
+    if (path == pack.shaderPath) {
+        report(problems, PackError::BadValue, where, what + " needs a shader of its own, not the image pass's");
+        return std::nullopt;
+    }
+    return path;
+}
+
+// "buffers": the Style's own buffer passes (#387, BufferPasses.hpp), A to D in order, each {"shader",
+// "scale"}, the scale optional. Only a shader Style runs them, never beside a feedback loop or the engine's
+// multi-pass march (each already keeps pictures of its own), and they take the sampler units after the
+// Style's images, so the two together are at most kMaxTextures.
+std::optional<Buffers> parseBuffers(const Value& manifest, const StylePack& pack, const std::string& where,
+                                    std::vector<PackProblem>& problems) {
+    Buffers out;
+    const Value* declared = manifest.get(kBuffersKey);
+    if (declared == nullptr) return out;
+    if (pack.family != kShaderFamily) {
+        report(problems, PackError::BadValue, where, "only a shader Style can declare \"buffers\"");
+        return std::nullopt;
+    }
+    if (pack.feedback.on || pack.multipass.on) {
+        report(problems, PackError::BadValue, where, "a Style with \"feedback\" or \"multipass\" cannot also declare \"buffers\"");
+        return std::nullopt;
+    }
+    const size_t units = static_cast<size_t>(kMaxTextures);
+    const size_t room = std::min(units - std::min(pack.textures.size(), units), static_cast<size_t>(bufferpass::kMaxBuffers));
+    if (declared->kind() != Value::Kind::Array || declared->array().empty() || declared->array().size() > room) {
+        const std::string shape = room == 0 ? std::string("no unit is left for \"buffers\"")
+                                            : "\"buffers\" must be an array of 1 to " + std::to_string(room) + " passes";
+        report(problems, PackError::BadValue, where, shape + ": the images and the buffers share " + std::to_string(kMaxTextures) + " units");
+        return std::nullopt;
+    }
+    const auto& entries = declared->array();
+    for (size_t i = 0; i < entries.size(); ++i) {
+        const std::string what = bufferName(i);
+        auto path = parseBufferShader(entries[i], what, pack, where, problems);
+        if (!path) return std::nullopt;
+        if (std::find(out.shaderPaths.begin(), out.shaderPaths.end(), *path) != out.shaderPaths.end()) {
+            report(problems, PackError::BadValue, where, what + " shares its shader with another buffer");
+            return std::nullopt;
+        }
+        if (!readNumber(entries[i], kScaleKey, out.spec.scale[i], where, problems)) return std::nullopt;
+        out.shaderPaths.push_back(std::move(*path));
+    }
+    out.spec.count = static_cast<int>(out.shaderPaths.size());
+    out.spec = bufferpass::sanitized(out.spec);
+    return out;
+}
+
 }  // namespace
 
 std::string textureUniform(std::string_view name) {
@@ -801,6 +878,10 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     const auto passes = parseMultipass(*doc, pack, folderId, problems);
     if (!passes) return std::nullopt;
     pack.multipass = *passes;
+    auto buffers = parseBuffers(*doc, pack, folderId, problems);
+    if (!buffers) return std::nullopt;
+    pack.buffers = buffers->spec;
+    pack.bufferShaderPaths = std::move(buffers->shaderPaths);
     return pack;
 }
 
