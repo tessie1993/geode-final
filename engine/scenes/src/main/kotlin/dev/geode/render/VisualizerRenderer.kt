@@ -114,6 +114,26 @@ class VisualizerRenderer(
     // GL thread only: the snapshots the native renderer is attached to now.
     private var attachedSnapshots: NativeSnapshots? = null
 
+    /**
+     * A Recording's encoder surface (#317): while set, every frame drawn to the window is also copied
+     * into it, stamped with [System.nanoTime] when it was drawn. Set from any thread; null stops, and
+     * the renderer marks the target released once it has let the surface go.
+     */
+    @Volatile
+    var recording: RecordingTarget? = null
+
+    // GL thread only: the encoder surface the frames are copied into now.
+    private var recorder: FrameRecorder? = null
+
+    /** The window's size in pixels as last drawn, 0 before it has one: a Recording's picture size. */
+    @Volatile
+    var surfaceWidth: Int = 0
+        private set
+
+    @Volatile
+    var surfaceHeight: Int = 0
+        private set
+
     // Config holders only: native ticks its own LfoEngine/AdsrEngine against the configs
     // syncNativeState forwards below (core/viz/RendererFrame.cpp).
     val lfoEngine = LfoEngine()
@@ -152,6 +172,8 @@ class VisualizerRenderer(
 
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
     fun releaseScenes() {
+        recorder?.release()
+        recorder = null
         frameHint.close()
         nativeViz.destroy()
     }
@@ -206,6 +228,8 @@ class VisualizerRenderer(
         styleLab?.attach(appContext, nativeViz)
         attachedSnapshots = null
         attachedFeed = null
+        // A new context: the encoder surface went with the old one, and is made again on this one.
+        recorder?.forget()
         nativeParams = null
         nativeLfo = null
         nativeAdsr = null
@@ -215,19 +239,43 @@ class VisualizerRenderer(
         gl: GL10?,
         width: Int,
         height: Int,
-    ) = nativeViz.surfaceChanged(width, height)
+    ) {
+        surfaceWidth = width
+        surfaceHeight = height
+        nativeViz.surfaceChanged(width, height)
+    }
 
     override fun onDrawFrame(gl: GL10?) {
         val workStart = System.nanoTime()
         nativeViz.setScene(requestedSceneId)
         syncNativeState()
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
+        record()
         nativeViz.pollError(onShaderError)
         nativeViz.takeMilkPresetLoaded()?.let { path ->
             lastMilkPreset = path
             onMilkPresetLoaded(path)
         }
         frameHint.report(System.nanoTime() - workStart)
+    }
+
+    /** Copies the frame just drawn into the Recording's encoder surface, while one is set (#317). */
+    private fun record() {
+        val wanted = recording
+        val current = recorder
+        if (current != null && current.target !== wanted) {
+            current.release()
+            recorder = null
+        }
+        if (wanted == null || wanted.failed) return
+        val into = recorder ?: FrameRecorder(wanted).also { recorder = it }
+        if (into.draw(System.nanoTime())) {
+            wanted.framesDrawn++
+        } else {
+            wanted.failed = true
+            into.release()
+            recorder = null
+        }
     }
 
     /** The rate the pacer actually draws at: its own cap held to the thermal frame cap. */

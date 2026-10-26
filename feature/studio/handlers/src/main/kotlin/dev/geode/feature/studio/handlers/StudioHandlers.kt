@@ -13,6 +13,7 @@ import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.core.RenderEnd
+import dev.geode.feature.studio.core.RecordingWork
 import dev.geode.feature.studio.core.RenderEta
 import dev.geode.feature.studio.core.StudioEvent
 import dev.geode.feature.studio.core.StudioFailure
@@ -41,7 +42,7 @@ fun interface VideoFiles {
 /**
  * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
  * > Default paths, the [files] of deleted videos, the wall clock that stamps a new Project and times a
- * Render, and what the [renders] need (#338).
+ * Render, what the [renders] need (#338), and the [recorder] of the live Visual (#317).
  */
 class StudioSources(
     val storage: StudioStorage,
@@ -49,6 +50,7 @@ class StudioSources(
     val files: VideoFiles,
     val now: () -> Millis,
     val renders: RenderSources,
+    val recorder: LiveRecorder = LiveRecorder.None,
 )
 
 /**
@@ -80,6 +82,8 @@ class StudioHandlers(
     // The Renders asked to stop; the engine reads it from its own thread.
     private val stopping: MutableSet<RenderId> = ConcurrentHashMap.newKeySet()
 
+    private val recordings = RecordingHandlers(sources.recorder)
+
     override suspend fun run(
         work: StudioWork,
         results: Results<StudioEvent>,
@@ -110,6 +114,7 @@ class StudioHandlers(
             is StudioWork.Render -> render(work.render, results)
             is StudioWork.StopRender -> stopping += work.render
             is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
+            is RecordingWork -> recordings.run(work, results)
         }
     }
 

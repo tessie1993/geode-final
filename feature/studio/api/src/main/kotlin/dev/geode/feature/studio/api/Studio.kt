@@ -118,6 +118,7 @@ sealed interface SaveFolder {
  * [renders] is the render queue (#338): what waits and runs, oldest first, and what finished since the
  * app started. [visualsOff] is Settings' Visuals off, while which no Render can be made (#196).
  * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
+ * [recording] is the Recording of the live Visual, if one runs or waits for its Project (#317).
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -130,6 +131,7 @@ data class StudioState(
     val visualsOff: Boolean = false,
     val renderFormat: RenderFormat = RenderFormat(),
     val renderExtras: RenderExtras = RenderExtras(),
+    val recording: RecordingState = RecordingState.Idle,
 ) {
     fun videosIn(project: ProjectId): List<Video> = videos.filter { it.project == project }
 

@@ -22,6 +22,7 @@ typedef struct geode_player   geode_player;
 typedef struct geode_tags     geode_tags;
 typedef struct geode_snapshots geode_snapshots;
 typedef struct geode_feed     geode_feed;
+typedef struct geode_feed_tap geode_feed_tap;
 
 #define GEODE_BAND_COUNT 64
 #define GEODE_WAVEFORM_POINTS 128
@@ -360,6 +361,15 @@ GEODE_API void        geode_feed_set_tuning(geode_feed*, float sensitivity, floa
 GEODE_API void        geode_feed_reset_analysis(geode_feed*);
 /* The feed's analysis reads `snapshots` at the start of each hop, as geode_analysis_attach_snapshots does. */
 GEODE_API GeodeStatus geode_feed_attach_snapshots(geode_feed*, geode_snapshots*);
+
+/* A Recording's tap on the feed (#317): the audio heard, handed over in order and once, at the point the Visual
+ * reads, so it lines up with the picture. It keeps the feed alive until it is destroyed. One thread takes. */
+GEODE_API geode_feed_tap* geode_feed_tap_create(geode_feed*);
+GEODE_API void            geode_feed_tap_destroy(geode_feed_tap*);
+/* Up to `max_frames` interleaved stereo frames heard since the last take, or silence for the time nothing was
+ * heard; the first take only marks the start and gives none. Returns the frames written; `rate_hz`, when not
+ * NULL, gets their rate. */
+GEODE_API size_t          geode_feed_tap_take(geode_feed_tap*, float* out, size_t max_frames, int* rate_hz);
 
 #ifdef __cplusplus
 }

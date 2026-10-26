@@ -18,7 +18,9 @@ import dev.geode.feature.studio.handlers.studioStore
 import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.render.scene.SceneIds
+import dev.geode.playback.PlaybackEngine
 import dev.geode.studio.AppRenderLooks
+import dev.geode.studio.LiveVisualRecorder
 import dev.geode.studio.NativeRenderEngine
 import dev.geode.ui.LiveVisualPresence
 import kotlinx.coroutines.Dispatchers
@@ -30,8 +32,9 @@ import javax.inject.Singleton
 /**
  * Studio's one app-scoped store (ADR-0003, ADR-0004, #17): the Projects, the videos inside them, the
  * default Project and the render queue, in Studio's own database, following the save folder and the
- * Renders' settings through Settings. It lives as long as the process, like the other features'
- * stores, so where the user is browsing and the queue survive every route. A Render's look is frozen
+ * Renders' settings through Settings, and the Recordings of the live Visual (#317). It lives as long
+ * as the process, like the other features' stores, so where the user is browsing and the queue survive
+ * every route. A Render's look is frozen
  * from Customization's interface as it is queued (#338).
  */
 @Module
@@ -59,7 +62,10 @@ object StudioModule {
             )
         val looks = AppRenderLooks(customization, presets, BuiltInStyles.catalogue, Dispatchers.IO)
         val engine = NativeRenderEngine(application, settings, LiveVisualPresence::isShown, Dispatchers.Default)
-        return studioStore(androidStudioSources(application, settings, looks, engine), runtime).also { studio ->
+        // A Recording draws from the live Visual and hears the engine's one audio feed (#317).
+        val recorder =
+            LiveVisualRecorder(application, settings, { PlaybackEngine.feed }, LiveVisualPresence::isShown, Dispatchers.Default)
+        return studioStore(androidStudioSources(application, settings, looks, engine, recorder), runtime).also { studio ->
             // The queue runs in the foreground service whenever a Render waits or runs (ADR-0004).
             application.geodeContainer.appScope.launch {
                 studio.state
