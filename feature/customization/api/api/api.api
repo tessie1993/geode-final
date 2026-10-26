@@ -78,12 +78,14 @@ public final class dev/geode/feature/customization/api/CameraMove$Companion {
 
 public final class dev/geode/feature/customization/api/CameraMoveKind : java/lang/Enum {
 	public static final field DOLLY Ldev/geode/feature/customization/api/CameraMoveKind;
+	public static final field FOV_PUNCH Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field ORBIT Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field PAN Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field PULL_OUT Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field PUSH_IN Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field ROLL Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field SHAKE Ldev/geode/feature/customization/api/CameraMoveKind;
+	public static final field SPEED_RAMP Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field SWAY Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field TILT Ldev/geode/feature/customization/api/CameraMoveKind;
 	public static final field TRAVEL_CURVE Ldev/geode/feature/customization/api/CameraMoveKind;
@@ -1142,6 +1144,7 @@ public final class dev/geode/feature/customization/api/SharedProperty : java/lan
 	public static final field DRIFT_Y Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field DUOTONE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field ENDLESS_ZOOM Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field FIELD_OF_VIEW Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field FISHEYE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field GAMMA Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field GLITCH Ldev/geode/feature/customization/api/SharedProperty;
@@ -1171,6 +1174,7 @@ public final class dev/geode/feature/customization/api/SharedProperty : java/lan
 	public static final field POSTERIZE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field PUSH_IN Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field RIPPLE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field ROLL Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field ROTATION Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field SATURATION Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field SCANLINES Ldev/geode/feature/customization/api/SharedProperty;
@@ -1178,6 +1182,7 @@ public final class dev/geode/feature/customization/api/SharedProperty : java/lan
 	public static final field SOFT_FOCUS Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field SOLARIZE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field SPEED Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field SPEED_RAMP Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field SWAY Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field SYMMETRY Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field TEMPERATURE Ldev/geode/feature/customization/api/SharedProperty;

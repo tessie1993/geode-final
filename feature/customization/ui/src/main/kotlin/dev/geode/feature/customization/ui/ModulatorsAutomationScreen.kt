@@ -431,6 +431,7 @@ private fun cameraMoveName(kind: CameraMoveKind): String =
             CameraMoveKind.PUSH_IN -> R.string.automation_move_push_in
             CameraMoveKind.PULL_OUT -> R.string.automation_move_pull_out
             CameraMoveKind.ZOOM_PUNCH -> R.string.automation_move_zoom_punch
+            CameraMoveKind.FOV_PUNCH -> R.string.automation_move_fov_punch
             CameraMoveKind.ORBIT -> R.string.automation_move_orbit
             CameraMoveKind.ROLL -> R.string.automation_move_roll
             CameraMoveKind.TRAVEL_CURVE -> R.string.automation_move_travel_curve
@@ -439,6 +440,7 @@ private fun cameraMoveName(kind: CameraMoveKind): String =
             CameraMoveKind.PAN -> R.string.automation_move_pan
             CameraMoveKind.SWAY -> R.string.automation_move_sway
             CameraMoveKind.SHAKE -> R.string.automation_move_shake
+            CameraMoveKind.SPEED_RAMP -> R.string.automation_move_speed_ramp
         },
     )
 

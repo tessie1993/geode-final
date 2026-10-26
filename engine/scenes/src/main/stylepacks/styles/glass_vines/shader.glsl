@@ -121,7 +121,7 @@ vec3 steerLook(vec3 rd) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     vec3 bands = vec3(clamp(uBassSmooth, 0.0, 1.5), clamp(uMidSmooth, 0.0, 1.5), clamp(uTrebleSmooth, 0.0, 1.5));
     float beatGate = clamp(uBeat, 0.0, 1.0) * clamp(uBeatResponse, 0.0, 2.0);
     float flow = uFlowPhase;

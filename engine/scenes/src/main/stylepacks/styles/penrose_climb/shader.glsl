@@ -81,7 +81,7 @@ vec3 pcTone(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float hue = 0.08 + 0.15 * sin(uTime * 0.013);
     vec3 glowCol = mix(vec3(1.0, 0.82, 0.55), pal(hue + 0.05), 0.3);
     float bassA = min(uBassSmooth, 1.3);

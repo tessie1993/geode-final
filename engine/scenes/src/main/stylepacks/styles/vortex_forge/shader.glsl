@@ -257,7 +257,7 @@ vec3 vfToneMap(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     int variant = xvariant(2);
     // FORCE above its neutral 1 is the burst; below it the calm stream thins.
     float burst = clamp(uXForce - 1.0, 0.0, 1.0);

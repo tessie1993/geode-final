@@ -167,7 +167,7 @@ vec2 touchLook() {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float mid = min(uMidSmooth, 1.3);
     float treb = min(uTrebleSmooth, 1.3);
     float beatEnv = clamp(uBeat, 0.0, 1.0) * clamp(uBeatResponse, 0.0, 2.0);

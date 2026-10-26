@@ -64,7 +64,6 @@ geode_core_library(geode_viz viz
     ${GEODE_VIZ_PURE_SOURCES}
     viz/Transition.cpp
     viz/CompositeGrade.cpp
-    viz/SharedCamera.cpp
     viz/SharedParams.cpp
     viz/CompositePass.cpp
     viz/TrailPass.cpp

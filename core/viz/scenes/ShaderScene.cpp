@@ -416,6 +416,7 @@ void ShaderScene::uploadCamera() {
     set1f("uCamPush", camera_.push);
     set1f("uCamTravel", camera_.travel);
     glUniform2f(uniforms_.loc("uCamOrbit"), camera_.yaw, camera_.pitch);
+    glUniform2f(uniforms_.loc("uCamLens"), camera_.lens, camera_.roll);
 }
 
 void ShaderScene::uploadExtras() {

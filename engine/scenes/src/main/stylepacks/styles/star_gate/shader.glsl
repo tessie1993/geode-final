@@ -90,7 +90,7 @@ vec3 sgTone(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float swell = clamp(uSwell, 0.0, 1.0);
     float hue = 0.58 + 0.35 * uFormPhase;
 

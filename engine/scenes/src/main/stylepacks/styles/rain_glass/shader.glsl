@@ -134,7 +134,7 @@ vec3 filmic(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float bass = clamp(uBassSmooth, 0.0, 1.5);
     float shiver = clamp(uBeat, 0.0, 1.0) * clamp(uBeatResponse, 0.0, 2.0);
     gBreath = 0.9 + 0.12 * bass;

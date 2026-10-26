@@ -147,7 +147,7 @@ vec3 vwTone(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float swell = clamp(uSwell, 0.0, 1.0);
     float bassA = min(uBassSmooth, 1.3);
     float hue = 0.06 + 0.1 * uFormPhase;

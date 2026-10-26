@@ -115,7 +115,7 @@ vec3 steerLook(vec3 rd) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     gBass = clamp(uBassSmooth, 0.0, 1.5);
     gMid = clamp(uMidSmooth, 0.0, 1.5);
     gTreb = clamp(uTrebleSmooth, 0.0, 1.5);

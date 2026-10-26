@@ -149,6 +149,9 @@
     <string name="customize_property_drift_y">Drift up and down</string>
     <string name="customize_property_endless_zoom">Endless zoom</string>
     <string name="customize_property_dive_speed">Dive speed</string>
+    <string name="customize_property_field_of_view">Field of view</string>
+    <string name="customize_property_roll">Roll</string>
+    <string name="customize_property_speed_ramp">Speed ramp</string>
     <string name="customize_property_palette">Palette</string>
     <string name="customize_property_palette_2">Second palette</string>
     <string name="customize_property_palette_mix">Palette mix</string>
@@ -327,6 +330,7 @@
     <string name="automation_move_push_in">Push in</string>
     <string name="automation_move_pull_out">Pull out</string>
     <string name="automation_move_zoom_punch">Zoom punch</string>
+    <string name="automation_move_fov_punch">Lens punch</string>
     <string name="automation_move_orbit">Orbit</string>
     <string name="automation_move_roll">Roll</string>
     <string name="automation_move_travel_curve">Travel curve</string>
@@ -335,6 +339,7 @@
     <string name="automation_move_pan">Pan</string>
     <string name="automation_move_sway">Sway</string>
     <string name="automation_move_shake">Shake</string>
+    <string name="automation_move_speed_ramp">Speed ramp</string>
     <string name="automation_transition">Transition</string>
     <string name="automation_seconds">%1$.1f s</string>
     <string name="automation_hold">Hold this Style</string>
@@ -405,6 +410,9 @@
     <string name="customize_help_property_drift_y">Slides the picture steadily up or down.</string>
     <string name="customize_help_property_endless_zoom">Dives into the picture without end.</string>
     <string name="customize_help_property_dive_speed">How fast the endless dive goes.</string>
+    <string name="customize_help_property_field_of_view">Widens or narrows the lens. It springs open fast and settles slowly, so linked to a hit it punches.</string>
+    <string name="customize_help_property_roll">Rolls the camera around the way it looks, faster the further from 0; the roll speeds up and slows down smoothly.</string>
+    <string name="customize_help_property_speed_ramp">Speeds the flight up beyond its cruise: it ramps in and eases off.</string>
     <string name="customize_help_property_palette">The set of colours the picture is painted with.</string>
     <string name="customize_help_property_palette_2">A second set of colours to blend in.</string>
     <string name="customize_help_property_palette_mix">How much of the second palette shows.</string>

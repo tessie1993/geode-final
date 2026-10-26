@@ -237,7 +237,7 @@ vec3 steerLook(vec3 rd) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float swell = clamp(uSwell, 0.0, 1.5);
     gWobble = clamp(uBassSmooth, 0.0, 1.5);
     gRipple = clamp(uBeat, 0.0, 1.0) * clamp(uBeatResponse, 0.0, 2.0);

@@ -24,6 +24,7 @@ bool cameraStill(const CompositeLook& l) {
     if (std::fabs(l.camShakeX) + std::fabs(l.camShakeY) + std::fabs(l.camShakeRoll) > kShakeEpsilon) return false;
     const bool moves = on(l.camMoves);
     if (moves && l.camPush > kCameraEpsilon) return false;
+    if (moves && std::fabs(l.camRoll) > kCameraEpsilon) return false;
     if (moves && std::fabs(l.camTiltYaw) + std::fabs(l.camTiltPitch) > kCameraEpsilon) return false;
     const float dive = (moves ? l.camTravelDive : 0.0f) + (on(l.camEndless) ? l.camEndlessDive : 0.0f);
     return dive - std::floor(dive) < kCameraEpsilon;

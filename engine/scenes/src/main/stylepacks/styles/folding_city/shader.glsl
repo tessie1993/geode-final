@@ -149,7 +149,7 @@ vec3 tonemap(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
 
     // ---- the fold ------------------------------------------------------------------
     float ph = fract(uTime / FC_CYCLE);

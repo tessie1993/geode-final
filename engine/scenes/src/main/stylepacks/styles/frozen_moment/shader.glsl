@@ -131,7 +131,7 @@ vec3 fmTone(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float hue = 0.55 + 0.3 * uFormPhase;
     float glint = min(uTrebleSmooth, 1.3);
 

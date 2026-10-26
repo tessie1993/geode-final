@@ -64,6 +64,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/Reactions.cpp
     viz/Modulators.cpp
     viz/SharedCore.cpp
+    viz/SharedCamera.cpp
     viz/ReactionGraph.cpp
     viz/PlanCodec.cpp
     viz/Normaliser.cpp

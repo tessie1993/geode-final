@@ -71,7 +71,7 @@ Layer 2 is a second Style drawn over the Style itself (Layer 1) and part of its 
 _Avoid_: overlay (the App's picture layer above the Visual), mix, stack
 
 **Camera**:
-The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel.
+The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel, and the lens's field of view, a roll and a speed ramp. In a Style that draws a 3D world it moves a real camera through that world; on a flat picture it moves the picture the nearest 2D way.
 _Avoid_: View params, motion params
 
 **Sound signal**:

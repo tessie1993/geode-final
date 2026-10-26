@@ -188,7 +188,7 @@ vec3 lcTone(vec3 c) {
 }
 
 void main() {
-    vec2 uv = view();
+    vec2 uv = cameraView();
     float hue = 0.78 + 0.25 * uFormPhase;
     float swell = clamp(uSwell, 0.0, 1.0);
 
