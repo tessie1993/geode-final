@@ -95,7 +95,7 @@ class CustomizationSnapshotTest {
 
     private companion object {
         // The digest core/tests/bridge_snapshot_codec_test.cpp expects too; it changes with the schema's layout.
-        const val FIXTURE_DIGEST = "bc77c635d147d99cf0b1b520bcfd9124b7a064d2c5d016e3a38d88de71d7fa60"
+        const val FIXTURE_DIGEST = "2b7869fdd62bc4cd4d1f186d5f3afe97781ff798f8f4fbd692be3898f69eab2d"
         const val HEADER = 12
         const val SOUND_FIELDS = 4
         const val ARRAY_FLOATS =

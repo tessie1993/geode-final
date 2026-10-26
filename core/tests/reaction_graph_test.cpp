@@ -44,7 +44,10 @@ ModulatorSpec saw(float periodSeconds) {
 }
 
 TEST(SharedCore, TheTableFollowsTheKotlinModel) {
-    EXPECT_EQ(kSharedCount, 58u);
+    EXPECT_EQ(kSharedCount, 61u);
+    EXPECT_STREQ(spec(Shared::LayerSwap).name, "LAYER_SWAP");
+    EXPECT_TRUE(spec(Shared::LayerOpacity).luminous);
+    EXPECT_EQ(spec(Shared::LayerInfluence).initial, 0.5f);
     EXPECT_STREQ(spec(Shared::Zoom).name, "ZOOM");
     EXPECT_STREQ(spec(Shared::Invert).name, "INVERT");
     EXPECT_EQ(spec(Shared::Brightness).min, 0.2f);
@@ -237,6 +240,18 @@ TEST(ReactionGraph, ALoopBetweenModulatorsFeedsBackButStaysBounded) {
             ASSERT_LE(0.0f, m);
         }
     }
+}
+
+TEST(ReactionGraph, HandsLayerTwoOnAsThePlanAsks) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.layer.style = 1234u;
+    plan.layer.blend = layer::Blend::Overlay;
+    plan.layer.influence = layer::Influence::Displace;
+    ReactionGraph graph;
+    const Evaluated& out = graph.evaluate(plan, heard(SoundSignal::Bass, 0.0f), kFrameDt);
+    EXPECT_EQ(out.layer, plan.layer);
+    EXPECT_NEAR(out[Shared::LayerOpacity], 0.5f, kTolerance);
+    EXPECT_NEAR(out[Shared::LayerSwap], 0.0f, kTolerance);
 }
 
 TEST(ReactionGraph, AnythingPointingOutsideThePlanIsLeftOut) {
