@@ -13,6 +13,7 @@ import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.PresetPlayback
 import dev.geode.feature.visuals.api.PresetShelf
+import dev.geode.feature.visuals.api.SnapshotProblem
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
@@ -24,6 +25,7 @@ import dev.geode.feature.visuals.core.PickedFile
 import dev.geode.feature.visuals.core.Planned
 import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.feature.visuals.core.PresetNames
+import dev.geode.feature.visuals.core.SnapshotNames
 import dev.geode.feature.visuals.core.StyleEntries
 import dev.geode.feature.visuals.core.VISUALS_FEATURE
 import dev.geode.feature.visuals.core.VisualsEvent
@@ -38,6 +40,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.time.LocalDateTime
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -52,13 +55,29 @@ interface VisualsStorage {
 }
 
 /**
+ * Takes Snapshots (#405): reads the Visual's next frame at the screen's full size and saves it as a
+ * PNG named [fileName] in Pictures/Geode. `:app` gives the live Visual's; any call may throw, and
+ * the handlers then report the Snapshot not saved.
+ */
+fun interface SnapshotCamera {
+    /** Saves the still; null when it was saved, else why it was not. */
+    suspend fun save(fileName: String): SnapshotProblem?
+
+    companion object {
+        /** No Visual to take a still of: what the store has unless `:app` gives the live Visual's. */
+        val NONE = SnapshotCamera { SnapshotProblem.NO_VISUAL }
+    }
+}
+
+/**
  * Carries out the Visuals feature's work (ADR-0005): it follows the Style Customization shows and asks
  * Customization for a Style or a preset, through Customization's `:api` only, reads and writes the
  * library in [storage], and lists, changes, shares and imports the preset files in [presets]. Saves
  * are written one at a time, in the order they start. It lists the [milkdrop] folder beside the
  * [builtInMilkdrop] presets, and imports [picked] files into it one by one, each checked first
  * ([MilkdropFiles.plan]), so a broken file is reported and never stops the rest. Everything that can
- * fail is caught here and reported as a named event.
+ * fail is caught here and reported as a named event. Snapshots are read and saved by [snapshots] and
+ * named by the Style and the [clock]'s time ([SnapshotNames]).
  */
 class VisualsHandlers(
     private val customization: CustomizationFeature,
@@ -67,6 +86,8 @@ class VisualsHandlers(
     private val milkdrop: MilkdropFolder,
     private val picked: PickedFiles,
     private val builtInMilkdrop: List<MilkdropPreset>,
+    private val snapshots: SnapshotCamera = SnapshotCamera.NONE,
+    private val clock: () -> LocalDateTime = LocalDateTime::now,
 ) : EffectRunner<VisualsWork, VisualsEvent> {
     private val writing = Mutex()
     private val writingPresets = Mutex()
@@ -124,7 +145,23 @@ class VisualsHandlers(
                     milkdrop.delete(work.kind, work.file)
                     listing()
                 }?.let { (milks, textures) -> results.report(VisualsEvent.MilkdropDeleted(milks, textures)) }
+            is VisualsWork.TakeSnapshot -> results.report(snapshot(work.style))
         }
+    }
+
+    /** Saves a Snapshot of [style]; anything thrown on the way is a Snapshot not saved. */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    private suspend fun snapshot(style: String?): VisualsEvent {
+        val fileName = SnapshotNames.fileName(style, clock())
+        val problem =
+            try {
+                snapshots.save(fileName)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (thrown: Exception) {
+                SnapshotProblem.NOT_SAVED
+            }
+        return if (problem == null) VisualsEvent.SnapshotSaved(fileName) else VisualsEvent.SnapshotFailed(problem)
     }
 
     private suspend fun shelf(): PresetShelf {
@@ -260,6 +297,9 @@ class VisualsHandlers(
  * ([FileMilkdropFolder.of]), [picked] reads what the system picker gives ([ContentPickedFiles]), and
  * [builtInMilkdrop] are the curated presets Geode ships (#93), from `assets/milk/catalog.json`, each
  * with its display name and author.
+ *
+ * Snapshots (#405): [snapshots] reads and saves the live Visual's still; without one, every Snapshot
+ * is reported as having no Visual.
  */
 fun visualsStore(
     customization: CustomizationFeature,
@@ -270,13 +310,15 @@ fun visualsStore(
     picked: PickedFiles,
     builtInMilkdrop: List<MilkdropPreset>,
     runtime: FeatureRuntime,
+    snapshots: SnapshotCamera = SnapshotCamera.NONE,
+    clock: () -> LocalDateTime = LocalDateTime::now,
 ): Visuals =
     FeatureStore<VisualsState, VisualsCommand, VisualsEvent, VisualsWork, VisualsFact>(
         name = VISUALS_FEATURE,
         initial = VisualsState(styles = StyleEntries.from(manifests)),
         reducer = VisualsReducer,
         toEvent = VisualsEvent::Command,
-        runner = VisualsHandlers(customization, storage, presets, milkdrop, picked, builtInMilkdrop),
+        runner = VisualsHandlers(customization, storage, presets, milkdrop, picked, builtInMilkdrop, snapshots, clock),
         runtime = runtime,
         start = VisualsReducer.start,
     )

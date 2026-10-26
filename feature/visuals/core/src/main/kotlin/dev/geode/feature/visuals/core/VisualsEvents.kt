@@ -9,6 +9,7 @@ import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.PresetFolderPath
 import dev.geode.feature.visuals.api.PresetShelf
 import dev.geode.feature.visuals.api.SavedPreset
+import dev.geode.feature.visuals.api.SnapshotProblem
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
@@ -71,6 +72,16 @@ sealed interface VisualsEvent {
     data class MilkdropDeleted(
         val presets: List<MilkdropPreset>,
         val textures: List<String>,
+    ) : VisualsEvent
+
+    /** A Snapshot was saved in Pictures/Geode as [fileName] (#405). */
+    data class SnapshotSaved(
+        val fileName: String,
+    ) : VisualsEvent
+
+    /** A Snapshot could not be saved, for [problem]. */
+    data class SnapshotFailed(
+        val problem: SnapshotProblem,
     ) : VisualsEvent
 
     /** A piece of work failed at the handlers' edge; the reducer reports it. */
@@ -194,6 +205,15 @@ sealed interface VisualsWork {
     data class DeleteMilkdrop(
         val kind: MilkdropKind,
         val file: String,
+    ) : VisualsWork
+
+    /**
+     * Read the Visual's next frame and save it as a PNG named for [style] (the Style shown, null when
+     * unknown) and the time ([SnapshotNames]); answered with [VisualsEvent.SnapshotSaved] or
+     * [VisualsEvent.SnapshotFailed].
+     */
+    data class TakeSnapshot(
+        val style: String?,
     ) : VisualsWork
 }
 

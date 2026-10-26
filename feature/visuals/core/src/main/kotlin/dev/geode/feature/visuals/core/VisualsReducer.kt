@@ -33,6 +33,8 @@ import dev.geode.kernel.ReportFailure
  * stays until the person dismisses it or starts the next import. An import that fails as a whole is
  * reported on the app-wide error channel, and the next one may start. The person's own presets and
  * textures can be deleted ([MilkdropEdits], #360).
+ *
+ * A Snapshot (#405) saves a still of the Visual, one at a time ([Snapshots]).
  */
 object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
     /** What the store carries out once, when it is built. */
@@ -59,6 +61,8 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsEvent.MilkdropListed -> listed(state, event)
             is VisualsEvent.MilkdropImported -> imported(state, event)
             is VisualsEvent.MilkdropDeleted -> deleted(state, event)
+            is VisualsEvent.SnapshotSaved -> Snapshots.saved(state, event)
+            is VisualsEvent.SnapshotFailed -> Snapshots.failed(state, event)
             is VisualsEvent.WorkFailed -> failed(state, event.failure)
         }
 
@@ -90,6 +94,7 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsCommand.ImportMilkdrop -> import(state, command)
             VisualsCommand.DismissImportReport -> dismiss(state)
             is VisualsCommand.DeleteMilkdrop -> MilkdropEdits.delete(state, command)
+            VisualsCommand.Snapshot -> Snapshots.take(state)
         }
 
     /**

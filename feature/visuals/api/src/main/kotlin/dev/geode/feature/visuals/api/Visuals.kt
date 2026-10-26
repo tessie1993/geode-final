@@ -98,8 +98,9 @@ data class StyleLibrary(
  * Everything Visuals lets the outside read: the [styles] this version draws, in the order they are
  * listed, the Style the Visual shows now ([current], null until Customization has said), the
  * person's [library], null until it has been read back from the phone, the [presets], null until
- * they have been listed, and the MilkDrop presets and textures, built-in and imported ([milkdrop],
- * null until the MilkDrop folder has been listed).
+ * they have been listed, the MilkDrop presets and textures, built-in and imported ([milkdrop],
+ * null until the MilkDrop folder has been listed), and whether a Snapshot is being saved now
+ * ([snapshotting], #405).
  */
 data class VisualsState(
     val styles: List<StyleEntry> = emptyList(),
@@ -107,7 +108,17 @@ data class VisualsState(
     val library: StyleLibrary? = null,
     val presets: PresetShelf? = null,
     val milkdrop: MilkdropShelf? = null,
+    val snapshotting: Boolean = false,
 )
+
+/** Why a Snapshot was not saved (#405). */
+enum class SnapshotProblem {
+    /** No Visual is being drawn to take a still of: it is off, or not on screen. */
+    NO_VISUAL,
+
+    /** The picture could not be read back or written to Pictures. */
+    NOT_SAVED,
+}
 
 /**
  * What the outside may ask of Visuals. A Command that names a Style this version does not draw, or
@@ -245,6 +256,14 @@ sealed interface VisualsCommand {
     data class ImportPresetFile(
         val uri: String,
     ) : VisualsCommand
+
+    /**
+     * Saves a Snapshot (#405): a still of the Visual as it is drawn now, never the App UI, at the
+     * screen's full size, as a PNG in Pictures/Geode. Answered with [VisualsFact.SnapshotSaved] or
+     * [VisualsFact.SnapshotNotSaved]; does nothing while another is being saved. Full-screen mode's
+     * button, the quick-tweak strip and the S key all send this one Command.
+     */
+    data object Snapshot : VisualsCommand
 }
 
 /** One-off facts Visuals announces. */
@@ -267,5 +286,15 @@ sealed interface VisualsFact {
     /** A shared preset could not be imported, for [problem]. */
     data class PresetNotImported(
         val problem: ImportProblem,
+    ) : VisualsFact
+
+    /** A Snapshot was saved in Pictures/Geode as [fileName]. */
+    data class SnapshotSaved(
+        val fileName: String,
+    ) : VisualsFact
+
+    /** A Snapshot could not be saved, for [problem]. */
+    data class SnapshotNotSaved(
+        val problem: SnapshotProblem,
     ) : VisualsFact
 }

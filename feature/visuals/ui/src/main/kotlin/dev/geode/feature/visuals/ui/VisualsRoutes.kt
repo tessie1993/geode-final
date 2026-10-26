@@ -51,6 +51,8 @@ fun VisualsRoute(
                 is VisualsFact.FolderCreated -> open = fact.id.value
                 // The Presets browser's facts are its own route's.
                 is VisualsFact.PresetShareReady, is VisualsFact.PresetImported, is VisualsFact.PresetNotImported -> Unit
+                // The app tells how a Snapshot went, whichever place asked for it.
+                is VisualsFact.SnapshotSaved, is VisualsFact.SnapshotNotSaved -> Unit
             }
         }
     }
