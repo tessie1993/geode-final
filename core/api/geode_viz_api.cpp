@@ -230,6 +230,10 @@ void geode_viz_set_frame_load(geode_viz* v, int frames, float p95_ms) {
     if (v) v->renderer.setFrameLoad(frames, p95_ms);
 }
 
+void geode_viz_set_export_supersample(geode_viz* v, float factor) {
+    if (v) v->renderer.setExportSupersample(factor);
+}
+
 void geode_viz_set_offscreen(geode_viz* v, int on) {
     if (!v) return;
     if (on) {

@@ -63,5 +63,9 @@ class EngineSnapshotsTest {
         val autoQuality = SceneParamsCodec.NAMES.indexOf("fluidAutoQuality")
         assertEquals(1f, live.params[autoQuality])
         assertEquals(0f, render.params[autoQuality])
+        // Live keeps the Medium tier it adapts from; a Render runs at Ultra, the finest (#345).
+        val fluidQuality = SceneParamsCodec.NAMES.indexOf("fluidQuality")
+        assertEquals(2f, live.params[fluidQuality])
+        assertEquals(0f, render.params[fluidQuality])
     }
 }

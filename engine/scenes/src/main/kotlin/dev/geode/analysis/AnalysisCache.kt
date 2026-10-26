@@ -25,9 +25,10 @@ object AnalysisCache {
     private fun fileFor(
         context: Context,
         uri: Uri,
+        profile: AnalysisProfile,
     ): File {
         val (size, mtime) = contentStamp(context, uri)
-        return File(dir(context), cacheKey(uri.toString(), size, mtime) + ".mvac")
+        return File(dir(context), cacheKey(uri.toString(), size, mtime, AnalysisIdentity.CURRENT + profile.tag) + ".mvac")
     }
 
     internal fun cacheKey(
@@ -77,8 +78,9 @@ object AnalysisCache {
         uri: Uri,
         beatSensitivity: Float,
         beatMinIntervalMs: Float,
+        profile: AnalysisProfile = AnalysisProfile.LIVE,
     ): FeatureTimeline? {
-        val f = fileFor(context, uri)
+        val f = fileFor(context, uri, profile)
         if (!f.exists()) return null
         val loaded =
             runCatching {
@@ -195,9 +197,10 @@ object AnalysisCache {
         context: Context,
         uri: Uri,
         t: FeatureTimeline,
+        profile: AnalysisProfile = AnalysisProfile.LIVE,
     ) {
         if (t.frames.isEmpty()) return
-        val f = fileFor(context, uri)
+        val f = fileFor(context, uri, profile)
         runCatching {
             DataOutputStream(f.outputStream().buffered()).use { d ->
                 d.writeInt(MAGIC)

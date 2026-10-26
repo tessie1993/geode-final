@@ -173,6 +173,9 @@ GEODE_API void        geode_viz_set_quality_ceiling(geode_viz*, float ceiling); 
  * between drawn frames, in ms. The scene and trail buffers scale with it; sample about once a second. */
 GEODE_API void        geode_viz_set_frame_load(geode_viz*, int frames, float p95_ms);
 GEODE_API void        geode_viz_set_offscreen(geode_viz*, int on);
+/* A Render's scene supersample, 1..2 (clamped): its scene draws at the export size times this (#345).
+ * Set before the surface size; the live Visual ignores it. */
+GEODE_API void        geode_viz_set_export_supersample(geode_viz*, float factor);
 GEODE_API int         geode_viz_knows(geode_viz*, const char* scene_id);
 GEODE_API size_t      geode_viz_scene_ids(geode_viz*, char* out, size_t capacity);   /* newline-joined; returns the full length */
 GEODE_API const char* geode_viz_last_error(geode_viz*);   /* "" when clean */

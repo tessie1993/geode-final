@@ -23,7 +23,8 @@ import dev.geode.util.bestEffort
  * Frames sit on the track's own grid: frame g is the moment g / [fps] seconds into the track, and the
  * sequence is [totalFrames] of them from [firstFrame]. A sequence that starts past the track's start is
  * pre-rolled ([OffscreenSceneRenderer.preRoll]) so it opens warm, as the same frame of a whole-track
- * Render does (#344).
+ * Render does (#344). Its scene draws at the frame size times [supersample] (1..2, #345), which a Render
+ * can afford because it is not bound to real time; the composite brings it down to the frame.
  */
 data class OffscreenRenderSpec(
     val width: Int,
@@ -32,6 +33,7 @@ data class OffscreenRenderSpec(
     val totalFrames: Int,
     val firstFrame: Long,
     val look: CustomizationSnapshot,
+    val supersample: Float = 1f,
 ) {
     companion object {
         /** The frame of the track's grid at [fps] nearest [startMs]: where a sequence from there starts. */
@@ -94,6 +96,7 @@ class OffscreenSceneRenderer(
         // wall-clock frame time says nothing about the device. MilkDrop runs on the render clock with
         // the Render seed in this mode, so the same Render gives the same frames.
         viz.setOffscreen(true)
+        viz.setExportSupersample(spec.supersample)
         viz.surfaceCreated()
         viz.surfaceChanged(spec.width, spec.height)
         check(viz.setScene(sceneFactory.sceneId)) { "native renderer cannot draw \"${sceneFactory.sceneId}\"" }

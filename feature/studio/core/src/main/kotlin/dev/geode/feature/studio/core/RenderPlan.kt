@@ -39,6 +39,16 @@ object RenderPlan {
     private const val BEST_BITS = 0.16
     private const val HEVC_SHARE = 0.65
 
+    /**
+     * The longest side a Render's supersampled scene may reach (#345): a frame this large is still one
+     * phone GPUs draw to, where the scene targets of a 4K frame drawn twice over would not fit.
+     */
+    const val MAX_SCENE_SIDE: Int = 4096
+
+    private const val STANDARD_SUPERSAMPLE = 1f
+    private const val HIGH_SUPERSAMPLE = 1.5f
+    private const val BEST_SUPERSAMPLE = 2f
+
     /** The bit rate never goes past what phone encoders take, nor under what keeps a small video clean. */
     const val MAX_BIT_RATE: Int = 120_000_000
     const val MIN_BIT_RATE: Int = 1_000_000
@@ -86,6 +96,24 @@ object RenderPlan {
         val share = if (format.codec == RenderCodec.HEVC) HEVC_SHARE else 1.0
         val rate = frame.width.toDouble() * frame.height * format.fps * perPixel * share
         return rate.toLong().coerceIn(MIN_BIT_RATE.toLong(), MAX_BIT_RATE.toLong()).toInt()
+    }
+
+    /**
+     * How many times over [format]'s scene is drawn before the composite brings it to the frame (#345): a
+     * Render is not bound to real time, so High draws 1.5 times over and Best twice, while Standard draws
+     * at the frame's own size. Never so much that the scene's long side passes [MAX_SCENE_SIDE]; no frame
+     * is longer than [MAX_SIDE], which is no longer than that, so it is never under 1.
+     */
+    fun supersampleOf(format: RenderFormat): Float {
+        val wanted =
+            when (format.quality) {
+                RenderQuality.STANDARD -> STANDARD_SUPERSAMPLE
+                RenderQuality.HIGH -> HIGH_SUPERSAMPLE
+                RenderQuality.BEST -> BEST_SUPERSAMPLE
+            }
+        val frame = frameOf(format)
+        val room = MAX_SCENE_SIDE.toFloat() / maxOf(frame.width, frame.height)
+        return minOf(wanted, room)
     }
 
     /**

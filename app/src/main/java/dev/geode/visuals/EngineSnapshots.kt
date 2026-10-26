@@ -21,8 +21,10 @@ object EngineSnapshots {
     private val defaultParams: List<Float> = packed(SceneParams.DEFAULT)
 
     // A Render's Fluid quality never adapts downward: it renders as fast as the encoder takes frames,
-    // so its frame time says nothing about the phone (the thermal half is the offscreen pin).
-    private val renderParams: List<Float> = packed(SceneParams.DEFAULT.copy(fluidAutoQuality = false))
+    // so its frame time says nothing about the phone (the thermal half is the offscreen pin). It runs at
+    // the finest tier, Ultra, since a Render is not bound to real time (#345).
+    private val renderParams: List<Float> =
+        packed(SceneParams.DEFAULT.copy(fluidAutoQuality = false, fluidQuality = FLUID_ULTRA))
 
     private val noLfo: List<Float> = List(CustomizationSnapshot.LFO_COUNT) { 0f }
 
@@ -62,6 +64,9 @@ object EngineSnapshots {
             soundReleaseSeconds = BeatTuning.envelopeSeconds(AnalysisEngine.DEFAULT_DECAY),
         )
     }
+
+    /** The Fluid tier index of Ultra, the finest (FluidQuality's tiers run finest first). */
+    private const val FLUID_ULTRA = 0
 
     private fun packed(params: SceneParams): List<Float> =
         FloatArray(CustomizationSnapshot.PARAMS_COUNT).also { SceneParamsCodec.pack(params, it) }.toList()

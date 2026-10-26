@@ -304,6 +304,14 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetOffscreen(JNIEnv* env, jobject, j
     });
 }
 
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizSetExportSupersample(JNIEnv* env, jobject, jlong handle, jfloat factor) {
+    return vizCall(env, "vizSetExportSupersample", handle, [&](geode_viz* v) {
+        geode_viz_set_export_supersample(v, factor);
+        return GEODE_STATUS_OK;
+    });
+}
+
 JNIEXPORT jboolean JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizKnows(JNIEnv* env, jobject, jlong handle, jstring sceneId) {
     return valueCall(env, "vizKnows", jboolean{JNI_FALSE}, [&]() -> jboolean {

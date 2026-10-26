@@ -136,4 +136,21 @@ class RenderPlanTest {
             RenderPlan.sectionOf(RenderLength.Section(Millis(1), Millis(199_999)), track),
         )
     }
+
+    @Test
+    fun `a Render's scene is supersampled by its quality, within what the GPU draws`() {
+        val hd = RenderFormat(aspect = RenderAspect.R16_9, size = RenderSize.FHD1080)
+        assertEquals(1f, RenderPlan.supersampleOf(hd.copy(quality = RenderQuality.STANDARD)), 0f)
+        assertEquals(1.5f, RenderPlan.supersampleOf(hd.copy(quality = RenderQuality.HIGH)), 0f)
+        assertEquals(2f, RenderPlan.supersampleOf(hd.copy(quality = RenderQuality.BEST)), 0f)
+        // 1440p is 2560 wide: twice over would pass 4096, so it stops at 1.6.
+        assertEquals(1.6f, RenderPlan.supersampleOf(hd.copy(size = RenderSize.QHD1440, quality = RenderQuality.BEST)), 1e-6f)
+        // 4K is 3840 wide: a little over once; 21:9 4K already fills 4096, so exactly once.
+        assertEquals(4096f / 3840f, RenderPlan.supersampleOf(hd.copy(size = RenderSize.UHD4K, quality = RenderQuality.BEST)), 1e-6f)
+        val wide = RenderFormat(aspect = RenderAspect.R21_9, size = RenderSize.UHD4K, quality = RenderQuality.BEST)
+        assertEquals(1f, RenderPlan.supersampleOf(wide), 0f)
+        // Portrait counts its long side too.
+        val tall = RenderFormat(aspect = RenderAspect.R9_16, size = RenderSize.QHD1440, quality = RenderQuality.HIGH)
+        assertEquals(1.5f, RenderPlan.supersampleOf(tall), 0f)
+    }
 }

@@ -368,6 +368,12 @@ object GeodeNative {
         on: Boolean,
     ): Int
 
+    /** A Render's scene supersample, 1..2 (#345); set before the surface size. */
+    external fun vizSetExportSupersample(
+        handle: Long,
+        factor: Float,
+    ): Int
+
     external fun vizKnows(
         handle: Long,
         sceneId: String,

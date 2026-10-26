@@ -242,6 +242,11 @@ class NativeViz(
         live { h -> GeodeNative.vizSetOffscreen(h, on) }
     }
 
+    /** GL thread, before [surfaceChanged]: a Render's scene supersample, 1..2 (#345). */
+    fun setExportSupersample(factor: Float) {
+        live { h -> NativeFailures.check(GeodeNative.vizSetExportSupersample(h, factor), "vizSetExportSupersample") }
+    }
+
     fun surfaceCreated() {
         if (create()) live { h -> GeodeNative.vizSurfaceCreated(h) }
     }

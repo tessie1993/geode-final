@@ -5,6 +5,7 @@ import android.media.MediaCodec
 import android.net.Uri
 import dev.geode.RingLog
 import dev.geode.analysis.AnalysisCache
+import dev.geode.analysis.AnalysisProfile
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.analysis.OfflineAnalyzer
 import dev.geode.engine.types.Millis
@@ -93,6 +94,7 @@ class NativeRenderEngine(
                 fps = format.fps,
                 range = section?.let { ExportRange(it.start.value, it.length.value) },
                 codec = if (format.codec == RenderCodec.HEVC) ExportCodec.HEVC else ExportCodec.H264,
+                supersample = RenderPlan.supersampleOf(format),
             )
         val result = encode(made, track, progress, isCancelled) ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
         return endOf(result, track, frame.width, frame.height)
@@ -197,10 +199,10 @@ class NativeRenderEngine(
         val gap = VisualSafety.beatMinIntervalMs(values.analysis.beatMinIntervalMs)
         val analysed =
             withContext(work) {
-                AnalysisCache.load(context, uri, sensitivity, gap)
+                AnalysisCache.load(context, uri, sensitivity, gap, AnalysisProfile.RENDER)
                     ?: analyzer
-                        .analyzeBlocking(uri, sensitivity, gap, onProgress) { !isCancelled() }
-                        .also { AnalysisCache.save(context, uri, it) }
+                        .analyzeBlocking(uri, sensitivity, gap, onProgress, AnalysisProfile.RENDER) { !isCancelled() }
+                        .also { AnalysisCache.save(context, uri, it, AnalysisProfile.RENDER) }
             }
         onProgress(1f)
         return analysed.withBeatSensitivity(sensitivity, gap)

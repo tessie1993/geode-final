@@ -122,6 +122,8 @@ class VideoExporter(
         val range: ExportRange? = null,
         val loopSafe: Boolean = false,
         val codec: ExportCodec = ExportCodec.H264,
+        /** How many times over the scene is drawn before it is brought to the frame (#345). */
+        val supersample: Float = 1f,
     )
 
     sealed interface Result {
@@ -340,6 +342,7 @@ class VideoExporter(
                             totalFrames = totalFrames,
                             firstFrame = firstFrame,
                             look = job.look,
+                            supersample = job.supersample,
                         ),
                 ).also { rendererRef = it }
             renderer.prepare()
