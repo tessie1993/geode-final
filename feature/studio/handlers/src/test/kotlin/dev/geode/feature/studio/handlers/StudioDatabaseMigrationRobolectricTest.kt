@@ -175,6 +175,49 @@ class StudioDatabaseMigrationRobolectricTest {
         }
 
     @Test
+    fun `a version 4 database keeps its library, its Projects have no folder yet, and folders and moved files are kept`() =
+        runBlocking {
+            val name = "studio-v4-sample.db"
+            writeSample(name, version = 4, script = "db/studio-v4.sql")
+
+            val database = StudioDatabase.open(context, name)
+            val storage = RoomStudioStorage(database.dao())
+            try {
+                assertEquals(
+                    listOf(
+                        Project(ProjectId(2), "Earlier videos", Millis(1_700_000_100_000)),
+                        Project(ProjectId(1), "Trip", Millis(1_700_000_000_000)),
+                    ),
+                    storage.projects(),
+                )
+                assertEquals(listOf<VideoId?>(null, VideoId(1)), storage.videos().map { it.source })
+                // Version 5 keeps each Project's folder, and follows files a folder rename moved (#340).
+                val night = "content://tree/videos/document/night.mp4"
+                val moved = "content://tree/videos/document/Holiday%2Fnight.mp4"
+                storage.relocate(
+                    mapOf(ProjectId(1) to "Holiday", ProjectId(2) to "Earlier videos"),
+                    mapOf(
+                        night to moved,
+                        "content://tree/videos/document/night.jpg" to "content://tree/videos/document/Holiday%2Fnight.jpg",
+                    ),
+                )
+                assertEquals(listOf("Earlier videos", "Holiday"), storage.projects().map { it.folder })
+                val first = storage.videos().first()
+                assertEquals(moved, first.file)
+                assertEquals("content://tree/videos/document/Holiday%2Fnight.jpg", first.thumbnail)
+                assertEquals("content://media/external/video/media/77", storage.videos().last().file)
+                assertEquals(FrozenLook("{}"), storage.lookOfVideo(moved))
+                assertEquals(null, storage.lookOfVideo(night))
+                val track = RenderTrack(TrackId("content://media/12"), "Night Drive", Millis(215_000))
+                assertEquals(RenderSpec(listOf(track), project = ProjectId(1)), first.madeWith)
+                storage.relocate(mapOf(ProjectId(2) to null), emptyMap())
+                assertEquals(listOf(null, "Holiday"), storage.projects().map { it.folder })
+            } finally {
+                database.close()
+            }
+        }
+
+    @Test
     fun `the database is at the version the samples lead up to`() {
         assertEquals(1 + StudioDatabase.MIGRATIONS.size, StudioDatabase.VERSION)
     }

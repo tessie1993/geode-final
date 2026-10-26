@@ -107,6 +107,16 @@ sealed interface StudioEvent {
         val video: NewVideo,
         val lyrics: List<SubtitleCue>,
     ) : StudioEvent
+
+    /**
+     * Projects' folders in the Save folder changed (#340): each of [folders] is now called what it maps
+     * to (null: it has none), and each video file or thumbnail in [relinked] moved to the uri it maps to,
+     * as when a folder is renamed or a video moves into another Project's folder.
+     */
+    data class ProjectFoldersChanged(
+        val folders: Map<ProjectId, String?>,
+        val relinked: Map<String, String> = emptyMap(),
+    ) : StudioEvent
 }
 
 /** How a Render ended. */
@@ -204,6 +214,9 @@ enum class StudioFailure {
 
     /** The old Studio's videos could not be brought into the library (#347); it tries again next start. */
     IMPORT_OLD_VIDEOS,
+
+    /** A Project's folder could not be made, renamed or filled in the Save folder (#340). */
+    PROJECT_FOLDER,
 }
 
 /** Work for Studio's handlers. */
@@ -214,15 +227,24 @@ sealed interface StudioWork {
     /** Follow the save folder in Settings > Default paths for as long as the app runs. */
     data object FollowSaveFolder : StudioWork
 
-    /** Save a new Project; its id and creation time come back in [StudioEvent.ProjectCreated]. */
+    /**
+     * Save a new Project; its id and creation time come back in [StudioEvent.ProjectCreated], with its
+     * folder, made in the Save folder [saveFolder] when one is chosen (#340).
+     */
     data class CreateProject(
         val name: String,
         val makeDefault: Boolean,
+        val saveFolder: String? = null,
     ) : StudioWork
 
+    /**
+     * Rename [project] to [name], and its folder in the Save folder [saveFolder] after it (#340): the new
+     * folder name and the files it moved come back in [StudioEvent.ProjectFoldersChanged].
+     */
     data class RenameProject(
         val project: ProjectId,
         val name: String,
+        val saveFolder: String? = null,
     ) : StudioWork
 
     data class SetDefaultProject(
@@ -232,17 +254,30 @@ sealed interface StudioWork {
     /**
      * Forget [project]: its videos move to [moveTo], or, when that is null, are forgotten too and
      * [files] are deleted (empty when the Project had no videos). A default [project] stops being the
-     * default.
+     * default. Its folder in the Save folder [saveFolder] goes too (#340), once the moved videos' files
+     * are in [moveTo]'s folder: everything left in it is deleted, except a file another video still uses.
      */
     data class DeleteProject(
         val project: ProjectId,
         val moveTo: ProjectId?,
         val files: List<String>,
+        val saveFolder: String? = null,
     ) : StudioWork
 
+    /** Move [video] to [to], and its file into [to]'s folder in the Save folder [saveFolder] (#340). */
     data class MoveVideo(
         val video: VideoId,
         val to: ProjectId,
+        val saveFolder: String? = null,
+    ) : StudioWork
+
+    /**
+     * Make a folder in the Save folder [saveFolder] for every Project that has none yet (#340): those made
+     * before Projects had folders, or while no Save folder was chosen. Their names come back in
+     * [StudioEvent.ProjectFoldersChanged].
+     */
+    data class MakeProjectFolders(
+        val saveFolder: String,
     ) : StudioWork
 
     /** Save [videos] into [project]; they come back with their ids in [StudioEvent.VideosAdded]. */
@@ -274,9 +309,13 @@ sealed interface StudioWork {
         val render: NewRender,
     ) : StudioWork
 
-    /** Make [render]'s video with the look frozen for it; it reports its progress, then how it ended. */
+    /**
+     * Make [render]'s video with the look frozen for it, into its Project's folder in the Save folder
+     * [saveFolder] (#340); it reports its progress, then how it ended.
+     */
     data class Render(
         val render: RenderJob,
+        val saveFolder: String? = null,
     ) : StudioWork
 
     /** Stop the running [render]: it ends as cancelled and leaves no file. */
@@ -324,6 +363,7 @@ fun describe(failure: StudioFailure): String =
         StudioFailure.SAVE_CUT -> "Could not save the last change to the cut"
         StudioFailure.COPY_SOURCES -> "Could not copy the Edit's videos, so it was not exported"
         StudioFailure.IMPORT_OLD_VIDEOS -> "Could not bring the earlier Studio's videos into the library"
+        StudioFailure.PROJECT_FOLDER -> "Could not make or change a Project's folder in the Save folder"
     }
 
 /** The Project the old Studio's videos are imported into (#347). */

@@ -127,7 +127,7 @@ The place where people turn music into video files: they make Renders and Record
 _Avoid_: Editor, export screen
 
 **Project**:
-A named group of Renders, Recordings, Edits and Shorts, kept as its own folder inside the Save folder. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported. Only the user deletes videos: deleting a Project, after a confirmation, deletes its folder and every video in it, and nothing is ever deleted automatically.
+A named group of Renders, Recordings, Edits and Shorts, kept as its own folder inside the Save folder: a Render's video is saved there, renaming the Project renames the folder, and a video moved to another Project takes its file into that Project's folder. Every video belongs to exactly one Project, chosen when a Render is set up, when a live Recording stops, or when a video is exported. Only the user deletes videos: deleting a Project, after a confirmation, deletes its folder and every video in it, and nothing is ever deleted automatically.
 _Avoid_: album, collection, folder (for the concept)
 
 **Preset folder**:

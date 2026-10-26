@@ -103,6 +103,7 @@ class StudioStoreTest {
     private val editVideos = FakeEditVideos()
     private val editEngine = FakeEditEngine()
     private val oldVideos = FakeOldVideos()
+    private val folders = FakeProjectFolders()
 
     private fun store() =
         studioStore(
@@ -114,6 +115,7 @@ class StudioStoreTest {
                 RenderSources(renderSettingsOf(settings), looks, engine),
                 edits = EditTools(drafts, editVideos, editEngine),
                 oldVideos = oldVideos,
+                folders = folders,
             ),
             inPlaceRuntime(failures = failures),
         )
@@ -1037,6 +1039,213 @@ class StudioStoreTest {
         )
     }
 
+    @Test
+    fun `a new Project gets its own folder in the save folder, never one already there`() {
+        settings.ready(FolderUri(TREE))
+        folders.others += "trip"
+        val studio = store()
+
+        studio.send(StudioCommand.CreateProject("Trip", makeDefault = true))
+
+        val trip =
+            studio.state.value.projects
+                .single()
+        assertEquals("Trip (2)", trip.folder)
+        assertEquals(trip, storage.projectsById.getValue(trip.id))
+        assertEquals(setOf("$TREE/Trip (2)"), folders.files.keys)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `Projects made before folders get one once the library and the save folder are known`() {
+        storage.projectsById[ProjectId(1)] = Project(ProjectId(1), "Trip", Millis(10))
+        storage.projectsById[ProjectId(2)] = Project(ProjectId(2), "AC/DC", Millis(20))
+        storage.projectsById[ProjectId(3)] = Project(ProjectId(3), "Gigs", Millis(30), folder = "Gigs")
+        val studio = store()
+        assertEquals(
+            listOf<String?>(null, null, "Gigs"),
+            studio.state.value.projects
+                .sortedBy { it.id.value }
+                .map { it.folder },
+        )
+
+        settings.ready(FolderUri(TREE))
+
+        assertEquals(
+            listOf("Trip", "AC_DC", "Gigs"),
+            studio.state.value.projects
+                .sortedBy { it.id.value }
+                .map { it.folder },
+        )
+        assertEquals(listOf("Trip", "AC_DC", "Gigs"), storage.projectsById.values.map { it.folder })
+        assertEquals(setOf("$TREE/Trip", "$TREE/AC_DC"), folders.files.keys)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Render's video lands in its Project's folder`() {
+        val (studio, trip) = foldersStore()
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertEquals(listOf<String?>("$TREE/Trip"), engine.folders)
+        val video =
+            studio.state.value.videos
+                .single()
+        assertEquals(trip, video.project)
+        assertEquals("$TREE/Trip/Night Drive", video.file)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `renaming a Project renames its folder, and its videos and Renders follow their files`() {
+        val (studio, trip) = foldersStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        studio.send(StudioCommand.RenameProject(trip, "Holiday"))
+
+        val moved = "$TREE/Holiday/Night Drive"
+        assertEquals(
+            "Holiday",
+            studio.state.value.projects
+                .single()
+                .folder,
+        )
+        assertEquals(setOf(moved), folders.files.getValue("$TREE/Holiday"))
+        assertEquals(
+            listOf(moved),
+            studio.state.value.videos
+                .map { it.file },
+        )
+        assertEquals(listOf(moved), storage.videosById.values.map { it.file })
+        assertEquals(listOf<String?>(moved), storage.rendersById.values.map { it.file })
+        assertEquals("Holiday", storage.projectsById.getValue(trip).folder)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Project renamed to a name that makes the same folder keeps it`() {
+        val (studio, trip) = foldersStore()
+
+        studio.send(StudioCommand.RenameProject(trip, "Trip."))
+
+        assertEquals(setOf("$TREE/Trip"), folders.files.keys)
+        assertEquals("Trip", storage.projectsById.getValue(trip).folder)
+    }
+
+    @Test
+    fun `deleting a Project deletes its folder with its files`() {
+        val (studio, trip) = foldersStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        studio.send(StudioCommand.DeleteProject(trip, VideosOnDelete.Delete))
+
+        assertEquals(listOf("$TREE/Trip/Night Drive"), files.deleted)
+        assertTrue(folders.files.isEmpty())
+        assertTrue(storage.projectsById.isEmpty())
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `keeping a deleted Project's videos moves their files into the other Project's folder first`() {
+        val (studio, trip) = foldersStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+        studio.send(StudioCommand.CreateProject("Gigs", makeDefault = false))
+        val gigs =
+            studio.state.value.projects
+                .first { it.name == "Gigs" }
+
+        studio.send(StudioCommand.DeleteProject(trip, VideosOnDelete.MoveTo(gigs.id)))
+
+        val moved = "$TREE/Gigs/Night Drive"
+        assertEquals(mapOf("$TREE/Gigs" to setOf(moved)), folders.files)
+        assertEquals(emptyList<String>(), files.deleted)
+        assertEquals(
+            listOf(moved),
+            studio.state.value.videos
+                .map { it.file },
+        )
+        assertEquals(listOf(moved), storage.videosById.values.map { it.file })
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a folder whose files could not move is kept, with them, and said`() {
+        val (studio, trip) = foldersStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+        studio.send(StudioCommand.CreateProject("Gigs", makeDefault = false))
+        val gigs =
+            studio.state.value.projects
+                .first { it.name == "Gigs" }
+        folders.unmovable = true
+
+        studio.send(StudioCommand.DeleteProject(trip, VideosOnDelete.MoveTo(gigs.id)))
+
+        assertEquals(setOf("$TREE/Trip/Night Drive"), folders.files.getValue("$TREE/Trip"))
+        assertEquals(listOf("Some video files could not be deleted"), failures.map { it.message })
+    }
+
+    @Test
+    fun `a moved video's file moves into the other Project's folder`() {
+        val (studio, _) = foldersStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+        studio.send(StudioCommand.CreateProject("Gigs", makeDefault = false))
+        val gigs =
+            studio.state.value.projects
+                .first { it.name == "Gigs" }
+        val video =
+            studio.state.value.videos
+                .single()
+
+        studio.send(StudioCommand.MoveVideo(video.id, gigs.id))
+
+        val moved = "$TREE/Gigs/Night Drive"
+        assertEquals(setOf(moved), folders.files.getValue("$TREE/Gigs"))
+        assertEquals(emptySet<String>(), folders.files.getValue("$TREE/Trip"))
+        assertEquals(
+            listOf(moved),
+            studio.state.value.videos
+                .map { it.file },
+        )
+        assertEquals(
+            VideoId(video.id.value),
+            storage.videosById.values
+                .single { it.file == moved }
+                .id,
+        )
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a folder that cannot be made is said, and the Render is still made where Renders went before`() {
+        val (studio, _) = foldersStore()
+        folders.broken = true
+        folders.files.clear()
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertEquals(listOf<String?>(null), engine.folders)
+        assertEquals(
+            "content://media/video/Night Drive",
+            studio.state.value.videos
+                .single()
+                .file,
+        )
+        assertEquals(listOf("Could not make or change a Project's folder in the Save folder"), failures.map { it.message })
+    }
+
+    /** A store with a save folder and a default Project, Trip, in its folder, ready to make Renders into it. */
+    private fun foldersStore(): Pair<Studio, ProjectId> {
+        settings.ready(FolderUri(TREE))
+        engine.into = folders
+        val studio = store()
+        studio.send(StudioCommand.CreateProject("Trip", makeDefault = true))
+        return studio to
+            studio.state.value.projects
+                .single()
+                .id
+    }
+
     private fun projectWithTake(): Pair<Studio, ProjectId> {
         val studio = store()
         studio.send(StudioCommand.CreateProject("Trip", makeDefault = true))
@@ -1090,6 +1299,10 @@ private class FakeRenderLooks : RenderLooks {
  */
 private class FakeRenderEngine : RenderEngine {
     val made = mutableListOf<Pair<RenderJob, FrozenLook>>()
+    val folders = mutableListOf<String?>()
+
+    /** Where a video saved into a Project folder is put, as the phone's folders would hold it. */
+    var into: FakeProjectFolders? = null
     var progress: ((RenderPhase, Float) -> Unit)? = null
     var cancelled: (() -> Boolean)? = null
     var broken = false
@@ -1107,10 +1320,12 @@ private class FakeRenderEngine : RenderEngine {
     override suspend fun render(
         job: RenderJob,
         look: FrozenLook,
+        folder: String?,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): RenderEnd {
         made += job to look
+        folders += folder
         this.progress = progress
         cancelled = isCancelled
         check(!broken) { "engine crashed" }
@@ -1118,8 +1333,10 @@ private class FakeRenderEngine : RenderEngine {
         gate?.await()
         if (isCancelled()) return RenderEnd.Cancelled
         val title = job.title
+        val file = "${folder ?: "content://media/video"}/$title"
+        if (folder != null && ending == null) into?.files?.getValue(folder)?.add(file)
         return ending
-            ?: RenderEnd.Saved(NewVideo(VideoKind.RENDER, title, "content://media/video/$title", null, Millis(30_000), 1920, 1080, title))
+            ?: RenderEnd.Saved(NewVideo(VideoKind.RENDER, title, file, null, Millis(30_000), 1920, 1080, title))
     }
 }
 
@@ -1200,6 +1417,18 @@ private class FakeStudioStorage : StudioStorage {
     ) {
         ensureWorking()
         videosById[video] = videosById.getValue(video).copy(project = to)
+    }
+
+    override suspend fun relocate(
+        folders: Map<ProjectId, String?>,
+        relinked: Map<String, String>,
+    ) {
+        ensureWorking()
+        folders.forEach { (id, folder) -> projectsById[id] = projectsById.getValue(id).copy(folder = folder) }
+        videosById.replaceAll { _, video ->
+            video.copy(file = relinked[video.file] ?: video.file, thumbnail = video.thumbnail?.let { relinked[it] ?: it })
+        }
+        rendersById.replaceAll { _, render -> render.copy(file = render.file?.let { relinked[it] ?: it }) }
     }
 
     override suspend fun addVideos(
@@ -1367,3 +1596,66 @@ private class FakeVideoFiles : VideoFiles {
         return true
     }
 }
+
+/**
+ * The Save folder's Project folders in memory: each folder's uri is the Save folder's and its name, and
+ * holds the uris of its files. [others] are what else the Save folder holds, by name. While [broken]
+ * nothing can be made, and while [unmovable] no file moves.
+ */
+private class FakeProjectFolders : ProjectFolders {
+    val files = LinkedHashMap<String, MutableSet<String>>()
+    val others = mutableSetOf<String>()
+    var broken = false
+    var unmovable = false
+
+    override suspend fun names(saveFolder: String): Set<String> =
+        others + files.keys.filter { it.startsWith("$saveFolder/") }.map { it.removePrefix("$saveFolder/") }
+
+    override suspend fun folder(
+        saveFolder: String,
+        name: String,
+        make: Boolean,
+    ): String? {
+        check(!broken) { "no folders" }
+        val uri = "$saveFolder/$name"
+        if (uri !in files && make) files[uri] = mutableSetOf()
+        return uri.takeIf { it in files }
+    }
+
+    override suspend fun rename(
+        folder: String,
+        name: String,
+    ): RenamedFolder {
+        val renamed = folder.substringBeforeLast('/') + "/" + name
+        val relinked = files.getValue(folder).associateWith { "$renamed/${it.substringAfterLast('/')}" }
+        files.remove(folder)
+        files[renamed] = relinked.values.toMutableSet()
+        return RenamedFolder(renamed, name, relinked)
+    }
+
+    override suspend fun move(
+        files: Collection<String>,
+        from: String,
+        to: String,
+    ): Map<String, String> {
+        if (unmovable) return emptyMap()
+        val inside = this.files.getValue(from)
+        val moved = files.filter { it in inside }.associateWith { "$to/${it.substringAfterLast('/')}" }
+        inside -= moved.keys
+        this.files.getValue(to) += moved.values
+        return moved
+    }
+
+    override suspend fun delete(
+        folder: String,
+        keep: Set<String>,
+    ): Boolean {
+        val inside = files.getValue(folder)
+        inside.retainAll(keep)
+        if (inside.isNotEmpty()) return false
+        files.remove(folder)
+        return true
+    }
+}
+
+private const val TREE = "content://tree/videos"

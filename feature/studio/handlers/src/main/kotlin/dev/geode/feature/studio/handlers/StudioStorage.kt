@@ -13,8 +13,8 @@ import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.NewRender
 
 /**
- * What Studio keeps (ADR-0004): the Projects, their videos, the default Project and the Renders (#338),
- * queued and finished, each with its choices and frozen look. Studio owns its
+ * What Studio keeps (ADR-0004): the Projects with their folders' names (#340), their videos, the
+ * default Project and the Renders (#338), queued and finished, each with its choices and frozen look. Studio owns its
  * Projects, so the default Project is kept here, not in Settings. [RoomStudioStorage] keeps them in
  * Studio's own Room database. Any call may throw; the handlers turn that into a named failure.
  */
@@ -49,6 +49,15 @@ interface StudioStorage {
     suspend fun moveVideo(
         video: VideoId,
         to: ProjectId,
+    )
+
+    /**
+     * Gives each of [folders] the folder name it maps to (null: none), and points every video file,
+     * thumbnail and Render's video that [relinked] maps at its new uri, all together (#340).
+     */
+    suspend fun relocate(
+        folders: Map<ProjectId, String?>,
+        relinked: Map<String, String>,
     )
 
     /** Saves [videos] into [project], returning them with their ids, in the same order. */
@@ -110,7 +119,8 @@ data class ImportedVideos(
 class RoomStudioStorage(
     private val dao: StudioDao,
 ) : StudioStorage {
-    override suspend fun projects(): List<Project> = dao.projects().map { Project(ProjectId(it.id), it.name, Millis(it.createdAtMs)) }
+    override suspend fun projects(): List<Project> =
+        dao.projects().map { Project(ProjectId(it.id), it.name, Millis(it.createdAtMs), it.folder) }
 
     /**
      * Every video, each Render with the setup it was made from (#327); a setup that cannot be read is left
@@ -153,6 +163,11 @@ class RoomStudioStorage(
         video: VideoId,
         to: ProjectId,
     ) = dao.moveVideo(video.value, to.value)
+
+    override suspend fun relocate(
+        folders: Map<ProjectId, String?>,
+        relinked: Map<String, String>,
+    ) = dao.relocate(folders.mapKeys { it.key.value }, relinked)
 
     override suspend fun addVideos(
         project: ProjectId,

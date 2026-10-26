@@ -19,8 +19,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Studio's own database (ADR-0004): the Projects, the videos in them with only the common fields
  * (#21), the user's default Project, since version 2 the Renders: the queue, and each finished
  * Render's choices and frozen look so it can be made again (#338, #327), since version 3 which
- * one-time imports are done (#347), and since version 4 the video a Short or sibling was made from
- * (#328).
+ * one-time imports are done (#347), since version 4 the video a Short or sibling was made from
+ * (#328), and since version 5 each Project's folder in the Save folder (#340).
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`.
@@ -34,11 +34,11 @@ abstract class StudioDatabase : RoomDatabase() {
     abstract fun dao(): StudioDao
 
     companion object {
-        const val VERSION = 4
+        const val VERSION = 5
         const val NAME = "studio.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports, AddVideoSources)
+        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports, AddVideoSources, AddProjectFolders)
 
         fun open(
             context: Context,
@@ -76,11 +76,23 @@ object AddVideoSources : Migration(3, 4) {
     }
 }
 
+/**
+ * Version 5 (#340): each Project's folder in the Save folder. A Project saved before has none; Studio
+ * makes it, and saves its name, once a Save folder is known.
+ */
+object AddProjectFolders : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `projects` ADD COLUMN `folder` TEXT")
+    }
+}
+
 @Entity(tableName = "projects")
 data class ProjectEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val createdAtMs: Long,
+    /** The name of its folder in the Save folder (#340); null while it has none. */
+    val folder: String? = null,
 )
 
 @Entity(tableName = "videos", indices = [Index("projectId")])
@@ -169,6 +181,47 @@ abstract class StudioDao {
         id: Long,
         projectId: Long,
     )
+
+    @Query("UPDATE projects SET folder = :folder WHERE id = :id")
+    protected abstract suspend fun setFolder(
+        id: Long,
+        folder: String?,
+    )
+
+    @Query("UPDATE videos SET file = :to WHERE file = :from")
+    protected abstract suspend fun relinkVideoFile(
+        from: String,
+        to: String,
+    )
+
+    @Query("UPDATE videos SET thumbnail = :to WHERE thumbnail = :from")
+    protected abstract suspend fun relinkThumbnail(
+        from: String,
+        to: String,
+    )
+
+    @Query("UPDATE renders SET videoFile = :to WHERE videoFile = :from")
+    protected abstract suspend fun relinkRenderVideo(
+        from: String,
+        to: String,
+    )
+
+    /**
+     * Gives each Project in [folders] its folder name (null: none), and points every video file,
+     * thumbnail and Render's video in [relinked] at the uri it maps to, all together (#340).
+     */
+    @Transaction
+    open suspend fun relocate(
+        folders: Map<Long, String?>,
+        relinked: Map<String, String>,
+    ) {
+        folders.forEach { (id, folder) -> setFolder(id, folder) }
+        relinked.forEach { (from, to) ->
+            relinkVideoFile(from, to)
+            relinkThumbnail(from, to)
+            relinkRenderVideo(from, to)
+        }
+    }
 
     /** Saves a Project, and makes it the default when [makeDefault], together. */
     @Transaction

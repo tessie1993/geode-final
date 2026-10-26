@@ -22,16 +22,16 @@
     <string name="studio_delete">Delete</string>
     <string name="studio_move">Move to Project</string>
     <string name="studio_delete_title">Delete “%1$s”?</string>
-    <string name="studio_delete_empty">It has no videos.</string>
+    <string name="studio_delete_empty">It has no videos. Its folder in the Save folder is deleted too, with any files in it. This cannot be undone.</string>
     <plurals name="studio_delete_videos_too">
-        <item quantity="one">Delete %d video too?</item>
-        <item quantity="other">Delete %d videos too?</item>
+        <item quantity="one">Delete %d video too? Its file and the Project\'s folder in the Save folder are deleted for good, with any other files in it.</item>
+        <item quantity="other">Delete %d videos too? Their files and the Project\'s folder in the Save folder are deleted for good, with any other files in it.</item>
     </plurals>
     <plurals name="studio_delete_videos_yes">
-        <item quantity="one">Delete %d video too</item>
-        <item quantity="other">Delete %d videos too</item>
+        <item quantity="one">Delete %d video and its file</item>
+        <item quantity="other">Delete %d videos and their files</item>
     </plurals>
-    <string name="studio_delete_keep_in">Or keep them, in:</string>
+    <string name="studio_delete_keep_in">Or keep them: they and their files move to the Project you pick, and only the empty folder is deleted. Keep them in:</string>
     <string name="studio_delete_videos_keep">Keep them in %1$s</string>
     <string name="studio_delete_nowhere">To keep them, create another Project to move them to first.</string>
     <plurals name="studio_video_count">

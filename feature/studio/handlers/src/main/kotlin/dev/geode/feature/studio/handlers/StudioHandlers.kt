@@ -63,7 +63,8 @@ fun interface VideoFiles {
  * Where Studio's handlers read and write: its own [storage], the [saveFolder] it follows in Settings
  * > Default paths, the [files] of deleted videos, the wall clock that stamps a new Project and times a
  * Render, what the [renders] need (#338), the [recorder] of the live Visual (#317), what the editors need
- * ([edits], #318), and the old Studio's videos to import once ([oldVideos], #347).
+ * ([edits], #318), the old Studio's videos to import once ([oldVideos], #347), and the Projects'
+ * [folders] in the Save folder (#340).
  */
 class StudioSources(
     val storage: StudioStorage,
@@ -74,6 +75,7 @@ class StudioSources(
     val recorder: LiveRecorder = LiveRecorder.None,
     val edits: EditTools = EditTools(),
     val oldVideos: OldVideos = OldVideos.None,
+    val folders: ProjectFolders = ProjectFolders.None,
 )
 
 /**
@@ -93,7 +95,8 @@ fun saveFolderOf(settings: Settings): Flow<SaveFolder> =
 
 /**
  * Carries out Studio's work (ADR-0005): the Projects, videos and default Project in Studio's
- * database, the save folder from Settings, the files of deleted videos, and the Renders (#338): each
+ * database, the save folder from Settings, the Projects' folders in it and the files of deleted videos
+ * (#340, [ProjectFolderHandlers]), and the Renders (#338): each
  * look is frozen as it is queued, each Render is saved before it waits, and the engine makes one at a
  * time as the reducer asks. Every failure is caught here and reported as a named event.
  */
@@ -109,6 +112,8 @@ class StudioHandlers(
 
     private val edits = EditHandlers(sources)
 
+    private val folders = ProjectFolderHandlers(sources.storage, sources.folders, sources.files)
+
     override suspend fun run(
         work: StudioWork,
         results: Results<StudioEvent>,
@@ -121,15 +126,12 @@ class StudioHandlers(
                     )
                 }
             StudioWork.FollowSaveFolder -> sources.saveFolder.collect { results.report(StudioEvent.SaveFolderChanged(it)) }
-            is StudioWork.CreateProject ->
-                guarded(results, StudioFailure.SAVE) {
-                    val project = storage.createProject(work.name, sources.now(), work.makeDefault)
-                    results.report(StudioEvent.ProjectCreated(project, work.makeDefault))
-                }
-            is StudioWork.RenameProject -> guarded(results, StudioFailure.SAVE) { storage.renameProject(work.project, work.name) }
+            is StudioWork.CreateProject -> create(work, results)
+            is StudioWork.RenameProject -> rename(work, results)
             is StudioWork.SetDefaultProject -> guarded(results, StudioFailure.SAVE) { storage.setDefaultProject(work.project) }
-            is StudioWork.MoveVideo -> guarded(results, StudioFailure.SAVE) { storage.moveVideo(work.video, work.to) }
-            is StudioWork.DeleteProject -> delete(work, results)
+            is StudioWork.MoveVideo -> folders.move(work, results)
+            is StudioWork.DeleteProject -> folders.delete(work, results)
+            is StudioWork.MakeProjectFolders -> folders.makeAll(work.saveFolder, results)
             is StudioWork.AddVideos ->
                 guarded(results, StudioFailure.ADD_VIDEOS) {
                     results.report(StudioEvent.VideosAdded(work.project, storage.addVideos(work.project, work.videos)))
@@ -138,7 +140,7 @@ class StudioHandlers(
             StudioWork.FollowAppInFront -> sources.renders.inFront.collect { results.report(StudioEvent.AppInFront(it)) }
             is StudioWork.QueueRenders -> queue(work, results)
             is StudioWork.QueueRenderAgain -> queueAgain(work, results)
-            is StudioWork.Render -> render(work.render, results)
+            is StudioWork.Render -> render(work, results)
             is StudioWork.StopRender -> stopping += work.render
             is StudioWork.ForgetRender -> guarded(results, StudioFailure.SAVE) { storage.forgetRender(work.render) }
             is RecordingWork -> recordings.run(work, results)
@@ -146,6 +148,28 @@ class StudioHandlers(
             StudioWork.ImportOldVideos -> importOldVideos(results)
             is StudioWork.FinishRender -> finish(work, results)
         }
+    }
+
+    /** Saves the new Project, with its folder in the Save folder when one is chosen (#340). */
+    private suspend fun create(
+        work: StudioWork.CreateProject,
+        results: Results<StudioEvent>,
+    ) {
+        val project =
+            attempt { storage.createProject(work.name, sources.now(), work.makeDefault) }
+                ?: return results.report(StudioEvent.Failed(StudioFailure.SAVE))
+        results.report(StudioEvent.ProjectCreated(folders.created(work.saveFolder, project, results), work.makeDefault))
+    }
+
+    /** Saves the new name, then renames the Project's folder after it (#340). */
+    private suspend fun rename(
+        work: StudioWork.RenameProject,
+        results: Results<StudioEvent>,
+    ) {
+        if (attempt { storage.renameProject(work.project, work.name) } == null) {
+            return results.report(StudioEvent.Failed(StudioFailure.SAVE))
+        }
+        folders.renamed(work.saveFolder, work.project, results)
     }
 
     /**
@@ -217,15 +241,18 @@ class StudioHandlers(
     }
 
     /**
-     * Makes [job]'s video with its frozen look. A saved Render is kept, so it can be made again; a
-     * cancelled or failed one is forgotten, as it left no video. However it ends, the reducer hears.
+     * Makes the job's video with its frozen look, a Render's into its Project's folder (#340). A saved
+     * Render is kept, so it can be made again; a cancelled or failed one is forgotten, as it left no
+     * video. However it ends, the reducer hears.
      */
     private suspend fun render(
-        job: RenderJob,
+        work: StudioWork.Render,
         results: Results<StudioEvent>,
     ) {
+        val job = work.render
         val progress = RenderProgressReporter(job.id, results, sources.now)
-        val end = attempt { made(job, progress) } ?: RenderEnd.Failed(RenderProblem.ENGINE_FAILED)
+        val folder = if (job.edit == null) folders.folderFor(work.saveFolder, job.project, results) else null
+        val end = attempt { made(job, folder, progress) } ?: RenderEnd.Failed(RenderProblem.ENGINE_FAILED)
         stopping -= job.id
         val kept =
             attempt {
@@ -235,28 +262,20 @@ class StudioHandlers(
         results.report(StudioEvent.RenderEnded(job.id, end))
     }
 
-    /** [job]'s video: an Edit exported by the Edit pipeline (#318), or a Render drawn with its frozen look. */
+    /**
+     * [job]'s video: an Edit exported by the Edit pipeline (#318), or a Render drawn with its frozen look
+     * into [folder], its Project's folder, when it has one (#340).
+     */
     private suspend fun made(
         job: RenderJob,
+        folder: String?,
         progress: RenderProgressReporter,
     ): RenderEnd {
         val stop = { job.id in stopping }
         val edit = job.edit
         if (edit != null) return sources.edits.engine.export(edit, job.format, progress::report, stop)
         val look = storage.lookOf(job.id) ?: return RenderEnd.Failed(RenderProblem.LOOK_UNAVAILABLE)
-        return sources.renders.engine.render(job, look, progress::report, stop)
-    }
-
-    private suspend fun delete(
-        work: StudioWork.DeleteProject,
-        results: Results<StudioEvent>,
-    ) {
-        if (attempt { storage.deleteProject(work.project, work.moveTo) } == null) {
-            // The Project is still saved: keep its files too.
-            return results.report(StudioEvent.Failed(StudioFailure.SAVE))
-        }
-        val failed = work.files.count { attempt { sources.files.delete(it) } != true }
-        if (failed > 0) results.report(StudioEvent.Failed(StudioFailure.DELETE_FILES))
+        return sources.renders.engine.render(job, look, folder, progress::report, stop)
     }
 
     /** [block]'s result, or null when it threw. */

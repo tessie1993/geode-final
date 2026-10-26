@@ -89,7 +89,7 @@ class AndroidVideoFiles(
 
 /**
  * Studio's sources on the phone, for `:app` to wire (#17): the save folder and the Renders' settings
- * come from [settings]; `:app` fills the [looks] and the [engine] Renders are made with (#338, #316),
+ * come from [settings], and the Projects' folders are kept in the save folder (#340); `:app` fills the [looks] and the [engine] Renders are made with (#338, #316),
  * the [recorder] of the live Visual (#317), and says whether the app is [inFront] of the person (#28).
  * The old Studio's videos are imported once from the phone's media index (#347). The editors (#318)
  * export through the Edit pipeline here, with the GL Transitions `:app` reads from the engine
@@ -118,6 +118,7 @@ fun androidStudioSources(
         recorder = recorder,
         edits = EditTools(drafts, AndroidEditVideos(context), MediaEditEngine(context, transitions, levels) { loopSafe(settings) }),
         oldVideos = OldStudioVideos(context.contentResolver),
+        folders = AndroidProjectFolders(context.contentResolver),
     )
 
 /** Settings' loop-safe length for exports, off until Settings are read. */

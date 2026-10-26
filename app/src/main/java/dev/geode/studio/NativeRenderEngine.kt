@@ -3,6 +3,7 @@ package dev.geode.studio
 import android.content.Context
 import android.media.MediaCodec
 import android.net.Uri
+import android.provider.DocumentsContract
 import dev.geode.RingLog
 import dev.geode.analysis.AnalysisCache
 import dev.geode.analysis.AnalysisProfile
@@ -44,6 +45,7 @@ import dev.geode.studio.media.LoopRender
 import dev.geode.studio.media.LoopSpec
 import dev.geode.studio.media.MixClip
 import dev.geode.studio.media.VideoExporter
+import dev.geode.util.bestEffort
 import dev.geode.visuals.EngineSnapshots
 import dev.geode.visuals.StyleTargets
 import kotlinx.coroutines.CancellationException
@@ -58,8 +60,8 @@ import java.io.IOException
  * Track is analysed first (ADR-0001), or its analysis read back from the cache; the frozen look is
  * handed to an offscreen renderer on its own engine instance (ADR-0004), which draws everything the
  * live Visual would for it (#337); the encoder muxes the Track's sound beside it, levelled to the
- * Render's loudness target (#329), and the video is saved to `Movies/Geode`, from where Studio adds it to
- * the Render's Project.
+ * Render's loudness target (#329), and the video is saved into the Render's Project folder in the Save
+ * folder (#340), or to `Movies/Geode` when it has none, from where Studio adds it to the Project.
  *
  * A Render is not bound to real time: it draws as fast as the encoder takes frames, except while the
  * live Visual is on screen ([liveVisualShown]) or the CPU/GPU save mode is on, when it waits a little
@@ -81,6 +83,7 @@ class NativeRenderEngine(
     override suspend fun render(
         job: RenderJob,
         look: FrozenLook,
+        folder: String?,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): RenderEnd {
@@ -102,7 +105,7 @@ class NativeRenderEngine(
         val frame = RenderPlan.frameOf(format)
         val scene = sceneOf(customization, job)
         RenderPlan.longFormOf(job.length, track.length)?.let { longForm ->
-            val drawn = LongFormDrawing(track, uri, timeline, scene, customization, values, format, gainDb)
+            val drawn = LongFormDrawing(track, uri, timeline, scene, customization, values, format, gainDb, folder)
             return renderLongForm(longForm, drawn, progress, isCancelled)
         }
         val section = RenderPlan.sectionOf(job.length, track.length)
@@ -120,11 +123,51 @@ class NativeRenderEngine(
                 supersample = RenderPlan.supersampleOf(format),
                 gainDb = gainDb,
             )
-        val result = encode(made, track, progress, isCancelled) ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
+        val destination = destinationIn(folder, fileNameOf(track))
+        val result = encode(made, track, destination, progress, isCancelled)
+        if (result !is VideoExporter.Result.Saved) discard(destination)
+        result ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
         return endOf(result, track, frame.width, frame.height)
     }
 
-    /** What a long-form Render draws: its Track and analysis, its Style and look, its format, and its sound's gain. */
+    /**
+     * A new file named [fileName] in the Project folder [folder] for the Render to be written into (#340),
+     * or null to save it to `Movies/Geode` as before: with no folder, or when the folder will not take it.
+     */
+    private fun destinationIn(
+        folder: String?,
+        fileName: String,
+    ): Uri? {
+        if (folder == null) return null
+        return try {
+            DocumentsContract.createDocument(context.contentResolver, Uri.parse(folder), VIDEO_TYPE, fileName)
+        } catch (refused: IOException) {
+            RingLog.note(TAG, "the Project folder would not take the Render", refused)
+            null
+        } catch (refused: SecurityException) {
+            RingLog.note(TAG, "the Project folder may no longer be written", refused)
+            null
+        } catch (refused: IllegalArgumentException) {
+            RingLog.note(TAG, "the Project folder is not one this phone knows", refused)
+            null
+        } catch (refused: UnsupportedOperationException) {
+            RingLog.note(TAG, "the Project folder cannot hold new files", refused)
+            null
+        }
+    }
+
+    /** Deletes the file made in the Project folder for a Render that was not saved, if it is still there. */
+    private fun discard(destination: Uri?) {
+        if (destination == null) return
+        bestEffort(TAG, "DocumentsContract.deleteDocument(resolver, destination)") {
+            DocumentsContract.deleteDocument(context.contentResolver, destination)
+        }
+    }
+
+    /**
+     * What a long-form Render draws: its Track and analysis, its Style and look, its format, its sound's
+     * gain, and the Project [folder] it is saved into (#340).
+     */
     private class LongFormDrawing(
         val track: RenderTrack,
         val uri: Uri,
@@ -134,6 +177,7 @@ class NativeRenderEngine(
         val values: SettingsValues,
         val format: RenderFormat,
         val gainDb: Double,
+        val folder: String?,
     )
 
     /**
@@ -181,16 +225,19 @@ class NativeRenderEngine(
             val clip = MixClip(drawn.uri, drawn.track.title)
             val plays = RenderPlan.playsFor(Millis(totalUs / MICROS_PER_MILLI), trackLength)
             val audio = if (plays == 1) LongFormAudio.SingleTrack(clip) else LongFormAudio.Mix(List(plays) { clip })
+            val destination = destinationIn(drawn.folder, fileNameOf(drawn.track))
             val extended =
                 LoopExtend(context).extend(
                     reel = reel,
                     audio = audio,
                     fileName = fileNameOf(drawn.track),
+                    destination = destination,
                     onProgress = { progress(RenderPhase.SAVING, REPEAT_FROM + it * (1f - REPEAT_FROM)) },
                     isCancelled = isCancelled,
                     maxDurationUs = totalUs,
                     gainDb = drawn.gainDb,
                 )
+            if (extended !is LoopExtend.Result.Saved) discard(destination)
             return when (extended) {
                 is LoopExtend.Result.Saved ->
                     RenderEnd.Saved(videoOf(drawn.track, extended.uri, extended.durationMs, frame.width, frame.height))
@@ -263,6 +310,7 @@ class NativeRenderEngine(
     private suspend fun encode(
         made: VideoExporter.Job,
         track: RenderTrack,
+        destination: Uri?,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): VideoExporter.Result? =
@@ -270,6 +318,7 @@ class NativeRenderEngine(
             exporter.export(
                 job = made,
                 fileName = fileNameOf(track),
+                destination = destination,
                 onProgress = { progress(phaseAt(it), ANALYSIS_SHARE + it * (1f - ANALYSIS_SHARE)) },
                 isCancelled = isCancelled,
                 pace = { pace(isCancelled) },
@@ -420,6 +469,9 @@ class NativeRenderEngine(
 
         /** How often a held Render looks whether it may go on. */
         const val HOLD_POLL_MS = 250L
+
+        /** What a Render's file is, as the Project folder is told when it is made there (#340). */
+        const val VIDEO_TYPE = "video/mp4"
 
         /** The longest a video's name grows from its Track's title. */
         const val MAX_NAME = 80

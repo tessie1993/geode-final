@@ -48,14 +48,17 @@ fun interface RenderLooks {
 
 /**
  * Makes one Render's video (#316). `:app` fills it with the whole-track analysis, the offscreen
- * renderer on its own engine instance (ADR-0004), the encoder and the sound, and saves the video. It
- * reports [progress] (0..1 of the whole Render) as it goes, stops soon after [isCancelled] turns true,
- * and says how it ended. It may throw; the handlers report that as an engine failure.
+ * renderer on its own engine instance (ADR-0004), the encoder and the sound, and saves the video into
+ * [folder] when given: the document uri of the Render's Project folder in the Save folder (#340); with
+ * none, or when a file cannot be made there, where Renders went before. It reports [progress] (0..1 of
+ * the whole Render) as it goes, stops soon after [isCancelled] turns true, and says how it ended. It may
+ * throw; the handlers report that as an engine failure.
  */
 fun interface RenderEngine {
     suspend fun render(
         job: RenderJob,
         look: FrozenLook,
+        folder: String?,
         progress: (RenderPhase, Float) -> Unit,
         isCancelled: () -> Boolean,
     ): RenderEnd

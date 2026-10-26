@@ -4,6 +4,7 @@ import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RecordingCommand
+import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
@@ -26,6 +27,11 @@ import dev.geode.kernel.ReportFailure
  * a Project that still has videos asks "Delete N videos too?" and either deletes them or moves them to
  * another Project; videos that come without a Project go to the default one, and with no default
  * they are handed back to be asked about, never dropped.
+ *
+ * Owner decision on #340: each Project has its own folder in the Save folder. A Project gets it when it
+ * is made, or, made before folders or before a Save folder was chosen, once the library and a Save
+ * folder are both known; a rename renames it, a moved video's file moves with it, and a deleted
+ * Project's folder goes. The handlers report the folders' names and the files they moved.
  *
  * The render queue's rules are [RenderQueue]'s (#338); the saved Renders that had not finished come
  * back with the library and start once it is read. Recordings of the live Visual are [Recordings]'
@@ -50,14 +56,15 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
                         ),
                     )
                 // With the library known, the old Studio's videos and editor cuts can be brought in (#347).
-                Next(read.state, read.effects + Perform(StudioWork.ImportOldVideos) + Perform(EditWork.ListCuts))
+                Next(read.state, read.effects + Perform(StudioWork.ImportOldVideos) + Perform(EditWork.ListCuts) + folders(read.state))
             }
             is StudioEvent.OldVideosImported ->
                 Next(
                     state.copy(projects = listOf(event.project) + state.projects, videos = state.videos + event.videos),
                     listOf(Emit(StudioFact.VideosAdded(event.project.id, event.videos.map { it.id }))),
                 )
-            is StudioEvent.SaveFolderChanged -> Next(state.copy(saveFolder = event.folder))
+            is StudioEvent.SaveFolderChanged -> state.copy(saveFolder = event.folder).let { Next(it, folders(it)) }
+            is StudioEvent.ProjectFoldersChanged -> Next(foldersChanged(state, event))
             is StudioEvent.ProjectCreated ->
                 Next(
                     state.copy(
@@ -81,6 +88,32 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is RecordingEvent -> Recordings.event(state, event)
             is EditEvent -> Edits.event(state, event)
         }
+
+    /** Making the folders of the Projects that have none, once the library and a Save folder are known (#340). */
+    private fun folders(state: StudioState): List<StudioEffect> {
+        val saveFolder = state.saveFolderUri
+        if (state.loading || saveFolder == null || state.projects.all { it.folder != null }) return emptyList()
+        return listOf(Perform(StudioWork.MakeProjectFolders(saveFolder)))
+    }
+
+    private fun foldersChanged(
+        state: StudioState,
+        event: StudioEvent.ProjectFoldersChanged,
+    ): StudioState {
+        val projects = state.projects.map { if (it.id in event.folders) it.copy(folder = event.folders[it.id]) else it }
+        val moved = event.relinked
+        val videos =
+            state.videos.map {
+                it.copy(
+                    file = moved[it.file] ?: it.file,
+                    thumbnail =
+                        it.thumbnail?.let { old ->
+                            moved[old] ?: old
+                        },
+                )
+            }
+        return state.copy(projects = projects, videos = videos)
+    }
 
     /** The library is read: carry out the Commands that waited for it, in order, then start the queue. */
     private fun ready(state: StudioState): Next<StudioState, StudioEffect> {
@@ -130,7 +163,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
     ): Next<StudioState, StudioEffect> {
         val name = command.name.trim()
         if (name.isEmpty()) return Next(state)
-        return Next(state, listOf(Perform(StudioWork.CreateProject(name, command.makeDefault))))
+        return Next(state, listOf(Perform(StudioWork.CreateProject(name, command.makeDefault, state.saveFolderUri))))
     }
 
     private fun rename(
@@ -141,7 +174,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
         val project = state.projects.firstOrNull { it.id == command.project }
         if (name.isEmpty() || project == null || project.name == name) return Next(state)
         val projects = state.projects.map { if (it.id == project.id) it.copy(name = name) else it }
-        return Next(state.copy(projects = projects), listOf(Perform(StudioWork.RenameProject(project.id, name))))
+        return Next(state.copy(projects = projects), listOf(Perform(StudioWork.RenameProject(project.id, name, state.saveFolderUri))))
     }
 
     private fun setDefault(
@@ -170,7 +203,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
                 videos = videos,
                 defaultProject = state.defaultProject.takeIf { it != project.id },
             ),
-            listOf(Perform(StudioWork.DeleteProject(project.id, moveTo, files))),
+            listOf(Perform(StudioWork.DeleteProject(project.id, moveTo, files, state.saveFolderUri))),
         )
     }
 
@@ -180,13 +213,16 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
     ): Next<StudioState, StudioEffect> {
         val video = state.videos.firstOrNull { it.id == command.video }
         if (video == null || video.project == command.to || !state.has(command.to)) return Next(state)
-        // The record moves; the file stays in the one save folder every Project shares.
+        // The record moves at once; its file follows into the other Project's folder behind (#340).
         val videos = state.videos.map { if (it.id == video.id) it.copy(project = command.to) else it }
-        return Next(state.copy(videos = videos), listOf(Perform(StudioWork.MoveVideo(video.id, command.to))))
+        return Next(state.copy(videos = videos), listOf(Perform(StudioWork.MoveVideo(video.id, command.to, state.saveFolderUri))))
     }
 
     private fun StudioState.has(project: ProjectId): Boolean = projects.any { it.id == project }
 }
+
+/** The chosen Save folder's uri, or null while none is (#340). */
+internal val StudioState.saveFolderUri: String? get() = (saveFolder as? SaveFolder.Chosen)?.uri
 
 /** [project] when it exists, otherwise the default Project when one is chosen; null with neither. */
 internal fun StudioState.projectFor(project: ProjectId?): ProjectId? {

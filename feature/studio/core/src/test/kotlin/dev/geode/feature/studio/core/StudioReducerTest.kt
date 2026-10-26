@@ -31,7 +31,7 @@ class StudioReducerTest {
     private val stage = video(3, gigs, "content://videos/stage.mp4")
     private val take = NewVideo(VideoKind.RECORDING, "take.mp4", "content://videos/take.mp4", null, Millis(4_000), 1080, 1920, "Teardrop")
     private val saved = Video(VideoId(7), gigs.id, take.kind, take.name, take.file, null, take.length, take.width, take.height, take.song)
-    private val folder = SaveFolder.Chosen("content://tree/videos")
+    private val folder = SaveFolder.Chosen(TREE)
     private val earlier = Project(ProjectId(3), OLD_VIDEOS_PROJECT, Millis(30))
     private val old = video(8, earlier, "content://media/external/video/media/80")
 
@@ -39,6 +39,7 @@ class StudioReducerTest {
     private val ready =
         StudioState(loading = false, projects = listOf(trip, gigs), videos = listOf(beach, dunes, stage), defaultProject = gigs.id)
     private val noDefault = ready.copy(defaultProject = null)
+    private val withFolders = ready.copy(projects = listOf(trip.copy(folder = "Trip"), gigs.copy(folder = "Gigs")))
     private val empty = StudioState(loading = false)
 
     private fun video(
@@ -92,6 +93,15 @@ class StudioReducerTest {
                 StudioState(loading = false, projects = listOf(trip), videos = listOf(beach), saveFolder = folder),
                 Perform(StudioWork.ImportOldVideos),
                 Perform(EditWork.ListCuts),
+                Perform(StudioWork.MakeProjectFolders(TREE)),
+            ),
+            row(
+                "a library whose Projects all have folders makes none",
+                loading.copy(saveFolder = folder),
+                StudioEvent.Loaded(listOf(trip.copy(folder = "Trip")), listOf(beach), null),
+                StudioState(loading = false, projects = listOf(trip.copy(folder = "Trip")), videos = listOf(beach), saveFolder = folder),
+                Perform(StudioWork.ImportOldVideos),
+                Perform(EditWork.ListCuts),
             ),
             row(
                 "what waited runs in order once the library is read",
@@ -129,12 +139,72 @@ class StudioReducerTest {
                 StudioEvent.SaveFolderChanged(SaveFolder.NotChosen),
                 loading.copy(saveFolder = SaveFolder.NotChosen),
             ),
-            row("the save folder is picked", ready, StudioEvent.SaveFolderChanged(folder), ready.copy(saveFolder = folder)),
+            row(
+                "the save folder is picked, and the Projects without a folder get one",
+                ready,
+                StudioEvent.SaveFolderChanged(folder),
+                ready.copy(saveFolder = folder),
+                Perform(StudioWork.MakeProjectFolders(TREE)),
+            ),
             row(
                 "the save folder changes",
                 ready.copy(saveFolder = folder),
                 StudioEvent.SaveFolderChanged(SaveFolder.Chosen("content://tree/other")),
                 ready.copy(saveFolder = SaveFolder.Chosen("content://tree/other")),
+                Perform(StudioWork.MakeProjectFolders("content://tree/other")),
+            ),
+            row(
+                "a save folder picked while the library is read waits for it",
+                loading,
+                StudioEvent.SaveFolderChanged(folder),
+                loading.copy(saveFolder = folder),
+            ),
+            row(
+                "a save folder picked when every Project has a folder makes none",
+                withFolders,
+                StudioEvent.SaveFolderChanged(folder),
+                withFolders.copy(saveFolder = folder),
+            ),
+            row(
+                "a save folder taken away makes no folder",
+                ready.copy(saveFolder = folder),
+                StudioEvent.SaveFolderChanged(SaveFolder.NotChosen),
+                ready.copy(saveFolder = SaveFolder.NotChosen),
+            ),
+            row(
+                "the Projects' folders are named",
+                ready,
+                StudioEvent.ProjectFoldersChanged(mapOf(trip.id to "Trip", gigs.id to "Gigs (2)")),
+                withFolders.copy(projects = listOf(trip.copy(folder = "Trip"), gigs.copy(folder = "Gigs (2)"))),
+            ),
+            row(
+                "a folder renamed takes its files' new uris with it, thumbnails too",
+                withFolders.copy(videos = listOf(beach.copy(thumbnail = "content://videos/beach.jpg"), dunes, stage)),
+                StudioEvent.ProjectFoldersChanged(
+                    mapOf(trip.id to "Holiday"),
+                    mapOf(
+                        beach.file to "content://holiday/beach.mp4",
+                        "content://videos/beach.jpg" to "content://holiday/beach.jpg",
+                    ),
+                ),
+                withFolders.copy(
+                    projects = listOf(trip.copy(folder = "Holiday"), gigs.copy(folder = "Gigs")),
+                    videos =
+                        listOf(
+                            beach.copy(file = "content://holiday/beach.mp4", thumbnail = "content://holiday/beach.jpg"),
+                            dunes,
+                            stage,
+                        ),
+                ),
+            ),
+            row(
+                "a Project's folder that is gone is forgotten, and a moved file is followed",
+                withFolders,
+                StudioEvent.ProjectFoldersChanged(mapOf(gigs.id to null), mapOf(stage.file to "content://trip/stage.mp4")),
+                withFolders.copy(
+                    projects = listOf(trip.copy(folder = "Trip"), gigs),
+                    videos = listOf(beach, dunes, stage.copy(file = "content://trip/stage.mp4")),
+                ),
             ),
         )
 
@@ -147,6 +217,20 @@ class StudioReducerTest {
                 command(StudioCommand.CreateProject("Live", makeDefault = false)),
                 ready,
                 Perform(StudioWork.CreateProject("Live", false)),
+            ),
+            row(
+                "a new Project is made with its folder in the save folder",
+                ready.copy(saveFolder = folder),
+                command(create),
+                ready.copy(saveFolder = folder),
+                Perform(StudioWork.CreateProject("Holiday", true, TREE)),
+            ),
+            row(
+                "a rename renames the Project's folder too",
+                ready.copy(saveFolder = folder),
+                command(rename),
+                ready.copy(projects = listOf(trip.copy(name = "Holiday"), gigs), saveFolder = folder),
+                Perform(StudioWork.RenameProject(trip.id, "Holiday", TREE)),
             ),
             row("a blank name creates nothing", ready, command(StudioCommand.CreateProject("  ", true)), ready),
             row(
@@ -222,6 +306,13 @@ class StudioReducerTest {
                 Perform(StudioWork.DeleteProject(trip.id, null, emptyList())),
             ),
             row(
+                "a deleted Project's folder goes from the save folder too",
+                ready.copy(saveFolder = folder),
+                command(StudioCommand.DeleteProject(trip.id, VideosOnDelete.Delete)),
+                ready.copy(projects = listOf(gigs), videos = listOf(stage), saveFolder = folder),
+                Perform(StudioWork.DeleteProject(trip.id, null, listOf(beach.file, dunes.file), TREE)),
+            ),
+            row(
                 "videos cannot move to a Project that is gone",
                 ready,
                 command(StudioCommand.DeleteProject(trip.id, VideosOnDelete.MoveTo(gone))),
@@ -249,6 +340,13 @@ class StudioReducerTest {
                 command(StudioCommand.MoveVideo(beach.id, gigs.id)),
                 ready.copy(videos = listOf(beach.copy(project = gigs.id), dunes, stage)),
                 Perform(StudioWork.MoveVideo(beach.id, gigs.id)),
+            ),
+            row(
+                "a moved video's file follows it into the other Project's folder",
+                ready.copy(saveFolder = folder),
+                command(StudioCommand.MoveVideo(beach.id, gigs.id)),
+                ready.copy(videos = listOf(beach.copy(project = gigs.id), dunes, stage), saveFolder = folder),
+                Perform(StudioWork.MoveVideo(beach.id, gigs.id, TREE)),
             ),
             row("moving a video to its own Project does nothing", ready, command(StudioCommand.MoveVideo(beach.id, trip.id)), ready),
             row("moving a video to a Project that is gone does nothing", ready, command(StudioCommand.MoveVideo(beach.id, gone)), ready),
@@ -345,6 +443,7 @@ class StudioReducerTest {
         assertEquals("Could not bring the earlier Studio's videos into the library", describe(StudioFailure.IMPORT_OLD_VIDEOS))
         assertEquals("Could not add the new videos to the Studio library", describe(StudioFailure.ADD_VIDEOS))
         assertEquals("Some video files could not be deleted", describe(StudioFailure.DELETE_FILES))
+        assertEquals("Could not make or change a Project's folder in the Save folder", describe(StudioFailure.PROJECT_FOLDER))
     }
 
     @Test
@@ -360,3 +459,5 @@ class StudioReducerTest {
         assertEquals(emptyList<Video>(), ready.videosIn(gone))
     }
 }
+
+private const val TREE = "content://tree/videos"

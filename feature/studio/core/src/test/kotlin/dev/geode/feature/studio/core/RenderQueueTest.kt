@@ -21,6 +21,7 @@ import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
@@ -188,6 +189,13 @@ class RenderQueueTest {
                 StudioEvent.RendersQueued(listOf(first, second)),
                 busy,
                 Perform(StudioWork.Render(firstRunning)),
+            ),
+            row(
+                "a Render is made into its Project's folder in the save folder",
+                ready.copy(saveFolder = SaveFolder.Chosen("content://tree/videos")),
+                StudioEvent.RendersQueued(listOf(first, second)),
+                busy.copy(saveFolder = SaveFolder.Chosen("content://tree/videos")),
+                Perform(StudioWork.Render(firstRunning, "content://tree/videos")),
             ),
             row(
                 "queued Renders wait behind the running one",

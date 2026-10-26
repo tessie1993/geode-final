@@ -107,7 +107,7 @@ internal object RenderQueue {
         if (!canStart(state)) return Next(state)
         val waiting = state.renders.firstOrNull { mayStart(state, it) } ?: return Next(state)
         val started = waiting.copy(status = RenderStatus.Running(RenderPhase.PREPARING, 0f))
-        return Next(state.replacing(started), listOf(Perform(StudioWork.Render(started))))
+        return Next(state.replacing(started), listOf(Perform(StudioWork.Render(started, state.saveFolderUri))))
     }
 
     fun progress(

@@ -25,13 +25,17 @@ value class VideoId(
 }
 
 /**
- * A Project the user created and named (`CONTEXT.md`). It groups videos; it has no folder of its own,
- * because every video is saved to the one [SaveFolder] (owner decision on #21).
+ * A Project the user created and named (`CONTEXT.md`). It groups videos and has its own folder inside
+ * the [SaveFolder] (owner decision on #340): a Render's video is saved there, renaming the Project
+ * renames the folder, and deleting it deletes the folder with the files in it. [folder] is that
+ * folder's name; null while it has none yet, as a Project made before folders, or before a Save folder
+ * was chosen, until Studio makes it.
  */
 data class Project(
     val id: ProjectId,
     val name: String,
     val createdAt: Millis,
+    val folder: String? = null,
 )
 
 /** What a video is (`CONTEXT.md`). */
@@ -104,8 +108,9 @@ data class Video(
 }
 
 /**
- * The one folder Studio saves every video to. It is a Settings value (Settings > Default paths,
- * #101) that Studio follows through Settings' interface; it is picked in Studio's first-run step.
+ * The one folder on the device every Project's folder lives in (#340). It is a Settings value
+ * (Settings > Default paths, #101) that Studio follows through Settings' interface; it is picked in
+ * Studio's first-run step.
  */
 sealed interface SaveFolder {
     /** Settings are still being read. */
@@ -184,12 +189,15 @@ data class StudioState(
         }
 }
 
-/** What deleting a Project does with the videos still in it. Nothing is ever deleted silently. */
+/**
+ * What deleting a Project does with the videos still in it. Either way the Project's folder goes, with
+ * whatever is left in it (#340); nothing is ever deleted silently.
+ */
 sealed interface VideosOnDelete {
-    /** "Delete N videos too?" Yes: the videos and their files go with the Project. */
+    /** "Delete N videos too?" Yes: the videos and their files go with the Project and its folder. */
     data object Delete : VideosOnDelete
 
-    /** No: the videos move to [project] and their files stay. */
+    /** No: the videos move to [project], and their files into its folder, before the folder goes. */
     data class MoveTo(
         val project: ProjectId,
     ) : VideosOnDelete
