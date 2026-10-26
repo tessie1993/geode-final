@@ -186,6 +186,7 @@ internal object SettingsCodec {
             codec = enum(K.EXPORT_CODEC, default.codec),
             loudness = LOUDNESS_IDS.entries.firstOrNull { it.value == loudness }?.key ?: default.loudness,
             finishedAlerts = boolean(K.EXPORT_FINISHED_ALERTS, default.finishedAlerts),
+            editSources = enum(K.EXPORT_EDIT_SOURCES, default.editSources),
         )
     }
 
@@ -312,6 +313,7 @@ internal object SettingsCodec {
     private fun preferences(values: SettingsValues): Map<String, Any?> =
         mapOf(
             K.EXPORT_FINISHED_ALERTS to values.export.finishedAlerts,
+            K.EXPORT_EDIT_SOURCES to values.export.editSources.name,
             K.BACKGROUND_MUSIC to values.background.music,
             K.BACKGROUND_RENDERS to values.background.renders,
             K.BACKGROUND_RECORDING to values.background.recording,

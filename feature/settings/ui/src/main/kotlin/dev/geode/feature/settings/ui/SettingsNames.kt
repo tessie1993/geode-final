@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
@@ -124,6 +125,15 @@ internal fun codecName(codec: ExportCodec): String =
         when (codec) {
             ExportCodec.H264 -> R.string.export_codec_h264
             ExportCodec.HEVC -> R.string.export_codec_hevc
+        },
+    )
+
+@Composable
+internal fun editSourcesName(sources: EditSources): String =
+    stringResource(
+        when (sources) {
+            EditSources.REFERENCE -> R.string.export_edit_sources_reference
+            EditSources.COPY -> R.string.export_edit_sources_copy
         },
     )
 

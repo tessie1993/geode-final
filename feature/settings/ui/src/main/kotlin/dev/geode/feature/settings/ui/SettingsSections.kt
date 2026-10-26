@@ -18,6 +18,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -295,6 +296,14 @@ internal fun LazyListScope.exportSection(
             SwitchRow(stringResource(R.string.export_finished_alerts), export.finishedAlerts) {
                 change(ExportCommand.SetFinishedAlerts(it))
             }
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.export_group_edits)) {
+            ChoiceRow(stringResource(R.string.export_edit_sources), EditSources.entries, export.editSources, { editSourcesName(it) }) {
+                change(ExportCommand.SetEditSources(it))
+            }
+            Note(stringResource(R.string.export_edit_sources_note))
         }
     }
 }
