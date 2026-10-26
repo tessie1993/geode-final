@@ -39,7 +39,7 @@ The small player above the Bar. Tapping it always opens the full-screen Visual, 
 _Avoid_: now-playing bar, player bar
 
 **Player controls**:
-Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual every other touch belongs to the Style's touch interaction, so the controls appear only on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets. Music also holds the queue. Geode shows no lyrics.
+Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the full-screen Visual every other touch belongs to the Visual: the Style's touch interaction, and, while "Pinch and drag the Visual" is on, two fingers also place the Camera (pinch zooms, drag pans, twist turns) and it stays where they leave it, as one undo step of the Customization. So the controls appear only on a double tap and fade 3 seconds after the last touch on them. In Music they are always shown, at the bottom or the top as the user sets. Music also holds the queue. Geode shows no lyrics.
 _Avoid_: transport, media controls
 
 **Visuals off**:
@@ -71,7 +71,7 @@ Layer 2 is a second Style drawn over the Style itself (Layer 1) and part of its 
 _Avoid_: overlay (the App's picture layer above the Visual), mix, stack
 
 **Camera**:
-The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel, and the lens's field of view, a roll and a speed ramp. In a Style that draws a 3D world it moves a real camera through that world; on a flat picture it moves the picture the nearest 2D way.
+The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel, the lens's field of view, a roll and a speed ramp, and a pan and a turn that hold where they are set. In a Style that draws a 3D world it moves a real camera through that world; on a flat picture it moves the picture the nearest 2D way.
 _Avoid_: View params, motion params
 
 **Sound signal**:

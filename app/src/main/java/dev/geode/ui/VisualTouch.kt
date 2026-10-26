@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewConfiguration
 import dev.geode.render.TouchField
 import kotlin.math.abs
-import kotlin.math.hypot
 
 /**
  * The fingers one host publishes to the Visual (#290).
@@ -174,15 +173,16 @@ class VisualTouch(
  * [onDoubleTap]. Anything that moved further is a drag: it draws in the Visual and never counts as a
  * tap. Hosts with nothing to toggle pass a no-op.
  *
- * Two fingers also pinch the Camera's zoom when the host passes a [pinch] (#397): the fingers still reach
- * the Style as they always do, and the zoom stays where the pinch leaves it.
+ * Two fingers also place the Camera when the host passes a [camera] gesture (#397): pinch zooms, drag
+ * pans, twist turns. The fingers still reach the Style as they always do, and the Camera stays where
+ * the gesture leaves it.
  *
  * Every event is consumed after being published: a finger that starts on the Visual belongs to it.
  */
 internal class VisualTouchInput(
     context: Context,
     private val touch: VisualTouch,
-    private val pinch: PinchZoom? = null,
+    private val camera: CameraGesture? = null,
     private val onDoubleTap: () -> Unit,
 ) : View.OnTouchListener {
     private val config = ViewConfiguration.get(context)
@@ -213,6 +213,7 @@ internal class VisualTouchInput(
         event: MotionEvent,
     ): Boolean {
         touch.resize(v.width.toFloat(), v.height.toFloat())
+        camera?.resize(v.width.toFloat(), v.height.toFloat())
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 v.removeCallbacks(endPulse)
@@ -230,7 +231,7 @@ internal class VisualTouchInput(
                 lastTapTime = NO_TAP
                 val i = event.actionIndex
                 touch.down(event.getPointerId(i), event.getX(i), event.getY(i))
-                pinch?.start(span(event, skip = NO_POINTER))
+                pair(event, skip = NO_POINTER, start = true)
             }
             MotionEvent.ACTION_MOVE -> {
                 val dt = (event.eventTime - lastTime).coerceAtLeast(0L) / MILLIS_PER_SECOND
@@ -239,20 +240,20 @@ internal class VisualTouchInput(
                     touch.move(event.getPointerId(i), event.getX(i), event.getY(i), dt, FULL_STRENGTH)
                 }
                 if (tapCandidate && outsideSlop(event.getX(0), event.getY(0))) tapCandidate = false
-                if (event.pointerCount >= 2) pinch?.move(span(event, skip = NO_POINTER))
+                pair(event, skip = NO_POINTER, start = false)
             }
             MotionEvent.ACTION_POINTER_UP -> {
                 tapCandidate = false
                 touch.up(event.getPointerId(event.actionIndex))
                 // The pointer lifting is still in this event: the pair is whichever two stay down.
-                if (event.pointerCount > 2) pinch?.start(span(event, skip = event.actionIndex)) else pinch?.end()
+                if (event.pointerCount > 2) pair(event, skip = event.actionIndex, start = true) else camera?.end()
             }
             MotionEvent.ACTION_UP -> {
                 val x = event.getX(0)
                 val y = event.getY(0)
                 val tapped = tapCandidate && event.eventTime - downTime <= tapTimeoutMs && !outsideSlop(x, y)
                 touch.up(event.getPointerId(0))
-                pinch?.end()
+                camera?.end()
                 if (tapped) {
                     touch.pulse(x, y)
                     v.postDelayed(endPulse, TAP_PULSE_MS)
@@ -275,22 +276,28 @@ internal class VisualTouchInput(
                 secondTap = false
                 lastTapTime = NO_TAP
                 touch.clear()
-                pinch?.end()
+                camera?.end()
             }
         }
         return true
     }
 
-    /** The distance between the first two pointers of [event] other than [skip], in pixels. */
-    private fun span(
+    /** Hands the Camera gesture the first two pointers of [event] other than [skip], when there are two. */
+    private fun pair(
         event: MotionEvent,
         skip: Int,
-    ): Float {
+        start: Boolean,
+    ) {
+        val gesture = camera ?: return
         val a = if (skip == 0) 1 else 0
         var b = a + 1
         if (b == skip) b++
-        if (b >= event.pointerCount) return 0f
-        return hypot(event.getX(b) - event.getX(a), event.getY(b) - event.getY(a))
+        if (b >= event.pointerCount) return
+        if (start) {
+            gesture.start(event.getX(a), event.getY(a), event.getX(b), event.getY(b))
+        } else {
+            gesture.move(event.getX(a), event.getY(a), event.getX(b), event.getY(b))
+        }
     }
 
     private fun outsideSlop(

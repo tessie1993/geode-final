@@ -21,10 +21,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * A pinch's zoom is the Customization's own Camera zoom (#397), through the real reducer: it follows the
- * fingers as a preview, stays where the pinch leaves it, and the whole pinch is one undo step.
+ * Where two fingers leave the Camera is the Customization's own Camera (#397), through the real reducer:
+ * it follows the fingers as a preview, stays where the gesture leaves it, and the whole gesture, zoom,
+ * pan and turn together, is one undo step.
  */
-class CameraZoomTest {
+class CustomizationCameraTest {
     private val customization: CustomizationFeature =
         FeatureStore<CustomizationState, CustomizationCommand, CustomizationEvent, CustomizationWork, CustomizationFact>(
             name = CUSTOMIZATION_FEATURE,
@@ -41,40 +42,58 @@ class CameraZoomTest {
             runtime = inPlaceRuntime(),
         )
 
-    private val camera = CameraZoom(customization)
+    private val camera = CustomizationCamera(customization)
 
-    private fun zoomNow(): Float? = customization.state.value.current.shared[SharedProperty.ZOOM]
+    private fun shared(property: SharedProperty): Float? = customization.state.value.current.shared[property]
 
     @Test
-    fun `a pinch starts from the Customization's zoom`() {
+    fun `a gesture starts from the Customization's Camera`() {
         customization.send(CustomizationCommand.SetShared(SharedProperty.ZOOM, 1.25f))
+        customization.send(CustomizationCommand.SetShared(SharedProperty.PAN_X, -0.5f))
+        customization.send(CustomizationCommand.SetShared(SharedProperty.TURN, 0.25f))
 
-        assertEquals(1.25f, camera.zoom(), 0f)
+        assertEquals(CameraGesture.Placement(zoom = 1.25f, panX = -0.5f, panY = 0f, turn = 0.25f), camera.placement())
     }
 
     @Test
-    fun `the zoom follows the fingers, then stays where the pinch leaves it`() {
-        val pinch = PinchZoom(SLOP, camera)
+    fun `the Camera follows the fingers, then stays where the gesture leaves it, as one undo step`() {
+        val gesture = CameraGesture(SLOP, camera).apply { resize(SIZE, SIZE) }
         val before = customization.state.value.current
 
-        pinch.start(200f)
-        pinch.move(240f)
-        pinch.move(480f)
-        assertEquals(2f, zoomNow())
+        gesture.start(400f, 500f, 600f, 500f)
+        gesture.move(380f, 500f, 620f, 500f)
+        // Spread to twice the distance and slid up a fifth of the view.
+        gesture.move(260f, 400f, 740f, 400f)
+        assertEquals(2f, shared(SharedProperty.ZOOM))
+        assertEquals(0.2f, shared(SharedProperty.PAN_Y)!!, EPSILON)
         assertNotNull(customization.state.value.previewFrom)
 
-        pinch.end()
+        gesture.end()
 
         val after = customization.state.value
         assertEquals(2f, after.current.shared[SharedProperty.ZOOM])
+        assertEquals(0.2f, after.current.shared[SharedProperty.PAN_Y]!!, EPSILON)
         assertNull(after.previewFrom)
-        // One undo step, back to the zoom from before the pinch.
         assertEquals(listOf(before), after.undo)
         customization.send(CustomizationCommand.Undo)
         assertEquals(before, customization.state.value.current)
     }
 
+    @Test
+    fun `a gesture that never got past the slop changes nothing and adds no undo step`() {
+        val gesture = CameraGesture(SLOP, camera).apply { resize(SIZE, SIZE) }
+        val before = customization.state.value
+
+        gesture.start(400f, 500f, 600f, 500f)
+        gesture.move(402f, 500f, 602f, 500f)
+        gesture.end()
+
+        assertEquals(before, customization.state.value)
+    }
+
     private companion object {
         const val SLOP = 16f
+        const val SIZE = 1000f
+        const val EPSILON = 1e-5f
     }
 }

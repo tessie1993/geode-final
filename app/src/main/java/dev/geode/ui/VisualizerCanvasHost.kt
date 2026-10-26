@@ -39,8 +39,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * weight Settings asks for, 0 for off) is above zero and Battery Saver is off, and stops the moment
  * any of those ends.
  *
- * Given a [zoom], two fingers also pinch the Camera's zoom while [pinchZoom] (Settings' "Pinch and drag
- * the Visual") is on, and the zoom stays where the pinch leaves it ([PinchZoom], #397).
+ * Given a [camera], two fingers also place the Camera while [cameraGestures] (Settings' "Pinch and drag
+ * the Visual") is on: pinch zooms, drag pans, twist turns, and it stays where they leave it
+ * ([CameraGesture], #397).
  */
 @Composable
 fun VisualizerCanvasHost(
@@ -48,8 +49,8 @@ fun VisualizerCanvasHost(
     modifier: Modifier = Modifier,
     onDoubleTap: (() -> Unit)? = null,
     tilt: Float = 0f,
-    zoom: PinchZoom.Target? = null,
-    pinchZoom: Boolean = false,
+    camera: CameraGesture.Target? = null,
+    cameraGestures: Boolean = false,
 ) {
     // On screen only while the app is in front: a Visual hosted behind another app is not seen.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -78,12 +79,12 @@ fun VisualizerCanvasHost(
                 stroke = view.visualizerRenderer::queueTouchStroke,
             )
         }
-    val pinch =
-        remember(view, zoom) {
-            zoom?.let { PinchZoom(ViewConfiguration.get(view.context).scaledTouchSlop.toFloat(), it) }
+    val gesture =
+        remember(view, camera) {
+            camera?.let { CameraGesture(ViewConfiguration.get(view.context).scaledTouchSlop.toFloat(), it) }
         }
-    pinch?.enabled = pinchZoom
-    val input = remember(view, touch, pinch) { VisualTouchInput(view.context, touch, pinch) { doubleTap.value?.invoke() } }
+    gesture?.enabled = cameraGestures
+    val input = remember(view, touch, gesture) { VisualTouchInput(view.context, touch, gesture) { doubleTap.value?.invoke() } }
     AndroidView(
         factory = {
             (view.parent as? ViewGroup)?.removeView(view)

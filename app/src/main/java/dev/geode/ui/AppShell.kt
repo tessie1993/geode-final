@@ -219,11 +219,11 @@ fun AppRoot() {
     // Settings' Tilt as the weight the engine fades to: Subtle is half, Full all. Reduce motion stills
     // it whatever the setting says (#315); the host also stops it under Battery Saver.
     val tilt = settingsValues?.behavior?.let(::tiltWeight) ?: 0f
-    // A pinch zooms the Customization's Camera and stays where it is left (#397).
-    val zoom = remember(shell.customization) { CameraZoom(shell.customization) }
-    val pinchZoom = settingsValues?.behavior?.touchTransform ?: false
+    // Two fingers place the Customization's Camera, pinch, drag and twist, and it stays where they leave it (#397).
+    val camera = remember(shell.customization) { CustomizationCamera(shell.customization) }
+    val cameraGestures = settingsValues?.behavior?.touchTransform ?: false
     val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
-        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt, zoom, pinchZoom)
+        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt, camera, cameraGestures)
     }
     // Settings' defaults while the stored ones are being read.
     val reducedMotion = settingsValues?.behavior?.reducedMotion ?: false

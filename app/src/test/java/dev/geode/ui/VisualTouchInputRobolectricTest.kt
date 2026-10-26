@@ -233,63 +233,89 @@ class VisualTouchInputRobolectricTest {
         assertEquals(0, recorder.submissions.last())
     }
 
-    private class Camera : PinchZoom.Target {
-        var value = 1f
-        val commits = mutableListOf<Float>()
+    private class Camera : CameraGesture.Target {
+        var value = CameraGesture.Placement()
+        val commits = mutableListOf<CameraGesture.Placement>()
 
-        override fun zoom(): Float = value
+        override fun placement(): CameraGesture.Placement = value
 
-        override fun preview(zoom: Float) {
-            value = zoom
+        override fun preview(placement: CameraGesture.Placement) {
+            value = placement
         }
 
-        override fun commit(zoom: Float) {
-            commits += zoom
-            value = zoom
+        override fun commit(placement: CameraGesture.Placement) {
+            commits += placement
+            value = placement
         }
     }
 
+    private fun placing(
+        recorder: Recorder,
+        camera: Camera,
+    ) = VisualTouchInput(activity, recorder.touch, CameraGesture(SLOP, camera)) { recorder.doubleTaps++ }
+
     @Test
-    fun `two fingers spreading zoom the Camera, reach the Style too, and the zoom stays after they lift`() {
+    fun `two fingers spreading and sliding place the Camera, reach the Style too, and it stays after they lift`() {
         val recorder = Recorder()
         val camera = Camera()
-        val input = VisualTouchInput(activity, recorder.touch, PinchZoom(SLOP, camera)) { recorder.doubleTaps++ }
+        val input = placing(recorder, camera)
         val pointerDown = MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
         val pointerUp = MotionEvent.ACTION_POINTER_UP or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
 
         input.onTouch(view, multi(MotionEvent.ACTION_DOWN, 0L, Finger(0, 400f, 500f)))
         input.onTouch(view, multi(pointerDown, 16L, Finger(0, 400f, 500f), Finger(1, 600f, 500f)))
-        // Past the slop: the pinch is measured from here, a 300 px span.
+        // Past the slop: the gesture is measured from here, a 300 px span about the middle.
         input.onTouch(view, multi(MotionEvent.ACTION_MOVE, 32L, Finger(0, 350f, 500f), Finger(1, 650f, 500f)))
-        input.onTouch(view, multi(MotionEvent.ACTION_MOVE, 48L, Finger(0, 200f, 500f), Finger(1, 800f, 500f)))
+        // Twice as far apart, and 100 px up the 1000 px view.
+        input.onTouch(view, multi(MotionEvent.ACTION_MOVE, 48L, Finger(0, 200f, 400f), Finger(1, 800f, 400f)))
         assertEquals(2, recorder.count)
-        assertEquals(2f, camera.value, 1e-5f)
+        assertEquals(2f, camera.value.zoom, 1e-5f)
+        assertEquals(0.2f, camera.value.panY, 1e-5f)
 
-        input.onTouch(view, multi(pointerUp, 64L, Finger(0, 200f, 500f), Finger(1, 800f, 500f)))
-        input.onTouch(view, multi(MotionEvent.ACTION_UP, 80L, Finger(0, 200f, 500f)))
+        input.onTouch(view, multi(pointerUp, 64L, Finger(0, 200f, 400f), Finger(1, 800f, 400f)))
+        input.onTouch(view, multi(MotionEvent.ACTION_UP, 80L, Finger(0, 200f, 400f)))
 
-        assertEquals(listOf(2f), camera.commits)
-        assertEquals(2f, camera.value, 1e-5f)
+        assertEquals(1, camera.commits.size)
+        assertEquals(2f, camera.commits.single().zoom, 1e-5f)
+        assertEquals(0.2f, camera.value.panY, 1e-5f)
         assertEquals(0, recorder.count)
         assertEquals(0, recorder.doubleTaps)
     }
 
     @Test
-    fun `one finger never zooms the Camera`() {
+    fun `two fingers twisting turn the Camera`() {
         val recorder = Recorder()
         val camera = Camera()
-        val input = VisualTouchInput(activity, recorder.touch, PinchZoom(SLOP, camera)) { recorder.doubleTaps++ }
+        val input = placing(recorder, camera)
+        val pointerDown = MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+
+        input.onTouch(view, multi(MotionEvent.ACTION_DOWN, 0L, Finger(0, 400f, 500f)))
+        input.onTouch(view, multi(pointerDown, 16L, Finger(0, 400f, 500f), Finger(1, 600f, 500f)))
+        // A quarter turn anticlockwise in two steps: the first takes the gesture over, the second turns it.
+        input.onTouch(view, multi(MotionEvent.ACTION_MOVE, 32L, Finger(0, 429.3f, 570.7f), Finger(1, 570.7f, 429.3f)))
+        input.onTouch(view, multi(MotionEvent.ACTION_MOVE, 48L, Finger(0, 570.7f, 570.7f), Finger(1, 429.3f, 429.3f)))
+        input.onTouch(view, multi(MotionEvent.ACTION_CANCEL, 64L, Finger(0, 570.7f, 570.7f), Finger(1, 429.3f, 429.3f)))
+
+        assertEquals(0.5f, camera.commits.single().turn, 1e-3f)
+        assertEquals(1f, camera.value.zoom, 1e-3f)
+    }
+
+    @Test
+    fun `one finger never moves the Camera`() {
+        val recorder = Recorder()
+        val camera = Camera()
+        val input = placing(recorder, camera)
 
         input.onTouch(view, event(MotionEvent.ACTION_DOWN, 0L, 100f, 100f))
         input.onTouch(view, event(MotionEvent.ACTION_MOVE, 16L, 900f, 900f))
         input.onTouch(view, event(MotionEvent.ACTION_UP, 32L, 900f, 900f))
 
-        assertEquals(1f, camera.value, 0f)
-        assertEquals(emptyList<Float>(), camera.commits)
+        assertEquals(CameraGesture.Placement(), camera.value)
+        assertEquals(emptyList<CameraGesture.Placement>(), camera.commits)
     }
 
     private companion object {
-        /** Far below the 300 px moves the pinch test makes, whatever the device's own slop. */
+        /** Far below the moves the two-finger tests make, whatever the device's own slop. */
         const val SLOP = 8f
 
         /** Comfortably past [VisualTouchInput]'s pulse, which is a few frames. */
