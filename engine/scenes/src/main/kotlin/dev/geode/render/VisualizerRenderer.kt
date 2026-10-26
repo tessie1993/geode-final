@@ -40,8 +40,25 @@ class VisualizerRenderer(
     @Volatile
     var features: AudioFeatures = AudioFeatures.empty()
 
+    // The Style to draw: its scene and, for a MilkDrop preset's own Style, that preset (#305). One value,
+    // so a frame never sees the new scene with the old preset.
+    private class StyleRequest(
+        val scene: SceneId,
+        val milkPreset: String?,
+    )
+
     @Volatile
-    var requestedSceneId: SceneId = SceneIds.DEFAULT
+    private var styleRequest = StyleRequest(SceneIds.DEFAULT, null)
+
+    /** The scene to draw, with no MilkDrop preset of its own; [requestStyle] names one as well. */
+    var requestedSceneId: SceneId
+        get() = styleRequest.scene
+        set(value) {
+            styleRequest = StyleRequest(value, null)
+        }
+
+    // GL thread only: the preset last handed to the native renderer by a Style request.
+    private var sentMilkPreset: String? = null
 
     @Volatile
     var sceneParams: SceneParams = SceneParams.DEFAULT
@@ -154,6 +171,7 @@ class VisualizerRenderer(
     fun releaseScenes() {
         frameHint.close()
         nativeViz.destroy()
+        sentMilkPreset = null
     }
 
     fun loadMilkPreset(path: String) {
@@ -163,6 +181,18 @@ class VisualizerRenderer(
     }
 
     fun reloadCurrentMilkPreset() = nativeViz.reloadMilkPreset()
+
+    /**
+     * Draws [scene] from the next frame on and, when [milkPreset] (a `.milk` file's path) is given, has
+     * the MilkDrop scene play it: a MilkDrop preset's own Style (#305). The preset is handed over on the
+     * GL thread, in the same frame as the scene.
+     */
+    fun requestStyle(
+        scene: SceneId,
+        milkPreset: String?,
+    ) {
+        styleRequest = StyleRequest(scene, milkPreset)
+    }
 
     fun warmTransition(id: String) = nativeViz.warmTransition(id)
 
@@ -219,7 +249,14 @@ class VisualizerRenderer(
 
     override fun onDrawFrame(gl: GL10?) {
         val workStart = System.nanoTime()
-        nativeViz.setScene(requestedSceneId)
+        val request = styleRequest
+        val milkPreset = request.milkPreset
+        if (milkPreset != null && milkPreset != sentMilkPreset) {
+            nativeViz.loadMilkPreset(milkPreset)
+            sentMilkPreset = milkPreset
+            lastMilkPreset = milkPreset
+        }
+        nativeViz.setScene(request.scene)
         syncNativeState()
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
         nativeViz.pollError(onShaderError)

@@ -33,10 +33,12 @@ import dev.geode.render.SceneFactory
 import dev.geode.render.VisualSafety
 import dev.geode.render.scene.SceneIds
 import dev.geode.visuals.EngineSnapshots
+import dev.geode.visuals.StyleTargets
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import org.json.JSONException
+import java.io.File
 import java.io.IOException
 
 /**
@@ -82,7 +84,7 @@ class NativeRenderEngine(
             VideoExporter.Job(
                 audioUri = uri,
                 timeline = timeline,
-                sceneFactory = StyleScene(customization.style),
+                sceneFactory = StyleScene.of(customization.style, StyleTargets.milkFolder(context)),
                 look = EngineSnapshots.forRender(customization, values),
                 aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
                 fps = format.fps,
@@ -207,11 +209,23 @@ class NativeRenderEngine(
         if (slowed || liveVisualShown()) Thread.sleep(PACE_MS)
     }
 
-    /** The Style a Render draws. The MilkDrop preset travels with the Render later (#341). */
+    /**
+     * The Style a Render draws: a MilkDrop preset's own Style draws the MilkDrop scene with that preset
+     * loaded before the first frame (#305).
+     */
     private class StyleScene(
         override val sceneId: SceneId,
+        override val milkPresetPath: String?,
     ) : SceneFactory {
-        override val milkPresetPath: String? = null
+        companion object {
+            fun of(
+                style: SceneId,
+                milkFolder: File,
+            ): StyleScene {
+                val target = StyleTargets.of(style, milkFolder)
+                return StyleScene(target.scene, target.milkPreset?.path)
+            }
+        }
     }
 
     private companion object {

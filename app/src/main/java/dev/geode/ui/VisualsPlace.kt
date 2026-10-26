@@ -49,6 +49,7 @@ import dev.geode.feature.visuals.ui.PresetsRoute
 import dev.geode.feature.visuals.ui.VisualsRoute
 import dev.geode.render.scene.StylePacks
 import dev.geode.ui.shell.ShellViewModel
+import dev.geode.visuals.StyleTargets
 import java.io.File
 
 /** The Visuals tab's three sub-tabs (owner decision on #17, 2026-10-22). */
@@ -148,7 +149,7 @@ fun CustomizePanel(
         ignored =
             IgnoredControls.targets(
                 customization.current,
-                IgnoredControls.properties(StylePacks.find(style)?.ignores.orEmpty()),
+                IgnoredControls.properties(StylePacks.find(StyleTargets.sceneOf(style))?.ignores.orEmpty()),
             ),
         onBrowsePresets = onBrowsePresets,
     )

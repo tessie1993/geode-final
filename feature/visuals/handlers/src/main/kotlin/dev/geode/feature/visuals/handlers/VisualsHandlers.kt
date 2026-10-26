@@ -11,12 +11,14 @@ import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
+import dev.geode.feature.visuals.api.PresetPlayback
 import dev.geode.feature.visuals.api.PresetShelf
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.Visuals
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.api.VisualsState
+import dev.geode.feature.visuals.core.MilkdropChecks
 import dev.geode.feature.visuals.core.MilkdropFiles
 import dev.geode.feature.visuals.core.PickedFile
 import dev.geode.feature.visuals.core.Planned
@@ -161,15 +163,20 @@ class VisualsHandlers(
         MilkdropFiles.presets(builtInMilkdrop, milkdrop.files(MilkdropKind.PRESETS)) to
             MilkdropFiles.textures(milkdrop.files(MilkdropKind.TEXTURES))
 
-    /** Reads, checks and writes each of [files] in turn, so only one is ever held in memory. */
+    /**
+     * Reads, checks and writes each of [files] in turn, so only one is ever held in memory. Each preset
+     * written is read for how it will play ([MilkdropChecks]) beside the textures the folder holds.
+     */
     private suspend fun importMilkdrop(
         kind: MilkdropKind,
         files: List<String>,
     ): VisualsEvent.MilkdropImported {
         val present = milkdrop.files(kind).toMutableList()
         if (kind == MilkdropKind.PRESETS) present += builtInMilkdrop.map { it.file }
+        val held = if (kind == MilkdropKind.PRESETS) milkdrop.files(MilkdropKind.TEXTURES) else emptyList()
         val imported = mutableListOf<String>()
         val broken = mutableListOf<BrokenFile>()
+        val playback = mutableMapOf<String, PresetPlayback>()
         for (file in files) {
             when (val planned = MilkdropFiles.plan(kind, listOf(read(file, kind)), present).single()) {
                 is Planned.Refuse -> broken += planned.broken
@@ -177,13 +184,16 @@ class VisualsHandlers(
                     if (written(kind, planned)) {
                         imported += planned.shown
                         present += planned.stored
+                        if (kind == MilkdropKind.PRESETS) {
+                            playback[planned.shown] = MilkdropChecks.playback(planned.bytes.toString(Charsets.ISO_8859_1), held)
+                        }
                     } else {
                         broken += BrokenFile(planned.picked, MilkdropImportProblem.NOT_SAVED)
                     }
             }
         }
         val (milks, textures) = listing()
-        return VisualsEvent.MilkdropImported(ImportReport(kind, imported, broken), milks, textures)
+        return VisualsEvent.MilkdropImported(ImportReport(kind, imported, broken, playback), milks, textures)
     }
 
     /** [uri] as picked; one that cannot be read, whatever the reason, is [PickedFile.Unreadable]. */

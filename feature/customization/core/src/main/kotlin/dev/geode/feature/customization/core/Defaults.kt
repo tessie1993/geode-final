@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.ReactionId
@@ -9,20 +10,26 @@ import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.customization.api.StyleManifest
 
-/** The Style manifests the reducer knows, by id. */
+/**
+ * The Style manifests the reducer knows, by id. A MilkDrop preset Style ([MilkdropStyles]) is known
+ * whenever the MilkDrop family is: it gets that family's manifest under its own id, since every preset
+ * plays through the one MilkDrop scene with the Shared core only (#305).
+ */
 class StyleCatalogue(
     val styles: List<StyleManifest>,
 ) {
     private val byId = styles.associateBy { it.id }
 
-    operator fun get(id: SceneId): StyleManifest? = byId[id]
+    private val milkdrop = styles.firstOrNull { it.family == StyleFamily.MILKDROP }
+
+    operator fun get(id: SceneId): StyleManifest? = byId[id] ?: MilkdropStyles.file(id)?.let { milkdrop?.copy(id = id) }
 
     /**
      * [id]'s manifest, or a bare one (Shared core only, the shared Macros, no Extras or Reactions) for
      * a Style this version does not know, such as a removed one.
      */
     fun manifestOf(id: SceneId): StyleManifest =
-        byId[id] ?: StyleManifest(
+        get(id) ?: StyleManifest(
             id = id,
             family = StyleFamily.SHADER,
             ownFlight = false,

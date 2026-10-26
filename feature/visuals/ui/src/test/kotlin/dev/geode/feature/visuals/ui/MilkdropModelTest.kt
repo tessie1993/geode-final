@@ -1,5 +1,7 @@
 package dev.geode.feature.visuals.ui
 
+import dev.geode.engine.types.MilkdropStyles
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.BrokenFile
 import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
@@ -50,5 +52,16 @@ class MilkdropModelTest {
     fun `dismissing sends a Command, and picking stays in the route`() {
         assertEquals(VisualsCommand.DismissImportReport, MilkdropAction.DismissReport.toCommand())
         assertNull(MilkdropAction.Pick(MilkdropKind.PRESETS).toCommand())
+    }
+
+    @Test
+    fun `a tap plays the preset as its own Style, and the one playing is marked`() {
+        assertEquals(VisualsCommand.Choose(MilkdropStyles.of("aurora_veil.milk")), MilkdropAction.Play("aurora_veil.milk").toCommand())
+        val shelf = MilkdropShelf(presets)
+
+        val playing = VisualsState(current = MilkdropStyles.of("aurora_veil.milk"), milkdrop = shelf).toMilkdropModel()
+        assertEquals("aurora_veil.milk", playing.playing)
+        assertNull(VisualsState(current = SceneId("tunnel"), milkdrop = shelf).toMilkdropModel().playing)
+        assertNull(VisualsState(milkdrop = shelf).toMilkdropModel().playing)
     }
 }

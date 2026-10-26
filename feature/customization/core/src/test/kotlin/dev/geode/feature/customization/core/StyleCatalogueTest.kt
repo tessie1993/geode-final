@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.ExtraSpec
@@ -226,6 +227,34 @@ class StyleCatalogueTest {
         assertEquals(MACRO_COUNT, bare.macros.size)
         assertEquals(styles.manifestOf(JULIA), styles[JULIA])
         assertEquals(BuiltInStyles.all, styles.styles)
+    }
+
+    @Test
+    fun `every MilkDrop preset is a Style with the MilkDrop manifest under its own id`() {
+        val ocean = MilkdropStyles.of("Ocean Deep.milk")
+        assertEquals("milkdrop:Ocean Deep.milk", ocean.value)
+        assertEquals("Ocean Deep.milk", MilkdropStyles.file(ocean))
+        val manifest = styles[ocean] ?: throw AssertionError("no manifest for $ocean")
+        assertEquals(ocean, manifest.id)
+        assertEquals(styles.manifestOf(MILKDROP).copy(id = ocean), manifest)
+        assertEquals(manifest, styles.manifestOf(ocean))
+        assertEquals(ocean, Defaults.customization(manifest).style)
+    }
+
+    @Test
+    fun `only an id with a file after the prefix names a MilkDrop preset`() {
+        assertNull(MilkdropStyles.file(MILKDROP))
+        assertNull(MilkdropStyles.file(MilkdropStyles.of("")))
+        assertNull(MilkdropStyles.file(SceneId("my milkdrop:x.milk")))
+        assertNull(styles[MilkdropStyles.of("")])
+        assertNull(styles[SceneId("milk:Ocean.milk")])
+    }
+
+    @Test
+    fun `without the MilkDrop family no MilkDrop preset is known`() {
+        val noMilkdrop = StyleCatalogue(listOf(styles.manifestOf(JULIA)))
+        assertNull(noMilkdrop[MilkdropStyles.of("Ocean.milk")])
+        assertEquals(StyleFamily.SHADER, noMilkdrop.manifestOf(MilkdropStyles.of("Ocean.milk")).family)
     }
 
     private companion object {

@@ -15,6 +15,7 @@ import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.VisualizerView
+import dev.geode.visuals.StyleTargets
 
 /**
  * Binds the one live Visual to its sources (#17). Customization reaches it through the plan alone:
@@ -50,7 +51,11 @@ fun LiveVisualBindings(
     }
     val state by customization.state.collectAsStateWithLifecycle()
     val style = state.current.style
-    LaunchedEffect(style) { view.visualizerRenderer.requestedSceneId = style }
+    // A MilkDrop preset's own Style is the MilkDrop scene playing that preset (#305).
+    LaunchedEffect(style) {
+        val target = StyleTargets.of(style, StyleTargets.milkFolder(context))
+        view.visualizerRenderer.requestStyle(target.scene, target.milkPreset?.path)
+    }
     val values by settings.state.collectAsStateWithLifecycle()
     val behavior = (values as? SettingsState.Ready)?.values?.behavior ?: BehaviorSettings()
     LaunchedEffect(behavior.reducedMotion) { view.visualizerRenderer.reducedMotion = behavior.reducedMotion }

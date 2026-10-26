@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
@@ -124,6 +125,32 @@ class PresetRulesTest {
         assertEquals(TUNNEL, applied.style)
         assertEquals(tunnel.extras, applied.extras)
         assertEquals(edited.shared, applied.shared)
+    }
+
+    @Test
+    fun `an older MilkDrop preset switches to its MilkDrop preset's own Style`() {
+        val milk = Fixtures.defaults(Fixtures.MILKDROP)
+        val older = PresetRules.capture("Old", milk, PresetRules.ALL_PARTS).copy(milkdrop = "Ocean.milk")
+        val ocean = MilkdropStyles.of("Ocean.milk")
+        assertEquals(ocean, PresetRules.styleOf(older, styles))
+        val applied = PresetRules.apply(julia, older, styles)
+        assertEquals(ocean, applied.style)
+        assertEquals(milk.macros, applied.macros)
+        // Already on that preset's Style, the Style's own parts apply as well.
+        val again = PresetRules.apply(applied, older.copy(macros = emptyList()), styles)
+        assertEquals(ocean, again.style)
+    }
+
+    @Test
+    fun `the MilkDrop preset kept beside another Style changes nothing`() {
+        val onJulia = PresetRules.capture("Julia", julia, PresetRules.ALL_PARTS).copy(milkdrop = "Ocean.milk")
+        assertEquals(JULIA, PresetRules.styleOf(onJulia, styles))
+        val reef = MilkdropStyles.of("Reef.milk")
+        val onPreset = PresetRules.capture("Reef", julia, PresetRules.ALL_PARTS).copy(style = reef, milkdrop = "Ocean.milk")
+        assertEquals(reef, PresetRules.styleOf(onPreset, styles))
+        val gone = onJulia.copy(style = SceneId("silk_web"))
+        assertEquals(SceneId("silk_web"), PresetRules.styleOf(gone, styles))
+        assertEquals(Fixtures.MILKDROP, PresetRules.styleOf(onJulia.copy(style = Fixtures.MILKDROP, milkdrop = null), styles))
     }
 
     @Test

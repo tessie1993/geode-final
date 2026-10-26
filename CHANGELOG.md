@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Every MilkDrop preset is a Style (#305).** Each `.milk` in the MilkDrop
+  folder, the ones Geode ships and the person's own, is listed as a Style of
+  its own in the Visuals tab's MilkDrop group and plays through Customization
+  like every Style (`milkdrop:<file>`, `MilkdropStyles`), with the Shared
+  core, in the live Visual, Recordings and Renders. A tap on a preset in the
+  MilkDrop screen shows it. The presets Geode ships are installed into the
+  folder again, and texture links are rebuilt after every import. Each
+  imported preset's report says whether it plays as written, plays without
+  its shader (naming what our projectM cannot translate), or misses textures
+  (naming them). An older preset saved with a MilkDrop preset opens on that
+  preset's Style.
+
 - **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
   feed, Freeze reactions is held in the engine: every Style, MilkDrop
   included, keeps the Sound signals and audio window of the first held frame

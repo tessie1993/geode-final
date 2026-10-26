@@ -46,9 +46,10 @@ enum class PresetPart(
  * is the format it was written in; [style] is the Style it was made on. [layer] is kept with
  * [PresetPart.LAYERS].
  *
- * Two things ride along that this version does not apply (ADR-0004), so writing the preset again
+ * Two things ride along that are kept as they were read (ADR-0004), so writing the preset again
  * never loses them:
- * - [milkdrop]: the MilkDrop preset an older Geode saved with it (version 1's `milkPreset`);
+ * - [milkdrop]: the MilkDrop preset an older Geode saved with it (version 1's `milkPreset`); applied, a
+ *   preset made on the MilkDrop Style switches to that preset's own Style ([MilkdropStyles], #305);
  * - [unread]: what this version could not read in its file, the parts a newer Geode added, as that
  *   file's own JSON text. Null when it read everything; otherwise some parts need a newer Geode.
  */

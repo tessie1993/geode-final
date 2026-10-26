@@ -1,6 +1,7 @@
 package dev.geode.feature.visuals.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -24,6 +25,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +36,7 @@ import dev.geode.feature.visuals.api.ImportReport
 import dev.geode.feature.visuals.api.MilkdropImportProblem
 import dev.geode.feature.visuals.api.MilkdropKind
 import dev.geode.feature.visuals.api.MilkdropPreset
+import dev.geode.feature.visuals.api.PresetPlayback
 
 /**
  * The MilkDrop presets and textures (#145): the curated presets Geode ships and the person's own,
@@ -60,7 +63,9 @@ fun MilkdropScreen(
             item { ShelfHint(R.string.milkdrop_loading) }
         } else {
             item { ShelfTitle(R.string.milkdrop_presets) }
-            items(model.presets, key = { "preset-${it.file}" }) { MilkdropPresetRow(it) }
+            items(model.presets, key = { "preset-${it.file}" }) { preset ->
+                MilkdropPresetRow(preset, playing = preset.file == model.playing) { onAction(MilkdropAction.Play(preset.file)) }
+            }
             item { ShelfTitle(R.string.milkdrop_textures) }
             if (model.textures.isEmpty()) item { ShelfHint(R.string.milkdrop_no_textures) }
             items(model.textures, key = { "texture-$it" }) { TextureRow(it) }
@@ -132,6 +137,10 @@ private fun Report(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        for (name in report.imported) {
+            val playback = report.playback[name] ?: continue
+            ReportLine(name, playback.label(), if (playback == PresetPlayback.Full) MaterialTheme.colorScheme.primary else null)
+        }
         for (broken in report.broken) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -154,6 +163,33 @@ private fun Report(
         }
     }
 }
+
+/** One file of the report: its [name], and what came of it in [color] (the error colour when null). */
+@Composable
+private fun ReportLine(
+    name: String,
+    outcome: String,
+    color: Color?,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            outcome,
+            Modifier.padding(start = GlassSpacing.Medium).weight(1f, fill = false),
+            style = MaterialTheme.typography.bodySmall,
+            color = color ?: MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+/** How a preset will play, said on screen (#305). */
+@Composable
+private fun PresetPlayback.label(): String =
+    when (this) {
+        PresetPlayback.Full -> stringResource(R.string.milkdrop_plays)
+        is PresetPlayback.WithoutShader -> stringResource(R.string.milkdrop_plays_without_shader, unsupported.joinToString())
+        is PresetPlayback.MissingTextures -> stringResource(R.string.milkdrop_missing_textures, textures.joinToString())
+    }
 
 @Composable
 private fun ShelfTitle(
@@ -178,21 +214,28 @@ private fun ShelfHint(
     )
 }
 
+/** One preset; a tap shows it in the Visual, as its own Style. */
 @Composable
-private fun MilkdropPresetRow(preset: MilkdropPreset) {
+private fun MilkdropPresetRow(
+    preset: MilkdropPreset,
+    playing: Boolean,
+    onPlay: () -> Unit,
+) {
     Column(
         Modifier
             .fillMaxWidth()
             .heightIn(min = GlassSize.TapTarget)
             .glass()
+            .clickable(onClick = onPlay)
             .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Small),
         verticalArrangement = Arrangement.Center,
     ) {
         Text(preset.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        val byline = preset.author?.let { stringResource(R.string.milkdrop_by, it) } ?: stringResource(R.string.milkdrop_yours)
         Text(
-            preset.author?.let { stringResource(R.string.milkdrop_by, it) } ?: stringResource(R.string.milkdrop_yours),
+            if (playing) stringResource(R.string.milkdrop_playing) else byline,
             style = MaterialTheme.typography.bodySmall,
-            color = if (preset.builtIn) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+            color = if (preset.builtIn && !playing) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

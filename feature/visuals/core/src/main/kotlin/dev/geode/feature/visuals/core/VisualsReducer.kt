@@ -27,7 +27,8 @@ import dev.geode.kernel.ReportFailure
  * The presets are listed when the store starts and again whenever the browser asks, so presets saved
  * from Customize or put in the preset folder by hand show up.
  *
- * The MilkDrop presets and textures (#145) are listed once when the store starts. An import runs one
+ * The MilkDrop presets and textures (#145) are listed once when the store starts, and every preset is
+ * listed as a Style of its own in the MilkDrop group (#305), so it is chosen like any other. An import runs one
  * at a time, and only once the folder has been listed; while it runs, another is ignored. Its report
  * stays until the person dismisses it or starts the next import. An import that fails as a whole is
  * reported on the app-wide error channel, and the next one may start.
@@ -164,13 +165,23 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
         state: VisualsState,
         event: VisualsEvent.MilkdropListed,
     ): Next<VisualsState, VisualsEffect> =
-        if (state.milkdrop != null) Next(state) else Next(state.copy(milkdrop = MilkdropShelf(event.presets, event.textures)))
+        if (state.milkdrop != null) {
+            Next(state)
+        } else {
+            val styles = StyleEntries.withMilkdrop(state.styles, event.presets)
+            Next(state.copy(styles = styles, milkdrop = MilkdropShelf(event.presets, event.textures)))
+        }
 
     private fun imported(
         state: VisualsState,
         event: VisualsEvent.MilkdropImported,
     ): Next<VisualsState, VisualsEffect> =
-        Next(state.copy(milkdrop = MilkdropShelf(event.presets, event.textures, importing = false, lastImport = event.report)))
+        Next(
+            state.copy(
+                styles = StyleEntries.withMilkdrop(state.styles, event.presets),
+                milkdrop = MilkdropShelf(event.presets, event.textures, importing = false, lastImport = event.report),
+            ),
+        )
 
     /** [state] with [library], saved. */
     internal fun saving(
