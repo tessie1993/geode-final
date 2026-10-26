@@ -3,6 +3,10 @@ package dev.geode.feature.studio.handlers
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.studio.api.EditCut
+import dev.geode.feature.studio.api.EditJob
+import dev.geode.feature.studio.api.EditSource
+import dev.geode.feature.studio.api.EditSources
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
@@ -11,6 +15,7 @@ import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.core.NewRender
+import dev.geode.feature.studio.handlers.edit.EditorProjectFormat
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -18,7 +23,8 @@ import org.json.JSONObject
  * A Render's choices as Studio's database keeps them beside its frozen look (#338): small, versioned
  * JSON (ADR-0004), so a queued Render resumes after the app is killed and a finished one can be made
  * again (#327). A value this version does not know falls back to the default rather than losing the
- * Render.
+ * Render. An Edit's export (#318) keeps its cut here too: the clip editor's video and edit, or the
+ * Timeline's whole project, with whether its videos were copied.
  */
 internal object RenderSpecFormat {
     private const val CURRENT_VERSION = 1
@@ -38,6 +44,7 @@ internal object RenderSpecFormat {
             .put(PROJECT, render.project.value)
             .put(LOUDNESS, render.extras.loudness.name)
             .putOpt(MILKDROP, render.milkdrop)
+            .putOpt(EDIT, render.edit?.let(::edit))
             .toString()
     }
 
@@ -62,8 +69,47 @@ internal object RenderSpecFormat {
             project = ProjectId(o.getLong(PROJECT)),
             extras = RenderExtras(enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS)),
             milkdrop = if (o.has(MILKDROP)) o.getString(MILKDROP) else null,
+            edit = o.optJSONObject(EDIT)?.let(::editOf),
         )
     }
+
+    private fun edit(job: EditJob): JSONObject =
+        JSONObject()
+            .put(NAME, job.name)
+            .put(SOURCES, job.sources.name)
+            .put(CUT, cut(job.cut))
+
+    private fun editOf(o: JSONObject): EditJob =
+        EditJob(o.optString(NAME), cutOf(o.getJSONObject(CUT)), enumOr(o.optString(SOURCES), EditSources.REFERENCE))
+
+    private fun cut(cut: EditCut): JSONObject =
+        when (cut) {
+            is EditCut.OneClip ->
+                JSONObject()
+                    .put(KIND, ONE_CLIP)
+                    .put(SOURCE, source(cut.source))
+                    .put(CLIP_EDIT, EditorProjectFormat.clipEdit(cut.edit))
+            is EditCut.Cut -> JSONObject().put(KIND, TIMELINE).put(PROJECT, EditorProjectFormat.toObject(cut.project))
+        }
+
+    /** Throws [org.json.JSONException] or [IllegalArgumentException] when [o] is no cut this version reads. */
+    private fun cutOf(o: JSONObject): EditCut =
+        when (val kind = o.getString(KIND)) {
+            ONE_CLIP -> EditCut.OneClip(sourceOf(o.getJSONObject(SOURCE)), EditorProjectFormat.clipEdit(o.getJSONObject(CLIP_EDIT)))
+            TIMELINE -> EditCut.Cut(EditorProjectFormat.fromObject(o.getJSONObject(PROJECT)))
+            else -> throw IllegalArgumentException("unknown cut: $kind")
+        }
+
+    private fun source(source: EditSource): JSONObject =
+        JSONObject()
+            .put(FILE, source.file)
+            .put(NAME, source.name)
+            .put(LENGTH_MS, source.length.value)
+            .put(WIDTH, source.width)
+            .put(HEIGHT, source.height)
+
+    private fun sourceOf(o: JSONObject): EditSource =
+        EditSource(o.getString(FILE), o.optString(NAME), Millis(o.optLong(LENGTH_MS)), o.optInt(WIDTH), o.optInt(HEIGHT))
 
     private fun track(track: RenderTrack): JSONObject =
         JSONObject().put(ID, track.id.value).put(TITLE, track.title).put(LENGTH_MS, track.length.value)
@@ -126,4 +172,15 @@ internal object RenderSpecFormat {
     private const val PROJECT = "project"
     private const val LOUDNESS = "loudness"
     private const val MILKDROP = "milkdrop"
+    private const val EDIT = "edit"
+    private const val NAME = "name"
+    private const val SOURCES = "sources"
+    private const val CUT = "cut"
+    private const val ONE_CLIP = "clip"
+    private const val TIMELINE = "timeline"
+    private const val SOURCE = "source"
+    private const val CLIP_EDIT = "clipEdit"
+    private const val FILE = "file"
+    private const val WIDTH = "width"
+    private const val HEIGHT = "height"
 }

@@ -98,5 +98,7 @@ class PerformanceSettingsTest {
         assertEquals(BackgroundSettings(music = true, renders = true, recording = false), BackgroundSettings())
         assertTrue(ExportSettings().finishedAlerts)
         assertEquals(ExportQuality.FHD1080, ExportSettings().quality)
+        // A saved Edit points at its sources unless the person asks for copies (#318).
+        assertEquals(EditSources.REFERENCE, ExportSettings().editSources)
     }
 }

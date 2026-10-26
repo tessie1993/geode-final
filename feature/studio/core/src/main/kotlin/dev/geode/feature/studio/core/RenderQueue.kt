@@ -79,19 +79,26 @@ internal object RenderQueue {
                 renderFormat = settings.format,
                 renderExtras = settings.extras,
                 rendersKeepGoing = settings.keepGoing,
+                editSources = settings.editSources,
             ),
         )
 
     /**
-     * Starts the oldest waiting Render, unless one runs, the library is not read yet, Visuals off is on,
-     * or the queue is held while the app is away.
+     * Whether anything may start: nothing while one runs, the library is not read yet, or the queue is
+     * held while the app is away. The oldest waiting Render then starts, unless Visuals off is on; an
+     * Edit's export (#318) starts either way.
      */
-    private fun canStart(state: StudioState): Boolean =
-        !state.loading && !state.visualsOff && !state.rendersHeld && state.runningRender == null
+    private fun canStart(state: StudioState): Boolean = !state.loading && !state.rendersHeld && state.runningRender == null
+
+    /** Whether [job] may start now: an Edit's export cuts videos and draws nothing, so Visuals off holds only Renders. */
+    private fun mayStart(
+        state: StudioState,
+        job: RenderJob,
+    ): Boolean = job.status == RenderStatus.Queued && (job.edit != null || !state.visualsOff)
 
     fun next(state: StudioState): Next<StudioState, StudioEffect> {
         if (!canStart(state)) return Next(state)
-        val waiting = state.renders.firstOrNull { it.status == RenderStatus.Queued } ?: return Next(state)
+        val waiting = state.renders.firstOrNull { mayStart(state, it) } ?: return Next(state)
         val started = waiting.copy(status = RenderStatus.Running(RenderPhase.PREPARING, 0f))
         return Next(state.replacing(started), listOf(Perform(StudioWork.Render(started))))
     }
@@ -116,8 +123,10 @@ internal object RenderQueue {
             when (val end = event.end) {
                 is RenderEnd.Saved -> {
                     val done = state.replacing(job.copy(status = RenderStatus.Done))
-                    // The video keeps the setup it was made from, so it can be made again (#327).
-                    addVideos(done, listOf(end.video.copy(madeWith = job.toNewRender().toSpec())), job.project)
+                    // A Render's video keeps the setup it was made from, so it can be made again (#327);
+                    // an Edit's is cut from videos, and has none.
+                    val madeWith = if (job.edit == null) job.toNewRender().toSpec() else null
+                    addVideos(done, listOf(end.video.copy(madeWith = madeWith)), job.project)
                 }
                 is RenderEnd.Failed ->
                     Next(

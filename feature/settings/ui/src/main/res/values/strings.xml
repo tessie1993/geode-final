@@ -118,6 +118,11 @@
     <string name="export_loudness_as_is">Leave as mixed</string>
     <string name="export_group_alerts">When a render finishes</string>
     <string name="export_finished_alerts">Notify me, with Share and Open</string>
+    <string name="export_group_edits">When an Edit is saved</string>
+    <string name="export_edit_sources">Its videos</string>
+    <string name="export_edit_sources_reference">Use them where they are</string>
+    <string name="export_edit_sources_copy">Copy them</string>
+    <string name="export_edit_sources_note">Using them where they are saves space. Copying keeps the Edit working even if you move or delete a video it was cut from.</string>
 
     <!-- Default paths -->
     <string name="folders_group_video_folder">Video save folder</string>

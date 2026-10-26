@@ -362,9 +362,9 @@ private fun MusicLibrary(shell: ShellViewModel) {
 
 /**
  * Studio: the Studio feature's own library place (#17), where Renders are set up and queued (#316)
- * from the Library's Tracks and playlists and the saved presets. The old editors stay reachable as a
- * sheet until they move into Studio (#334). The save folder is a Settings value, picked here as in the
- * first-run step.
+ * from the Library's Tracks and playlists and the saved presets, and where the clip editor and the
+ * Timeline cut Edits (#318) with the tools only the app can reach. The save folder is a Settings value,
+ * picked here as in the first-run step.
  */
 @Composable
 private fun StudioPlace(shell: ShellViewModel) {
@@ -374,17 +374,13 @@ private fun StudioPlace(shell: ShellViewModel) {
         remember(library.songs, library.playlists, visuals.presets, visuals.milkdrop) {
             renderChoicesOf(library, visuals.presets, visuals.milkdrop)
         }
-    Box(Modifier.fillMaxSize()) {
-        StudioRoute(
-            shell.studio,
-            onSaveFolderPicked = { shell.settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
-            renderChoices = choices,
-        )
-        TextButton(
-            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.EXPORT)) },
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-        ) { Text(stringResource(R.string.export_title)) }
-    }
+    val editorTools: EditorToolsViewModel = geodeViewModel()
+    StudioRoute(
+        shell.studio,
+        onSaveFolderPicked = { shell.settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
+        renderChoices = choices,
+        editorTools = editorTools,
+    )
 }
 
 /**
@@ -436,7 +432,6 @@ private fun PlayerSheet(
             Sheet.LISTENING -> ListeningRoute(shell.playback, elapsedNow = ::elapsedNow)
             Sheet.CUSTOMIZE -> CustomizePanel(shell, onHide = close, onBrowsePresets = close)
             Sheet.CAPTURE -> CaptureRoute(shell.capture)
-            Sheet.EXPORT -> ExportRoute()
         }
     }
 }

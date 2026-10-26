@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
@@ -135,7 +136,7 @@ class NativePlanTest {
     @Test
     fun `is exactly the engine's size`() {
         assertEquals(NativePlan.floatCount, plan.size)
-        assertEquals(3955, NativePlan.floatCount)
+        assertEquals(3956, NativePlan.floatCount)
     }
 
     @Test
@@ -343,12 +344,30 @@ class NativePlanTest {
     }
 
     @Test
-    fun `ends with Layer 2's Style, blend and influence`() {
-        assertEquals(NativePlan.floatCount, layerAt + NativePlan.LAYER_FLOATS)
-        assertEquals(listOf(0f, LayerBlend.SCREEN.ordinal.toFloat(), 0f), plan.subList(layerAt, plan.size))
+    fun `has Layer 2's Style, blend and influence before the Style`() {
+        val styleAt = layerAt + NativePlan.LAYER_FLOATS
+        assertEquals(listOf(0f, LayerBlend.SCREEN.ordinal.toFloat(), 0f), plan.subList(layerAt, styleAt))
         val layered =
             NativePlan.encode(customization.copy(layer = Layer(Fixtures.TUNNEL, LayerBlend.DIFFERENCE, LayerInfluence.TINT)))
-        assertEquals(listOf(StyleHash.of(Fixtures.TUNNEL).toFloat(), 7f, 4f), layered.subList(layerAt, layered.size))
+        assertEquals(listOf(StyleHash.of(Fixtures.TUNNEL).toFloat(), 7f, 4f), layered.subList(layerAt, styleAt))
+    }
+
+    @Test
+    fun `ends with the Style the Customization is for`() {
+        assertEquals(NativePlan.floatCount, layerAt + NativePlan.LAYER_FLOATS + NativePlan.STYLE_FLOATS)
+        assertEquals(StyleHash.of(Fixtures.JULIA).toFloat(), plan.last())
+        val tunnel = NativePlan.encode(customization.copy(style = Fixtures.TUNNEL))
+        assertEquals(StyleHash.of(Fixtures.TUNNEL).toFloat(), tunnel.last())
+    }
+
+    @Test
+    fun `names a MilkDrop preset's Style as the MilkDrop scene that draws it`() {
+        val milk = StyleHash.of(SceneId("milkdrop")).toFloat()
+        val preset = NativePlan.encode(customization.copy(style = MilkdropStyles.of("Ocean.milk")))
+        assertEquals(milk, preset.last())
+        val layered =
+            NativePlan.encode(customization.copy(layer = Layer(MilkdropStyles.of("Ocean.milk"), LayerBlend.SCREEN, LayerInfluence.NONE)))
+        assertEquals(milk, layered[layerAt])
     }
 
     @Test

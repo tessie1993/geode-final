@@ -7,6 +7,7 @@ import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.studio.api.EditSources
 import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderCodec
 import dev.geode.feature.studio.api.RenderExtras
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import dev.geode.feature.settings.api.EditSources as SettingsEditSources
 
 /**
  * A Render's look, frozen when it was queued (#338): the full Customization, Automations included, as
@@ -75,7 +77,10 @@ fun renderSettingsOf(settings: Settings): Flow<RenderSettings> =
         .map { renderSettingsOf(it.values) }
         .distinctUntilChanged()
 
-/** What a new Render starts from in [values] (#22, #28), whether Visuals off is on (#196), and Renders keep going (#28). */
+/**
+ * What a new Render starts from in [values] (#22, #28), whether Visuals off is on (#196), Renders keep
+ * going (#28), and what a saved Edit does with its videos (#318).
+ */
 fun renderSettingsOf(values: SettingsValues): RenderSettings {
     val export = values.export
     val format =
@@ -85,8 +90,21 @@ fun renderSettingsOf(values: SettingsValues): RenderSettings {
             fps = export.frameRate.fps,
             codec = if (export.codec == ExportCodec.HEVC) RenderCodec.HEVC else RenderCodec.H264,
         )
-    return RenderSettings(values.performance.visualsOff, format, RenderExtras(loudnessOf(export.loudness)), values.background.renders)
+    return RenderSettings(
+        values.performance.visualsOff,
+        format,
+        RenderExtras(loudnessOf(export.loudness)),
+        values.background.renders,
+        sourcesOf(export.editSources),
+    )
 }
+
+/** Settings' choice of what a saved Edit does with its videos, as Studio reads it (#318). */
+private fun sourcesOf(sources: SettingsEditSources): EditSources =
+    when (sources) {
+        SettingsEditSources.REFERENCE -> EditSources.REFERENCE
+        SettingsEditSources.COPY -> EditSources.COPY
+    }
 
 private fun aspectOf(ratio: ExportRatio): RenderAspect =
     when (ratio) {

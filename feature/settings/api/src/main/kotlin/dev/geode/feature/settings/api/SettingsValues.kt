@@ -354,7 +354,17 @@ enum class ExportLoudness {
     LEAVE_AS_IS,
 }
 
-/** Export preferences (was Export): what new renders start with. */
+/**
+ * What a saved Edit does with the Renders and Recordings it is cut from (#318, owner decision on #24):
+ * [REFERENCE] points at them where they are and copies nothing; [COPY] copies them beside the Edit in
+ * the Save folder, so the Edit still exports after a source is moved or deleted.
+ */
+enum class EditSources {
+    REFERENCE,
+    COPY,
+}
+
+/** Export preferences (was Export): what new renders start with, and what a saved Edit keeps. */
 data class ExportSettings(
     val quality: ExportQuality = ExportQuality.FHD1080,
     val frameRate: ExportFrameRate = ExportFrameRate.FPS60,
@@ -364,6 +374,8 @@ data class ExportSettings(
     val loudness: ExportLoudness = ExportLoudness.LEAVE_AS_IS,
     /** A notification when a render finishes, with Share and Open buttons (#28). */
     val finishedAlerts: Boolean = true,
+    /** Whether a saved Edit references its sources or copies them (#318); referencing is the default. */
+    val editSources: EditSources = EditSources.REFERENCE,
 )
 
 /**

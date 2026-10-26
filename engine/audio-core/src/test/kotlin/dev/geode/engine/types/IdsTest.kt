@@ -42,5 +42,8 @@ class IdsTest {
         assertNull(MilkdropStyles.file(SceneId("milkdrop")))
         assertNull(MilkdropStyles.file(MilkdropStyles.of("")))
         assertNull(MilkdropStyles.file(SceneId("my milkdrop:x.milk")))
+        assertEquals(SceneId("milkdrop"), MilkdropStyles.scene(ocean))
+        assertEquals(SceneId("tunnel"), MilkdropStyles.scene(SceneId("tunnel")))
+        assertEquals(MilkdropStyles.of(""), MilkdropStyles.scene(MilkdropStyles.of("")))
     }
 }

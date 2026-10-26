@@ -423,6 +423,13 @@ bool Renderer::setScene(const std::string& sceneId) {
 
 void Renderer::warmTransition(const std::string& id) { compositePass_.warmTransition(id); }
 
+uint32_t Renderer::drawnStyle() const { return activeScene_ != nullptr ? layer::styleHash(activeScene_->id()) : layer::kNoStyle; }
+
+uint32_t Renderer::requestedStyle() const {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return requestedSceneId_.empty() ? layer::kNoStyle : layer::styleHash(requestedSceneId_);
+}
+
 void Renderer::cut() {
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;

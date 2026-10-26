@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Cadence
@@ -33,8 +34,9 @@ import dev.geode.feature.customization.api.Trigger
  * Style switching's due moves for the reducer ([CustomizationEvent.StyleDue]). Style switching's slot
  * is marked held while the person holds it or Customize is open (#282).
  *
- * Layer 2 goes last: its Style, blend and influence. Its loop ([LayerLoops]) goes as one more Modulator
- * and its Reactions, after the person's own, which give up the last slots if the plan is full.
+ * Layer 2 goes next: its Style, blend and influence. Its loop ([LayerLoops]) goes as one more Modulator
+ * and its Reactions, after the person's own, which give up the last slots if the plan is full. The
+ * Style the Customization is for goes last ([STYLE_FLOATS]).
  */
 object NativePlan {
     const val MAX_REACTIONS: Int = 128
@@ -50,6 +52,13 @@ object NativePlan {
 
     /** Layer 2: its Style ([StyleHash], 0 when off), blend and influence. */
     const val LAYER_FLOATS: Int = 3
+
+    /**
+     * The Style the Customization is for ([StyleHash]), last: the engine keeps a Customization off the
+     * Style it draws until a change of Style to its own Style starts (#309). A MilkDrop preset's Style is
+     * named as the MilkDrop scene that draws it (#305), as is Layer 2's.
+     */
+    const val STYLE_FLOATS: Int = 1
 
     /** An index no array has: the engine ignores a link through it. */
     const val NO_INDEX: Float = 255f
@@ -80,7 +89,7 @@ object NativePlan {
     val floatCount: Int =
         HEADER_FLOATS + SharedProperty.entries.size + ExtraKind.entries.size + MACRO_COUNT + 2 * SoundSignal.entries.size +
             MAX_REACTIONS * REACTION_FLOATS + MAX_MODULATORS * MODULATOR_FLOATS + MAX_MACRO_LINKS * MACRO_LINK_FLOATS +
-            MAX_AUTOMATIONS * AUTOMATION_FLOATS + LAYER_FLOATS
+            MAX_AUTOMATIONS * AUTOMATION_FLOATS + LAYER_FLOATS + STYLE_FLOATS
 
     private const val MILLIS_PER_SECOND = 1000f
 
@@ -320,9 +329,11 @@ object NativePlan {
         }
 
         w.skipTo(linksAt + MAX_MACRO_LINKS * MACRO_LINK_FLOATS + MAX_AUTOMATIONS * AUTOMATION_FLOATS)
-        w.put(layer.style?.let { StyleHash.of(it).toFloat() } ?: 0f)
+        // The engine draws a MilkDrop preset's Style (#305) as its MilkDrop scene, so the plan names that.
+        w.put(layer.style?.let { StyleHash.of(MilkdropStyles.scene(it)).toFloat() } ?: 0f)
         w.put(layer.blend.ordinal.toFloat())
         w.put(layer.influence.ordinal.toFloat())
+        w.put(StyleHash.of(MilkdropStyles.scene(customization.style)).toFloat())
         return w.out.asList()
     }
 }

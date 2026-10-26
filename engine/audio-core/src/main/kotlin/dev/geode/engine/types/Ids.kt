@@ -45,4 +45,10 @@ object MilkdropStyles {
 
     /** The preset file [style] plays, or null when it is not a MilkDrop preset Style. */
     fun file(style: SceneId): String? = style.value.removePrefix(PREFIX).takeIf { style.value.startsWith(PREFIX) && it.isNotEmpty() }
+
+    /** The engine's MilkDrop scene, which draws every preset Style. */
+    val SCENE: SceneId = SceneId("milkdrop")
+
+    /** The scene the engine draws for [style]: [SCENE] for a MilkDrop preset's Style, else the Style itself. */
+    fun scene(style: SceneId): SceneId = if (file(style) != null) SCENE else style
 }

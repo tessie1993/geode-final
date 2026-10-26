@@ -14,6 +14,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -244,6 +245,10 @@ class SettingsRulesTest {
                 defaults.copy(export = defaults.export.copy(quality = ExportQuality.QHD1440)),
             ),
             Row(ExportCommand.SetFinishedAlerts(false), defaults.copy(export = defaults.export.copy(finishedAlerts = false))),
+            Row(
+                ExportCommand.SetEditSources(EditSources.COPY),
+                defaults.copy(export = defaults.export.copy(editSources = EditSources.COPY)),
+            ),
         )
 
     private val backgroundRows: List<Row> =

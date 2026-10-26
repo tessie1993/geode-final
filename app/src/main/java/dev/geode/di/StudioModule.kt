@@ -6,6 +6,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.geode.AppPresence
+import dev.geode.data.EditorProjectStore
 import dev.geode.export.ExportService
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.core.BuiltInStyles
@@ -21,7 +22,9 @@ import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.scene.SceneIds
+import dev.geode.studio.AppEditDrafts
 import dev.geode.studio.AppRenderLooks
+import dev.geode.studio.AppTransitionShaders
 import dev.geode.studio.LiveVisualRecorder
 import dev.geode.studio.NativeRenderEngine
 import dev.geode.studio.RenderAlerts
@@ -38,7 +41,8 @@ import javax.inject.Singleton
  * Renders' settings through Settings, and the Recordings of the live Visual (#317). It lives as long
  * as the process, like the other features' stores, so where the user is browsing and the queue survive
  * every route. A Render's look is frozen
- * from Customization's interface as it is queued (#338).
+ * from Customization's interface as it is queued (#338). The editors' Edits export through the same
+ * queue (#318).
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -75,7 +79,19 @@ object StudioModule {
         // A Recording draws from the live Visual and hears the engine's one audio feed (#317).
         val recorder =
             LiveVisualRecorder(application, settings, { PlaybackEngine.feed }, LiveVisualPresence::isShown, Dispatchers.Default)
-        val sources = androidStudioSources(application, settings, looks, engine, AppPresence.inFront, recorder)
+        // The editors (#318) draw transitions from the engine's catalogue and keep the Timeline's cut
+        // where the old editor kept it, so a cut made before the move opens as it was.
+        val sources =
+            androidStudioSources(
+                application,
+                settings,
+                looks,
+                engine,
+                AppPresence.inFront,
+                recorder,
+                transitions = AppTransitionShaders(application),
+                drafts = AppEditDrafts(EditorProjectStore(application), Dispatchers.IO),
+            )
         return studioStore(sources, runtime).also { studio ->
             val scope = application.geodeContainer.appScope
             // The queue runs in the foreground service whenever a Render waits or runs (ADR-0004), unless

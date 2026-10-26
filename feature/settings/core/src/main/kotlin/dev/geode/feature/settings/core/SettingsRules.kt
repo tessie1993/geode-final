@@ -174,6 +174,7 @@ object SettingsRules {
             is ExportCommand.SetCodec -> export.copy(codec = command.codec)
             is ExportCommand.SetLoudness -> export.copy(loudness = command.loudness)
             is ExportCommand.SetFinishedAlerts -> export.copy(finishedAlerts = command.on)
+            is ExportCommand.SetEditSources -> export.copy(editSources = command.sources)
         }
 
     private fun folders(

@@ -10,17 +10,17 @@ import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
-import dev.geode.feature.studio.core.edit.Clip
-import dev.geode.feature.studio.core.edit.ClipContent
-import dev.geode.feature.studio.core.edit.ClipEdit
-import dev.geode.feature.studio.core.edit.ClipParams
-import dev.geode.feature.studio.core.edit.ClipTransition
-import dev.geode.feature.studio.core.edit.EditorProject
-import dev.geode.feature.studio.core.edit.KeyframeSheet
-import dev.geode.feature.studio.core.edit.Lane
-import dev.geode.feature.studio.core.edit.LaneKind
-import dev.geode.feature.studio.core.edit.SubtitleCue
-import dev.geode.feature.studio.core.edit.Subtitles
+import dev.geode.feature.studio.api.edit.Clip
+import dev.geode.feature.studio.api.edit.ClipContent
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipParams
+import dev.geode.feature.studio.api.edit.ClipTransition
+import dev.geode.feature.studio.api.edit.EditorProject
+import dev.geode.feature.studio.api.edit.KeyframeSheet
+import dev.geode.feature.studio.api.edit.Lane
+import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.SubtitleCue
+import dev.geode.feature.studio.api.edit.Subtitles
 
 /**
  * The editor project as one Media3 [Composition]: every media lane end to end (gaps closed) and

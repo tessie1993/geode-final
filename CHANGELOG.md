@@ -107,8 +107,11 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   default) or a seeded Random that never repeats the last; there is no hard
   cut. The new Style starts from the old one's picture, trails and echo
   included, instead of from black, and the old one keeps its trails on its way
-  out. `glslcheck --effects` draws every look along its progress and fails one
-  that dips to black or washes to white.
+  out. While a change waits for its downbeat, the old Style keeps its own
+  Customization: each Customization now names its Style in the plan, and the
+  engine holds one for a Style not yet drawn until the change to it starts.
+  `glslcheck --effects` draws every look along its progress and fails one that
+  dips to black or washes to white.
 
 - **The picture follows the music's structure, rhythm, timbre and space (#294).**
   One feature bus in the engine reads everything the analysis hears beyond the

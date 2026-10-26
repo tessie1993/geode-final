@@ -98,4 +98,34 @@ private:
 // The eased progress the composite draws: smootherstep, so a change starts and lands gently.
 float ease(float progress);
 
+// Which Customization the drawn Style wears while a change of Style is on its way. A Customization
+// names the Style it is for (the plan's `style`); one for another Style than the one drawn is held,
+// so the drawn Style keeps its own look while the change waits for its downbeat, and it is let go on
+// the first frame its own Style is drawn. Since the Customization can reach the engine a little before
+// the change of Style is asked for, a held one that no change is asked towards is let go after
+// kRequestGraceSeconds: it is then for a Style that will not be drawn, and the drawn one takes it.
+// Nothing is held longer than kMaxHoldSeconds, the longest a change waits for its downbeat and then
+// some, so a change that can never start (a Style this engine cannot build) holds nothing for good.
+// Styles are layer::styleHash names; 0 names none.
+class LookHold {
+public:
+    static constexpr float kRequestGraceSeconds = 0.5f;
+    static constexpr float kMaxHoldSeconds = 4.0f;
+
+    // A new Customization for `style` came while `drawn` is drawn: true when it applies now, false
+    // when it is held (in place of any held before it).
+    bool offer(uint32_t style, uint32_t drawn);
+    // One display frame while one is held, with the Style drawn and the one asked for now: true on the
+    // frame the held Customization applies, after which nothing is held.
+    bool step(uint32_t drawn, uint32_t requested, float dt);
+    bool holding() const { return holding_; }
+
+private:
+    bool holding_ = false;
+    uint32_t style_ = 0;
+    float unasked_ = 0.0f;
+    float held_ = 0.0f;
+};
+static_assert(LookHold::kMaxHoldSeconds > DownbeatGate::kMaxWaitSeconds + LookHold::kRequestGraceSeconds);
+
 }  // namespace geode::viz::transition

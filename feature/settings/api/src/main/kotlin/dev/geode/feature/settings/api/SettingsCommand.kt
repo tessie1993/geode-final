@@ -243,6 +243,11 @@ sealed interface ExportCommand : SettingsCommand {
     data class SetFinishedAlerts(
         val on: Boolean,
     ) : ExportCommand
+
+    /** Whether a saved Edit references its sources or copies them (#318). */
+    data class SetEditSources(
+        val sources: EditSources,
+    ) : ExportCommand
 }
 
 sealed interface FolderCommand : SettingsCommand {
