@@ -229,6 +229,6 @@ class StyleCatalogueTest {
     }
 
     private companion object {
-        const val EXPECTED_STYLES = 112
+        const val EXPECTED_STYLES = 131
     }
 }
