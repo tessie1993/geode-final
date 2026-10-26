@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -85,7 +86,8 @@ void main() {
         float d = dye(s, 2.6 + 1.4 * t);
         cloud += d * w;
         // The thin bright edges: where the dye is steep, not where it is high.
-        filament += w * smoothstep(0.52, 0.78, d) * (1.0 - smoothstep(0.78, 0.94, d));
+        filament += w * smoothstep(0.78 - 0.26 * xm(uXThickness), 0.78, d)
+            * (1.0 - smoothstep(0.78, 0.78 + 0.16 * xm(uXThickness), d));
         wsum += w;
     }
     cloud /= wsum;

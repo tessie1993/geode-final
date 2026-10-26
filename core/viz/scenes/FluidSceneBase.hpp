@@ -24,6 +24,7 @@ public:
     void setParams(const SceneParams& params) override { params_ = params; }
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void update(const GeodeFeatureFrame& features, float dt) override;
+    void setExtras(const ExtraValues& values) override { extras_ = values; }
     void setGravityField(const GravityField* field) override { gravity_ = field; }
 
 protected:
@@ -58,6 +59,8 @@ protected:
     PerformanceMonitor monitor_;
     float pcmStrike_ = 0.0f;
     SceneParams params_;
+    // The Style's Extras this frame, mapped onto the family's own parameters where they are drawn.
+    ExtraValues extras_ = ExtraValues::neutral();
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
     bool hasPending_ = false;

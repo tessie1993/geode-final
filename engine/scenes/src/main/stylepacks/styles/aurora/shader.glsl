@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -172,9 +173,9 @@ float fbm(vec2 p) {
 }
 void main() {
     vec2 uv = view();
-    float t = uTime * 0.35;
-    float sheet = fbm(vec2(uv.x * 1.5 + t, t * 0.6));
-    float curtain = exp(-abs(uv.y + (sheet - 0.5) * 1.7) * (2.4 - uMid * 1.3));
+    float t = uXDriftTime * 0.35;
+    float sheet = fbm(vec2(uv.x * 1.5 * xm(uXScale) + t, t * 0.6));
+    float curtain = exp(-abs(uv.y + (sheet - 0.5) * 1.7) * (2.4 - uMid * 1.3) / xm(uXThickness));
     float shimmer = fbm(uv * 3.0 + vec2(0.0, -t * 2.0)) * (0.5 + uTreble);
     vec3 col = pal(sheet + uv.y * 0.15) * curtain * (0.35 + uEnergy * 1.1 + shimmer * 0.6 + uBeat * uBeatResponse * 0.2);
     fragColor = vec4(grade(col), 1.0);

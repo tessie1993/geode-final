@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -73,11 +74,13 @@ float neon(float d, float w) {
 
 float gWidth;
 float gFolds;
+float gLayers;
 
 vec3 patternOnPlane(vec2 q) {
     vec3 col = vec3(0.0);
     float scale = 1.0;
-    for (int i = 0; i < NEON_RECURSION; i++) {
+    for (int i = 0; i < NEON_RECURSION * 2; i++) {
+        if (float(i) >= gLayers) break;
         vec2 m = motif(q);
         float hue = m.y > 0.5 ? mix(0.61, 0.89, fract(0.37 * float(i) + 0.1 * sin(uTime * 0.11))) : 0.33;
         float glow = neon(m.x * scale, gWidth) / (1.0 + 0.6 * float(i));
@@ -113,6 +116,7 @@ void main() {
     float hit = uSpike;
 
     gWidth = mix(0.012, 0.035, clamp(trebA, 0.0, 1.0));
+    gLayers = max(1.0, floor(float(NEON_RECURSION) * uXComplexity + 0.5));
     // A spike re-tiles the hall: 4, 6 or 8 arms, held until the next one.
     gFolds = (uKaleido > 0.5 && uSymmetry >= 2.0) ? uSymmetry : 4.0 + 2.0 * floor(uFormPhase * 3.0);
 

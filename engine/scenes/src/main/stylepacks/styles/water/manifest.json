@@ -2,5 +2,12 @@
   "version": 1,
   "id": "water",
   "label": "Water",
-  "family": "water"
+  "family": "water",
+  "extras": [
+    { "name": "drift", "min": 0, "max": 2, "default": 1 },
+    { "name": "viscosity", "min": 0, "max": 2, "default": 1 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 }
+  ]
 }

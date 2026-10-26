@@ -18,6 +18,7 @@ class FluidScene : public FluidSceneBase {
 public:
     FluidScene(const styles::FluidStyle& style, ProgramLoader loader, SceneHost host)
         : FluidSceneBase(style.id, kTimeWrapSeconds, loader, std::move(host)),
+          base_(style),
           style_(style),
           sim_(loader_),
           look_(loader_),
@@ -32,6 +33,12 @@ public:
     void release() override;
     GLuint velocityTexture() const override { return sim_.available() ? sim_.velocityTex() : 0; }
     bool isFluid() const override { return true; }
+    // SWIRL the curl, VISCOSITY the velocity's dissipation, DECAY how long the dye lasts, SIZE and FORCE
+    // the splats.
+    void setExtras(const ExtraValues& values) override {
+        FluidSceneBase::setExtras(values);
+        style_ = extras::apply(base_, values);
+    }
     // A finger stirs the fluid and lays a thread of ink along its path (#315).
     bool ownsTouchStrokes() const override { return true; }
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) override;
@@ -57,6 +64,8 @@ private:
 
     void splatTouchStrokes(float hueBase, float hueSpan);
 
+    // The Style as its pack tunes it, and as its Extras move it this frame.
+    styles::FluidStyle base_;
     styles::FluidStyle style_;
     fluid::FluidSim sim_;
     fluid::Look look_;

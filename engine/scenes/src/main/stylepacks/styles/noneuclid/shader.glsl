@@ -12,6 +12,7 @@ out vec4 fragColor;
 // block/aband/awave/view() first, then the palette, then grade() - which calls
 // pal() and so must come after it.
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -314,7 +315,7 @@ float gEpsPerT;
 float lattice(vec3 p) {
     vec3 c = (fract(p / CELL + 0.5) - 0.5) * CELL;
     float bead = length(c) - gBead;
-    float struts = min(length(c.yz), min(length(c.xz), length(c.xy))) - CELL_STRUT;
+    float struts = min(length(c.yz), min(length(c.xz), length(c.xy))) - CELL_STRUT * xm(uXThickness);
     return smin(bead, struts, CELL_WELD);
 }
 
@@ -603,7 +604,7 @@ void main() {
     // event that was wanted.
     float detail = clamp((uSteps - 64.0) / 64.0, 0.0, 1.0);
     gIters = clamp(
-        1.0 + floor(detail * 2.0 + 0.5) + floor(beatHit * clamp(uBeatResponse, 0.0, 1.0) * 1.99),
+        floor((1.0 + floor(detail * 2.0 + 0.5) + floor(beatHit * clamp(uBeatResponse, 0.0, 1.0) * 1.99)) * uXComplexity + 0.5),
         1.0,
         float(MAX_FOLDS)
     );
@@ -684,7 +685,7 @@ void main() {
 
     if (satWins) {
         col = dmtSatelliteColor(ro + rd * satT - gCenter, rd, 0.10 + 0.15 * energyN, trebN, satCount, BALL_R + SAT_CLEAR, SAT_RADIUS, SAT_PERIOD);
-        col = mix(col, background, 1.0 - exp(-satT * FOG_RATE));
+        col = mix(col, background, 1.0 - exp(-satT * FOG_RATE * uXFog));
     } else if (hitT > 0.0) {
         vec3 p = ro + rd * hitT;
         // Sampled slightly wider than the surface epsilon: the epsilon is
@@ -751,7 +752,7 @@ void main() {
 
         // Into the void with distance, so the far side of the ball sits behind
         // the near side rather than beside it.
-        col = mix(col, background, 1.0 - exp(-hitT * FOG_RATE));
+        col = mix(col, background, 1.0 - exp(-hitT * FOG_RATE * uXFog));
         // Dissolve the clip. The bounding ball is a hard intersection, so
         // without this the silhouette is a perfect circle and the whole style
         // reads as a disc with a picture on it rather than as a body with a

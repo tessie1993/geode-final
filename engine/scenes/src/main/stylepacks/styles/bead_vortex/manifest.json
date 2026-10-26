@@ -3,5 +3,8 @@
   "id": "bead_vortex",
   "label": "Bead Vortex",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 }
+  ]
 }

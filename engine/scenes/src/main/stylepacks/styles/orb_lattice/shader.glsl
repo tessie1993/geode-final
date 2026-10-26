@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -76,7 +77,7 @@ void main() {
     float folds = foldCount();
     float split = mix(0.01, 0.04, clamp(trebA, 0.0, 1.0));
     float zoomPulse = 1.0 + 0.12 * bassA * uBeatResponse;
-    vec2 p = uv / zoomPulse;
+    vec2 p = uv / (zoomPulse * xm(uXSize));
     float r2 = dot(p, p);
 
     vec3 col = vec3(0.0, 0.08, 0.04);
@@ -87,7 +88,7 @@ void main() {
 
     if (r2 < 1.0) {
         vec2 s = sphereUv(p) + flowOffset(0.9) + vec2(0.0, 0.02 * sin(uTime * 0.17));
-        vec2 q = kaleido(s * 1.25, folds);
+        vec2 q = kaleido(s * 1.25 * xm(uXScale), folds);
         // The new spawn grows its offset in over a second rather than cutting to it.
         q += 0.12 * vec2(sin(uTime * 0.19), cos(uTime * 0.23));
         q += 0.18 * (uSpawnSeed - 0.5) * spawnGrow(1.1) * uMoveDir;

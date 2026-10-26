@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -158,8 +159,8 @@ vec3 grade(vec3 col) {
 
 // Classic demo-scene plasma, breathing with the mix.
 void main() {
-    vec2 uv = view() * 2.0;
-    float t = uTime * 0.6;
+    vec2 uv = view() * 2.0 * xm(uXScale);
+    float t = uXDriftTime * 0.6;
     float v = sin(uv.x * 2.0 + t) + sin(uv.y * 2.3 - t * 1.2)
         + sin((uv.x + uv.y) * 1.7 + t * 0.7)
         + sin(length(uv) * (3.0 + uBass * 3.0) - t * 2.0);

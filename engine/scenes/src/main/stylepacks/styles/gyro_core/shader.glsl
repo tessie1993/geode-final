@@ -170,17 +170,16 @@ void main() {
     float beatEnv = clamp(uBeat, 0.0, 1.0) * clamp(uBeatResponse, 0.0, 2.0);
     gBand = vec4(bass, mid, treb, swell);
 
-    // The gimbal: every spin INTEGRATED (uTime for Speed, uFlowPhase for loudness),
-    // and each ring leaned by its own band, a bounded offset that glides with it.
-    float a0 = 0.13 * uTime + uFlowPhase * 0.5 + 0.3 * bass;
-    float a1 = 0.21 * uTime + uFlowPhase * 0.8 + 0.45 * mid;
-    float a2 = -0.29 * uTime - uFlowPhase * 1.1 + 0.45 * treb;
-    float a3 = 0.37 * uTime + uFlowPhase * 1.4 + 0.45 * swell;
-    float spin = xm(uXSpin);
-    gFrame[0] = rotY(a0 * spin);
-    gFrame[1] = rotX(a1 * spin) * gFrame[0];
-    gFrame[2] = rotY(a2 * spin) * gFrame[1];
-    gFrame[3] = rotX(a3 * spin) * gFrame[2];
+    // The gimbal: every spin INTEGRATED (uXSpinTime for Speed at the SPIN Extra's rate, uFlowPhase
+    // for loudness), and each ring leaned by its own band, a bounded offset that glides with it.
+    float a0 = 0.13 * uXSpinTime + uFlowPhase * 0.5 + 0.3 * bass;
+    float a1 = 0.21 * uXSpinTime + uFlowPhase * 0.8 + 0.45 * mid;
+    float a2 = -0.29 * uXSpinTime - uFlowPhase * 1.1 + 0.45 * treb;
+    float a3 = 0.37 * uXSpinTime + uFlowPhase * 1.4 + 0.45 * swell;
+    gFrame[0] = rotY(a0);
+    gFrame[1] = rotX(a1) * gFrame[0];
+    gFrame[2] = rotY(a2) * gFrame[1];
+    gFrame[3] = rotX(a3) * gFrame[2];
 
     vec3 rdl = normalize(vec3(uv, GC_FOCAL));
     vec2 look = touchLook();

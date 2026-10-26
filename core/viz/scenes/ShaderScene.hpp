@@ -107,8 +107,8 @@ private:
     static constexpr float kFlowEnergyHz = 0.22f;
     // Well past the longest spawnGrow() horizon any style asks for.
     static constexpr float kSpawnAgeMax = 60.0f;
-    // The camera's distance down lib_dmt's flight path (uFlight): 1.4 units per second of uTime plus
-    // 9 per unit of uFlowPhase, the pace Rod Tunnel flies at. Integrated here and wrapped at the
+    // The camera's distance down lib_dmt's flight path (uFlight): 1.4 units per second of uTime, at the
+    // FLIGHT Extra's rate as uXFlightTime runs, plus 9 per unit of uFlowPhase, the pace Rod Tunnel flies at. Integrated here and wrapped at the
     // path's period (DMT_FLIGHT_WRAP, 2000 pi: every term of dmtTunnelPath repeats over it), so the
     // camera keeps full float precision however long the Visual runs, where the sum of two clocks
     // already in the thousands shimmered within the hour (#280).
@@ -130,7 +130,7 @@ private:
     void uploadTouch();
     // uGravity, uTilt and uTiltWeight (lib_gravity.glsl): exact zeros with no reading.
     void uploadGravity();
-    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_scene_uniforms.glsl).
+    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_style.glsl).
     void uploadCamera();
     void uploadExtras();
     void set1f(const char* name, float value);
@@ -208,6 +208,8 @@ private:
 
     CameraPose camera_;
     ExtraValues extras_ = ExtraValues::neutral();
+    // uXFlightTime, uXSpinTime and uXDriftTime: the clocks the rate Extras run.
+    std::array<float, 3> rateClocks_{};
     // The compiled Style reads uCamRot: it moves a camera of its own.
     bool ownsCamera_ = false;
 

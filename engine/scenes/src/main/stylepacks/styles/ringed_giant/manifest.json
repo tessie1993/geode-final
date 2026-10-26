@@ -4,5 +4,8 @@
   "label": "Ringed Giant",
   "family": "shader",
   "shader": "shader.glsl",
-  "renderScale": 0.75
+  "renderScale": 0.75,
+  "extras": [
+    { "name": "size", "min": 0, "max": 2, "default": 1 }
+  ]
 }

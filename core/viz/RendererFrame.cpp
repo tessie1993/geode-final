@@ -128,27 +128,12 @@ const mod::FamilyRanges& Renderer::rangesFor(const std::string& sceneId) {
     if (sceneId == rangesSceneId_) return ranges_;
     rangesSceneId_ = sceneId;
     ranges_ = mod::FamilyRanges::sharedCore();
-    if (const packs::StylePack* pack = registry_.pack(sceneId); pack != nullptr) {
-        for (const packs::ExtraSpec& extra : pack->extras) {
-            const bool stepped = mod::extraNamed(extra.name) == static_cast<int>(mod::Extra::Variant);
-            ranges_.declareExtra(extra.name, extra.min, extra.max, "linear", stepped);
-        }
-    }
+    if (const packs::StylePack* pack = registry_.pack(sceneId); pack != nullptr) extras::declare(ranges_, *pack);
     return ranges_;
 }
 
 ExtraValues Renderer::extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const {
-    ExtraValues values = ExtraValues::neutral();
-    const packs::StylePack* pack = registry_.pack(sceneId);
-    if (pack == nullptr) return values;
-    for (const packs::ExtraSpec& extra : pack->extras) {
-        const int at = mod::extraNamed(extra.name);
-        if (at < 0) continue;
-        const auto e = static_cast<size_t>(at);
-        values.declared[e] = true;
-        values.value[e] = frame != nullptr ? frame->extras[e] : extra.defaultValue;
-    }
-    return values;
+    return extras::of(registry_.pack(sceneId), frame);
 }
 
 void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {

@@ -12,5 +12,11 @@
     "look": 1,
     "seedJitter": 7.0,
     "hueOffset": 0.09
-  }
+  },
+  "extras": [
+    { "name": "growth", "min": 0, "max": 2, "default": 1 },
+    { "name": "spread", "min": 0, "max": 2, "default": 1 },
+    { "name": "variant", "min": 0, "max": 9, "default": 0 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ]
 }

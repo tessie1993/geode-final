@@ -35,6 +35,14 @@ uniform float uXVariant;
 uniform float uXCenterX;
 uniform float uXCenterY;
 
+// The Style's own rates as clocks: uTime (ShaderScene's speed-integrated clock) running at the rate the
+// FLIGHT, SPIN and DRIFT Extras set. ShaderScene integrates them, so a Reaction or a hand moving one of
+// these changes how fast the Style moves and never jumps the picture, as multiplying uTime by the Extra
+// would. At the neutral 1 each one is uTime. A shader reads a rate Extra through its clock.
+uniform float uXFlightTime;
+uniform float uXSpinTime;
+uniform float uXDriftTime;
+
 // A multiplier Extra kept off 0, so a scale, count or size never collapses.
 float xm(float extra) { return max(extra, 0.05); }
 // A whole count `n` times its COUNT Extra, never below 1.

@@ -19,7 +19,7 @@ namespace geode::viz {
 class AcidScene : public Scene {
 public:
     AcidScene(const styles::AcidStyle& style, ProgramLoader loader, SceneHost host)
-        : id_(style.id), style_(style), loader_(loader), host_(std::move(host)) {}
+        : id_(style.id), base_(style), style_(style), loader_(loader), host_(std::move(host)) {}
     ~AcidScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -32,6 +32,9 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    // VARIANT the mode, FLIGHT the dive, SPIN the turn, DECAY the feedback, DRIFT the hue's run,
+    // VISCOSITY the liquid warp and SWIRL the modulation.
+    void setExtras(const ExtraValues& values) override { style_ = extras::apply(base_, values); }
 
 private:
     static constexpr int kSimRes = 540;
@@ -46,6 +49,8 @@ private:
     void fillSpokes(const float* bands);
 
     std::string id_;
+    // The Style as its pack tunes it, and as its Extras move it this frame.
+    styles::AcidStyle base_;
     styles::AcidStyle style_;
     ProgramLoader loader_;
     SceneHost host_;

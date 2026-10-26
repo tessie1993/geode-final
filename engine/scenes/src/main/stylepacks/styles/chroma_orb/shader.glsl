@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -118,7 +119,7 @@ void main() {
 
     // The sphere fits the shorter axis, so a portrait phone shows the whole
     // orb in its field instead of a crop of its middle.
-    vec2 p = uv / (ORB_RADIUS * min(1.0, uResolution.x / uResolution.y));
+    vec2 p = uv / (ORB_RADIUS * xm(uXSize) * min(1.0, uResolution.x / uResolution.y));
     float rr = length(p);
     vec3 col = bokeh(uv);
     // Halo the sphere sits in; wider on a hit.

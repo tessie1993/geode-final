@@ -138,6 +138,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -166,9 +167,9 @@ void main() {
     // Travel is INTEGRATED: uEnergyPhase is speed x loudness summed over time, so a loud passage
     // speeds the rings up smoothly. `uTime * (0.6 + uEnergy * 2.0)` jumped the whole tunnel every
     // time loudness moved, further the longer it had been running.
-    float depth = 0.3 / radius + uTime * 0.6 + uEnergyPhase * 2.0 + uBeat * uBeatResponse * 0.25;
-    float band = aband(fract(angle + depth * 0.05));
-    float rings = smoothstep(0.35, 0.9, fract(depth * 2.0));
+    float depth = 0.3 / radius + uXFlightTime * 0.6 + uEnergyPhase * 2.0 + uBeat * uBeatResponse * 0.25;
+    float band = aband(fract(angle + depth * 0.05 * uXSpin));
+    float rings = smoothstep(0.35, 0.9, fract(depth * 2.0 * xm(uXScale)));
     float wave = awave(fract(angle * 2.0));
     vec3 col = pal(depth * 0.15) * (0.15 + band * 1.6) * rings;
     col += pal(0.6) * wave * uTreble * 0.6;

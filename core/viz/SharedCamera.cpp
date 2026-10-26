@@ -89,26 +89,4 @@ const CameraPose& CameraRig::step(const CameraInput& in, float hit, float dt, bo
 
 void CameraRig::reset() { *this = CameraRig{}; }
 
-ExtraValues ExtraValues::neutral() {
-    ExtraValues values;
-    for (size_t e = 0; e < mod::kExtraCount; ++e) values.value[e] = neutralOf(static_cast<mod::Extra>(e));
-    return values;
-}
-
-float ExtraValues::neutralOf(mod::Extra extra) {
-    switch (extra) {
-        case mod::Extra::Variant:
-        case mod::Extra::CenterX:
-        case mod::Extra::CenterY:
-            return 0.0f;
-        default:
-            return 1.0f;
-    }
-}
-
-float ExtraValues::multiplier(mod::Extra extra, float floor) const {
-    const float v = (*this)[extra];
-    return std::isfinite(v) ? std::max(v, floor) : 1.0f;
-}
-
 }  // namespace geode::viz
