@@ -159,6 +159,10 @@ FEEDBACK_FIELDS = {
     "flow": ("pair", -0.5, 0.5), "stretch": ("pair", 0.5, 2.0), "warp": ("number", 0.0, 1.0),
     "tint": ("rgb", 0.0, 1.0), "center": ("pair", 0.0, 1.0), "react": ("number", 0.0, 1.0),
 }
+# What the warp paints into the loop (lib_feedback's fbPaint): the outer and inner borders (#363), each
+# needing its width above 0; FeedbackWarp.hpp kMaxBorderSize.
+FEEDBACK_BORDER = ("size", {"size": ("number", 0.0, 0.1), "color": ("rgb", 0.0, 1.0), "alpha": ("number", 0.0, 1.0)})
+FEEDBACK_PARTS = {"outer": FEEDBACK_BORDER, "inner": FEEDBACK_BORDER}
 FEEDBACK_EXTRAS = {"decay", "flight", "spin", "drift", "swirl"}
 FEEDBACK_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_feedback[ \t]*$", re.MULTILINE)
 FEEDBACK_SETTLES = re.compile(r"\b(fbSettle|fbWarp)\s*\(")
@@ -652,9 +656,13 @@ def check_feedback(manifest: dict, family: str, folder: Path, where: str, report
     inputs = manifest.get("inputs", [])
     if not isinstance(inputs, list) or "previous_frame" not in inputs:
         report.error(where, 'a Style with "feedback" reads the warped picture as "previous_frame", which "inputs" must declare')
-    unknown = set(feedback) - set(FEEDBACK_FIELDS) - {"shader"}
+    allowed = set(FEEDBACK_FIELDS) | set(FEEDBACK_PARTS) | {"shader"}
+    unknown = set(feedback) - allowed
     if unknown:
-        report.error(where, f'"feedback" may hold only {sorted(set(FEEDBACK_FIELDS) | {"shader"})}, not {sorted(unknown)}')
+        report.error(where, f'"feedback" may hold only {sorted(allowed)}, not {sorted(unknown)}')
+    for key, shape in FEEDBACK_PARTS.items():
+        if key in feedback:
+            check_part(f"feedback {key}", feedback[key], shape, where, report)
     for key, (kind, low, high) in FEEDBACK_FIELDS.items():
         if key not in feedback:
             continue
@@ -845,7 +853,8 @@ GOOD_MANIFESTS = {
         "version": 1, "id": "loop", "label": "Loop", "family": "shader", "shader": "shader.glsl", "inputs": ["previous_frame"],
         "extras": [{"name": "decay", "min": 0, "max": 2, "default": 1}],
         "feedback": {"decay": 0.5, "zoom": 1.2, "rotate": 0.1, "flow": [0, 0.05], "stretch": [1, 1.1], "warp": 0.3,
-                     "tint": [1, 0.9, 0.8], "center": [0.5, 0.5], "react": 0.5, "shader": "warp.glsl"},
+                     "tint": [1, 0.9, 0.8], "center": [0.5, 0.5], "react": 0.5, "shader": "warp.glsl",
+                     "outer": {"size": 0.02, "color": [1, 0.8, 0.6], "alpha": 0.5}, "inner": {"size": 0.01, "alpha": 0.3}},
         "reactivity": {"micro": ["bands"]},
     },
 }
@@ -970,6 +979,11 @@ def self_test() -> int:
         "feedback zoom out of range": setter(["loop", "feedback", "zoom"], 3),
         "feedback flow not a pair": setter(["loop", "feedback", "flow"], [0.1]),
         "feedback tint that brightens": setter(["loop", "feedback", "tint"], [1, 1, 1.2]),
+        "feedback border not an object": setter(["loop", "feedback", "outer"], 0.02),
+        "feedback border without a width": setter(["loop", "feedback", "outer"], {"alpha": 0.5}),
+        "feedback border too wide": setter(["loop", "feedback", "inner", "size"], 0.3),
+        "feedback border that brightens": setter(["loop", "feedback", "outer", "color"], [1, 1, 1.5]),
+        "feedback border with an unknown key": setter(["loop", "feedback", "inner", "glow"], 1),
         "feedback warp shader missing": lambda f, i, m, s: s.update({"loop": [("shader.glsl", LOOP_SHADER)]}),
         "feedback warp shader outside the folder": setter(["loop", "feedback", "shader"], "../warp.glsl"),
         "feedback warp shader without lib_feedback": lambda f, i, m, s: s.update(

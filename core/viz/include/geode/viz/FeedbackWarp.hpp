@@ -61,6 +61,23 @@ inline constexpr int kGridColumns = 32;
 inline constexpr int kGridRows = 24;
 inline constexpr int kGridVertices = kGridColumns * kGridRows * 6;
 
+// What the warp paints into the loop before it keeps it (lib_feedback.glsl fbPaint): borders, whose
+// copies the zoom carries inward into a tunnel or outward off the frame (#363). What is painted is a
+// source of light like the Style's own drawing, so the loop's decay still bounds it; it eases in over
+// the first kPaintFadeSeconds of each visit, so nothing appears in one frame.
+inline constexpr float kMaxBorderSize = 0.1f;
+inline constexpr float kPaintFadeSeconds = 1.0f;
+
+// One border: a band `size` frame heights wide, the outer one along the frame's edge and the inner one
+// just inside it, painted in `color` with `alpha`, the share of it the band takes on over a second.
+struct Border {
+    float size = 0.0f;
+    std::array<float, 3> color{1.0f, 1.0f, 1.0f};
+    float alpha = 0.0f;
+
+    bool operator==(const Border&) const = default;
+};
+
 struct WarpSpec {
     bool on = false;
     // The share of the picture's light still there after one second (before the tint).
@@ -81,6 +98,9 @@ struct WarpSpec {
     std::array<float, 2> center{0.5f, 0.5f};
     // How much the music's swell and beat speed the motion up, 0..1.
     float react = 0.0f;
+    // The borders painted into the loop (#363); off while their size or alpha is 0.
+    Border outer;
+    Border inner;
 
     bool operator==(const WarpSpec&) const = default;
 };
@@ -113,6 +133,14 @@ struct Affine {
     std::array<float, 2> shift{0.0f, 0.0f};
 };
 
+// One frame of a border as the warp paints it: its colour and the share of it painted this frame
+// (`cover`, 0 while the border is off), and its width in frame heights.
+struct Paint {
+    std::array<float, 3> color{1.0f, 1.0f, 1.0f};
+    float cover = 0.0f;
+    float size = 0.0f;
+};
+
 // The uniforms one frame of the warp draws with (lib_feedback.glsl, feedback_warp_vert.glsl).
 struct Step {
     Affine source;
@@ -128,6 +156,9 @@ struct Step {
     // The light taken off this frame after the keep.
     float floor = 0.0f;
     float dt = 0.0f;
+    // The borders painted this frame, before the keep.
+    Paint outer;
+    Paint inner;
 };
 
 // How much faster than the Style's own pace the warp moves: the speed times (1 + react x (swell +
@@ -148,18 +179,37 @@ float perFrame(float perSecond, float dt);
 // compose into the map of their summed dt, so the motion of a second is the same at any frame rate.
 Affine sourceMap(float zoomPerSecond, float rotatePerSecond, const std::array<float, 2>& flow, float dt);
 
+// The share of a colour painted over a frame of `dt` seconds so that `alpha` (held to 0..1) of it is
+// painted over a second: 1 - (1 - alpha) ^ dt. 0 for a stalled or broken frame, 1 for alpha 1.
+float paintPerFrame(float alpha, float dt);
+
+// How far what the warp paints has eased in `age` seconds into a visit: 0 at its start, 1 from
+// kPaintFadeSeconds on, smooth between.
+float paintFade(float age);
+
+// A border as one frame of `dt` paints it, `age` seconds into the visit: nothing while its size or
+// alpha is 0.
+Paint borderPaint(const Border& border, float dt, float age);
+
 // `p` through `affine`: map * p + shift.
 std::array<float, 2> apply(const Affine& affine, const std::array<float, 2>& p);
 
-// The warp's clock: the swirl field's phase, which runs at the motion's pace and never jumps.
+// The warp's clocks: the swirl field's phase, which runs at the motion's pace and never jumps, and the
+// visit's age, which eases in what the warp paints.
 class Motion {
 public:
     Step step(const WarpSpec& spec, const Drive& drive, float dt);
-    void reset() { phase_ = 0.0f; }
+    void reset() {
+        phase_ = 0.0f;
+        age_ = 0.0f;
+    }
     float phase() const { return phase_; }
+    // Seconds into the visit, held at kPaintFadeSeconds once what the warp paints has eased in.
+    float age() const { return age_; }
 
 private:
     float phase_ = 0.0f;
+    float age_ = 0.0f;
 };
 
 // ---- the store: stochastic rounding ----------------------------------------------------------------

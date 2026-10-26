@@ -16,6 +16,12 @@
 // ghost that never fades. It mirrors feedback::settle(), which the host tests run at every precision.
 // The loop must only shrink (the No-flash rule): a stage may move, blur and recolour the picture, never
 // brighten it, and fbSettle() holds it under FB_CEILING whatever it is handed.
+//
+// Before it settles, fbSettle() paints what the Style's manifest asks the loop for (fbPaint): the outer
+// and inner borders (#363). Each is a share of a colour (uFbOuter.a, uFbInner.a: this frame's share,
+// eased in over the visit) laid over the picture, so what is painted is kept and decays like anything
+// the Style draws; the zoom carries its copies into a tunnel. Every share is 0 for a Style that asks
+// for none, and the picture is then exactly what the stage handed over.
 
 uniform highp sampler2D uFbPrev;
 uniform vec2 uFbTexel;
@@ -25,6 +31,11 @@ uniform float uFbFloor;
 uniform float uFbHalf;
 uniform float uFbStep;
 uniform float uFbSeed;
+// The borders: rgb and this frame's share of it, and the band's width in frame heights.
+uniform vec4 uFbOuter;
+uniform float uFbOuterSize;
+uniform vec4 uFbInner;
+uniform float uFbInnerSize;
 
 in vec2 vUv;
 in vec2 vSrc;
@@ -64,8 +75,27 @@ float fbSettleChannel(float v, float keep, float noise) {
     return max(left + (noise - 0.5) * fbQuantum(left), 0.0);
 }
 
-/** What the warp stage keeps of `c`: decayed, tinted, floored and rounded without a stall. */
+/** 1 inside the band from `from` to `to` frame heights in from the edge, softened over a texel. */
+float fbBand(float edge, float from, float to) {
+    float h = 0.5 * uFbTexel.y;
+    return clamp(smoothstep(from - h, from + h, edge) - smoothstep(to - h, to + h, edge), 0.0, 1.0);
+}
+
+/** `c` with what the manifest paints into the loop laid over it: the outer and inner borders. */
+vec3 fbPaint(vec3 c) {
+    if (uFbOuter.a <= 0.0 && uFbInner.a <= 0.0) return c;
+    vec2 frame = vec2(uFbTexel.y / uFbTexel.x, 1.0);
+    vec2 p = vUv * frame;
+    // How far this point is in from the nearest edge, in frame heights.
+    float edge = min(min(p.x, frame.x - p.x), min(p.y, 1.0 - p.y));
+    c = mix(c, uFbOuter.rgb, uFbOuter.a * fbBand(edge, -1.0, uFbOuterSize));
+    c = mix(c, uFbInner.rgb, uFbInner.a * fbBand(edge, uFbOuterSize, uFbOuterSize + uFbInnerSize));
+    return c;
+}
+
+/** What the warp stage keeps of `c`: painted, decayed, tinted, floored and rounded without a stall. */
 vec3 fbSettle(vec3 c) {
+    c = fbPaint(c);
     float n = fbNoise(gl_FragCoord.xy);
     return vec3(fbSettleChannel(c.r, uFbKeep.r, n), fbSettleChannel(c.g, uFbKeep.g, fract(n + 0.381966)),
                 fbSettleChannel(c.b, uFbKeep.b, fract(n + 0.618034)));
