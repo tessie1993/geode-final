@@ -101,4 +101,9 @@ TEST(VisualSafety, BeatIntervalAndTransitions) {
     EXPECT_EQ(safety::transitionStyle(TransitionStyle::Melt), TransitionStyle::Melt);
     EXPECT_EQ(safety::transitionId("cut"), "fade");
     EXPECT_EQ(safety::transitionId("melt"), "melt");
+    EXPECT_EQ(safety::transitionId("Swirl"), "Swirl");
+    EXPECT_EQ(safety::transitionId("random"), "random");
+    EXPECT_EQ(safety::transitionId("DreamyZoom"), "fade") << "it adds white over the picture";
+    EXPECT_EQ(safety::transitionId("fadecolor"), "fade") << "it fades through black";
+    EXPECT_EQ(safety::transitionId(""), "fade");
 }

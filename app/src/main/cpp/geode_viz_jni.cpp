@@ -131,10 +131,11 @@ Java_dev_geode_engine_bridge_GeodeNative_vizSetReducedMotion(JNIEnv* env, jobjec
 }
 
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetTransition(JNIEnv* env, jobject, jlong handle, jstring id, jlong durationMs) {
+Java_dev_geode_engine_bridge_GeodeNative_vizSetTransition(JNIEnv* env, jobject, jlong handle, jstring id, jlong durationMs,
+                                                         jlong seed) {
     return vizCall(env, "vizSetTransition", handle, [&](geode_viz* v) {
         Utf8Chars name(env, id);
-        geode_viz_set_transition(v, name.get(), durationMs);
+        geode_viz_set_transition(v, name.get(), durationMs, seed);
         return GEODE_STATUS_OK;
     });
 }

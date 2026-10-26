@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "geode/viz/StyleTransition.hpp"
+
 namespace geode::viz {
 
 const char* transitionStyleId(TransitionStyle style) {
@@ -49,9 +51,7 @@ TransitionStyle transitionStyle(TransitionStyle requested) {
     return requested == TransitionStyle::Cut ? TransitionStyle::Fade : requested;
 }
 
-std::string transitionId(const std::string& requested) {
-    return requested == transitionStyleId(TransitionStyle::Cut) ? transitionStyleId(TransitionStyle::Fade) : requested;
-}
+std::string transitionId(const std::string& requested) { return transition::safeLook(requested); }
 
 }  // namespace safety
 

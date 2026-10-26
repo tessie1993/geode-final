@@ -32,7 +32,7 @@
 //   node check.mjs --all --size 200
 //   node check.mjs --fluid-display               # every SHADING/BLOOM/SUNRAYS x LOOK variant
 //   node check.mjs --all --resize                # each style's picture across a scene-target resize
-//   node check.mjs --effects --out out/effects   # one frame per Shared core effect
+//   node check.mjs --effects --out out/effects   # one frame per Shared core effect, and the change-of-Style looks
 //   node check.mjs --layers --out out/layers     # one frame per Layer 2 blend mode and influence
 //   node check.mjs --all --glslang               # every Style's GLSL ES through glslangValidator
 //   node check.mjs --glslang-self-test           # glslang still fails on planted violations
@@ -64,6 +64,9 @@ const SHADER_SOURCE_CPP = path.join(ROOT, 'core', 'render', 'ShaderSource.cpp');
 // names its family and, for a shader Style, its shader file.
 const STYLES = path.join(ROOT, 'engine', 'scenes', 'src', 'main', 'stylepacks', 'styles');
 const FLUID_LOOK_HPP = path.join(ROOT, 'core', 'viz', 'fluid', 'FluidLook.hpp');
+// The looks a change of Style may take (kSafeLooks) and the GL Transitions library they splice in.
+const STYLE_TRANSITION_HPP = path.join(ROOT, 'core', 'viz', 'include', 'geode', 'viz', 'StyleTransition.hpp');
+const GL_TRANSITIONS = path.join(ROOT, 'app', 'src', 'main', 'assets', 'gl_transitions.json');
 
 // One load step down and then some: the renderer's scale moves in 0.05 steps, a Style's own scale
 // and a thermal tier move it further.
@@ -225,7 +228,9 @@ function plan(uniforms, values, textures, width, height) {
     let value = values[u.name];
     if (u.name === 'uResolution') value = [width, height];
     if (u.name === 'uInvRes' || u.name === 'uTexelSize') value = [1 / width, 1 / height];
-    out.push({ ...u, value });
+    // A bool uniform is set with glUniform1i, as TransitionCatalog::uploadParams sets it.
+    if (u.type === 'bool') out.push({ ...u, type: 'int', value: Number(value) });
+    else out.push({ ...u, value });
   }
   if (missing.length) throw new Error(`no value for uniform(s): ${missing.join(', ')} - add them to the table`);
   return out;
@@ -418,6 +423,87 @@ function effectJobs(registry, size) {
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
   return jobs;
+}
+
+// ---- the looks of a change of Style (#309) ------------------------------------
+//
+// Every look core/viz/StyleTransition.hpp lists in kSafeLooks (parsed out of that file, so the two
+// cannot drift) is drawn through composite_frag.glsl as the renderer draws it: the composite's own
+// four by uStyle, a library look spliced in the way TransitionCatalog::spliceInto does it, with its
+// default parameters. Each is drawn from the outgoing picture ('history') to the incoming one ('scene')
+// at points along its progress, and fails when the frame's mean brightness leaves the span of its two
+// pictures by more than LOOK_TOLERANCE: a look that dips through black or washes to white flashes
+// (the No-flash rule) however slowly it runs. Two planted looks that do exactly that must fail.
+
+const LOOK_BUILT_IN = { fade: 1, melt: 2, slide: 3, zoom: 4 };
+const LOOK_LIBRARY_STYLE = 5;
+const LOOK_POINTS = [0.1, 0.25, 0.5, 0.75, 0.9];
+const LOOK_TOLERANCE = 0.05;
+const LOOK_PLANTED_UNSAFE = ['DreamyZoom', 'fadecolor'];
+const LOOK_TEXTURES = { ...COMPOSITE_TEXTURES, uTexA: 'scene', uTexB: 'history' };
+const TRANSITION_MARKER = '// __GL_TRANSITION_SOURCE__';
+
+function safeLooks() {
+  const src = fs.readFileSync(STYLE_TRANSITION_HPP, 'utf8');
+  const m = src.match(/kSafeLooks\s*=\s*\{([\s\S]*?)\};/);
+  if (!m) throw new Error(`could not find kSafeLooks in ${STYLE_TRANSITION_HPP}`);
+  return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+}
+
+// The composite, and the job that draws `id` at `progress` through it.
+function lookJob(id, progress, registry, library, size) {
+  const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
+  let frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, 'composite_frag.glsl'), 'utf8'), registry, 'shaders/composite_frag.glsl');
+  const values = { ...COMPOSITE_NEUTRAL, uProgress: progress };
+  if (id in LOOK_BUILT_IN) {
+    values.uStyle = LOOK_BUILT_IN[id];
+  } else {
+    const def = library.get(id);
+    if (!def) throw new Error(`look ${id} is not in ${path.relative(ROOT, GL_TRANSITIONS)}`);
+    const nl = frag.indexOf('\n') + 1;
+    frag = `${frag.slice(0, nl)}#define MV_TRANSITION 1\n${frag.slice(nl)}`;
+    if (!frag.includes(TRANSITION_MARKER)) throw new Error('composite_frag.glsl has lost its transition splice point');
+    frag = frag.replace(TRANSITION_MARKER, () => def.glsl);
+    for (const [key, value] of Object.entries(def.defaultParams || {})) values[key] = typeof value === 'boolean' ? Number(value) : value;
+    values.uStyle = LOOK_LIBRARY_STYLE;
+  }
+  return { name: `look_${id}_${progress}`, vert, frag, uniforms: plan(parseUniforms(frag), values, LOOK_TEXTURES, size, size) };
+}
+
+// The worst way `id` leaves the span of its two pictures' brightness, or the error that stopped it.
+async function lookExcursion(page, id, registry, library, size, endsAt) {
+  let worst = 0;
+  for (const progress of LOOK_POINTS) {
+    const job = lookJob(id, progress, registry, library, size);
+    const r = await page.call('__render', { ...job, width: size, height: size });
+    if (r.error) return { error: remapLog(r.error, job.frag) };
+    worst = Math.max(worst, endsAt.low - r.meanLuma, r.meanLuma - endsAt.high);
+  }
+  return { worst };
+}
+
+async function lookCheck(page, registry, size) {
+  const library = new Map(JSON.parse(fs.readFileSync(GL_TRANSITIONS, 'utf8')).map((def) => [def.name, def]));
+  const end = async (progress) => (await page.call('__render', { ...lookJob('fade', progress, registry, library, size), width: size, height: size })).meanLuma;
+  const from = await end(0);
+  const to = await end(1);
+  const endsAt = { low: Math.min(from, to), high: Math.max(from, to) };
+  console.log(`ok   ${'look pictures'.padEnd(28)} outgoing mean ${from.toFixed(3)}, incoming mean ${to.toFixed(3)}`);
+  let allOk = true;
+  for (const id of safeLooks()) {
+    const r = await lookExcursion(page, id, registry, library, size, endsAt);
+    const ok = !r.error && r.worst <= LOOK_TOLERANCE;
+    const detail = r.error ? r.error : `leaves the span of its pictures by at most ${Math.max(r.worst, 0).toFixed(3)}`;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} ${`look ${id}`.padEnd(28)} ${detail}`);
+    allOk = ok && allOk;
+  }
+  for (const id of LOOK_PLANTED_UNSAFE) {
+    const r = await lookExcursion(page, id, registry, library, size, endsAt);
+    const ok = !r.error && r.worst > LOOK_TOLERANCE;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} look self-test: ${id} ${ok ? `is caught, ${r.worst.toFixed(3)} outside` : `was not caught${r.error ? `: ${r.error}` : ''}`}`);
+    allOk = ok && allOk;
+  }
+  return allOk;
 }
 
 // ---- driving the page ------------------------------------------------------
@@ -637,6 +723,7 @@ async function runOnce(args, getPage) {
     }
     for (const line of page.drainConsole()) console.log(`  [page] ${line}`);
   }
+  if (args.effects) allOk = (await lookCheck(await getPage(), registry, args.size)) && allOk;
   if (args.push && allOk) pushStyles(ids, args.pkg);
   return allOk;
 }

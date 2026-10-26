@@ -33,6 +33,7 @@
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/SharedEffects.hpp"
 #include "geode/viz/SharedFxPass.hpp"
+#include "geode/viz/StyleTransition.hpp"
 #include "geode/render/ShaderSource.hpp"
 #ifdef GEODE_STYLE_HOT_RELOAD
 #include "geode/viz/StyleLab.hpp"
@@ -61,7 +62,9 @@ public:
     bool setParam(const std::string& key, float value);
     void setFeatures(const GeodeFeatureFrame& features);
     void setReducedMotion(bool on) { reducedMotion_.store(on, std::memory_order_relaxed); }
-    void setTransition(const std::string& id, int64_t durationMs);
+    // How a change of Style looks and how long it lasts (#309): one of transition::kSafeLooks, or
+    // "random" for a draw from them seeded by `seed`; anything else is the fade.
+    void setTransition(const std::string& id, int64_t durationMs, uint64_t seed);
     void beginParamMorph(float seconds);
     void submitTouchPoints(const float* xy, int n) { touchField_.submit(xy, n); }
     // The phone's down in screen space, latest-wins (GravityField); 0, 0, 0 says there is none.
@@ -133,7 +136,13 @@ private:
     void applyRenderSize(scale::RenderSize size);
     // The render scale the Style's pack declares (its manifest's "renderScale").
     float styleScaleFor(const std::string& sceneId) const;
-    Scene* resolveActiveScene();
+    // The Style drawn this frame. A change to another starts on the next downbeat while a tempo is
+    // heard (transition::DownbeatGate), and the Style drawn until then stays.
+    Scene* resolveActiveScene(float dt);
+    // Starts the change from the drawn Style to `next`, in the look chosen when it was asked for.
+    void startTransition(Scene* next);
+    // Draws the outgoing Style into its target, which keeps its trails from the scene target (#309).
+    void drawOutgoing(const SceneParams& p, float dt);
     SceneParams resolveParams(float dt);
     // Layer 2 this frame: what the Customization asks for, through the mixer's fades, and the scene
     // that draws it (nullptr while there is none).
@@ -149,8 +158,6 @@ private:
     // picture of a transition; its picture is then that target's (layerTexture()).
     void drawLayerTarget(const SceneParams& p, float dt);
     GLuint layerTexture() const;
-    // Binds and clears the Layer's or the outgoing Style's target, which the composite then reads.
-    void bindSecondaryTarget(const Framebuffer& target);
     void drawSceneTarget(Scene& scene, const SceneParams& p, float dt);
     // The active Style's picture with the Shared core effects drawn over it, or the scene target as
     // it is while every effect is 0.
@@ -239,6 +246,7 @@ private:
     std::string requestedSceneId_;
     std::string transitionId_ = "fade";
     int64_t transitionDurationMs_ = 1200;
+    uint64_t transitionSeed_ = 0;
     std::atomic<bool> reducedMotion_{false};
     std::atomic<float> touchSmear_{0.0f};
     scale::FrameLoad frameLoad_;
@@ -293,8 +301,19 @@ private:
     SceneParams layerParams_;
     std::map<uint32_t, std::string> layerIds_;
     std::optional<SceneParams> outgoingParams_;
-    double transitionStartS_ = 0.0;
+    // A change of Style (#309): the downbeat it waits for, its progress, its look (a slot in
+    // transition::kSafeLooks, drawn when it is asked for so its program is warm by the downbeat) and
+    // how many changes have drawn a look, for the seeded random draw.
+    transition::DownbeatGate switchGate_;
+    transition::Progress transitionProgress_;
+    int pendingLookSlot_ = transition::kFadeSlot;
+    int lookSlot_ = -1;
+    uint32_t looksDrawn_ = 0;
+    std::string frameLook_ = "fade";
     bool sceneJustSwitched_ = false;
+    // The Style just switched to starts from the picture the one before it left (its trails and the
+    // Shared core's echo), not from black. False for the first Style and after a cut.
+    bool inheritTrails_ = false;
     int width_ = 1;
     int height_ = 1;
     int renderWidth_ = 1;
@@ -317,6 +336,7 @@ private:
     // stable snapshot instead of racing setTransition() on stateLock_.
     std::string frameTransitionId_ = "fade";
     int64_t frameTransitionDurationMs_ = 1200;
+    uint64_t frameTransitionSeed_ = 0;
     std::string lastError_;
 #ifdef GEODE_STYLE_HOT_RELOAD
     // Under stateLock_.
