@@ -18,6 +18,10 @@ static_assert(static_cast<int>(PlayerState::Buffering) == GEODE_PLAYER_BUFFERING
 static_assert(static_cast<int>(PlayerState::Ready) == GEODE_PLAYER_READY);
 static_assert(static_cast<int>(PlayerState::Ended) == GEODE_PLAYER_ENDED);
 static_assert(static_cast<int>(PlayerState::Error) == GEODE_PLAYER_ERROR);
+using geode::audio::player::PlayerError;
+static_assert(static_cast<int>(PlayerError::None) == GEODE_PLAYER_ERROR_NONE);
+static_assert(static_cast<int>(PlayerError::Decode) == GEODE_PLAYER_ERROR_DECODE);
+static_assert(static_cast<int>(PlayerError::Output) == GEODE_PLAYER_ERROR_OUTPUT);
 }  // namespace
 
 extern "C" {
@@ -84,6 +88,10 @@ size_t geode_player_last_error(geode_player* p, char* out, size_t capacity) {
         out[n] = '\0';
     }
     return error.size();
+}
+
+int geode_player_error_kind(geode_player* p) {
+    return p ? static_cast<int>(p->player.errorKind()) : GEODE_PLAYER_ERROR_NONE;
 }
 
 void geode_player_set_feed(geode_player* p, geode_feed* f) {

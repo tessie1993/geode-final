@@ -24,6 +24,14 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   channels. `AudioBus`, the Kotlin PCM rings, the tap pump and the main-thread
   feature hop are gone; the live wallpaper reads the same feed.
 
+- **The native player handles calls, unplugging and output errors (#281).**
+  Audio focus works as it does for ExoPlayer: a call pauses the music until it
+  ends, another player taking over pauses it, a ducking request lowers it.
+  Unplugging wired or Bluetooth headphones pauses it when the Settings say so.
+  An output that disconnects is reopened with backoff, and after its retries
+  it reports an output error rather than "decoding failed".
+
+
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings
   (`ElementPart`) instead of the Lapis Lazuli art: pebbles, slabs and recesses

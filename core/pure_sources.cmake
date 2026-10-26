@@ -20,6 +20,7 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Crossfeed.cpp
     audio/dsp/Limiter.cpp
     audio/player/BufferTuner.cpp
+    audio/player/OutputRetry.cpp
     audio/feed/FeedRing.cpp
     audio/feed/FeatureHistory.cpp
 )

@@ -15,6 +15,9 @@ import androidx.media3.common.util.UnstableApi
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import dev.geode.RingLog
+import dev.geode.engine.audio.AudioFocusPolicy
+import dev.geode.engine.audio.FocusChange
+import dev.geode.engine.audio.FocusState
 import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.AudioRestartPolicy
 import dev.geode.engine.bridge.GeodeNative
@@ -33,7 +36,10 @@ import java.util.concurrent.TimeUnit
  * handed to the engine, which owns them from then on. A poll on the main thread mirrors the engine's
  * state, position and gapless joins back into [SimpleBasePlayer].
  *
- * The engine writes its mix into the Visual's [feed] from its own audio callback.
+ * The engine writes its mix into the Visual's [feed] from its own audio callback. Audio focus and
+ * unplugged headphones are handled here, as ExoPlayer handles them for itself: a call pauses the music
+ * until it ends, another player taking over pauses it for good, a ducking request lowers it, and
+ * unplugging pauses it when the Settings say so.
  */
 @OptIn(UnstableApi::class)
 class NativePlayer(
@@ -64,6 +70,11 @@ class NativePlayer(
     private var currentIndex = 0
     private var prepared = false
     private var playWhenReady = false
+
+    // Why playWhenReady last changed, as SimpleBasePlayer reports it: the listener, a focus loss or unplugging.
+    private var playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+    private var focus = FocusState()
+    private val route = PlayerAudioRoute(context, ::onFocusChange, ::onBecomingNoisy)
     private var repeatMode = Player.REPEAT_MODE_OFF
     private var shuffle = false
     private var shuffleOrder: List<Int> = emptyList()
@@ -112,6 +123,12 @@ class NativePlayer(
         main.post(poll)
     }
 
+    /** Whether unplugging wired or Bluetooth headphones pauses: the Settings choice. Main thread. */
+    fun setHandleAudioBecomingNoisy(pauseOnUnplug: Boolean) {
+        route.handleNoisy = pauseOnUnplug
+        route.listenForNoisy(playWhenReady)
+    }
+
     /** Crossfade and gapless choices from the playback prefs. */
     fun applyPrefs(
         crossfadeMs: Int,
@@ -138,8 +155,14 @@ class NativePlayer(
         return State
             .Builder()
             .setAvailableCommands(COMMANDS)
-            .setPlayWhenReady(playWhenReady, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
-            .setPlaybackState(playbackState)
+            .setPlayWhenReady(playWhenReady, playWhenReadyReason)
+            .setPlaybackSuppressionReason(
+                if (playWhenReady && focus.suppressed) {
+                    Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS
+                } else {
+                    Player.PLAYBACK_SUPPRESSION_REASON_NONE
+                },
+            ).setPlaybackState(playbackState)
             .setPlayerError(error)
             .setRepeatMode(repeatMode)
             .setShuffleModeEnabled(shuffle)
@@ -161,11 +184,63 @@ class NativePlayer(
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         this.playWhenReady = playWhenReady
-        if (playWhenReady) GeodeNative.playerPlay(handle) else GeodeNative.playerPause(handle)
+        playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+        if (playWhenReady) {
+            if (route.requestFocus()) {
+                focus = FocusState()
+            } else {
+                // Another app holds focus and will not give it up (a call in progress): the music stays paused.
+                this.playWhenReady = false
+                playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS
+            }
+        } else {
+            route.abandonFocus()
+        }
+        route.listenForNoisy(this.playWhenReady)
+        applyEngineVolume()
+        applyEngineRun()
         return done()
     }
 
+    /** Plays or pauses the engine as the listener wants it and audio focus allows. */
+    private fun applyEngineRun() {
+        if (released) return
+        if (AudioFocusPolicy.engineRuns(playWhenReady, focus)) GeodeNative.playerPlay(handle) else GeodeNative.playerPause(handle)
+    }
+
+    private fun applyEngineVolume() {
+        if (released) return
+        GeodeNative.playerSetVolume(handle, AudioFocusPolicy.engineVolume(volume, focus))
+    }
+
+    private fun onFocusChange(change: FocusChange) {
+        if (released) return
+        val outcome = AudioFocusPolicy.onChange(focus, change)
+        focus = outcome.state
+        if (outcome.stopPlaying && playWhenReady) {
+            playWhenReady = false
+            playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS
+            route.abandonFocus()
+            route.listenForNoisy(false)
+        }
+        applyEngineVolume()
+        applyEngineRun()
+        invalidateState()
+    }
+
+    // Headphones unplugged (wired or Bluetooth) while playing: pause, so the music does not move to the speaker.
+    private fun onBecomingNoisy() {
+        if (released || !playWhenReady) return
+        playWhenReady = false
+        playWhenReadyReason = Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
+        route.abandonFocus()
+        route.listenForNoisy(false)
+        applyEngineRun()
+        invalidateState()
+    }
+
     override fun handlePrepare(): ListenableFuture<*> {
+        if (playWhenReady) route.requestFocus()
         prepared = true
         error = null
         val startMs = pendingStartMs
@@ -174,6 +249,7 @@ class NativePlayer(
     }
 
     override fun handleStop(): ListenableFuture<*> {
+        route.abandonFocus()
         prepared = false
         loadedId = -1
         queuedId = -1
@@ -183,6 +259,8 @@ class NativePlayer(
 
     override fun handleRelease(): ListenableFuture<*> {
         released = true
+        route.abandonFocus()
+        route.listenForNoisy(false)
         engineFailures.close()
         main.removeCallbacksAndMessages(null)
         // Cancel any in-flight open/queue task instead of letting it run to completion against a
@@ -210,7 +288,7 @@ class NativePlayer(
 
     override fun handleSetVolume(volume: Float): ListenableFuture<*> {
         this.volume = volume.coerceIn(0f, 1f)
-        GeodeNative.playerSetVolume(handle, this.volume)
+        applyEngineVolume()
         return done()
     }
 
@@ -334,7 +412,14 @@ class NativePlayer(
         }
         loads.keys.retainAll { it == loadedId || it == queuedId }
         if (GeodeNative.playerState(handle) == ENGINE_ERROR && error == null) {
-            error = PlaybackException(GeodeNative.playerLastError(handle), null, PlaybackException.ERROR_CODE_DECODING_FAILED)
+            // An output that would not reopen is an output error, not a file that failed to decode.
+            val code =
+                if (GeodeNative.playerErrorKind(handle) == ENGINE_ERROR_OUTPUT) {
+                    PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED
+                } else {
+                    PlaybackException.ERROR_CODE_DECODING_FAILED
+                }
+            error = PlaybackException(GeodeNative.playerLastError(handle), null, code)
         }
         val durationUs = GeodeNative.playerDurationUs(handle)
         if (durationUs > 0) entries.getOrNull(currentIndex)?.durationUs = durationUs
@@ -383,7 +468,7 @@ class NativePlayer(
                 // for: a pause pressed while the file opened holds.
                 main.post {
                     if (released || loadedId != id) return@post
-                    if (playWhenReady) GeodeNative.playerPlay(handle) else GeodeNative.playerPause(handle)
+                    applyEngineRun()
                     queueNext()
                 }
             },
@@ -461,6 +546,9 @@ class NativePlayer(
         const val ENGINE_READY = 2
         const val ENGINE_ENDED = 3
         const val ENGINE_ERROR = 4
+
+        // GEODE_PLAYER_ERROR_OUTPUT in geode_api.h.
+        const val ENGINE_ERROR_OUTPUT = 2
 
         val COMMANDS: Player.Commands =
             Player.Commands

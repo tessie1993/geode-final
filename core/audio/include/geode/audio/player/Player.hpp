@@ -13,11 +13,14 @@
 #include "geode/audio/player/Deck.hpp"
 #include "geode/audio/player/Mixer.hpp"
 #include "geode/audio/player/Output.hpp"
+#include "geode/audio/player/OutputRetry.hpp"
 #include "geode/audio/player/Resampler.hpp"
 
 namespace geode::audio::player {
 
 enum class PlayerState : int { Idle = 0, Buffering, Ready, Ended, Error };
+// What an Error state is about: a track that cannot be read or decoded, or an output that cannot be opened.
+enum class PlayerError : int { None = 0, Decode, Output };
 
 // The engine thread owns the decoders, the decks and the stream; the public calls queue commands for it
 // and read atomics it publishes every loop, so nothing here waits on the audio thread.
@@ -49,6 +52,7 @@ public:
     // The self-tuned output buffer size in frames, for diagnostics (0 while untuned). Safe from any thread.
     int32_t outputBufferFrames() const { return output_.bufferSizeFrames(); }
     std::string lastError() const;
+    PlayerError errorKind() const { return errorKind_.load(std::memory_order_acquire); }
 
 private:
     struct Command {
@@ -83,7 +87,7 @@ private:
     void postCommand(DeckCommand command);
     void updateState();
     void noteError(const std::string& message);
-    void fail(const std::string& message);
+    void fail(const std::string& message, PlayerError kind = PlayerError::Decode);
     // Start and pause the output, telling the Visual's feed whether the mix is heard.
     void startOutput();
     void pauseOutput();
@@ -108,6 +112,8 @@ private:
     std::atomic<int64_t> durationUs_{0};
     std::atomic<int64_t> token_{-1};
     std::atomic<int> outRate_{0};
+    std::atomic<PlayerError> errorKind_{PlayerError::None};
+    OutputRetry retry_;
     int latencyTicks_ = 0;
     mutable std::mutex errorLock_;
     std::string lastError_;

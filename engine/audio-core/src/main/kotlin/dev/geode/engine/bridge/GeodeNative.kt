@@ -231,6 +231,9 @@ object GeodeNative {
 
     external fun playerLastError(handle: Long): String
 
+    /** What the player's error state is about: GEODE_PLAYER_ERROR_* in geode_api.h (0 none, 1 decode, 2 output). */
+    external fun playerErrorKind(handle: Long): Int
+
     /** The player's mix, before volume and DSP, goes to the [feed] (a [feedCreate] handle; 0 stops it). */
     external fun playerSetFeed(
         handle: Long,

@@ -25,6 +25,10 @@ int64_t usToFrames(int64_t us, int rate) { return us * rate / 1'000'000; }
 
 int64_t framesToUs(int64_t frames, int rate) { return rate > 0 ? frames * 1'000'000 / rate : 0; }
 
+int64_t nowMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
 // Engine loop turns between two latency reports: about a quarter second while a track plays.
 constexpr int kLatencyTicks = 50;
 
@@ -122,8 +126,10 @@ void Player::run() {
         reconcile();
         // Checked before the batch runs: a disconnected stream is dead (Oboe forbids closing it from its
         // own error callback, so stream_ stays non-null with disconnected_ set), and an Open/SetNext in this
-        // same batch must not be handled against it. reopenOutput() replaces the stream first.
-        if (output_.disconnected()) reopenOutput();
+        // same batch must not be handled against it. reopenOutput() replaces the stream first, retrying a
+        // bounded number of times before it reports an output error.
+        if (output_.disconnected()) retry_.begin(nowMs());
+        if (retry_.due(nowMs())) reopenOutput();
         for (const Command& command : batch) handle(command);
         batch.clear();
         reconcile();
@@ -181,6 +187,7 @@ void Player::doOpen(const Command& command) {
         return;
     }
     noteError({});
+    errorKind_.store(PlayerError::None, std::memory_order_release);
     postCommand({DeckCommand::Op::SetCurrent, track->deck});
     if (next_) {
         postCommand({DeckCommand::Op::ClearNext, nullptr});
@@ -233,9 +240,11 @@ bool Player::ensureOutput() {
     if (output_.isOpen()) return true;
     std::string error;
     if (!output_.open(error)) {
-        fail(error);
+        fail(error, PlayerError::Output);
         return false;
     }
+    // Open again, so a reopen still waiting for its next attempt must not close this stream.
+    retry_.reset();
     outRate_.store(output_.sampleRate(), std::memory_order_release);
     mixer_.setFeedRate(output_.sampleRate());
     mixer_.setCrossfade(crossfadeFrames(), curve_);
@@ -243,13 +252,16 @@ bool Player::ensureOutput() {
 }
 
 // After a route change the device may run at another rate; both tracks are rebuilt at the old position.
+// A reopen that fails is tried again later (OutputRetry); once the retries are used up the player stops
+// with an output error, not a decoding one.
 void Player::reopenOutput() {
     const int64_t positionUs = positionUs_.load(std::memory_order_relaxed);
     std::string error;
     if (!output_.open(error)) {
-        fail(error);
+        if (retry_.failed(nowMs())) fail("audio output could not be reopened", PlayerError::Output);
         return;
     }
+    retry_.reset();
     const int rate = output_.sampleRate();
     mixer_.setFeedRate(rate);
     if (rate == outRate_.load(std::memory_order_relaxed)) return;
@@ -426,8 +438,9 @@ void Player::noteError(const std::string& message) {
     lastError_ = message;
 }
 
-void Player::fail(const std::string& message) {
+void Player::fail(const std::string& message, PlayerError kind) {
     noteError(message);
+    errorKind_.store(kind, std::memory_order_release);
     if (output_.running()) pauseOutput();
     postCommand({DeckCommand::Op::SetCurrent, nullptr});
     postCommand({DeckCommand::Op::ClearNext, nullptr});

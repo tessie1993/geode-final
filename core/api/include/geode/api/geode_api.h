@@ -310,6 +310,11 @@ GEODE_API int64_t       geode_player_duration_us(geode_player*);      /* 0 = unk
 GEODE_API int64_t       geode_player_current_token(geode_player*);    /* -1 = nothing loaded */
 GEODE_API int           geode_player_output_sample_rate(geode_player*); /* 0 until the stream opened */
 GEODE_API size_t        geode_player_last_error(geode_player*, char* out, size_t capacity);   /* returns the full length */
+/* What the player's error state is about; GEODE_PLAYER_ERROR_NONE outside it. */
+#define GEODE_PLAYER_ERROR_NONE 0
+#define GEODE_PLAYER_ERROR_DECODE 1   /* the track could not be read or decoded */
+#define GEODE_PLAYER_ERROR_OUTPUT 2   /* the audio output failed to open, or to reopen after its retries */
+GEODE_API int           geode_player_error_kind(geode_player*);
 /* The player's mix, before volume and DSP, goes to `feed` as its GEODE_FEED_PLAYER source; NULL stops it.
  * The feed must outlive the player, or be detached with the player destroyed first. */
 GEODE_API void          geode_player_set_feed(geode_player*, geode_feed*);

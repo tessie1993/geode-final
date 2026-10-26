@@ -132,6 +132,11 @@ Java_dev_geode_engine_bridge_GeodeNative_playerLastError(JNIEnv* env, jobject, j
     return env->NewStringUTF(message.c_str());
 }
 
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_playerErrorKind(JNIEnv* env, jobject, jlong handle) {
+    return valueCall(env, "playerErrorKind", jint{GEODE_PLAYER_ERROR_NONE}, [&] { return geode_player_error_kind(playerOf(handle)); });
+}
+
 // The feed must outlive the player: Kotlin's feed is the process's own and is never destroyed.
 JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_playerSetFeed(JNIEnv* env, jobject, jlong handle, jlong feed) {
