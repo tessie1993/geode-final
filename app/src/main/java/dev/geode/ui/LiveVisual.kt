@@ -108,19 +108,23 @@ fun LiveVisualBindings(
 internal object VisualWatch {
     /**
      * Whether the analysis runs for the live Visual: only while it is [shown] (the Visuals tab, the
-     * full-screen Visual or its picture-in-picture window) and the app is [started]. A stopped app (the
-     * screen off, another app on top) shows no Visual, wherever it was left.
+     * full-screen Visual, its picture-in-picture window or the connected display) and the app is
+     * [started]. A stopped app (the screen off, another app on top) shows no Visual, wherever it was left.
      */
     fun watching(
         shown: Boolean,
         started: Boolean,
     ): Boolean = shown && started
 
-    /** Whether the live Visual is on screen: full screen, or not full screen but on the Visuals tab. */
+    /**
+     * Whether the live Visual is on screen: on the connected display (#407), full screen, or not full
+     * screen but on the Visuals tab.
+     */
     fun shown(
         onVisualsTab: Boolean,
         fullScreen: Boolean,
-    ): Boolean = fullScreen || onVisualsTab
+        onSecondScreen: Boolean = false,
+    ): Boolean = onSecondScreen || fullScreen || onVisualsTab
 }
 
 private const val TAG = "LiveVisual"

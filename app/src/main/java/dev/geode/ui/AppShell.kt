@@ -141,6 +141,8 @@ fun AppRoot() {
     // Settings' Visuals off (#17): while it is on, the Visual is neither drawn nor hosted anywhere.
     val visualsOff = settingsValues?.performance?.visualsOff ?: false
     val drawVisual by rememberUpdatedState(!visualsOff)
+    // The connected display the Visual may go to, and whether it went there (#407).
+    val secondScreen = rememberSecondScreen()
     LaunchedEffect(visualsOff) {
         if (visualsOff) {
             visualizerView.onPause()
@@ -155,7 +157,12 @@ fun AppRoot() {
                     Lifecycle.Event.ON_RESUME -> if (drawVisual) visualizerView.onResume()
                     // In picture-in-picture (#287) the activity is paused but still on screen, so the
                     // Visual goes on drawing; it stops when the window closes and the activity stops.
-                    Lifecycle.Event.ON_PAUSE -> if (context.findActivity()?.isInPictureInPictureMode != true) visualizerView.onPause()
+                    // On the connected display (#407) it goes on drawing too: a shade pulled down on the
+                    // phone must not freeze the big screen.
+                    Lifecycle.Event.ON_PAUSE ->
+                        if (context.findActivity()?.isInPictureInPictureMode != true && !secondScreen.value.chosen) {
+                            visualizerView.onPause()
+                        }
                     Lifecycle.Event.ON_STOP -> visualizerView.onPause()
                     else -> Unit
                 }
@@ -170,7 +177,8 @@ fun AppRoot() {
     val playing by shell.playback.state.collectAsStateWithLifecycle()
     val loaded = playing.player != PlayerState.Idle
     // Leaving the full-screen Visual's app shrinks it into a picture-in-picture window (#287).
-    val inPip = rememberPictureInPicture(PictureInPicture.allowed(ui.fullScreen, visualsOff), shell.playback)
+    // Not while the Visual is on the connected display: the phone shows the controls, not the Visual.
+    val inPip = rememberPictureInPicture(PictureInPicture.allowed(ui.fullScreen && !secondScreen.value.chosen, visualsOff), shell.playback)
     LaunchedEffect(inPip) { if (inPip && drawVisual) visualizerView.onResume() }
     // Back closes what is on top, then goes Home, then leaves the app (#182). The sheets, the search
     // and the full-screen Visual handle their own Back above this one.
@@ -204,7 +212,19 @@ fun AppRoot() {
             }
     }
     val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
-    val visualShown = VisualWatch.shown(onVisualsTab = ui.place == Place.VISUALS, fullScreen = ui.fullScreen)
+    // One engine instance, so the Visual is in one place: the phone, or the connected display (#407).
+    val home = SecondScreen.home(secondScreen.value, visualsOff, inPip)
+    val visualShown =
+        VisualWatch.shown(
+            onVisualsTab = ui.place == Place.VISUALS,
+            fullScreen = ui.fullScreen,
+            onSecondScreen = home == VisualHome.SECOND_SCREEN,
+        )
+    val bigScreen = secondScreen.value.display
+    if (home == VisualHome.SECOND_SCREEN && bigScreen != null) {
+        SecondScreenPresentation(bigScreen, visualizerView, onLost = { secondScreen.send(SecondScreenEvent.Lost) })
+    }
+    val offered = SecondScreen.offered(secondScreen.value, visualsOff)
     if (!visualsOff) {
         LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.styleCues, shell.settings, surface, visualShown)
     }
@@ -219,8 +239,18 @@ fun AppRoot() {
     // Settings' Tilt as the weight the engine fades to: Subtle is half, Full all. Reduce motion stills
     // it whatever the setting says (#315); the host also stops it under Battery Saver.
     val tilt = settingsValues?.behavior?.let(::tiltWeight) ?: 0f
+    // While it is on the connected display, the phone shows a stand-in where it was (#407).
     val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
-        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
+        when (home) {
+            VisualHome.PHONE -> VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
+            VisualHome.SECOND_SCREEN ->
+                SecondScreenStandIn(
+                    bigScreen?.name.orEmpty(),
+                    onBringBack = { secondScreen.send(SecondScreenEvent.Stop) },
+                    onDoubleTap = onDoubleTap,
+                )
+            VisualHome.NONE -> Unit
+        }
     }
     // Settings' defaults while the stored ones are being read.
     val reducedMotion = settingsValues?.behavior?.reducedMotion ?: false
@@ -316,7 +346,16 @@ fun AppRoot() {
                 if (visualsOff) {
                     PlainPlayer(shell, artwork)
                 } else {
-                    FullScreenVisual(shell, keepScreenOn, visual, inPip, reactionsHeld, onHeldChange = { reactionsHeld = it })
+                    FullScreenVisual(
+                        shell,
+                        keepScreenOn,
+                        visual,
+                        inPip,
+                        reactionsHeld,
+                        onHeldChange = { reactionsHeld = it },
+                        offered = offered,
+                        onShowOnDisplay = { secondScreen.send(SecondScreenEvent.Show) },
+                    )
                 }
             }
             // The picture-in-picture window shows the Visual alone; what covered it comes back with the app.
@@ -472,6 +511,8 @@ private fun FullScreenVisual(
     inPip: Boolean,
     reactionsHeld: Boolean,
     onHeldChange: (Boolean) -> Unit,
+    offered: ExternalDisplay?,
+    onShowOnDisplay: () -> Unit,
 ) {
     // Whether the overlay's controls show is App-UI-only state, and it outlives a rotation. The double
     // tap that toggles them is the Visual host's own, so every other touch draws in the Visual.
@@ -506,6 +547,14 @@ private fun FullScreenVisual(
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(GlassSpacing.Large),
             ) {
                 Text(stringResource(if (reactionsHeld) R.string.visuals_reactions_unfreeze else R.string.visuals_reactions_freeze))
+            }
+            // A connected display offers to take the Visual full screen (#407).
+            offered?.let { display ->
+                SecondScreenOffer(
+                    display.name,
+                    onShow = onShowOnDisplay,
+                    modifier = Modifier.align(Alignment.CenterStart).navigationBarsPadding().padding(GlassSpacing.Large),
+                )
             }
         }
     }

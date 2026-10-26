@@ -14,6 +14,13 @@ class VisualWatchTest {
     }
 
     @Test
+    fun `the Visual on the connected display is shown, wherever the phone is`() {
+        assertTrue(VisualWatch.shown(onVisualsTab = false, fullScreen = false, onSecondScreen = true))
+        assertTrue(VisualWatch.shown(onVisualsTab = true, fullScreen = true, onSecondScreen = true))
+        assertFalse(VisualWatch.shown(onVisualsTab = false, fullScreen = false, onSecondScreen = false))
+    }
+
+    @Test
     fun `the analysis runs only while the Visual is shown and the app is started`() {
         assertTrue(VisualWatch.watching(shown = true, started = true))
         assertFalse(VisualWatch.watching(shown = true, started = false))

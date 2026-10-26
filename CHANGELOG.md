@@ -11,6 +11,15 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The Visual on a second screen (#407).** With a display connected (HDMI,
+  DeX, Miracast), the full-screen Visual offers "Show on" that display: the
+  same engine instance moves into a Presentation there, full screen, while
+  the phone keeps the player, Customize and the full-screen controls over a
+  stand-in, and its own Visual stops drawing. "Show on this phone", an
+  unplugged display or a window the system takes down brings it back to the
+  phone; a display that comes back is offered again, never taken. No new
+  permissions.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio
