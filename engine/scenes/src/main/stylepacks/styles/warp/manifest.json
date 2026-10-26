@@ -3,5 +3,10 @@
   "id": "warp",
   "label": "Warp",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "flight", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["spectrum"]}
 }

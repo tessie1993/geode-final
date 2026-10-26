@@ -18,6 +18,8 @@ public:
 
     const std::array<float, kMaxPoints * kPointStride>& points() const { return points_; }
     int count() const { return count_; }
+    // The fingers down right now; count() also holds the ones still fading after they lifted.
+    int liveCount() const { return liveCount_; }
     float anchorX() const { return anchorX_; }
     float anchorY() const { return anchorY_; }
     float anchorStrength() const { return anchorStrength_; }

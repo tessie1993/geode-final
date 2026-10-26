@@ -152,4 +152,49 @@ private:
     bool primed_ = false;
 };
 
+// When the No-flash pass shows each candidate, now that its measurement reaches the CPU a frame
+// late. The GPU measures every candidate into a pixel-pack buffer behind a fence; reading it back in
+// the same frame would stall the pipeline until the GPU caught up. So a candidate waits one frame
+// as the pending frame, and is limited and shown in the next, when its 16 texels have long arrived.
+// The limiter's logic is unchanged: it still sees every frame it lets through, in order, each with
+// the time since the one before, and decides before anything of that frame reaches the screen.
+//
+// After a reset nothing is pending and nothing has been shown, so the first candidate is measured
+// and shown at once (one wait, then never again). The next frame has no pending frame to show yet,
+// so it shows the last frame again (a held frame is never a flash) while its own candidate becomes
+// the pending one. Synchronous mode (the offscreen Render, where a stall costs nothing and every
+// frame must be the one asked for) always measures and shows at once, dropping a pending frame: the
+// limiter then judges the new candidate against what was really shown, with the dropped frame's
+// time added to its own.
+class DelayedPresent {
+public:
+    enum class Action : uint8_t {
+        // Wait for this candidate's measurement, limit it and show it.
+        MeasureAndShow,
+        // Limit and show the pending frame; this candidate becomes the pending one.
+        ShowPending,
+        // Show the last frame again; this candidate becomes the pending one.
+        HoldShown,
+    };
+    struct Step {
+        Action action = Action::MeasureAndShow;
+        // The time since the last frame the limiter saw, for the frame this step limits.
+        float dt = 0.0f;
+        // A pending frame was dropped unshown (its slot is free again).
+        bool droppedPending = false;
+    };
+
+    void reset();
+    // A new candidate has been drawn `dt` after the one before.
+    Step onCandidate(float dt, bool synchronous);
+    bool hasPending() const { return pending_; }
+    bool hasShown() const { return shown_; }
+
+private:
+    bool shown_ = false;
+    bool pending_ = false;
+    // The pending frame's time since the frame before it; read only while one is pending.
+    float pendingDt_ = 0.0f;
+};
+
 }  // namespace geode::viz

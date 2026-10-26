@@ -44,7 +44,19 @@ ModulatorSpec saw(float periodSeconds) {
 }
 
 TEST(SharedCore, TheTableFollowsTheKotlinModel) {
-    EXPECT_EQ(kSharedCount, 58u);
+    EXPECT_EQ(kSharedCount, 68u);
+    EXPECT_STREQ(spec(Shared::FieldOfView).name, "FIELD_OF_VIEW");
+    EXPECT_STREQ(spec(Shared::SpeedRamp).name, "SPEED_RAMP");
+    EXPECT_STREQ(spec(Shared::EchoCopy).name, "ECHO_COPY");
+    EXPECT_STREQ(spec(Shared::EchoCopyFlip).name, "ECHO_COPY_FLIP");
+    EXPECT_TRUE(spec(Shared::EchoCopy).luminous);
+    EXPECT_EQ(spec(Shared::EchoCopyZoom).initial, 1.0f);
+    EXPECT_EQ(spec(Shared::EchoCopyFlip).initial, 1.0f);
+    EXPECT_EQ(spec(Shared::EchoCopyFlip).kind, ValueKind::Stepped);
+    EXPECT_STREQ(spec(Shared::Anaglyph).name, "ANAGLYPH");
+    EXPECT_STREQ(spec(Shared::LayerSwap).name, "LAYER_SWAP");
+    EXPECT_TRUE(spec(Shared::LayerOpacity).luminous);
+    EXPECT_EQ(spec(Shared::LayerInfluence).initial, 0.5f);
     EXPECT_STREQ(spec(Shared::Zoom).name, "ZOOM");
     EXPECT_STREQ(spec(Shared::Invert).name, "INVERT");
     EXPECT_EQ(spec(Shared::Brightness).min, 0.2f);
@@ -239,6 +251,18 @@ TEST(ReactionGraph, ALoopBetweenModulatorsFeedsBackButStaysBounded) {
     }
 }
 
+TEST(ReactionGraph, HandsLayerTwoOnAsThePlanAsks) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.layer.style = 1234u;
+    plan.layer.blend = layer::Blend::Overlay;
+    plan.layer.influence = layer::Influence::Bend;
+    ReactionGraph graph;
+    const Evaluated& out = graph.evaluate(plan, heard(SoundSignal::Bass, 0.0f), kFrameDt);
+    EXPECT_EQ(out.layer, plan.layer);
+    EXPECT_NEAR(out[Shared::LayerOpacity], 0.5f, kTolerance);
+    EXPECT_NEAR(out[Shared::LayerSwap], 0.0f, kTolerance);
+}
+
 TEST(ReactionGraph, AnythingPointingOutsideThePlanIsLeftOut) {
     CustomizationPlan plan = CustomizationPlan::defaults();
     plan.add(fromModulator(5, Target::shared(Shared::Vignette)));
@@ -250,6 +274,37 @@ TEST(ReactionGraph, AnythingPointingOutsideThePlanIsLeftOut) {
     ReactionGraph graph;
     const Evaluated& out = graph.evaluate(plan, heard(SoundSignal::Level, 1.0f), kFrameDt);
     EXPECT_EQ(out[Shared::Vignette], 0.0f);
+}
+
+TEST(ReactionGraph, TheBeatModulatorsGiveTheSameFramesForTheSameBeatsAfterAReset) {
+    // A Render repeats (#319): the random one draws from its seed, both count only the beats heard.
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    ModulatorSpec random;
+    random.kind = ModulatorKind::RandomOnBeat;
+    random.attackSeconds = 0.1f;
+    random.seed = 11;
+    ModulatorSpec toggle = random;
+    toggle.kind = ModulatorKind::ToggleOnBeat;
+    toggle.stepCount = 2;
+    plan.add(fromModulator(plan.add(random), Target::shared(Shared::Warp)));
+    plan.add(fromModulator(plan.add(toggle), Target::shared(Shared::Ripple)));
+    const auto frame = [](int i) { return i % 20 == 0 ? heard(SoundSignal::Beat, 0.8f) : SignalFrame{}; };
+    ReactionGraph graph;
+    float warp[200];
+    float ripple[200];
+    for (int i = 0; i < 200; ++i) {
+        const Evaluated& out = graph.evaluate(plan, frame(i), kFrameDt);
+        warp[i] = out[Shared::Warp];
+        ripple[i] = out[Shared::Ripple];
+    }
+    EXPECT_NE(warp[199], warp[0]);
+    EXPECT_NE(ripple[199], ripple[10]);
+    graph.reset();
+    for (int i = 0; i < 200; ++i) {
+        const Evaluated& out = graph.evaluate(plan, frame(i), kFrameDt);
+        EXPECT_EQ(out[Shared::Warp], warp[i]) << i;
+        EXPECT_EQ(out[Shared::Ripple], ripple[i]) << i;
+    }
 }
 
 TEST(ReactionGraph, TheSamePlanAndSoundGiveTheSameFramesAfterAReset) {
@@ -353,9 +408,13 @@ TEST(CustomizationPlan, RefusesLinksAndAutomationsPastItsSize) {
 // A tenth of a second a frame: five frames a beat at a reported 0.5 s beat.
 constexpr float kAutomationDt = 0.1f;
 
+// Music heard well above silence, so Style switching does not wait (#361).
+constexpr float kAudible = 0.5f;
+
 SignalFrame atTempo(float beatSeconds) {
     SignalFrame f;
     f.beatSeconds = beatSeconds;
+    f.level[static_cast<size_t>(SoundSignal::Level)] = kAudible;
     return f;
 }
 
@@ -459,6 +518,30 @@ TEST(MacroDrift, AModulatorLinkedToAMacroMovesItAroundThePersonsValue) {
     EXPECT_LE(high, 0.6f + 0.25f + kTolerance);
 }
 
+TEST(MacroDrift, TheBeatModulatorsLinkToAMacroLikeTheOthers) {
+    // #319: a toggle on the beat swings the Macro to one side of the person's value and back, each beat.
+    for (const ModulatorKind kind : {ModulatorKind::ToggleOnBeat, ModulatorKind::RandomOnBeat}) {
+        CustomizationPlan plan = CustomizationPlan::defaults();
+        plan.macros[0] = 0.5f;
+        ModulatorSpec m;
+        m.kind = kind;
+        m.stepCount = 1;
+        m.attackSeconds = 0.0f;
+        m.seed = 5;
+        const int beats = plan.add(m);
+        plan.add(fromModulator(beats, Target::macro(0), 0.4f));
+        ReactionGraph graph;
+        const float before = graph.evaluate(plan, SignalFrame{}, kFrameDt).macros[0];
+        const float onBeat = graph.evaluate(plan, heard(SoundSignal::Beat, 1.0f), kFrameDt).macros[0];
+        EXPECT_TRUE(graph.evaluate(plan, SignalFrame{}, kFrameDt).running[static_cast<size_t>(beats)]);
+        EXPECT_NE(onBeat, before) << static_cast<int>(kind);
+        if (kind == ModulatorKind::ToggleOnBeat) {
+            EXPECT_NEAR(before, 0.3f, kTolerance);
+            EXPECT_NEAR(onBeat, 0.7f, kTolerance);
+        }
+    }
+}
+
 TEST(MacroDrift, MatchesTheKotlinReference) {
     ReactionShape shape;
     shape.amount = 0.4f;
@@ -542,7 +625,9 @@ TEST(Automations, ABigMomentFiresOncePerRiseAboveItsThreshold) {
     EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Change), 0.0f).stylesDue, 2u);
     // Big moments need no tempo.
     graph.evaluate(plan, atTempo(0.0f), 0.0f);
-    EXPECT_EQ(graph.evaluate(plan, [] { SignalFrame f; f.level[static_cast<size_t>(SoundSignal::Surge)] = 1.0f; return f; }(), 0.0f).stylesDue, 3u);
+    SignalFrame noTempo = atTempo(0.0f);
+    noTempo.level[static_cast<size_t>(SoundSignal::Surge)] = 1.0f;
+    EXPECT_EQ(graph.evaluate(plan, noTempo, 0.0f).stylesDue, 3u);
 }
 
 TEST(Automations, TheSpacingHoldsTheNextMoveBack) {
@@ -554,6 +639,124 @@ TEST(Automations, TheSpacingHoldsTheNextMoveBack) {
     EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "0.2 s after the last";
     for (int i = 0; i < 8; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
     EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 2u) << "a second on";
+}
+
+TEST(Automations, AHeldSwitchNeverMovesAndItsSpacingStartsAgainOnRelease) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 1.0f));
+    plan.automations[0].held = true;
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 0u) << "held";
+    for (int i = 0; i < 20; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    plan.automations[0].held = false;
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 0u) << "0.2 s after the release";
+    for (int i = 0; i < 8; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "a second after the release";
+}
+
+TEST(Automations, AHoldNeverRestartsAPaletteFade) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    AutomationSpec palette = onBigMoments(AutomationKind::Palette, 0.5f, 0.0f);
+    palette.fadeSeconds = 1.0f;
+    plan.add(palette);
+    ReactionGraph graph;
+    graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt);
+    for (int i = 0; i < 4; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    plan.automations[0].held = true;
+    const float mix = graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::PaletteMix];
+    EXPECT_NEAR(mix, 0.5f, 1e-3f) << "the fade goes on while held";
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Change), kAutomationDt)[Shared::Palette2], 1.0f) << "no new change while held";
+}
+
+SignalFrame at(float level, SignalFrame f = atTempo(0.5f)) {
+    f.level[static_cast<size_t>(SoundSignal::Level)] = level;
+    return f;
+}
+
+TEST(Automations, SilenceIsALevelUnderTheSilenceLevel) {
+    EXPECT_TRUE(silent(0.0f));
+    EXPECT_TRUE(silent(kSilenceLevel - 0.001f));
+    EXPECT_FALSE(silent(kSilenceLevel));
+    EXPECT_FALSE(silent(kAudible));
+}
+
+TEST(Automations, StyleSwitchingWaitsWhileTheMusicIsSilent) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 0.0f));
+    // A trim that lifts the Level does not make silence music: silence is judged as heard.
+    plan.trims[static_cast<size_t>(SoundSignal::Level)].gain = 4.0f;
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, at(0.01f, big(SoundSignal::Surge)), kAutomationDt).stylesDue, 0u) << "silent";
+    graph.evaluate(plan, at(0.01f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "a short silence holds nothing back";
+}
+
+TEST(Automations, AfterALongSilenceTheSpacingStartsAgainWhenSoundReturns) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 1.0f));
+    ReactionGraph graph;
+    for (int i = 0; i < 26; ++i) graph.evaluate(plan, at(0.0f), kAutomationDt);
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 0u) << "0.2 s after the silence";
+    for (int i = 0; i < 8; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "a second after it";
+}
+
+TEST(Automations, SilenceOnlyCountsWhileTheMusicPlays) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.5f, 1.0f));
+    ReactionGraph graph;
+    SignalFrame paused = at(0.0f);
+    paused.playing = false;
+    for (int i = 0; i < 20; ++i) graph.evaluate(plan, at(0.0f), kAutomationDt);
+    for (int i = 0; i < 20; ++i) graph.evaluate(plan, paused, kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge), kAutomationDt).stylesDue, 1u) << "two seconds of silence played";
+}
+
+TEST(Automations, OnlyStyleSwitchingWaitsForSilence) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::Palette, 0.5f, 0.0f));
+    ReactionGraph graph;
+    for (int i = 0; i < 30; ++i) graph.evaluate(plan, at(0.0f), kAutomationDt);
+    graph.evaluate(plan, at(0.0f, big(SoundSignal::Surge)), kAutomationDt);
+    EXPECT_GT(graph.evaluate(plan, at(0.0f), kAutomationDt)[Shared::PaletteMix], 0.0f) << "a palette change fades in, in silence too";
+}
+
+TEST(Automations, TheRaisedThresholdRelaxesWithAHalfLife) {
+    EXPECT_NEAR(raisedThreshold(0.6f, 0.0f), 0.8f, kTolerance) << "half the room above it";
+    EXPECT_NEAR(raisedThreshold(0.6f, kThresholdHalfLifeSeconds), 0.7f, kTolerance);
+    EXPECT_NEAR(raisedThreshold(0.6f, 2.0f * kThresholdHalfLifeSeconds), 0.65f, kTolerance);
+    EXPECT_NEAR(raisedThreshold(0.6f, 1e6f), 0.6f, kTolerance);
+    EXPECT_NEAR(raisedThreshold(0.6f, -5.0f), 0.8f, kTolerance) << "never higher than straight after";
+    EXPECT_NEAR(raisedThreshold(0.6f, std::numeric_limits<float>::quiet_NaN()), 0.8f, kTolerance);
+    EXPECT_EQ(raisedThreshold(1.0f, 0.0f), 1.0f);
+    EXPECT_EQ(raisedThreshold(1.5f, 0.0f), 1.5f) << "no room above it";
+}
+
+TEST(Automations, AfterASwitchTheNextBigMomentMustBeBigger) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.6f, 0.0f));
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt).stylesDue, 1u);
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt).stylesDue, 1u) << "raised to about 0.8";
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.85f), kAutomationDt).stylesDue, 2u) << "a bigger one still switches";
+    for (int i = 0; i < 600; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt).stylesDue, 3u) << "relaxed a minute later";
+}
+
+TEST(Automations, OnlyStyleSwitchingRaisesItsThreshold) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    AutomationSpec palette = onBigMoments(AutomationKind::Palette, 0.6f, 0.0f);
+    palette.fadeSeconds = 0.05f;
+    plan.add(palette);
+    ReactionGraph graph;
+    graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt);
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette], 2.0f) << "two changes";
 }
 
 TEST(Automations, APaletteChangeCrossfadesIntoTheNextPaletteAndWrapsRound) {

@@ -6,15 +6,19 @@ import dev.geode.engine.bridge.NativeStatus
 import dev.geode.engine.bridge.SnapshotPublisher
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.SceneId
+import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.api.PRESET_VERSION
 import dev.geode.feature.customization.api.PresetPart
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.StylePool
+import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.core.BuiltInStyles
 import dev.geode.feature.customization.core.Defaults
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -47,18 +51,20 @@ class CustomizationStoreTest {
 
     private val places = MemoryPlaces()
 
+    private val cues = StyleCues()
+
     private fun store(
         appStorage: Map<String, String> = emptyMap(),
         startStyle: SceneId = julia,
     ): CustomizationFeature {
         places.appStorage.contents.putAll(appStorage)
         val engine =
-            EnginePublisher(::zoomSnapshot) { snapshot ->
+            EnginePublisher({ customization, _ -> zoomSnapshot(customization) }) { snapshot ->
                 offered += snapshot
                 publisher.offer(snapshot)
             }
         val library = PresetLibrary(places, LegacyModulation.None, BuiltInStyles.catalogue, fallbackStyle = julia)
-        return customizationStore(CustomizationHandlers(engine, library), startStyle, inPlaceRuntime(failures = failures))
+        return customizationStore(CustomizationHandlers(engine, library, cues), startStyle, inPlaceRuntime(failures = failures))
     }
 
     /** The snapshot the engine has now. */
@@ -75,6 +81,26 @@ class CustomizationStoreTest {
         assertEquals(1, offered.single().revision)
         assertEquals(offered.single(), publisher.accepted())
         assertTrue(wire.single().contentEquals(offered.single().encode()))
+    }
+
+    @Test
+    fun `the live Visual's cue moves Style switching on, unless it is held`() {
+        val store = store()
+        store.send(CustomizationCommand.UseVisualizerStyles(listOf(julia, tunnel)))
+        store.send(CustomizationCommand.SetAutomations(Automations(style = StyleSwitching(pool = StylePool.VISUALIZER))))
+
+        cues.raise()
+
+        assertEquals(tunnel, store.state.value.current.style)
+
+        store.send(CustomizationCommand.HoldStyle(true))
+        cues.raise()
+
+        assertEquals(tunnel, store.state.value.current.style)
+
+        store.send(CustomizationCommand.StyleBack)
+
+        assertEquals(julia, store.state.value.current.style)
     }
 
     @Test
@@ -128,7 +154,7 @@ class CustomizationStoreTest {
 
     @Test
     fun `a snapshot that cannot even be built is reported as refused`() {
-        val engine = EnginePublisher({ error("no engine yet") }) { publisher.offer(it) }
+        val engine = EnginePublisher({ _, _ -> error("no engine yet") }) { publisher.offer(it) }
         val library = PresetLibrary(places, LegacyModulation.None, BuiltInStyles.catalogue, fallbackStyle = julia)
 
         customizationStore(CustomizationHandlers(engine, library), julia, inPlaceRuntime(failures = failures))
@@ -240,6 +266,41 @@ class CustomizationStoreTest {
 
         assertEquals(converted, places.appStorage.contents)
         assertTrue(places.backup.contents.isEmpty())
+    }
+
+    @Test
+    fun `an upgraded old preset keeps its MilkDrop preset choice`() {
+        store(appStorage = mapOf("Old.json" to oldPresetFile("Old", "milkdrop", extra = ",\n\"milkPreset\": \"Cosmic.milk\"")))
+
+        assertEquals("Cosmic.milk", JSONObject(places.appStorage.read("Old.json")).getString("milkPreset"))
+    }
+
+    @Test
+    fun `a preset from a newer Geode loads what it can, says so, and keeps the rest when saved again`() {
+        val newer =
+            JSONObject()
+                .put("version", PRESET_VERSION + 1)
+                .put("name", "Comet")
+                .put("style", "julia")
+                .put("parts", JSONArray(listOf("CAMERA", "COMETS")))
+                .put("shared", JSONObject().put("ZOOM", 2.0).put("COMET_TAIL", 0.5))
+                .put("comet", JSONObject().put("tail", 3))
+        val store = store(appStorage = mapOf("Comet.json" to newer.toString()))
+
+        store.send(CustomizationCommand.LoadPreset(PresetId("Comet")))
+
+        assertEquals(2f, store.state.value.current.shared[SharedProperty.ZOOM])
+        assertEquals(listOf("customization: some parts of this preset need a newer Geode: they are kept, but not applied"), messages())
+
+        store.send(CustomizationCommand.SetShared(SharedProperty.ZOOM, 2.5f))
+        store.send(CustomizationCommand.SavePreset("Comet", setOf(PresetPart.CAMERA)))
+
+        val saved = JSONObject(places.appStorage.read("Comet.json"))
+        assertEquals(PRESET_VERSION + 1, saved.getInt("version"))
+        assertEquals(3, saved.getJSONObject("comet").getInt("tail"))
+        assertEquals(0.5, saved.getJSONObject("shared").getDouble("COMET_TAIL"), 0.0)
+        assertEquals(2.5, saved.getJSONObject("shared").getDouble("ZOOM"), 0.0)
+        assertEquals("COMETS", saved.getJSONArray("parts").getString(1))
     }
 
     @Test

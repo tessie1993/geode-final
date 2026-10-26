@@ -6,11 +6,13 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // Curl Bloom: a host body, raymarched, that is continuously changing what it
@@ -94,7 +96,7 @@ float map(vec3 p) {
     // warp bound here (rather than at the step) lets it sit in one min() with
     // the satellites, which need no correction.
     float host = body(q) / gLip;
-    float sat = dmtSatellites(p, gSatCount, CB_SAT_ORBIT, CB_SAT_RADIUS, CB_SAT_PERIOD);
+    float sat = dmtSatellites(p, gSatCount, CB_SAT_ORBIT * xm(uXOrbit), CB_SAT_RADIUS, CB_SAT_PERIOD);
     gHitSat = sat < host ? 1.0 : 0.0;
     return min(host, sat);
 }
@@ -135,7 +137,7 @@ void main() {
     gWarpScale = 1.15 + 0.25 * swell;
     gWarpAmount = 0.10 + 0.11 * bass + 0.05 * finger;
     gLip = fluidWarp3Lipschitz(gWarpScale, gWarpAmount);
-    gRadius = 0.86 * (1.0 + 0.07 * swell);
+    gRadius = 0.86 * (1.0 + 0.07 * swell) * xm(uXSize);
     // Glides; never steps. See the morph note at the top.
     gMorph = uFormPhase;
     // Detail buys population: three satellites at the floor, six at the top.
@@ -147,7 +149,7 @@ void main() {
     vec3 ro = vec3(0.0, 0.0, -3.1);
     mat3 cam = rotY(uTime * 0.11 + uFlowPhase * 0.9) * rotX(0.32 * sin(uTime * 0.07) + uMoveDir.y * 0.25);
     ro = cam * ro;
-    vec3 rd = cam * normalize(vec3(uv, CB_FOCAL));
+    vec3 rd = cam * tiltLook(normalize(vec3(uv, CB_FOCAL)));
 
     // ---- the march ---------------------------------------------------------
     float t = 0.0;

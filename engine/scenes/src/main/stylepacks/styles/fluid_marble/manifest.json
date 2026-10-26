@@ -12,5 +12,13 @@
     "splatForce": 0.75,
     "bloom": 0.5,
     "hueOffset": 0.33
-  }
+  },
+  "extras": [
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "viscosity", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy", "drop", "timbre"], "micro": ["drums", "bands", "spectrum", "space"]}
 }

@@ -1,5 +1,6 @@
 package dev.geode.feature.customization.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.ExtraKind
 import dev.geode.feature.customization.api.ExtraSpec
@@ -33,16 +34,47 @@ class StyleCatalogueTest {
 
     @Test
     fun `every Style the audit keeps is there once, and nothing that was removed`() {
+        val designed = BuiltInStyles.designed
         val ids = BuiltInStyles.all.map { it.id.value }
         assertEquals(ids.size, ids.toSet().size)
-        assertEquals(EXPECTED_STYLES, ids.size)
+        assertEquals(EXPECTED_STYLES, designed.size)
+        assertEquals(designed, BuiltInStyles.all.take(designed.size))
         assertTrue(ids.none { it.startsWith("silk") })
-        assertEquals(10, BuiltInStyles.all.count { it.family == StyleFamily.LIFE })
-        assertEquals(10, BuiltInStyles.all.count { it.family == StyleFamily.MYCELIUM })
-        assertEquals(10, BuiltInStyles.all.count { it.family == StyleFamily.ACID })
-        assertEquals(9, BuiltInStyles.all.count { it.family == StyleFamily.FLUID })
-        assertEquals(11, BuiltInStyles.all.count { it.family == StyleFamily.CYMATICS })
-        assertEquals(39, BuiltInStyles.all.count { it.family == StyleFamily.SHADER })
+        assertEquals(10, designed.count { it.family == StyleFamily.LIFE })
+        assertEquals(10, designed.count { it.family == StyleFamily.MYCELIUM })
+        assertEquals(10, designed.count { it.family == StyleFamily.ACID })
+        assertEquals(9, designed.count { it.family == StyleFamily.FLUID })
+        assertEquals(11, designed.count { it.family == StyleFamily.CYMATICS })
+        assertEquals(81, designed.count { it.family == StyleFamily.SHADER })
+    }
+
+    @Test
+    fun `every Style's Extras are its pack's, and every pack's Extras reach a Style`() {
+        val packs = PackExtras.styles.associateBy { it.id }
+        BuiltInStyles.all.forEach { manifest ->
+            assertEquals(manifest.id.value, packs[manifest.id.value]?.extras.orEmpty(), manifest.extras)
+        }
+        val ids = BuiltInStyles.all.map { it.id.value }.toSet()
+        assertTrue(PackExtras.styles.all { it.id in ids })
+    }
+
+    @Test
+    fun `a pack the audit does not cover still reaches Customize with its Extras`() {
+        val swirl = extra(ExtraKind.SWIRL, 0f, 2f, 1f)
+        val audited = listOf(styles.manifestOf(JULIA))
+        val catalogue =
+            BuiltInStyles.catalogueOf(
+                audited,
+                listOf(pack("julia", StyleFamily.SHADER, swirl), pack("new_flow", StyleFamily.FLUID, swirl)),
+            )
+        assertEquals(listOf("julia", "new_flow"), catalogue.map { it.id.value })
+        assertEquals(audited.single(), catalogue.first())
+        val added = catalogue.last()
+        assertEquals(StyleFamily.FLUID, added.family)
+        assertEquals(listOf(swirl), added.extras)
+        assertFalse(added.ownFlight)
+        assertTrue(added.reactions.isEmpty() && added.shared.isEmpty())
+        assertEquals(DefaultMacros.forStyle(StyleFamily.FLUID, ownFlight = false, extras = setOf(ExtraKind.SWIRL)), added.macros)
     }
 
     @Test
@@ -81,17 +113,19 @@ class StyleCatalogueTest {
     }
 
     @Test
-    fun `an Extra starts where the Style is today`() {
-        val centre = BuiltInStyles.extra(ExtraKind.CENTER_X, -0.745f, -1.5f, 0.5f)
-        assertEquals(0.3775f, centre.default, delta)
-        assertEquals(-1.5f, centre.nativeMin)
-        assertEquals(0.5f, centre.nativeMax)
+    fun `a pack's Extra starts at its default, so the Style draws as its pack tunes it`() {
+        val centre = extra(ExtraKind.CENTER_X, -1f, 1f, 0f)
+        assertEquals(0.5f, centre.default, delta)
+        assertEquals(-1f, centre.nativeMin)
+        assertEquals(1f, centre.nativeMax)
         assertFalse(centre.stepped)
-        assertEquals(1f, BuiltInStyles.extra(ExtraKind.SCALE, 5f, 0f, 2f).default, delta)
-        assertEquals(ExtraSpec(ExtraKind.SCALE, 0f, 4f, 0.5f), BuiltInStyles.around(ExtraKind.SCALE, 2f))
-        assertEquals(ExtraSpec(ExtraKind.COUNT, 1f, 96f, 47f / 95f, stepped = true), BuiltInStyles.count(48))
-        assertEquals(ExtraSpec(ExtraKind.FOG, 0f, 1f, 0.5f), BuiltInStyles.generic(ExtraKind.FOG))
-        assertEquals(0.3775f, julia.extras.getValue(ExtraKind.CENTER_X), delta)
+        assertEquals(ExtraSpec(ExtraKind.SCALE, 0f, 2f, 0.5f), extra(ExtraKind.SCALE, 0f, 2f, 1f))
+        assertEquals(ExtraSpec(ExtraKind.SCALE, 1f, 3f, 0.25f), extra(ExtraKind.SCALE, 1f, 3f, 1.5f))
+        assertEquals(ExtraSpec(ExtraKind.VARIANT, 0f, 9f, 1f / 3f, stepped = true), extra(ExtraKind.VARIANT, 0f, 9f, 3f))
+        val orb = pack("orb", StyleFamily.SHADER, extra(ExtraKind.SCALE, 0f, 2f, 1f), extra(ExtraKind.FOG, 0f, 2f, 1f))
+        assertEquals(listOf(ExtraKind.SCALE, ExtraKind.FOG), orb.extras.map { it.kind })
+        assertEquals(StyleFamily.SHADER, orb.family)
+        assertEquals(0.5f, julia.extras.getValue(ExtraKind.CENTER_X), delta)
     }
 
     @Test
@@ -121,27 +155,27 @@ class StyleCatalogueTest {
     }
 
     @Test
-    fun `the Style families keep their audit values`() {
-        val orbium = styles.manifestOf(SceneId("life_orbium")).extras.associateBy { it.kind }
-        assertEquals(0f, orbium.getValue(ExtraKind.VARIANT).default)
-        assertEquals((0.15f - 0.1f) / 0.35f, orbium.getValue(ExtraKind.GROWTH).default, delta)
-        val coral = styles.manifestOf(SceneId("life_coral")).extras.associateBy { it.kind }
-        assertEquals(1f, coral.getValue(ExtraKind.VARIANT).default)
-        assertEquals((0.0545f - 0.01f) / 0.08f, coral.getValue(ExtraKind.GROWTH).default, delta)
-        val capillary = styles.manifestOf(SceneId("myco_capillary")).extras.associateBy { it.kind }
-        assertEquals((5f - 3f) / 21f, capillary.getValue(ExtraKind.REACH).default, delta)
+    fun `the Style families declare the Extras their renderers map`() {
+        fun kinds(id: String) = styles.manifestOf(SceneId(id)).extras.map { it.kind }
+        assertEquals(listOf(ExtraKind.GROWTH, ExtraKind.SPREAD, ExtraKind.VARIANT, ExtraKind.FORCE), kinds("life_coral"))
+        assertEquals(
+            listOf(ExtraKind.REACH, ExtraKind.TURN, ExtraKind.DRIFT, ExtraKind.DECAY, ExtraKind.FORCE),
+            kinds("myco_capillary"),
+        )
+        assertEquals(
+            listOf(ExtraKind.SWIRL, ExtraKind.VISCOSITY, ExtraKind.DECAY, ExtraKind.SIZE, ExtraKind.FORCE),
+            kinds("fluid_smoke"),
+        )
+        assertEquals(
+            listOf(ExtraKind.DRIFT, ExtraKind.VISCOSITY, ExtraKind.FORCE, ExtraKind.FOG, ExtraKind.SWIRL),
+            kinds(Fixtures.WATER.value),
+        )
         val droste = styles.manifestOf(SceneId("acid_droste")).extras.associateBy { it.kind }
-        assertEquals(0.25f, droste.getValue(ExtraKind.FLIGHT).default, delta)
-        assertEquals(3f / 9f, droste.getValue(ExtraKind.VARIANT).default, delta)
-        val chladni = styles.manifestOf(SceneId("chladni_sand")).extras.associateBy { it.kind }
-        assertEquals(1f, chladni.getValue(ExtraKind.VARIANT).default)
-        val smoke = styles.manifestOf(SceneId("fluid_smoke")).extras.associateBy { it.kind }
-        assertEquals(45f / 60f, smoke.getValue(ExtraKind.SWIRL).default, delta)
-        assertEquals(0.1f, smoke.getValue(ExtraKind.VISCOSITY).default, delta)
-        assertEquals(1.4f / 3f, smoke.getValue(ExtraKind.DECAY).default, delta)
-        assertEquals(0.192f / 0.4f, smoke.getValue(ExtraKind.SIZE).default, delta)
-        val water = styles.manifestOf(Fixtures.WATER).extras.associateBy { it.kind }
-        assertEquals((0.985f - 0.95f) / 0.049f, water.getValue(ExtraKind.VISCOSITY).default, delta)
+        assertEquals(0f, droste.getValue(ExtraKind.VARIANT).default)
+        assertTrue(droste.getValue(ExtraKind.VARIANT).stepped)
+        assertEquals(0.5f, droste.getValue(ExtraKind.FLIGHT).default, delta)
+        assertFalse(droste.getValue(ExtraKind.FLIGHT).stepped)
+        assertTrue(ExtraKind.DECAY in kinds("chladni_sand"))
     }
 
     @Test
@@ -195,7 +229,35 @@ class StyleCatalogueTest {
         assertEquals(BuiltInStyles.all, styles.styles)
     }
 
+    @Test
+    fun `every MilkDrop preset is a Style with the MilkDrop manifest under its own id`() {
+        val ocean = MilkdropStyles.of("Ocean Deep.milk")
+        assertEquals("milkdrop:Ocean Deep.milk", ocean.value)
+        assertEquals("Ocean Deep.milk", MilkdropStyles.file(ocean))
+        val manifest = styles[ocean] ?: throw AssertionError("no manifest for $ocean")
+        assertEquals(ocean, manifest.id)
+        assertEquals(styles.manifestOf(MILKDROP).copy(id = ocean), manifest)
+        assertEquals(manifest, styles.manifestOf(ocean))
+        assertEquals(ocean, Defaults.customization(manifest).style)
+    }
+
+    @Test
+    fun `only an id with a file after the prefix names a MilkDrop preset`() {
+        assertNull(MilkdropStyles.file(MILKDROP))
+        assertNull(MilkdropStyles.file(MilkdropStyles.of("")))
+        assertNull(MilkdropStyles.file(SceneId("my milkdrop:x.milk")))
+        assertNull(styles[MilkdropStyles.of("")])
+        assertNull(styles[SceneId("milk:Ocean.milk")])
+    }
+
+    @Test
+    fun `without the MilkDrop family no MilkDrop preset is known`() {
+        val noMilkdrop = StyleCatalogue(listOf(styles.manifestOf(JULIA)))
+        assertNull(noMilkdrop[MilkdropStyles.of("Ocean.milk")])
+        assertEquals(StyleFamily.SHADER, noMilkdrop.manifestOf(MilkdropStyles.of("Ocean.milk")).family)
+    }
+
     private companion object {
-        const val EXPECTED_STYLES = 92
+        const val EXPECTED_STYLES = 134
     }
 }

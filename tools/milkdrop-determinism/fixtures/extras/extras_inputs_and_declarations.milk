@@ -1,0 +1,91 @@
+MILKDROP_PRESET_VERSION=201
+[preset00]
+PSVERSION=2
+PSVERSION_WARP=2
+PSVERSION_COMP=2
+fRating=3.000
+fGammaAdj=1.850
+fDecay=0.990
+fVideoEchoZoom=1.000
+fVideoEchoAlpha=0.000
+nVideoEchoOrientation=0
+nWaveMode=2
+bAdditiveWaves=0
+bWaveDots=0
+bWaveThick=1
+bModWaveAlphaByVolume=1
+bMaximizeWaveColor=1
+bTexWrap=1
+bDarkenCenter=1
+bRedBlueStereo=0
+bBrighten=0
+bDarken=0
+bSolarize=0
+bInvert=0
+fWaveAlpha=0.600
+fWaveScale=1.600
+fWaveSmoothing=0.750
+fWaveParam=0.000
+fModWaveAlphaStart=0.750
+fModWaveAlphaEnd=0.950
+fWarpAnimSpeed=1.000
+fWarpScale=1.000
+fZoomExponent=1.000
+fShader=0.000
+zoom=1.000
+rot=0.000
+cx=0.500
+cy=0.500
+dx=0.000
+dy=0.000
+warp=0.010
+sx=1.000
+sy=1.000
+wave_r=0.650
+wave_g=0.650
+wave_b=0.650
+wave_x=0.500
+wave_y=0.500
+ob_size=0.005
+ob_r=0.000
+ob_g=0.000
+ob_b=0.000
+ob_a=0.000
+ib_size=0.150
+ib_r=0.100
+ib_g=0.100
+ib_b=0.100
+ib_a=0.000
+nMotionVectorsX=48.000
+nMotionVectorsY=36.000
+mv_dx=0.000
+mv_dy=0.000
+mv_l=0.900
+mv_r=1.000
+mv_g=1.000
+mv_b=1.000
+mv_a=0.000
+per_frame_1=dx = 0.004*(rand(1000)/1000 - 0.5);
+per_frame_2=dy = -0.002 - 0.003*mid_att + 0.003*(rand(1000)/1000 - 0.5);
+per_frame_3=zoom = 1.0 + 0.01*bass_att;
+per_frame_4=rot = 0.01*sin(time*0.7);
+per_frame_5=wave_r = 0.4 + 0.4*sin(time*1.3) + 0.2*rand(100)/100;
+per_frame_6=wave_g = 0.5 + 0.4*sin(time*0.9 + 1.0);
+per_frame_7=wave_b = 0.5 + 0.4*sin(time*0.7 + 2.0);
+per_frame_8=wave_a = 0.6 + 0.4*mid_att;
+per_pixel_1=warp = warp + 0.02*sin(x*5.0 + time)*treb_att + 0.01*rand(100)/100;
+warp_1=`sampler sampler_noise_mq; float3 extra_tint;
+warp_2=`sampler sampler_noise_hq = sampler_state { Filter = MIN_MAG_MIP_LINEAR; AddressU = WRAP; AddressV = WRAP; };
+warp_3=`shader_body
+warp_4=`{
+warp_5=`    extra_tint = float3(0.95, 0.97, 1.0);
+warp_6=`    float2 touch_at = mouse.xy * mouse_clicked + mouse_pos * 0.5 + float2(mouse_x, mouse_y) * mouse_released;
+warp_7=`    float clock_at = sysTimeTotalSeconds * 0.0001 + sysTime.x + sysTimeHour + sysTimeMinute + sysTimeSecond;
+warp_8=`    float calendar = sysDate.x + sysDateYear + sysDateMonth + sysDateDay + sysDateWeekday;
+warp_9=`    float3 grain = tex2D(sampler_noise_hq, uv * aspect_sd.xy).xyz + 0.1 * tex2D(sampler_noise_mq, uv * 3.0).xyz;
+warp_10=`    ret = tex2D(sampler_main, uv + touch_at * 0.0001).xyz * 0.96 * extra_tint + (grain - 0.5) * 0.06 + 0.01 * frac(clock_at + calendar);
+warp_11=`}
+comp_1=`shader_body
+comp_2=`{
+comp_3=`    ret = tex2D(sampler_main, uv).xyz * (1.0 + 0.02 * mouse_clicked) + 0.02 * texture2D(sampler_main, uv * 0.5).xyz;
+comp_4=`}

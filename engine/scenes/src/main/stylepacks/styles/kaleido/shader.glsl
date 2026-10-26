@@ -136,6 +136,8 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -157,15 +159,30 @@ vec3 grade(vec3 col) {
 }
 
 // Kaleidoscope: angular mirror folds over a flowing audio pattern.
+//
+// Rhythm (#294): a trusted downbeat twists the folds, the kick swells the low body at the centre
+// harder on the bar's strong beats, the snare cracks the middle ring and the hat sparkles in the
+// fine detail, each its own layer. An unsure tracker drops the bar's accents, never the drums.
+// Each band's own hits against its usual level (#319) move the folds too: a bass jump widens them
+// at the rim, a mid jump sends a ripple out and a treble jump shimmers the finest detail.
 void main() {
     vec2 uv = view();
+    float trust = clamp(min(uPulseConfidence, uTempoStability) * uDownbeatConfidence, 0.0, 1.0);
+    float strong = uBeatInBar < 0.5 ? 1.0 : (abs(uBeatInBar - 2.0) < 0.5 ? 0.7 : 0.45);
+    float accent = mix(0.7, strong, trust);
     float seg = 6.0;
-    float a = atan(uv.y, uv.x);
     float r = length(uv);
+    r *= 1.0 - 0.12 * uKick * accent * smoothstep(1.0, 0.0, r);
+    r *= 1.0 - 0.06 * uBassHits * smoothstep(0.4, 1.4, r);
+    float a = atan(uv.y, uv.x) + 0.35 * uDownbeat * r;
     a = abs(mod(a, 6.2831 / seg) - 3.1415 / seg);
     uv = vec2(cos(a), sin(a)) * r;
-    float f = sin(uv.x * 7.0 + uTime) * cos(uv.y * 7.0 - uTime * 0.8)
-        + aband(fract(r + uTime * 0.05)) * 1.2;
+    float f = sin(uv.x * 7.0 * xm(uXScale) + uTime) * cos(uv.y * 7.0 * xm(uXScale) - uTime * 0.8)
+        + aband(fract(r + uXDriftTime * 0.05)) * 1.2;
+    f += 0.5 * uSnare * sin(a * 24.0) * exp(-pow((r - 0.6) * 5.0, 2.0));
+    f += 0.25 * uHat * sin(uv.x * 40.0) * sin(uv.y * 40.0);
+    f += 0.3 * uMidHits * sin(r * 18.0 - 9.0 * (1.0 - uMidHits)) * smoothstep(1.4, 0.2, r);
+    f += 0.15 * uTrebleHits * sin(uv.x * 63.0 + uv.y * 37.0);
     vec3 col = pal(f * 0.3 + r * 0.4) * (0.3 + f * 0.5 + uBass * 0.6);
     col *= smoothstep(1.6, 0.2, r);
     fragColor = vec4(grade(col), 1.0);

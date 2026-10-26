@@ -11,15 +11,23 @@ The audio-reactive picture the engine draws every frame from the music: in full-
 _Avoid_: visuals (for the App UI), graphics, animation, visualizer
 
 **App UI**:
-The app's own screens and controls: tabs, buttons, panels, sheets, the mini-player and the Element. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
-_Avoid_: visuals, visual design, interface (an architecture term)
+The app's own screens and controls: tabs, buttons, panels, sheets and the mini-player, in one simple look of frosted, translucent, matte glass, light or dark. It is never audio reactive and never appears in a Render or Recording. The "Visuals tab" is a place in the App UI where the Visual is chosen and customized.
+_Avoid_: visuals, visual design, interface (an architecture term), skin
+
+**Glass**:
+The App UI's one material: frosted, translucent, matte panels with a fine grain and a light edge, over a Backdrop. It is calmer under battery saving, heat or high contrast, and turns solid when the person chooses Reduce transparency. It is never 3D and never reacts to sound.
+_Avoid_: glassmorphism, blur, theme
+
+**Backdrop**:
+What lies behind the glass on a page: the playing song's artwork, blurred and quietened, behind Home and the plain player; a calm, still field of soft colour behind the other pages; the Visual itself on the Visuals tab and in full screen. It never reacts to sound.
+_Avoid_: wallpaper, background visual
 
 **Bar**:
-The App UI's bottom navigation, the same in every Element and for every user (no page is ever hidden), in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app. Back from any page returns to Home, and Back on Home sends the app to the background.
+The App UI's bottom navigation, the same for every user (no page is ever hidden), in this order: Music, Visuals, Home, Studio, Settings. Music opens the music Library. Music and Visuals each have their own search, and they are not connected: there is no search across the whole app. Back from any page returns to Home, and Back on Home sends the app to the background.
 _Avoid_: tabs, nav bar, menu
 
 **Home**:
-The middle page of the Bar: the Element's Hero scene with a now-playing card on it.
+The middle page of the Bar: a now-playing card and ways into Visuals and Studio, over the playing song's artwork as its Backdrop.
 _Avoid_: dashboard, start screen
 
 **First-run setup**:
@@ -35,20 +43,20 @@ Play/pause, skip, shuffle, repeat and the seek bar with its A-B loop. On the ful
 _Avoid_: transport, media controls
 
 **Visuals off**:
-The battery-saving setting, in Settings > Battery beside Visual quality and the CPU/GPU save mode, that stops the Visual entirely: nothing draws it, so the player shows the Element's Hero scene as a still backdrop image, and no Render or Recording can be made. The Element and its Hero scene still run, and Studio still works with videos already saved.
+The battery-saving setting, in Settings > Battery beside Visual quality and the CPU/GPU save mode, that stops the Visual entirely: nothing draws it, so the mini-player opens the plain player over the song's artwork, and no Render or Recording can be made. The App UI still runs, on calmer glass, and Studio still works with videos already saved.
 _Avoid_: low power mode, disable visualizer
 
 **Element**:
-One selectable skin for the App UI, named after a piece of nature (Water, Wood, Stone, Bioluminescence and others). It sets the material, palette, scene, motion, sounds and haptics. It never changes navigation, layout, which controls exist, their labels or what they do: every Element has the same screens.
-_Avoid_: theme, style (a Style is a look for the Visual), skin pack, Theme pack
+Retired. Selectable nature skins for the App UI (Water, Wood, Stone, Bioluminescence) were replaced by the one Glass look; there is nothing to choose but light or dark.
+_Avoid_: using the word for anything current
 
 **Hero scene**:
-The Element's full-screen nature scene behind Home. It moves only as a slow ambient loop and never reacts to sound.
-_Avoid_: background visual, wallpaper, live visual
+Retired with the Elements. Home's backdrop is now the playing song's artwork (see Backdrop).
+_Avoid_: using the word for anything current
 
 **Ambient**:
-The setting for how much an Element's scene moves on its own: Drifting, Still or Off. It is never driven by the music.
-_Avoid_: animation level, reactivity
+Retired with the Elements and their scenes. Backdrops never move on their own.
+_Avoid_: using the word for anything current
 
 **Style**:
 One selectable look for the Visual, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
@@ -58,8 +66,12 @@ _Avoid_: Scene (an engine term), effect, visualizer
 The user's choices for how a Style looks and how it reacts to sound.
 _Avoid_: Params, settings, tweaks
 
+**Layer**:
+Layer 2 is a second Style drawn over the Style itself (Layer 1) and part of its Customization: it is laid over Layer 1 by one of ten blend modes, can act on it (bend, swirl, cut-out, tint, outline), can swap places with it, and can loop. Its opacity, influence and swap are Shared core controls, so Reactions and Modulators can move them. MilkDrop can be Layer 1 but never Layer 2.
+_Avoid_: overlay (the App's picture layer above the Visual), mix, stack
+
 **Camera**:
-The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel.
+The single viewpoint every Style is seen through: zoom, push-in, rotation, orbit, shake and travel, and the lens's field of view, a roll and a speed ramp. In a Style that draws a 3D world it moves a real camera through that world; on a flat picture it moves the picture the nearest 2D way.
 _Avoid_: View params, motion params
 
 **Sound signal**:
@@ -71,7 +83,7 @@ One large control in the basic Customize view. It is a single value: changing it
 _Avoid_: Preset knob, master slider
 
 **Shared core**:
-The controls every Style has, MilkDrop included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, and colour grading.
+The controls every Style has, MilkDrop included: Camera, colours and palette, speed and energy, detail and glow, kaleidoscope and mirror, trails and echo, lens effects, warp and ripple, glitch and pixelate, particles overlay, colour grading, and Layer 2's opacity, influence and swap.
 _Avoid_: Global params, common FX
 
 **Extras**:
@@ -87,7 +99,7 @@ A link from one Sound signal or Modulator to one target: a property of the Visua
 _Avoid_: Modulation, route, mapping, LFO target
 
 **Modulator**:
-A generated value that moves targets the way a Sound signal does: an LFO wave, a hit envelope, a step sequencer or a smooth random drift. Each one has its own start setting, and it does not run until it is linked to something. Not a Sound signal, because it is not measured from the audio.
+A generated value that moves targets the way a Sound signal does: an LFO wave, a hit envelope, a step sequencer, a smooth random drift, a toggle on the beat or a random value on the beat. Each one has its own start setting, and it does not run until it is linked to something. Not a Sound signal, because it is not measured from the audio.
 _Avoid_: LFO (only one kind), oscillator
 
 **Automation**:

@@ -159,6 +159,9 @@ void FluidSim::step(float dtRaw) {
     set1f(kAdvect, "uRdx", rdx_);
     const float vd = 1.0f + velocityDissipation * dt;
     set3f(kAdvect, "uDecay", vd, vd, vd);
+    const bool buoyant = !velocityOnly_ && dye_ && (buoyancyX != 0.0f || buoyancyY != 0.0f);
+    if (buoyant) bindTex("uWeight", dye_->read().tex(), 2, kAdvect);
+    set2f(kAdvect, "uBuoyancy", buoyant ? buoyancyX : 0.0f, buoyant ? buoyancyY : 0.0f);
     blitDiscarding(vel.write());
     vel.swap();
 
@@ -215,6 +218,7 @@ void FluidSim::step(float dtRaw) {
         set2f(kAdvect, "uVelInvRes", velInvW, velInvH);
         set1f(kAdvect, "uDt", dt);
         set1f(kAdvect, "uRdx", rdx_);
+        set2f(kAdvect, "uBuoyancy", 0.0f, 0.0f);
         const float a = std::clamp(chromaticAging, 0.0f, 1.0f);
         set3f(kAdvect, "uDecay", 1.0f + densityDissipation * (1.0f - 0.20f * a) * dt, 1.0f + densityDissipation * (1.0f + 0.35f * a) * dt,
               1.0f + densityDissipation * (1.0f - 0.05f * a) * dt);

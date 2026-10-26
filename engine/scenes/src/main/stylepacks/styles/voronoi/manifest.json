@@ -3,5 +3,11 @@
   "id": "voronoi",
   "label": "Voronoi",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["timbre"], "micro": ["onset", "spectrum"]}
 }

@@ -24,6 +24,9 @@ constexpr std::array<SharedSpec, kSharedCount> kTable = {{
     {"DRIFT_Y", -1.0f, 1.0f, 0.0f, K::Continuous, false},
     {"ENDLESS_ZOOM", 0.0f, 1.0f, 0.0f, K::Switch, false},
     {"DIVE_SPEED", 0.05f, 1.2f, 0.3f, K::Continuous, false},
+    {"FIELD_OF_VIEW", -1.0f, 1.0f, 0.0f, K::Continuous, false},
+    {"ROLL", -1.0f, 1.0f, 0.0f, K::Continuous, false},
+    {"SPEED_RAMP", 0.0f, 1.0f, 0.0f, K::Continuous, false},
     {"PALETTE", 0.0f, 20.0f, 0.0f, K::Stepped, false},
     {"PALETTE_2", 0.0f, 20.0f, 1.0f, K::Stepped, false},
     {"PALETTE_MIX", 0.0f, 1.0f, 0.0f, K::Continuous, false},
@@ -45,6 +48,9 @@ constexpr std::array<SharedSpec, kSharedCount> kTable = {{
     {"TRAILS", 0.0f, 0.98f, 0.0f, K::Continuous, false},
     {"TRAIL_ZOOM", -0.5f, 0.5f, 0.0f, K::Continuous, false},
     {"TRAIL_WARP", 0.0f, 1.0f, 0.0f, K::Continuous, false},
+    {"ECHO_COPY", 0.0f, 1.0f, 0.0f, K::Continuous, true},
+    {"ECHO_COPY_ZOOM", 0.5f, 2.0f, 1.0f, K::Continuous, false},
+    {"ECHO_COPY_FLIP", 0.0f, 3.0f, 1.0f, K::Stepped, false},
     {"GRAIN", 0.0f, 1.0f, 0.0f, K::Continuous, false},
     {"VIGNETTE", 0.0f, 1.0f, 0.0f, K::Continuous, false},
     {"CHROMATIC", 0.0f, 1.0f, 0.0f, K::Continuous, false},
@@ -70,6 +76,10 @@ constexpr std::array<SharedSpec, kSharedCount> kTable = {{
     {"GAMMA", 0.3f, 2.5f, 1.0f, K::Continuous, true},
     {"TEMPERATURE", -1.0f, 1.0f, 0.0f, K::Continuous, false},
     {"INVERT", 0.0f, 1.0f, 0.0f, K::Switch, true},
+    {"ANAGLYPH", 0.0f, 1.0f, 0.0f, K::Switch, true},
+    {"LAYER_OPACITY", 0.0f, 1.0f, 0.5f, K::Continuous, true},
+    {"LAYER_INFLUENCE", 0.0f, 1.0f, 0.5f, K::Continuous, true},
+    {"LAYER_SWAP", 0.0f, 1.0f, 0.0f, K::Continuous, true},
 }};
 }  // namespace
 

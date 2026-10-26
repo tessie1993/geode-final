@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "id": "mirror_prism",
+  "label": "Mirror Prism",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "detail": "march",
+  "multipass": { "scale": 0.5, "coarse": false, "temporal": true },
+  "inputs": ["blue_noise"],
+  "extras": [
+    { "name": "flight", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 },
+    { "name": "spread", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactions": [
+    { "signal": "bass", "target": "travel", "amount": 0.3, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "treble", "target": "edge", "amount": 0.25, "riseMs": 30, "fallMs": 300, "curve": "linear" },
+    { "signal": "hit", "target": "spread", "amount": 0.35, "riseMs": 40, "fallMs": 450, "curve": "smooth" }
+  ],
+  "effects": ["dispersion", "glow"],
+  "tiers": {
+    "eased": { "steps": 0.85 },
+    "reduced": { "steps": 0.7, "off": ["glow"] },
+    "minimal": { "steps": 0.55, "off": ["glow", "dispersion"] }
+  },
+  "lens": {
+    "threshold": 0.8,
+    "flare": { "amount": 0.3, "ghosts": 5, "halo": 0.35, "dispersion": 0.85 },
+    "streaks": { "amount": 0.25, "shape": "star", "spokes": 6, "length": 0.45 }
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
+}

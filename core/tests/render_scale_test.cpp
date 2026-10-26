@@ -229,6 +229,82 @@ TEST(RenderSize, QualityNeverDropsBelowTheFloor) {
     EXPECT_FLOAT_EQ(scale::totalScale(in), scale::kMinQualityScale);
 }
 
+TEST(RenderSize, LayerTwoDrawsBothPicturesAtThreeQuartersOfTheSofterStyle) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 1440;
+    in.surfaceHeight = 3200;
+    in.styleScale = 1.0f;
+    in.layered = true;
+    in.layerStyleScale = 1.0f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.75f);
+    in.layerStyleScale = 0.8f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.6f);
+    in.styleScale = 0.9f;
+    in.layerStyleScale = 1.0f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.675f);
+    in.layered = false;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), 0.9f);
+}
+
+TEST(RenderSize, LayerTwoKeepsTheQualityFloorAndLeavesRendersAlone) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 1440;
+    in.surfaceHeight = 3200;
+    in.styleScale = 0.5f;
+    in.layered = true;
+    in.layerStyleScale = 0.5f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), scale::kMinQualityScale);
+    in.offscreen = true;
+    EXPECT_EQ(scale::renderSize(in), (scale::RenderSize{1440, 3200}));
+}
+
+TEST(RenderSize, MilkdropHoldsALargePanelToItsMegapixels) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 1440;
+    in.surfaceHeight = 3200;
+    in.maxMegapixels = scale::kMilkdropMaxMegapixels;
+    const float expected = std::sqrt(scale::kMilkdropMaxMegapixels * 1.0e6f / (1440.0f * 3200.0f));
+    EXPECT_FLOAT_EQ(scale::totalScale(in), expected);
+    const scale::RenderSize size = scale::renderSize(in);
+    EXPECT_NEAR(static_cast<float>(size.width) * static_cast<float>(size.height), 1.6e6f, 1.6e6f * 0.005f);
+}
+
+TEST(RenderSize, MilkdropGivesUpSupersamplingOnASmallPanel) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 720;
+    in.surfaceHeight = 1600;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), scale::kMaxLiveSupersample);
+    in.maxMegapixels = scale::kMilkdropMaxMegapixels;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), std::sqrt(scale::kMilkdropMaxMegapixels * 1.0e6f / (720.0f * 1600.0f)));
+}
+
+TEST(RenderSize, MilkdropBelowItsMegapixelsFollowsQualityAndHeatLikeAnyStyle) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 1080;
+    in.surfaceHeight = 2400;
+    in.maxMegapixels = scale::kMilkdropMaxMegapixels;
+    in.thermalCeiling = 0.6f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), scale::liveSupersample(1080, 2400) * 0.6f);
+    in.thermalCeiling = 0.8f;
+    EXPECT_FLOAT_EQ(scale::totalScale(in), std::sqrt(scale::kMilkdropMaxMegapixels * 1.0e6f / (1080.0f * 2400.0f)));
+}
+
+TEST(RenderSize, ARenderIsNotHeldToMilkdropsMegapixels) {
+    scale::ScaleInputs in;
+    in.surfaceWidth = 3840;
+    in.surfaceHeight = 2160;
+    in.offscreen = true;
+    in.maxMegapixels = scale::kMilkdropMaxMegapixels;
+    EXPECT_EQ(scale::renderSize(in), (scale::RenderSize{3840, 2160}));
+}
+
+TEST(LayeredStyleScale, IsTheStyleScaleWithoutLayerTwo) {
+    EXPECT_FLOAT_EQ(scale::layeredStyleScale(0.8f, false, 0.5f), 0.8f);
+    EXPECT_FLOAT_EQ(scale::layeredStyleScale(0.8f, true, 0.5f), 0.5f * scale::kLayeredRenderScale);
+    EXPECT_FLOAT_EQ(scale::layeredStyleScale(0.6f, true, 0.9f), 0.6f * scale::kLayeredRenderScale);
+    EXPECT_FLOAT_EQ(scale::kLayeredRenderScale, 0.75f);
+}
+
 TEST(RenderSize, NeverZero) {
     scale::ScaleInputs in;
     in.surfaceWidth = 0;

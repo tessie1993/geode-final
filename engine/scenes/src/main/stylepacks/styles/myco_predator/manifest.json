@@ -14,5 +14,13 @@
     "reaim": 0.25,
     "look": 4,
     "hueOffset": 0.03
-  }
+  },
+  "extras": [
+    { "name": "reach", "min": 0, "max": 2, "default": 1 },
+    { "name": "turn", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["novelty", "energy"], "micro": ["onset", "bands"]}
 }

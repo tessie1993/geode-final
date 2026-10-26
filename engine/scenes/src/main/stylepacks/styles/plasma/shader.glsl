@@ -136,6 +136,8 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -157,13 +159,22 @@ vec3 grade(vec3 col) {
 }
 
 // Classic demo-scene plasma, breathing with the mix.
+//
+// Structure (#294): each section carries the field somewhere new and turns the palette on, a
+// build tightens the pattern and a drop opens it out, and a changing passage churns it. All of it
+// glides over seconds; none of it moves the picture on a single frame. The bands' presence against
+// their usual level (#319) leans it slowly: a bass-heavy passage widens the rings, a passage rich in
+// treble or mid turns the palette its way.
 void main() {
-    vec2 uv = view() * 2.0;
-    float t = uTime * 0.6;
+    vec2 travel = 0.8 * vec2(cos(6.2831853 * uSection), sin(6.2831853 * uSection));
+    vec2 uv = view() * 2.0 * xm(uXScale) * (1.0 + 0.35 * uBuildup - 0.2 * uDrop) + travel;
+    float t = uXDriftTime * 0.6;
+    uv += 0.3 * uNovelty * vec2(sin(uv.y * 1.3 + t), cos(uv.x * 1.1 - t));
     float v = sin(uv.x * 2.0 + t) + sin(uv.y * 2.3 - t * 1.2)
         + sin((uv.x + uv.y) * 1.7 + t * 0.7)
-        + sin(length(uv) * (3.0 + uBass * 3.0) - t * 2.0);
-    v = v / 4.0 + aband(fract(v * 0.25 + 0.5)) * 0.4;
+        + sin(length(uv) * (3.0 + uBass * 3.0) / (0.75 + 0.5 * uBassPresence) - t * 2.0);
+    v = v / 4.0 + aband(fract(v * 0.25 + 0.5)) * 0.4 + 0.2 * (0.5 - 0.5 * cos(6.2831853 * uSection));
+    v += 0.2 * (uTreblePresence - 0.5) - 0.1 * (uMidPresence - 0.5);
     vec3 col = pal(v) * (0.45 + uEnergy * 0.9 + uBeat * uBeatResponse * 0.2);
     fragColor = vec4(grade(col), 1.0);
 }

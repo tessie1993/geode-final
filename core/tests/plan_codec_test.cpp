@@ -20,6 +20,8 @@ constexpr size_t kReactionsAt = kTrimsAt + 2 * kSoundSignalCount;
 constexpr size_t kModulatorsAt = kReactionsAt + kMaxReactions * kReactionFloats;
 constexpr size_t kLinksAt = kModulatorsAt + kMaxModulators * kModulatorFloats;
 constexpr size_t kAutomationsAt = kLinksAt + kMaxMacroLinks * kMacroLinkFloats;
+constexpr size_t kLayerAt = kAutomationsAt + kMaxAutomations * kAutomationFloats;
+constexpr size_t kStyleAt = kLayerAt + kLayerFloats;
 constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
 
 std::vector<float> carried() {
@@ -68,6 +70,63 @@ TEST(PlanCodec, ReadsTheCountsAndValues) {
     EXPECT_EQ(plan.macros[1], 0.25f);
     EXPECT_EQ(plan.trims[static_cast<size_t>(SoundSignal::Bass)].gain, 2.0f);
     EXPECT_EQ(plan.trims[static_cast<size_t>(SoundSignal::Bass)].floor, 0.3f);
+}
+
+TEST(PlanCodec, ReadsLayerTwoBeforeTheStyle) {
+    EXPECT_EQ(kStyleAt + kStyleFloats, kPlanFloats);
+    std::vector<float> data = carried();
+    data[kLayerAt] = 3997830.0f;
+    data[kLayerAt + 1] = 5.0f;
+    data[kLayerAt + 2] = 2.0f;
+    const CustomizationPlan plan = decoded(data);
+    EXPECT_EQ(plan.layer.style, 3997830u);
+    EXPECT_EQ(plan.layer.blend, layer::Blend::Overlay);
+    EXPECT_EQ(plan.layer.influence, layer::Influence::Swirl);
+}
+
+TEST(PlanCodec, AnythingButAWhole24BitNameIsNoLayerTwo) {
+    for (const float style : {0.0f, 0.5f, -3.0f, 12.5f, 16777216.0f, kNaN, std::numeric_limits<float>::infinity()}) {
+        std::vector<float> data = carried();
+        data[kLayerAt] = style;
+        data[kLayerAt + 1] = 42.0f;
+        data[kLayerAt + 2] = -1.0f;
+        const CustomizationPlan plan = decoded(data);
+        EXPECT_EQ(plan.layer.style, layer::kNoStyle) << style;
+        EXPECT_EQ(plan.layer.blend, layer::Blend::Normal);
+        EXPECT_EQ(plan.layer.influence, layer::Influence::None);
+    }
+    std::vector<float> data = carried();
+    data[kLayerAt] = 1.0f;
+    EXPECT_EQ(decoded(data).layer.style, 1u);
+    data[kLayerAt] = 16777215.0f;
+    EXPECT_EQ(decoded(data).layer.style, 16777215u);
+}
+
+TEST(PlanCodec, ReadsTheStyleTheCustomizationIsForLast) {
+    std::vector<float> data = carried();
+    EXPECT_EQ(decoded(data).style, layer::kNoStyle) << "unnamed";
+    data[kStyleAt] = 3997830.0f;
+    EXPECT_EQ(decoded(data).style, 3997830u);
+    EXPECT_EQ(decoded(data).layer.style, layer::kNoStyle) << "not Layer 2's";
+    for (const float style : {0.5f, -3.0f, 12.5f, 16777216.0f, kNaN}) {
+        data[kStyleAt] = style;
+        EXPECT_EQ(decoded(data).style, layer::kNoStyle) << style;
+    }
+    data[kStyleAt] = 16777215.0f;
+    EXPECT_EQ(decoded(data).style, 16777215u);
+}
+
+TEST(PlanCodec, NamesThePlansStyleWithoutDecodingIt) {
+    std::vector<float> data = carried();
+    data[kStyleAt] = 3997830.0f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size()), 3997830u);
+    data[kStyleAt] = 2.5f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size()), layer::kNoStyle);
+    data[kStyleAt] = 3997830.0f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size() - 1), layer::kNoStyle) << "not a plan's size";
+    EXPECT_EQ(geode::viz::mod::planStyle(nullptr, data.size()), layer::kNoStyle);
+    data[0] = 0.0f;
+    EXPECT_EQ(geode::viz::mod::planStyle(data.data(), data.size()), layer::kNoStyle) << "carries no plan";
 }
 
 TEST(PlanCodec, ReadsAReactionInItsPlace) {
@@ -120,14 +179,25 @@ TEST(PlanCodec, ReadsAModulatorInItsPlace) {
     EXPECT_EQ(m.seed, 42u);
 }
 
+TEST(PlanCodec, ReadsTheBeatModulatorsAndKeepsAnUnknownKindInRange) {
+    std::vector<float> data = carried();
+    data[kModulatorsAt] = 4.0f;
+    data[kModulatorsAt + kModulatorFloats] = 5.0f;
+    data[kModulatorsAt + 2 * kModulatorFloats] = 9.0f;
+    const CustomizationPlan plan = decoded(data);
+    EXPECT_EQ(plan.modulators[0].kind, ModulatorKind::ToggleOnBeat);
+    EXPECT_EQ(plan.modulators[1].kind, ModulatorKind::RandomOnBeat);
+    EXPECT_EQ(plan.modulators[2].kind, ModulatorKind::RandomOnBeat);
+}
+
 TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     std::vector<float> data = carried();
     const float link[kMacroLinkFloats] = {5, 1, 12, 0, 0.8f, 0.2f};
     std::copy(std::begin(link), std::end(link), data.begin() + static_cast<std::ptrdiff_t>(kLinksAt + kMacroLinkFloats));
-    const float automation[12] = {2, 1, 3, 0, -0.3f, 4, 1, 0.7f, 8, 2.5f, 1, 3};
+    const float automation[13] = {2, 1, 3, 0, -0.3f, 4, 1, 0.7f, 8, 2.5f, 1, 1, 3};
     const size_t automationAt = kAutomationsAt + kAutomationFloats;
     std::copy(std::begin(automation), std::end(automation), data.begin() + static_cast<std::ptrdiff_t>(automationAt));
-    data[automationAt + 12 + 2] = 0.6f;
+    data[automationAt + 13 + 2] = 0.6f;
     const CustomizationPlan plan = decoded(data);
     const MacroLinkSpec& l = plan.macroLinks[1];
     EXPECT_EQ(l.macro, 5);
@@ -146,7 +216,9 @@ TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     EXPECT_EQ(a.spacingSeconds, 8.0f);
     EXPECT_EQ(a.fadeSeconds, 2.5f);
     EXPECT_TRUE(a.alternate);
+    EXPECT_TRUE(a.held);
     EXPECT_EQ(a.stepCount, 3);
+    EXPECT_FALSE(plan.automations[0].held);
     EXPECT_EQ(a.steps[2], 0.6f);
 }
 

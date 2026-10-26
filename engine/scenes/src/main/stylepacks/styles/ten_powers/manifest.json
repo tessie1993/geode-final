@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "ten_powers",
+  "label": "Ten Powers",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "extras": [
+    {
+      "name": "scale",
+      "min": 0,
+      "max": 2,
+      "default": 1
+    }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
+}

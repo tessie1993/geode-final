@@ -1,22 +1,26 @@
 package dev.geode.wallpaper
 
+import android.app.WallpaperManager
 import android.content.Context
+import android.content.SharedPreferences
 import android.opengl.GLSurfaceView
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.service.wallpaper.WallpaperService
-import android.view.MotionEvent
 import android.view.SurfaceHolder
 import dagger.hilt.android.AndroidEntryPoint
-import dev.geode.analysis.AudioFeatures
-import dev.geode.audio.AudioBus
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.PresetStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.VisualSurface
+import dev.geode.playback.PlaybackEngine
 import dev.geode.render.FramePacer
 import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
 import dev.geode.render.VisualizerRenderer
-import dev.geode.ui.ThemeStore
+import dev.geode.ui.SurfaceDrawing
 import dev.geode.util.bestEffort
 import javax.inject.Inject
 
@@ -32,9 +36,8 @@ class VisualizerWallpaperService : WallpaperService() {
         private var glView: WallpaperGlSurfaceView? = null
         private var renderer: VisualizerRenderer? = null
 
-        // Nothing playing is silence: the wallpaper moves on the Style's own time, never on made-up sound.
-        private val silence = AudioFeatures.empty()
-        private var feeder: Thread? = null
+        // Whether this engine watches the app's audio feed now: while it is visible.
+        private var listening = false
 
         /**
          * Each engine instance — preview and home screen can both be live at once — owns its
@@ -42,20 +45,6 @@ class VisualizerWallpaperService : WallpaperService() {
          */
         private val pacer =
             FramePacer(FrameRatePolicy.Capped(WALLPAPER_FPS)) { glView?.requestRender() }
-
-        @Volatile
-        private var running = false
-
-        /**
-         * Distinguishes one feeder run from the next.
-         *
-         * A wallpaper toggles visibility every time the screen sleeps or the user switches app, so
-         * over a day this runs hundreds of times. If a join ever times out, the old thread must be
-         * able to tell that a newer run has taken over and exit — otherwise it keeps ticking, and
-         * keeps the renderer and the service context alive, for the rest of the process.
-         */
-        @Volatile
-        private var feedGeneration = 0
 
         private var surfaceAvailable = false
         private var visible = false
@@ -67,13 +56,14 @@ class VisualizerWallpaperService : WallpaperService() {
         private val touchPoints = FloatArray(TouchField.MAX_POINTS * 2)
 
         /**
-         * The surface, not the display: a wallpaper surface is often wider than the screen
-         * so the launcher can pan it, and [MotionEvent] coordinates are in that same
-         * surface space. Dividing by the display width would put every finger in the wrong
-         * place on exactly the devices that scroll their home screens.
+         * The surface the taps are mapped over. A launcher that pans a wider wallpaper places a
+         * tap by the screen, so on those a tap lands a little off; a tap is a pulse, not a
+         * precise point, and the platform reports no offset to correct it with.
          */
         private var surfaceWidth = 1f
         private var surfaceHeight = 1f
+
+        private val mainHandler = Handler(Looper.getMainLooper())
 
         private inner class WallpaperGlSurfaceView(
             context: Context,
@@ -87,16 +77,19 @@ class VisualizerWallpaperService : WallpaperService() {
 
         override fun onCreate(holder: SurfaceHolder) {
             super.onCreate(holder)
-            // Off by default on a wallpaper engine, so onTouchEvent is never called without
-            // this line — which is why the wallpaper had no touch at all.
-            setTouchEventsEnabled(true)
+            // Raw touches stay off: they include the launcher's own swipes and taps, which are not
+            // the person touching the wallpaper. Only COMMAND_TAP (a tap on empty space) reaches it.
+            setTouchEventsEnabled(false)
             val engine = VisualizerRenderer(this@VisualizerWallpaperService)
+            // Drawn for the moment this engine's pacer expects each frame on screen (#295).
+            engine.presentation = pacer
             renderer = engine
             restoreLiveState(engine)
-            engine.pcmProvider = { null }
             glView =
                 WallpaperGlSurfaceView(this@VisualizerWallpaperService).apply {
                     setEGLContextClientVersion(3)
+                    // No depth or stencil, as VisualizerView: the window only takes the finished frame.
+                    setEGLConfigChooser(8, 8, 8, 0, 0, 0)
                     setRenderer(engine)
                     // The pacer asks for each frame; without a request the GL thread parks, which
                     // is how "invisible costs nothing" is enforced rather than merely intended.
@@ -119,50 +112,50 @@ class VisualizerWallpaperService : WallpaperService() {
             // Settings, once read; before then, what the old settings file said.
             engine.reducedMotion =
                 (settings.state.value as? SettingsState.Ready)?.values?.behavior?.reducedMotion
-                    ?: ThemeStore(prefsFiles.general).loadGui().reducedMotion
+                    ?: legacyReducedMotion(prefsFiles.general)
         }
 
-        private fun startFeeding(engine: VisualizerRenderer) {
-            if (feeder != null) return
-            AudioBus.addConsumer()
-            val generation = ++feedGeneration
-            running = true
-            feeder =
-                Thread {
-                    while (running && feedGeneration == generation) {
-                        engine.features = AudioBus.features() ?: silence
-                        Thread.sleep(FEED_INTERVAL_MS)
-                    }
-                }.apply {
-                    isDaemon = true
-                    name = "geode-wallpaper-audio"
-                    start()
-                }
+        // The app's one audio feed, read natively by the renderer each frame: what plays in the app, or
+        // silence when nothing does (the wallpaper then moves on the Style's own time, never on made-up
+        // sound). The analysis runs while the wallpaper is visible.
+        private fun startListening(engine: VisualizerRenderer) {
+            if (listening) return
+            listening = true
+            PlaybackEngine.feed.acquire()
+            engine.feed = PlaybackEngine.feed
         }
 
-        private fun stopFeeding() {
-            val thread = feeder ?: return
-            running = false
-            feedGeneration++
-            AudioBus.removeConsumer()
-            runCatching { thread.join(FEEDER_JOIN_MS) }
-            feeder = null
+        private fun stopListening() {
+            if (!listening) return
+            listening = false
+            PlaybackEngine.feed.release()
         }
 
         private fun syncRunState() {
             val engine = renderer ?: return
             if (surfaceAvailable && visible) {
+                drawAsSettingsSay(engine)
                 glView?.onResume()
                 pacer.start()
-                startFeeding(engine)
+                startListening(engine)
             } else {
                 // Stopped first, and on this same main-thread callback: the vsync callback is gone
                 // before onPause is even asked for, so no frame can be requested after the
                 // wallpaper stops being visible.
                 pacer.stop()
                 glView?.onPause()
-                stopFeeding()
+                stopListening()
             }
+        }
+
+        /**
+         * The wallpaper's own quality and frame rate (#394), read each time it comes into view: a change
+         * made in the app's Settings meanwhile is picked up the next time the home screen shows. Until
+         * Settings are read, the engine's defaults stand.
+         */
+        private fun drawAsSettingsSay(engine: VisualizerRenderer) {
+            val performance = (settings.state.value as? SettingsState.Ready)?.values?.performance ?: return
+            SurfaceDrawing.of(performance, VisualSurface.WALLPAPER).applyTo(engine, pacer, surfaceHolder?.surface)
         }
 
         override fun onVisibilityChanged(visible: Boolean) {
@@ -195,36 +188,35 @@ class VisualizerWallpaperService : WallpaperService() {
             pacer.applyTo(holder.surface)
         }
 
+        /** Ends a tap's short touch; preallocated so a tap allocates nothing. */
+        private val endTap = Runnable { renderer?.submitTouchPoints(touchPoints, 0) }
+
         /**
-         * The wallpaper's whole input: publish the live pointers, in the same y-up NDC the
-         * app publishes, so a scene behaves identically in both hosts.
+         * The wallpaper's whole input: a tap on empty space of the home screen, as the platform's
+         * own live wallpapers take it. It becomes one short touch, in the same y-up NDC the app
+         * publishes, so a Style answers it exactly as it answers a tap in the app; the release
+         * wake does the fading.
          *
-         * There is no smear or pinch here on purpose. Those write to the visual params, and
-         * a wallpaper has no controls to undo them with — a stray pinch on the home screen
-         * would leave the wallpaper zoomed with no way back. Publishing pointers is
-         * transient by construction: it decays to nothing the moment the finger leaves.
+         * There is no drag, smear or pinch here on purpose: the launcher owns swipes (they page the
+         * home screen), and a wallpaper has no controls to undo a stray pinch with.
          */
-        override fun onTouchEvent(event: MotionEvent) {
-            super.onTouchEvent(event)
-            val engine = renderer ?: return
-            val action = event.actionMasked
-            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                engine.submitTouchPoints(touchPoints, 0)
-                return
+        override fun onCommand(
+            action: String?,
+            x: Int,
+            y: Int,
+            z: Int,
+            extras: Bundle?,
+            resultRequested: Boolean,
+        ): Bundle? {
+            val engine = renderer
+            if (action == WallpaperManager.COMMAND_TAP && engine != null) {
+                touchPoints[0] = x / surfaceWidth * 2f - 1f
+                touchPoints[1] = 1f - y / surfaceHeight * 2f
+                engine.submitTouchPoints(touchPoints, 1)
+                mainHandler.removeCallbacks(endTap)
+                mainHandler.postDelayed(endTap, TAP_MS)
             }
-            // ACTION_POINTER_UP names a finger that is leaving, and that finger is still in
-            // the event's pointer list. Publishing it would keep steering the visuals with a
-            // finger the user has already lifted.
-            val leaving = if (action == MotionEvent.ACTION_POINTER_UP) event.actionIndex else -1
-            var live = 0
-            for (i in 0 until event.pointerCount) {
-                if (i != leaving && live < TouchField.MAX_POINTS) {
-                    touchPoints[live * 2] = event.getX(i) / surfaceWidth * 2f - 1f
-                    touchPoints[live * 2 + 1] = 1f - event.getY(i) / surfaceHeight * 2f
-                    live++
-                }
-            }
-            engine.submitTouchPoints(touchPoints, live)
+            return super.onCommand(action, x, y, z, extras, resultRequested)
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
@@ -234,8 +226,9 @@ class VisualizerWallpaperService : WallpaperService() {
         }
 
         override fun onDestroy() {
+            mainHandler.removeCallbacks(endTap)
             pacer.stop()
-            stopFeeding()
+            stopListening()
             releaseScenesOnGlThread()
             glView?.destroy()
             glView = null
@@ -269,14 +262,23 @@ class VisualizerWallpaperService : WallpaperService() {
     private companion object {
         const val TAG = "VisualizerWallpaper"
 
+        /**
+         * Reduced motion as the old settings file kept it: its own switch, or the old first-run
+         * question's answer that asked for it.
+         */
+        fun legacyReducedMotion(prefs: SharedPreferences): Boolean =
+            prefs.getBoolean("gui_reduced_motion", false) || prefs.getString("gui_safety_choice", null) == "REDUCED_MOTION"
+
         /** Bounded on purpose: a wedged GL thread must not turn teardown into an ANR. */
         const val GL_RELEASE_WAIT_MS = 200L
 
-        const val FEED_INTERVAL_MS = 16L
-
-        const val FEEDER_JOIN_MS = 200L
+        /** About five frames: long enough for the engine to see a tap, short enough not to linger. */
+        const val TAP_MS = 90L
 
         /**
+         * What the wallpaper asks for until Settings are read; after that its frame rate is the one
+         * Settings give the wallpaper surface (#394). The note below is why this start is not lower.
+         *
          * The same target the app renders at, deliberately — not the 24–30 fps §4.4 of the
          * quality bar wants from a wallpaper.
          *

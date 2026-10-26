@@ -19,7 +19,7 @@ namespace geode::viz {
 class CymaticsScene : public Scene {
 public:
     CymaticsScene(const styles::CymaticsStyle& style, ProgramLoader loader, SceneHost host)
-        : id_(style.id), style_(style), loader_(loader), host_(std::move(host)) {}
+        : id_(style.id), base_(style), style_(style), loader_(loader), host_(std::move(host)) {}
     ~CymaticsScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -32,6 +32,11 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
+    void setExtras(const ExtraValues& values) override {
+        extras_ = values;
+        style_ = extras::apply(base_, values);
+    }
 
 private:
     static constexpr float kDriveGain = 1.5f;
@@ -54,7 +59,11 @@ private:
     GLint loc(const char* name) { return uniforms_.loc(name); }
 
     std::string id_;
+    // The Style as its pack tunes it, and as its Extras move it this frame; COUNT, VARIANT, DECAY and
+    // FORCE act on the plate itself.
+    styles::CymaticsStyle base_;
     styles::CymaticsStyle style_;
+    ExtraValues extras_ = ExtraValues::neutral();
     ProgramLoader loader_;
     SceneHost host_;
     cymatics::Plate plate_;
@@ -64,6 +73,7 @@ private:
     SceneParams params_;
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
+    FeatureValues bus_;
     bool hasPending_ = false;
     GeodeFeatureFrame pending_{};
     int width_ = 1;

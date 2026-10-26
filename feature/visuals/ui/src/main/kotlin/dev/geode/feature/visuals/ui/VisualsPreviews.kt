@@ -9,8 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
-import dev.geode.design.forest.ForestMode
-import dev.geode.design.forest.ForestTheme
+import dev.geode.design.glass.GlassTheme
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.VisualsState
 
@@ -34,7 +33,7 @@ internal fun VisualsPreview(
     dark: Boolean,
     content: @Composable () -> Unit,
 ) {
-    ForestTheme(mode = if (dark) ForestMode.Dark else ForestMode.Light) { VisualStandIn(content) }
+    GlassTheme(dark = dark) { VisualStandIn(content) }
 }
 
 @Composable

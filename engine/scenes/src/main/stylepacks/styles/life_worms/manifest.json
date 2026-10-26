@@ -11,5 +11,12 @@
     "substeps": 4,
     "look": 5,
     "seedJitter": 10.0
-  }
+  },
+  "extras": [
+    { "name": "growth", "min": 0, "max": 2, "default": 1 },
+    { "name": "spread", "min": 0, "max": 2, "default": 1 },
+    { "name": "variant", "min": 0, "max": 9, "default": 0 },
+    { "name": "force", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy", "timbre"], "meso": ["bar"], "micro": ["onset", "bands"]}
 }

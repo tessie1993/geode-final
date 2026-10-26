@@ -9,9 +9,12 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/DisplayEvents.hpp"
+#include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/Normaliser.hpp"
 #include "geode/viz/PlanCodec.hpp"
 #include "geode/viz/Renderer.hpp"
+#include "FeedHandle.hpp"
 #include "SnapshotHandle.hpp"
 
 struct geode_viz {
@@ -31,6 +34,28 @@ struct geode_viz {
     bool hasPlan = false;
     geode::viz::mod::ReactionGraph graph;
     double lastFrameSeconds = -1.0;
+    // A Customization for a Style not drawn yet, held until a change of Style to it starts (#309), and
+    // the time of the last frame it was weighed at. Drawing thread only.
+    geode::viz::transition::LookHold lookHold;
+    geode::bridge::CustomizationSnapshot heldLook;
+    double lastHoldSeconds = -1.0;
+    // The graph's stylesDue after the last frame, for geode_viz_styles_due on any thread.
+    std::atomic<uint32_t> stylesDue{0};
+    // The live sound this Visual reads at the start of each frame; null when it is handed features instead.
+    // Drawing thread only, as are the frame's window and the edge detection on the feed's events.
+    std::shared_ptr<geode::api::Feed> feed;
+    std::array<float, GEODE_FEED_SPAN_FRAMES * 2> feedPcm{};
+    geode::viz::DisplayEvents feedEvents;
+    // Where the last frame's audio ended, so the next knows how much of its span is new.
+    geode::audio::feed::ReadPoint feedLast;
+    // Freeze reactions (#366): set from any thread, applied to the feed's frames on the drawing thread,
+    // where the held window is kept so MilkDrop is fed the same audio for the whole hold.
+    std::atomic<bool> reactionsHeld{false};
+    geode::viz::SignalHold feedHold;
+    std::array<float, GEODE_FEED_SPAN_FRAMES * 2> heldPcm{};
+    // When the next frame is expected on screen (CLOCK_MONOTONIC ns, 0 for now): the feed is read at the audio
+    // heard then. Set from any thread, read on the drawing thread.
+    std::atomic<int64_t> presentNs{0};
 };
 
 namespace {
@@ -38,6 +63,8 @@ namespace {
 using namespace geode::viz;
 
 static_assert(LfoEngine::kSlots == GEODE_LFO_SLOTS);
+static_assert(Renderer::kPcmWindowFrames == GEODE_FEED_WINDOW_FRAMES);
+static_assert(Renderer::kPcmSpanFrames == GEODE_FEED_SPAN_FRAMES);
 static_assert(AdsrEngine::kCount == GEODE_ADSR_SLOTS);
 // The snapshot schema (core/bridge/schema/native_bridge.json) must describe exactly what the Visual reads.
 static_assert(geode::bridge::kSnapshotParamsCount == static_cast<size_t>(SceneParams::kFieldCount));
@@ -106,12 +133,8 @@ void geode_viz_set_reduced_motion(geode_viz* v, int on) {
     if (v) v->renderer.setReducedMotion(on != 0);
 }
 
-void geode_viz_set_layer(geode_viz* v, const char* scene_id, float mix, int blend_mode) {
-    if (v) v->renderer.setLayer(text(scene_id), mix, blend_mode);
-}
-
-void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms) {
-    if (v) v->renderer.setTransition(text(id), duration_ms);
+void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms, int64_t seed) {
+    if (v) v->renderer.setTransition(text(id), duration_ms, static_cast<uint64_t>(seed));
 }
 
 void geode_viz_begin_param_morph(geode_viz* v, float seconds) {
@@ -127,6 +150,14 @@ void geode_viz_queue_touch_stroke(geode_viz* v, float nx, float ny, float ndx, f
     if (v) v->renderer.queueTouchStroke(nx, ny, ndx, ndy, dt, strength);
 }
 
+void geode_viz_set_touch_smear(geode_viz* v, int on, float strength) {
+    if (v) v->renderer.setTouchSmear(on != 0, strength);
+}
+
+void geode_viz_set_gravity(geode_viz* v, float x, float y, float z) {
+    if (v) v->renderer.submitGravity(x, y, z);
+}
+
 void geode_viz_load_milk_preset(geode_viz* v, const char* path) {
     if (v && path) v->renderer.loadMilkPreset(path);
 }
@@ -139,6 +170,12 @@ void geode_viz_set_milk_texture_dir(geode_viz* v, const char* dir) {
     if (v && dir) v->renderer.setMilkTextureDir(dir);
 }
 
+#ifdef GEODE_STYLE_HOT_RELOAD
+void geode_viz_set_style_lab(geode_viz* v, const char* dir) {
+    if (v && dir) v->renderer.setStyleLab(dir);
+}
+#endif
+
 size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacity) {
     if (!v) return 0;
     const std::string path = v->renderer.takeMilkPresetLoaded();
@@ -148,10 +185,6 @@ size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacit
         out[n] = '\0';
     }
     return path.size();
-}
-
-void geode_viz_push_pcm(geode_viz* v, const float* mono, int count) {
-    if (v && mono && count > 0) v->renderer.pushPcm(mono, count);
 }
 
 void geode_viz_set_lfo(geode_viz* v, int slot, const float* c, int count) {
@@ -201,12 +234,18 @@ void geode_viz_set_paced_fps(geode_viz* v, float fps) {
     if (v) v->renderer.thermal().setPacedFps(fps);
 }
 
+float geode_viz_frame_cap_fps(geode_viz* v) { return v ? v->renderer.thermal().frameCapFps() : 0.0f; }
+
 void geode_viz_set_quality_ceiling(geode_viz* v, float ceiling) {
     if (v) v->renderer.thermal().setQualityCeiling(ceiling);
 }
 
 void geode_viz_set_frame_load(geode_viz* v, int frames, float p95_ms) {
     if (v) v->renderer.setFrameLoad(frames, p95_ms);
+}
+
+void geode_viz_set_export_supersample(geode_viz* v, float factor) {
+    if (v) v->renderer.setExportSupersample(factor);
 }
 
 void geode_viz_set_offscreen(geode_viz* v, int on) {
@@ -279,11 +318,8 @@ void geode_viz_cut(geode_viz* v) {
     if (v) v->renderer.cut();
 }
 
-// The drawing thread's side of the hand-off: the newest Customization, if a new one came, before the frame.
-static void applySnapshot(geode_viz* v) {
-    geode_snapshots* attached = v->snapshots.load(std::memory_order_acquire);
-    if (!attached || !attached->exchange.refresh(geode::bridge::SnapshotReader::Draw)) return;
-    const geode::bridge::CustomizationSnapshot& snapshot = attached->exchange.current(geode::bridge::SnapshotReader::Draw);
+// A Customization's look onto the Visual: its parameters, its Modulators and its plan.
+static void applyLook(geode_viz* v, const geode::bridge::CustomizationSnapshot& snapshot) {
     geode_viz_set_params(v, snapshot.params.data(), static_cast<int>(snapshot.params.size()));
     geode_viz_set_reduced_motion(v, snapshot.reducedMotion ? 1 : 0);
     for (int slot = 0; slot < GEODE_LFO_SLOTS; ++slot) {
@@ -295,8 +331,29 @@ static void applySnapshot(geode_viz* v) {
     v->hasPlan = geode::viz::mod::decodePlan(snapshot.plan.data(), snapshot.plan.size(), v->plan);
     if (!v->hasPlan) {
         v->graph.reset();
+        v->stylesDue.store(0, std::memory_order_relaxed);
         v->renderer.setCustomization(nullptr);
     }
+}
+
+// The drawing thread's side of the hand-off: the newest Customization, if a new one came, before the
+// frame. One for another Style than the one drawn waits until a change of Style to it starts (#309),
+// so the drawn Style keeps its own look while the change waits for its downbeat (transition::LookHold).
+static void applySnapshot(geode_viz* v, double timeSeconds) {
+    const auto dt = v->lastHoldSeconds < 0.0 ? 0.0f : static_cast<float>(timeSeconds - v->lastHoldSeconds);
+    v->lastHoldSeconds = timeSeconds;
+    geode_snapshots* attached = v->snapshots.load(std::memory_order_acquire);
+    if (attached && attached->exchange.refresh(geode::bridge::SnapshotReader::Draw)) {
+        const geode::bridge::CustomizationSnapshot& snapshot = attached->exchange.current(geode::bridge::SnapshotReader::Draw);
+        const uint32_t style = geode::viz::mod::planStyle(snapshot.plan.data(), snapshot.plan.size());
+        if (v->lookHold.offer(style, v->renderer.drawnStyle())) {
+            applyLook(v, snapshot);
+        } else {
+            v->heldLook = snapshot;
+        }
+        return;
+    }
+    if (v->lookHold.step(v->renderer.drawnStyle(), v->renderer.requestedStyle(), dt)) applyLook(v, v->heldLook);
 }
 
 // The Customization's Reactions, Modulators, Macro links and Automations for this frame, handed to
@@ -311,12 +368,60 @@ static void evaluateCustomization(geode_viz* v, double timeSeconds) {
         features = v->features;
     }
     const geode::viz::mod::Evaluated& evaluated = v->graph.evaluate(v->plan, geode::viz::mod::signalFrame(features), dt);
+    v->stylesDue.store(evaluated.stylesDue, std::memory_order_relaxed);
     v->renderer.setCustomization(&evaluated);
+}
+
+// The sound heard now, read straight from the feed on the drawing thread: the features, with each event on
+// exactly one frame, and the stereo window for the scenes. Before the Customization is evaluated, so its
+// Reactions see the same frame the scenes draw.
+static void readFeed(geode_viz* v) {
+    if (!v->feed) return;
+    GeodeFeatureFrame heard{};
+    geode::audio::feed::ReadPoint point;
+    const bool live =
+        v->feed->read(heard, v->feedPcm.data(), GEODE_FEED_SPAN_FRAMES, v->presentNs.load(std::memory_order_acquire), &point);
+    const int fresh = geode::viz::milkdrop::heardSince(v->feedLast.live, v->feedLast.epoch, v->feedLast.end, point.live, point.epoch,
+                                                       point.end, GEODE_FEED_SPAN_FRAMES - GEODE_FEED_WINDOW_FRAMES);
+    v->feedLast = point;
+    // Events keep being edge-detected under a hold, so those that fire meanwhile are dropped, not replayed.
+    const GeodeFeatureFrame events = v->feedEvents.frame(heard, live);
+    const bool held = v->reactionsHeld.load(std::memory_order_acquire);
+    if (held && !v->feedHold.holding()) v->heldPcm = v->feedPcm;
+    const GeodeFeatureFrame shown = v->feedHold.frame(events, held);
+    v->renderer.setFeatures(shown);
+    // A held window is the same audio again: nothing in it is new.
+    v->renderer.setFramePcm(held ? v->heldPcm.data() : v->feedPcm.data(), GEODE_FEED_SPAN_FRAMES, held ? 0 : fresh);
+    std::lock_guard<std::mutex> lock(v->configLock);
+    v->features = shown;
+}
+
+void geode_viz_set_frame_pcm(geode_viz* v, const float* stereo, int frames, int fresh) {
+    if (!v || !stereo || frames <= 0) return;
+    // The renderer keeps the newest frames of a longer span, as it does for a feed's.
+    v->renderer.setFramePcm(stereo, frames, fresh);
+}
+
+void geode_viz_set_reactions_held(geode_viz* v, int held) {
+    if (v) v->reactionsHeld.store(held != 0, std::memory_order_release);
+}
+
+void geode_viz_set_present_time(geode_viz* v, int64_t present_ns) {
+    if (v) v->presentNs.store(present_ns, std::memory_order_release);
+}
+
+GeodeStatus geode_viz_attach_feed(geode_viz* v, geode_feed* f) {
+    if (!v) return GEODE_STATUS_NULL_HANDLE;
+    v->feed = f ? f->feed : nullptr;
+    v->feedEvents.reset();
+    v->feedLast = geode::audio::feed::ReadPoint{};
+    return GEODE_STATUS_OK;
 }
 
 void geode_viz_render(geode_viz* v, double time_seconds, uint32_t target_fbo) {
     if (!v) return;
-    applySnapshot(v);
+    applySnapshot(v, time_seconds);
+    readFeed(v);
     evaluateCustomization(v, time_seconds);
     v->renderer.render(time_seconds, target_fbo);
 }
@@ -329,6 +434,10 @@ GeodeStatus geode_viz_attach_snapshots(geode_viz* v, geode_snapshots* snapshots)
 
 void geode_viz_release_scenes(geode_viz* v) {
     if (v) v->renderer.releaseScenes();
+}
+
+uint32_t geode_viz_styles_due(geode_viz* v) {
+    return v ? v->stylesDue.load(std::memory_order_relaxed) : 0u;
 }
 
 }

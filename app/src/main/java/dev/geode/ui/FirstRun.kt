@@ -7,8 +7,8 @@ import android.os.Build
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -40,7 +39,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.R
-import dev.geode.design.CrystalButton
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.calmBackdrop
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.OnboardingCommand
@@ -145,7 +145,7 @@ private fun PermissionsStep(onDone: () -> Unit) {
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .calmBackdrop()
                 .systemBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
@@ -167,11 +167,11 @@ private fun PermissionsStep(onDone: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        CrystalButton(onClick = { ask.launch(setupPermissions) }, modifier = Modifier.fillMaxWidth()) {
+        GlassButton(onClick = { ask.launch(setupPermissions) }, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.first_run_access_allow))
         }
         Spacer(Modifier.height(10.dp))
-        CrystalButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+        GlassButton(onClick = onDone, modifier = Modifier.fillMaxWidth(), filled = false) {
             Text(stringResource(R.string.first_run_access_skip))
         }
     }
@@ -184,7 +184,7 @@ private fun SaveFolderStep(
     folder: FolderUri?,
     onDone: () -> Unit,
 ) {
-    Surface(Modifier.fillMaxSize().systemBarsPadding()) {
+    Box(Modifier.fillMaxSize().calmBackdrop().systemBarsPadding()) {
         StudioSetupRoute(
             folder = folder?.value,
             onFolderPicked = { settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },

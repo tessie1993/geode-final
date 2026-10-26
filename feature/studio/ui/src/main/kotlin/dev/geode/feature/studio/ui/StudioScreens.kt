@@ -17,11 +17,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ContentCut
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -47,8 +52,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
+import dev.geode.design.glass.GlassLoading
+import dev.geode.design.glass.GlassMessage
+import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.Shape
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.Video
@@ -64,19 +73,20 @@ fun ThumbnailPlaceholder(
     modifier: Modifier,
 ) {
     Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-        Icon(Icons.Filled.Movie, contentDescription = video.name, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Rounded.Movie, contentDescription = video.name, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 /**
- * The library's first page: every Project with its ⋮ menu, New Project, and a reminder when no save
- * folder or no default Project is chosen. Stateless (ADR-0003).
+ * The library's first page: every Project with its ⋮ menu, New Project, Render and the render queue
+ * (#316), and a reminder when no save folder or no default Project is chosen. Stateless (ADR-0003).
  */
 @Composable
 fun ProjectListScreen(
     model: ProjectListModel,
     onAction: (StudioAction) -> Unit,
     modifier: Modifier = Modifier,
+    queue: RenderQueueModel = RenderQueueModel(emptyList(), canClear = false, visualsOff = false, projects = emptyList()),
 ) {
     var naming by remember { mutableStateOf(false) }
     Column(
@@ -89,13 +99,36 @@ fun ProjectListScreen(
                 Modifier.weight(StudioDimens.FILL),
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Button(onClick = { naming = true }, enabled = !model.loading) { Text(stringResource(R.string.studio_new_project)) }
+            OutlinedButton(onClick = { onAction(StudioAction.OpenRender) }, enabled = !model.loading && !queue.visualsOff) {
+                Text(stringResource(R.string.studio_render))
+            }
+            Button(onClick = { naming = true }, enabled = !model.loading, modifier = Modifier.padding(start = StudioDimens.gap)) {
+                Text(stringResource(R.string.studio_new_project))
+            }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+            OutlinedButton(onClick = { onAction(StudioAction.PickVideoToEdit) }, enabled = !model.loading) {
+                Text(stringResource(R.string.edit_open_video))
+            }
+            OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenCut)) }, enabled = !model.loading) {
+                Text(stringResource(R.string.edit_open_cut))
+            }
+        }
+        if (model.savedCuts.isNotEmpty()) SavedCuts(model.savedCuts, onAction)
+        if (queue.visualsOff) Note(stringResource(R.string.studio_render_visuals_off))
+        RenderQueue(queue, onAction)
         if (model.folderMissing) FolderMissing(onAction)
         if (model.noDefault) Note(stringResource(R.string.studio_no_default))
         when {
-            model.loading -> Text(stringResource(R.string.studio_loading))
-            model.projects.isEmpty() -> Text(stringResource(R.string.studio_no_projects))
+            model.loading -> GlassLoading(label = stringResource(R.string.studio_loading))
+            model.projects.isEmpty() ->
+                GlassMessage(
+                    title = stringResource(R.string.studio_no_projects),
+                    body = stringResource(R.string.studio_no_projects_hint),
+                    icon = Icons.Rounded.VideoLibrary,
+                    actionLabel = stringResource(R.string.studio_new_project),
+                    onAction = { naming = true },
+                )
             else -> {
                 val all = model.projects.map { it.project }
                 val default =
@@ -115,6 +148,26 @@ fun ProjectListScreen(
         NewProjectDialog(model.newIsDefault) { command ->
             naming = false
             command?.let { onAction(StudioAction.Send(it)) }
+        }
+    }
+}
+
+/** The earlier editor's cuts (#347), each opening in the Timeline. */
+@Composable
+private fun SavedCuts(
+    names: List<String>,
+    onAction: (StudioAction) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        Note(stringResource(R.string.edit_earlier_cuts))
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+            names.forEach { name ->
+                AssistChip(
+                    onClick = { onAction(StudioAction.Send(EditCommand.OpenSavedCut(name))) },
+                    label = { Text(name) },
+                    leadingIcon = { Icon(Icons.Rounded.ContentCut, contentDescription = null) },
+                )
+            }
         }
     }
 }
@@ -174,7 +227,7 @@ private fun ProjectMenu(
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.studio_more)) }
+        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem(stringResource(R.string.studio_rename)) {
                 menu = false
@@ -364,7 +417,11 @@ fun ProjectScreen(
             }
         }
         if (model.videos.isEmpty()) {
-            Text(stringResource(R.string.studio_no_videos))
+            GlassMessage(
+                title = stringResource(R.string.studio_no_videos),
+                body = stringResource(R.string.studio_no_videos_hint),
+                icon = Icons.Rounded.Movie,
+            )
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
                 items(model.videos, key = { it.id.value }) { video ->
@@ -395,7 +452,11 @@ private fun KindChip(
     FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
 }
 
-/** A video's page: its thumbnail, length, shape and song, and Move to Project. Stateless (ADR-0003). */
+/**
+ * A video's page: its thumbnail, length, shape and song, what it was made from, Move to Project, and
+ * what can be made of it: an Edit, a Short, a sibling at another preset, the Render again, and Share.
+ * Stateless (ADR-0003).
+ */
 @Composable
 fun VideoScreen(
     model: VideoModel,
@@ -404,8 +465,9 @@ fun VideoScreen(
     thumbnail: Thumbnail = { video, mod -> ThumbnailPlaceholder(video, mod) },
 ) {
     val video = model.video
+    var exporting by remember { mutableStateOf(false) }
     Column(
-        modifier.fillMaxSize().padding(StudioDimens.padding),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(StudioDimens.padding),
         verticalArrangement = Arrangement.spacedBy(StudioDimens.gap),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -417,6 +479,89 @@ fun VideoScreen(
         Text(stringResource(video.kind.label), style = MaterialTheme.typography.titleMedium)
         VideoFacts(video)
         Text(stringResource(R.string.studio_in_project, model.project.name), style = MaterialTheme.typography.bodyMedium)
+        model.source?.let { source ->
+            TextButton(onClick = { onAction(StudioAction.OpenVideo(source.id)) }) {
+                Text(stringResource(R.string.studio_made_from, source.name))
+            }
+        }
+        Button(onClick = { onAction(StudioAction.Share(video)) }) {
+            Icon(Icons.Rounded.Share, contentDescription = null)
+            Text(stringResource(R.string.studio_share), Modifier.padding(start = StudioDimens.gap))
+        }
+        OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenVideo(video.id))) }) {
+            Text(stringResource(R.string.edit_this_video))
+        }
+        if (model.canMakeShort) {
+            OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.MakeShort(video.id))) }) {
+                Text(stringResource(R.string.studio_make_short))
+            }
+        }
+        OutlinedButton(onClick = { exporting = true }) { Text(stringResource(R.string.studio_export_as)) }
+        if (video.madeWith != null) {
+            OutlinedButton(onClick = { onAction(StudioAction.RenderAgain(video.id)) }) {
+                Text(stringResource(R.string.studio_render_again))
+            }
+        }
+    }
+    if (exporting) {
+        ExportAsDialog(model) { command ->
+            exporting = false
+            command?.let { onAction(StudioAction.Send(it)) }
+        }
+    }
+}
+
+/**
+ * Export as… (#328): a preset and the Project the sibling lands in, which must be chosen (the video's
+ * own first). Says whether the Render is drawn again or the video cropped. [onDone] gets null when the
+ * person backs out.
+ */
+@Composable
+internal fun ExportAsDialog(
+    model: VideoModel,
+    onDone: (StudioCommand.ExportAs?) -> Unit,
+) {
+    var preset by remember { mutableStateOf(RenderPreset.TIKTOK_AND_SHORTS) }
+    var project by remember(model.project.id) { mutableStateOf(model.project.id) }
+    AlertDialog(
+        onDismissRequest = { onDone(null) },
+        title = { Text(stringResource(R.string.export_as_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+                Note(stringResource(if (model.redraws) R.string.export_as_redraw else R.string.export_as_crop))
+                Text(stringResource(R.string.export_as_preset), style = MaterialTheme.typography.titleSmall)
+                RenderPreset.entries.forEach { choice ->
+                    ChoiceRow(presetLabel(choice), choice == preset) { preset = choice }
+                }
+                Text(stringResource(R.string.export_as_project), style = MaterialTheme.typography.titleSmall)
+                model.projects.forEach { choice ->
+                    ChoiceRow(choice.name, choice.id == project) { project = choice.id }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDone(StudioCommand.ExportAs(model.video.id, preset, project)) }) {
+                Text(stringResource(R.string.export_as_go))
+            }
+        },
+        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
+    )
+}
+
+@Composable
+private fun ChoiceRow(
+    label: String,
+    selected: Boolean,
+    onPick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onPick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(label, Modifier.padding(start = StudioDimens.gap))
     }
 }
 
@@ -436,7 +581,7 @@ private fun MoveMenu(
     var menu by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.studio_more)) }
+        IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, stringResource(R.string.studio_more)) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             MenuItem(stringResource(R.string.studio_move), enabled = others.isNotEmpty()) {
                 menu = false
@@ -466,7 +611,7 @@ private fun MenuItem(
 @Composable
 private fun BackButton(onAction: (StudioAction) -> Unit) {
     IconButton(onClick = { onAction(StudioAction.Back) }) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.studio_back))
+        Icon(Icons.AutoMirrored.Rounded.ArrowBack, stringResource(R.string.studio_back))
     }
 }
 

@@ -5,5 +5,16 @@
   "family": "shader",
   "shader": "shader.glsl",
   "renderScale": 0.75,
-  "detail": "march"
+  "detail": "march",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "complexity", "min": 0, "max": 2, "default": 1 },
+    { "name": "orbit", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 }
+  ],
+  "lens": {
+    "flare": {"amount": 0.35, "ghosts": 5, "halo": 0.4, "dispersion": 0.5},
+    "depthOfField": {"aperture": 0.5, "focus": 0.5}
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands", "spectrum"]}
 }

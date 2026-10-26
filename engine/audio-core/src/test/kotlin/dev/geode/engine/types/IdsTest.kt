@@ -2,6 +2,7 @@ package dev.geode.engine.types
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -31,5 +32,18 @@ class IdsTest {
         assertNotEquals(TrackId("content://a"), TrackId("content://A"))
         assertEquals(setOf(SceneId("julia")), setOf(SceneId("julia"), SceneId("julia")))
         assertNotEquals(PresetId("a"), PresetId("b"))
+    }
+
+    @Test
+    fun `a MilkDrop preset's Style is named by its file, and gives it back`() {
+        val ocean = MilkdropStyles.of("Ocean Deep.milk")
+        assertEquals(SceneId("milkdrop:Ocean Deep.milk"), ocean)
+        assertEquals("Ocean Deep.milk", MilkdropStyles.file(ocean))
+        assertNull(MilkdropStyles.file(SceneId("milkdrop")))
+        assertNull(MilkdropStyles.file(MilkdropStyles.of("")))
+        assertNull(MilkdropStyles.file(SceneId("my milkdrop:x.milk")))
+        assertEquals(SceneId("milkdrop"), MilkdropStyles.scene(ocean))
+        assertEquals(SceneId("tunnel"), MilkdropStyles.scene(SceneId("tunnel")))
+        assertEquals(MilkdropStyles.of(""), MilkdropStyles.scene(MilkdropStyles.of("")))
     }
 }

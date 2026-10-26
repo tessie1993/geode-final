@@ -25,6 +25,18 @@ geode_analysis* analysisOf(jlong handle) { return reinterpret_cast<geode_analysi
 geode_drums* drumsOf(jlong handle) { return reinterpret_cast<geode_drums*>(handle); }
 geode_dsp* dspOf(jlong handle) { return reinterpret_cast<geode_dsp*>(handle); }
 geode_snapshots* snapshotsOf(jlong handle) { return reinterpret_cast<geode_snapshots*>(handle); }
+geode_feed* feedOf(jlong handle) { return reinterpret_cast<geode_feed*>(handle); }
+geode_feed_tap* feedTapOf(jlong handle) { return reinterpret_cast<geode_feed_tap*>(handle); }
+
+// A call on a feed handle with nothing to return: NULL_HANDLE for 0, otherwise OK once `action` ran.
+template <typename Action>
+jint feedCall(JNIEnv* env, const char* call, jlong handle, Action&& action) {
+    return statusCall(env, call, [&] {
+        if (!handle) return GEODE_STATUS_NULL_HANDLE;
+        action(feedOf(handle));
+        return GEODE_STATUS_OK;
+    });
+}
 
 bool writeFrame(JNIEnv* env, const GeodeFeatureFrame& frame, jfloatArray out) {
     if (!out || env->GetArrayLength(out) < GEODE_FEATURE_FRAME_FLOATS) return false;
@@ -358,6 +370,124 @@ JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_snapshotsRevision(JNIEnv* env, jobject, jlong handle) {
     return valueCall(env, "snapshotsRevision", jint{0}, [&] {
         return static_cast<jint>(geode_snapshots_revision(snapshotsOf(handle)));
+    });
+}
+
+JNIEXPORT jlong JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedCreate(JNIEnv* env, jobject) {
+    return valueCall(env, "feedCreate", jlong{0}, [] { return reinterpret_cast<jlong>(geode_feed_create()); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSelect(JNIEnv* env, jobject, jlong handle, jint source) {
+    return feedCall(env, "feedSelect", handle, [&](geode_feed* f) { geode_feed_select(f, source); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedFlush(JNIEnv* env, jobject, jlong handle, jint source) {
+    return feedCall(env, "feedFlush", handle, [&](geode_feed* f) { geode_feed_flush(f, source); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetRunning(JNIEnv* env, jobject, jlong handle, jint source, jboolean running) {
+    return feedCall(env, "feedSetRunning", handle, [&](geode_feed* f) { geode_feed_set_running(f, source, running ? 1 : 0); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetPresentation(JNIEnv* env, jobject, jlong handle, jint source, jlong delayUs,
+                                                             jfloat speed) {
+    return feedCall(env, "feedSetPresentation", handle,
+                    [&](geode_feed* f) { geode_feed_set_presentation(f, source, delayUs, speed); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetRoute(JNIEnv* env, jobject, jlong handle, jint route) {
+    return feedCall(env, "feedSetRoute", handle, [&](geode_feed* f) { geode_feed_set_route(f, route); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetUserOffset(JNIEnv* env, jobject, jlong handle, jlong offsetUs) {
+    return feedCall(env, "feedSetUserOffset", handle, [&](geode_feed* f) { geode_feed_set_user_offset(f, offsetUs); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetGain(JNIEnv* env, jobject, jlong handle, jfloat gainDb) {
+    return feedCall(env, "feedSetGain", handle, [&](geode_feed* f) { geode_feed_set_gain(f, gainDb); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetWindowGain(JNIEnv* env, jobject, jlong handle, jint source, jfloat gain) {
+    return feedCall(env, "feedSetWindowGain", handle, [&](geode_feed* f) { geode_feed_set_window_gain(f, source, gain); });
+}
+
+// The frames taken: 0 when the source is not the one listened to, or the engine threw.
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedWrite(JNIEnv* env, jobject, jlong handle, jint source, jfloatArray interleaved,
+                                                   jint frames, jint channels, jint sampleRate) {
+    return valueCall(env, "feedWrite", jint{0}, [&]() -> jint {
+        if (!handle || frames <= 0 || channels <= 0) return 0;
+        FloatElements data(env, interleaved);
+        if (!data.get()) return 0;
+        const jint available = data.length() / channels;
+        const jint count = frames < available ? frames : available;
+        return static_cast<jint>(geode_feed_write(feedOf(handle), source, data.get(), static_cast<size_t>(count), channels, sampleRate));
+    });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetActive(JNIEnv* env, jobject, jlong handle, jboolean active) {
+    return feedCall(env, "feedSetActive", handle, [&](geode_feed* f) { geode_feed_set_active(f, active ? 1 : 0); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedSetTuning(JNIEnv* env, jobject, jlong handle, jfloat sensitivity,
+                                                       jfloat refractoryMs, jfloat attackSeconds, jfloat releaseSeconds) {
+    return feedCall(env, "feedSetTuning", handle, [&](geode_feed* f) {
+        geode_feed_set_tuning(f, sensitivity, refractoryMs, attackSeconds, releaseSeconds);
+    });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedResetAnalysis(JNIEnv* env, jobject, jlong handle) {
+    return feedCall(env, "feedResetAnalysis", handle, [](geode_feed* f) { geode_feed_reset_analysis(f); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedAttachSnapshots(JNIEnv* env, jobject, jlong handle, jlong snapshots) {
+    return statusCall(env, "feedAttachSnapshots", [&] { return geode_feed_attach_snapshots(feedOf(handle), snapshotsOf(snapshots)); });
+}
+
+JNIEXPORT jlong JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedTapCreate(JNIEnv* env, jobject, jlong feed) {
+    return valueCall(env, "feedTapCreate", jlong{0}, [&] { return reinterpret_cast<jlong>(geode_feed_tap_create(feedOf(feed))); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedTapDestroy(JNIEnv* env, jobject, jlong handle) {
+    return statusCall(env, "feedTapDestroy", [&] {
+        if (!handle) return GEODE_STATUS_NULL_HANDLE;
+        geode_feed_tap_destroy(feedTapOf(handle));
+        return GEODE_STATUS_OK;
+    });
+}
+
+// The stereo frames written into `out` (interleaved), at most what it holds; their rate goes to rate[0].
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedTapTake(JNIEnv* env, jobject, jlong handle, jfloatArray out, jintArray rate) {
+    return valueCall(env, "feedTapTake", jint{0}, [&]() -> jint {
+        if (!handle || !out) return 0;
+        const jsize capacity = env->GetArrayLength(out) / 2;
+        if (capacity <= 0) return 0;
+        // Taken into native memory first, so the array is never pinned while the ring is read.
+        std::vector<float> taken(static_cast<size_t>(capacity) * 2);
+        int rateHz = 0;
+        const size_t frames = geode_feed_tap_take(feedTapOf(handle), taken.data(), static_cast<size_t>(capacity), &rateHz);
+        if (frames > 0) env->SetFloatArrayRegion(out, 0, static_cast<jsize>(frames * 2), taken.data());
+        if (rate && env->GetArrayLength(rate) > 0) {
+            const jint value = rateHz;
+            env->SetIntArrayRegion(rate, 0, 1, &value);
+        }
+        return static_cast<jint>(frames);
     });
 }
 

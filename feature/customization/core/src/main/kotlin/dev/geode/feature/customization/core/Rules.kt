@@ -1,10 +1,13 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.Cadence
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.Lane
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerLoop
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorShape
@@ -13,6 +16,8 @@ import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
+import dev.geode.feature.customization.api.StyleFamily
+import dev.geode.feature.customization.api.StyleManifest
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.Trigger
@@ -70,15 +75,23 @@ object Rules {
         )
     }
 
-    /** [modulator] with its rate, depth and steps in range. */
-    fun modulator(modulator: Modulator): Modulator {
-        val shape = modulator.shape
-        return modulator.copy(
+    /** [modulator] with its rate, depth, steps and beats in range. */
+    fun modulator(modulator: Modulator): Modulator =
+        modulator.copy(
             rate = if (modulator.rate.isNaN()) Modulator.DEFAULT_RATE else modulator.rate.coerceIn(Modulator.MIN_RATE, Modulator.MAX_RATE),
             depth = unit(modulator.depth),
-            shape = if (shape is ModulatorShape.StepSequencer) shape.copy(steps = shape.steps.map(::unit)) else shape,
+            shape = shape(modulator.shape),
         )
-    }
+
+    private fun shape(shape: ModulatorShape): ModulatorShape =
+        when (shape) {
+            is ModulatorShape.StepSequencer -> shape.copy(steps = shape.steps.map(::unit))
+            is ModulatorShape.ToggleOnBeat -> shape.copy(everyBeats = beats(shape.everyBeats), glide = maxOf(shape.glide, Millis.ZERO))
+            is ModulatorShape.RandomOnBeat -> shape.copy(everyBeats = beats(shape.everyBeats), glide = maxOf(shape.glide, Millis.ZERO))
+            else -> shape
+        }
+
+    private fun beats(everyBeats: Int): Int = everyBeats.coerceIn(1, ModulatorShape.MAX_EVERY_BEATS)
 
     /** [trim] with its gain and floor in range. */
     fun trim(trim: SignalTrim): SignalTrim =
@@ -116,7 +129,7 @@ object Rules {
      * [automations] as [customization] can run them:
      * - a cadence's threshold within [Trigger.BigMoments.MIN_THRESHOLD]..1, its bars within
      *   1..[MAX_AUTOMATION_BARS], its spacing within 0..[Cadence.MAX_SPACING];
-     * - Style switching's transition and the palette fade within their ranges;
+     * - Style switching's transition and the palette fade within their ranges, each chosen Style once;
      * - Camera moves at a strength in 0..1, one of each kind;
      * - lanes on targets that exist, each target in one lane only, at most [Automations.MAX_LANES]
      *   lanes of [Automations.MAX_LANE_TARGETS] targets and [Automations.MAX_LANE_STEPS] steps, every
@@ -133,6 +146,7 @@ object Rules {
                     it.copy(
                         cadence = cadence(it.cadence),
                         transition = it.transition.coerceIn(StyleSwitching.MIN_TRANSITION, StyleSwitching.MAX_TRANSITION),
+                        chosen = it.chosen.distinct(),
                     )
                 },
             palette =
@@ -178,6 +192,35 @@ object Rules {
                 )
             }.filter { it.targets.isNotEmpty() }
             .take(Automations.MAX_LANES)
+    }
+
+    /**
+     * Whether [manifest]'s Style can be Layer 2 over the Style [over]: not the same Style, and not
+     * MilkDrop, whose one engine is the MilkDrop preset the person picked.
+     */
+    fun canBeLayer(
+        manifest: StyleManifest,
+        over: SceneId,
+    ): Boolean = manifest.family != StyleFamily.MILKDROP && manifest.id != over
+
+    /** [loop] with its depth in 0..1; a loop that moves nothing is no loop. */
+    fun layerLoop(loop: LayerLoop?): LayerLoop? =
+        when {
+            loop == null || loop.targets.isEmpty() -> null
+            else -> loop.copy(depth = unit(loop.depth))
+        }
+
+    /**
+     * [layer] as it can be laid over the Style [over] with the Styles in [styles]: its loop in range, and
+     * off when its Style is unknown or cannot be Layer 2 there.
+     */
+    fun layer(
+        layer: Layer,
+        over: SceneId,
+        styles: StyleCatalogue,
+    ): Layer {
+        val style = layer.style?.takeIf { id -> styles[id]?.let { canBeLayer(it, over) } == true }
+        return layer.copy(style = style, loop = layerLoop(layer.loop))
     }
 
     /** [customization] without the Reactions, Macro links and lane targets whose source or target no longer exists. */

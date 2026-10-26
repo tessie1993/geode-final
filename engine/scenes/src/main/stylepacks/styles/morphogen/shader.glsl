@@ -12,6 +12,7 @@ out vec4 fragColor;
 // block/aband/awave/view() first, then the palette, then grade() - which calls
 // pal() and so must come after it.
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -20,6 +21,7 @@ out vec4 fragColor;
 // an unused one is dropped by the linker and costs nothing.
 //#include lib_sdf3
 //#include lib_touch
+//#include lib_gravity
 //#include lib_dmt
 
 // MORPHOGEN - one organism, continuously metamorphosing between skeletons.
@@ -511,10 +513,11 @@ float fuse(float a, float b, float k) {
  * silhouette.
  */
 float tGyroid(vec3 p) {
-    vec3 q = p * GYROID_FREQ;
+    float freq = GYROID_FREQ * xm(uXScale);
+    vec3 q = p * freq;
     q.y += gWeaveT;
     float g = dot(sin(q), cos(q.yzx));
-    float sheet = (abs(g) - gWeaveThick) / (GYROID_FREQ * GYROID_LIP);
+    float sheet = (abs(g) - gWeaveThick) / (freq * GYROID_LIP);
     // Intersected with a ball rather than min()'d with one: the gyroid is
     // endless, and a union would have let it streak out of frame in every
     // direction as an infinite lattice instead of being a body.
@@ -822,7 +825,7 @@ void main() {
     float beatEnv = clamp(uSpike, 0.0, 1.0);
     float kick = beatEnv;
 
-    float hold = MORPH_HOLD * (1.0 - clamp(uMorph, 0.0, 1.0));
+    float hold = min(MORPH_HOLD * uXHold, 0.95) * (1.0 - clamp(uMorph, 0.0, 1.0));
     gMt = smoothstep(hold * 0.5, 1.0 - hold * 0.5, f);
     // The kick is tapered to nothing at both ends of the segment. Without the
     // taper a beat landing on the wrap took the body from "finished skeleton
@@ -895,7 +898,7 @@ void main() {
     // at uSteps 64, 4 at the default 102, 6 at 128. 6/128 is exact in binary,
     // so both ends of the Detail range land on whole numbers rather than on a
     // rounding.
-    gFoldIters = int(clamp(floor(uSteps * 0.046875), 3.0, float(FOLD_MAX_ITERS)));
+    gFoldIters = int(clamp(floor(uSteps * 0.046875 * uXComplexity), 1.0, float(FOLD_MAX_ITERS)));
     gRelief = RELIEF_AMP * bass;
 
     // The shockwave rides uBeatPhase from inside the body to just past the
@@ -943,7 +946,7 @@ void main() {
 
     // ---- camera ------------------------------------------------------------
     vec3 ro = vec3(0.0, 0.0, -CAM_DIST);
-    vec3 rd = normalize(vec3(uv * gViewScale, CAM_DIST));
+    vec3 rd = tiltLook(normalize(vec3(uv * gViewScale, CAM_DIST)));
 
     // Analytic entry into the bounding sphere. Everything this style draws is
     // inside it, so a ray that misses it can skip the march entirely - which

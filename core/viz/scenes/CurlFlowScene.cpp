@@ -68,7 +68,10 @@ void CurlFlowScene::draw(float timeSeconds) {
         wallTime_ = std::fmod(wallTime_ + lastDt_, kWallWrapSeconds);
         beatEnv_ = std::max(live::hit(f), beatEnv_ * std::exp(-lastDt_ / 0.35f));
         beatDrive_ = fluid::curl::beatDrive(beatEnv_, params_.beatResponse);
-        noiseTime_ = std::fmod(noiseTime_ + lastDt_ * (0.15f + f.mid * 1.4f) * fluid::Choreography::sceneSpeed(params_.speed), kNoiseWrapSeconds);
+        // DRIFT runs the field's own clock; SWIRL sets how hard the field pushes the particles.
+        noiseTime_ = std::fmod(noiseTime_ + lastDt_ * (0.15f + f.mid * 1.4f) * fluid::Choreography::sceneSpeed(params_.speed) *
+                                                extras_.multiplier(mod::Extra::Drift, 0.0f),
+                               kNoiseWrapSeconds);
 
         configureChoreography();
         choreography_.tick(f, lastDt_, aspect_);
@@ -81,7 +84,9 @@ void CurlFlowScene::draw(float timeSeconds) {
         glUniform1f(fieldUniforms_.loc("uTime"), noiseTime_);
         glUniform1f(fieldUniforms_.loc("uFreq"), 1.2f * (0.5f + std::clamp(params_.turbulence, 0.1f, 2.0f)));
         glUniform1f(fieldUniforms_.loc("uDetail"), std::clamp(f.treble * 3.0f + pcmKick_ * 0.8f, 0.0f, 1.5f));
-        glUniform1f(fieldUniforms_.loc("uAmp"), fluid::curl::fieldAmp(params_.audioDrive, beatDrive_) * (1.0f + pcmKick_ * 0.35f));
+        // A build pushes the field harder (#294).
+        glUniform1f(fieldUniforms_.loc("uAmp"), fluid::curl::fieldAmp(params_.audioDrive, beatDrive_) * (1.0f + pcmKick_ * 0.35f) *
+                                                      extras_.multiplier(mod::Extra::Swirl, 0.0f) * featuremap::curlForce(bus_));
         glUniform2f(fieldUniforms_.loc("uPeriod"), 0.0f, 0.0f);
         glBindFramebuffer(GL_FRAMEBUFFER, fld.fbo());
         // The field is rebuilt from noise every audio frame, so nothing carries over: discard, then fill.
@@ -91,6 +96,10 @@ void CurlFlowScene::draw(float timeSeconds) {
         quad_.unbind();
 
         applyChoreographyTo(particles_);
+        // Tilt (#315): the particles fall toward down, the drag capping their speed.
+        const std::array<float, 2> down = inPlaneDown();
+        particles_.fallX = down[0] * kParticleFall;
+        particles_.fallY = down[1] * kParticleFall;
         particles_.step(lastDt_, fld.tex(), aspect_, 1.0f, wallTime_);
         hasPending_ = false;
     }

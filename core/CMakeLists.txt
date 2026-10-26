@@ -29,10 +29,12 @@ geode_core_library(geode_render render
     render/ProgramBinaryCache.cpp
     render/Program.cpp
     render/Texture.cpp
+    render/ImageDecoder.cpp
     render/Framebuffer.cpp
     render/Quad.cpp
 )
-target_link_libraries(geode_render PUBLIC GLESv3 EGL android PRIVATE geode_util)
+# jnigraphics: the platform's image decoder (AImageDecoder), for the images Style packs ship (#391).
+target_link_libraries(geode_render PUBLIC GLESv3 EGL android jnigraphics PRIVATE geode_util)
 
 geode_core_library(geode_analysis analysis
     ${GEODE_ANALYSIS_PURE_SOURCES}
@@ -62,18 +64,20 @@ target_link_libraries(geode_library PUBLIC tag)
 
 geode_core_library(geode_viz viz
     ${GEODE_VIZ_PURE_SOURCES}
-    viz/TouchField.cpp
     viz/Transition.cpp
     viz/CompositeGrade.cpp
-    viz/SharedCamera.cpp
     viz/SharedParams.cpp
     viz/CompositePass.cpp
     viz/TrailPass.cpp
     viz/SharedFxPass.cpp
+    viz/HdrPass.cpp
+    viz/SharedInputs.cpp
+    viz/LensPasses.cpp
     viz/NoFlashPass.cpp
     viz/SceneRegistry.cpp
     viz/Renderer.cpp
     viz/RendererFrame.cpp
+    viz/RendererStyleLab.cpp
     viz/scenes/ShaderScene.cpp
     viz/BlueNoise.cpp
     viz/Overlays.cpp
@@ -106,6 +110,8 @@ geode_core_library(geode_api api
     api/geode_tags_api.cpp
     api/geode_player_api.cpp
     api/geode_snapshot_api.cpp
+    api/geode_feed_api.cpp
+    api/Feed.cpp
 )
 target_link_libraries(geode_api
     PUBLIC geode_api_types
@@ -120,4 +126,4 @@ endforeach()
 add_library(geode_core INTERFACE)
 target_link_libraries(geode_core INTERFACE
     geode_api geode_viz geode_render geode_analysis geode_audio geode_library geode_bridge geode_util
-    kissfft::kissfft projectM tag oboe mediandk GLESv3 EGL log android)
+    kissfft::kissfft projectM tag oboe mediandk GLESv3 EGL log android jnigraphics)

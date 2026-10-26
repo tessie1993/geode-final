@@ -17,6 +17,7 @@ import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
 import dev.geode.feature.customization.api.Target
@@ -130,6 +131,18 @@ class CustomizeActionsTest {
     }
 
     @Test
+    fun `a dragged slider previews its edit, except in Learn mode`() {
+        val target = Target.Shared(SharedProperty.RIPPLE)
+
+        assertEquals(
+            CustomizationCommand.Preview(CustomizationCommand.SetShared(SharedProperty.RIPPLE, 0.8f)),
+            previewCommand(null, target, 0.8f),
+        )
+        assertNull(previewCommand(ReactionSource.Sound(SoundSignal.KICK), target, 0.8f))
+        assertNull(previewCommand(null, Target.ModulatorField(ModulatorId(1), ModulatorParameter.RATE), 0.8f))
+    }
+
+    @Test
     fun `a new Modulator of each kind starts from a calm shape, run while playing`() {
         val lfo = newModulator(ModulatorKind.LFO)
         assertEquals(ModulatorShape.Lfo(Wave.SINE, Millis(4_000)), lfo.shape)
@@ -143,6 +156,21 @@ class CustomizeActionsTest {
             newModulator(ModulatorKind.SEQUENCER).shape,
         )
         assertEquals(ModulatorShape.RandomDrift(Millis(8_000)), newModulator(ModulatorKind.DRIFT).shape)
+        assertEquals(ModulatorShape.ToggleOnBeat(4, Millis(120)), newModulator(ModulatorKind.TOGGLE_ON_BEAT).shape)
+        assertEquals(ModulatorShape.RandomOnBeat(4, Millis(120)), newModulator(ModulatorKind.RANDOM_ON_BEAT).shape)
+    }
+
+    @Test
+    fun `a beat Modulator changes how many beats it waits, and nothing else does`() {
+        val toggle = ModulatorShape.ToggleOnBeat(4)
+        assertEquals(4, toggle.beatsBetween)
+        assertEquals(ModulatorShape.ToggleOnBeat(8), toggle.withBeatsBetween(8))
+        assertEquals(ModulatorShape.RandomOnBeat(2, Millis(50)), ModulatorShape.RandomOnBeat(16, Millis(50)).withBeatsBetween(2))
+        assertEquals(16, ModulatorShape.RandomOnBeat(16).beatsBetween)
+        val drift = ModulatorShape.RandomDrift(Millis(1))
+        assertEquals(drift, drift.withBeatsBetween(2))
+        assertNull(drift.beatsBetween)
+        assertEquals(listOf(1, 2, 4, 8, 16), BEATS_BETWEEN_CHOICES)
     }
 
     @Test
@@ -151,6 +179,8 @@ class CustomizeActionsTest {
         assertEquals(ModulatorKind.ENVELOPE, ModulatorShape.HitEnvelope(SoundSignal.HIT, Millis(1), Millis(1), 0f).kind)
         assertEquals(ModulatorKind.SEQUENCER, ModulatorShape.StepSequencer(emptyList(), Millis(1)).kind)
         assertEquals(ModulatorKind.DRIFT, ModulatorShape.RandomDrift(Millis(1)).kind)
+        assertEquals(ModulatorKind.TOGGLE_ON_BEAT, ModulatorShape.ToggleOnBeat().kind)
+        assertEquals(ModulatorKind.RANDOM_ON_BEAT, ModulatorShape.RandomOnBeat().kind)
         ModulatorKind.entries.forEach { assertEquals(it, newModulator(it).shape.kind) }
     }
 
@@ -185,5 +215,11 @@ class CustomizeActionsTest {
         val reaction = Reaction(ReactionId(9), ReactionSource.Sound(SoundSignal.MID), Target.Extra(ExtraKind.FLIGHT))
         assertEquals(CustomizationCommand.UpdateReaction(reaction), saveReaction(reaction, isNew = false))
         assertEquals(CustomizationCommand.AddReaction(reaction), saveReaction(reaction, isNew = true))
+    }
+
+    @Test
+    fun `a trim slider sets that signal's gain and keeps its floor`() {
+        val row = TrimRow(SoundSignal.BASS, SignalTrim(gain = 1f, floor = 0.2f))
+        assertEquals(CustomizationCommand.TrimSignal(SoundSignal.BASS, SignalTrim(gain = 2.5f, floor = 0.2f)), trimCommand(row, 2.5f))
     }
 }

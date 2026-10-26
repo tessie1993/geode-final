@@ -182,10 +182,6 @@ jobs:
             task: ":design:pitestDebug"
             dir: design
             name: design
-          - module: ":design:elements:water"
-            task: ":design:elements:water:pitestDebug"
-            dir: design/elements/water
-            name: design-elements-water
           - module: ":arch:kernel"
             task: ":arch:kernel:pitest"
             dir: arch/kernel
@@ -403,7 +399,9 @@ jobs:
         run: ctest --test-dir build-milkdrop --output-on-failure -R preset
 
   # A cheap shader check with no stored images: every Style's shader must compile and draw a lit
-  # frame, survive a scene-target resize without going dark, and every Shared core effect must draw.
+  # frame, survive a scene-target resize without going dark, and every Shared core effect and every
+  # Layer 2 blend mode and influence must draw.
+  # glslang then holds every Style to the GLSL ES 3.00 specification, which ANGLE may not.
   visual-frames:
     name: Shaders compile and render
     runs-on: ubuntu-latest
@@ -431,6 +429,16 @@ jobs:
           node tools/glslcheck/check.mjs --fluid-display --size 96 --out build-frames/fluid
           node tools/glslcheck/check.mjs --all --resize --size 96 --time 12.5 --out build-frames/resize
           node tools/glslcheck/check.mjs --effects --size 96 --out build-frames/effects
+          node tools/glslcheck/check.mjs --layers --size 96 --out build-frames/layers
+      # glslangValidator is a CI-only tool: nothing of it ships in the app.
+      - name: Install glslang
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q glslang-tools
+      - name: Check every Style with glslang (GLSL ES 3.00)
+        run: |
+          node tools/glslcheck/check.mjs --glslang-self-test
+          node tools/glslcheck/check.mjs --all --glslang
       - name: Upload rendered frames
         if: failure()
         uses: actions/upload-artifact@v7
@@ -439,29 +447,6 @@ jobs:
           path: build-frames/
           if-no-files-found: ignore
           retention-days: 14
-
-  # Element assets (tools/element_assets): the prompt manifests and the shipped manifest are sound,
-  # nothing ships without the owner's approval, and the matting and export maths hold.
-  element-assets:
-    name: Element asset pipeline
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      PYTHONDONTWRITEBYTECODE: "1"
-    steps:
-      - uses: actions/checkout@v7
-      - name: Set up pinned Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
-        with:
-          python-version: "3.12.14"
-      - name: Install the pipeline's pinned libraries
-        run: python -m pip install -r tools/element_assets/requirements.txt
-      - name: Check the asset manifests (after a self-test)
-        run: |
-          python tools/element_assets/element_assets.py check --self-test
-          python tools/element_assets/element_assets.py check
-      - name: Unit tests
-        run: python -m unittest discover -s tools/element_assets -p 'test_*.py' -v
 
   play-gates:
     name: Play Store gates
@@ -502,6 +487,19 @@ jobs:
         run: |
           "$RUNNER_TEMP/gitleaks" dir --redact --verbose .
 
+  # The notices the app ships (THIRD_PARTY_NOTICES and its in-app copy) stay true to what it bundles.
+  # The self-test first proves the check still catches drift.
+  notices:
+    name: Third-party notices
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Notices match what the app ships
+        run: |
+          python3 tools/ci/check_notices.py --self-test
+          python3 tools/ci/check_notices.py
+
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
@@ -511,6 +509,13 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+          # Permissive licences only (THIRD_PARTY_NOTICES): a new or changed dependency under any
+          # other licence fails. LGPL is allowed only for a native shared library, which Gradle
+          # dependencies are not, so it is not listed. JUnit 4 (EPL-1.0) is test-only.
+          allow-licenses: >-
+            Apache-2.0, MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, BSL-1.0, 0BSD,
+            CC0-1.0, Unlicense, OFL-1.1, Unicode-3.0, Unicode-DFS-2016
+          allow-dependencies-licenses: pkg:maven/junit/junit
 
   # Instrumented tests need a real Android runtime: MediaStore, a live MediaSession and the
   # permission model do not exist off a device, and Robolectric's shadows misreport some of them.

@@ -68,4 +68,33 @@ class FileMilkdropFolderTest {
 
         assertThrows(IOException::class.java) { runBlocking { folder.write(MilkdropKind.PRESETS, "Ocean.milk", byteArrayOf(1)) } }
     }
+
+    @Test
+    fun `a preset and a texture are deleted, and one already gone is no failure`() =
+        runBlocking {
+            folder.write(MilkdropKind.PRESETS, "Ocean.milk", byteArrayOf(1))
+            folder.write(MilkdropKind.TEXTURES, "clouds.png", byteArrayOf(2))
+
+            folder.delete(MilkdropKind.PRESETS, "Ocean.milk")
+            folder.delete(MilkdropKind.TEXTURES, "clouds.png")
+            folder.delete(MilkdropKind.TEXTURES, "clouds.png")
+
+            assertEquals(emptyList<String>(), folder.files(MilkdropKind.PRESETS))
+            assertEquals(emptyList<String>(), folder.files(MilkdropKind.TEXTURES))
+        }
+
+    @Test
+    fun `a delete never reaches out of the folder, into a hidden file or a folder`() {
+        runBlocking { folder.write(MilkdropKind.TEXTURES, "clouds.png", byteArrayOf(2)) }
+        File(root, "textures/.links").mkdirs()
+
+        for (name in listOf("../Ocean.milk", "textures/clouds.png", ".links", "")) {
+            assertThrows(name, IOException::class.java) { runBlocking { folder.delete(MilkdropKind.PRESETS, name) } }
+        }
+        assertThrows(IOException::class.java) { runBlocking { folder.delete(MilkdropKind.TEXTURES, ".links") } }
+        assertThrows(IOException::class.java) { runBlocking { folder.delete(MilkdropKind.PRESETS, "textures") } }
+
+        assertTrue(File(root, "textures/clouds.png").isFile)
+        assertTrue(File(root, "textures/.links").isDirectory)
+    }
 }

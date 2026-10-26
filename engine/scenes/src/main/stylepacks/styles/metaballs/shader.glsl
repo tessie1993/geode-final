@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -161,11 +162,13 @@ void main() {
     float t = uTime * 0.6;
     float field = 0.0;
     float hueAcc = 0.0;
-    for (int i = 0; i < 7; i++) {
-        float fi = float(i) / 7.0;
+    float balls = xcount(7.0);
+    for (int i = 0; i < 14; i++) {
+        if (float(i) >= balls) break;
+        float fi = float(i) / balls;
         float b = aband(fi);
-        vec2 c = 0.75 * vec2(sin(t * (0.5 + fi) + fi * 6.28), cos(t * (0.7 + fi * 0.5) + fi * 4.0));
-        float radius = 0.05 + b * 0.22;
+        vec2 c = 0.75 * uXOrbit * vec2(sin(t * (0.5 + fi) + fi * 6.28), cos(t * (0.7 + fi * 0.5) + fi * 4.0));
+        float radius = 0.05 * xm(uXSize) + b * 0.22;
         float d = max(length(p - c), 0.001);
         float contrib = radius * radius / (d * d);
         field += contrib;

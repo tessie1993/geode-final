@@ -1,15 +1,47 @@
 package dev.geode.feature.studio.handlers
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.TrackId
+import dev.geode.feature.settings.api.ExportCodec
+import dev.geode.feature.settings.api.ExportFrameRate
+import dev.geode.feature.settings.api.ExportLoudness
+import dev.geode.feature.settings.api.ExportQuality
+import dev.geode.feature.settings.api.ExportRatio
+import dev.geode.feature.settings.api.ExportSettings
 import dev.geode.feature.settings.api.FolderSettings
 import dev.geode.feature.settings.api.FolderUri
+import dev.geode.feature.settings.api.PerformanceSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.studio.api.EditCommand
+import dev.geode.feature.studio.api.EditCut
+import dev.geode.feature.studio.api.EditJob
+import dev.geode.feature.studio.api.EditSession
+import dev.geode.feature.studio.api.EditSource
+import dev.geode.feature.studio.api.EditSources
 import dev.geode.feature.studio.api.NewVideo
+import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderAspect
+import dev.geode.feature.studio.api.RenderCodec
+import dev.geode.feature.studio.api.RenderExtras
+import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderId
+import dev.geode.feature.studio.api.RenderJob
+import dev.geode.feature.studio.api.RenderLength
+import dev.geode.feature.studio.api.RenderLook
+import dev.geode.feature.studio.api.RenderLoudness
+import dev.geode.feature.studio.api.RenderPhase
+import dev.geode.feature.studio.api.RenderPreset
+import dev.geode.feature.studio.api.RenderProblem
+import dev.geode.feature.studio.api.RenderSize
+import dev.geode.feature.studio.api.RenderSpec
+import dev.geode.feature.studio.api.RenderStatus
+import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.Studio
 import dev.geode.feature.studio.api.StudioCommand
@@ -18,8 +50,28 @@ import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.api.VideosOnDelete
+import dev.geode.feature.studio.api.edit.Clip
+import dev.geode.feature.studio.api.edit.ClipContent
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipId
+import dev.geode.feature.studio.api.edit.EditorHistory
+import dev.geode.feature.studio.api.edit.EditorProject
+import dev.geode.feature.studio.api.edit.Lane
+import dev.geode.feature.studio.api.edit.LaneId
+import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.SubtitleCue
+import dev.geode.feature.studio.api.edit.Timeline
+import dev.geode.feature.studio.core.NewRender
+import dev.geode.feature.studio.core.RenderEnd
+import dev.geode.feature.studio.core.RenderSettings
+import dev.geode.feature.studio.core.StudioEvent
+import dev.geode.feature.studio.handlers.edit.EditDrafts
+import dev.geode.feature.studio.handlers.edit.EditEngine
+import dev.geode.feature.studio.handlers.edit.EditTools
+import dev.geode.feature.studio.handlers.edit.EditVideos
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +85,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import dev.geode.feature.settings.api.EditSources as SettingsEditSources
 
 /** Studio end to end through its store, over fake storage, Settings and files. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,14 +95,39 @@ class StudioStoreTest {
     private val settings = FakeSettings()
     private val failures = mutableListOf<FeatureFailure>()
     private val take = NewVideo(VideoKind.RECORDING, "take.mp4", "content://tree/videos/take.mp4", null, Millis(4_000), 1080, 1920, "Song")
+    private val looks = FakeRenderLooks()
+    private val engine = FakeRenderEngine()
+    private val night = RenderTrack(TrackId("content://media/12"), "Night Drive", Millis(215_000))
+    private val tide = RenderTrack(TrackId("content://media/7"), "Low Tide", Millis(187_000))
+    private val drafts = FakeEditDrafts()
+    private val editVideos = FakeEditVideos()
+    private val editEngine = FakeEditEngine()
+    private val oldVideos = FakeOldVideos()
 
     private fun store() =
         studioStore(
-            StudioSources(storage, saveFolderOf(settings), files, {
-                Millis(500)
-            }),
+            StudioSources(
+                storage,
+                saveFolderOf(settings),
+                files,
+                { Millis(500) },
+                RenderSources(renderSettingsOf(settings), looks, engine),
+                edits = EditTools(drafts, editVideos, editEngine),
+                oldVideos = oldVideos,
+            ),
             inPlaceRuntime(failures = failures),
         )
+
+    /** A store with a default Project and the Visual on, ready to make Renders. */
+    private fun renderingStore(): Pair<Studio, ProjectId> {
+        settings.ready(null)
+        val studio = store()
+        studio.send(StudioCommand.CreateProject("Trip", makeDefault = true))
+        return studio to
+            studio.state.value.projects
+                .single()
+                .id
+    }
 
     @Test
     fun `nothing is made up on first start, no Project and no default`() {
@@ -249,6 +327,87 @@ class StudioStoreTest {
     }
 
     @Test
+    fun `the old Studio's videos come once into a Project of their own, without the library's own`() {
+        val trip = Project(ProjectId(50), "Trip", Millis(1))
+        storage.projectsById[trip.id] = trip
+        val rendered = Video(VideoId(51), trip.id, VideoKind.RENDER, "night.mp4", "content://media/1", null, Millis(9), 1920, 1080, "")
+        storage.videosById[rendered.id] = rendered
+        val old = NewVideo(VideoKind.RENDER, "old.mp4", "content://media/2", null, Millis(5_000), 1080, 1920, "")
+        oldVideos.found = listOf(NewVideo(VideoKind.RENDER, "night.mp4", "content://media/1", null, Millis(9), 1920, 1080, ""), old, old)
+
+        val studio = store()
+
+        val earlier =
+            studio.state.value.projects
+                .single { it.name == "Earlier videos" }
+        assertEquals(
+            listOf("content://media/2"),
+            studio.state.value
+                .videosIn(earlier.id)
+                .map { it.file },
+        )
+        assertEquals(Millis(500), earlier.createdAt)
+
+        val again = store()
+        assertEquals(
+            1,
+            again.state.value.projects
+                .count { it.name == "Earlier videos" },
+        )
+        assertEquals(2, again.state.value.videos.size)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `with no old Studio videos no Project is made, and the import is done`() {
+        store()
+
+        assertTrue(storage.projectsById.isEmpty())
+        assertEquals(setOf("old-studio-videos"), storage.imports)
+    }
+
+    @Test
+    fun `an old Studio import that fails is reported and tried again next start`() {
+        oldVideos.broken = true
+        oldVideos.found = listOf(NewVideo(VideoKind.RENDER, "old.mp4", "content://media/2", null, Millis(5_000), 1080, 1920, ""))
+        store()
+        assertEquals(listOf("Could not bring the earlier Studio's videos into the library"), failures.map { it.message })
+        assertTrue(storage.imports.isEmpty())
+
+        oldVideos.broken = false
+        val studio = store()
+
+        assertEquals(
+            listOf("old.mp4"),
+            studio.state.value.videos
+                .map { it.name },
+        )
+    }
+
+    @Test
+    fun `the earlier editor's cuts are listed and open in the Timeline, each kept under its name`() {
+        settings.ready(null)
+        val gig = EditorProject(Timeline(listOf(Lane(LaneId("lane-1"), LaneKind.Media, "Media 1"))))
+        drafts.named["Gig"] = gig
+        val studio = store()
+        assertEquals(listOf("Gig"), studio.state.value.savedCuts)
+
+        studio.send(EditCommand.OpenSavedCut("Gig"))
+        assertEquals(EditSession.Cut(EditorHistory(gig), name = "Gig"), studio.state.value.edit)
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+
+        assertEquals(
+            2,
+            drafts.named["Gig"]
+                ?.timeline
+                ?.lanes
+                ?.size,
+        )
+        assertEquals(null, drafts.kept)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
     fun `a library that cannot be read shows empty and is reported`() {
         storage.broken = true
 
@@ -267,6 +426,616 @@ class StudioStoreTest {
         runTest {
             assertEquals(SaveFolder.Unknown, saveFolderOf(FakeSettings()).first())
         }
+
+    @Test
+    fun `a queued Render freezes its look, is saved, is made, and its video lands in its Project`() {
+        val (studio, trip) = renderingStore()
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night), look = RenderLook.Preset(PresetId("Calm")))))
+
+        assertEquals(listOf<RenderLook>(RenderLook.Preset(PresetId("Calm"))), looks.frozen)
+        val job =
+            studio.state.value.renders
+                .single()
+        assertEquals(RenderStatus.Done, job.status)
+        assertEquals(listOf(job.id to FrozenLook("look 1")), engine.made.map { it.first.id to it.second })
+        val video =
+            studio.state.value.videos
+                .single()
+        assertEquals(trip, video.project)
+        assertEquals("content://media/video/Night Drive", video.file)
+        assertEquals(StoredRender(job.copy(status = RenderStatus.Queued), FrozenLook("look 1"), video.file), storage.rendersById[job.id])
+        assertEquals(emptyList<RenderJob>(), storage.unfinishedRendersNow())
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Render is made again at another shape with its own look, and becomes its own Render`() {
+        val (studio, trip) = renderingStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night), look = RenderLook.Preset(PresetId("Calm")), milkdrop = "a.milk")))
+        val first =
+            studio.state.value.videos
+                .single()
+        val madeWith = checkNotNull(first.madeWith)
+        assertEquals(listOf(night), madeWith.tracks)
+        assertEquals("a.milk", madeWith.milkdrop)
+
+        // The Customization changes meanwhile; the Render made again keeps the look frozen for the first.
+        val square = RenderFormat(aspect = RenderAspect.R1_1, size = RenderSize.HD720)
+        studio.send(StudioCommand.RenderAgain(first.id, madeWith.copy(format = square, look = RenderLook.Current)))
+
+        assertEquals(listOf<RenderLook>(RenderLook.Preset(PresetId("Calm"))), looks.frozen)
+        val again = engine.made.last()
+        assertEquals(FrozenLook("look 1"), again.second)
+        assertEquals(square, again.first.format)
+        assertEquals(RenderLook.Preset(PresetId("Calm")), again.first.look)
+        assertEquals(listOf(night), again.first.tracks)
+        assertEquals(2, studio.state.value.videos.size)
+        assertEquals(
+            listOf(trip, trip),
+            studio.state.value.videos
+                .map { it.project },
+        )
+        assertEquals(
+            square,
+            studio.state.value.videos
+                .last()
+                .madeWith
+                ?.format,
+        )
+        // A fresh Render of the song still starts from Settings, not from either Render.
+        assertEquals(RenderFormat(), studio.state.value.renderFormat)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Render whose look is gone cannot be made again, and says so`() {
+        val (studio, _) = renderingStore()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+        val first =
+            studio.state.value.videos
+                .single()
+        storage.loseLooks = true
+
+        studio.send(StudioCommand.RenderAgain(first.id, checkNotNull(first.madeWith)))
+
+        assertEquals(1, engine.made.size)
+        assertEquals(1, studio.state.value.renders.size)
+        assertEquals(listOf("Could not read the look for the Render, so it was not queued"), failures.map { it.message })
+    }
+
+    @Test
+    fun `a playlist is made one video per track, in order, each its own Render`() {
+        val (studio, _) = renderingStore()
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night, tide), playlist = PlaylistMode.ONE_VIDEO_PER_TRACK)))
+
+        val renders = studio.state.value.renders
+        assertEquals(listOf("Night Drive", "Low Tide"), engine.made.map { it.first.title })
+        assertEquals(listOf(RenderStatus.Done, RenderStatus.Done), renders.map { it.status })
+        assertEquals(listOf(renders[0].id, renders[0].id), renders.map { it.batch })
+        assertEquals(1f, studio.state.value.batchProgress(renders[0].id), 0f)
+        assertEquals(2, studio.state.value.videos.size)
+        // The look was frozen once for the whole playlist.
+        assertEquals(1, looks.frozen.size)
+    }
+
+    @Test
+    fun `the running Render reports its progress and can be cancelled, leaving no Render behind`() {
+        val (studio, _) = renderingStore()
+        val gate = engine.hold()
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night, tide))))
+        val (first, second) = studio.state.value.renders
+        engine.progress?.invoke(RenderPhase.RENDERING, 0.5f)
+        assertEquals(
+            RenderStatus.Running(RenderPhase.RENDERING, 0.5f),
+            studio.state.value.runningRender
+                ?.status,
+        )
+        assertEquals(RenderStatus.Queued, second.status)
+
+        studio.send(StudioCommand.CancelRenders(setOf(first.id)))
+        assertEquals(
+            true,
+            (
+                studio.state.value.runningRender
+                    ?.status as? RenderStatus.Running
+            )?.cancelling,
+        )
+        assertTrue(engine.cancelled?.invoke() == true)
+        engine.release()
+        gate.complete(Unit)
+
+        assertEquals(
+            listOf(RenderStatus.Cancelled, RenderStatus.Done),
+            studio.state.value.renders
+                .map { it.status },
+        )
+        assertEquals(listOf(second.id), storage.rendersById.keys.toList())
+    }
+
+    @Test
+    fun `a waiting Render that is cancelled never starts and is forgotten`() {
+        val (studio, _) = renderingStore()
+        engine.hold()
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night, tide))))
+        val second = studio.state.value.renders[1]
+        studio.send(StudioCommand.CancelRenders(setOf(second.id)))
+
+        assertEquals(
+            RenderStatus.Cancelled,
+            studio.state.value.renders[1]
+                .status,
+        )
+        assertEquals(false, second.id in storage.rendersById)
+        assertEquals(1, engine.made.size)
+    }
+
+    @Test
+    fun `Renders that had not finished carry on after a restart`() {
+        val (studio, _) = renderingStore()
+        engine.hold()
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night, tide))))
+        val queued =
+            studio.state.value.renders
+                .map { it.copy(status = RenderStatus.Queued) }
+
+        engine.release()
+        val restarted = store()
+
+        assertEquals(queued.map { it.id }, engine.made.drop(1).map { it.first.id })
+        assertEquals(
+            listOf(RenderStatus.Done, RenderStatus.Done),
+            restarted.state.value.renders
+                .map { it.status },
+        )
+        assertEquals(queued.map { it.copy(status = RenderStatus.Done) }, restarted.state.value.renders)
+    }
+
+    @Test
+    fun `no Render is queued while Visuals off is on`() {
+        settings.ready(null, visualsOff = true)
+        val studio = store()
+        studio.send(StudioCommand.CreateProject("Trip", makeDefault = true))
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertTrue(studio.state.value.visualsOff)
+        assertTrue(looks.frozen.isEmpty())
+        assertEquals(listOf("No Render can be made while Visuals off is on"), failures.map { it.message })
+    }
+
+    @Test
+    fun `a look that cannot be frozen queues nothing and is reported`() {
+        val (studio, _) = renderingStore()
+        looks.broken = true
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertTrue(
+            studio.state.value.renders
+                .isEmpty(),
+        )
+        assertTrue(storage.rendersById.isEmpty())
+        assertEquals(listOf("Could not read the look for the Render, so it was not queued"), failures.map { it.message })
+    }
+
+    @Test
+    fun `a Render that cannot be saved to the queue is reported`() {
+        val (studio, _) = renderingStore()
+        storage.broken = true
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertTrue(
+            studio.state.value.renders
+                .isEmpty(),
+        )
+        assertEquals(listOf("Could not add the Render to the queue"), failures.map { it.message })
+    }
+
+    @Test
+    fun `an engine that throws fails the Render, which is reported and forgotten`() {
+        val (studio, _) = renderingStore()
+        engine.broken = true
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        val job =
+            studio.state.value.renders
+                .single()
+        assertEquals(RenderStatus.Failed(RenderProblem.ENGINE_FAILED), job.status)
+        assertTrue(storage.rendersById.isEmpty())
+        assertEquals(listOf("The Render of “Night Drive” failed: the engine stopped unexpectedly"), failures.map { it.message })
+    }
+
+    @Test
+    fun `a Render whose look is gone fails without reaching the engine`() {
+        val (studio, _) = renderingStore()
+        storage.loseLooks = true
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertEquals(
+            RenderStatus.Failed(RenderProblem.LOOK_UNAVAILABLE),
+            studio.state.value.renders
+                .single()
+                .status,
+        )
+        assertTrue(engine.made.isEmpty())
+    }
+
+    @Test
+    fun `a Render the engine could not make is forgotten and reported`() {
+        val (studio, _) = renderingStore()
+        engine.ending = RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertEquals(
+            RenderStatus.Failed(RenderProblem.ENCODER_REFUSED),
+            studio.state.value.renders
+                .single()
+                .status,
+        )
+        assertTrue(storage.rendersById.isEmpty())
+        assertTrue(
+            studio.state.value.videos
+                .isEmpty(),
+        )
+    }
+
+    @Test
+    fun `a finished Render that cannot be kept is reported, and so is its video`() {
+        val (studio, _) = renderingStore()
+        engine.onRender = { storage.broken = true }
+
+        studio.send(StudioCommand.QueueRender(RenderSpec(listOf(night))))
+
+        assertEquals(
+            RenderStatus.Done,
+            studio.state.value.renders
+                .single()
+                .status,
+        )
+        assertEquals(
+            listOf("Could not save the change to the Studio library", "Could not add the new videos to the Studio library"),
+            failures.map { it.message },
+        )
+    }
+
+    @Test
+    fun `new Renders start from Settings' Export preferences`() {
+        settings.ready(
+            null,
+            export =
+                ExportSettings(
+                    quality = ExportQuality.QHD1440,
+                    frameRate = ExportFrameRate.FPS30,
+                    ratio = ExportRatio.R4_5,
+                    codec = ExportCodec.HEVC,
+                    loudness = ExportLoudness.YOUTUBE,
+                ),
+        )
+
+        val studio = store()
+
+        assertEquals(RenderFormat(RenderAspect.R4_5, RenderSize.QHD1440, 30, codec = RenderCodec.HEVC), studio.state.value.renderFormat)
+        assertEquals(RenderExtras(RenderLoudness.MINUS_14_LUFS), studio.state.value.renderExtras)
+    }
+
+    @Test
+    fun `every Export preference maps to the Render's own choice`() {
+        val sizes = ExportQuality.entries.map { renderSettingsOf(SettingsValues(export = ExportSettings(quality = it))).format.size }
+        assertEquals(RenderSize.entries, sizes)
+        val shapes = ExportRatio.entries.map { renderSettingsOf(SettingsValues(export = ExportSettings(ratio = it))).format.aspect }
+        assertEquals(RenderAspect.entries, shapes)
+        val levels = ExportLoudness.entries.map { renderSettingsOf(SettingsValues(export = ExportSettings(loudness = it))).extras.loudness }
+        assertEquals(listOf(RenderLoudness.MINUS_14_LUFS, RenderLoudness.MINUS_11_LUFS, RenderLoudness.LEAVE_AS_IS), levels)
+        assertEquals(RenderCodec.H264, renderSettingsOf(SettingsValues()).format.codec)
+        assertEquals(60, renderSettingsOf(SettingsValues()).format.fps)
+        assertEquals(
+            RenderSettings(true, RenderFormat(), RenderExtras()),
+            renderSettingsOf(SettingsValues(performance = PerformanceSettings(visualsOff = true))),
+        )
+    }
+
+    @Test
+    fun `progress reaches the reducer on each new phase and every half percent, with the time left`() {
+        val reported = mutableListOf<StudioEvent>()
+        var now = 0L
+        val reporter = RenderProgressReporter(RenderId(1), { reported += it }, { Millis(now) })
+
+        reporter.report(RenderPhase.ANALYSING, 0f)
+        reporter.report(RenderPhase.ANALYSING, 0.004f)
+        reporter.report(RenderPhase.RENDERING, 0.004f)
+        now = 12_000
+        reporter.report(RenderPhase.RENDERING, 0.25f)
+        reporter.report(RenderPhase.RENDERING, 0.252f)
+        reporter.report(RenderPhase.SAVING, 1f)
+        reporter.report(RenderPhase.SAVING, 1f)
+
+        assertEquals(
+            listOf(
+                StudioEvent.RenderProgress(RenderId(1), RenderPhase.ANALYSING, 0f, null),
+                StudioEvent.RenderProgress(RenderId(1), RenderPhase.RENDERING, 0.004f, null),
+                StudioEvent.RenderProgress(RenderId(1), RenderPhase.RENDERING, 0.25f, 36),
+                StudioEvent.RenderProgress(RenderId(1), RenderPhase.SAVING, 1f, 0),
+                StudioEvent.RenderProgress(RenderId(1), RenderPhase.SAVING, 1f, 0),
+            ),
+            reported,
+        )
+    }
+
+    @Test
+    fun `a Short of a Recording is cropped through the queue and lands as a Short linked to it`() {
+        settings.ready(FolderUri("content://tree/videos"))
+        val (studio, trip) = projectWithTake()
+        val recording =
+            studio.state.value.videos
+                .single()
+
+        studio.send(EditCommand.MakeShort(recording.id))
+        studio.send(EditCommand.ChangeShort(500L, 3_500L, cropX = 0.5f, cropY = 0.25f))
+        studio.send(EditCommand.Export())
+
+        val job = editEngine.exported.single()
+        assertEquals("take Short", job.name)
+        assertEquals(RenderLoudness.MINUS_14_LUFS, job.loudness)
+        val cut = job.cut as EditCut.OneClip
+        assertEquals(RenderAspect.R9_16, cut.edit.ratio)
+        assertEquals(0.25f, cut.edit.cropY)
+        val short =
+            studio.state.value.videos
+                .single { it.kind == VideoKind.SHORT }
+        assertEquals(trip, short.project)
+        assertEquals(recording.id, short.source)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `Export as keeps the link to its source through the queue`() {
+        settings.ready(FolderUri("content://tree/videos"))
+        val (studio, trip) = projectWithTake()
+        val recording =
+            studio.state.value.videos
+                .single()
+
+        studio.send(StudioCommand.ExportAs(recording.id, RenderPreset.SQUARE, trip))
+
+        val sibling =
+            studio.state.value.videos
+                .last()
+        assertEquals(VideoKind.RECORDING, sibling.kind)
+        assertEquals(recording.id, sibling.source)
+        assertEquals(RenderAspect.R1_1, (editEngine.exported.single().cut as EditCut.OneClip).edit.ratio)
+        assertEquals(storage.videosById.getValue(sibling.id).source, recording.id)
+    }
+
+    @Test
+    fun `a finished Render with extras becomes an Edit with its captions and cards, linked to it`() {
+        val (_, trip) = renderingStore()
+        val lyrics = SubtitleCue(5_000L, 9_000L, "Lights on the road")
+        val studioWithLyrics =
+            studioStore(
+                StudioSources(
+                    storage,
+                    saveFolderOf(settings),
+                    files,
+                    { Millis(500) },
+                    RenderSources(renderSettingsOf(settings), looks, engine, lyrics = RenderLyrics { listOf(lyrics) }),
+                    edits = EditTools(drafts, editVideos, editEngine),
+                    oldVideos = oldVideos,
+                ),
+                inPlaceRuntime(failures = failures),
+            )
+        val extras = RenderExtras(captions = true, titleCard = true)
+
+        studioWithLyrics.send(
+            StudioCommand.QueueRender(RenderSpec(listOf(night.copy(artist = "The Neon")), project = trip, extras = extras)),
+        )
+
+        val render =
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.RENDER }
+        val finished =
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.EDIT }
+        assertEquals(render.id, finished.source)
+        assertEquals(trip, finished.project)
+        assertEquals("Night Drive with lyrics and cards", finished.name)
+        val cut = (editEngine.exported.single().cut as EditCut.Cut).project
+        val texts =
+            cut.timeline.lanes
+                .filter { it.kind == LaneKind.Text }
+                .flatMap { it.clips }
+                .map { (it.content as ClipContent.Text).text }
+        assertEquals(listOf("Lights on the road", "Night Drive — The Neon"), texts)
+        assertEquals(
+            extras,
+            studioWithLyrics.state.value.videos
+                .single { it.kind == VideoKind.RENDER }
+                .madeWith
+                ?.extras,
+        )
+        assertTrue(failures.isEmpty())
+    }
+
+    /** A store with the take in its default Project, the clip editor open on it, and [sources] chosen. */
+    private fun editingTake(sources: SettingsEditSources): Studio {
+        settings.ready(FolderUri("content://tree/videos"), export = ExportSettings(editSources = sources))
+        val (studio, _) = projectWithTake()
+        studio.send(
+            EditCommand.OpenVideo(
+                studio.state.value.videos
+                    .single()
+                    .id,
+            ),
+        )
+        studio.send(EditCommand.ChangeClip(ClipEdit(startMs = 1_000L)))
+        return studio
+    }
+
+    @Test
+    fun `an Edit with Reference is queued pointing at its video, exported, and lands as an Edit`() {
+        val studio = editingTake(SettingsEditSources.REFERENCE)
+
+        studio.send(EditCommand.Export())
+
+        val job =
+            studio.state.value.renders
+                .single()
+        val edit = requireNotNull(job.edit)
+        assertEquals(EditSources.REFERENCE, edit.sources)
+        assertEquals(take.file, (edit.cut as EditCut.OneClip).source.file)
+        assertEquals(ClipEdit(startMs = 1_000L), (edit.cut as EditCut.OneClip).edit)
+        assertTrue(editVideos.copied.isEmpty())
+        assertEquals(listOf(edit), editEngine.exported)
+        assertEquals(RenderStatus.Done, job.status)
+        val made =
+            studio.state.value.videos
+                .last()
+        assertEquals(VideoKind.EDIT, made.kind)
+        assertEquals("take", made.name)
+        assertEquals(null, made.madeWith)
+        assertEquals(FrozenLook(""), storage.rendersById[job.id]?.look)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `an Edit with Copy copies its video into the save folder and points at the copy`() {
+        val studio = editingTake(SettingsEditSources.COPY)
+
+        studio.send(EditCommand.Export())
+
+        assertEquals(listOf(take.file to "content://tree/videos"), editVideos.copied)
+        val edit =
+            requireNotNull(
+                studio.state.value.renders
+                    .single()
+                    .edit,
+            )
+        assertEquals(EditSources.COPY, edit.sources)
+        assertEquals("content://tree/videos/copy-1", (edit.cut as EditCut.OneClip).source.file)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `an Edit whose videos cannot be copied is not queued, and says so`() {
+        val studio = editingTake(SettingsEditSources.COPY)
+        editVideos.broken = true
+
+        studio.send(EditCommand.Export())
+
+        assertTrue(
+            studio.state.value.renders
+                .isEmpty(),
+        )
+        assertTrue(storage.rendersById.isEmpty())
+        assertEquals(listOf("Could not copy the Edit's videos, so it was not exported"), failures.map { it.message })
+    }
+
+    @Test
+    fun `the Timeline opens on its saved cut, and every change is kept`() {
+        settings.ready(null)
+        val saved = EditorProject(Timeline(listOf(Lane(LaneId("lane-1"), LaneKind.Media, "Media 1"))))
+        drafts.kept = saved
+        val studio = store()
+
+        studio.send(EditCommand.OpenCut)
+        assertEquals(EditSession.Cut(EditorHistory(saved)), studio.state.value.edit)
+
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+        assertEquals(
+            2,
+            drafts.kept
+                ?.timeline
+                ?.lanes
+                ?.size,
+        )
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Timeline whose cut cannot be read opens empty and says so, and a change that cannot be kept is reported`() {
+        settings.ready(null)
+        drafts.broken = true
+        val studio = store()
+
+        studio.send(EditCommand.OpenCut)
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+
+        assertEquals(
+            1,
+            (studio.state.value.edit as EditSession.Cut)
+                .project.timeline.lanes.size,
+        )
+        assertEquals(
+            listOf("Could not read the saved cut, so the Timeline starts empty", "Could not save the last change to the cut"),
+            failures.map { it.message },
+        )
+    }
+
+    @Test
+    fun `a picked video is read before the clip editor opens, and one that cannot be read says so`() {
+        settings.ready(null)
+        val studio = store()
+
+        studio.send(EditCommand.OpenFile("content://picked/dune.mp4"))
+        assertEquals(EditSession.OneClip(editVideos.readable), studio.state.value.edit)
+
+        studio.send(EditCommand.OpenFile("content://picked/broken.mp4"))
+        assertEquals(EditSession.Closed, studio.state.value.edit)
+        assertEquals(listOf("Could not read that video"), failures.map { it.message })
+    }
+
+    @Test
+    fun `an Edit's export and cut are kept with it in the queue's format`() {
+        val clip =
+            NewRender(
+                emptyList(),
+                RenderLook.Current,
+                RenderFormat(),
+                RenderLength.WholeTrack,
+                ProjectId(3),
+                RenderExtras(),
+                edit =
+                    EditJob(
+                        "take",
+                        EditCut.OneClip(editVideos.readable, ClipEdit(speed = 2f, lutUri = "content://lut")),
+                        EditSources.COPY,
+                    ),
+            )
+        assertEquals(clip, RenderSpecFormat.decode(RenderSpecFormat.encode(clip)))
+        val project =
+            EditorProject(
+                Timeline(
+                    listOf(
+                        Lane(
+                            LaneId("lane-1"),
+                            LaneKind.Media,
+                            "Media 1",
+                            listOf(Clip(ClipId("clip-1"), ClipContent.Video("content://v/a"), 0L, 2_000L, sourceDurationMs = 5_000L)),
+                        ),
+                    ),
+                    2_000L,
+                ),
+            )
+        val cut = clip.copy(edit = EditJob("Cut", EditCut.Cut(project), EditSources.REFERENCE))
+        assertEquals(cut, RenderSpecFormat.decode(RenderSpecFormat.encode(cut)))
+        assertEquals(null, RenderSpecFormat.decode(RenderSpecFormat.encode(clip.copy(edit = null))).edit)
+    }
+
+    @Test
+    fun `Settings' choice for an Edit's videos reaches Studio`() {
+        assertEquals(EditSources.REFERENCE, renderSettingsOf(SettingsValues()).editSources)
+        assertEquals(
+            EditSources.COPY,
+            renderSettingsOf(SettingsValues(export = ExportSettings(editSources = SettingsEditSources.COPY))).editSources,
+        )
+    }
 
     private fun projectWithTake(): Pair<Studio, ProjectId> {
         val studio = store()
@@ -287,16 +1056,87 @@ private class FakeSettings : Settings {
 
     override fun send(command: SettingsCommand) = Unit
 
-    fun ready(videoFolder: FolderUri?) {
-        mutable.value = SettingsState.Ready(SettingsValues(folders = FolderSettings(videoFolder = videoFolder)))
+    fun ready(
+        videoFolder: FolderUri?,
+        visualsOff: Boolean = false,
+        export: ExportSettings = ExportSettings(),
+    ) {
+        mutable.value =
+            SettingsState.Ready(
+                SettingsValues(
+                    folders = FolderSettings(videoFolder = videoFolder),
+                    performance = PerformanceSettings(visualsOff = visualsOff),
+                    export = export,
+                ),
+            )
     }
 }
+
+/** Freezes each look as a numbered stand-in, and remembers what it was asked. */
+private class FakeRenderLooks : RenderLooks {
+    val frozen = mutableListOf<RenderLook>()
+    var broken = false
+
+    override suspend fun freeze(look: RenderLook): FrozenLook {
+        check(!broken) { "no look" }
+        frozen += look
+        return FrozenLook("look ${frozen.size}")
+    }
+}
+
+/**
+ * Makes each Render at once, saving a video named after its Track, unless [hold] asks it to wait for
+ * a gate; remembers each Render it was handed, and the last one's progress and cancel switches.
+ */
+private class FakeRenderEngine : RenderEngine {
+    val made = mutableListOf<Pair<RenderJob, FrozenLook>>()
+    var progress: ((RenderPhase, Float) -> Unit)? = null
+    var cancelled: (() -> Boolean)? = null
+    var broken = false
+    var ending: RenderEnd? = null
+    var onRender: () -> Unit = {}
+    private var gate: CompletableDeferred<Unit>? = null
+
+    fun hold(): CompletableDeferred<Unit> = CompletableDeferred<Unit>().also { gate = it }
+
+    /** Later Renders are made at once again. */
+    fun release() {
+        gate = null
+    }
+
+    override suspend fun render(
+        job: RenderJob,
+        look: FrozenLook,
+        progress: (RenderPhase, Float) -> Unit,
+        isCancelled: () -> Boolean,
+    ): RenderEnd {
+        made += job to look
+        this.progress = progress
+        cancelled = isCancelled
+        check(!broken) { "engine crashed" }
+        onRender()
+        gate?.await()
+        if (isCancelled()) return RenderEnd.Cancelled
+        val title = job.title
+        return ending
+            ?: RenderEnd.Saved(NewVideo(VideoKind.RENDER, title, "content://media/video/$title", null, Millis(30_000), 1920, 1080, title))
+    }
+}
+
+/** A Render as the fake storage keeps it: the job as queued, its look, and its video once made. */
+private data class StoredRender(
+    val job: RenderJob,
+    val look: FrozenLook,
+    val file: String?,
+)
 
 private class FakeStudioStorage : StudioStorage {
     val projectsById = LinkedHashMap<ProjectId, Project>()
     val videosById = LinkedHashMap<VideoId, Video>()
+    val rendersById = LinkedHashMap<RenderId, StoredRender>()
     private var default: ProjectId? = null
     var broken = false
+    var loseLooks = false
     private var nextId = 1L
 
     private fun ensureWorking() = check(!broken) { "storage broken" }
@@ -368,9 +1208,152 @@ private class FakeStudioStorage : StudioStorage {
     ): List<Video> {
         ensureWorking()
         return videos.map {
-            Video(VideoId(nextId++), project, it.kind, it.name, it.file, it.thumbnail, it.length, it.width, it.height, it.song)
-                .also { video -> videosById[video.id] = video }
+            Video(
+                VideoId(nextId++),
+                project,
+                it.kind,
+                it.name,
+                it.file,
+                it.thumbnail,
+                it.length,
+                it.width,
+                it.height,
+                it.song,
+                it.madeWith,
+                it.source,
+            ).also { video -> videosById[video.id] = video }
         }
+    }
+
+    override suspend fun queueRenders(
+        renders: List<NewRender>,
+        look: FrozenLook,
+        queuedAt: Millis,
+    ): List<RenderJob> {
+        ensureWorking()
+        val batch = RenderId(nextId)
+        return renders.map { render ->
+            render.queuedAs(RenderId(nextId++), batch).also { rendersById[it.id] = StoredRender(it, look, null) }
+        }
+    }
+
+    override suspend fun unfinishedRenders(): List<RenderJob> {
+        ensureWorking()
+        return unfinishedRendersNow()
+    }
+
+    fun unfinishedRendersNow(): List<RenderJob> = rendersById.values.filter { it.file == null }.map { it.job }
+
+    override suspend fun lookOf(render: RenderId): FrozenLook? {
+        ensureWorking()
+        return if (loseLooks) null else rendersById[render]?.look
+    }
+
+    override suspend fun lookOfVideo(file: String): FrozenLook? {
+        ensureWorking()
+        return if (loseLooks) null else rendersById.values.lastOrNull { it.file == file }?.look
+    }
+
+    override suspend fun renderSaved(
+        render: RenderId,
+        file: String,
+    ) {
+        ensureWorking()
+        rendersById[render] = rendersById.getValue(render).copy(file = file)
+    }
+
+    override suspend fun forgetRender(render: RenderId) {
+        ensureWorking()
+        rendersById.remove(render)
+    }
+
+    val imports = mutableSetOf<String>()
+
+    override suspend fun imported(name: String): Boolean {
+        ensureWorking()
+        return name in imports
+    }
+
+    override suspend fun import(
+        name: String,
+        projectName: String,
+        createdAt: Millis,
+        videos: List<NewVideo>,
+    ): ImportedVideos? {
+        ensureWorking()
+        imports += name
+        if (videos.isEmpty()) return null
+        val project = Project(ProjectId(nextId++), projectName, createdAt).also { projectsById[it.id] = it }
+        return ImportedVideos(project, addVideos(project.id, videos))
+    }
+}
+
+/** The old Studio's videos, or a failure while [broken]. */
+private class FakeOldVideos : OldVideos {
+    var found: List<NewVideo> = emptyList()
+    var broken = false
+
+    override suspend fun list(): List<NewVideo> {
+        check(!broken) { "no media index" }
+        return found
+    }
+}
+
+/** Keeps the Timeline's cut, and the earlier editor's cuts in [named], in memory, or throws when [broken]. */
+private class FakeEditDrafts : EditDrafts {
+    var kept: EditorProject? = null
+    val named = mutableMapOf<String, EditorProject>()
+    var broken = false
+
+    override suspend fun load(name: String?): EditorProject? {
+        check(!broken) { "no draft" }
+        return if (name == null) kept else named[name]
+    }
+
+    override suspend fun save(
+        project: EditorProject,
+        name: String?,
+    ) {
+        check(!broken) { "no draft" }
+        if (name == null) kept = project else named[name] = project
+    }
+
+    override suspend fun names(): List<String> {
+        check(!broken) { "no drafts" }
+        return named.keys.sorted()
+    }
+}
+
+/** Reads one picked file, and copies each video as a numbered copy in the folder, unless [broken]. */
+private class FakeEditVideos : EditVideos {
+    val readable = EditSource("content://picked/dune.mp4", "dune.mp4", Millis(5_000), 720, 1280)
+    val copied = mutableListOf<Pair<String, String>>()
+    var broken = false
+
+    override suspend fun read(file: String): EditSource? = readable.takeIf { file == it.file }
+
+    override suspend fun copy(
+        file: String,
+        folder: String,
+    ): String {
+        check(!broken) { "no room" }
+        copied += file to folder
+        return "$folder/copy-${copied.size}"
+    }
+}
+
+/** Exports each Edit at once as a video named after it, remembering what it was handed. */
+private class FakeEditEngine : EditEngine {
+    val exported = mutableListOf<EditJob>()
+
+    override suspend fun export(
+        job: EditJob,
+        format: RenderFormat,
+        progress: (RenderPhase, Float) -> Unit,
+        isCancelled: () -> Boolean,
+    ): RenderEnd {
+        exported += job
+        return RenderEnd.Saved(NewVideo(VideoKind.EDIT, job.name, "content://media/edit/${job.name}", null, Millis(3_000), 1080, 1920, ""))
     }
 }
 

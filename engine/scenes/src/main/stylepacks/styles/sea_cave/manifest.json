@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "sea_cave",
+  "label": "Sea Cave",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march",
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["bands"]}
+}

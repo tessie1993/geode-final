@@ -72,9 +72,6 @@ object VisualSafety {
         target: LfoTarget,
     ): Float = if (target.isLuminance) rateHz.coerceAtMost(WCAG_FLASHES_PER_SECOND) else rateHz
 
-    /** Floors the gap between beat-driven hits so they cannot outrun the flash limit. */
-    fun beatMinIntervalMs(requestedMs: Float): Float = maxOf(requestedMs, 1000f / WCAG_FLASHES_PER_SECOND)
-
     /** A hard cut between scenes is a full-frame luminance step, so it always becomes a fade. */
     fun transitionStyle(requested: TransitionStyle): TransitionStyle =
         if (requested == TransitionStyle.CUT) TransitionStyle.FADE else requested
@@ -85,24 +82,6 @@ object VisualSafety {
         } else {
             requested
         }
-
-    /**
-     * Caps how hard a second layer may be blended in.
-     *
-     * Additive and difference blending both drive large luminance swings at full mix, so both are
-     * held to [MAX_FLASH_DEPTH] rather than switched off — the mode stays usable, it just cannot
-     * reach flash territory.
-     */
-    fun layerMix(
-        requested: Float,
-        mode: BlendMode,
-    ): Float {
-        val mix = requested.coerceIn(0f, 1f)
-        return when (mode) {
-            BlendMode.DIFFERENCE, BlendMode.ADD -> minOf(mix, MAX_FLASH_DEPTH)
-            else -> mix
-        }
-    }
 
     private val LfoTarget.isLuminance: Boolean
         get() =

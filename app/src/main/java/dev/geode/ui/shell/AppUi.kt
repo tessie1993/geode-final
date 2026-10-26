@@ -10,7 +10,7 @@ import dev.geode.kernel.Feature
  */
 typealias AppUi = Feature<AppUiState, AppUiCommand, AppUiFact>
 
-/** The pages of the Bar, in the order it shows them (PR #186). The same for every person and every Element. */
+/** The pages of the Bar, in the order it shows them (PR #186). The same for every person. */
 enum class Place {
     MUSIC,
     VISUALS,
@@ -41,9 +41,6 @@ enum class Sheet {
 
     /** The Live input from the microphone, over the full-screen Visual (#17). */
     CAPTURE,
-
-    /** Edit and export a video or the project, until Studio's own export lands (#17). */
-    EXPORT,
 }
 
 /** A failure the banner shows; [id] tells one showing from the next, so a stale timer clears nothing. */

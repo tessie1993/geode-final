@@ -7,11 +7,16 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/FeatureBus.hpp"
+#include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
+#include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/viz/TouchField.hpp"
 
 namespace geode::viz {
+
+class SharedInputs;
 
 enum class SceneFamily { Shader, Milkdrop, Fluid };
 
@@ -28,29 +33,60 @@ public:
     virtual void draw(float timeSeconds) = 0;
     virtual void release() = 0;
 
+    // This frame's audio window, as mono and as interleaved stereo; both come every frame the Visual has
+    // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
+    virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
+    // The same frame's longer span of interleaved stereo audio, ending where the window ends, of which the
+    // newest `fresh` frames were heard since the last frame (0 when that is not known). For a scene that
+    // measures the audio itself and must not miss what fell between two windows (MilkDrop).
+    virtual void acceptPcmSpan(const float* interleaved, int frames, int fresh) {
+        (void) interleaved;
+        (void) frames;
+        (void) fresh;
+    }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
+    // Which way is down (GravityField), stepped once per frame before any scene draws.
+    virtual void setGravityField(const GravityField* field) { (void) field; }
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // The music's structure, rhythm, timbre and space this frame (FeatureBus.hpp), handed over with the
+    // Camera: shader Styles read it as lib_scene_features' uniforms, the other families through featuremap.
+    virtual void setFeatureBus(const FeatureValues& values) { (void) values; }
+    // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
+    virtual void setQuality(const quality::Budget& budget) { (void) budget; }
+    // The renderer's shared Style inputs (SharedInputs.hpp), handed over before init(); a shader Style
+    // binds the ones its pack declares.
+    virtual void setSharedInputs(SharedInputs* inputs) { (void) inputs; }
+    // The Style starts to be drawn: it became Layer 1 or Layer 2. Its visit clocks start over and its
+    // kept frames are let go (StyleInputs.hpp).
+    virtual void beginVisit() {}
+    // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just
+    // before draw(). A Style that draws through targets of its own comes back to this one from here
+    // rather than asking the driver: a glGet makes a threaded driver wait for its queue (#311). The
+    // viewport may be smaller than resize() said: the outgoing Style of a transition draws at half size.
+    virtual void setDrawTarget(GLuint fbo, int width, int height) { (void) fbo; (void) width; (void) height; }
     // True when the Style moves a camera of its own from the Camera (a raymarched world reading
     // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
     virtual bool ownsCamera() const { return false; }
+    // How far the composite zooms this Style's picture in, on top of the Shared core's zoom: for a Style
+    // whose own post pass went into the composite (MilkDrop's lean-in on downbeats and drops, #294, #303).
+    virtual float pictureZoom() const { return 1.0f; }
     // > 0 keeps the previous frame in the scene target (Curl Flow); 0 clears it.
     virtual float trailRetention(const SceneParams& params) const { (void) params; return 0.0f; }
     virtual GLuint velocityTexture() const { return 0; }
     // The fluid scene runs its own flow field; the water scene owns the ripples and the touch smears.
     virtual bool isFluid() const { return false; }
     virtual bool isWater() const { return false; }
+    // True when the Style draws the finger's strokes itself (Water's ripples); every other Style gets
+    // them as the shared ripple smear, and only while the person has that smear on.
+    virtual bool ownsTouchStrokes() const { return isWater(); }
     virtual void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
         (void) nx; (void) ny; (void) ndx; (void) ndy; (void) dt; (void) strength;
     }
-    // The surface size in pixels, unscaled: no supersampling and no thermal render scale. resize()
-    // gives the scene target; MilkDrop sizes its engine buffer from this instead (times its load
-    // step) and its post pass scales the result onto the scene target.
-    virtual void setWindowSize(int width, int height) { (void) width; (void) height; }
     virtual void queueMilkPreset(const std::string& path) { (void) path; }
     virtual void reloadMilkPreset() {}
     virtual void setMilkTextureDir(const std::string& dir) { (void) dir; }

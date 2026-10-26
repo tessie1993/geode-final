@@ -2,5 +2,10 @@
   "version": 1,
   "id": "curlflow",
   "label": "Curlflow",
-  "family": "curl_flow"
+  "family": "curl_flow",
+  "extras": [
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "drift", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["buildup"], "micro": ["onset", "drums", "bands"]}
 }

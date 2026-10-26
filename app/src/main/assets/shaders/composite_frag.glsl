@@ -9,6 +9,8 @@ precision highp sampler2D;
 in vec2 vUv;
 out vec4 fragColor;
 
+//#include lib_layers
+
 uniform sampler2D uTexA;
 uniform sampler2D uTexB;
 // Blue-noise dither mask, sampled 1:1 with output pixels. See BlueNoise.kt for
@@ -19,14 +21,22 @@ uniform float uDither;
 uniform float uRatio;
 uniform float uProgress;
 uniform int uStyle;
-/**
- * Layers: how much the TOP layer (uTexA) contributes, 0..1. Photoshop's layer
- * opacity, not a crossfade position - at 0 you see the bottom layer alone, at
- * 1 the full blend. Only read when uStyle is 6.
- */
-uniform float uLayerMix;
-/** Layers: which blend function, matching BlendMode's ordinals. */
-uniform int uBlendMode;
+// Layer 2 (core/viz/include/geode/viz/Layers.hpp, lib_layers.glsl): a second Style's picture, laid
+// over everything above (Layer 1, transitions included). uTexL is its picture, with its
+// own gate and Camera pair (x its flat moves, y its flat endless zoom), as uTexA and uTexB have theirs.
+// uLayerPresence is how far it is faded in: 0 is no Layer 2, and then nothing of it runs. uLayerBlend is
+// layer::Blend's ordinal, uLayerOpacity the source opacity (already held to the mode's No-flash cap),
+// uLayerInfluence layer::Influence's ordinal (how Layer 2 acts on Layer 1) at uLayerAmount, and
+// uLayerSwap crossfades towards Layer 1 laid over Layer 2 instead.
+uniform sampler2D uTexL;
+uniform vec4 uGateL;
+uniform vec2 uCamGateL;
+uniform float uLayerPresence;
+uniform int uLayerBlend;
+uniform float uLayerOpacity;
+uniform int uLayerInfluence;
+uniform float uLayerAmount;
+uniform float uLayerSwap;
 uniform float uTime;
 uniform float uBeat;
 uniform float uChroma;
@@ -37,9 +47,9 @@ uniform float uGlitch;
 uniform float uFisheye;
 // PER-TEXTURE GATES. Which of the uPost* groups below the composite must
 // apply is a property of the SCENE, not of the frame: shader scenes already
-// warp/grade in view()/grade(), particle scenes in particle_vert/frag,
-// milkdrop in pm_post_frag, and the fluid family (Fluid, Curl Flow, Water)
-// applies nothing of its own. main() routes BOTH uTexA (incoming) and uTexB
+// warp/grade in view()/grade(), particle scenes in particle_vert/frag, and
+// the fluid family (Fluid, Curl Flow, Water) and MilkDrop (whose projectM
+// frame lands in its scene target as it is, #303) apply nothing of their own. main() routes BOTH uTexA (incoming) and uTexB
 // (outgoing) through postFx, and during a transition those two textures can
 // come from DIFFERENT families - so one gate per texture, never one shared
 // gate taken from the incoming scene. With a single gate a julia -> fluid
@@ -50,7 +60,8 @@ uniform float uFisheye;
 //                                 twist, bloom, posterize, drift, sway,
 //                                 shake, temp, solarize)
 //   y = mirror + invert
-//   z = colour grade + zoom/rotation  (the uPostZoom..uPostHue block below)
+//   z = colour grade + zoom/rotation  (the uPostZoom..uPostHue block below);
+//       2.0 adds the palette tint first (uPostPal*, MilkDrop only)
 //   w = beat pulse
 // A component is 1.0 when the COMPOSITE owns that group for that texture and
 // 0.0 when the scene already applied it. Uploaded by VisualizerRenderer and
@@ -81,11 +92,13 @@ uniform float uPostSway;
 uniform float uPostShake;
 uniform float uPostTemp;
 uniform float uPostSolarize;
+// Red/blue anaglyph (#388): its mix 0..1, faded in and out on the CPU (sharedfx::anaglyphMix). 0 skips it.
+uniform float uPostAnaglyph;
 // Universal grading + zoom/rotation for scenes that grade NOTHING themselves
-// (the fluid family: Fluid, Curl Flow, Water). Shader scenes grade in
-// view()/grade(), particle scenes in particle_vert/particle_frag and milkdrop
-// in pm_post_frag, so for those the gate's z is 0 and the whole block below is
-// skipped - a bitwise no-op, never a double grade.
+// (the fluid family: Fluid, Curl Flow, Water; and MilkDrop). Shader scenes
+// grade in view()/grade() and particle scenes in particle_vert/particle_frag,
+// so for those the gate's z is 0 and the whole block below is skipped - a
+// bitwise no-op, never a double grade.
 // The gate is required (not just neutral values) because the neutral value of
 // these uniforms is 1.0, not 0.0: a program that never uploads them would
 // otherwise read the GL default 0 and render black at 20x zoom.
@@ -97,14 +110,19 @@ uniform float uPostContrast;
 uniform float uPostGamma;
 uniform float uPostHue;
 // Beat pulse for scenes that don't swell on the beat themselves (the fluid
-// family AND milkdrop - a DIFFERENT set from the grading block above, which
-// milkdrop is excluded from because pm_post_frag grades but never pulses).
+// family and milkdrop).
 // This is the pulse AMOUNT with the beat envelope already folded in on the
 // CPU (CompositeGrade.pulseAmount), because the composite pass has no BPM
 // phase clock of its own. Its gate component (w) is separate from the grade's
 // (z) for that reason; the VALUE is still neutral at 0.0, which is also GL's
 // default, so a program that never uploads it renders identically.
 uniform float uPostPulse;
+// Palette tint (Color > Palettes) for MilkDrop, where the gate's z is 2: uPostPalTint is the blend
+// amount, 0 by default, which skips it. A .milk preset authors its own colours, so the palette may only
+// STEER them (base hue uPostPalBase across uPostPalSpan of the wheel), never replace them.
+uniform float uPostPalTint;
+uniform float uPostPalBase;
+uniform float uPostPalSpan;
 // FlowField fluidWarp: the shared fluid velocity field bends the sampling
 // coordinate of ANY scene's output (particles, shaders, milkdrop) before the
 // scene-texture fetch. A 1x1 zero texture is bound when disabled so the
@@ -123,7 +141,7 @@ uniform float uRippleStrength;
 uniform float uRippleSpecular;
 // Underlay (W00): a full-frame RGBA8 background layer, blended into the finished composite
 // colour in main() below, just before the dither - so it applies once, identically, regardless
-// of transitions or Layers. uUnderlayBlend selects the function (0 = screen: shows through where
+// of transitions or Layer 2. uUnderlayBlend selects the function (0 = screen: shows through where
 // the scene is black while leaving bright scene pixels alone; 1 = multiply; 2 = add) and
 // uUnderlayAmount (0..1) is how much of that blend result replaces the plain scene colour.
 // uUnderlayAmount is 0 by default (GL's uniform default for a value never uploaded), so a program
@@ -137,12 +155,15 @@ uniform float uUnderlayAmount;
 // uTexA/uTexB (only the Styles whose renderer has none). Push-in magnifies, the orbit tilts the picture
 // plane in perspective (radians, x yaw, y pitch), uCamDive holds the 0..1 phases of a dive through the
 // picture (x travel, y endless zoom), and the shake (xy offset, z roll) moves every picture alike.
-// Every one of them is 0 at the Camera's starting values, and then nothing here runs.
+// uCamRoll is the Camera's roll (radians), turning the picture about its centre; a narrowed lens
+// arrives folded into uCamPush (CameraPose::flatPush). Every one of them is 0 at the Camera's
+// starting values, and then nothing here runs.
 uniform vec4 uCamGate;
 uniform float uCamPush;
 uniform vec2 uCamTilt;
 uniform vec3 uCamShake;
 uniform vec2 uCamDive;
+uniform float uCamRoll;
 
 float compHash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -150,14 +171,50 @@ float compHash12(vec2 p) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
-// Hue rotation about the grey axis, byte-for-byte the same formula as
-// pm_post_frag's hueRotate (and mirrored by CompositeGrade.hueRotate).
+// Hue rotation about the grey axis (mirrored by CompositeGrade.hueRotate).
 vec3 hueRotate(vec3 c, float a) {
     const vec3 w = vec3(0.299, 0.587, 0.114);
     float angle = a * 6.2831;
     float cs = cos(angle);
     float sn = sin(angle);
     return vec3(dot(c, w)) + (c - vec3(dot(c, w))) * cs + cross(vec3(0.57735), c) * sn;
+}
+
+// Chroma below which a pixel has no hue worth steering, and the chroma a fully tinted grey gains so the
+// palette shows on the white cores most presets draw.
+const float TINT_CHROMA_KNEE = 0.15;
+const float TINT_SAT_LIFT = 0.35;
+
+vec3 rgb2hsv(vec3 c) {
+    vec4 k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, k.wz), vec4(c.gb, k.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    const float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 hsv2rgb(vec3 c) {
+    vec4 k = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + k.xyz) * 6.0 - k.www);
+    return c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y);
+}
+
+// Steers a preset's own colours toward the palette by `amount`, in HSV so VALUE is never touched: a
+// coloured pixel keeps its hue relationships, compressed into the palette's band, and a pixel with no
+// chroma takes the palette entry its own brightness selects (a gradient map), the only way the white
+// cores most presets draw can show the palette at all. The colour the old MilkDrop post pass gave.
+vec3 paletteTint(vec3 col, float base, float span, float amount) {
+    vec3 hsv = rgb2hsv(col);
+    float luma = dot(col, vec3(0.299, 0.587, 0.114));
+    float chroma = smoothstep(0.0, TINT_CHROMA_KNEE, hsv.y);
+    float t = mix(luma, hsv.x, chroma);
+    float target = base + t * span;
+    // Shortest way round the wheel, so a tint never sweeps through the complementary hue.
+    float delta = fract(target - hsv.x + 0.5) - 0.5;
+    hsv.x = fract(hsv.x + delta * amount);
+    hsv.y = mix(hsv.y, hsv.y + (1.0 - hsv.y) * TINT_SAT_LIFT, amount * (1.0 - chroma));
+    return hsv2rgb(hsv);
 }
 
 // Applies geometric transforms to a [0,1] uv, operating in centered space.
@@ -174,6 +231,11 @@ vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
     // bounded wobble (CameraRig): never a jump.
     if (abs(uCamShake.x) + abs(uCamShake.y) + abs(uCamShake.z) > 0.000001) {
         c = mat2(cos(uCamShake.z), -sin(uCamShake.z), sin(uCamShake.z), cos(uCamShake.z)) * c - uCamShake.xy;
+    }
+    if (cam && abs(uCamRoll) > 0.0001) {
+        // Turned in the picture's true proportions, so the roll never shears it.
+        vec2 r = mat2(cos(uCamRoll), -sin(uCamRoll), sin(uCamRoll), cos(uCamRoll)) * vec2(c.x * uRatio, c.y);
+        c = vec2(r.x / uRatio, r.y);
     }
     if (cam && uCamPush > 0.0001) c /= 1.0 + uCamPush * 0.6;
     if (cam && abs(uCamTilt.x) + abs(uCamTilt.y) > 0.0001) {
@@ -254,6 +316,21 @@ vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
     return p;
 }
 
+// Red/blue anaglyph for red/cyan glasses (#388): the left eye sees the red channel, the right eye green
+// and blue. Each eye's picture is the finished one with the detail of the scene shifted sideways by a
+// depth read from its brightness (brighter is nearer), so the shift only moves detail and both eyes keep
+// the finished picture's brightness: turning it on changes colour, never overall brightness.
+vec3 anaglyph(sampler2D tex, vec2 p, vec3 col) {
+    const vec3 w = vec3(0.299, 0.587, 0.114);
+    float here = dot(texture(tex, clamp(p, 0.0, 1.0)).rgb, w);
+    vec2 shift = vec2(0.002 + 0.008 * clamp(here, 0.0, 1.0), 0.0);
+    float left = dot(texture(tex, clamp(p + shift, 0.0, 1.0)).rgb, w) - here;
+    float right = dot(texture(tex, clamp(p - shift, 0.0, 1.0)).rgb, w) - here;
+    float lum = dot(col, w);
+    vec3 stereo = max(vec3(lum + left, lum + right, lum + right), 0.0);
+    return mix(col, stereo, clamp(uPostAnaglyph, 0.0, 1.0));
+}
+
 // Screen-space FX chain applied to the final composited frame, so it works
 // identically for shader, particle and milkdrop scenes and during
 // transitions. Order: geometry -> distortion (fisheye, glitch) -> sample
@@ -327,11 +404,13 @@ vec3 postFxAt(sampler2D tex, vec2 uv, vec4 gate, bool cam, float scale) {
         float levels = mix(24.0, 3.0, uPostPosterize);
         col = floor(col * levels + 0.5) / levels;
     }
-    // Colour grade: identical chain and order to plasma_frag's grade() and
-    // pm_post_frag (hue -> saturation -> contrast -> gamma, brightness last,
-    // just before invert), so a slider value lands the same on every style.
-    // Mirrored on the CPU by CompositeGrade for the headless test.
+    // Colour grade: identical chain and order to plasma_frag's grade()
+    // (hue -> saturation -> contrast -> gamma, brightness last, just before
+    // invert), so a slider value lands the same on every style. MilkDrop's
+    // palette tint comes first: palette IDENTITY, then hue ROTATION turns the
+    // tinted frame instead of being cancelled by it.
     if (gradeOn) {
+        if (gate.z > 1.5 && uPostPalTint > 0.001) col = paletteTint(col, uPostPalBase, uPostPalSpan, uPostPalTint);
         if (abs(uPostHue) > 0.0001) col = hueRotate(col, uPostHue);
         if (abs(uPostSat - 1.0) > 0.0001) {
             float lum = dot(col, vec3(0.299, 0.587, 0.114));
@@ -357,6 +436,7 @@ vec3 postFxAt(sampler2D tex, vec2 uv, vec4 gate, bool cam, float scale) {
     }
     if (gradeOn) col *= uPostBright;
     if (invertOn && uPostInvert > 0.5) col = max(vec3(1.0) - col, 0.0);
+    if (uPostAnaglyph > 0.001) col = anaglyph(tex, p, col);
     return col;
 }
 
@@ -409,100 +489,102 @@ vec4 getToColor(vec2 uv) { return vec4(postFx(uTexA, clamp(uv, 0.0, 1.0), uGateA
 #endif
 
 /**
- * The separable blend functions for Layers, on two already-graded layers.
- *
- * `base` is the bottom layer and `top` the one being laid over it. Both are
- * opaque, so these are pure per-channel functions of two colours and not
- * Porter-Duff compositing.
- *
- * Every one of them clamps. The scenes upstream are emissive and routinely
- * exceed 1 before the composite grades them down, so ADD in particular would
- * otherwise hand values well over 1 to the dither below, where
- * they stop behaving like colours. The switch order is BlendMode's ordinals.
- */
-vec3 layerBlend(vec3 base, vec3 top, int mode) {
-    vec3 b = max(base, vec3(0.0));
-    vec3 t = max(top, vec3(0.0));
-    vec3 r;
-    if (mode == 1) {
-        r = vec3(1.0) - (vec3(1.0) - b) * (vec3(1.0) - t);
-    } else if (mode == 2) {
-        r = b + t;
-    } else if (mode == 3) {
-        r = b * t;
-    } else if (mode == 4) {
-        r = abs(b - t);
-    } else if (mode == 5) {
-        // Overlay: multiply where the BASE is dark, screen where it is light,
-        // which is what preserves the base's own contrast rather than the top's.
-        vec3 lo = 2.0 * b * t;
-        vec3 hi = vec3(1.0) - 2.0 * (vec3(1.0) - b) * (vec3(1.0) - t);
-        r = mix(lo, hi, step(vec3(0.5), b));
-    } else if (mode == 6) {
-        r = max(b, t);
-    } else if (mode == 7) {
-        r = min(b, t);
-    } else {
-        r = t;
-    }
-    return clamp(r, 0.0, 1.0);
-}
-
-/**
  * The transition stage: the incoming scene, or a blend of it with the outgoing
- * one. Split out of main() so every path returns a colour rather than writing
+ * one, sampled at [uv] (vUv, or where Layer 2's Bend or Swirl moved it). Split
+ * out of main() so every path returns a colour rather than writing
  * fragColor itself - the dither below has to be the last thing that touches the
  * output, and an early `return` in main() used to skip it.
  */
-vec3 blended() {
+vec3 blended(vec2 uv) {
 #ifdef MV_TRANSITION
     // uStyle 5 is "a spliced library transition is running". The variant stays
     // bound outside transitions too - swapping programs per frame would cost
     // more than the branch - so it must still render a plain CUT at uStyle 0.
     if (uStyle == 5 && uProgress < 1.0) {
-        return transition(vUv).rgb;
+        return transition(uv).rgb;
     }
 #endif
-    vec3 a = postFx(uTexA, vUv, uGateA, uCamGate.xz);
-    // uStyle 6 is Layers, and it is checked BEFORE the uProgress short-circuit
-    // below: uProgress is a transition's clock and sits at 1.0 whenever no
-    // transition is running, which is precisely when a layer IS running.
-    // Reusing uProgress as the mix would have made the two mutually exclusive
-    // for no reason and coupled a persistent setting to a timer.
-    if (uStyle == 6) {
-        vec3 b = postFx(uTexB, vUv, uGateB, uCamGate.yw);
-        return mix(b, layerBlend(b, a, uBlendMode), clamp(uLayerMix, 0.0, 1.0));
-    }
+    vec3 a = postFx(uTexA, uv, uGateA, uCamGate.xz);
     if (uStyle == 0 || uProgress >= 1.0) {
         return a;
     }
     if (uStyle == 1) {
-        vec3 b = postFx(uTexB, vUv, uGateB, uCamGate.yw);
+        vec3 b = postFx(uTexB, uv, uGateB, uCamGate.yw);
         return mix(b, a, uProgress);
     } else if (uStyle == 3) {
         float sh = smoothstep(0.0, 1.0, uProgress);
-        vec3 aSlide = postFx(uTexA, clamp(vUv + vec2(1.0 - sh, 0.0), 0.0, 1.0), uGateA, uCamGate.xz);
-        vec3 bSlide = postFx(uTexB, clamp(vUv - vec2(sh, 0.0), 0.0, 1.0), uGateB, uCamGate.yw);
-        return vUv.x < sh ? aSlide : bSlide;
+        vec3 aSlide = postFx(uTexA, clamp(uv + vec2(1.0 - sh, 0.0), 0.0, 1.0), uGateA, uCamGate.xz);
+        vec3 bSlide = postFx(uTexB, clamp(uv - vec2(sh, 0.0), 0.0, 1.0), uGateB, uCamGate.yw);
+        return uv.x < sh ? aSlide : bSlide;
     } else if (uStyle == 4) {
         float sh = smoothstep(0.0, 1.0, uProgress);
-        vec2 zUv = (vUv - 0.5) / (1.0 + sh * 2.5) + 0.5;
+        vec2 zUv = (uv - 0.5) / (1.0 + sh * 2.5) + 0.5;
         vec3 bZoom = postFx(uTexB, clamp(zUv, 0.0, 1.0), uGateB, uCamGate.yw);
-        vec2 aUv = (vUv - 0.5) * (1.0 + (1.0 - sh) * 0.35) + 0.5;
+        vec2 aUv = (uv - 0.5) * (1.0 + (1.0 - sh) * 0.35) + 0.5;
         vec3 aZoom = postFx(uTexA, clamp(aUv, 0.0, 1.0), uGateA, uCamGate.xz);
         return mix(bZoom, aZoom, sh);
     } else {
-        float lumB = dot(texture(uTexB, vUv).rgb, vec3(0.299, 0.587, 0.114));
-        vec2 melted = vUv + vec2(0.0, uProgress * (0.25 + lumB * 0.6));
+        float lumB = dot(texture(uTexB, uv).rgb, vec3(0.299, 0.587, 0.114));
+        vec2 melted = uv + vec2(0.0, uProgress * (0.25 + lumB * 0.6));
         vec3 bMelt = postFx(uTexB, clamp(melted, 0.0, 1.0), uGateB, uCamGate.yw);
         float reveal = smoothstep(0.0, 1.0, uProgress * 1.4 - lumB * 0.4);
         return mix(bMelt, a, clamp(reveal, 0.0, 1.0));
     }
 }
 
+// Layer 2's luminance gradient where its picture is drawn: central differences a few texels apart, read
+// raw from its target. Bend, Swirl and Outline share it.
+vec2 layerGradient() {
+    vec2 p = geo(vUv, uGateL, uCamGateL.x > 0.5, 1.0);
+    vec2 texel = 2.5 / vec2(textureSize(uTexL, 0));
+    float lL = layerLum(texture(uTexL, p - vec2(texel.x, 0.0)).rgb);
+    float lR = layerLum(texture(uTexL, p + vec2(texel.x, 0.0)).rgb);
+    float lB = layerLum(texture(uTexL, p - vec2(0.0, texel.y)).rgb);
+    float lT = layerLum(texture(uTexL, p + vec2(0.0, texel.y)).rgb);
+    return vec2(lR - lL, lT - lB);
+}
+
+// Bend and Swirl: Layer 2's gradient [g] moves where Layer 1 is sampled, away from Layer 2's edges like a
+// refraction (Bend) or along them (Swirl, the gradient turned a quarter), soft-capped the way the ripple
+// overlay's refraction is, since an unbounded warp reads as flashing. Fades with Layer 2.
+vec2 layerDisplaced(vec2 uv, vec2 g) {
+    if (uLayerInfluence != 1 && uLayerInfluence != 2) return uv;
+    vec2 d = uLayerInfluence == 2 ? vec2(-g.y, g.x) : g;
+    vec2 off = d * uLayerAmount * uLayerPresence * 0.08;
+    off *= 0.06 / (0.06 + length(off));
+    return clamp(uv - off, 0.0, 1.0);
+}
+
+// Layer 2 over Layer 1 ([base], everything above it, transitions included), both as postFx gives them,
+// kept to 0..1. Layer 1 is first acted on by Layer 2: Cut-out shows it only where Layer 2 is lit (a luma
+// key), Tint gives it Layer 2's colour at its own brightness (W3C Color, weighted by how much colour
+// Layer 2 has there), Outline shows it only along Layer 2's edges ([g]). Then Layer 2 is laid over it, or
+// with the swap Layer 1 over Layer 2, and the whole fades in with uLayerPresence.
+vec3 layered(vec3 base, vec3 top, vec2 g) {
+    vec3 b = clamp(base, 0.0, 1.0);
+    vec3 t = clamp(top, 0.0, 1.0);
+    vec3 l1 = b;
+    if (uLayerInfluence == 3) {
+        l1 *= mix(1.0, smoothstep(0.05, 0.6, layerLum(t)), uLayerAmount);
+    } else if (uLayerInfluence == 4) {
+        float chroma = max(max(t.r, t.g), t.b) - min(min(t.r, t.g), t.b);
+        l1 = mix(l1, layerSetLum(t, layerLum(l1)), uLayerAmount * smoothstep(0.02, 0.25, chroma));
+    } else if (uLayerInfluence == 5) {
+        l1 *= mix(1.0, clamp(length(g) * 6.0, 0.0, 1.0), uLayerAmount);
+    }
+    vec3 col = layerOver(l1, t, uLayerBlend, uLayerOpacity);
+    if (uLayerSwap > 0.0001) col = mix(col, layerOver(t, l1, uLayerBlend, uLayerOpacity), uLayerSwap);
+    return mix(b, col, uLayerPresence);
+}
+
 void main() {
-    vec3 col = blended();
-    // Underlay (W00): folded in here, after every transition/Layers/postFx blend above and
+    // Layer 2's gradient is read only by the influences that use it, and only while Layer 2 is in.
+    vec2 g = vec2(0.0);
+    bool edges = uLayerInfluence == 1 || uLayerInfluence == 2 || uLayerInfluence == 5;
+    if (uLayerPresence > 0.0 && uLayerAmount > 0.0001 && edges) g = layerGradient();
+    vec3 col = blended(layerDisplaced(vUv, g));
+    if (uLayerPresence > 0.0) col = layered(col, postFx(uTexL, vUv, uGateL, uCamGateL), g);
+    // Underlay (W00): folded in here, after every transition/Layer 2/postFx blend above and
     // before the dither, so it is the one place both the live composite and the offscreen export
     // apply it - see the uUnderlay* declarations above and CompositePass.hpp.
     if (uUnderlayAmount > 0.0001) {
@@ -523,7 +605,8 @@ void main() {
     // smooth ramp in the app - plasma, aurora, solar, glow falloffs, the fluid
     // pressure field - banded visibly on an OLED panel in a dark room without
     // it. uDither is 0 when the mask could not be loaded, making this an exact
-    // no-op rather than a failure.
+    // no-op rather than a failure, and 0 whenever the composite draws into the
+    // HDR target: the final tonemap pass (tonemap_frag) dithers there instead.
     col += (texture(uNoise, gl_FragCoord.xy / 64.0).r - 0.5) * uDither;
     fragColor = vec4(col, 1.0);
 }

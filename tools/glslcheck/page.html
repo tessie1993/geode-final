@@ -64,6 +64,34 @@ makeTexture('palette', 256, 1, (x, y, px) => {
   px[3] = 255;
 });
 makeTexture('flow', 2, 2, (x, y, px) => { px[0] = px[1] = 128; px[2] = 0; px[3] = 255; });
+
+// A Style pack's own image (#391), the real file: decoded by the browser, its bottom row first as the
+// engine uploads it, with the pack's wrap and filter (a mipmapped one with its chain of halved copies).
+window.__packImage = async function (image) {
+  try {
+    const bytes = Uint8Array.from(atob(image.png), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }),
+      { imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+    const wrap = { repeat: gl.REPEAT, mirror: gl.MIRRORED_REPEAT, clamp: gl.CLAMP_TO_EDGE }[image.wrap];
+    const filter = image.filter === 'nearest' ? gl.NEAREST : gl.LINEAR;
+    if (wrap === undefined) throw new Error(`unknown wrap ${image.wrap}`);
+    const t = textures[image.key] || gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, bitmap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
+    if (image.filter === 'mipmap') {
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    }
+    textures[image.key] = t;
+    return { width: bitmap.width, height: bitmap.height };
+  } catch (e) {
+    return { error: String(e.message || e) };
+  }
+};
 makeTexture('white', 2, 2, (x, y, px) => { px[0] = px[1] = px[2] = px[3] = 255; });
 // Seeded (mulberry32), not Math.random: a noise texture that changes per run made the bloom
 // variants differ between runs.
@@ -77,6 +105,52 @@ const noiseRandom = (() => {
   };
 })();
 makeTexture('noise', 64, 64, (x, y, px) => { const v = Math.floor(noiseRandom() * 256); px[0] = px[1] = px[2] = v; px[3] = 255; });
+// The shared Style inputs' noise (lib_inputs.glsl), drawn as core/viz/StyleInputs.cpp draws it: the
+// same hash of the Render seed, the same lattices, so a Style renders here over the noise it gets on a
+// phone.
+const NOISE_SEED = 0x6E0DE5;
+function mix32(x) {
+  x ^= x >>> 16; x = Math.imul(x, 0x7feb352d); x ^= x >>> 15; x = Math.imul(x, 0x846ca68b); x ^= x >>> 16;
+  return x >>> 0;
+}
+function hashCell(seed, c, x, y, z) {
+  let h = mix32((seed + 0x9e3779b9) >>> 0);
+  for (const v of [c, x, y, z]) h = mix32((h ^ v) >>> 0);
+  return h;
+}
+function noisePlane(name, size, lattice) {
+  const cells = size / lattice;
+  const smooth = (t) => t * t * (3 - 2 * t);
+  makeTexture(name, size, size, (x, y, px) => {
+    const x0 = Math.floor(x / lattice), y0 = Math.floor(y / lattice);
+    const x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+    const sx = smooth((x % lattice) / lattice), sy = smooth((y % lattice) / lattice);
+    for (let c = 0; c < 4; c++) {
+      const v = (cx, cy) => hashCell(NOISE_SEED, c, cx, cy, 0) >>> 24;
+      const bottom = v(x0, y0) + (v(x1, y0) - v(x0, y0)) * sx;
+      const top = v(x0, y1) + (v(x1, y1) - v(x0, y1)) * sx;
+      px[c] = Math.round(bottom + (top - bottom) * sy);
+    }
+  });
+}
+noisePlane('noise_lq', 256, 1);
+noisePlane('noise_mq', 256, 4);
+noisePlane('noise_hq', 256, 8);
+const volumeTextures = {};
+(() => {
+  const side = 32;
+  const data = new Uint8Array(side * side * side * 4);
+  for (let z = 0; z < side; z++) for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) {
+    for (let c = 0; c < 4; c++) data[((z * side + y) * side + x) * 4 + c] = hashCell(NOISE_SEED, c, x, y, z) >>> 24;
+  }
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_3D, t);
+  gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGBA8, side, side, side, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  for (const wrap of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R]) gl.texParameteri(gl.TEXTURE_3D, wrap, gl.REPEAT);
+  volumeTextures.noise_vol = t;
+})();
 // A dye field with structure: two soft coloured blobs and a filament, so a
 // look that reads gradients, luminance or hue has something to chew on.
 makeTexture('dye', 128, 128, (x, y, px) => {
@@ -92,8 +166,10 @@ makeTexture('dye', 128, 128, (x, y, px) => {
 
 // The finished picture of a Style, for the Shared core effects: a soft radial gradient with
 // coloured rings and an off-centre bright disc, so geometry, colour and lens effects all show.
-makeTexture('scene', 128, 128, (x, y, px) => {
-  const u = x / 128 - 0.5, v = y / 128 - 0.5;
+// 'scene_half' is the same picture at half the size: the outgoing Style of a transition, and a
+// frame drawn below the output that the last pass upscales (core/viz/TileFrame.hpp, #311).
+const scenePicture = (size) => (x, y, px) => {
+  const u = x / size - 0.5, v = y / size - 0.5;
   const r = Math.hypot(u, v);
   const ring = 0.5 + 0.5 * Math.cos(r * 40);
   const disc = Math.exp(-((u - 0.18) ** 2 + (v - 0.12) ** 2) * 60);
@@ -102,7 +178,9 @@ makeTexture('scene', 128, 128, (x, y, px) => {
   px[1] = Math.min(255, Math.round(255 * (0.1 + 0.4 * ring * (0.5 - v) + 0.5 * disc + stripe)));
   px[2] = Math.min(255, Math.round(255 * (0.25 + 0.5 * (1 - ring) * (0.5 - u) + 0.3 * disc)));
   px[3] = 255;
-});
+};
+makeTexture('scene', 128, 128, scenePicture(128));
+makeTexture('scene_half', 64, 64, scenePicture(64));
 // The last frame, for Trails and Motion blur: the same picture moved and brighter in places.
 makeTexture('history', 128, 128, (x, y, px) => {
   const u = x / 128 - 0.5, v = y / 128 - 0.5;
@@ -113,6 +191,28 @@ makeTexture('history', 128, 128, (x, y, px) => {
   px[2] = Math.min(255, Math.round(255 * (0.15 + 0.2 * ring + 0.5 * disc)));
   px[3] = 255;
 });
+
+// The last frame's blur levels: the history picture blurred (a box over a 5x5 neighbourhood, wrapped).
+(() => {
+  const size = 32, radius = 2;
+  const src = new Float32Array(size * size * 3);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const u = x / size - 0.5, v = y / size - 0.5;
+    const disc = Math.exp(-((u + 0.2) ** 2 + (v + 0.15) ** 2) * 50);
+    const ring = 0.5 + 0.5 * Math.cos(Math.hypot(u - 0.08, v) * 40);
+    src.set([0.1 + 0.3 * ring + 0.9 * disc, 0.1 + 0.25 * ring + 0.8 * disc, 0.15 + 0.2 * ring + 0.5 * disc], (y * size + x) * 3);
+  }
+  makeTexture('history_blur', size, size, (x, y, px) => {
+    const sum = [0, 0, 0];
+    for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+      const i = (((y + dy + size) % size) * size + ((x + dx + size) % size)) * 3;
+      for (let c = 0; c < 3; c++) sum[c] += src[i + c];
+    }
+    const n = (2 * radius + 1) ** 2;
+    for (let c = 0; c < 3; c++) px[c] = Math.min(255, Math.round((255 * sum[c]) / n));
+    px[3] = 255;
+  });
+})();
 
 // The app's FullscreenTriangle (core/render/Quad.cpp): three vertices at
 // location 0. quad_vert.glsl builds its triangle from gl_VertexID and needs
@@ -126,7 +226,8 @@ function upload(program, u) {
   if (loc === null) return false;
   if (u.texture) {
     gl.activeTexture(gl.TEXTURE0 + u.unit);
-    gl.bindTexture(gl.TEXTURE_2D, textures[u.texture]);
+    if (u.type === 'sampler3D') gl.bindTexture(gl.TEXTURE_3D, volumeTextures[u.texture]);
+    else gl.bindTexture(gl.TEXTURE_2D, textures[u.texture]);
     gl.uniform1i(loc, u.unit);
     return true;
   }
@@ -165,8 +266,13 @@ function frameStats(width, height) {
 }
 
 // The scene target: an RGBA8 texture behind an FBO, as core/render/Framebuffer.cpp allocate()s it
-// (linear filtering, clamped, no clear).
+// (linear filtering, clamped, no clear). Made on a unit no job samples: on the active one it would replace
+// the texture the job's last sampler reads (a Style's uPrevFrame) with the target itself, a feedback loop
+// WebGL refuses to draw.
+const SCRATCH_UNIT = gl.getParameter(gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS) - 1;
 function makeTarget(w, h) {
+  const active = gl.getParameter(gl.ACTIVE_TEXTURE);
+  gl.activeTexture(gl.TEXTURE0 + SCRATCH_UNIT);
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -178,6 +284,7 @@ function makeTarget(w, h) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
   if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('scene target incomplete');
+  gl.activeTexture(active);
   return { tex, fbo, w, h };
 }
 
@@ -273,7 +380,10 @@ window.__render = async function (job) {
     gl.disable(gl.BLEND);
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    // An instanced job (the 3D particle layer) draws `vertices` per instance, as the app does; a grid
+    // (the feedback warp's) draws its `vertices` once.
+    if (job.instances) gl.drawArraysInstanced(gl.TRIANGLES, 0, job.vertices, job.instances);
+    else gl.drawArrays(gl.TRIANGLES, 0, job.vertices || 3);
     gl.finish();
     const err = gl.getError();
     out.glError = err === gl.NO_ERROR ? 0 : err;
@@ -298,6 +408,109 @@ window.__render = async function (job) {
     out.error = String(e.message || e).replace(/\n/g, ' | ');
   } finally {
     if (program) gl.deleteProgram(program);
+  }
+  return out;
+};
+// The feedback loop's store (core/viz FeedbackWarp.hpp, check.mjs settleJobs): two targets of the job's
+// format (RGBA16F, RGB10_A2 or RGBA8, as ShaderScene keeps the loop), the first cleared to white, then
+// `frames` frames of the warp stage, each reading the last frame's target and drawing the other, with the
+// frame counted in uFbSeed as the engine counts it. Reports the red channel's mean after `checkpoint`
+// frames and its largest value at the end, read back at the target's own precision.
+const TARGET_FORMATS = {
+  rgba16f: { internal: gl.RGBA16F, format: gl.RGBA, type: gl.HALF_FLOAT, extension: 'EXT_color_buffer_float' },
+  rgb10a2: { internal: gl.RGB10_A2, format: gl.RGBA, type: gl.UNSIGNED_INT_2_10_10_10_REV },
+  rgba8: { internal: gl.RGBA8, format: gl.RGBA, type: gl.UNSIGNED_BYTE },
+};
+
+function readRed(target, size, kind) {
+  const n = size * size;
+  const red = new Float64Array(n);
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, target.fbo);
+  if (kind === 'rgba16f') {
+    const px = new Float32Array(n * 4);
+    gl.readPixels(0, 0, size, size, gl.RGBA, gl.FLOAT, px);
+    for (let i = 0; i < n; i++) red[i] = px[i * 4];
+  } else if (kind === 'rgb10a2') {
+    const px = new Uint32Array(n);
+    gl.readPixels(0, 0, size, size, gl.RGBA, gl.UNSIGNED_INT_2_10_10_10_REV, px);
+    for (let i = 0; i < n; i++) red[i] = (px[i] & 1023) / 1023;
+  } else {
+    const px = new Uint8Array(n * 4);
+    gl.readPixels(0, 0, size, size, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    for (let i = 0; i < n; i++) red[i] = px[i * 4] / 255;
+  }
+  return red;
+}
+
+window.__renderFeedback = async function (job) {
+  const out = { dropped: [] };
+  let program = null;
+  const targets = [];
+  try {
+    const spec = TARGET_FORMATS[job.format];
+    if (spec.extension && !gl.getExtension(spec.extension)) throw new Error(`${spec.extension} is not available`);
+    const size = job.size;
+    for (let i = 0; i < 2; i++) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texImage2D(gl.TEXTURE_2D, 0, spec.internal, size, size, 0, spec.format, spec.type, null);
+      const fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error(`${job.format} target incomplete`);
+      targets.push({ tex, fbo });
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, targets[0].fbo);
+    gl.viewport(0, 0, size, size);
+    gl.clearColor(1, 1, 1, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    program = link(job.vert, job.frag);
+    gl.useProgram(program);
+    let unit = 0;
+    for (const u of job.uniforms) {
+      if (u.texture) u.unit = unit++;
+      if (!upload(program, u)) out.dropped.push(u.name);
+    }
+    const prevUnit = job.uniforms.find((u) => u.name === 'uFbPrev').unit;
+    const seed = gl.getUniformLocation(program, 'uFbSeed');
+    gl.disableVertexAttribArray(0);
+    gl.disable(gl.BLEND);
+    let from = 0;
+    for (let frame = 0; frame < job.frames; frame++) {
+      const to = 1 - from;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, targets[to].fbo);
+      gl.activeTexture(gl.TEXTURE0 + prevUnit);
+      gl.bindTexture(gl.TEXTURE_2D, targets[from].tex);
+      gl.uniform1f(seed, frame);
+      gl.drawArrays(gl.TRIANGLES, 0, job.vertices);
+      from = to;
+      if (frame + 1 === job.checkpoint) {
+        const red = readRed(targets[from], size, job.format);
+        out.checkpointMean = red.reduce((a, b) => a + b, 0) / red.length;
+      }
+    }
+    const red = readRed(targets[from], size, job.format);
+    out.finalMax = red.reduce((a, b) => Math.max(a, b), 0);
+    const err = gl.getError();
+    out.glError = err === gl.NO_ERROR ? 0 : err;
+    if (out.glError) throw new Error(`GL error ${out.glError}`);
+    out.meanLuma = out.checkpointMean ?? 0;
+    out.maxLuma = out.finalMax;
+    out.fracBlack = red.filter((v) => v === 0).length / red.length;
+    out.fracBlown = 0;
+  } catch (e) {
+    out.error = String(e.message || e).replace(/\n/g, ' | ');
+  } finally {
+    for (const t of targets) {
+      gl.deleteFramebuffer(t.fbo);
+      gl.deleteTexture(t.tex);
+    }
+    if (program) gl.deleteProgram(program);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
   return out;
 };

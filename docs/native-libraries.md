@@ -17,14 +17,14 @@ Each library exports only `core/<lib>/include` (`target_include_directories(... 
 | Target | Directory | What it holds | Depends on (public / private) |
 |---|---|---|---|
 | `geode_api_types` (interface) | `core/api/include` | `geode/api/geode_api.h`: the C ABI's types and functions | — |
-| `geode_util` | `core/util` | JSON, SHA-256, logging | — |
+| `geode_util` | `core/util` | JSON, SHA-256, logging, shader assembly (includes and `#line` directives) | — |
 | `geode_bridge` | `core/bridge` | What crosses between Kotlin and the engine: the Customization snapshot and its codec (generated from `core/bridge/schema/native_bridge.json`), the lock-free triple-buffer hand-off to the drawing and audio threads, and the guard that turns any C++ exception into a `GeodeStatus` | `api_types` / — |
-| `geode_render` | `core/render` | GL plumbing: capability probing, GL profile, programs and the program binary cache, textures, framebuffers, the fullscreen quad, compute, shader sources | — / `util` |
-| `geode_analysis` | `core/analysis` | FFT, bands, onsets, tempo, beats, key, structure, the feature frame | `api_types` / — |
-| `geode_audio` | `core/audio` | `dsp/` (equalizer, crossfeed, limiter, and `geode_dsp_*`, the DSP part of the C ABI, which the mixer itself calls) and `player/` (decode, resample, mixer, Oboe output with its self-tuning buffer) | `api_types` / `util` |
+| `geode_render` | `core/render` | GL plumbing: capability probing, GL profile, programs and the program binary cache, textures and the platform image decoder they are made from (`ImageDecoder`, jnigraphics), framebuffers, the fullscreen quad, compute, shader sources | — / `util` |
+| `geode_analysis` | `core/analysis` | FFT, bands, onsets, tempo, beats, key, structure, the feature frame; hi-res input is decimated to 48 kHz or less first (`Decimator`) | `api_types` / — |
+| `geode_audio` | `core/audio` | `dsp/` (equalizer, crossfeed, limiter, and `geode_dsp_*`, the DSP part of the C ABI, which the mixer itself calls), `player/` (decode, resample, mixer, Oboe output with its self-tuning buffer and its reopen retry) and `feed/` (the Visual's audio feed: the stereo ring every source writes into, the analysis frames stamped with the audio they describe, and the heard clock's route latencies and present-time rules) | `api_types` / `util` |
 | `geode_library` | `core/library` | TagLib tag reading and writing | — |
 | `geode_viz` | `core/viz` | The Visual: renderer, frame graph, parameter model, Reactions, Modulators, Macro links and Automations (`ReactionGraph`, `PlanCodec`), the Normaliser into each Style family's ranges (`Normaliser`), the Shared core effects, the No-flash limiter, scenes | `api_types`, `render` / `analysis`, `util` |
-| `geode_api` | `core/api` | The rest of the C ABI implementation (analysis, Visual, tags, player, Customization snapshots) | `api_types` / `analysis`, `audio`, `bridge`, `library`, `viz`, `util` |
+| `geode_api` | `core/api` | The rest of the C ABI implementation (analysis, Visual, tags, player, Customization snapshots), and the Visual's audio feed (`Feed`: the ring, the analysis thread off it, the drawing thread's read) | `api_types` / `analysis`, `audio`, `bridge`, `library`, `viz`, `util` |
 | `geode_core` (interface) | — | What `libgeode.so` links: all of the above | everything |
 
 Layered from the bottom up; each library depends only on layers below it:

@@ -5,8 +5,8 @@ import dev.geode.kernel.Feature
 
 /**
  * Studio as everything outside it sees it (ADR-0003, ADR-0005): the Projects, the videos inside them,
- * the default Project and the save folder, and the Commands that change them (#21). Rendering,
- * recording, editing and Shorts add to this feature (#22–#26).
+ * the default Project and the save folder, the render queue, the Recording and the open editor, and the
+ * Commands that change them (#21, #338, #317, #318). Shorts add to this feature (#25).
  */
 typealias Studio = Feature<StudioState, StudioCommand, StudioFact>
 
@@ -62,9 +62,10 @@ fun shapeOf(
 /**
  * A finished video that is not in the library yet, as whatever made it hands it to Studio with
  * [StudioCommand.AddVideos]: a Render (#22), a Recording (#23), an Edit or Short (#24, #25), or an old
- * Studio export imported once at the switch-over (#17). Only the common fields (#21); re-render data
- * comes with #22. [file] and [thumbnail] are content uris; [song] is the title of the song it was made
- * to, blank when there was none or it is not known.
+ * Studio export imported once after the upgrade (#347). [file] and [thumbnail] are content uris; [song]
+ * is the title of the song it was made to, blank when there was none or it is not known. [madeWith] is,
+ * for a Render Studio made, the setup it was made from, so it can be made again (#327); null otherwise.
+ * [source] is the video it was made from: a Short's, or an Export as sibling's (#328).
  */
 data class NewVideo(
     val kind: VideoKind,
@@ -75,9 +76,16 @@ data class NewVideo(
     val width: Int,
     val height: Int,
     val song: String,
+    val madeWith: RenderSpec? = null,
+    val source: VideoId? = null,
 )
 
-/** One video in the library, in exactly one [project]. The fields are [NewVideo]'s. */
+/**
+ * One video in the library, in exactly one [project]. The fields are [NewVideo]'s: a Render Studio
+ * made keeps the setup it was made from in [madeWith], and can be made again at another shape or
+ * quality with [StudioCommand.RenderAgain] (#327). [source] is the video a Short or an Export as sibling
+ * was made from (#328), which may have been deleted since.
+ */
 data class Video(
     val id: VideoId,
     val project: ProjectId,
@@ -89,6 +97,8 @@ data class Video(
     val width: Int,
     val height: Int,
     val song: String,
+    val madeWith: RenderSpec? = null,
+    val source: VideoId? = null,
 ) {
     val shape: Shape get() = shapeOf(width, height)
 }
@@ -114,6 +124,17 @@ sealed interface SaveFolder {
  * The library. [loading] until the saved library is read; Commands sent meanwhile wait in [pending]
  * and are carried out, in order, once it is. [projects] are the newest first. [defaultProject] is the
  * Project the user chose for videos that arrive without one; null when none is chosen.
+ *
+ * [renders] is the render queue (#338): what waits and runs, oldest first, and what finished since the
+ * app started. [visualsOff] is Settings' Visuals off, while which no Render can be made (#196).
+ * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
+ * [recording] is the Recording of the live Visual, if one runs or waits for its Project (#317).
+ * [rendersKeepGoing] is Settings' Renders keep going switch (#28), and [appInFront] whether the app is
+ * what the person sees: with the switch off, Renders only run while the app is in front. [edit] is the
+ * editor open on an Edit (#318), and [editSources] Settings' choice of what a saved Edit does with its
+ * videos. [cutRevision] counts the changes to the Timeline's cut saved since the app started: each save
+ * carries its number, so a slower, older save is never written over a newer one. [savedCuts] are the
+ * names of the cuts the earlier editor kept besides the Timeline's own, which the Timeline opens (#347).
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -122,11 +143,45 @@ data class StudioState(
     val defaultProject: ProjectId? = null,
     val saveFolder: SaveFolder = SaveFolder.Unknown,
     val pending: List<StudioCommand> = emptyList(),
+    val renders: List<RenderJob> = emptyList(),
+    val visualsOff: Boolean = false,
+    val renderFormat: RenderFormat = RenderFormat(),
+    val renderExtras: RenderExtras = RenderExtras(),
+    val recording: RecordingState = RecordingState.Idle,
+    val rendersKeepGoing: Boolean = true,
+    val appInFront: Boolean = true,
+    val edit: EditSession = EditSession.Closed,
+    val editSources: EditSources = EditSources.REFERENCE,
+    val cutRevision: Long = 0L,
+    val savedCuts: List<String> = emptyList(),
 ) {
+    /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
+    val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront
+
     fun videosIn(project: ProjectId): List<Video> = videos.filter { it.project == project }
 
     /** Whether Studio's first-run step should be shown: Settings are read and no save folder is picked. */
     val needsSetup: Boolean get() = saveFolder == SaveFolder.NotChosen
+
+    /** The Render being made now, if any: the queue makes one at a time. */
+    val runningRender: RenderJob? get() = renders.firstOrNull { it.status is RenderStatus.Running }
+
+    /**
+     * How far the Renders queued together as [batch] (a playlist's tracks) have got, 0..1: a waiting
+     * one counts as not started, and a finished, failed or cancelled one as done. 0 for no Renders.
+     */
+    fun batchProgress(batch: RenderId): Float {
+        val inBatch = renders.filter { it.batch == batch }
+        if (inBatch.isEmpty()) return 0f
+        return inBatch.sumOf { it.progressPart().toDouble() }.toFloat() / inBatch.size
+    }
+
+    private fun RenderJob.progressPart(): Float =
+        when (val now = status) {
+            RenderStatus.Queued -> 0f
+            is RenderStatus.Running -> now.progress
+            RenderStatus.Done, RenderStatus.Cancelled, is RenderStatus.Failed -> 1f
+        }
 }
 
 /** What deleting a Project does with the videos still in it. Nothing is ever deleted silently. */
@@ -176,6 +231,46 @@ sealed interface StudioCommand {
     data class AddVideos(
         val videos: List<NewVideo>,
         val project: ProjectId? = null,
+    ) : StudioCommand
+
+    /**
+     * Queues the Render [spec] describes (#338): one Render per track, or one for a whole playlist,
+     * into the chosen Project, or the default one. The look is frozen as it is queued. Refused, with
+     * a word on the banner, while Visuals off is on or when there is no Project for it.
+     */
+    data class QueueRender(
+        val spec: RenderSpec,
+    ) : StudioCommand
+
+    /**
+     * Makes the Render [video] again (#327): a new Render of the same Track with the look frozen for
+     * [video], and [spec]'s format, length, Project, extras and MilkDrop preset. [spec]'s tracks, look
+     * and playlist are not looked at. The new video is its own Render, and nothing about it changes what
+     * the next fresh Render of the song starts from. Refused as [QueueRender] is; a video that is not a
+     * Render Studio made does nothing.
+     */
+    data class RenderAgain(
+        val video: VideoId,
+        val spec: RenderSpec,
+    ) : StudioCommand
+
+    /** Cancels [renders]: a waiting one never starts, and a running one stops and leaves no file. */
+    data class CancelRenders(
+        val renders: Set<RenderId>,
+    ) : StudioCommand
+
+    /** Takes the finished, failed and cancelled Renders off the queue; their videos stay where they are. */
+    data object ClearFinishedRenders : StudioCommand
+
+    /**
+     * Makes a sibling of [video] at [preset] in [project] (#328): a Render is drawn again from its
+     * remembered song, look and setup at the preset; any other video, or a Render while Visuals off is
+     * on, is cropped and trimmed to it through the Edit pipeline. The sibling links back to [video].
+     */
+    data class ExportAs(
+        val video: VideoId,
+        val preset: RenderPreset,
+        val project: ProjectId,
     ) : StudioCommand
 }
 

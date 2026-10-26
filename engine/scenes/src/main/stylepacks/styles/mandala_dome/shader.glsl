@@ -6,10 +6,12 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
 //#include lib_touch
+//#include lib_gravity
 
 // Mandala Dome: a tapestry of eight-point stars, rings and diamonds, filled in
 // purples, blues and magentas and outlined in green, cyan and red, wrapped
@@ -130,7 +132,8 @@ vec3 dome(vec2 uv, vec2 centre, float r, float freq, float spin, float glow, flo
 }
 
 void main() {
-    vec2 uv = view();
+    // Tilt parallaxes the whole field a little (lib_gravity): vec2(0) when off.
+    vec2 uv = view() + tiltDrift();
     float beat = clamp(uSpike * uBeatResponse, 0.0, 1.0);
     float breathe = 1.0 + 0.05 * clamp(uBassSmooth * uBeatResponse, 0.0, 1.5);
     // uTreble straight into a glow term was the flash: a cymbal took the whole hall
@@ -146,7 +149,7 @@ void main() {
 
     // The flat field: a plane receding toward the top, drifting slowly.
     float persp = 1.0 / (1.15 - 0.35 * m.y);
-    vec2 field = m * persp * 3.1 * breathe + flowOffset(0.5);
+    vec2 field = m * persp * 3.1 * breathe * xm(uXScale) + flowOffset(0.5);
     vec3 col = tapestry(fluidWarp(field, 0.9, 0.07), glow, split);
     col *= 0.7 + 0.3 * persp;
 

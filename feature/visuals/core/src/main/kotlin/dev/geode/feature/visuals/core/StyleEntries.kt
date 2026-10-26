@@ -1,8 +1,10 @@
 package dev.geode.feature.visuals.core
 
+import dev.geode.engine.types.MilkdropStyles
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.StyleFamily
 import dev.geode.feature.customization.api.StyleManifest
+import dev.geode.feature.visuals.api.MilkdropPreset
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 
@@ -13,6 +15,22 @@ object StyleEntries {
         manifests
             .map { StyleEntry(it.id, name(it.id), group(it.family)) }
             .sortedBy { it.group.ordinal }
+
+    /**
+     * [styles] with every one of [presets] listed as a Style of its own in the MilkDrop group (#305), by
+     * the name the MilkDrop list shows and in its order. They take the place of the MilkDrop Styles
+     * listed before: the presets of an earlier listing, and the plain MilkDrop Style, which plays no
+     * preset of its own. With no presets at all, only an earlier listing's presets go.
+     */
+    fun withMilkdrop(
+        styles: List<StyleEntry>,
+        presets: List<MilkdropPreset>,
+    ): List<StyleEntry> {
+        if (presets.isEmpty()) return styles.filter { MilkdropStyles.file(it.id) == null }
+        val milkdrop = presets.map { StyleEntry(MilkdropStyles.of(it.file), it.name, StyleGroup.MILKDROP) }
+        // The MilkDrop group is the last one listed (StyleGroup's order), so the presets go at the end.
+        return styles.filterNot { it.group == StyleGroup.MILKDROP } + milkdrop
+    }
 
     /**
      * The name a Style is shown by, made from its id ("fluid_ink" is "Fluid Ink") until the Style

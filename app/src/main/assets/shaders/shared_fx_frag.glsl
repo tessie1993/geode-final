@@ -1,6 +1,7 @@
 #version 300 es
 // The Shared core effects that work on every Style's finished picture before the composite pass
-// (SharedFxPass, SharedEffects.hpp): soft focus, the particle layer, motion blur and Trails/echo.
+// (SharedFxPass, SharedEffects.hpp): soft focus, the echo copy, the particle layer, motion blur and
+// Trails/echo.
 // Every amount is 0 by default, and the renderer skips this pass entirely while all of them are.
 // The rest of the Shared core is in composite_frag.glsl.
 precision highp float;
@@ -21,10 +22,16 @@ uniform float uParticleKind;
 uniform float uParticleSize;
 // How much of the last frame an echo keeps (frame-rate corrected on the CPU: sharedfx::echoKeep).
 uniform float uEchoKeep;
+// The echo's zoom and warp this frame (sharedfx::echoZoom and echoWarp: the 60 fps amounts, scaled by dt).
 uniform float uEchoZoom;
 uniform float uEchoWarp;
 // How much of the last frame motion blur mixes in (sharedfx::motionKeep).
 uniform float uMotionKeep;
+// The echo copy (#385): the share of it mixed over the picture (sharedfx::echoCopyMix, already faded),
+// its zoom about the centre, and its flip as a scale on the offset from the centre (-1 where flipped).
+uniform float uEchoCopy;
+uniform float uEchoCopyZoom;
+uniform vec2 uEchoCopyFlip;
 
 float fxHash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -86,8 +93,21 @@ float particleLight(vec2 uv) {
     return light;
 }
 
+// The echo copy: this frame's picture zoomed about its centre and flipped. Outside the frame it folds
+// back in, mirrored, so a copy smaller than the frame tiles without a seam or a black edge.
+vec3 echoCopy(vec2 uv) {
+    vec2 c = (uv - 0.5) * uEchoCopyFlip / max(uEchoCopyZoom, 0.5) + 0.5;
+    vec2 folded = 1.0 - abs(1.0 - mod(c, 2.0));
+    return texture(uScene, folded).rgb;
+}
+
 void main() {
     vec3 col = softFocus(vUv);
+    if (uEchoCopy > 0.001) {
+        // At most an even blend of the picture and a flipped copy of itself: the light moves, the
+        // frame's overall brightness does not.
+        col = mix(col, echoCopy(vUv), clamp(uEchoCopy, 0.0, 0.5));
+    }
     if (uParticles > 0.001) {
         vec3 tint = mix(vec3(1.0, 0.97, 0.9), clamp(col + 0.25, 0.0, 1.0), 0.4);
         col += particleLight(vUv) * (0.35 + 0.4 * uParticles) * tint;
@@ -100,6 +120,8 @@ void main() {
             h += vec2(sin(h.y * 11.0 + uTime * 0.7), sin(h.x * 13.0 - uTime * 0.9)) * uEchoWarp * 0.004;
         }
         vec3 prev = texture(uHistory, clamp(h, vec2(0.001), vec2(0.999))).rgb;
+        // HDR history: bounded so nothing runaway lives on in the echo (ToneMap.hpp, kHdrCeiling).
+        prev = any(isnan(prev)) ? vec3(0.0) : clamp(prev, 0.0, 64.0);
         col = mix(col, prev, clamp(uMotionKeep, 0.0, 0.95));
         // An echo only ever adds what is fading behind the new frame; it never darkens it.
         col = max(col, prev * clamp(uEchoKeep, 0.0, 0.98));

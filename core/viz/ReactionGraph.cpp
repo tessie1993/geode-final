@@ -43,6 +43,14 @@ int wrapPalette(int64_t index) {
 }
 }  // namespace
 
+bool silent(float level) { return level < kSilenceLevel; }
+
+float raisedThreshold(float threshold, float sinceSeconds) {
+    const float since = std::isfinite(sinceSeconds) ? std::max(sinceSeconds, 0.0f) : 0.0f;
+    const float room = std::max(1.0f - threshold, 0.0f);
+    return threshold + room * kThresholdRise * std::exp2(-since / kThresholdHalfLifeSeconds);
+}
+
 float crossfade(float elapsedSeconds, float lengthSeconds) {
     if (!(lengthSeconds > 0.0f)) return 1.0f;
     const float x = unit(elapsedSeconds / lengthSeconds);
@@ -92,10 +100,12 @@ void ReactionGraph::reset() {
     for (auto& m : modulators_) m.reset();
     beats_ = 0.0;
     seconds_ = 0.0;
+    quietSeconds_ = 0.0;
     lastBlock_.fill(kUnseen);
     due_.fill(0);
     armed_.fill(true);
     lastMove_.fill(kNever);
+    spacedFrom_.fill(kNever);
     primed_ = false;
     out_ = Evaluated{};
 }
@@ -121,6 +131,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         lastBlock_.fill(kUnseen);
         armed_.fill(true);
         lastMove_.fill(kNever);
+        spacedFrom_.fill(kNever);
     }
 
     // 2. The Modulators: only those some Reaction listens to run.
@@ -187,6 +198,10 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         if (frame.beatSeconds > 0.0f) beats_ += step / std::max(frame.beatSeconds, kMinPeriodSeconds);
     }
     const float bigMoment = std::max(frame[SoundSignal::Surge], frame[SoundSignal::Change]);
+    // Silence, from the Level as heard: a trim must not turn a quiet room into music (#361).
+    const bool quiet = silent(raw[SoundSignal::Level]);
+    if (frame.playing) quietSeconds_ = quiet ? quietSeconds_ + step : 0.0;
+    const bool longQuiet = quietSeconds_ >= kSilenceSeconds;
     const auto beat = static_cast<int64_t>(std::floor(beats_));
     for (int a = 0; a < kMaxAutomations; ++a) {
         const auto i = static_cast<size_t>(a);
@@ -195,14 +210,17 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
             due_[i] = 0;
             armed_[i] = true;
             lastMove_[i] = kNever;
+            spacedFrom_[i] = kNever;
             continue;
         }
         const AutomationSpec& automation = plan.automations[i];
         const int every = std::max(automation.everyBeats, 1);
         const int64_t block = beat / every;
+        const bool switching = automation.kind == AutomationKind::StyleSwitch;
         bool fired = false;
         if (automation.trigger == TriggerKind::BigMoments) {
-            const float threshold = std::isnan(automation.threshold) ? 1.0f : automation.threshold;
+            float threshold = std::isnan(automation.threshold) ? 1.0f : automation.threshold;
+            if (switching && lastMove_[i] >= 0.0) threshold = raisedThreshold(threshold, static_cast<float>(seconds_ - lastMove_[i]));
             fired = armed_[i] && bigMoment >= threshold;
             armed_[i] = bigMoment < threshold;
         } else {
@@ -210,7 +228,10 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         }
         lastBlock_[i] = block;
         const double spacing = std::isfinite(automation.spacingSeconds) ? std::max(automation.spacingSeconds, 0.0f) : 0.0;
-        const bool moves = fired && (lastMove_[i] < 0.0 || seconds_ - lastMove_[i] >= spacing);
+        if (automation.held || (switching && longQuiet)) spacedFrom_[i] = seconds_;
+        const bool spaced = spacedFrom_[i] < 0.0 || seconds_ - spacedFrom_[i] >= spacing;
+        const bool moves = fired && !automation.held && !(switching && quiet) && spaced;
+        if (moves) spacedFrom_[i] = seconds_;
         switch (automation.kind) {
             case AutomationKind::StyleSwitch:
                 if (moves) {
@@ -304,6 +325,7 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
     }
     for (size_t e = 0; e < kExtraCount; ++e) out_.extras[e] = unit(extras[e]);
     for (size_t k = 0; k < kMacroCount; ++k) out_.macros[k] = unit(macros[k]);
+    out_.layer = plan.layer;
     for (int m = 0; m < modulatorCount; ++m) {
         const auto i = static_cast<size_t>(m);
         if (!listened[i]) continue;

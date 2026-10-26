@@ -1,0 +1,33 @@
+diff --git a/src/libprojectM/MilkdropPreset/MilkdropPreset.cpp b/src/libprojectM/MilkdropPreset/MilkdropPreset.cpp
+index e311cf0bb..045cdb03e 100755
+--- a/src/libprojectM/MilkdropPreset/MilkdropPreset.cpp
++++ b/src/libprojectM/MilkdropPreset/MilkdropPreset.cpp
+@@ -109,14 +109,26 @@ void MilkdropPreset::RenderFrame(const libprojectM::Audio::FrameAudioData& audio
+     // We now draw to the current framebuffer.
+     m_framebuffer.Bind(m_currentFrameBuffer);
+ 
++    // The u/v texture only feeds the motion vectors, drawn from it on the next frame. A preset that
++    // shows none (most of them) skips writing it: a whole RG16F target less every frame.
++    const bool motionVectorsShown = *m_perFrameContext.mv_a >= 0.0001f &&
++                                    static_cast<int>(*m_perFrameContext.mv_x) > 0 &&
++                                    static_cast<int>(*m_perFrameContext.mv_y) > 0;
++
+     // Add motion vector u/v texture for the warp mesh draw and clean both buffers.
+-    m_framebuffer.SetAttachment(m_currentFrameBuffer, 1, m_motionVectorUVMap);
++    if (motionVectorsShown)
++    {
++        m_framebuffer.SetAttachment(m_currentFrameBuffer, 1, m_motionVectorUVMap);
++    }
+ 
+     // Draw previous frame image warped via per-pixel mesh and warp shader
+     m_perPixelMesh.Draw(m_state, m_perFrameContext, m_perPixelContext);
+ 
+     // Remove the u/v texture from the framebuffer.
+-    m_framebuffer.RemoveColorAttachment(m_currentFrameBuffer, 1);
++    if (motionVectorsShown)
++    {
++        m_framebuffer.RemoveColorAttachment(m_currentFrameBuffer, 1);
++    }
+ 
+     // Update blur textures
+     {

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "swarm_chase",
+  "label": "Swarm Chase",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["bands"]}
+}

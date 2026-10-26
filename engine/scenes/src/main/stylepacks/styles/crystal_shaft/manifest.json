@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "id": "crystal_shaft",
+  "label": "Crystal Shaft",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march",
+  "extras": [
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["bands"]}
+}

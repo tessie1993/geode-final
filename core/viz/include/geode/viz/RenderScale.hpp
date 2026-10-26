@@ -10,8 +10,10 @@ namespace geode::viz::scale {
 //   total = supersample x max(style x min(load, thermal), kMinQualityScale)   live
 //   total = export supersample (a named setting, kExportSupersample by default)  Render (export)
 //
-// The composite always writes exactly the surface or export size; only the scene targets behind it
-// follow this factor, and the composite samples them with linear filtering.
+// The frame shown is always exactly the surface or export size. The scene targets follow this factor;
+// the composite, the tonemap and the No-flash limiter draw at the smaller of the two on each side
+// (tile::frameSize), so a supersampled scene is downsampled by the composite and a reduced one is
+// upscaled, with linear filtering, only by the limiter's last pass onto the output.
 
 // ---- supersampling -------------------------------------------------------------------------------
 
@@ -44,8 +46,24 @@ constexpr float kMaxStyleRenderScale = 1.0f;
 // [kMinStyleRenderScale, kMaxStyleRenderScale]; kDefaultStyleRenderScale when nothing usable is declared.
 float styleRenderScale(std::optional<double> declared);
 
+// While Layer 2 is on (Layers.hpp) two Styles draw every frame, each into a scene target of the same
+// size. Both then draw at the softer of their two Style scales times kLayeredRenderScale, so the frame
+// costs about what one Style costs alone (two targets at 0.75 x 0.75 of the pixels each is 1.1 of one).
+// Renders are not touched: they always draw at the export size.
+constexpr float kLayeredRenderScale = 0.75f;
+
+// The Style scale both pictures draw at: `styleScale` alone, or with Layer 2 on, the softer of it and
+// Layer 2's `layerStyleScale`, times kLayeredRenderScale.
+float layeredStyleScale(float styleScale, bool layered, float layerStyleScale);
+
 // The floor under style x min(load, thermal), so no combination draws softer than this.
 constexpr float kMinQualityScale = 0.5f;
+
+// MilkDrop draws its whole frame into the scene target (MilkdropScene), and projectM's own passes run
+// at that size too, several of them. Live, its target is held to this many pixels, so a large panel
+// costs no more than a mid-sized one; the composite's last pass upscales it onto the output as it
+// does any reduced scene. Renders are not held: they draw at the export size.
+constexpr float kMilkdropMaxMegapixels = 1.6f;
 
 // ---- load scale ----------------------------------------------------------------------------------
 
@@ -134,8 +152,14 @@ struct ScaleInputs {
     bool offscreen = false;  // a Render: exact export size
     float exportSupersample = kExportSupersample;
     float styleScale = 1.0f;
+    // Layer 2 is drawn this frame, at its own Style's scale.
+    bool layered = false;
+    float layerStyleScale = 1.0f;
     float loadScale = 1.0f;
     float thermalCeiling = 1.0f;
+    // The most megapixels the live scene target may hold (kMilkdropMaxMegapixels for MilkDrop); 0 for
+    // no limit. A Render ignores it.
+    float maxMegapixels = 0.0f;
 };
 
 float totalScale(const ScaleInputs& in);

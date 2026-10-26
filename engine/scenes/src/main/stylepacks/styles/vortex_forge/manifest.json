@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "vortex_forge",
+  "label": "Vortex Forge",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march",
+  "inputs": ["noise_vol", "blue_noise", "clocks"],
+  "extras": [
+    { "name": "force", "min": 0, "max": 2, "default": 1 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 },
+    { "name": "complexity", "min": 0, "max": 2, "default": 1 },
+    { "name": "variant", "min": 0, "max": 9, "default": 0 }
+  ],
+  "effects": ["stars", "detail"],
+  "tiers": {
+    "eased": {"steps": 0.85},
+    "reduced": {"steps": 0.7, "off": ["stars"]},
+    "minimal": {"steps": 0.55, "off": ["stars", "detail"]}
+  },
+  "lens": {
+    "threshold": 0.7,
+    "godRays": {"amount": 0.35, "source": [0.5, 0.5], "length": 0.55, "decay": 0.93},
+    "streaks": {"amount": 0.22, "shape": "star", "spokes": 6, "length": 0.4}
+  },
+  "particles3d": {"kind": "streaks", "amount": 0.45, "count": 0.8, "speed": 0.8, "size": 0.9, "tint": [1.3, 0.7, 0.35]},
+  "reactivity": {"macro": ["energy"]}
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "pulsar_orbit",
+  "label": "Pulsar Orbit",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march",
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["onset", "bands"]}
+}

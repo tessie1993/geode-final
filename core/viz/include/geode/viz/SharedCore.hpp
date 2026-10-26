@@ -11,18 +11,21 @@ namespace geode::viz::mod {
 // SharedCore.cpp and fails when the two drift apart.
 enum class Shared : uint8_t {
     Zoom, PushIn, Rotation, OrbitYaw, OrbitPitch, Travel, Sway, Shake, DriftX, DriftY, EndlessZoom, DiveSpeed,
+    FieldOfView, Roll, SpeedRamp,
     Palette, Palette2, PaletteMix, Duotone, Lut, Morph, HueShift, HueRange, ColourCycle, CycleSpeed,
     Speed, AudioDrive, Turbulence,
     Detail, Glow,
     Kaleidoscope, Symmetry, Mirror,
-    Trails, TrailZoom, TrailWarp,
+    Trails, TrailZoom, TrailWarp, EchoCopy, EchoCopyZoom, EchoCopyFlip,
     Grain, Vignette, Chromatic, Scanlines, Fisheye, SoftFocus, MotionBlur,
     Warp, Ripple, Twist, Tile,
     Glitch, Pixelate, Posterize, Solarize,
     Particles, ParticleKind, ParticleSize,
     Saturation, Brightness, Intensity, Contrast, Gamma, Temperature, Invert,
+    Anaglyph,
+    LayerOpacity, LayerInfluence, LayerSwap,
 };
-constexpr size_t kSharedCount = 58;
+constexpr size_t kSharedCount = 68;
 
 // ExtraKind's size and MACRO_COUNT in :feature:customization:api.
 constexpr size_t kExtraCount = 23;

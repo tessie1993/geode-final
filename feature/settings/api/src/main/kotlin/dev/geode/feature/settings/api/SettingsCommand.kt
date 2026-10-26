@@ -10,8 +10,12 @@ import dev.geode.engine.types.Millis
 sealed interface SettingsCommand
 
 sealed interface LookCommand : SettingsCommand {
-    data class SetElement(
-        val element: Element,
+    data class SetThemeMode(
+        val mode: ThemeMode,
+    ) : LookCommand
+
+    data class SetReduceTransparency(
+        val on: Boolean,
     ) : LookCommand
 
     data class SetAccentIntensity(
@@ -49,10 +53,6 @@ sealed interface LookCommand : SettingsCommand {
 
     data class SetClearVisualsMenu(
         val on: Boolean,
-    ) : LookCommand
-
-    data class SetAmbientMode(
-        val mode: AmbientMode,
     ) : LookCommand
 }
 
@@ -171,6 +171,16 @@ sealed interface AnalysisCommand : SettingsCommand {
     data class SetReactToMicrophone(
         val on: Boolean,
     ) : AnalysisCommand
+
+    /** The gain every Style's sound is analysed and drawn with. */
+    data class SetSensitivity(
+        val sensitivity: Decibels,
+    ) : AnalysisCommand
+
+    /** Positive draws the Visual later than the music, negative earlier. */
+    data class SetSyncOffset(
+        val offset: Millis,
+    ) : AnalysisCommand
 }
 
 sealed interface BehaviorCommand : SettingsCommand {
@@ -188,6 +198,20 @@ sealed interface BehaviorCommand : SettingsCommand {
 
     data class SetReducedMotion(
         val on: Boolean,
+    ) : BehaviorCommand
+
+    data class SetTilt(
+        val amount: TiltAmount,
+    ) : BehaviorCommand
+
+    /** The look Geode opens on (#383); a Style or preset with a blank id means [StartLook.Last]. */
+    data class SetStartLook(
+        val look: StartLook,
+    ) : BehaviorCommand
+
+    /** How every change of Style looks on the live Visual (#309). */
+    data class SetTransitionLook(
+        val look: TransitionLook,
     ) : BehaviorCommand
 }
 
@@ -218,6 +242,11 @@ sealed interface ExportCommand : SettingsCommand {
 
     data class SetFinishedAlerts(
         val on: Boolean,
+    ) : ExportCommand
+
+    /** Whether a saved Edit references its sources or copies them (#318). */
+    data class SetEditSources(
+        val sources: EditSources,
     ) : ExportCommand
 }
 
@@ -269,6 +298,18 @@ sealed interface PerformanceCommand : SettingsCommand {
 
     data class SetVisualFrameRate(
         val frameRate: VisualFrameRate,
+    ) : PerformanceCommand
+
+    /** The quality [surface] draws at (#394); null makes it follow [SetVisualQuality] again. */
+    data class SetSurfaceQuality(
+        val surface: VisualSurface,
+        val quality: VisualQuality?,
+    ) : PerformanceCommand
+
+    /** The frame rate [surface] draws at (#394); null makes it follow [SetVisualFrameRate] again. */
+    data class SetSurfaceFrameRate(
+        val surface: VisualSurface,
+        val frameRate: VisualFrameRate?,
     ) : PerformanceCommand
 
     data class SetSaveMode(

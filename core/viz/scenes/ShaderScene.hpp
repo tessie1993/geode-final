@@ -7,19 +7,63 @@
 #include <string>
 #include <vector>
 
+#include "geode/render/Framebuffer.hpp"
 #include "geode/render/Program.hpp"
+#include "geode/viz/AudioInputs.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/render/ImageDecoder.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/FeedbackWarp.hpp"
+#include "geode/viz/FrameRate.hpp"
+#include "geode/viz/MultiPass.hpp"
+#include "geode/viz/SharedInputs.hpp"
+#include "geode/viz/StyleInputs.hpp"
+#include "geode/viz/StylePacks.hpp"
 
 namespace geode::viz {
+
+// The feedback warp a shader Style opts into ("feedback", FeedbackWarp.hpp): its spec and the warp
+// stage's assembled sources, the shared ones or the pack's own fragment.
+struct ShaderFeedback {
+    feedback::WarpSpec spec;
+    std::string vertex;
+    std::string fragment;
+};
+
+// One image a shader Style ships in its pack ("textures", #391): decoded, with the sampler the shader reads
+// it by and the wrap and filter the pack chose.
+struct ShaderImage {
+    std::string uniform;
+    packs::TextureWrap wrap = packs::TextureWrap::Repeat;
+    packs::TextureFilter filter = packs::TextureFilter::Linear;
+    Image image;
+};
+
+// The engine's passes a shader Style opts into ("multipass", MultiPass.hpp): its spec and the resolve's
+// assembled sources (the fullscreen triangle and multipass_resolve_frag.glsl).
+struct ShaderMultipass {
+    multipass::Spec spec;
+    std::string vertex;
+    std::string resolve;
+};
 
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
-    static constexpr int kAudioTexWidth = 512;
+    // uAudioTex: the shared audio inputs (AudioInputs, lib_scene_uniforms.glsl).
+    static constexpr int kAudioTexWidth = AudioInputs::kWidth;
+    static constexpr int kAudioTexRows = AudioInputs::kRows;
 
-    ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host);
+    // `inputs`: the shared Style inputs the pack declares (StyleInputs.hpp); only these are made and bound.
+    // `feedback`: the warp layer, when the pack opts into it; the Style then reads the warped picture as
+    // its previous frame and what it draws is kept. `images`: the pack's own images, at most
+    // packs::kMaxTextures, each bound to its sampler on a unit of its own.
+    // `multipass`: the engine's passes, when the pack opts into them; the Style is then drawn as its camera,
+    // a coarse prepass and its march at a share of the target, and resolved onto the target.
+    ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
+                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt, std::vector<ShaderImage> images = {},
+                std::optional<ShaderMultipass> multipass = std::nullopt);
     ~ShaderScene() override;
 
     const std::string& id() const override { return id_; }
@@ -31,13 +75,25 @@ public:
     void draw(float timeSeconds) override;
     void release() override;
 
-    void acceptPcm(const float* samples, int count) override;
+    void acceptStereoPcm(const float* interleaved, int frames) override;
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
+    void setGravityField(const GravityField* field) override { gravityField_ = field; }
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
+    void setFeatureBus(const FeatureValues& values) override { features_ = values; }
+    void setQuality(const quality::Budget& budget) override { quality_ = budget; }
+    void setSharedInputs(SharedInputs* shared) override;
+    void beginVisit() override;
+    void setDrawTarget(GLuint fbo, int width, int height) override;
     bool ownsCamera() const override { return ownsCamera_; }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+    // The Style lab (debug builds only): compiles `fragment` at the next draw through the pending
+    // fragment, and keeps drawing the last shader that compiled when it does not.
+    void replaceFragment(std::string fragment);
+#endif
 
 private:
     static constexpr float kTimeWrapSeconds = 7100.0f;
@@ -98,6 +154,14 @@ private:
     static constexpr float kFlowEnergyHz = 0.22f;
     // Well past the longest spawnGrow() horizon any style asks for.
     static constexpr float kSpawnAgeMax = 60.0f;
+    // The camera's distance down lib_dmt's flight path (uFlight): 1.4 units per second of uTime, at the
+    // FLIGHT Extra's rate as uXFlightTime runs, plus 9 per unit of uFlowPhase, the pace Rod Tunnel flies at. Integrated here and wrapped at the
+    // path's period (DMT_FLIGHT_WRAP, 2000 pi: every term of dmtTunnelPath repeats over it), so the
+    // camera keeps full float precision however long the Visual runs, where the sum of two clocks
+    // already in the thousands shimmered within the hour (#280).
+    static constexpr float kFlightTimeRate = 1.4f;
+    static constexpr float kFlightFlowRate = 9.0f;
+    static constexpr float kFlightWrap = 6283.1853f;
 
     // One-pole toward `target`, framerate independent, with its own rate for
     // rising and falling. Returns the new value.
@@ -111,9 +175,49 @@ private:
     void uploadParams();
     void uploadMotion();
     void uploadTouch();
-    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_scene_uniforms.glsl).
+    // uGravity, uTilt and uTiltWeight (lib_gravity.glsl): exact zeros with no reading.
+    void uploadGravity();
+    // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_style.glsl).
     void uploadCamera();
     void uploadExtras();
+    // The feature bus as lib_scene_features.glsl's uniforms (kFeatureUniforms).
+    void uploadFeatures();
+    // The shared inputs the pack declares: their clocks and their textures (lib_inputs.glsl).
+    void uploadInputs();
+    GLuint inputTexture(inputs::Input input);
+    // The pack's own images (#391): made at init(), bound each frame on units above the shared inputs'.
+    void createImages();
+    void uploadImages();
+    // After the draw: keeps this frame for the next one, as the previous frame and the blur levels the
+    // pack declares, then binds the draw target again. `source` holds the frame: the draw target, or the
+    // kept picture of a Style with feedback.
+    void captureHistory(GLuint source);
+    void releaseHistory();
+    // ---- the feedback warp (FeedbackWarp.hpp) ----
+    // Builds the warp stage's program the first time a Style with feedback draws.
+    void buildWarpIfNeeded();
+    // Before the Style draws: the kept picture carried through the motion grid, decayed and settled into
+    // warped_, which the Style reads as uPrevFrame; then binds kept_, free once warped, for the Style to
+    // draw into. False, with nothing bound, when the warp cannot run this frame.
+    bool warpFeedback();
+    void uploadWarp(int width, int height);
+    // After the Style drew into kept_: shows it, copied onto the renderer's target.
+    void presentFeedback();
+    // ---- the engine's passes (MultiPass.hpp) ----
+    // Builds the resolve's program the first time a multi-pass Style draws.
+    void buildResolveIfNeeded();
+    // What this frame runs: nothing extra unless the pack declares multipass, the resolve built and the
+    // scene targets are half float.
+    multipass::Plan passPlan() const;
+    // The unit the Style reads its coarse prepass on: the first above the pack's images.
+    GLint coarseUnit() const { return kFirstImageUnit + static_cast<GLint>(images_.size()); }
+    // Draws the Style through its passes and resolves it onto the draw target, the Style's program bound
+    // and its uniforms set; false, with nothing drawn, when the passes' targets cannot be made.
+    bool drawPasses(const multipass::Plan& plan);
+    // One run of the Style's shader into `fbo` (width x height) as pass `pass` (lib_multipass's uMpPass).
+    void drawPass(GLuint fbo, int width, int height, float pass, bool useCoarse, const std::array<float, 2>& jitterUv);
+    void resolvePasses(bool historyOn, const std::array<float, 2>& jitter, int now);
+    void releasePasses();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -133,7 +237,8 @@ private:
     std::mutex pendingLock_;
     std::optional<std::string> pendingFragment_;
 
-    std::array<float, kAudioTexWidth * 2> texData_{};
+    std::array<float, kAudioTexWidth * kAudioTexRows> texData_{};
+    AudioInputs audioInputs_;
     float bass_ = 0.0f;
     float mid_ = 0.0f;
     float treble_ = 0.0f;
@@ -162,6 +267,10 @@ private:
     float dirAngle_ = 0.0f;
     float dirTarget_ = 0.0f;
     float flowPhase_ = 0.0f;
+    // uEnergyPhase: the integral of speed x smoothed loudness, so a style can run faster when it is
+    // loud without the jump `uTime x loudness` makes whenever loudness changes.
+    float energyPhase_ = 0.0f;
+    float flight_ = 0.0f;
     // Deterministic per scene instance: the same audio gives the same picture,
     // which is what makes an exported frame reproducible.
     unsigned int seedState_ = 0x9e3779b9u;
@@ -171,24 +280,76 @@ private:
     float cyclePhase_ = 0.0f;
     float shaderTime_ = 0.0f;
 
-    std::vector<float> pcm_;
-    int pcmCount_ = 0;
-    std::array<float, kAudioTexWidth> waveRow_{};
 
     GLuint flowTex_ = 0;
     float flowStrength_ = 0.0f;
     GLuint paletteLutTex_ = 0;
     const TouchField* touchField_ = nullptr;
+    const GravityField* gravityField_ = nullptr;
     std::array<float, TouchField::kPointStride> touchAnchor_{};
     std::array<float, TouchField::kMaxPoints * TouchField::kPointStride> touchPoints_{};
 
     CameraPose camera_;
     ExtraValues extras_ = ExtraValues::neutral();
+    FeatureValues features_;
+    // uXFlightTime, uXSpinTime and uXDriftTime: the clocks the rate Extras run.
+    std::array<float, 3> rateClocks_{};
     // The compiled Style reads uCamRot: it moves a camera of its own.
     bool ownsCamera_ = false;
 
+    // ---- the shared Style inputs (StyleInputs.hpp) -------------------------
+    static constexpr int kBlurChain = 4;
+    inputs::Set inputs_ = 0;
+    SharedInputs* sharedInputs_ = nullptr;
+    // The Render seed's in a Render, the live clock's otherwise, mixed with the Style id (init()).
+    std::uint32_t visitSeed_ = 0;
+    inputs::VisitClock visitClock_;
+    inputs::BarClock barClock_;
+    // The target this draw goes to (setDrawTarget), which the history copies.
+    GLuint drawFbo_ = 0;
+    int drawWidth_ = 0;
+    int drawHeight_ = 0;
+    Framebuffer previous_{"stylePrevious"};
+    // ---- the feedback warp (FeedbackWarp.hpp) ------------------------------
+    std::optional<ShaderFeedback> feedback_;
+    GLuint warpProgram_ = 0;
+    UniformCache warpUniforms_;
+    bool warpBuilt_ = false;
+    feedback::Motion warpMotion_;
+    feedback::Step warpStep_;
+    // Counts the warp's frames for its dither, wrapping well inside what a float holds exactly.
+    std::uint32_t warpFrame_ = 0;
+    // True while this frame's Style draws into kept_ over the warped picture.
+    bool feeding_ = false;
+    // What the Style drew last frame and keeps (it draws into it), and that carried through the warp.
+    Framebuffer kept_{"styleFeedback"};
+    Framebuffer warped_{"styleFeedbackWarped"};
+    // The bloom chain's sizes (tone::bloomLevels): 1/2, then blur1..3 at 1/4, 1/8 and 1/16.
+    std::array<Framebuffer, kBlurChain> blur_{Framebuffer("styleBlur0"), Framebuffer("styleBlur1"), Framebuffer("styleBlur2"),
+                                              Framebuffer("styleBlur3")};
+    int blurBuilt_ = 0;
+    // ---- the engine's passes (MultiPass.hpp) -------------------------------
+    std::optional<ShaderMultipass> multipass_;
+    GLuint resolveProgram_ = 0;
+    UniformCache resolveUniforms_;
+    bool resolveBuilt_ = false;
+    multipass::History passHistory_;
+    // The march at its share of the target, the coarse prepass, the cameras of this frame and the last
+    // (ping-pong, by the frame's parity) and last frame's resolved picture.
+    Framebuffer passMarch_{"styleMarch"};
+    Framebuffer passCoarse_{"styleCoarse"};
+    std::array<Framebuffer, 2> passCamera_{Framebuffer("styleCamera0"), Framebuffer("styleCamera1")};
+    Framebuffer passResolved_{"styleResolved"};
+
+    // ---- the pack's own images ("textures", #391) ---------------------------
+    // The first unit they take: above the audio, flow, palette and the shared inputs' (3..11).
+    static constexpr GLint kFirstImageUnit = 12;
+    std::vector<ShaderImage> images_;
+    std::array<Texture, packs::kMaxTextures> imageTex_{};
+
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;
+    quality::Budget quality_;
 };
 
 }  // namespace geode::viz

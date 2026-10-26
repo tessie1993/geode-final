@@ -1,10 +1,16 @@
 package dev.geode.ui.shell
 
 import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.VideoLibrary
+import androidx.compose.ui.graphics.vector.ImageVector
 import dev.geode.R
-import dev.geode.design.theme.StoneIcon
 
-/** Each place's name on the Bar. The same in every Element. */
+/** Each place's name on the Bar. The same for everyone. */
 @get:StringRes
 val Place.label: Int
     get() =
@@ -16,13 +22,13 @@ val Place.label: Int
             Place.SETTINGS -> R.string.nav_settings
         }
 
-/** Each place's glyph on the Bar. */
-val Place.icon: StoneIcon
+/** Each place's icon on the Bar: familiar Material icons, all from the one rounded set. */
+val Place.icon: ImageVector
     get() =
         when (this) {
-            Place.MUSIC -> StoneIcon.LIBRARY
-            Place.VISUALS -> StoneIcon.VISUALIZER
-            Place.HOME -> StoneIcon.HOME
-            Place.STUDIO -> StoneIcon.STUDIO
-            Place.SETTINGS -> StoneIcon.SETTINGS
+            Place.MUSIC -> Icons.Rounded.LibraryMusic
+            Place.VISUALS -> Icons.Rounded.AutoAwesome
+            Place.HOME -> Icons.Rounded.Home
+            Place.STUDIO -> Icons.Rounded.VideoLibrary
+            Place.SETTINGS -> Icons.Rounded.Settings
         }

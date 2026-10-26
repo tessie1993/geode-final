@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,11 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import dev.geode.design.forest.ForestGlass
-import dev.geode.design.forest.ForestShapes
-import dev.geode.design.forest.ForestSpacing
-import dev.geode.design.forest.LocalForestColors
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.LocalGlassStyle
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -55,29 +57,30 @@ fun ModulatorsAutomationScreen(
     modifier: Modifier = Modifier,
 ) {
     val send = { command: CustomizationCommand -> onAction(CustomizeAction.Send(command)) }
-    val colors = LocalForestColors.current
+    // Over the live Visual: matte glass until the engine frosts it (#349).
+    val shape = MaterialTheme.shapes.extraLarge
     Surface(
-        shape = ForestShapes.Sheet,
-        color = ForestGlass.textGlass(colors),
-        contentColor = colors.textPrimary,
-        modifier = modifier.fillMaxSize(),
+        shape = shape,
+        color = Color.Transparent,
+        contentColor = LocalGlassStyle.current.colors.textPrimary,
+        modifier = modifier.fillMaxSize().glassSurface(GlassKind.SHEET, shape, GlassBackdrop.Visual),
     ) {
         Column(
             Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = ForestSpacing.Large, vertical = ForestSpacing.Medium),
+                .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.Medium),
         ) {
             Text(stringResource(R.string.modulators_automation_title), style = MaterialTheme.typography.headlineMedium)
             SectionTitle(stringResource(R.string.customize_section_modulators))
             ModulatorsSection(model, send)
             SectionTitle(stringResource(R.string.automation_section))
-            AutomationsSection(model) { send(CustomizationCommand.SetAutomations(it)) }
+            AutomationsSection(model, send)
         }
     }
 }
 
-/** Modulators: add one of the four kinds; each shows its picture, its start setting, rate and depth. */
+/** Modulators: add one of the kinds; each shows its picture, its start setting, rate and depth. */
 @Composable
 private fun ModulatorsSection(
     model: CustomizeModel,
@@ -88,8 +91,8 @@ private fun ModulatorsSection(
             AssistChip(
                 onClick = { send(CustomizationCommand.AddModulator(newModulator(kind))) },
                 label = { Text(kindName(kind)) },
-                leadingIcon = { Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.customize_add_modulator)) },
-                shape = ForestShapes.Chip,
+                leadingIcon = { Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.customize_add_modulator)) },
+                shape = MaterialTheme.shapes.small,
             )
         }
     }
@@ -111,18 +114,18 @@ private fun ModulatorCard(
             if (modulator.start == StartMode.ByHand) {
                 IconButton(onClick = { send(togglePlay(modulator)) }) {
                     if (modulator.playing) {
-                        Icon(Icons.Filled.Stop, contentDescription = stringResource(R.string.customize_stop))
+                        Icon(Icons.Rounded.Stop, contentDescription = stringResource(R.string.customize_stop))
                     } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = stringResource(R.string.customize_play))
+                        Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.customize_play))
                     }
                 }
             }
             IconButton(onClick = { send(CustomizationCommand.RemoveModulator(modulator.id)) }) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.customize_remove_modulator))
             }
         }
         if (!row.linked) QuietText(stringResource(R.string.customize_modulator_idle))
-        ModulatorPicture(modulator.shape, Modifier.padding(vertical = ForestSpacing.Small))
+        ModulatorPicture(modulator.shape, Modifier.padding(vertical = GlassSpacing.Small))
         val shape = modulator.shape
         when (shape) {
             is ModulatorShape.Lfo -> {
@@ -139,6 +142,16 @@ private fun ModulatorCard(
                 SwitchRow(stringResource(R.string.customize_beat_sync), shape.beatSync) {
                     update(modulator.copy(shape = shape.copy(beatSync = it)))
                 }
+            is ModulatorShape.ToggleOnBeat, is ModulatorShape.RandomOnBeat -> {
+                SectionTitle(stringResource(R.string.customize_beats_between))
+                ChipFlow {
+                    BEATS_BETWEEN_CHOICES.forEach { beats ->
+                        ChoiceChip(beats.toString(), shape.beatsBetween == beats) {
+                            update(modulator.copy(shape = shape.withBeatsBetween(beats)))
+                        }
+                    }
+                }
+            }
             is ModulatorShape.HitEnvelope, is ModulatorShape.RandomDrift -> Unit
         }
         SectionTitle(stringResource(R.string.customize_start))
@@ -159,6 +172,7 @@ private fun ModulatorCard(
             range = Modulator.MIN_RATE..Modulator.MAX_RATE,
             text = { stringResource(R.string.customize_rate_value, it) },
             onSet = { update(modulator.copy(rate = it)) },
+            help = stringResource(R.string.customize_help_rate),
         )
         HeldSlider(
             label = stringResource(R.string.customize_depth),
@@ -166,6 +180,7 @@ private fun ModulatorCard(
             range = 0f..1f,
             text = { stringResource(R.string.customize_percent, percentOf(it)) },
             onSet = { update(modulator.copy(depth = it)) },
+            help = stringResource(R.string.customize_help_depth),
         )
     }
 }
@@ -178,13 +193,18 @@ private fun ModulatorCard(
 @Composable
 private fun AutomationsSection(
     model: CustomizeModel,
-    set: (Automations) -> Unit,
+    send: (CustomizationCommand) -> Unit,
 ) {
     val automations = model.automations
+    val set = { next: Automations -> send(CustomizationCommand.SetAutomations(next)) }
     QuietText(stringResource(R.string.automation_live_only))
     InsetCard {
         SwitchRow(stringResource(R.string.automation_style), automations.style != null) { set(automations.switchingStyle(it)) }
-        automations.style?.let { switching -> StyleSwitchingControls(switching) { set(automations.copy(style = it)) } }
+        automations.style?.let { switching ->
+            StyleSwitchingControls(model, switching) { set(automations.copy(style = it)) }
+            SwitchRow(stringResource(R.string.automation_hold), model.styleHeld) { send(CustomizationCommand.HoldStyle(it)) }
+        }
+        StylesSeen(model, send)
     }
     InsetCard {
         SwitchRow(stringResource(R.string.automation_palette), automations.palette != null) { set(automations.changingPalette(it)) }
@@ -197,13 +217,28 @@ private fun AutomationsSection(
 
 @Composable
 private fun StyleSwitchingControls(
+    model: CustomizeModel,
     switching: StyleSwitching,
     set: (StyleSwitching) -> Unit,
 ) {
     CadenceControls(switching.cadence) { set(switching.copy(cadence = it)) }
     ChipFlow {
-        StylePool.entries.forEach { pool -> ChoiceChip(poolName(pool), switching.pool == pool) { set(switching.copy(pool = pool)) } }
+        POOL_CHOICES.forEach { pool -> ChoiceChip(poolName(pool), switching.pool == pool) { set(switching.copy(pool = pool)) } }
+        // A folder's Styles, taken as they are now (#308).
+        model.styleFolders.forEach { folder ->
+            ChoiceChip(stringResource(R.string.automation_pool_folder, folder.name), switching.within(folder)) {
+                set(switching.withinFolder(folder))
+            }
+        }
     }
+    // The two Styles a pair goes back and forth between (#384).
+    if (switching.pool == StylePool.PAIR) {
+        QuietText(stringResource(R.string.automation_pair_hint))
+        ChipFlow {
+            model.looks.forEach { look -> ChoiceChip(look.name, look.style in switching.pair) { set(switching.pairToggled(look.style)) } }
+        }
+    }
+    QuietText(stringResource(R.string.automation_marks))
     HeldSlider(
         label = stringResource(R.string.automation_transition),
         value = switching.seconds,
@@ -212,6 +247,29 @@ private fun StyleSwitchingControls(
         onSet = { set(switching.transitionOf(it)) },
     )
     QuietText(stringResource(R.string.automation_no_flash))
+}
+
+/** Back and forward through the Styles seen this session (#282); not undo steps. */
+@Composable
+private fun StylesSeen(
+    model: CustomizeModel,
+    send: (CustomizationCommand) -> Unit,
+) {
+    if (!model.canGoBack && !model.canGoForward) return
+    ChipFlow {
+        AssistChip(
+            onClick = { send(CustomizationCommand.StyleBack) },
+            label = { Text(stringResource(R.string.automation_style_back)) },
+            enabled = model.canGoBack,
+            shape = MaterialTheme.shapes.small,
+        )
+        AssistChip(
+            onClick = { send(CustomizationCommand.StyleForward) },
+            label = { Text(stringResource(R.string.automation_style_forward)) },
+            enabled = model.canGoForward,
+            shape = MaterialTheme.shapes.small,
+        )
+    }
 }
 
 @Composable
@@ -305,7 +363,7 @@ private fun Lanes(
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionTitle(stringResource(R.string.automation_lane, index + 1), Modifier.weight(1f))
             IconButton(onClick = { set(automations.withoutLane(index)) }) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.automation_remove_lane))
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.automation_remove_lane))
             }
         }
         ChipFlow {
@@ -360,6 +418,9 @@ private fun poolName(pool: StylePool): String =
             StylePool.VISUALIZER -> R.string.automation_pool_visualizer
             StylePool.PICKS -> R.string.automation_pool_picks
             StylePool.BOTH -> R.string.automation_pool_both
+            StylePool.FAVOURITES -> R.string.automation_pool_favourites
+            StylePool.CHOSEN -> R.string.automation_pool_chosen
+            StylePool.PAIR -> R.string.automation_pool_pair
         },
     )
 
@@ -370,6 +431,7 @@ private fun cameraMoveName(kind: CameraMoveKind): String =
             CameraMoveKind.PUSH_IN -> R.string.automation_move_push_in
             CameraMoveKind.PULL_OUT -> R.string.automation_move_pull_out
             CameraMoveKind.ZOOM_PUNCH -> R.string.automation_move_zoom_punch
+            CameraMoveKind.FOV_PUNCH -> R.string.automation_move_fov_punch
             CameraMoveKind.ORBIT -> R.string.automation_move_orbit
             CameraMoveKind.ROLL -> R.string.automation_move_roll
             CameraMoveKind.TRAVEL_CURVE -> R.string.automation_move_travel_curve
@@ -378,6 +440,7 @@ private fun cameraMoveName(kind: CameraMoveKind): String =
             CameraMoveKind.PAN -> R.string.automation_move_pan
             CameraMoveKind.SWAY -> R.string.automation_move_sway
             CameraMoveKind.SHAKE -> R.string.automation_move_shake
+            CameraMoveKind.SPEED_RAMP -> R.string.automation_move_speed_ramp
         },
     )
 

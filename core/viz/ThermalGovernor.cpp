@@ -56,6 +56,8 @@ float PerformanceMonitor::effectiveTargetFps() const {
 
 void ThermalGovernor::onFrame(float dtSeconds) {
     if (offscreen()) return;
+    frameStep_.step(dtSeconds, static_cast<int>(settled_.load()));
+    frameCap_.store(frameStep_.capFps());
     sampleClock_ += dtSeconds;
     if (sampleClock_ < kSamplePeriodSeconds) return;
     sampleClock_ = 0.0f;

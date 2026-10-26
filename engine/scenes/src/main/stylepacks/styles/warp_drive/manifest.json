@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "warp_drive",
+  "label": "Warp Drive",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "detail": "march",
+  "extras": [
+    { "name": "flight", "min": 0, "max": 2, "default": 1 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactions": [
+    { "signal": "bass", "target": "travel", "amount": 0.3, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "hit", "target": "flight", "amount": 0.3, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "treble", "target": "count", "amount": 0.2, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "mid", "target": "swirl", "amount": 0.15, "riseMs": 30, "fallMs": 250, "curve": "linear" }
+  ],
+  "effects": ["rims", "sparks"],
+  "tiers": {
+    "eased": { "steps": 0.85 },
+    "reduced": { "steps": 0.7, "off": ["sparks"] },
+    "minimal": { "steps": 0.5, "off": ["rims", "sparks"] }
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
+}

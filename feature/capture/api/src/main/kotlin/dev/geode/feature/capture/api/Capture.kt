@@ -32,7 +32,10 @@ enum class CaptureProblem {
     /** The source is not there, for example the phone has no microphone, or the system would not open it. */
     SOURCE_UNAVAILABLE,
 
-    /** The source went away while capturing, for example another app took the microphone. */
+    /**
+     * The source went away while capturing, for example another app took the microphone or Geode went
+     * to the background. The capture comes back by itself when the source does, unless it is dismissed.
+     */
     SOURCE_LOST,
 
     /** The source accepted the start but never began capturing. */

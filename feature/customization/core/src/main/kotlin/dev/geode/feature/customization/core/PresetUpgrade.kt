@@ -21,13 +21,15 @@ import kotlin.math.roundToLong
 
 /**
  * An old, version 1 preset as it was saved: the flat `SceneParams` fields of its JSON file, the
- * numbers in [numbers] and the switches in [switches], read by the handlers.
+ * numbers in [numbers] and the switches in [switches], and the MilkDrop preset it chose
+ * ([milkPreset]), read by the handlers.
  */
 data class LegacyPreset(
     val name: String,
     val style: SceneId,
     val numbers: Map<String, Double>,
     val switches: Map<String, Boolean>,
+    val milkPreset: String? = null,
 )
 
 /** One of the old app-wide modulation slots (`LfoConfig`), by its enum names. */
@@ -68,8 +70,9 @@ data class Upgrade(
  * default Style. Pure: the handlers back the originals up before they write the result.
  *
  * Only the old values a person changed away from the old defaults are carried over, so a Style's own
- * starting look (its retired in-Style effects included) survives. Strobe, flash, formDrive, user GLSL
- * and the other removed fields are dropped and named in [Upgrade.dropped].
+ * starting look (its retired in-Style effects included) survives. The chosen MilkDrop preset is kept
+ * as it was ([Preset.milkdrop]). Strobe, flash, formDrive, user GLSL and the other removed fields
+ * are dropped and named in [Upgrade.dropped].
  */
 object PresetUpgrade {
     /** An old field that maps onto one Shared core property, with the old default. */
@@ -78,11 +81,24 @@ object PresetUpgrade {
         val oldDefault: Double,
     )
 
-    /** An old field that maps onto one Extra, with the old default. */
+    /**
+     * An old field that maps onto one Extra, with the old default. An Extra is a multiplier of the
+     * Style's own amount (style-packs.md), so the old value becomes its ratio to the old default; a
+     * [loss] (a damping, where 1 keeps everything) becomes the ratio of what it loses; with no old
+     * default (a variant) the value carries over as it is.
+     */
     private data class ExtraField(
         val kind: ExtraKind,
         val oldDefault: Double,
-    )
+        val loss: Boolean = false,
+    ) {
+        fun native(value: Double): Double =
+            when {
+                loss -> (1.0 - value) / (1.0 - oldDefault)
+                oldDefault == 0.0 -> value
+                else -> value / oldDefault
+            }
+    }
 
     private val SHARED_NUMBERS: Map<String, SharedField> =
         mapOf(
@@ -150,14 +166,14 @@ object PresetUpgrade {
             "fluidSplatRadius" to ExtraField(ExtraKind.SIZE, OLD_FLUID_RADIUS),
             "fluidSplatForce" to ExtraField(ExtraKind.FORCE, 1.0),
             "waterWaveSpeed" to ExtraField(ExtraKind.DRIFT, 1.0),
-            "waterDamping" to ExtraField(ExtraKind.VISCOSITY, OLD_WATER_DAMPING),
+            "waterDamping" to ExtraField(ExtraKind.VISCOSITY, OLD_WATER_DAMPING, loss = true),
             "waterRippleStrength" to ExtraField(ExtraKind.FORCE, 1.0),
             "waterDepth" to ExtraField(ExtraKind.FOG, OLD_WATER_DEPTH),
             "waterFlow" to ExtraField(ExtraKind.SWIRL, OLD_WATER_FLOW),
             "cymaticsModes" to ExtraField(ExtraKind.COUNT, OLD_CYMATICS_MODES),
             "cymaticsScale" to ExtraField(ExtraKind.SCALE, OLD_CYMATICS_SCALE),
             "cymaticsLine" to ExtraField(ExtraKind.THICKNESS, 1.0),
-            "cymaticsRing" to ExtraField(ExtraKind.EDGE, OLD_CYMATICS_RING),
+            "cymaticsRing" to ExtraField(ExtraKind.DECAY, OLD_CYMATICS_RING),
             "cymaticsSwirl" to ExtraField(ExtraKind.SWIRL, OLD_CYMATICS_SWIRL),
             "cymaticsFlow" to ExtraField(ExtraKind.DRIFT, OLD_CYMATICS_FLOW),
             "cymaticsFill" to ExtraField(ExtraKind.SIZE, OLD_CYMATICS_FILL),
@@ -267,7 +283,8 @@ object PresetUpgrade {
         val modulated = modulation(withExtras, lfos, envelopes, legacy)
         val customization = Rules.prune(modulated)
         val dropped = (legacy.numbers.keys + legacy.switches.keys).filterNot { it in used || it in PAIRED }.sorted()
-        return Upgrade(PresetRules.capture(legacy.name, customization, PresetRules.ALL_PARTS), dropped, restyled)
+        val preset = PresetRules.capture(legacy.name, customization, PresetRules.ALL_PARTS).copy(milkdrop = legacy.milkPreset)
+        return Upgrade(preset, dropped, restyled)
     }
 
     private fun gain(
@@ -315,7 +332,8 @@ object PresetUpgrade {
             used += key
             val spec = manifest?.extras?.firstOrNull { it.kind == field.kind }
             if (spec != null && value != field.oldDefault) {
-                values[field.kind] = Rules.unit(((value - spec.nativeMin) / (spec.nativeMax - spec.nativeMin)).toFloat())
+                val native = field.native(value)
+                values[field.kind] = Rules.unit(((native - spec.nativeMin) / (spec.nativeMax - spec.nativeMin)).toFloat())
             }
         }
         return start.copy(extras = values)

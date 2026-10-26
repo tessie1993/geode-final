@@ -14,12 +14,13 @@
     <string name="settings_off">Off</string>
 
     <!-- Look -->
-    <string name="look_group_element">Element</string>
-    <string name="look_element">Choose the look of the whole app</string>
-    <string name="look_element_water">Water</string>
-    <string name="look_element_wood">Wood</string>
-    <string name="look_element_stone">Stone</string>
-    <string name="look_element_bioluminescence">Bioluminescence</string>
+    <string name="look_group_appearance">Appearance</string>
+    <string name="look_theme_mode">Light or dark</string>
+    <string name="look_theme_system">Match phone</string>
+    <string name="look_theme_dark">Dark</string>
+    <string name="look_theme_light">Light</string>
+    <string name="look_reduce_transparency">Reduce transparency</string>
+    <string name="look_reduce_transparency_note">Solid panels instead of frosted glass. Easier to read, and a little kinder to the battery.</string>
     <string name="look_group_colour">Colour</string>
     <string name="look_accent_intensity">Accent intensity  %1$d%%</string>
     <string name="look_background_dim">Background dim  %1$d%%</string>
@@ -38,11 +39,6 @@
     <string name="look_corner_pill">Pill</string>
     <string name="look_compact_player">Compact player</string>
     <string name="look_clear_visuals_menu">Clear Visuals menu</string>
-    <string name="look_group_home">Home</string>
-    <string name="look_ambient_mode">Ambient</string>
-    <string name="look_ambient_drifting">Drifting</string>
-    <string name="look_ambient_still">Still</string>
-    <string name="look_ambient_off">Off</string>
 
     <!-- Audio -->
     <string name="audio_group_playback">Playback</string>
@@ -86,12 +82,14 @@
     <string name="eq_loudness">Loudness  %1$+.1f dB</string>
 
     <string name="audio_group_analysis">Analysis</string>
+    <string name="audio_sensitivity">Sensitivity  %1$+.1f dB</string>
     <string name="audio_beat_sensitivity">Beat sensitivity  %1$.1f</string>
     <string name="audio_beat_min_gap">Shortest gap between beats  %1$d ms</string>
     <string name="audio_slow_track">Slow track</string>
     <string name="audio_default">Default</string>
     <string name="audio_preset_morph">Preset glide  %1$.1f s</string>
     <string name="audio_react_mic">React to the microphone</string>
+    <string name="audio_sync_offset">Picture sync  %1$+d ms (later when positive)</string>
 
     <!-- Export -->
     <string name="export_group_defaults">New renders start with</string>
@@ -120,6 +118,11 @@
     <string name="export_loudness_as_is">Leave as mixed</string>
     <string name="export_group_alerts">When a render finishes</string>
     <string name="export_finished_alerts">Notify me, with Share and Open</string>
+    <string name="export_group_edits">When an Edit is saved</string>
+    <string name="export_edit_sources">Its videos</string>
+    <string name="export_edit_sources_reference">Use them where they are</string>
+    <string name="export_edit_sources_copy">Copy them</string>
+    <string name="export_edit_sources_note">Using them where they are saves space. Copying keeps the Edit working even if you move or delete a video it was cut from.</string>
 
     <!-- Default paths -->
     <string name="folders_group_video_folder">Video save folder</string>
@@ -138,10 +141,39 @@
 
     <!-- Application preferences -->
     <string name="application_group_screen">Screen</string>
+    <string name="start_look_group">Start on</string>
+    <string name="start_look_last">Last look</string>
+    <string name="start_look_note">The look the Visual opens on when Geode starts: the Style on screen now, a Favourite or a saved preset.</string>
     <string name="behavior_group_touch">Touch</string>
     <string name="behavior_touch_smear">Smear the Visual with a finger</string>
     <string name="behavior_smear_strength">Smear strength  %1$d%%</string>
     <string name="behavior_touch_transform">Pinch and drag the Visual</string>
+    <string name="behavior_tilt">Tilt moves the Visual</string>
+    <string name="behavior_tilt_off">Off</string>
+    <string name="behavior_tilt_subtle">Subtle</string>
+    <string name="behavior_tilt_full">Full</string>
+    <string name="behavior_tilt_reduced_motion">Reduce motion is on, so tilting the phone moves nothing.</string>
+    <string name="behavior_group_style_change">Changing Style</string>
+    <string name="behavior_transition_look">Look</string>
+    <string name="behavior_transition_note">Each change starts on the next downbeat and moves on with every kick. No look ever flashes.</string>
+    <string name="transition_look_fade">Fade</string>
+    <string name="transition_look_melt">Melt</string>
+    <string name="transition_look_slide">Slide</string>
+    <string name="transition_look_zoom">Zoom</string>
+    <string name="transition_look_dreamy">Dreamy</string>
+    <string name="transition_look_cross_warp">Cross warp</string>
+    <string name="transition_look_swirl">Swirl</string>
+    <string name="transition_look_ripple">Ripple</string>
+    <string name="transition_look_water_drop">Water drop</string>
+    <string name="transition_look_blur">Blur</string>
+    <string name="transition_look_warp">Warp</string>
+    <string name="transition_look_radial">Radial</string>
+    <string name="transition_look_circle">Circle</string>
+    <string name="transition_look_wind">Wind</string>
+    <string name="transition_look_clouds">Clouds</string>
+    <string name="transition_look_morph">Morph</string>
+    <string name="transition_look_sweep">Sweep</string>
+    <string name="transition_look_random">Random</string>
     <string name="behavior_group_safety">Motion</string>
     <string name="behavior_flash_guidance">The Visual never flashes: fast changes in brightness are always limited.</string>
     <string name="behavior_slow_motion">Reduce motion</string>
@@ -168,6 +200,12 @@
     <string name="cpu_gpu_fps">%1$d fps</string>
     <string name="cpu_gpu_screen_max">Screen max</string>
     <string name="cpu_gpu_save_mode_on">CPU/GPU save mode is on: the Visual is drawn at Saver quality and 30 fps until you turn it off above.</string>
+    <string name="cpu_gpu_surface_visual">In the app</string>
+    <string name="cpu_gpu_surface_wallpaper">Live wallpaper</string>
+    <string name="cpu_gpu_surface_pip">Picture-in-picture</string>
+    <string name="cpu_gpu_surface_screen_saver">Screen saver</string>
+    <string name="cpu_gpu_surface_note">Follows Visual on screen until you pick its own.</string>
+    <string name="cpu_gpu_same_as_visual">Same as Visual</string>
     <string name="cpu_gpu_group_heat">Cool down when hot</string>
     <string name="cpu_gpu_heat_note">Automatic: when the phone heats up, the Visual lowers its quality instead of stuttering.</string>
 

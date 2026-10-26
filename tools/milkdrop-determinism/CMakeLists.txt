@@ -51,6 +51,13 @@ add_test(NAME milkdrop_presets_run_as_written
     COMMAND milkdrop_preset_smoke
         "${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
         "${GEODE_ROOT}/app/src/main/assets/milk")
+# Our own presets using every shader name and intrinsic tools/projectm-v4.1.8-shader-extras.patch adds
+# (the names BeatDrop-era presets read: get_fft, get_wave, mouse, sysTime, aspect_sd...; tanh and
+# friends; a sampler_state block and a declaration with code after it on its line) keep their shaders.
+add_test(NAME milkdrop_preset_smoke_runs_the_shader_extras
+    COMMAND milkdrop_preset_smoke
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/extras")
 # The check above still sees a shader projectM drops: each broken fixture must be reported.
 add_test(NAME milkdrop_preset_smoke_catches_a_broken_composite_shader
     COMMAND milkdrop_preset_smoke
@@ -64,8 +71,17 @@ add_test(NAME milkdrop_preset_smoke_catches_a_broken_warp_shader
         "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/broken/broken_warp_shader.milk")
 set_tests_properties(milkdrop_preset_smoke_catches_a_broken_warp_shader PROPERTIES
     PASS_REGULAR_EXPRESSION "FAIL: broken_warp_shader.milk: the warp shader failed")
+# The app hears of a dropped shader too: projectM's shader fallback callback reports it.
+add_test(NAME milkdrop_preset_smoke_hears_a_shader_fallback
+    COMMAND milkdrop_preset_smoke
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+        "${CMAKE_CURRENT_SOURCE_DIR}/fixtures/broken/broken_warp_shader.milk")
+set_tests_properties(milkdrop_preset_smoke_hears_a_shader_fallback PROPERTIES
+    PASS_REGULAR_EXPRESSION "FAIL: broken_warp_shader.milk: projectM reported the warp shader's fallback")
 set_tests_properties(
     milkdrop_presets_run_as_written
+    milkdrop_preset_smoke_runs_the_shader_extras
     milkdrop_preset_smoke_catches_a_broken_composite_shader
     milkdrop_preset_smoke_catches_a_broken_warp_shader
+    milkdrop_preset_smoke_hears_a_shader_fallback
     PROPERTIES ENVIRONMENT "EGL_PLATFORM=surfaceless;LIBGL_ALWAYS_SOFTWARE=1")

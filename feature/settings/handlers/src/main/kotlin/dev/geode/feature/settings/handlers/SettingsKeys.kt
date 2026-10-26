@@ -1,5 +1,7 @@
 package dev.geode.feature.settings.handlers
 
+import dev.geode.feature.settings.api.VisualSurface
+
 /**
  * Where each setting is stored. The keys and their formats are today's, unchanged (#38): a key in
  * DataStore has the name and type it had in its SharedPreferences file. The files they come from
@@ -18,11 +20,11 @@ internal object SettingsKeys {
 
     // Look (geode-prefs).
 
-    /**
-     * New with the Elements (#103), so in no old file. Stored by name; the forest theme ids an earlier
-     * design used read as the matching Element ([SettingsCodec]).
-     */
-    const val ELEMENT = "gui_element"
+    /** Light, dark or the phone's own (#324), new so in no old file. Stored by name. */
+    const val THEME_MODE = "gui_theme_mode"
+
+    /** Reduce transparency (#324), new so in no old file. */
+    const val REDUCE_TRANSPARENCY = "gui_reduce_transparency"
     const val ACCENT_INTENSITY = "gui_accent_intensity"
     const val BACKGROUND_DIM = "gui_background_dim"
     const val FONT_COLOR = "gui_font_color"
@@ -33,8 +35,9 @@ internal object SettingsKeys {
     const val COMPACT_PLAYER = "gui_compact_player"
     const val CLEAR_VISUALS_MENU = "gui_clear_visuals_menu"
 
-    /** Ambient (#100), new so in no old file. Stored by name. */
-    const val AMBIENT_MODE = "gui_ambient_mode"
+    /** The retired Element and Ambient (#333): removed from the store when settings are next written. */
+    const val RETIRED_ELEMENT = "gui_element"
+    const val RETIRED_AMBIENT_MODE = "gui_ambient_mode"
 
     // Playback (geode-player).
     const val SPEED = "speed"
@@ -73,6 +76,7 @@ internal object SettingsKeys {
     const val TOUCH_SMEAR_STRENGTH = "gui_touch_smear_strength"
     const val TOUCH_TRANSFORM = "gui_touch_transform"
     const val REDUCED_MOTION = "gui_reduced_motion"
+    const val TILT = "gui_tilt"
 
     // Export (geode-prefs).
     const val EXPORT_QUALITY = "export_quality"
@@ -101,8 +105,43 @@ internal object SettingsKeys {
     const val VISUAL_FRAME_RATE = "visual_frame_rate"
     const val SAVE_MODE = "cpu_gpu_save_mode"
 
+    /** New with #318, so in no old file: whether a saved Edit references or copies its sources, by name. */
+    const val EXPORT_EDIT_SOURCES = "export_edit_sources"
+
     // New with #196, so in no old file.
     const val VISUALS_OFF = "visuals_off"
+
+    /** New with #295, so in no old file: the Visual's sync offset in whole milliseconds. */
+    const val SYNC_OFFSET = "visual_sync_offset_ms"
+
+    /** New with #301, so in no old file: the Sensitivity in dB. */
+    const val SENSITIVITY = "visual_sensitivity_db"
+
+    /**
+     * New with #383, so in no old file: the look Geode starts on, as `style:<id>` or `preset:<id>`;
+     * absent for the last look.
+     */
+    const val START_LOOK = "start_look"
+
+    /** New with #309, so in no old file: the look of a change of Style, by the engine's id for it. */
+    const val TRANSITION_LOOK = "gui_transition_look"
+
+    /**
+     * New with #394, so in no old file: a surface's own quality and frame rate, by name, one key each.
+     * Absent when the surface follows [VISUAL_QUALITY] and [VISUAL_FRAME_RATE].
+     */
+    fun surfaceQuality(surface: VisualSurface): String = "${VISUAL_QUALITY}_${surfaceId(surface)}"
+
+    fun surfaceFrameRate(surface: VisualSurface): String = "${VISUAL_FRAME_RATE}_${surfaceId(surface)}"
+
+    /** Spelled out, so renaming a surface in code never moves what was stored for it. */
+    private fun surfaceId(surface: VisualSurface): String =
+        when (surface) {
+            VisualSurface.VISUAL -> "visual"
+            VisualSurface.WALLPAPER -> "wallpaper"
+            VisualSurface.PICTURE_IN_PICTURE -> "pip"
+            VisualSurface.SCREEN_SAVER -> "screen_saver"
+        }
 
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"

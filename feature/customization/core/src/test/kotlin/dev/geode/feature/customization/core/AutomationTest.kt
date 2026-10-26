@@ -22,6 +22,7 @@ import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StepLength
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
@@ -364,5 +365,98 @@ class AutomationTest {
         val reset = Edits.resetToStyle(Edits.setShared(automated, SharedProperty.ZOOM, 2f), styles.manifestOf(JULIA))
         assertEquals(automations, reset.automations)
         assertEquals(julia, reset.copy(automations = Automations.NONE))
+    }
+
+    @Test
+    fun `Style switching takes a Level under the silence level for silence`() {
+        assertTrue(Automation.silent(0f))
+        assertTrue(Automation.silent(Automation.SILENCE_LEVEL - 0.001f))
+        assertFalse(Automation.silent(Automation.SILENCE_LEVEL))
+        assertFalse(Automation.silent(0.5f))
+    }
+
+    @Test
+    fun `Style switching's threshold rises after a switch and relaxes with a half-life`() {
+        val halfLife = Automation.THRESHOLD_HALF_LIFE
+        assertEquals(0.6f, Automation.raisedThreshold(0.6f, null), 1e-6f)
+        assertEquals(0.8f, Automation.raisedThreshold(0.6f, Millis.ZERO), 1e-6f)
+        assertEquals(0.7f, Automation.raisedThreshold(0.6f, halfLife), 1e-6f)
+        assertEquals(0.65f, Automation.raisedThreshold(0.6f, halfLife + halfLife), 1e-6f)
+        assertEquals(0.8f, Automation.raisedThreshold(0.6f, Millis(-5_000)), 1e-6f)
+        assertEquals(1f, Automation.raisedThreshold(1f, Millis.ZERO), 0f)
+        assertEquals(1.5f, Automation.raisedThreshold(1.5f, Millis.ZERO), 0f)
+    }
+
+    @Test
+    fun `a Style marked Never is never picked, from any pool`() {
+        val never = mapOf(c to StyleMark.NEVER)
+        val pools = StylePool.entries.map { StyleSwitching(pool = it, seed = 9L, chosen = listOf(c, a, b)) }
+        for (switching in pools) {
+            val played =
+                (0 until 24).mapNotNull {
+                    Automation.nextStyle(switching, SceneId("none"), listOf(c, a), builtIns, it, never, listOf(c, b))?.style
+                }
+            assertTrue("${switching.pool} plays something", played.isNotEmpty())
+            assertFalse("${switching.pool} never plays a Never", c in played)
+        }
+        assertNull(Automation.nextStyle(StyleSwitching(pool = StylePool.CHOSEN, chosen = listOf(c)), a, emptyList(), builtIns, 0, never))
+    }
+
+    @Test
+    fun `a loved Style comes round as often as its weight, and a round repeats for its seed`() {
+        val loved = mapOf(a to StyleMark.LOVE, d to StyleMark.NORMAL)
+        val round = Automation.weighted(builtIns, loved, 5L, 0)
+        assertEquals(StyleMark.LOVE.weight, round.count { it == a })
+        assertEquals(1, round.count { it == b })
+        assertEquals(1, round.count { it == d })
+        assertEquals(builtIns.size - 1 + StyleMark.LOVE.weight, round.size)
+        assertEquals(round, Automation.weighted(builtIns, loved, 5L, 0))
+        assertEquals(Automation.shuffled(builtIns, 5L, 2), Automation.weighted(builtIns, emptyMap(), 5L, 2))
+        val picks = StyleSwitching(pool = StylePool.PICKS, seed = 5L)
+        val played =
+            (0 until round.size).map { checkNotNull(Automation.nextStyle(picks, SceneId("none"), emptyList(), builtIns, it, loved)).style }
+        assertEquals(round, played)
+    }
+
+    @Test
+    fun `Favourites and chosen Styles switch within themselves`() {
+        val favourites = StyleSwitching(pool = StylePool.FAVOURITES, seed = 2L)
+        val liked = listOf(b, d, SceneId("gone"))
+        val fromFavourites =
+            (0 until 6).map {
+                checkNotNull(Automation.nextStyle(favourites, SceneId("none"), emptyList(), builtIns, it, favourites = liked)).style
+            }
+        assertEquals(setOf(b, d), fromFavourites.toSet())
+        val chosen = StyleSwitching(pool = StylePool.CHOSEN, seed = 2L, chosen = listOf(c, a))
+        val fromChosen = (0 until 6).map { checkNotNull(Automation.nextStyle(chosen, SceneId("none"), emptyList(), builtIns, it)).style }
+        assertEquals(setOf(a, c), fromChosen.toSet())
+        assertNull(Automation.nextStyle(favourites, a, emptyList(), builtIns, 0))
+    }
+
+    @Test
+    fun `a Style with no mark is Normal`() {
+        assertEquals(StyleMark.NORMAL, Automation.markOf(a, emptyMap()))
+        assertEquals(StyleMark.LOVE, Automation.markOf(a, mapOf(a to StyleMark.LOVE)))
+    }
+
+    @Test
+    fun `the rules keep each chosen Style once`() {
+        val chosen = Automations(style = StyleSwitching(pool = StylePool.CHOSEN, chosen = listOf(a, b, a)))
+        assertEquals(listOf(a, b), Rules.automations(julia, chosen).style?.chosen)
+    }
+
+    @Test
+    fun `a pair goes back and forth between its two Styles`() {
+        val pair = StyleSwitching(pool = StylePool.PAIR, chosen = listOf(b, d, a))
+        assertEquals(Automation.Pick(b, 1), Automation.nextStyle(pair, c, emptyList(), builtIns, 0))
+        assertEquals(Automation.Pick(d, 2), Automation.nextStyle(pair, b, emptyList(), builtIns, 1))
+        assertEquals(Automation.Pick(b, 3), Automation.nextStyle(pair, d, emptyList(), builtIns, 2))
+        assertEquals("the one showing is passed over", Automation.Pick(d, 2), Automation.nextStyle(pair, b, emptyList(), builtIns, 0))
+        val played = (0 until 6).map { checkNotNull(Automation.nextStyle(pair, SceneId("none"), emptyList(), builtIns, it)).style }
+        assertEquals(listOf(b, d, b, d, b, d), played)
+        val single = pair.copy(chosen = listOf(b))
+        assertNull("one Style is no pair to go back and forth", Automation.nextStyle(single, b, emptyList(), builtIns, 0))
+        val withoutNever = Automation.nextStyle(pair, b, emptyList(), builtIns, 1, mapOf(d to StyleMark.NEVER))
+        assertEquals("a Never is left out of the pair too", Automation.Pick(a, 2), withoutNever)
     }
 }

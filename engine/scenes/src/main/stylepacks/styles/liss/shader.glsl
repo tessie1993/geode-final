@@ -58,6 +58,9 @@ uniform float uSolarize;
 
 float aband(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float awave(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
+// The scope's left and right rows (AudioInputs: rows 3 and 4 of 8), over the same aligned span.
+float awaveL(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.4375)).r; }
+float awaveR(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.5625)).r; }
 
 vec2 view() {
     vec2 uv = vUv * 2.0 - 1.0;
@@ -136,6 +139,8 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -156,17 +161,33 @@ vec3 grade(vec3 col) {
     return mix(col, max(vec3(1.0) - col, 0.0), uInvert);
 }
 
-// Vectorscope / Lissajous: the waveform drawn against itself.
+// Vectorscope / Lissajous: the left channel against the right, so the stereo image shows: a mono
+// sound is a diagonal line, a wide one opens out.
+//
+// Space (#294), read the way a goniometer reads a mix: the measured width opens the side axis
+// further, the pan leans the trace toward its side, and as the channels fall out of phase a
+// mirrored trace appears.
 void main() {
     vec2 uv = view();
     float md = 10.0;
     float bright = 0.0;
-    for (float i = 0.0; i < 64.0; i++) {
-        float s = i / 64.0;
-        vec2 p = vec2(awave(s) * 2.0 - 1.0, awave(fract(s + 0.25)) * 2.0 - 1.0) * 0.75;
+    float points = xcount(64.0);
+    float spread = 1.0 + 0.6 * uStereoWidth;
+    float lean = -0.5 * uStereoPan;
+    mat2 tilt = mat2(cos(lean), -sin(lean), sin(lean), cos(lean));
+    float ghost = 0.5 * clamp(1.0 - uStereoCorrelation, 0.0, 1.0);
+    for (float i = 0.0; i < 128.0; i++) {
+        if (i >= points) break;
+        float s = i / points;
+        vec2 p = vec2(awaveL(s) * 2.0 - 1.0, awaveR(s) * 2.0 - 1.0) * 0.75 * xm(uXScale);
+        // Side (L - R) and mid (L + R) axes: the width spreads the side, the pan tilts the whole.
+        vec2 ms = vec2(p.x - p.y, p.x + p.y) * 0.70710678;
+        ms.x *= spread;
+        p = tilt * (vec2(ms.x + ms.y, ms.y - ms.x) * 0.70710678);
         float d = length(uv - p);
         md = min(md, d);
-        bright += exp(-d * 30.0) * 0.12;
+        bright += exp(-d * 30.0 / xm(uXSize)) * 0.12;
+        bright += exp(-length(uv - vec2(-p.x, p.y)) * 30.0 / xm(uXSize)) * 0.12 * ghost;
     }
     vec3 col = pal(md * 2.0 + uEnergy) * (exp(-md * 40.0) + bright * (0.4 + uMid));
     float grid = (step(abs(uv.x), 0.002) + step(abs(uv.y), 0.002)) * 0.15;

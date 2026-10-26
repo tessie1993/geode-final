@@ -24,6 +24,7 @@ typealias CustomizationFeature = Feature<CustomizationState, CustomizationComman
  * - [signals]: the normaliser's trim for every Sound signal.
  * - [automations]: what it performs by itself over the music; they carry over to the next Style and
  *   are not saved in presets.
+ * - [layer]: Layer 2, a second Style drawn over this one; it carries over to the next Style.
  */
 data class Customization(
     val style: SceneId,
@@ -34,6 +35,7 @@ data class Customization(
     val modulators: List<Modulator>,
     val signals: Map<SoundSignal, SignalTrim>,
     val automations: Automations = Automations.NONE,
+    val layer: Layer = Layer.OFF,
 )
 
 /**
@@ -42,10 +44,22 @@ data class Customization(
  *
  * Style switching's own bookkeeping sits beside it, outside the history: [visualizerStyles], the
  * Visualizer styles `:app` hands in ([CustomizationCommand.UseVisualizerStyles]), and [styleSwitches],
- * how many times it has switched, which says where the app's picks' shuffle has got to.
+ * how many times it has switched, which says where the app's picks' shuffle has got to. [styleHeld] is
+ * the person's Hold ("keep this Style") and [editing] says Customize is open: either holds switching
+ * ([switchingHeld]), and its spacing starts again once both let go (#282). [styleMarks] and
+ * [favouriteStyles] come from the person's Style library, which `:app` hands in
+ * ([CustomizationCommand.UseStyleLibrary]); a Style with no mark is Normal (#308).
+ *
+ * The Styles seen this session sit outside the history too (#282): [stylesBack] holds each Style left,
+ * with the Customization it had then, the latest last, and [stylesForward] the ones gone back from, so
+ * back and forward walk through them like a browser's.
  *
  * A/B compare's two slots ([compare]) sit outside the history too: what the person kept to switch
  * between while they decide.
+ *
+ * While a control is being dragged ([CustomizationCommand.Preview]), [previewFrom] is the Customization
+ * from before the drag: the Visual follows the finger, and the whole drag becomes one undo step back
+ * to it when it ends. Null when nothing is being dragged.
  */
 data class CustomizationState(
     val current: Customization,
@@ -54,7 +68,18 @@ data class CustomizationState(
     val visualizerStyles: List<SceneId> = emptyList(),
     val styleSwitches: Int = 0,
     val compare: Map<CompareSlot, Customization> = emptyMap(),
-)
+    val previewFrom: Customization? = null,
+    val styleHeld: Boolean = false,
+    val editing: Boolean = false,
+    val stylesBack: List<Customization> = emptyList(),
+    val stylesForward: List<Customization> = emptyList(),
+    val styleMarks: Map<SceneId, StyleMark> = emptyMap(),
+    val favouriteStyles: List<SceneId> = emptyList(),
+) {
+    /** Whether Style switching waits: held by the person, or Customize is open. */
+    val switchingHeld: Boolean
+        get() = styleHeld || editing
+}
 
 /** A/B compare's two slots. */
 enum class CompareSlot {
@@ -160,8 +185,81 @@ sealed interface CustomizationCommand {
         val styles: List<SceneId>,
     ) : CustomizationCommand
 
+    /**
+     * Hold ("keep this Style", #282): while [held], Style switching does not move; once released its
+     * spacing starts again. Session state, not an edit: kept out of the history and out of presets.
+     */
+    data class HoldStyle(
+        val held: Boolean,
+    ) : CustomizationCommand
+
+    /**
+     * Whether Customize is open (#282): while it is, Style switching waits, so a switch never throws away
+     * fresh edits, and its spacing starts again when it closes. Not an edit.
+     */
+    data class SetEditing(
+        val editing: Boolean,
+    ) : CustomizationCommand
+
+    /**
+     * Back to the Style seen before this one, with the Customization it had then, the current
+     * Automations kept (#282). Live like Style switching's own moves: kept out of the history.
+     */
+    data object StyleBack : CustomizationCommand
+
+    /** Forward again to the Style [StyleBack] left. Live, kept out of the history. */
+    data object StyleForward : CustomizationCommand
+
+    /**
+     * The person's [marks] and [favourites] from the Style library (#308), which `:app` hands in because
+     * Customization cannot depend on Visuals (ADR-0005). Style switching draws by them. Not an edit.
+     */
+    data class UseStyleLibrary(
+        val marks: Map<SceneId, StyleMark>,
+        val favourites: List<SceneId>,
+    ) : CustomizationCommand
+
+    /**
+     * Lays [style] over the current Style as Layer 2, or turns Layer 2 off when null. Ignored for a
+     * Style that cannot be Layer 2: one this version does not know, MilkDrop, or the current Style.
+     */
+    data class ChooseLayerStyle(
+        val style: SceneId?,
+    ) : CustomizationCommand
+
+    data class SetLayerBlend(
+        val blend: LayerBlend,
+    ) : CustomizationCommand
+
+    data class SetLayerInfluence(
+        val influence: LayerInfluence,
+    ) : CustomizationCommand
+
+    /** Sets Layer 2's loop, or stops it when null. Its depth is brought into 0..1, and a loop with no target is no loop. */
+    data class SetLayerLoop(
+        val loop: LayerLoop?,
+    ) : CustomizationCommand
+
     /** Back to the current Style's own defaults. Undoable. */
     data object ResetToStyle : CustomizationCommand
+
+    /**
+     * Puts one [target] back to the current Style's own starting value: a Shared core property or an
+     * Extra (a Macro rests at its middle). Undoable; nothing happens for a Modulator's field.
+     */
+    data class ResetValue(
+        val target: Target,
+    ) : CustomizationCommand
+
+    /**
+     * [edit] shown while a control is dragged (#285): the Visual follows the finger, but the history
+     * waits. The drag ends with [edit] itself, sent as usual, and the whole drag is one undo step.
+     * Only value edits can be previewed ([SetShared], [SetExtra], [SetMacro], [TrimSignal],
+     * [UpdateReaction] and [UpdateModulator]); anything else is ignored.
+     */
+    data class Preview(
+        val edit: CustomizationCommand,
+    ) : CustomizationCommand
 
     /** Keeps the current Customization in A/B compare's [slot], replacing what it kept. Not an edit. */
     data class KeepForCompare(

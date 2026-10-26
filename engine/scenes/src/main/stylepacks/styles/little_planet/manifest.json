@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "little_planet",
+  "label": "Little Planet",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "reactivity": {"macro": ["energy"], "micro": ["spectrum"]}
+}

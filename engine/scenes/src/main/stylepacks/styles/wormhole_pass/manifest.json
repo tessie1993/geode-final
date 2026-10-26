@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "wormhole_pass",
+  "label": "Wormhole Pass",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "inputs": ["noise_vol"],
+  "renderScale": 0.75,
+  "reactivity": {"macro": ["energy"], "micro": ["bands", "spectrum"]}
+}

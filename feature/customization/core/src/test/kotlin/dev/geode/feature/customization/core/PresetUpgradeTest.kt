@@ -105,6 +105,13 @@ class PresetUpgradeTest {
     }
 
     @Test
+    fun `the chosen MilkDrop preset is kept`() {
+        val chosen = LegacyPreset("Old", JULIA, emptyMap(), emptyMap(), milkPreset = "Geiss - Cosmic Dust.milk")
+        assertEquals("Geiss - Cosmic Dust.milk", upgrade(chosen).preset.milkdrop)
+        assertEquals(null, upgrade(legacy()).preset.milkdrop)
+    }
+
+    @Test
     fun `removed and unknown fields are dropped and named`() {
         val result =
             upgrade(
@@ -131,9 +138,19 @@ class PresetUpgradeTest {
 
     @Test
     fun `old Fluid, Water and Cymatics controls become Extras where the Style has them`() {
+        // An Extra is a multiplier of the Style's own amount, 0..2: an old value becomes its ratio to the old
+        // default, a damping the ratio of what it loses, and an old variant carries over as it was.
         val water = upgrade(legacy(WATER, numbers = mapOf("waterDamping" to 0.97, "waterDepth" to 0.6, "fluidCurl" to 45.0))).preset
-        assertEquals((0.97f - 0.95f) / 0.049f, water.extras.getValue(ExtraKind.VISCOSITY), delta)
-        assertEquals(0.6f, water.extras.getValue(ExtraKind.FOG), delta)
+        assertEquals(1f, water.extras.getValue(ExtraKind.VISCOSITY), delta)
+        assertEquals(0.5f, water.extras.getValue(ExtraKind.FOG), delta)
+        val gentle = upgrade(legacy(WATER, numbers = mapOf("waterDamping" to 0.9925))).preset
+        assertEquals(0.25f, gentle.extras.getValue(ExtraKind.VISCOSITY), delta)
+        val fluid = upgrade(legacy(SceneId("fluid"), numbers = mapOf("fluidCurl" to 45.0, "fluidSplatForce" to 0.5))).preset
+        assertEquals(0.75f, fluid.extras.getValue(ExtraKind.SWIRL), delta)
+        assertEquals(0.25f, fluid.extras.getValue(ExtraKind.FORCE), delta)
+        val plate = upgrade(legacy(SceneId("cymatics"), numbers = mapOf("cymaticsGeometry" to 1.0, "cymaticsRing" to 0.7))).preset
+        assertEquals(1f / 9f, plate.extras.getValue(ExtraKind.VARIANT), delta)
+        assertEquals(1f, plate.extras.getValue(ExtraKind.DECAY), delta)
         val onJulia = upgrade(legacy(numbers = mapOf("fluidCurl" to 45.0)))
         assertEquals(julia.extras, onJulia.preset.extras)
         assertTrue(onJulia.dropped.isEmpty())

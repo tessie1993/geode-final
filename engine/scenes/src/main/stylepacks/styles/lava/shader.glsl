@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -180,7 +181,7 @@ float lavaHash(float n) { return fract(sin(n * 78.233) * 43758.5453); }
 
 void main() {
     vec2 p = view();
-    float t = uTime * 0.55;
+    float t = uXDriftTime * 0.55;
     float field = 0.0;
     float hueAcc = 0.0;
 
@@ -194,8 +195,10 @@ void main() {
         hueAcc += 0.08 * contrib;
     }
 
-    for (int i = 0; i < 10; i++) {
-        float fi = float(i) / 10.0;
+    float blobs = xcount(10.0);
+    for (int i = 0; i < 20; i++) {
+        if (float(i) >= blobs) break;
+        float fi = float(i) / blobs;
         float seed = lavaHash(fi + 0.37);
         float seed2 = lavaHash(fi * 3.1 + 9.2);
         // Own slow clock: one full rise-and-sink takes 18-40 s, cosine ease
@@ -228,7 +231,7 @@ void main() {
         // two-frequency wobble instead of staying a perfect ellipse. Treble
         // rides the wobble's depth - it moves the OUTLINE, so a bright hi-hat
         // makes the wax shiver without changing the frame's luminance.
-        float wob = 0.22 + 0.10 * uTreble;
+        float wob = 0.22 * uXSwirl + 0.10 * uTreble;
         q += r * wob * vec2(
             sin(q.y * 9.0 + t * 0.9 + seed * 13.0) + 0.5 * sin(q.y * 17.0 - t * 0.6),
             cos(q.x * 8.0 + t * 0.7 + seed * 7.0)

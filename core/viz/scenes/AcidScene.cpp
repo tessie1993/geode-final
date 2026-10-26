@@ -90,7 +90,8 @@ void AcidScene::draw(float timeSeconds) {
     fillSpokes(f.bands);
 
     const float frames = dt * 60.0f;
-    const float feedback = std::pow(std::min(style_.feedback, kFeedbackCap), frames);
+    // Flux deepens the loop and a drop clears it faster for a moment, both under the same cap (#294).
+    const float feedback = std::pow(std::min(style_.feedback * featuremap::acidFeedbackScale(bus_), kFeedbackCap), frames);
     const float zoom = std::pow(style_.zoom, frames);
     const float rotate = style_.rotate * frames * speed;
     const float hueShift = style_.hueRate * dt * speed;

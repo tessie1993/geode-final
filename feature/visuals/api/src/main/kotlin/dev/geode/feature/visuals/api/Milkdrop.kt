@@ -48,13 +48,38 @@ data class BrokenFile(
 )
 
 /**
+ * How an imported preset will play in Geode's MilkDrop, as reading it tells (#305). Each preset gets
+ * exactly one; when its shaders cannot run, that is what is said, since the textures it is missing are
+ * read only by those shaders.
+ */
+sealed interface PresetPlayback {
+    /** It plays as its author wrote it. */
+    data object Full : PresetPlayback
+
+    /**
+     * Its shader code uses [unsupported] (names Geode's MilkDrop cannot translate), so it plays without
+     * that shader: its motion, waves and shapes still run, under MilkDrop's plain warp and composite.
+     */
+    data class WithoutShader(
+        val unsupported: List<String>,
+    ) : PresetPlayback
+
+    /** It samples the textures [textures], which the MilkDrop folder does not hold; import them to complete it. */
+    data class MissingTextures(
+        val textures: List<String>,
+    ) : PresetPlayback
+}
+
+/**
  * How one import went: the [kind] of files picked, the names of those [imported] (as the lists show
- * them), and every file that was [broken]. A broken file never stops the others.
+ * them), and every file that was [broken]. A broken file never stops the others. For an import of
+ * presets, [playback] says how each one imported (by the name it is shown by) will play.
  */
 data class ImportReport(
     val kind: MilkdropKind,
     val imported: List<String>,
     val broken: List<BrokenFile>,
+    val playback: Map<String, PresetPlayback> = emptyMap(),
 )
 
 /**

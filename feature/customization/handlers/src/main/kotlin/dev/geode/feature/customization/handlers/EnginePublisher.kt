@@ -9,10 +9,11 @@ import dev.geode.feature.customization.api.Customization
  * Hands a Customization to the engine as one snapshot (ADR-0002, ADR-0004): nothing crosses per
  * frame, only a changed Customization.
  *
- * - [snapshotOf] builds the whole snapshot for a Customization. It is `:app`'s to give, because the
- *   snapshot also carries what is not Customization's: the engine's scene parameters for the drawing
- *   path that the plan does not drive yet, the reduce-motion flag and the Sound signal tuning. Its
- *   `plan` field is the Customization itself, encoded by `NativePlan` (#54).
+ * - [snapshotOf] builds the whole snapshot for a Customization, and whether its Style switching is
+ *   held (#282). It is `:app`'s to give, because the snapshot also carries what is not
+ *   Customization's: the engine's scene parameters for the drawing path that the plan does not drive
+ *   yet, the reduce-motion flag and the Sound signal tuning. Its `plan` field is the Customization
+ *   itself, encoded by `NativePlan` (#54).
  * - [offer] carries it across the bridge: `SnapshotPublisher.offer` or `NativeSnapshots.offer`.
  *
  * Each snapshot whose content changed gets the next revision. A snapshot refused because another one
@@ -20,7 +21,7 @@ import dev.geode.feature.customization.api.Customization
  * refusal counts.
  */
 class EnginePublisher(
-    private val snapshotOf: (Customization) -> CustomizationSnapshot,
+    private val snapshotOf: (Customization, Boolean) -> CustomizationSnapshot,
     private val offer: (CustomizationSnapshot) -> EngineFailure?,
 ) {
     private var revision = 0
@@ -28,10 +29,16 @@ class EnginePublisher(
     // The content of the last snapshot the engine took, its revision set to 0.
     private var taken: CustomizationSnapshot? = null
 
-    /** Sends [customization] unless the engine already has the same snapshot; the failure, if it refused. */
+    /**
+     * Sends [customization], its Style switching held when [switchingHeld], unless the engine already has
+     * the same snapshot; the failure, if it refused.
+     */
     @Synchronized
-    fun publish(customization: Customization): EngineFailure? {
-        val content = snapshotOf(customization).copy(revision = 0)
+    fun publish(
+        customization: Customization,
+        switchingHeld: Boolean = false,
+    ): EngineFailure? {
+        val content = snapshotOf(customization, switchingHeld).copy(revision = 0)
         if (content == taken) return null
         revision++
         val snapshot = content.copy(revision = revision)

@@ -7,6 +7,13 @@
     <string name="export_channel_description">Shown while Geode is rendering a video, so the render is not interrupted.</string>
     <string name="export_notification_title">Rendering video</string>
     <string name="export_notification_text">Geode is rendering your visuals.</string>
+    <string name="render_finished_title">Render saved</string>
+    <string name="render_finished_open">Open</string>
+    <string name="render_finished_share">Share</string>
+    <plurals name="export_notification_waiting">
+        <item quantity="one">%d more waiting</item>
+        <item quantity="other">%d more waiting</item>
+    </plurals>
 
     <!-- First-run photosensitivity notice. Safety copy: translate carefully,
          the flash rate is factual and must survive translation. This is an
@@ -16,14 +23,11 @@
     <string name="safety_prompt">The flash rate is limited in the engine, by design. Nothing on screen can flash more than three times a second, no preset or imported file can raise that, and the video you export is held to the same limit as the screen you saw. There is no setting for this and nothing to switch off.</string>
     <string name="safety_acknowledge">I understand</string>
 
-    <!-- First run, after the notice: where the music is, and what you came here to do. -->
     <!-- First run: permission, then an optional folder. Nothing else is asked. -->
     <string name="first_run_access_title">A few permissions</string>
     <string name="first_run_access_body">Music access finds the songs on this device, notifications show what is playing, and the microphone lets the Visual react to live sound. Nothing leaves your phone — there is no account and no sign-in.</string>
     <string name="first_run_access_allow">Allow</string>
     <string name="first_run_access_skip">Not now</string>
-
-    <!-- The intent setting. No longer asked at first run; it lives in Settings > Behaviour. -->
 
     <!-- Walkthrough. Each step navigates to the tab it describes, so the app underneath
          is the thing being pointed at rather than a picture of it. -->
@@ -46,19 +50,8 @@
     <string name="tutorial_settings_title">Everything else is in Settings</string>
     <string name="tutorial_settings_body">Themes, audio, playback, folders and safety. Settings › Battery saves power by drawing the Visual more lightly. Help lives here too — you can replay this walkthrough any time.</string>
 
-
-    <!-- Settings > Help -->
-    <string name="help_tutorial_group">Walkthrough</string>
-    <string name="help_tutorial_start">Start the walkthrough</string>
-    <string name="help_tutorial_replay">Replay the walkthrough</string>
-    <string name="help_tutorial_on_first_run">Offer it on a fresh install</string>
-
-    <!-- Per-track metadata editor. -->
-
-    <!-- Settings › About. -->
-    <string name="about_group">About</string>
-    <string name="about_version">Version %1$s (%2$d)</string>
-
+    
+    
     <!-- Bottom navigation. Short: these sit under an icon in a five-item bar. -->
     <string name="nav_home">Home</string>
     <string name="nav_music">Music</string>
@@ -66,70 +59,39 @@
     <string name="nav_studio">Studio</string>
     <string name="nav_settings">Settings</string>
 
-    <!-- Mini-player above the nav bar. -->
-
     <!-- Offered once, after a run that crashed. -->
     <string name="crash_dialog_title">Previous crash captured</string>
     <string name="crash_dialog_body">The last run crashed. Copy the report to share it, then dismiss.\n\n%1$s</string>
     <string name="crash_clip_label">Geode crash</string>
 
-    <!-- Search across tracks, playlists and presets. -->
-
     <!-- Playback notices: a transient error strip under the top bar. -->
     <string name="notice_dismiss">Dismiss</string>
-    <string name="notice_dismiss_description">Dismiss playback message</string>
     <!-- Engine failures caught at the native bridge (ADR-0005); the app keeps running. -->
     <string name="engine_failure_audio">The audio engine hit a problem and is restarting.</string>
     <string name="engine_failure_visual">The visual engine hit a problem. It keeps running.</string>
     <string name="engine_failure_other">The engine hit a problem. Geode keeps running.</string>
 
-
     <!-- Transport controls. Spoken by screen readers, so they name the action. -->
-    <string name="action_previous">Previous</string>
     <string name="action_next">Next</string>
 
-    <string name="subtitle_unknown_artist">Unknown artist</string>
-
-    <string name="action_shuffle">Shuffle</string>
     <string name="action_play">Play</string>
     <string name="action_pause">Pause</string>
-    <string name="action_repeat">Repeat</string>
-    <string name="action_favourite_add">Add to favourites</string>
-    <string name="action_favourite_remove">Remove from favourites</string>
     <string name="action_resume_last_played">Resume last played</string>
+    <string name="home_now_playing">Now playing</string>
+    <string name="home_nothing_playing">Nothing playing yet</string>
+    <string name="home_nothing_playing_hint">Pick up where you left off, or choose a song in Music.</string>
+    <string name="home_shortcut_visuals">Choose a look</string>
+    <string name="home_shortcut_visuals_hint">Styles for the Visual</string>
+    <string name="home_shortcut_studio">Make a video</string>
+    <string name="home_shortcut_studio_hint">Renders and recordings</string>
+    <string name="player_close">Close the player</string>
 
-    <!-- A–B loop: one control, three states, named so colour is not the only cue. -->
-    <string name="ab_loop_idle">A–B</string>
-    <string name="ab_loop_set_b">Set B</string>
-    <string name="ab_loop_looping">Looping</string>
-
-    <string name="queue">Queue</string>
-
-    <!-- Quick actions under the player. -->
-
-    <!-- Now Playing, full screen. -->
-    <string name="action_collapse">Collapse</string>
-
-    <!-- Panel chips under the transport. -->
-    <string name="panel_now">Now</string>
-    <string name="panel_lyrics">Lyrics</string>
-
-    <!-- Seek bar. Spoken, not drawn: the bar itself is a bare canvas. -->
-    <string name="seek_description">Seek. %1$s of %2$s</string>
-
-    <!-- Lyrics panel. -->
-    <string name="lyrics_none">No lyrics</string>
-    <string name="lyrics_none_explainer">Drop an .lrc file next to the track — same name, .lrc extension — and it shows up here, timed and following the music. Words written into the file\'s own tags are read too. Nothing is fetched: the app has no network access.</string>
-    <string name="lyrics_source_timed">Timed lyrics from %1$s. Tap a line to jump there.</string>
-    <string name="lyrics_source_untimed">Untimed lyrics from %1$s.</string>
-
-    <!-- Queue panel. -->
-    <string name="queue_empty_explainer">Nothing queued. Playing anything from a list — the library, a shelf on Home, a search result — queues that whole list.</string>
-    <string name="queue_save_as_playlist">Save as playlist</string>
-    <string name="queue_save_dialog_title">Save queue as playlist</string>
-    <string name="action_move_up">Move up</string>
-    <string name="action_remove_from_queue">Remove from queue</string>
-
+    
+    
+    
+    
+    
+    
     <!-- Library: tabs, permission recovery, playlists and folders. -->
     <string name="library_tab_tracks">Tracks</string>
     <string name="library_tab_albums">Albums</string>
@@ -144,208 +106,15 @@
     <string name="widget_previous">Previous track</string>
     <string name="auto_favourites">Favourites</string>
     <string name="auto_recently_played">Recently played</string>
-    <string name="library_sort_title">Title</string>
-    <string name="library_sort_artist">Artist</string>
-    <string name="library_sort_album">Album</string>
-    <string name="library_sort_duration">Length</string>
-    <string name="library_sort_added">Added</string>
 
-    <string name="action_rename">Rename</string>
-    <string name="action_delete">Delete</string>
-    <string name="action_ok">OK</string>
+    
 
-    <!-- The analysed badge announces itself as one phrase; the gem is decoration. -->
-
-
-
-    <!-- Studio: the clip shelf and the editor. -->
-    <string name="studio_edit">Edit</string>
-    <string name="studio_open_video">Open a video…</string>
-    <string name="studio_empty_title">Nothing rendered yet</string>
-    <string name="studio_empty_body">Render a visual from Settings › Export video and it lands here, ready to be cut, graded and sent somewhere. Any other video on the phone can be opened with the button above.</string>
-    <string name="studio_send">Send</string>
-    <string name="studio_send_ellipsis">Send…</string>
-    <string name="studio_share_chooser">Send video</string>
-    <string name="studio_storage_used">%1$s in Movies/Geode</string>
-    <string name="studio_rename_title">Rename clip</string>
-    <string name="studio_rename_field">Name</string>
-    <string name="studio_rename_failed">Could not rename that clip.</string>
-    <string name="studio_delete_title">Delete clip?</string>
-    <string name="studio_delete_body">\"%1$s\" will be deleted from this device. This cannot be undone.</string>
-    <string name="studio_delete_failed">Android would not let Geode delete that file.</string>
-    <string name="studio_notice_title">Didn\'t work</string>
-    <string name="action_back">Back</string>
-
-    <plurals name="clip_count">
-        <item quantity="one">%1$d clip</item>
-        <item quantity="other">%1$d clips</item>
-    </plurals>
-    <string name="studio_size_gb">%1$.1f GB</string>
-
-    <string name="studio_section_cut">Cut</string>
-    <string name="studio_section_look">Look</string>
-    <string name="studio_section_frame">Frame</string>
-    <string name="studio_section_sound">Sound &amp; caption</string>
-    <string name="studio_section_render">Render &amp; send</string>
-
-    <string name="studio_trim_summary">"%1$s → %2$s   ·   keeps %3$s"</string>
-    <string name="studio_trim_renders">, renders %1$s</string>
-    <string name="studio_look_explainer">A look writes these four and then gets out of the way — every one stays an ordinary slider afterwards, the same way the live-input profiles work.</string>
-    <string name="studio_brightness">Brightness</string>
-    <string name="studio_contrast">Contrast</string>
-    <string name="studio_saturation">Saturation</string>
-    <string name="studio_hue_shift">Hue shift</string>
-    <string name="studio_speed">Speed</string>
-    <string name="studio_lut_pick">Load LUT (.cube)…</string>
-    <string name="studio_lut_clear">Remove LUT</string>
-    <string name="studio_lut_loaded">LUT: %1$s</string>
-    <string name="studio_lut_explainer">A .cube lookup table from a grading tool is applied after the sliders above and before the gamma curves.</string>
-    <string name="studio_gamma_red">Gamma · red</string>
-    <string name="studio_gamma_green">Gamma · green</string>
-    <string name="studio_gamma_blue">Gamma · blue</string>
-    <string name="studio_rotate">Rotate</string>
-    <string name="studio_reframe">Reframe</string>
-    <string name="studio_as_shot">As shot</string>
-    <string name="studio_reframe_explainer">Reframing crops rather than pillarboxes — turning 16:9 into 9:16 means losing the sides, and black bars are the one result nobody wants from that.</string>
-    <string name="studio_mute">Mute</string>
-    <string name="studio_caption">Burnt-in caption</string>
-    <string name="studio_caption_explainer">Drawn into the frame after everything else, so it is not graded or cropped with the picture. Leave it empty for none.</string>
-    <string name="studio_rendering">Rendering… %1$d%%</string>
-    <string name="studio_saved">Saved to Movies/Geode.</string>
-    <string name="studio_play">Play</string>
-    <string name="studio_edit_again">Edit again</string>
-    <string name="studio_send_explainer">Send opens the phone\'s own share sheet — YouTube, Instagram, TikTok, Drive, a message, whatever is installed and signed in. Geode has no network access of its own and never uploads anything itself.</string>
-    <string name="studio_render">Render</string>
-    <string name="studio_reset">Reset</string>
-    <string name="studio_nothing_changed">Nothing is changed yet — rendering now would just copy the clip.</string>
-    <string name="studio_renders_new_file">Renders a NEW file. The original is never overwritten.</string>
-    <string name="studio_slider_value">"%1$s  %2$s%3$s"</string>
-
-    <!-- Settings › Audio › Playback. -->
-    <string name="playback_speed">"Speed  %1$sx"</string>
-    <string name="playback_pitch">"Pitch  %1$s st (0 = normal)"</string>
-    <string name="playback_fade">"Fade on pause, resume and skip  %1$ss"</string>
-    <string name="playback_skip_silence">Skip silence</string>
-    <string name="playback_pause_unplugged">Pause when unplugged</string>
-    <string name="playback_keep_screen_on">Keep screen on</string>
-    <string name="playback_auto_resume">Auto-resume last track</string>
-    <string name="playback_sleep_timer">Sleep timer</string>
-    <string name="playback_sleep_off">Off</string>
-    <string name="playback_sleep_minutes">%1$d min</string>
-    <string name="playback_sleep_finish_track">Let the track finish</string>
-    <string name="playback_sleep_pausing_in">Pausing in %1$s</string>
-    <string name="playback_replaygain">ReplayGain</string>
-    <string name="playback_replaygain_off">Off</string>
-    <string name="playback_replaygain_track">Track</string>
-    <string name="playback_replaygain_album">Album</string>
-    <string name="playback_replaygain_preamp">"Preamp  %1$s dB"</string>
-    <string name="playback_replaygain_clip_guard">Prevent clipping</string>
-    <string name="playback_resume_long_tracks">Remember position in long tracks</string>
-    <string name="playback_native_engine">Native audio engine</string>
-    <string name="playback_gapless">Gapless playback</string>
-    <string name="playback_crossfade_off">Crossfade — off</string>
-    <string name="playback_crossfade">"Crossfade  %1$ss"</string>
-    <string name="playback_crossfade_curve">Crossfade curve</string>
-    <string name="playback_crossfade_linear">Linear</string>
-    <string name="playback_crossfade_equal_power">Equal power</string>
-    <string name="playback_crossfade_smooth">Smooth</string>
-
-    <!-- Settings › Audio › Equalizer. -->
-    <string name="eq_preset">Preset</string>
-    <string name="eq_band">"%1$s  %2$s"</string>
-    <string name="eq_bass_boost">"Bass boost  %1$d%%"</string>
-    <string name="eq_loudness">"Loudness  %1$s"</string>
-    <string name="eq_preset_flat">Flat</string>
-    <string name="eq_preset_bass">Bass</string>
-    <string name="eq_preset_treble">Treble</string>
-    <string name="eq_preset_vocal">Vocal</string>
-    <string name="eq_preset_rock">Rock</string>
-    <string name="eq_preset_electronic">Electronic</string>
-
-    <!-- Settings › Folders. -->
-    <string name="folders_group_music">Music folders</string>
-
-    <!-- Settings › Audio: analysis, key colour, live input. -->
-    <string name="audio_group_playback">Playback</string>
-    <string name="audio_group_analysis">Analysis</string>
-    <string name="audio_beat_sensitivity">"Beat sensitivity  %1$sσ — drag right for LESS sensitive (fewer beat flashes)"</string>
-    <string name="audio_beat_min_gap">"Minimum gap between beats  %1$d ms — never flash faster than %2$d BPM"</string>
-    <string name="audio_slow_track">Slow track</string>
-    <string name="audio_default">Default</string>
-    <string name="audio_preset_morph">Preset morph: %1$.1f s (0 = snap)</string>
-    <string name="audio_react_mic">React to the microphone</string>
-
-    <!-- Export: shared by the Export tab and the export dialog. -->
-    <string name="export_title">Export</string>
-    <string name="export_group_defaults">Defaults</string>
-    <string name="export_quality">Quality</string>
-    <string name="export_frame_rate">Frame rate</string>
-    <string name="export_codec">Video codec</string>
-    <string name="export_aspect_ratio">Aspect ratio</string>
-    <string name="export_fps_30">30 fps</string>
-    <string name="export_fps_60">60 fps</string>
-    <string name="export_loop_safe">Loop-safe</string>
-    <string name="export_rendering_offline">Rendering offline…</string>
-    <string name="export_leave_hint">You can leave Geode — the render keeps going and finishes in the background.</string>
-    <string name="export_saved_folder">Saved to your chosen folder.</string>
-    <string name="export_saved_library">Saved to your Videos library (Movies/Geode).</string>
-    <string name="export_failed">Failed: %1$s</string>
-    <string name="export_upload_share_to">Upload / share to</string>
-    <string name="export_upload_drive">Upload to Drive / Share</string>
-    <string name="export_length">Length</string>
-    <string name="export_whole_track">Whole track</string>
-    <string name="export_segment">Segment</string>
-    <string name="export_segment_hint">Drag to pick at least %1$d second of the track. Anything shorter renders the whole thing instead.</string>
-    <string name="export_segment_summary">Renders %1$s–%2$s (%3$s). The clip starts at 0:00 in the file, and the visuals are the ones from that part of the track.</string>
-    <string name="export_looping">Looping</string>
-    <string name="export_full_length">Full length</string>
-    <string name="export_loop_safe_bar_hint">Loop-safe cuts on a bar boundary (%1$s BPM, %2$s s per bar) so the last beat runs into the first — what a short clip needs when a platform autoplays it on repeat. Up to one bar is trimmed from the end.</string>
-    <string name="export_loop_safe_needs_tempo">Loop-safe needs a detected tempo. Analyse the track (Now Playing › Auto) and reopen this dialog.</string>
-    <string name="export_4k_fallback">4K depends on your device\'s encoder; it falls back automatically if unsupported.</string>
-    <string name="export_render_button">Render %1$dp %2$s %3$dfps</string>
-    <string name="export_render_to_folder">Render to chosen folder…</string>
-    <string name="export_cancel">Cancel export</string>
-    <string name="export_loop_menu_title">Export</string>
-    <string name="export_loop_menu_subtitle">A regular video export, or a seamless loop repeated into a long-form video?</string>
-    <string name="export_loop_menu_standard">Video export…</string>
-    <string name="export_loop_menu_loop">Loop / long-form…</string>
-    <string name="export_loop_title">Loop / long-form export</string>
-    <string name="export_loop_source_hint">Loops the current track\'s visuals and repeats them into one long file. The soundtrack is the current track unless you add clips below.</string>
-    <string name="export_loop_length">Loop length: %1$d s</string>
-    <string name="export_loop_crossfade">Seam crossfade: %1$.1f s</string>
-    <string name="export_loop_drift_toggle">Drift the palette over time</string>
-    <string name="export_loop_drift_hue">Hue drift: %1$d°</string>
-    <string name="export_loop_drift_stops">Palette steps: %1$d</string>
-    <string name="export_loop_soundtrack_title">Soundtrack</string>
-    <string name="export_loop_soundtrack_empty">Uses the current track.</string>
-    <string name="export_loop_soundtrack_count">%1$s added, played back to back.</string>
-    <string name="export_loop_soundtrack_add">Add soundtrack clips…</string>
-    <string name="export_loop_start">Render loop</string>
-    <string name="export_loop_rendering">Rendering… %1$d%%</string>
-    <string name="export_loudness_target">Loudness target</string>
-    <string name="export_loudness_hint">Geode measures the finished file against this target once export completes. It does not yet change the level to match — pick the platform you\'re shipping to, or Leave as-is to ship the level you mixed.</string>
-    <string name="export_notification_permission_title">Show render progress?</string>
-    <string name="export_notification_permission_body">Geode can show a notification with the render\'s progress and time remaining, so you can check on it without reopening this dialog. Without it, the render still finishes — you just won\'t see progress outside the app.</string>
-    <string name="export_notification_permission_skip">Not now</string>
-
-    <!-- Settings: Look tab. -->
-    <string name="look_accent_intensity">"Accent intensity  %1$d%%"</string>
-    <string name="look_background_dim">"Background dim  %1$d%%"</string>
-    <string name="look_group_text">Text</string>
-    <string name="look_text_size">"Text size  %1$d%%"</string>
-    <string name="look_font_color">Font color</string>
-    <string name="look_group_layout">Layout</string>
-    <string name="look_bar_opacity">"Bar opacity  %1$d%%"</string>
-    <string name="look_player_position">Player position</string>
-    <string name="look_position_top">Top</string>
-    <string name="look_position_bottom">Bottom</string>
-    <string name="look_corner_style">Corner style</string>
-    <string name="look_corner_sharp">Sharp</string>
-    <string name="look_corner_rounded">Rounded</string>
-    <string name="look_corner_pill">Pill</string>
-    <string name="look_compact_player">Compact mini-player</string>
-    <string name="look_clear_visuals_menu">Clear-overlay Visuals menu</string>
-
+    
+    
+    
+    
+    
+    
     <!-- Font colour swatches. Mineral names; the argb value is what persists. -->
     <string name="font_color_auto">Auto</string>
     <string name="font_color_white">White</string>
@@ -356,125 +125,10 @@
     <string name="font_color_ice">Ice blue</string>
     <string name="font_color_mint">Mint</string>
 
-    <!-- Settings: Behavior tab. -->
-    <string name="behavior_group_touch">Touch</string>
-    <string name="behavior_group_safety">Visual safety</string>
-    <string name="behavior_group_wallpaper">Live wallpaper</string>
-    <string name="behavior_touch_smear">Smear the visuals with a finger</string>
-    <string name="behavior_smear_strength">"Smear strength  %1$d%%"</string>
-    <string name="behavior_touch_transform">Pinch and twist the canvas</string>
-    <string name="behavior_flash_guidance">Nothing in Geode can flash more than three times a second. Published guidance (WCAG 2.3.1) puts the general limit there, and the clamp sits in the render path itself — it applies to every scene, every preset and every imported file, on screen and in exported video alike. It is not a setting, so there is nothing here to adjust.</string>
-    <string name="behavior_slow_motion">Slow the motion down</string>
-    <string name="behavior_wallpaper_button">Set as live wallpaper</string>
-
     <!-- Studio clip preview. -->
-    <!-- Timeline editor. -->
-    <string name="editor_open">Timeline</string>
-    <string name="editor_playhead">"Playhead  %1$s"</string>
-    <string name="editor_undo">Undo</string>
-    <string name="editor_redo">Redo</string>
-    <string name="editor_zoom_in">Zoom +</string>
-    <string name="editor_zoom_out">Zoom −</string>
-    <string name="editor_add_lane">+ %1$s lane</string>
-    <string name="editor_lane_visual">Visual</string>
-    <string name="editor_lane_media">Media</string>
-    <string name="editor_lane_text">Text</string>
-    <string name="editor_lane_overlay">Overlay</string>
-    <string name="editor_lane_audio">Audio</string>
-    <string name="editor_add_marker">Marker here</string>
-    <string name="editor_tap_in">Tap in</string>
-    <string name="editor_tap">Tap</string>
-    <string name="editor_tap_count">%1$d taps</string>
-    <string name="editor_tap_undo">Undo tap</string>
-    <string name="editor_tap_done">Keep taps</string>
-    <string name="editor_auto_cut">Auto-cut</string>
-    <string name="editor_split">Split at playhead</string>
-    <string name="editor_delete">Delete</string>
-    <string name="editor_ripple_delete">Ripple delete</string>
-    <string name="editor_duplicate">Duplicate</string>
-    <string name="editor_enable">Enable</string>
-    <string name="editor_disable">Disable</string>
-    <string name="editor_delete_marker">Delete marker</string>
-    <string name="editor_delete_key">Delete key</string>
-    <string name="editor_markers">Markers</string>
-    <string name="editor_mute_short">M</string>
-    <string name="editor_lock_short">L</string>
-    <string name="editor_add_short">+</string>
-    <string name="editor_add_video">Video…</string>
-    <string name="editor_add_still">Still image…</string>
-    <string name="editor_text_title">Text clip</string>
-    <string name="editor_empty">Add a lane to start. Tap a clip to select it, double-tap to split, drag its body to move and its ends to trim; tap the ruler to move the playhead.</string>
-    <string name="editor_err_not_found">That clip is no longer there.</string>
-    <string name="editor_err_locked">The lane is locked.</string>
-    <string name="editor_err_wrong_lane">That kind of clip cannot live on this lane.</string>
-    <string name="editor_err_overlaps">It would overlap another clip.</string>
-    <string name="editor_err_needs_split">Split the clip underneath first.</string>
-    <string name="editor_err_too_short">Too short to keep.</string>
-    <string name="editor_err_outside_clip">The playhead is not inside the clip.</string>
-    <string name="curve_animate_scene">Animate scene…</string>
-    <string name="curve_animate_clip">Animate clip…</string>
-    <string name="curve_add_track">Animate</string>
-    <string name="curve_key_at">"%1$s  ·  key at %2$s"</string>
-    <string name="curve_value">"Value  %1$s"</string>
-    <string name="curve_toggle">On</string>
-    <string name="curve_hold">Hold</string>
-    <string name="curve_linear">Linear</string>
-    <string name="curve_ease_in">Ease in</string>
-    <string name="curve_ease_out">Ease out</string>
-    <string name="curve_ease_in_out">Ease in-out</string>
-    <string name="curve_smooth">Smooth</string>
-    <string name="curve_custom">Custom</string>
-    <string name="curve_unknown_param">Parameter</string>
-    <string name="editor_export">Render cut</string>
-    <string name="editor_export_no_video">Put a video or still on a Media lane first — the cut renders that lane.</string>
-    <string name="editor_export_skipped_kinds">Skipped clips this export can\'t carry: %1$s</string>
-    <string name="editor_transition">Transition into this clip</string>
-    <string name="editor_transition_ellipsis">Transition…</string>
-    <string name="editor_transition_none">None (hard cut)</string>
-    <string name="editor_transition_seconds">%1$.1f s</string>
-    <string name="editor_transition_current">%1$s ✓</string>
-    <string name="editor_lyric_captions">Lyrics → captions</string>
-    <string name="editor_import_srt">Import SRT…</string>
-    <string name="editor_export_srt">Export SRT…</string>
-    <string name="editor_export_chapters">Chapters…</string>
-    <string name="editor_chapters_title">Export chapter markers</string>
-    <string name="editor_chapters_description">Description block (.txt)</string>
-    <string name="editor_chapters_webvtt">WebVTT chapters (.vtt)</string>
-    <string name="editor_chapters_ffmetadata">FFmpeg metadata (.ffmeta)</string>
-    <string name="editor_chapters_none">Add at least two markers to export chapters.</string>
-    <string name="editor_chapters_saved">Chapters saved.</string>
-    <string name="editor_chapters_failed">"Chapters could not be saved: %1$s"</string>
-    <string name="editor_srt_saved">Captions saved.</string>
-    <string name="editor_srt_failed">"Captions could not be saved: %1$s"</string>
-    <string name="autocut_title">Auto-cut</string>
-    <string name="autocut_source">Cut on</string>
-    <string name="autocut_source_transient">Transients</string>
-    <string name="autocut_source_flux">Spectral flux</string>
-    <string name="autocut_source_onset">Onsets</string>
-    <string name="autocut_source_kick">Kick</string>
-    <string name="autocut_source_snare">Snare</string>
-    <string name="autocut_source_hat">Hat</string>
-    <string name="autocut_sensitivity">"Sensitivity  %1$d%%"</string>
-    <string name="autocut_spacing">"Minimum spacing  %1$d ms"</string>
-    <string name="autocut_detect">Detect</string>
-    <string name="autocut_as_markers">Add as markers</string>
-    <string name="autocut_as_clips">Cut the visual lane</string>
-    <string name="autocut_no_analysis">Analyse the current track first — auto-cut reads the hits from its analysis.</string>
-    <string name="autocut_miss_empty">The analysis has no frames.</string>
-    <string name="autocut_miss_none">No hits stood out — sensitivity only lowers the bar, it cannot invent them.</string>
-    <string name="autocut_miss_window">The chosen window is too short.</string>
-    <string name="autocut_explainer">Cuts follow the hits the player actually played, not a tempo grid. Suggestions become ordinary markers or clips you can drag, trim and delete.</string>
-    <plurals name="autocut_found">
-        <item quantity="one">%1$d cut found</item>
-        <item quantity="other">%1$d cuts found</item>
-    </plurals>
-    <string name="studio_preview_hint">Loops your cut, muted — grade, speed and reframe show as they will render. Tap to pause.</string>
     <string name="studio_preview_toggle">Play or pause the preview</string>
 
     <!-- Shared verbs. One definition each, so a translator sees them once. -->
-    <string name="action_save">Save</string>
-    <string name="action_cancel">Cancel</string>
-    <string name="action_close">Close</string>
     <string name="action_copy">Copy</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="preset_link_imported">Preset \"%1$s\" imported — it is in Visuals › Presets.</string>
@@ -485,17 +139,9 @@
     <string name="visuals_milkdrop">MilkDrop presets and textures</string>
     <string name="visuals_open_customize">Customize</string>
     <string name="visuals_open_capture">Live sound</string>
+    <string name="visuals_reactions_freeze">Freeze reactions</string>
+    <string name="visuals_reactions_unfreeze">Let it react</string>
     <string name="preset_shared_name">Shared look</string>
     <string name="preset_share_subject">Geode preset: %1$s</string>
     <string name="preset_share_title">Share preset</string>
-    <string name="palette_base_hue">Base hue %1$s</string>
-    <string name="palette_hue_span">Hue span %1$s</string>
-    <string name="palette_apply_gradient">Apply gradient</string>
-    <string name="palette_from_current">From current</string>
-    <string name="palette_name_label">Palette name</string>
-    <string name="palette_save">Save palette</string>
-    <string name="palette_saved_heading">Saved palettes</string>
-    <string name="palette_none_yet">None yet — build a gradient above and save it.</string>
-    <string name="palette_edit">Edit</string>
-    <string name="palette_delete">Delete</string>
 </resources>

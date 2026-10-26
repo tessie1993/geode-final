@@ -3,5 +3,9 @@
   "id": "mandala_dome",
   "label": "Mandala Dome",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

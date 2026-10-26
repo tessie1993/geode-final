@@ -1,7 +1,8 @@
 package dev.geode.feature.settings.core
 
 import dev.geode.engine.types.Millis
-import dev.geode.feature.settings.api.AmbientMode
+import dev.geode.engine.types.PresetId
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
@@ -13,7 +14,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.Element
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -42,8 +43,13 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.ThemeMode
+import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -68,8 +74,11 @@ class SettingsRulesTest {
     private val lookRows: List<Row> =
         listOf(
             Row(LookCommand.SetAccentIntensity(1.2f), defaults.copy(look = look.copy(accentIntensity = 1.2f))),
-            Row(LookCommand.SetElement(Element.STONE), defaults.copy(look = look.copy(element = Element.STONE))),
-            Row(LookCommand.SetElement(Element.WATER), defaults),
+            Row(LookCommand.SetThemeMode(ThemeMode.LIGHT), defaults.copy(look = look.copy(themeMode = ThemeMode.LIGHT))),
+            Row(LookCommand.SetThemeMode(ThemeMode.DARK), defaults.copy(look = look.copy(themeMode = ThemeMode.DARK))),
+            Row(LookCommand.SetThemeMode(ThemeMode.SYSTEM), defaults),
+            Row(LookCommand.SetReduceTransparency(true), defaults.copy(look = look.copy(reduceTransparency = true))),
+            Row(LookCommand.SetReduceTransparency(false), defaults),
             Row(LookCommand.SetAccentIntensity(0.1f), defaults.copy(look = look.copy(accentIntensity = 0.5f))),
             Row(LookCommand.SetAccentIntensity(9f), defaults.copy(look = look.copy(accentIntensity = 1.5f))),
             Row(LookCommand.SetBackgroundDim(0.3f), defaults.copy(look = look.copy(backgroundDim = 0.3f))),
@@ -87,8 +96,6 @@ class SettingsRulesTest {
             Row(LookCommand.SetCornerStyle(CornerStyle.PILL), defaults.copy(look = look.copy(cornerStyle = CornerStyle.PILL))),
             Row(LookCommand.SetCompactPlayer(true), defaults.copy(look = look.copy(compactPlayer = true))),
             Row(LookCommand.SetClearVisualsMenu(true), defaults.copy(look = look.copy(clearVisualsMenu = true))),
-            Row(LookCommand.SetAmbientMode(AmbientMode.STILL), defaults.copy(look = look.copy(ambientMode = AmbientMode.STILL))),
-            Row(LookCommand.SetAmbientMode(AmbientMode.OFF), defaults.copy(look = look.copy(ambientMode = AmbientMode.OFF))),
         )
 
     private val playbackRows: List<Row> =
@@ -175,6 +182,15 @@ class SettingsRulesTest {
             Row(AnalysisCommand.SetPresetMorph(Seconds(-1f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(0f)))),
             Row(AnalysisCommand.SetPresetMorph(Seconds(30f)), defaults.copy(analysis = analysis.copy(presetMorph = Seconds(8f)))),
             Row(AnalysisCommand.SetReactToMicrophone(true), defaults.copy(analysis = analysis.copy(reactToMicrophone = true))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(120)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(120)))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(-80)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(-80)))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(-5_000)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(-300)))),
+            Row(AnalysisCommand.SetSyncOffset(Millis(5_000)), defaults.copy(analysis = analysis.copy(syncOffset = Millis(300)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(9f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(9f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(-6f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(-6f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(-40f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(-12f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(40f)), defaults.copy(analysis = analysis.copy(sensitivity = Decibels(24f)))),
+            Row(AnalysisCommand.SetSensitivity(Decibels(Float.NaN)), defaults),
         )
 
     private val behaviorRows: List<Row> =
@@ -185,6 +201,28 @@ class SettingsRulesTest {
             Row(BehaviorCommand.SetTouchSmearStrength(9f), defaults.copy(behavior = behavior.copy(touchSmearStrength = 2f))),
             Row(BehaviorCommand.SetTouchTransform(false), defaults.copy(behavior = behavior.copy(touchTransform = false))),
             Row(BehaviorCommand.SetReducedMotion(true), defaults.copy(behavior = behavior.copy(reducedMotion = true))),
+            Row(BehaviorCommand.SetTilt(TiltAmount.FULL), defaults.copy(behavior = behavior.copy(tilt = TiltAmount.FULL))),
+            Row(BehaviorCommand.SetTilt(TiltAmount.OFF), defaults.copy(behavior = behavior.copy(tilt = TiltAmount.OFF))),
+            Row(
+                BehaviorCommand.SetStartLook(StartLook.Style(SceneId("cymatics"))),
+                defaults.copy(behavior = behavior.copy(startLook = StartLook.Style(SceneId("cymatics")))),
+            ),
+            Row(
+                BehaviorCommand.SetStartLook(StartLook.Preset(PresetId("Party"))),
+                defaults.copy(behavior = behavior.copy(startLook = StartLook.Preset(PresetId("Party")))),
+            ),
+            Row(BehaviorCommand.SetStartLook(StartLook.Last), defaults),
+            Row(BehaviorCommand.SetStartLook(StartLook.Style(SceneId(" "))), defaults),
+            Row(BehaviorCommand.SetStartLook(StartLook.Preset(PresetId(""))), defaults),
+            Row(
+                BehaviorCommand.SetTransitionLook(TransitionLook.RANDOM),
+                defaults.copy(behavior = behavior.copy(transitionLook = TransitionLook.RANDOM)),
+            ),
+            Row(
+                BehaviorCommand.SetTransitionLook(TransitionLook.SWIRL),
+                defaults.copy(behavior = behavior.copy(transitionLook = TransitionLook.SWIRL)),
+            ),
+            Row(BehaviorCommand.SetTransitionLook(TransitionLook.FADE), defaults),
         )
 
     private val exportRows: List<Row> =
@@ -207,6 +245,10 @@ class SettingsRulesTest {
                 defaults.copy(export = defaults.export.copy(quality = ExportQuality.QHD1440)),
             ),
             Row(ExportCommand.SetFinishedAlerts(false), defaults.copy(export = defaults.export.copy(finishedAlerts = false))),
+            Row(
+                ExportCommand.SetEditSources(EditSources.COPY),
+                defaults.copy(export = defaults.export.copy(editSources = EditSources.COPY)),
+            ),
         )
 
     private val backgroundRows: List<Row> =
@@ -223,11 +265,23 @@ class SettingsRulesTest {
                 defaults.copy(performance = performance.copy(visualQuality = VisualQuality.BALANCED)),
             ),
             Row(
-                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.FPS60),
-                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.FPS60)),
+                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.SCREEN_MAX),
+                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.SCREEN_MAX)),
             ),
             Row(PerformanceCommand.SetSaveMode(true), defaults.copy(performance = performance.copy(saveMode = true))),
             Row(PerformanceCommand.SetVisualsOff(true), defaults.copy(performance = performance.copy(visualsOff = true))),
+            Row(
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, VisualQuality.SAVER),
+                defaults.copy(performance = performance.copy(surfaceQuality = mapOf(VisualSurface.WALLPAPER to VisualQuality.SAVER))),
+            ),
+            Row(
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.SCREEN_SAVER, VisualFrameRate.FPS30),
+                defaults.copy(
+                    performance = performance.copy(surfaceFrameRate = mapOf(VisualSurface.SCREEN_SAVER to VisualFrameRate.FPS30)),
+                ),
+            ),
+            Row(PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, null), defaults),
+            Row(PerformanceCommand.SetSurfaceFrameRate(VisualSurface.PICTURE_IN_PICTURE, null), defaults),
         )
 
     private val folderRows: List<Row> =
@@ -310,6 +364,36 @@ class SettingsRulesTest {
     }
 
     @Test
+    fun `each surface keeps its own pick until it is set back to follow the shared one`() {
+        val picked =
+            listOf<SettingsCommand>(
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, VisualQuality.SAVER),
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.PICTURE_IN_PICTURE, VisualQuality.BALANCED),
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.WALLPAPER, VisualFrameRate.FPS30),
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.PICTURE_IN_PICTURE, VisualFrameRate.FPS60),
+                PerformanceCommand.SetVisualQuality(VisualQuality.BALANCED),
+            ).fold(defaults, SettingsRules::apply)
+
+        assertEquals(
+            mapOf(VisualSurface.WALLPAPER to VisualQuality.SAVER, VisualSurface.PICTURE_IN_PICTURE to VisualQuality.BALANCED),
+            picked.performance.surfaceQuality,
+        )
+        assertEquals(VisualQuality.BALANCED, picked.performance.visualQuality)
+
+        val repicked = SettingsRules.apply(picked, PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, VisualQuality.HIGH))
+        assertEquals(VisualQuality.HIGH, repicked.performance.surfaceQuality[VisualSurface.WALLPAPER])
+
+        val followed =
+            listOf<SettingsCommand>(
+                PerformanceCommand.SetSurfaceQuality(VisualSurface.WALLPAPER, null),
+                PerformanceCommand.SetSurfaceFrameRate(VisualSurface.WALLPAPER, null),
+            ).fold(picked, SettingsRules::apply)
+
+        assertEquals(mapOf(VisualSurface.PICTURE_IN_PICTURE to VisualQuality.BALANCED), followed.performance.surfaceQuality)
+        assertEquals(mapOf(VisualSurface.PICTURE_IN_PICTURE to VisualFrameRate.FPS60), followed.performance.surfaceFrameRate)
+    }
+
+    @Test
     fun `values read back from storage are put in range`() {
         val loud = listOf(Millibels(4_000), Millibels(-4_000))
         val wild =
@@ -317,7 +401,8 @@ class SettingsRulesTest {
                 look = look.copy(accentIntensity = 7f, backgroundDim = -2f, textScale = 0f, barOpacity = 5f),
                 playback = playback.copy(speed = 9f, pitch = Semitones(-9f), sleepTimer = Minutes(-1), fade = Millis(-5)),
                 equalizer = equalizer.copy(bands = loud, bassBoost = 2_000, loudness = Millibels(-1)),
-                analysis = analysis.copy(beatSensitivity = 0f, beatMinIntervalMs = 9_000f, presetMorph = Seconds(99f)),
+                analysis =
+                    analysis.copy(beatSensitivity = 0f, beatMinIntervalMs = 9_000f, presetMorph = Seconds(99f), syncOffset = Millis(-900)),
                 behavior = behavior.copy(touchSmearStrength = 0f),
             )
 
@@ -326,7 +411,10 @@ class SettingsRulesTest {
         assertEquals(look.copy(accentIntensity = 1.5f, backgroundDim = 0f, textScale = 0.85f, barOpacity = 1f), tamed.look)
         assertEquals(playback.copy(speed = 2f, pitch = Semitones(-6f), sleepTimer = Minutes(0), fade = Millis.ZERO), tamed.playback)
         assertEquals(equalizer.copy(bands = bands(0 to 1_500, 1 to -1_500), bassBoost = 1_000), tamed.equalizer)
-        assertEquals(analysis.copy(beatSensitivity = 1.5f, beatMinIntervalMs = 1_200f, presetMorph = Seconds(8f)), tamed.analysis)
+        assertEquals(
+            analysis.copy(beatSensitivity = 1.5f, beatMinIntervalMs = 1_200f, presetMorph = Seconds(8f), syncOffset = Millis(-300)),
+            tamed.analysis,
+        )
         assertEquals(behavior.copy(touchSmearStrength = 0.2f), tamed.behavior)
     }
 

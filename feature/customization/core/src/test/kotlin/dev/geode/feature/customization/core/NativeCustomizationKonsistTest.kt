@@ -1,6 +1,8 @@
 package dev.geode.feature.customization.core
 
 import dev.geode.feature.customization.api.ExtraKind
+import dev.geode.feature.customization.api.LayerBlend
+import dev.geode.feature.customization.api.LayerInfluence
 import dev.geode.feature.customization.api.MACRO_COUNT
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.SharedProperty
@@ -118,7 +120,45 @@ class NativeCustomizationKonsistTest {
         assertEquals("${NativePlan.MODULATOR_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kModulatorFloats"))
         assertEquals(NativePlan.MACRO_LINK_FLOATS.toString(), constant(codec, "kMacroLinkFloats"))
         assertEquals("${NativePlan.AUTOMATION_FLOATS - NativePlan.MAX_STEPS} + kMaxSteps", constant(codec, "kAutomationFloats"))
+        assertEquals(NativePlan.LAYER_FLOATS.toString(), constant(codec, "kLayerFloats"))
+        assertEquals(NativePlan.STYLE_FLOATS.toString(), constant(codec, "kStyleFloats"))
         assertEquals(NativePlan.floatCount.toString(), constant(codec, "kPlanFloats"))
+    }
+
+    private fun nativeEnum(
+        source: String,
+        name: String,
+    ): List<String> {
+        val match = Regex("""enum class $name : uint8_t \{([^}]*)\}""").find(source) ?: error("no $name enum")
+        return match.groupValues[1]
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
+    @Test
+    fun `the engine's Modulator kinds are at the places NativePlan writes`() {
+        val kinds = nativeEnum(read("core/viz/include/geode/viz/Modulators.hpp"), "ModulatorKind")
+        val written =
+            mapOf(
+                "Lfo" to 0f,
+                "HitEnvelope" to NativePlan.KIND_HIT_ENVELOPE,
+                "StepSequencer" to NativePlan.KIND_STEP_SEQUENCER,
+                "RandomDrift" to NativePlan.KIND_RANDOM_DRIFT,
+                "ToggleOnBeat" to NativePlan.KIND_TOGGLE_ON_BEAT,
+                "RandomOnBeat" to NativePlan.KIND_RANDOM_ON_BEAT,
+            )
+        assertEquals(written.keys.toList(), kinds)
+        written.forEach { (kind, place) -> assertEquals(kind, kinds.indexOf(kind).toFloat(), place, 0f) }
+    }
+
+    @Test
+    fun `the engine's Layer 2 modes are the model's, in the same order`() {
+        val header = read("core/viz/include/geode/viz/Layers.hpp")
+        assertEquals(LayerBlend.entries.map { camel(it.name) }, nativeEnum(header, "Blend"))
+        assertEquals(LayerInfluence.entries.map { camel(it.name) }, nativeEnum(header, "Influence"))
+        assertEquals(LayerBlend.entries.size.toString(), constant(header, "kBlendCount"))
+        assertEquals(LayerInfluence.entries.size.toString(), constant(header, "kInfluenceCount"))
     }
 
     @Test
@@ -129,5 +169,21 @@ class NativeCustomizationKonsistTest {
         val reactions = read("core/viz/include/geode/viz/Reactions.hpp")
         val riseSeconds = constant(reactions, "kNoFlashMinRiseSeconds").removeSuffix("f").toFloat()
         assertEquals(NO_FLASH_MIN_RISE.value.toFloat() / MILLIS_PER_SECOND, riseSeconds, 0f)
+    }
+
+    @Test
+    fun `the engine waits for the same silence as the model`() {
+        val graph = read("core/viz/include/geode/viz/ReactionGraph.hpp")
+        assertEquals(Automation.SILENCE_LEVEL, constant(graph, "kSilenceLevel").removeSuffix("f").toFloat(), 0f)
+        val seconds = constant(graph, "kSilenceSeconds").removeSuffix("f").toFloat()
+        assertEquals(Automation.SILENCE.value.toFloat() / MILLIS_PER_SECOND, seconds, 0f)
+    }
+
+    @Test
+    fun `the engine raises Style switching's threshold as the model does`() {
+        val graph = read("core/viz/include/geode/viz/ReactionGraph.hpp")
+        assertEquals(Automation.THRESHOLD_RISE, constant(graph, "kThresholdRise").removeSuffix("f").toFloat(), 0f)
+        val seconds = constant(graph, "kThresholdHalfLifeSeconds").removeSuffix("f").toFloat()
+        assertEquals(Automation.THRESHOLD_HALF_LIFE.value.toFloat() / MILLIS_PER_SECOND, seconds, 0f)
     }
 }

@@ -6,6 +6,7 @@ in vec2 vUv;
 out vec4 fragColor;
 
 //#include lib_scene_uniforms
+//#include lib_style
 //#include lib_scene_motion
 //#include lib_palette
 //#include lib_scene_grade
@@ -49,12 +50,13 @@ out vec4 fragColor;
 #define ROD_TAU 6.2831853
 /** Compile-time ceiling on the march: MarchBudget.MAX_STEPS. uSteps is the runtime budget. */
 #define ROD_MAX_STEPS 128
-#define ROD_CELL 1.0
 #define ROD_RADIUS 1.6
 #define ROD_FOCAL 1.3
 #define ROD_FAR 26.0
 #define ROD_STRANDS 14.0
 #define ROD_FOG 0.09
+/** The manifest's "effects", by position: what the thermal tiers may switch off (uFxOff). */
+#define ROD_FX_MOTES 0
 
 /**
  * Bead modulation: amplitude and frequency at the deepest point of the morph.
@@ -68,10 +70,22 @@ const float ROD_BEAD_LIP = 1.0 + ROD_BEAD_AMP * ROD_BEAD_FREQ;
 /** How long a rod lives, in seconds, and how far along a cell the seed spreads the clocks. */
 const float ROD_LIFE_PERIOD = 11.0;
 
+/**
+ * The cell length: a unit, nudged (by 3 parts in 100000) so a whole number of
+ * cells spans DMT_FLIGHT_WRAP. The camera's distance wraps there, and with the
+ * cell grid repeating over the same distance, and the cell's hash taken on its
+ * index modulo the cell count, the wrap moves no rod.
+ */
+const float ROD_WRAP_CELLS = 6283.0;
+const float ROD_CELL = DMT_FLIGHT_WRAP / ROD_WRAP_CELLS;
+
 /** The step fraction the angular repeat and twist already needed; now also carries the two bounds above. */
 const float ROD_STEP = 0.6 / (DMT_TUNNEL_LIP * ROD_BEAD_LIP);
 
 float gTwist;
+float gStrands;
+float gRodRadius;
+float gFly;
 float gCellA;
 float gCellZ;
 float gBeadDepth;
@@ -89,20 +103,25 @@ float map(vec3 p) {
     // the tunnel is a cylinder down +z.
     p = dmtTunnelWarp(p);
     float rad = length(p.xy);
-    float ang = atan(p.y, p.x) + p.z * gTwist;
-    float sector = ROD_TAU / ROD_STRANDS;
+    // The twist is measured from the camera, not from the start of the flight:
+    // `p.z * gTwist` turned the whole tube by (distance flown) x (change in
+    // twist) whenever the mids moved, a spin that grew without bound, and
+    // jumped at the flight's wrap. Relative to the camera the same twist
+    // eases in and out and the wrap moves nothing.
+    float ang = atan(p.y, p.x) + (p.z - gFly) * gTwist;
+    float sector = ROD_TAU / gStrands;
     gCellA = floor(ang / sector);
     ang = mod(ang, sector) - 0.5 * sector;
-    gCellZ = floor(p.z / ROD_CELL);
+    gCellZ = mod(floor(p.z / ROD_CELL), ROD_WRAP_CELLS);
     float z = mod(p.z, ROD_CELL) - 0.5 * ROD_CELL;
-    vec3 q = vec3(ROD_RADIUS - rad, ang * ROD_RADIUS, z);
+    vec3 q = vec3(gRodRadius - rad, ang * gRodRadius, z);
     // The cell's own life. The seed is the cell's hash, so each rod's clock
     // is unrelated to its neighbours'; the radius follows the envelope and a
     // dead cell returns the empty capsule's distance, which is a valid lower
     // bound for a cell that holds nothing.
     gLife = dmtLife(hash11(gCellA * 7.13 + gCellZ * 3.71), ROD_LIFE_PERIOD);
     float beads = gBeadDepth * ROD_BEAD_AMP * sin(q.z * ROD_BEAD_FREQ);
-    float r = (0.14 + beads) * gLife;
+    float r = (0.14 + beads) * gLife * xm(uXThickness);
     return sdCapsule(q, vec3(0.0, 0.0, -0.4), vec3(0.0, 0.0, 0.4), r);
 }
 
@@ -121,6 +140,8 @@ void main() {
     float hit = uSpike;
 
     gTwist = 0.25 + 0.55 * midA;
+    gStrands = xcount(ROD_STRANDS);
+    gRodRadius = ROD_RADIUS * xm(uXScale);
     // Rod to pearls and back: a triangle of uFormPhase, so the morph is deep
     // in the middle of the ring and smooth at both ends, and glides because
     // uFormPhase does.
@@ -129,8 +150,11 @@ void main() {
     // The camera's distance down the tunnel, INTEGRATED rather than `uTime * rate`.
     // Multiplying a running clock by a loudness-dependent rate does not speed the
     // camera up, it teleports it: at t=60s a rate moving 1.4 -> 3.6 jumps the
-    // viewpoint 132 units down the tube in one frame. uFlowPhase only ever advances.
-    float fly = uFlowPhase * 9.0 + uTime * 1.4;
+    // viewpoint 132 units down the tube in one frame. uFlight only ever advances
+    // (uFlowPhase * 9 + uTime * 1.4 at the FLIGHT Extra's rate, summed on the CPU
+    // and wrapped at DMT_FLIGHT_WRAP so it never grows past where a float resolves a bead).
+    float fly = uFlight;
+    gFly = fly;
     // A slow roll, so the horizon of the tube turns as it banks.
     float roll = uTime * 0.08 + 0.25 * sin(uTime * 0.031);
     vec3 ro;
@@ -184,7 +208,7 @@ void main() {
         col = dmtShade(n, rd, hue, band * 2.0 + cellZ * 0.15, 0.85 + 0.15 * life, thin, trebA);
         // Young rods glow as they arrive, dying ones as they leave.
         col += pal(hue + 0.4) * (1.0 - life) * 0.35;
-        col = mix(col, sky, 1.0 - exp(-hitT * ROD_FOG));
+        col = mix(col, sky, 1.0 - exp(-hitT * ROD_FOG * uXFog));
     } else {
         col = sky;
         // The halo off the nearest rod the ray slid past.
@@ -192,8 +216,10 @@ void main() {
     }
     col += coreCol * (0.6 + 0.9 * bassA) * onAxis * 2.0 / (1.0 + 0.02 * tGlow * tGlow);
     col += coreCol * 0.06 * (0.6 + 0.9 * bassA) / (1.0 + dot(uv, uv) * 3.0);
-    // Sparks drifting between the rods, fading in with each new spawn.
-    col += mix(coreCol, vec3(1.0), 0.4) * fluidMotes(uv, 6.0, 0.13) * 0.18;
+    // Sparks drifting between the rods, fading in with each new spawn. The curl
+    // field under them costs eight noise lookups a pixel, so the hot tiers drop
+    // them first (the manifest's "motes" effect).
+    if (fxOn(ROD_FX_MOTES)) col += mix(coreCol, vec3(1.0), 0.4) * fluidMotes(uv, 6.0, 0.13) * 0.18;
 
     if (!touchIdle()) {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;

@@ -3,5 +3,12 @@
   "id": "spiral_eye",
   "label": "Spiral Eye",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march",
+  "inputs": ["noise_vol"],
+  "extras": [
+    { "name": "thickness", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

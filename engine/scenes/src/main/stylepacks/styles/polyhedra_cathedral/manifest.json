@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "polyhedra_cathedral",
+  "label": "Polyhedra Cathedral",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march",
+  "inputs": ["noise_vol", "blue_noise"],
+  "extras": [
+    { "name": "flight", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactions": [
+    { "signal": "bass", "target": "travel", "amount": 0.3, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "treble", "target": "edge", "amount": 0.25, "riseMs": 30, "fallMs": 300, "curve": "linear" },
+    { "signal": "hit", "target": "size", "amount": 0.2, "riseMs": 30, "fallMs": 350, "curve": "smooth" }
+  ],
+  "effects": ["reflections", "ao", "dome"],
+  "tiers": {
+    "eased": { "steps": 0.85 },
+    "reduced": { "steps": 0.7, "off": ["reflections"] },
+    "minimal": { "steps": 0.55, "off": ["reflections", "ao", "dome"] }
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
+}

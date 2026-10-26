@@ -3,5 +3,9 @@
   "id": "chroma_orb",
   "label": "Chroma Orb",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "size", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

@@ -1,6 +1,9 @@
 package dev.geode.feature.studio.core
 
+import dev.geode.feature.studio.api.EditCommand
+import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RecordingCommand
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
@@ -23,6 +26,10 @@ import dev.geode.kernel.ReportFailure
  * a Project that still has videos asks "Delete N videos too?" and either deletes them or moves them to
  * another Project; videos that come without a Project go to the default one, and with no default
  * they are handed back to be asked about, never dropped.
+ *
+ * The render queue's rules are [RenderQueue]'s (#338); the saved Renders that had not finished come
+ * back with the library and start once it is read. Recordings of the live Visual are [Recordings]'
+ * (#317), and the editors are [Edits]' (#318).
  */
 object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
     override fun reduce(
@@ -32,8 +39,24 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
         when (event) {
             is StudioEvent.Command ->
                 if (state.loading) Next(state.copy(pending = state.pending + event.command)) else command(state, event.command)
-            is StudioEvent.Loaded ->
-                ready(state.copy(projects = event.projects, videos = event.videos, defaultProject = event.defaultProject))
+            is StudioEvent.Loaded -> {
+                val read =
+                    ready(
+                        state.copy(
+                            projects = event.projects,
+                            videos = event.videos,
+                            defaultProject = event.defaultProject,
+                            renders = event.renders,
+                        ),
+                    )
+                // With the library known, the old Studio's videos and editor cuts can be brought in (#347).
+                Next(read.state, read.effects + Perform(StudioWork.ImportOldVideos) + Perform(EditWork.ListCuts))
+            }
+            is StudioEvent.OldVideosImported ->
+                Next(
+                    state.copy(projects = listOf(event.project) + state.projects, videos = state.videos + event.videos),
+                    listOf(Emit(StudioFact.VideosAdded(event.project.id, event.videos.map { it.id }))),
+                )
             is StudioEvent.SaveFolderChanged -> Next(state.copy(saveFolder = event.folder))
             is StudioEvent.ProjectCreated ->
                 Next(
@@ -49,14 +72,26 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
                     listOf(Emit(StudioFact.VideosAdded(event.project, event.videos.map { it.id }))),
                 )
             is StudioEvent.Failed -> failed(state, event.failure)
+            is StudioEvent.RenderSettingsChanged -> RenderQueue.settings(state, event.settings)
+            is StudioEvent.AppInFront -> RenderQueue.next(state.copy(appInFront = event.inFront))
+            is StudioEvent.RendersQueued -> RenderQueue.queued(state, event.renders)
+            is StudioEvent.RenderProgress -> RenderQueue.progress(state, event)
+            is StudioEvent.RenderEnded -> RenderQueue.ended(state, event)
+            is StudioEvent.FinishReady -> RenderQueue.finish(state, event)
+            is RecordingEvent -> Recordings.event(state, event)
+            is EditEvent -> Edits.event(state, event)
         }
 
-    /** The library is read: carry out the Commands that waited for it, in order. */
-    private fun ready(state: StudioState): Next<StudioState, StudioEffect> =
-        state.pending.fold(Next(state.copy(loading = false, pending = emptyList()))) { next, waiting ->
-            val after = command(next.state, waiting)
-            Next(after.state, next.effects + after.effects)
-        }
+    /** The library is read: carry out the Commands that waited for it, in order, then start the queue. */
+    private fun ready(state: StudioState): Next<StudioState, StudioEffect> {
+        val drained: Next<StudioState, StudioEffect> =
+            state.pending.fold(Next(state.copy(loading = false, pending = emptyList()))) { next, waiting ->
+                val after = command(next.state, waiting)
+                Next(after.state, next.effects + after.effects)
+            }
+        val started = RenderQueue.next(drained.state)
+        return Next(started.state, drained.effects + started.effects)
+    }
 
     private fun failed(
         state: StudioState,
@@ -79,7 +114,14 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioCommand.SetDefaultProject -> setDefault(state, command.project)
             is StudioCommand.DeleteProject -> delete(state, command)
             is StudioCommand.MoveVideo -> move(state, command)
-            is StudioCommand.AddVideos -> add(state, command)
+            is StudioCommand.AddVideos -> addVideos(state, command.videos, command.project)
+            is StudioCommand.QueueRender -> RenderQueue.queue(state, command.spec)
+            is StudioCommand.RenderAgain -> RenderQueue.again(state, command.video, command.spec)
+            is StudioCommand.CancelRenders -> RenderQueue.cancel(state, command.renders)
+            StudioCommand.ClearFinishedRenders -> RenderQueue.clearFinished(state)
+            is StudioCommand.ExportAs -> Siblings.exportAs(state, command)
+            is RecordingCommand -> Recordings.command(state, command)
+            is EditCommand -> Edits.command(state, command)
         }
 
     private fun create(
@@ -143,16 +185,26 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
         return Next(state.copy(videos = videos), listOf(Perform(StudioWork.MoveVideo(video.id, command.to))))
     }
 
-    private fun add(
-        state: StudioState,
-        command: StudioCommand.AddVideos,
-    ): Next<StudioState, StudioEffect> {
-        if (command.videos.isEmpty()) return Next(state)
-        val project = command.project?.takeIf { state.has(it) } ?: state.defaultProject?.takeIf { state.has(it) }
-        val effect: StudioEffect =
-            if (project == null) Emit(StudioFact.ProjectNeeded(command.videos)) else Perform(StudioWork.AddVideos(project, command.videos))
-        return Next(state, listOf(effect))
-    }
-
     private fun StudioState.has(project: ProjectId): Boolean = projects.any { it.id == project }
+}
+
+/** [project] when it exists, otherwise the default Project when one is chosen; null with neither. */
+internal fun StudioState.projectFor(project: ProjectId?): ProjectId? {
+    val known = projects.map { it.id }
+    return project?.takeIf { it in known } ?: defaultProject?.takeIf { it in known }
+}
+
+/**
+ * Saves [videos] into [project], or the default Project when [project] is null or gone; with neither,
+ * hands them back to be asked about.
+ */
+internal fun addVideos(
+    state: StudioState,
+    videos: List<NewVideo>,
+    project: ProjectId?,
+): Next<StudioState, StudioEffect> {
+    if (videos.isEmpty()) return Next(state)
+    val into = state.projectFor(project)
+    val effect: StudioEffect = if (into == null) Emit(StudioFact.ProjectNeeded(videos)) else Perform(StudioWork.AddVideos(into, videos))
+    return Next(state, listOf(effect))
 }

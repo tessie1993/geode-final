@@ -3,5 +3,11 @@
   "id": "hexgrid",
   "label": "Hexgrid",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "flight", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["bands", "spectrum"]}
 }

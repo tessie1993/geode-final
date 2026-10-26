@@ -14,7 +14,6 @@ class FeatureRulesTest {
         listOf(
             Module(":app", setOf(":feature:capture:handlers", ":feature:capture:ui", ":arch:kernel", ":design")),
             Module(":design", emptySet()),
-            Module(":design:elements:water", setOf(":design")),
             Module(":arch:kernel", setOf(":engine:audio-core")),
             Module(":arch:audio", setOf(":engine:audio-core")),
             Module(":feature:playback:api", setOf(":arch:kernel")),
@@ -141,51 +140,6 @@ class FeatureRulesTest {
                 ":design may not depend on :engine:scenes",
             ),
             FeatureRules.dependenciesFollowTheTable(listOf(design)),
-        )
-    }
-
-    @Test
-    fun `an Element module depends on design only, and only the app may use it`() {
-        val modules =
-            listOf(
-                Module(":design:elements:water", setOf(":design", ":feature:capture:api", ":arch:audio", ":engine:audio-core")),
-                Module(":app", setOf(":design:elements:water")),
-                Module(":feature:capture:ui", setOf(":design:elements:water")),
-                Module(":design", setOf(":design:elements:water")),
-                Module(":engine:scenes", setOf(":design:elements:water")),
-            )
-
-        assertEquals(
-            listOf(
-                ":design:elements:water may not depend on :feature:capture:api",
-                ":design:elements:water may not depend on :arch:audio",
-                ":design:elements:water may not depend on :engine:audio-core",
-                ":feature:capture:ui may not depend on :design:elements:water",
-                ":design may not depend on :design:elements:water",
-                ":engine:scenes may not depend on :design:elements:water",
-            ),
-            FeatureRules.dependenciesFollowTheTable(modules),
-        )
-    }
-
-    @Test
-    fun `an Element module that reaches a feature, the engine or audio is reported`() {
-        val water = ":design:elements:water"
-        val sources =
-            listOf(
-                SourceFile(water, "water/Touch.kt", setOf("dev.geode.design.theme.LocalReducedMotion", "androidx.compose.ui.Modifier")),
-                SourceFile(water, "water/Bad.kt", setOf("dev.geode.feature.playback.api.PlayerState", "android.media.AudioRecord")),
-                SourceFile(water, "water/Beat.kt", setOf("dev.geode.audio.BeatTracker")),
-                SourceFile(":feature:capture:handlers", "capture/X.kt", setOf("android.media.AudioRecord")),
-            )
-
-        assertEquals(
-            listOf(
-                "water/Bad.kt: :design:elements:water uses dev.geode.feature.playback.api.PlayerState",
-                "water/Bad.kt: :design:elements:water uses android.media.AudioRecord",
-                "water/Beat.kt: :design:elements:water uses dev.geode.audio.BeatTracker",
-            ),
-            FeatureRules.elementModulesStayDrawOnly(sources),
         )
     }
 

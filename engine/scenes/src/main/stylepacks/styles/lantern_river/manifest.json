@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "lantern_river",
+  "label": "Lantern River",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march",
+  "extras": [
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "fog", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["onset", "bands"]}
+}

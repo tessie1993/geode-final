@@ -144,4 +144,73 @@ class FeatureTimelineTest {
         assertTrue(merged.drop)
         assertTrue(merged.arrival)
     }
+
+    /** Half a frame before frame [frame] at [fps], as OffscreenSceneRenderer centres its windows (#302). */
+    private fun halfwayBefore(
+        frame: Int,
+        fps: Int,
+    ) = Math.floorDiv((2L * frame - 1) * 1000L, 2L * fps)
+
+    @Test
+    fun `a Render's windows centred on each frame draw every event exactly once`() {
+        val t = timeline(events)
+        for (fps in listOf(24, 30, 60, 120)) {
+            val seen = Seen()
+            var frame = 0
+            while (frame * 1000L / fps < t.durationMs + 1000L / fps) {
+                seen.add(t.featuresAround(frame * 1000L / fps, halfwayBefore(frame, fps), halfwayBefore(frame + 1, fps)))
+                frame++
+            }
+            assertEquals("kicks at $fps fps", listOf(0.5f, 0.9f, 0.2f), seen.kicks)
+            assertEquals("beats at $fps fps", 1, seen.beats)
+            assertEquals("snares at $fps fps", 1, seen.snares)
+            assertEquals("hats at $fps fps", 1, seen.hats)
+            assertEquals("drops at $fps fps", 1, seen.drops)
+            assertEquals("arrivals at $fps fps", 1, seen.arrivals)
+        }
+    }
+
+    @Test
+    fun `an event is drawn on the frame nearest the moment it is heard, never a frame early`() {
+        val t = timeline(events)
+
+        // At 30 fps frame 2 is at 66 ms, its window (50 ms, 83 ms]: frame 3's kick (50 ms) is not in it.
+        assertEquals(0f, t.featuresAround(66L, halfwayBefore(2, 30), halfwayBefore(3, 30)).kick, 0f)
+        // Frame 1 is at 33 ms, its window (16 ms, 50 ms]: the kick heard at 50 ms is drawn there.
+        assertEquals(0.5f, t.featuresAround(33L, halfwayBefore(1, 30), halfwayBefore(2, 30)).kick, 0f)
+        // The continuous values are those of the frame's own moment.
+        assertEquals(0.002f, t.featuresAround(33L, halfwayBefore(1, 30), halfwayBefore(2, 30)).rms, 1e-6f)
+        val none = FeatureTimeline(emptyList(), hopMs = 16).featuresAround(0L, -10L, 10L)
+        assertEquals(0f, none.rms, 0f)
+        assertFalse(none.beat)
+    }
+
+    @Test
+    fun `levels stamped at the middle of their window are drawn at that moment, not half a window early`() {
+        // As the offline analyser stamps them (#302): 21 ms in, then every 16.67 ms.
+        val frames = (0..600).map { i -> TimelineFrame(21L + i * 1000L / 60, AudioFeatures.empty().copy(rms = i / 1000f)) }
+        val t = FeatureTimeline(frames, hopMs = 16)
+
+        // At 100 ms the nearest hop is 5 (104 ms), not 6 (121 ms), which counting hops from 0 would give.
+        assertEquals(0.005f, t.featuresAt(100L).rms, 1e-6f)
+        assertEquals(0.299f, t.featuresAt(5_000L).rms, 1e-6f)
+        // Before the first hop, the first; after the last, the last; halfway between two, the later.
+        assertEquals(0f, t.featuresAt(0L).rms, 0f)
+        assertEquals(0.6f, t.featuresAt(99_000L).rms, 1e-6f)
+        assertEquals(0.001f, t.featuresAt(29L).rms, 1e-6f)
+        assertEquals(0f, t.featuresAt(28L).rms, 0f)
+    }
+
+    @Test
+    fun `the track's tempo is the one it settled on, not its last hop's`() {
+        fun track(vararg bpm: Float) =
+            FeatureTimeline(bpm.mapIndexed { i, b -> TimelineFrame(i * 16L, AudioFeatures.empty().copy(bpm = b)) }, hopMs = 16)
+
+        // A fade-out drifts the last hops; the tempo read across the second half holds.
+        assertEquals(124f, track(0f, 90f, 124f, 124f, 124f, 124f, 124f, 131f).bpm, 0f)
+        // The tracker's whole range counts, up to 250 BPM.
+        assertEquals(240f, track(240f, 240f, 240f).bpm, 0f)
+        assertEquals(0f, track(0f, 0f).bpm, 0f)
+        assertEquals(0f, FeatureTimeline(emptyList(), hopMs = 16).bpm, 0f)
+    }
 }

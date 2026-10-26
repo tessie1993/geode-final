@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <cmath>
 
 #include "geode/util/Log.hpp"
@@ -12,7 +13,8 @@ namespace {
 constexpr const char* kTag = "GeodeRenderer";
 constexpr int kPaletteSize = 256;
 constexpr int kPaletteRows = 5;
-constexpr int kPcmCapacity = 512 * 8;
+// The strongest smear Settings offers (BehaviorSettings.TOUCH_SMEAR_STRENGTH).
+constexpr float kMaxTouchSmear = 2.0f;
 }  // namespace
 
 Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
@@ -24,9 +26,7 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
                           [this] { return thermal_.pacedFps(); },
                           [this](const std::string& path) { notePresetLoaded(path); },
                           [this] { return thermal_.offscreen(); }}),
-      compositePass_(assets_, &programCache_),
-      pcm_(kPcmCapacity, 0.0f),
-      pcmDeliverScratch_(kPcmCapacity, 0.0f) {
+      compositePass_(assets_, &programCache_) {
     programCache_.install(cacheDir_);
 }
 
@@ -47,19 +47,11 @@ void Renderer::setFeatures(const GeodeFeatureFrame& features) {
     features_ = features;
 }
 
-void Renderer::setLayer(const std::string& sceneId, float mix, int blendOrdinal) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    layerSceneId_ = sceneId;
-    layerMix_ = mix;
-    layerBlend_ = blendOrdinal;
-}
-
-void Renderer::setTransition(const std::string& id, int64_t durationMs) {
+void Renderer::setTransition(const std::string& id, int64_t durationMs, uint64_t seed) {
     std::lock_guard<std::mutex> lock(stateLock_);
     transitionId_ = safety::transitionId(id);
-    // A 0ms (or negative) duration turns the progress fraction in
-    // drawSecondaryTargets into 0.0/0 == NaN, and NaN never satisfies
-    // `progress >= 1.0f`, so the outgoing scene would never be released.
+    transitionSeed_ = seed;
+    // transition::Progress holds every change to half a second at least, whatever is asked here.
     transitionDurationMs_ = std::max<int64_t>(durationMs, 1);
 }
 
@@ -70,12 +62,13 @@ void Renderer::beginParamMorph(float seconds) {
     morphRemainSec_ = seconds * 3.0f;
 }
 
-void Renderer::pushPcm(const float* samples, int count) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    const int n = std::min(count, kPcmCapacity);
-    if (n <= 0) return;
-    std::copy(samples + (count - n), samples + count, pcm_.begin());
-    pcmCount_ = n;
+void Renderer::setFramePcm(const float* stereo, int frames, int fresh) {
+    const int n = stereo ? std::clamp(frames, 0, kPcmSpanFrames) : 0;
+    // The newest frames of a longer span, which is where the audio heard is.
+    const std::ptrdiff_t skip = stereo ? static_cast<std::ptrdiff_t>(frames - n) * 2 : 0;
+    std::copy(stereo + skip, stereo + skip + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
+    pendingPcmFrames_ = n;
+    pendingPcmFresh_ = std::clamp(fresh, 0, n);
 }
 
 double Renderer::monotonicSeconds() {
@@ -84,6 +77,11 @@ double Renderer::monotonicSeconds() {
 
 void Renderer::queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
     overlays_.queueTouchStroke(nx, ny, ndx, ndy, dt, strength, monotonicSeconds());
+}
+
+void Renderer::setTouchSmear(bool on, float strength) {
+    const float s = std::isfinite(strength) ? std::clamp(strength, 0.0f, kMaxTouchSmear) : 0.0f;
+    touchSmear_.store(on ? s : 0.0f, std::memory_order_relaxed);
 }
 
 void Renderer::loadMilkPreset(const std::string& path) {
@@ -138,7 +136,7 @@ void Renderer::applyMilkRequests() {
 
 // Any thread. Copies the pixel buffer under stateLock_ into the retained overlay buffer; the
 // actual GL upload (and the ARGB->RGBA conversion) happens on the GL thread in
-// applyOverlayUploads(), matching pushPcm()'s copy-now/convert-later split.
+// applyOverlayUploads(): copy now, convert later.
 void Renderer::setOverlayRgba(const uint32_t* pixels, int width, int height) {
     std::lock_guard<std::mutex> lock(stateLock_);
     if (pixels == nullptr || width <= 0 || height <= 0) {
@@ -270,6 +268,7 @@ void Renderer::onSurfaceCreated() {
         quadVao_ = 0;
     }
     touchField_.reset();
+    gravityField_.reset();
     loadScale_.reset();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -277,10 +276,32 @@ void Renderer::onSurfaceCreated() {
     }
     fboA_.release();
     fboB_.release();
+    fboOut_.release();
+    fboL_.release();
+    hdrPass_.release();
+    sharedInputs_.release();
+    dofPass_.release();
+    particlePass_.release();
     compositePass_.releaseStaleTextures();
+    // The HDR targets (ToneMap.hpp) are RGBA16F where this device proved it renders and blends them.
+    const FormatProbe half = profile_.report.probeOf(ProbedFormat::RGBA16F);
+    const Framebuffer::Format hdrFormat =
+        half.renderable() && half.blendsAdditively ? Framebuffer::Format::Rgba16F : Framebuffer::Format::Rgba8;
+    fboA_.setFormat(hdrFormat);
+    fboB_.setFormat(hdrFormat);
+    fboOut_.setFormat(hdrFormat);
+    fboL_.setFormat(hdrFormat);
+    trailPass_.setTargetFormat(hdrFormat);
+    sharedFx_.setTargetFormat(hdrFormat);
+    hdrPass_.setTargetFormat(hdrFormat);
+    sharedInputs_.attach(&assets_, &hdrPass_, hdrFormat);
+    dofPass_.setTargetFormat(hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
+    layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
+    layerMixer_.reset();
     overlays_.recreate();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -302,6 +323,9 @@ void Renderer::onSurfaceCreated() {
     if (!trailPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!sharedFx_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
     if (!compositePass_.create(*fadeVert, &error)) fail(error);
+    if (!hdrPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
+    if (!dofPass_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
+    if (!particlePass_.create(assets_, &programCache_, &error)) fail(error);
     if (!noFlash_.create(assets_, &programCache_, *fadeVert, &error)) fail(error);
 
     // Port of CyclicPalettes.createTexture: five 256-entry RGB rows.
@@ -345,12 +369,19 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     in.surfaceWidth = width_;
     in.surfaceHeight = height_;
     in.offscreen = thermal_.offscreen();
+    in.exportSupersample = exportSupersample_;
     in.thermalCeiling = thermal_.renderCeiling();
     // MilkDrop follows load on its own (MilkdropAdaptation: mesh first, buffers only at a preset
-    // change), so the load scale leaves its scene target alone; the thermal ceiling still applies.
-    const bool followsLoad = scene == nullptr || scene->family() != SceneFamily::Milkdrop;
-    in.loadScale = followsLoad ? loadScale_.scale() : scale::LoadScaleConfig{}.maxScale;
+    // change), so the load scale leaves its scene target alone; the quality and thermal ceiling still
+    // apply, and its target is held to kMilkdropMaxMegapixels, since projectM draws its passes at that
+    // size too (#303).
+    const bool milkdrop = scene != nullptr && scene->family() == SceneFamily::Milkdrop;
+    in.loadScale = milkdrop ? scale::LoadScaleConfig{}.maxScale : loadScale_.scale();
+    in.maxMegapixels = milkdrop ? scale::kMilkdropMaxMegapixels : 0.0f;
     in.styleScale = scene != nullptr ? styleScaleFor(scene->id()) : scale::kDefaultStyleRenderScale;
+    // Two Styles drawing every frame: both draw softer (RenderScale.hpp, kLayeredRenderScale).
+    in.layered = layerScene_ != nullptr && layerScene_ != scene;
+    in.layerStyleScale = in.layered ? styleScaleFor(layerScene_->id()) : scale::kDefaultStyleRenderScale;
     return in;
 }
 
@@ -373,12 +404,12 @@ void Renderer::applyRenderSize(scale::RenderSize size) {
         fboA_.resizePreserving(size.width, size.height);
         if (fboA_.width() != size.width || fboA_.height() != size.height) return;
         if (fboB_.ok()) fboB_.resizePreserving(size.width, size.height);
+        if (fboL_.ok()) fboL_.resizePreserving(size.width, size.height);
     }
     renderWidth_ = size.width;
     renderHeight_ = size.height;
     for (auto& entry : scenes_) {
         entry.second->resize(renderWidth_, renderHeight_);
-        entry.second->setWindowSize(width_, height_);
     }
     overlays_.resize(renderWidth_, renderHeight_);
 }
@@ -392,11 +423,20 @@ bool Renderer::setScene(const std::string& sceneId) {
 
 void Renderer::warmTransition(const std::string& id) { compositePass_.warmTransition(id); }
 
+uint32_t Renderer::drawnStyle() const { return activeScene_ != nullptr ? layer::styleHash(activeScene_->id()) : layer::kNoStyle; }
+
+uint32_t Renderer::requestedStyle() const {
+    std::lock_guard<std::mutex> lock(stateLock_);
+    return requestedSceneId_.empty() ? layer::kNoStyle : layer::styleHash(requestedSceneId_);
+}
+
 void Renderer::cut() {
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
+    switchGate_.cancel();
     outgoingParams_.reset();
     layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
 }
 
 Scene* Renderer::builtScene(const std::string& id) {
@@ -432,10 +472,11 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     }
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
+    scene->setGravityField(&gravityField_);
+    scene->setSharedInputs(&sharedInputs_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);
-    scene->setWindowSize(width_, height_);
     if (!textureDir.empty()) scene->setMilkTextureDir(textureDir);
     if (!preset.empty()) scene->queueMilkPreset(preset);
     return scene;
@@ -446,7 +487,9 @@ void Renderer::releaseScenes() {
     scenes_.clear();
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
+    switchGate_.cancel();
     layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
 }
 
 }  // namespace geode::viz

@@ -5,53 +5,51 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -59,13 +57,33 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowWidthSizeClass
 import dev.geode.R
-import dev.geode.design.element.ElementNavBar
-import dev.geode.design.element.ElementNavItem
-import dev.geode.design.theme.StoneIcon
-import dev.geode.design.theme.StoneIconArt
+import dev.geode.design.glass.ArtworkBackdrop
+import dev.geode.design.glass.CalmBackdrop
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassCard
+import dev.geode.design.glass.GlassDialog
+import dev.geode.design.glass.GlassEdge
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassMessage
+import dev.geode.design.glass.GlassNavItem
+import dev.geode.design.glass.GlassNavigationBar
+import dev.geode.design.glass.GlassNavigationRail
+import dev.geode.design.glass.GlassNotice
+import dev.geode.design.glass.GlassSectionHeader
+import dev.geode.design.glass.GlassSheet
+import dev.geode.design.glass.GlassSource
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.GlassTone
+import dev.geode.design.glass.GlassTopBar
+import dev.geode.design.glass.glassSource
+import dev.geode.design.glass.glassSurface
+import dev.geode.design.glass.rememberGlassSource
 import dev.geode.engine.types.Millis
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.ui.LibraryRoute
+import dev.geode.feature.playback.api.Playback
+import dev.geode.feature.playback.api.PlaybackCommand
 import dev.geode.feature.playback.api.PlayerState
 import dev.geode.feature.playback.api.currentQueue
 import dev.geode.feature.playback.ui.ListeningRoute
@@ -73,13 +91,18 @@ import dev.geode.feature.playback.ui.MiniPlayerRoute
 import dev.geode.feature.playback.ui.PlayerAction
 import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.feature.playback.ui.QueueRoute
-import dev.geode.feature.settings.api.Element
+import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
+import dev.geode.feature.settings.api.LookSettings
+import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
+import dev.geode.studio.renderChoicesOf
 import dev.geode.ui.shell.AppUiCommand
 import dev.geode.ui.shell.AppUiFact
 import dev.geode.ui.shell.Banner
@@ -99,12 +122,11 @@ private const val CRASH_REPORT_MAX_BYTES = 64 * 1024
  * The app's root: the App UI shell (#17). The App UI reducer (#182) decides where the person is and
  * what covers it, and this draws that: the Bar (Music, Visuals, Home, Studio, Settings, for everyone),
  * the Mini-player on every page but Home, the full-screen Visual, the Queue and Tools sheets, and the
- * failure banner. Pages whose feature has not switched over yet still show their old screen.
+ * failure banner.
  */
 @Composable
 fun AppRoot() {
-    val viewModel: PlayerViewModel = geodeViewModel()
-    val settingsViewModel: SettingsViewModel = geodeViewModel()
+    val engineHold: EngineHoldViewModel = geodeViewModel()
     val shell: ShellViewModel = geodeViewModel()
     val appUi = shell.appUi
     val context = LocalContext.current
@@ -131,7 +153,10 @@ fun AppRoot() {
             LifecycleEventObserver { _, event ->
                 when (event) {
                     Lifecycle.Event.ON_RESUME -> if (drawVisual) visualizerView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> visualizerView.onPause()
+                    // In picture-in-picture (#287) the activity is paused but still on screen, so the
+                    // Visual goes on drawing; it stops when the window closes and the activity stops.
+                    Lifecycle.Event.ON_PAUSE -> if (context.findActivity()?.isInPictureInPictureMode != true) visualizerView.onPause()
+                    Lifecycle.Event.ON_STOP -> visualizerView.onPause()
                     else -> Unit
                 }
             }
@@ -141,10 +166,12 @@ fun AppRoot() {
             visualizerView.onPause()
         }
     }
-    val gui by settingsViewModel.guiPrefs.collectAsStateWithLifecycle()
     val ui by appUi.state.collectAsStateWithLifecycle()
     val playing by shell.playback.state.collectAsStateWithLifecycle()
     val loaded = playing.player != PlayerState.Idle
+    // Leaving the full-screen Visual's app shrinks it into a picture-in-picture window (#287).
+    val inPip = rememberPictureInPicture(PictureInPicture.allowed(ui.fullScreen, visualsOff), shell.playback)
+    LaunchedEffect(inPip) { if (inPip && drawVisual) visualizerView.onResume() }
     // Back closes what is on top, then goes Home, then leaves the app (#182). The sheets, the search
     // and the full-screen Visual handle their own Back above this one.
     BackHandler { appUi.send(AppUiCommand.Back) }
@@ -176,35 +203,48 @@ fun AppRoot() {
                 }
             }
     }
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
-    val element = settingsValues?.look?.element ?: Element.Default
+    val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
+    val visualShown = VisualWatch.shown(onVisualsTab = ui.place == Place.VISUALS, fullScreen = ui.fullScreen)
+    if (!visualsOff) {
+        LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.styleCues, shell.settings, surface, visualShown)
+    }
+    // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
+    var reactionsHeld by remember { mutableStateOf(false) }
+    LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }
+    val look = settingsValues?.look
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
-    val visual: @Composable () -> Unit = {
-        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
+    // Full-screen mode hands the host the double tap that shows and hides its controls; the Visuals
+    // tab, where the tab UI is the thing being touched, passes none.
+    // Settings' Tilt as the weight the engine fades to: Subtle is half, Full all. Reduce motion stills
+    // it whatever the setting says (#315); the host also stops it under Battery Saver.
+    val tilt = settingsValues?.behavior?.let(::tiltWeight) ?: 0f
+    val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
+        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
     }
-    GeodeTheme(element, gui) {
+    // Settings' defaults while the stored ones are being read.
+    val reducedMotion = settingsValues?.behavior?.reducedMotion ?: false
+    GeodeTheme(look ?: LookSettings(), reducedMotion, visualsOff) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }
-        val miniPlayer: @Composable () -> Unit = {
+        // What the bars and sheets frost: the page and its backdrop (#324).
+        val source = rememberGlassSource()
+        val artwork = rememberNowPlayingArtwork(shell)
+        val miniPlayer: (@Composable () -> Unit)? =
             if (ui.playerBarShown(loaded)) {
-                MiniPlayerRoute(shell.playback, elapsedNow = ::elapsedNow, onExpand = { appUi.send(AppUiCommand.EnterFullScreen) })
+                { MiniPlayerRoute(shell.playback, elapsedNow = ::elapsedNow, onExpand = { appUi.send(AppUiCommand.EnterFullScreen) }) }
+            } else {
+                null
             }
-        }
         // Set by Settings > Help to replay the intro tour; first-run setup shows it by itself (#187).
         var tutorialRunning by rememberSaveable { mutableStateOf(false) }
         val page: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             when (ui.place) {
-                Place.HOME -> HomeScreen(shell, loaded, onResume = viewModel::resumeLastPlayed)
+                Place.HOME -> HomeScreen(shell, loaded, onResume = { resumeLastPlayed(shell.playback) }, onOpen = open)
                 Place.MUSIC ->
                     if (twoPane) {
                         Row(Modifier.fillMaxSize()) {
                             Box(Modifier.weight(1f)) { MusicLibrary(shell) }
-                            Box(
-                                Modifier
-                                    .width(1.dp)
-                                    .fillMaxHeight()
-                                    .background(MaterialTheme.colorScheme.outlineVariant),
-                            )
+                            VerticalDivider()
                             Box(Modifier.weight(1f)) { PlayerControls(shell) }
                         }
                     } else {
@@ -212,8 +252,13 @@ fun AppRoot() {
                     }
                 Place.VISUALS ->
                     // Full-screen mode hosts the Visual itself, so it is never in two places at once.
-                    VisualsPlace(shell, onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) }) {
-                        if (!ui.fullScreen) visual()
+                    VisualsPlace(
+                        shell,
+                        onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) },
+                        // Loads the MilkDrop preset the Visual shows again from its file (#382).
+                        onReloadMilkPreset = { visualizerView.visualizerRenderer.reloadCurrentMilkPreset() },
+                    ) {
+                        if (!ui.fullScreen) visual(null)
                     }
                 Place.STUDIO -> StudioPlace(shell)
                 Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
@@ -221,20 +266,29 @@ fun AppRoot() {
         }
         val content: @Composable (twoPane: Boolean) -> Unit = { twoPane ->
             Column {
-                PlaybackNoticeBanner(viewModel)
+                PlaybackNoticeBanner(engineHold)
                 page(twoPane)
             }
         }
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Box(Modifier.fillMaxSize()) {
             val widthClass = currentWindowAdaptiveInfo().windowSizeClass.windowWidthSizeClass
+            val backdrop: @Composable () -> Unit = { PlaceBackdrop(ui.place, artwork) }
             if (widthClass == WindowWidthSizeClass.COMPACT) {
-                AppShellCompact(ui.place, open, gui, miniPlayer, content = { content(false) })
+                AppShellCompact(
+                    ui.place,
+                    open,
+                    look?.playerPosition ?: PlayerPosition.BOTTOM,
+                    miniPlayer,
+                    source,
+                    backdrop,
+                    content = { content(false) },
+                )
             } else {
-                AppShellExpanded(ui.place, open, miniPlayer, content = { content(true) })
+                AppShellExpanded(ui.place, open, miniPlayer, backdrop, content = { content(true) })
             }
             val clipLabel = stringResource(R.string.crash_clip_label)
             crashText?.let { text ->
-                androidx.compose.material3.AlertDialog(
+                GlassDialog(
                     onDismissRequest = {},
                     title = { Text(stringResource(R.string.crash_dialog_title)) },
                     text = {
@@ -258,13 +312,23 @@ fun AppRoot() {
                 )
             }
             if (ui.fullScreen) {
-                FullScreenVisual(shell, keepScreenOn, visual)
+                // With Visuals off, the mini-player opens the plain player instead (glossary).
+                if (visualsOff) {
+                    PlainPlayer(shell, artwork)
+                } else {
+                    FullScreenVisual(shell, keepScreenOn, visual, inPip, reactionsHeld, onHeldChange = { reactionsHeld = it })
+                }
             }
-            PlayerSheet(shell, ui.sheet)
-            ui.banner?.let { banner ->
-                FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
+            // The picture-in-picture window shows the Visual alone; what covered it comes back with the app.
+            if (!inPip) {
+                RecordingProjectHost(shell)
+                val sheetOverVisual = ui.place == Place.VISUALS || (ui.fullScreen && !visualsOff)
+                PlayerSheet(shell, ui.sheet, if (sheetOverVisual) GlassBackdrop.Visual else GlassBackdrop.Live(source))
+                ui.banner?.let { banner ->
+                    FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
+                }
+                DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
             }
-            DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
             // First-run setup, and the Save folder step again whenever the folder is lost (#187).
             FirstRunSetup(
                 shell.settings,
@@ -276,10 +340,36 @@ fun AppRoot() {
     }
 }
 
+/** How strongly tilt moves the Visual for these Settings, 0 when it must not move it at all. */
+internal fun tiltWeight(behavior: BehaviorSettings): Float =
+    when {
+        behavior.reducedMotion -> 0f
+        else ->
+            when (behavior.tilt) {
+                TiltAmount.OFF -> 0f
+                TiltAmount.SUBTLE -> TILT_SUBTLE
+                TiltAmount.FULL -> 1f
+            }
+    }
+
+/** Subtle tilt: half of Full. */
+private const val TILT_SUBTLE = 0.5f
+
 /** The monotonic clock Playback's marks use (ADR-0004). */
 private fun elapsedNow(): Millis = Millis(SystemClock.elapsedRealtime())
 
-private tailrec fun Context.findActivity(): Activity? =
+/** Home's Resume: plays what is loaded, or the song played last when nothing is. */
+private fun resumeLastPlayed(playback: Playback) {
+    val state = playback.state.value
+    if (state.player.currentQueue != null) {
+        playback.send(PlaybackCommand.Resume)
+        return
+    }
+    val last = state.history.firstOrNull()?.track ?: return
+    playback.send(PlaybackCommand.Play(listOf(last)))
+}
+
+internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
         is Activity -> this
         is ContextWrapper -> baseContext.findActivity()
@@ -293,22 +383,26 @@ private fun MusicLibrary(shell: ShellViewModel) {
 }
 
 /**
- * Studio: the Studio feature's own library place (#17), with the old export entry re-anchored as a
- * sheet until Studio's own export lands. The save folder is a Settings value, picked here as in the
- * first-run step.
+ * Studio: the Studio feature's own library place (#17), where Renders are set up and queued (#316)
+ * from the Library's Tracks and playlists and the saved presets, and where the clip editor and the
+ * Timeline cut Edits (#318) with the tools only the app can reach. The save folder is a Settings value,
+ * picked here as in the first-run step.
  */
 @Composable
 private fun StudioPlace(shell: ShellViewModel) {
-    Box(Modifier.fillMaxSize()) {
-        StudioRoute(
-            shell.studio,
-            onSaveFolderPicked = { shell.settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
-        )
-        TextButton(
-            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.EXPORT)) },
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-        ) { Text(stringResource(R.string.export_title)) }
-    }
+    val library by shell.library.state.collectAsStateWithLifecycle()
+    val visuals by shell.visuals.state.collectAsStateWithLifecycle()
+    val choices =
+        remember(library.songs, library.playlists, visuals.presets, visuals.milkdrop) {
+            renderChoicesOf(library, visuals.presets, visuals.milkdrop)
+        }
+    val editorTools: EditorToolsViewModel = geodeViewModel()
+    StudioRoute(
+        shell.studio,
+        onSaveFolderPicked = { shell.settings.send(FolderCommand.SetVideoFolder(FolderUri(it))) },
+        renderChoices = choices,
+        editorTools = editorTools,
+    )
 }
 
 /**
@@ -346,47 +440,124 @@ private fun PlayerControls(
  * The sheet the App UI has open, if any: the Queue, Tools, or Customize over full-screen mode (owner
  * decision on #17: Customize is both a Visuals sub-tab and this sheet).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlayerSheet(
     shell: ShellViewModel,
     sheet: Sheet?,
+    backdrop: GlassBackdrop,
 ) {
     if (sheet == null) return
     val close = { shell.appUi.send(AppUiCommand.CloseSheet) }
-    ModalBottomSheet(onDismissRequest = close) {
+    GlassSheet(onDismissRequest = close, backdrop = backdrop) {
         when (sheet) {
             Sheet.QUEUE -> QueueRoute(shell.playback)
             Sheet.LISTENING -> ListeningRoute(shell.playback, elapsedNow = ::elapsedNow)
             Sheet.CUSTOMIZE -> CustomizePanel(shell, onHide = close, onBrowsePresets = close)
             Sheet.CAPTURE -> CaptureRoute(shell.capture)
-            Sheet.EXPORT -> ExportRoute()
         }
     }
 }
 
 /**
- * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, and the way into the
- * Customize sheet. Leaving it is the App UI's Back.
+ * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, the way into the
+ * Customize sheet, and the Record control (#317). Leaving it is the App UI's Back. In
+ * picture-in-picture ([inPip], #287) the window shows the Visual alone, with no App UI over it. The
+ * freeze switch ([reactionsHeld], #366) holds the Sound signals while the picture keeps moving.
  */
 @Composable
 private fun FullScreenVisual(
     shell: ShellViewModel,
     keepScreenOn: Boolean,
-    visual: @Composable () -> Unit,
+    visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit,
+    inPip: Boolean,
+    reactionsHeld: Boolean,
+    onHeldChange: (Boolean) -> Unit,
 ) {
+    // Whether the overlay's controls show is App-UI-only state, and it outlives a rotation. The double
+    // tap that toggles them is the Visual host's own, so every other touch draws in the Visual.
+    var controlsShown by rememberSaveable { mutableStateOf(true) }
+    val toggleControls = { controlsShown = !controlsShown }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        visual()
-        FullScreenVisualRoute(shell.visuals, keepScreenOn = keepScreenOn, onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) })
-        TextButton(
-            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
-            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),
-        ) { Text(stringResource(R.string.visuals_open_customize)) }
-        TextButton(
-            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp),
-        ) { Text(stringResource(R.string.visuals_open_capture)) }
+        visual(if (inPip) null else toggleControls)
+        if (!inPip) {
+            FullScreenVisualRoute(
+                shell.visuals,
+                controlsShown = controlsShown,
+                keepScreenOn = keepScreenOn,
+                onToggleControls = toggleControls,
+                onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) },
+            )
+            // Tonal, so their labels sit on an opaque fill and read over any Visual.
+            GlassButton(
+                onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
+                filled = false,
+                modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(GlassSpacing.Large),
+            ) { Text(stringResource(R.string.visuals_open_customize)) }
+            GlassButton(
+                onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
+                filled = false,
+                modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(GlassSpacing.Large),
+            ) { Text(stringResource(R.string.visuals_open_capture)) }
+            // Clear of the overlay's bars, top and bottom.
+            RecordControlHost(shell, Modifier.align(Alignment.CenterEnd).navigationBarsPadding().padding(GlassSpacing.Large))
+            GlassButton(
+                onClick = { onHeldChange(!reactionsHeld) },
+                filled = false,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(GlassSpacing.Large),
+            ) {
+                Text(stringResource(if (reactionsHeld) R.string.visuals_reactions_unfreeze else R.string.visuals_reactions_freeze))
+            }
+        }
     }
+}
+
+/**
+ * The plain player, opened from the mini-player while Visuals off is on: the full Player controls over
+ * the playing song's art, blurred. Back or the close button goes back to the page.
+ */
+@Composable
+private fun PlainPlayer(
+    shell: ShellViewModel,
+    artwork: ImageBitmap?,
+) {
+    Box(Modifier.fillMaxSize()) {
+        ArtworkBackdrop(artwork, Modifier.fillMaxSize())
+        Column(Modifier.fillMaxSize().systemBarsPadding()) {
+            GlassTopBar(
+                title = stringResource(R.string.home_now_playing),
+                navigation = {
+                    IconButton(onClick = { shell.appUi.send(AppUiCommand.ExitFullScreen) }) {
+                        Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.player_close))
+                    }
+                },
+            )
+            PlayerControls(shell, Modifier.weight(1f))
+        }
+    }
+}
+
+/** What lies behind each place: the playing song's art behind Home, the calm backdrop elsewhere. */
+@Composable
+private fun PlaceBackdrop(
+    place: Place,
+    artwork: ImageBitmap?,
+) {
+    if (place == Place.HOME) ArtworkBackdrop(artwork, Modifier.fillMaxSize()) else CalmBackdrop()
+}
+
+/** The playing song's embedded art, loaded off the main thread and cached; null without a song or art. */
+@Composable
+private fun rememberNowPlayingArtwork(shell: ShellViewModel): ImageBitmap? {
+    val context = LocalContext.current
+    val playing by shell.playback.state.collectAsStateWithLifecycle()
+    val track =
+        playing.player.currentQueue
+            ?.current
+            ?.id
+    val artwork by produceState(track?.let(ArtworkCache::peek), track) {
+        value = track?.let { ArtworkCache.load(context, it) }
+    }
+    return artwork
 }
 
 /** The App UI's banner (#182): one failure at a time, over everything, until it times out or is dismissed. */
@@ -396,209 +567,186 @@ private fun FailureBanner(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dismissDescription = stringResource(R.string.notice_dismiss_description)
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.errorContainer)
-                .semantics { liveRegion = LiveRegionMode.Polite }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = banner.message,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = stringResource(R.string.notice_dismiss),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier =
-                Modifier
-                    .clickable(onClick = onDismiss)
-                    .semantics { contentDescription = dismissDescription }
-                    .padding(8.dp),
-        )
-    }
+    GlassNotice(
+        banner.message,
+        modifier.padding(horizontal = GlassSpacing.Medium, vertical = GlassSpacing.Small),
+        tone = GlassTone.ERROR,
+        actionLabel = stringResource(R.string.notice_dismiss),
+        onAction = onDismiss,
+    )
 }
 
+/**
+ * The phone layout: the page over its backdrop, the mini-player at the top or bottom as the person
+ * placed it, and the Bar on one slab of glass with the mini-player when it is at the bottom. The Bar
+ * frosts the page live, except over the live Visual, which it never covers.
+ */
 @Composable
 private fun AppShellCompact(
     place: Place,
     onOpen: (Place) -> Unit,
-    gui: GuiPrefs,
-    miniPlayer: @Composable () -> Unit,
+    playerPosition: PlayerPosition,
+    miniPlayer: (@Composable () -> Unit)?,
+    source: GlassSource,
+    backdrop: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val live = place != Place.VISUALS
+    val top = miniPlayer.takeIf { playerPosition == PlayerPosition.TOP }
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            if (gui.playerPosition == PlayerPosition.TOP) {
-                Box(Modifier.statusBarsPadding()) { miniPlayer() }
+            if (top != null) {
+                Box(Modifier.fillMaxWidth().glassSurface(GlassKind.BAR, RectangleShape, edge = GlassEdge.NONE).statusBarsPadding()) {
+                    top()
+                }
             }
         },
         bottomBar = {
-            Column {
-                if (gui.playerPosition == PlayerPosition.BOTTOM) miniPlayer()
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant),
-                )
-                PlaceBar(place, onOpen, gui.barOpacity)
-            }
+            PlaceBar(
+                place,
+                onOpen,
+                backdrop = if (live) GlassBackdrop.Live(source) else GlassBackdrop.Baked,
+                above = miniPlayer.takeIf { playerPosition == PlayerPosition.BOTTOM },
+            )
         },
     ) { pad ->
-        Box(Modifier.padding(pad)) { content() }
+        // The backdrop and the page are what the Bar and the sheets frost; the live Visual is left out.
+        Box(Modifier.fillMaxSize().then(if (live) Modifier.glassSource(source) else Modifier)) {
+            backdrop()
+            Box(Modifier.padding(pad)) { content() }
+        }
     }
 }
 
+/** The wide layout: the rail of places down the side on glass, the mini-player on glass above the page. */
 @Composable
 private fun AppShellExpanded(
     place: Place,
     onOpen: (Place) -> Unit,
-    miniPlayer: @Composable () -> Unit,
+    miniPlayer: (@Composable () -> Unit)?,
+    backdrop: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Row(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        PlaceRail(place, onOpen)
-        Box(
-            Modifier
-                .width(1.dp)
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.outlineVariant),
-        )
-        Column(Modifier.weight(1f)) {
-            miniPlayer()
-            Box(Modifier.weight(1f)) { content() }
+    Box(Modifier.fillMaxSize()) {
+        backdrop()
+        Row(Modifier.fillMaxSize()) {
+            GlassNavigationRail(
+                items = Place.entries.map { GlassNavItem(stringResource(it.label), it.icon) },
+                selected = Place.entries.indexOf(place),
+                onSelect = { onOpen(Place.entries[it]) },
+            )
+            Column(Modifier.weight(1f).statusBarsPadding().navigationBarsPadding()) {
+                if (miniPlayer != null) {
+                    Box(
+                        Modifier
+                            .padding(GlassSpacing.Small)
+                            .glassSurface(GlassKind.BAR, MaterialTheme.shapes.large),
+                    ) { miniPlayer() }
+                }
+                Box(Modifier.weight(1f)) { content() }
+            }
         }
     }
 }
 
-/** The Bar: every place, in its one order, for everyone (PR #186). */
+/** The Bar: every place, in its one order, for everyone (PR #186), on glass. */
 @Composable
 private fun PlaceBar(
     selected: Place,
     onOpen: (Place) -> Unit,
-    opacity: Float,
+    backdrop: GlassBackdrop,
+    above: (@Composable () -> Unit)?,
 ) {
-    ElementNavBar(
-        items = Place.entries.map { ElementNavItem(stringResource(it.label), it.icon) },
+    GlassNavigationBar(
+        items = Place.entries.map { GlassNavItem(stringResource(it.label), it.icon) },
         selected = Place.entries.indexOf(selected),
         onSelect = { onOpen(Place.entries[it]) },
-        modifier = Modifier.alpha(opacity),
+        backdrop = backdrop,
+        above = above,
     )
 }
 
-/** The wide-screen twin of [PlaceBar]: the same places, order and selection. */
-@Composable
-private fun PlaceRail(
-    selected: Place,
-    onOpen: (Place) -> Unit,
-) {
-    NavigationRail(containerColor = Color.Transparent) {
-        Place.entries.forEach { place ->
-            val label = stringResource(place.label)
-            NavigationRailItem(
-                selected = selected == place,
-                onClick = { onOpen(place) },
-                icon = { StoneIconArt(place.icon, label) },
-                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-            )
-        }
-    }
-}
-
 /**
- * Home: a reserved slot for the Element's Hero scene, with the now-playing card on it (glossary). With
- * nothing loaded, the card offers the song played last.
+ * Home: the playing song's art, blurred, behind a now-playing card, with a way into Visuals and
+ * Studio. With nothing loaded, the card offers the song played last.
  */
 @Composable
 private fun HomeScreen(
     shell: ShellViewModel,
     loaded: Boolean,
     onResume: () -> Unit,
+    onOpen: (Place) -> Unit,
 ) {
     Column(
-        Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = GlassSpacing.Large, vertical = GlassSpacing.ExtraLarge),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.Large),
     ) {
-        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelMedium)
+        // Straight on the art, so in the primary text colour and large (legible over any art).
         Text(stringResource(R.string.nav_home), style = MaterialTheme.typography.headlineMedium)
-        // ponytail: an empty slot until the Hero scene lands (#110).
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-        )
         if (loaded) {
-            MiniPlayerRoute(
-                shell.playback,
-                elapsedNow = ::elapsedNow,
-                onExpand = { shell.appUi.send(AppUiCommand.EnterFullScreen) },
-                modifier = Modifier.clip(RoundedCornerShape(16.dp)),
-            )
-        } else {
-            Button(onClick = onResume) {
-                StoneIconArt(StoneIcon.PLAY, null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.action_resume_last_played))
+            GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = GlassSpacing.Medium)) {
+                GlassSectionHeader(stringResource(R.string.home_now_playing), Modifier.padding(horizontal = GlassSpacing.Large))
+                MiniPlayerRoute(
+                    shell.playback,
+                    elapsedNow = ::elapsedNow,
+                    onExpand = { shell.appUi.send(AppUiCommand.EnterFullScreen) },
+                )
             }
+        } else {
+            GlassCard(Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) {
+                GlassMessage(
+                    title = stringResource(R.string.home_nothing_playing),
+                    body = stringResource(R.string.home_nothing_playing_hint),
+                    icon = Icons.Rounded.MusicNote,
+                    actionLabel = stringResource(R.string.action_resume_last_played),
+                    onAction = onResume,
+                )
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(GlassSpacing.Medium)) {
+            Shortcut(Place.VISUALS, R.string.home_shortcut_visuals, R.string.home_shortcut_visuals_hint, onOpen, Modifier.weight(1f))
+            Shortcut(Place.STUDIO, R.string.home_shortcut_studio, R.string.home_shortcut_studio_hint, onOpen, Modifier.weight(1f))
         }
     }
 }
 
+/** A card on Home that opens [place]. */
 @Composable
-private fun PlaybackNoticeBanner(viewModel: PlayerViewModel) {
+private fun Shortcut(
+    place: Place,
+    @StringRes title: Int,
+    @StringRes hint: Int,
+    onOpen: (Place) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    GlassCard(modifier, onClick = { onOpen(place) }, verticalArrangement = Arrangement.spacedBy(GlassSpacing.Small)) {
+        Icon(place.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun PlaybackNoticeBanner(viewModel: EngineHoldViewModel) {
     val notice by viewModel.playbackNotice.collectAsStateWithLifecycle()
     val message = notice ?: return
-    val dismissDescription = stringResource(R.string.notice_dismiss_description)
 
     LaunchedEffect(message) {
         kotlinx.coroutines.delay(NOTICE_VISIBLE_MS)
         viewModel.clearPlaybackNotice()
     }
 
-    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.errorContainer)
-                    .clickable { viewModel.clearPlaybackNotice() }
-                    .semantics { liveRegion = LiveRegionMode.Polite }
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.notice_dismiss),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier =
-                    Modifier
-                        .clickable { viewModel.clearPlaybackNotice() }
-                        .semantics { contentDescription = dismissDescription }
-                        .padding(8.dp),
-            )
-        }
-    }
+    GlassNotice(
+        message,
+        Modifier.padding(horizontal = GlassSpacing.Medium, vertical = GlassSpacing.Small),
+        tone = GlassTone.ERROR,
+        actionLabel = stringResource(R.string.notice_dismiss),
+        onAction = viewModel::clearPlaybackNotice,
+    )
 }
 
 private const val NOTICE_VISIBLE_MS = 8_000L

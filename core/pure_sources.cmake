@@ -6,6 +6,7 @@
 set(GEODE_UTIL_PURE_SOURCES
     util/Json.cpp
     util/Sha256.cpp
+    util/ShaderAssembly.cpp
 )
 # The bridge between Kotlin and the engine: the generated snapshot codec, the lock-free hand-off and the
 # guard that keeps C++ exceptions from crossing JNI (core/bridge/schema/native_bridge.json).
@@ -20,9 +21,15 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Crossfeed.cpp
     audio/dsp/Limiter.cpp
     audio/player/BufferTuner.cpp
+    audio/player/OutputRetry.cpp
+    audio/feed/FeedRing.cpp
+    audio/feed/FeatureHistory.cpp
+    audio/feed/HeardClock.cpp
+    audio/feed/FeedTap.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
+    analysis/Decimator.cpp
     analysis/Spectrum.cpp
     analysis/AdaptiveRange.cpp
     analysis/LogBands.cpp
@@ -45,25 +52,43 @@ set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/AnalysisSession.cpp
 )
 set(GEODE_VIZ_PURE_SOURCES
+    viz/AudioInputs.cpp
     viz/Params.cpp
     viz/ParamsFields.cpp
     viz/Lfo.cpp
     viz/Adsr.cpp
     viz/VisualSafety.cpp
+    viz/Layers.cpp
     viz/FlashLimiter.cpp
+    viz/ToneMap.cpp
     viz/Reactions.cpp
     viz/Modulators.cpp
     viz/SharedCore.cpp
+    viz/SharedCamera.cpp
     viz/ReactionGraph.cpp
     viz/PlanCodec.cpp
     viz/Normaliser.cpp
     viz/SharedEffects.cpp
+    viz/FrameRate.cpp
+    viz/QualityTiers.cpp
     viz/BeatEnvelope.cpp
+    viz/FeatureBus.cpp
+    viz/DisplayEvents.cpp
+    viz/StyleTransition.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
+    viz/TileFrame.cpp
     viz/StylePacks.cpp
+    viz/LensFx.cpp
+    viz/StyleLab.cpp
     viz/StyleProfiles.cpp
+    viz/StyleExtras.cpp
+    viz/StyleInputs.cpp
+    viz/FeedbackWarp.cpp
+    viz/MultiPass.cpp
     viz/ThermalGovernor.cpp
+    viz/TouchField.cpp
+    viz/GravityField.cpp
     viz/fluid/FluidMath.cpp
     viz/fluid/SimGrid.cpp
     viz/fluid/RippleMath.cpp

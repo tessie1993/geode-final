@@ -2,10 +2,9 @@ package dev.geode.feature.settings.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
-import dev.geode.feature.settings.api.Element
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
@@ -13,19 +12,22 @@ import dev.geode.feature.settings.api.ExportQuality
 import dev.geode.feature.settings.api.ExportRatio
 import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
+import dev.geode.feature.settings.api.ThemeMode
+import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 
 // What each choice is called on screen. The names are this module's strings (ADR-0005).
 
 @Composable
-internal fun elementName(element: Element): String =
+internal fun themeModeName(mode: ThemeMode): String =
     stringResource(
-        when (element) {
-            Element.WATER -> R.string.look_element_water
-            Element.WOOD -> R.string.look_element_wood
-            Element.STONE -> R.string.look_element_stone
-            Element.BIOLUMINESCENCE -> R.string.look_element_bioluminescence
+        when (mode) {
+            ThemeMode.SYSTEM -> R.string.look_theme_system
+            ThemeMode.DARK -> R.string.look_theme_dark
+            ThemeMode.LIGHT -> R.string.look_theme_light
         },
     )
 
@@ -39,22 +41,47 @@ internal fun positionName(position: PlayerPosition): String =
     )
 
 @Composable
+internal fun tiltName(amount: TiltAmount): String =
+    stringResource(
+        when (amount) {
+            TiltAmount.OFF -> R.string.behavior_tilt_off
+            TiltAmount.SUBTLE -> R.string.behavior_tilt_subtle
+            TiltAmount.FULL -> R.string.behavior_tilt_full
+        },
+    )
+
+@Composable
+internal fun transitionLookName(look: TransitionLook): String =
+    stringResource(
+        when (look) {
+            TransitionLook.FADE -> R.string.transition_look_fade
+            TransitionLook.MELT -> R.string.transition_look_melt
+            TransitionLook.SLIDE -> R.string.transition_look_slide
+            TransitionLook.ZOOM -> R.string.transition_look_zoom
+            TransitionLook.DREAMY -> R.string.transition_look_dreamy
+            TransitionLook.CROSS_WARP -> R.string.transition_look_cross_warp
+            TransitionLook.SWIRL -> R.string.transition_look_swirl
+            TransitionLook.RIPPLE -> R.string.transition_look_ripple
+            TransitionLook.WATER_DROP -> R.string.transition_look_water_drop
+            TransitionLook.BLUR -> R.string.transition_look_blur
+            TransitionLook.WARP -> R.string.transition_look_warp
+            TransitionLook.RADIAL -> R.string.transition_look_radial
+            TransitionLook.CIRCLE -> R.string.transition_look_circle
+            TransitionLook.WIND -> R.string.transition_look_wind
+            TransitionLook.CLOUDS -> R.string.transition_look_clouds
+            TransitionLook.MORPH -> R.string.transition_look_morph
+            TransitionLook.SWEEP -> R.string.transition_look_sweep
+            TransitionLook.RANDOM -> R.string.transition_look_random
+        },
+    )
+
+@Composable
 internal fun cornerName(style: CornerStyle): String =
     stringResource(
         when (style) {
             CornerStyle.SHARP -> R.string.look_corner_sharp
             CornerStyle.ROUNDED -> R.string.look_corner_rounded
             CornerStyle.PILL -> R.string.look_corner_pill
-        },
-    )
-
-@Composable
-internal fun ambientName(mode: AmbientMode): String =
-    stringResource(
-        when (mode) {
-            AmbientMode.DRIFTING -> R.string.look_ambient_drifting
-            AmbientMode.STILL -> R.string.look_ambient_still
-            AmbientMode.OFF -> R.string.look_ambient_off
         },
     )
 
@@ -128,6 +155,15 @@ internal fun codecName(codec: ExportCodec): String =
     )
 
 @Composable
+internal fun editSourcesName(sources: EditSources): String =
+    stringResource(
+        when (sources) {
+            EditSources.REFERENCE -> R.string.export_edit_sources_reference
+            EditSources.COPY -> R.string.export_edit_sources_copy
+        },
+    )
+
+@Composable
 internal fun loudnessName(loudness: ExportLoudness): String =
     stringResource(
         when (loudness) {
@@ -151,3 +187,14 @@ internal fun visualQualityName(quality: VisualQuality): String =
 @Composable
 internal fun visualFrameRateName(frameRate: VisualFrameRate): String =
     frameRate.fps?.let { stringResource(R.string.cpu_gpu_fps, it) } ?: stringResource(R.string.cpu_gpu_screen_max)
+
+@Composable
+internal fun visualSurfaceName(surface: VisualSurface): String =
+    stringResource(
+        when (surface) {
+            VisualSurface.VISUAL -> R.string.cpu_gpu_surface_visual
+            VisualSurface.WALLPAPER -> R.string.cpu_gpu_surface_wallpaper
+            VisualSurface.PICTURE_IN_PICTURE -> R.string.cpu_gpu_surface_pip
+            VisualSurface.SCREEN_SAVER -> R.string.cpu_gpu_surface_screen_saver
+        },
+    )

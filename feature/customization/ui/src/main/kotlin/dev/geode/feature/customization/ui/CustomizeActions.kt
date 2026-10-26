@@ -3,6 +3,10 @@ package dev.geode.feature.customization.ui
 import dev.geode.engine.types.Millis
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationCommand
+import dev.geode.feature.customization.api.Layer
+import dev.geode.feature.customization.api.LayerLoop
+import dev.geode.feature.customization.api.LoopPreset
+import dev.geode.feature.customization.api.LoopTarget
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.Modulator
 import dev.geode.feature.customization.api.ModulatorId
@@ -64,6 +68,10 @@ private const val NEW_ENVELOPE_THRESHOLD = 0.5f
 private val NEW_SEQUENCER_STEPS = listOf(1f, 0f, 0.5f, 0f, 1f, 0f, 0.75f, 0.25f)
 private val NEW_SEQUENCER_STEP = Millis(250)
 private val NEW_DRIFT_PERIOD = Millis(8_000)
+private const val NEW_BEATS_BETWEEN = 4
+
+/** The beats a beat Modulator can wait between changes, as its editor offers them. */
+val BEATS_BETWEEN_CHOICES: List<Int> = listOf(1, 2, 4, 8, 16)
 
 /** The value each level effect is turned on at from the basic view's toggles. */
 private val EFFECT_ON_VALUES =
@@ -120,6 +128,22 @@ fun learnOrSet(
 ): CustomizationCommand? =
     if (learning != null) CustomizationCommand.AddReaction(newReaction(learning, target)) else sliderCommand(target, value)
 
+/**
+ * What a slider dragged to [value] previews (#285): the edit letting go would make, shown while the
+ * finger moves. Nothing in Learn mode ([learning]), where letting go links the slider instead.
+ */
+fun previewCommand(
+    learning: ReactionSource?,
+    target: Target,
+    value: Float,
+): CustomizationCommand? = if (learning != null) null else sliderCommand(target, value)?.let(CustomizationCommand::Preview)
+
+/** A signal's trim set to [gain] (#301), its floor kept. */
+fun trimCommand(
+    row: TrimRow,
+    gain: Float,
+): CustomizationCommand.TrimSignal = CustomizationCommand.TrimSignal(row.signal, row.trim.copy(gain = gain))
+
 /** The toggle flipped: an effect turned off goes back to its minimum; one turned on to its on value. */
 fun EffectToggle.toggled(): CustomizationCommand.SetShared {
     val onValue = if (property.kind == ValueKind.SWITCH) property.max else EFFECT_ON_VALUES[property] ?: property.max
@@ -150,16 +174,50 @@ fun savePreset(
     parts: Set<PresetPart>,
 ): CustomizationCommand.SavePreset? = if (name.isBlank() || parts.isEmpty()) null else CustomizationCommand.SavePreset(name.trim(), parts)
 
+/** Layer 2's loop switched on, as the first ready-made loop, or off. */
+fun loopToggled(layer: Layer): CustomizationCommand.SetLayerLoop =
+    CustomizationCommand.SetLayerLoop(if (layer.loop == null) LoopPreset.BREATHE.loop else null)
+
+/**
+ * The loop with [target] added, or taken away when it is already moved. The last target stays: a loop
+ * that moves nothing would be no loop, and the switch is the way to stop it.
+ */
+fun LayerLoop.toggled(target: LoopTarget): CustomizationCommand.SetLayerLoop? =
+    when {
+        target !in targets -> CustomizationCommand.SetLayerLoop(copy(targets = targets + target))
+        targets.size > 1 -> CustomizationCommand.SetLayerLoop(copy(targets = targets - target))
+        else -> null
+    }
+
+/** [shape], a beat Modulator, changing every [beats] heard beats; any other shape as it is. */
+fun ModulatorShape.withBeatsBetween(beats: Int): ModulatorShape =
+    when (this) {
+        is ModulatorShape.ToggleOnBeat -> copy(everyBeats = beats)
+        is ModulatorShape.RandomOnBeat -> copy(everyBeats = beats)
+        else -> this
+    }
+
+/** How many heard beats a beat Modulator waits between changes; null for the other kinds. */
+val ModulatorShape.beatsBetween: Int?
+    get() =
+        when (this) {
+            is ModulatorShape.ToggleOnBeat -> everyBeats
+            is ModulatorShape.RandomOnBeat -> everyBeats
+            else -> null
+        }
+
 /** Play a stopped hand-started Modulator, or stop a playing one. */
 fun togglePlay(modulator: Modulator): CustomizationCommand.PlayModulator =
     CustomizationCommand.PlayModulator(modulator.id, !modulator.playing)
 
-/** The four kinds of Modulator (#11), as the add menu offers them. */
+/** The kinds of Modulator (#11, and the beat Modulators of #319), as the add menu offers them. */
 enum class ModulatorKind {
     LFO,
     ENVELOPE,
     SEQUENCER,
     DRIFT,
+    TOGGLE_ON_BEAT,
+    RANDOM_ON_BEAT,
 }
 
 val ModulatorShape.kind: ModulatorKind
@@ -169,6 +227,8 @@ val ModulatorShape.kind: ModulatorKind
             is ModulatorShape.HitEnvelope -> ModulatorKind.ENVELOPE
             is ModulatorShape.StepSequencer -> ModulatorKind.SEQUENCER
             is ModulatorShape.RandomDrift -> ModulatorKind.DRIFT
+            is ModulatorShape.ToggleOnBeat -> ModulatorKind.TOGGLE_ON_BEAT
+            is ModulatorShape.RandomOnBeat -> ModulatorKind.RANDOM_ON_BEAT
         }
 
 /** A new Modulator of [kind], from a calm shape the person then edits. It runs once something listens to it. */
@@ -182,5 +242,7 @@ fun newModulator(kind: ModulatorKind): Modulator =
                     ModulatorShape.HitEnvelope(SoundSignal.KICK, NEW_ENVELOPE_ATTACK, NEW_ENVELOPE_RELEASE, NEW_ENVELOPE_THRESHOLD)
                 ModulatorKind.SEQUENCER -> ModulatorShape.StepSequencer(NEW_SEQUENCER_STEPS, NEW_SEQUENCER_STEP, beatSync = true)
                 ModulatorKind.DRIFT -> ModulatorShape.RandomDrift(NEW_DRIFT_PERIOD)
+                ModulatorKind.TOGGLE_ON_BEAT -> ModulatorShape.ToggleOnBeat(NEW_BEATS_BETWEEN)
+                ModulatorKind.RANDOM_ON_BEAT -> ModulatorShape.RandomOnBeat(NEW_BEATS_BETWEEN)
             },
     )

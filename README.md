@@ -28,7 +28,10 @@ ABIs arm64-v8a and x86_64. The full version history is in
   scene is rendered by the native core; the Customize panel exposes every
   parameter with per-param locks, a randomizer, LFO and ADSR modulation, a
   palette maker, presets (JSON + `.milk`) and photosensitivity clamps.
-- **Studio** — a multi-lane timeline (visual, media, text, overlay, audio
+- **Studio** — Renders of a Track, or of a playlist as one video per track, made offline in a
+  background queue from the whole-track analysis, with the full Customization (Shared core, Camera,
+  Extras, Macros, Reactions, Modulators, Automations) at any size and frame rate, saved to
+  `Movies/Geode` and into a Project. The older editors remain: a multi-lane timeline (visual, media, text, overlay, audio
   lanes) with trim, split, ripple, snapping, markers, tap-in, auto-cut from the
   analysed track, keyframe curves for scene and clip parameters, GL
   Transitions between clips, speed ramps, `.cube` LUTs and per-channel gamma,
@@ -135,4 +138,4 @@ portability, not device checks.
 - [docs/DEVICE_CHECKS.md](docs/DEVICE_CHECKS.md) — on-device checklist.
 - `tools/build-projectm.md` — how projectM is built from the submodule.
 - `THIRD_PARTY_NOTICES` — licences and attributions; the in-app notices asset
-  mirrors this file.
+  is an exact copy of this file (checked in CI by `tools/ci/check_notices.py`).

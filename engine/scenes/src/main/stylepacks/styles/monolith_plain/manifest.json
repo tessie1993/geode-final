@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "monolith_plain",
+  "label": "Monolith Plain",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.75,
+  "detail": "march",
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["bands"]}
+}

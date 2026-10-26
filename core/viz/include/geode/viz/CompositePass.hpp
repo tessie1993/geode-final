@@ -6,9 +6,11 @@
 #include <string>
 #include <vector>
 
+#include "geode/viz/Layers.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/SharedCamera.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/viz/TileFrame.hpp"
 #include "geode/viz/Transition.hpp"
 
 namespace geode::viz {
@@ -34,7 +36,6 @@ namespace geode::viz {
 // null clears it explicitly, matching every other Renderer setter.
 class CompositePass {
 public:
-    static constexpr int kStyleLayer = 6;
     static constexpr float kDitherAmount = 1.0f / 255.0f;
 
     struct Inputs {
@@ -48,9 +49,6 @@ public:
         float rippleStrength = 0.0f;
         float rippleSpecular = 0.0f;
         float progress = 1.0f;
-        float layerMix = 0.5f;
-        int blendOrdinal = 0;
-        bool hasLayer = false;
         bool hasOutgoing = false;
         TransitionStyle transitionStyle = TransitionStyle::Fade;
         std::string transitionId = "fade";
@@ -69,11 +67,22 @@ public:
         // zoom for A and B (their renderer has none).
         CameraPose camera;
         std::array<float, 4> cameraGate{};
+        // Layer 2 (Layers.hpp): its picture, gate and Camera pair (x flat moves, y flat endless zoom),
+        // and this frame's mix. A presence of 0 is no Layer 2: the composite then draws as without one.
+        GLuint texL = 0;
+        std::array<float, 4> gateL{};
+        std::array<float, 2> cameraGateL{};
+        viz::layer::Mix layer;
         // W00: underlay, read each frame from CompositePass's own latched texture (see the class
         // comment above) via underlayTexOrZero()/underlayBlendMode()/underlayAmount().
         GLuint underlayTex = 0;
         int underlayBlend = 0;
         float underlayAmount = 0.0f;
+        // The red/blue anaglyph's mix, 0..1, already faded on the CPU (sharedfx::anaglyphMix).
+        float anaglyph = 0.0f;
+        // Whether the composite is the last pass before an 8-bit target and dithers it. Off when it
+        // draws into the HDR target, whose final pass (HdrPass) dithers instead.
+        bool dither = true;
     };
 
     CompositePass(const ShaderSource& assets, ProgramBinaryCache* cache) : transitions_(assets, cache), assets_(assets), cache_(cache) {}
@@ -86,6 +95,9 @@ public:
     void warmTransition(const std::string& id) { transitions_.warm(id); }
     TransitionCatalog& catalog() { return transitions_.catalog(); }
     void draw(const Inputs& inputs);
+    // What draw() would hand composite_frag.glsl that can change the active Style's picture, in the
+    // values it uploads, for tile::compositeIsIdentity.
+    static tile::CompositeLook lookOf(const Inputs& inputs);
 
     // W00: overlay/underlay uploads, called on the GL thread only (Renderer::applyOverlayUploads).
     // `argbPixels` is Android's Bitmap.getPixels layout (0xAARRGGBB per int); converted to GL's
@@ -108,6 +120,7 @@ private:
     void uploadFrameUniforms(UniformCache& p, const Inputs& inputs, const TransitionCatalog::Def* definition);
     void uploadGradeUniforms(UniformCache& p, const Inputs& inputs);
     void uploadCameraUniforms(UniformCache& p, const Inputs& inputs);
+    void uploadLayerUniforms(UniformCache& p, const Inputs& inputs);
 
     TransitionPrograms transitions_;
     const ShaderSource& assets_;

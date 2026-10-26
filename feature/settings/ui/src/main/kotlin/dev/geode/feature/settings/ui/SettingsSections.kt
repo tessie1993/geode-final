@@ -9,7 +9,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.engine.types.Millis
-import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisCommand
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.BackgroundCommand
@@ -19,6 +18,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -48,8 +48,13 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.ThemeMode
+import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -58,15 +63,21 @@ private const val MILLIBELS_PER_DECIBEL = 100f
 private const val BASS_BOOST_FULL = 1_000f
 private val NO_SLEEP_TIMER = Minutes(0)
 
-/** Theme (was Look): the Element, accent, text and layout of the App UI. */
+/** Theme (was Look): light or dark, transparency, accent, text and layout of the App UI. */
 internal fun LazyListScope.themeSection(
     look: LookSettings,
     fontColors: List<FontColorChoice>,
     change: (SettingsCommand) -> Unit,
 ) {
     item {
-        SettingsGroup(stringResource(R.string.look_group_element)) {
-            ElementPicker(look.element) { change(LookCommand.SetElement(it)) }
+        SettingsGroup(stringResource(R.string.look_group_appearance)) {
+            ChoiceRow(stringResource(R.string.look_theme_mode), ThemeMode.entries, look.themeMode, { themeModeName(it) }) {
+                change(LookCommand.SetThemeMode(it))
+            }
+            SwitchRow(stringResource(R.string.look_reduce_transparency), look.reduceTransparency) {
+                change(LookCommand.SetReduceTransparency(it))
+            }
+            Note(stringResource(R.string.look_reduce_transparency_note))
         }
     }
     item {
@@ -115,20 +126,6 @@ internal fun LazyListScope.themeSection(
             SwitchRow(stringResource(R.string.look_clear_visuals_menu), look.clearVisualsMenu) {
                 change(LookCommand.SetClearVisualsMenu(it))
             }
-        }
-    }
-    item { HomeGroup(look.ambientMode, change) }
-}
-
-/** Ambient: how much Home's Hero scene moves by itself. Its own group, so its screenshot shows it whole. */
-@Composable
-internal fun HomeGroup(
-    ambientMode: AmbientMode,
-    change: (SettingsCommand) -> Unit,
-) {
-    SettingsGroup(stringResource(R.string.look_group_home)) {
-        ChoiceRow(stringResource(R.string.look_ambient_mode), AmbientMode.entries, ambientMode, { ambientName(it) }) {
-            change(LookCommand.SetAmbientMode(it))
         }
     }
 }
@@ -232,6 +229,12 @@ private fun AnalysisGroup(
     analysis: AnalysisSettings,
     change: (SettingsCommand) -> Unit,
 ) {
+    // First: the one control that makes every Style, MilkDrop included, react more or less (#301).
+    SliderRow(
+        stringResource(R.string.audio_sensitivity, analysis.sensitivity.value),
+        analysis.sensitivity.value,
+        AnalysisSettings.SENSITIVITY.start.value..AnalysisSettings.SENSITIVITY.endInclusive.value,
+    ) { change(AnalysisCommand.SetSensitivity(Decibels(it))) }
     SliderRow(
         stringResource(R.string.audio_beat_sensitivity, analysis.beatSensitivity),
         analysis.beatSensitivity,
@@ -254,6 +257,11 @@ private fun AnalysisGroup(
         AnalysisSettings.PRESET_MORPH.start.value..AnalysisSettings.PRESET_MORPH.endInclusive.value,
     ) { change(AnalysisCommand.SetPresetMorph(Seconds(it))) }
     SwitchRow(stringResource(R.string.audio_react_mic), analysis.reactToMicrophone) { change(AnalysisCommand.SetReactToMicrophone(it)) }
+    SliderRow(
+        stringResource(R.string.audio_sync_offset, analysis.syncOffset.value),
+        analysis.syncOffset.value.toFloat(),
+        AnalysisSettings.SYNC_OFFSET.millisForSlider(),
+    ) { change(AnalysisCommand.SetSyncOffset(Millis(it.roundToLong()))) }
 }
 
 /** Export preferences (was Export): what new renders start with. */
@@ -289,6 +297,14 @@ internal fun LazyListScope.exportSection(
             SwitchRow(stringResource(R.string.export_finished_alerts), export.finishedAlerts) {
                 change(ExportCommand.SetFinishedAlerts(it))
             }
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.export_group_edits)) {
+            ChoiceRow(stringResource(R.string.export_edit_sources), EditSources.entries, export.editSources, { editSourcesName(it) }) {
+                change(ExportCommand.SetEditSources(it))
+            }
+            Note(stringResource(R.string.export_edit_sources_note))
         }
     }
 }
@@ -330,12 +346,35 @@ internal fun LazyListScope.batterySection(
             ) { change(PerformanceCommand.SetVisualFrameRate(it)) }
         }
     }
+    // The other places the Visual is drawn can run gentler (#394); each follows the choices above until it has its own.
+    for (surface in SURFACES_WITH_OWN_CHOICE) {
+        item {
+            SettingsGroup(visualSurfaceName(surface)) {
+                Note(stringResource(R.string.cpu_gpu_surface_note))
+                ChoiceRow(
+                    stringResource(R.string.cpu_gpu_quality),
+                    listOf<VisualQuality?>(null) + VisualQuality.entries,
+                    performance.surfaceQuality[surface],
+                    { quality -> quality?.let { visualQualityName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                ) { change(PerformanceCommand.SetSurfaceQuality(surface, it)) }
+                ChoiceRow(
+                    stringResource(R.string.cpu_gpu_frame_rate),
+                    listOf<VisualFrameRate?>(null) + VisualFrameRate.entries,
+                    performance.surfaceFrameRate[surface],
+                    { frameRate -> frameRate?.let { visualFrameRateName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                ) { change(PerformanceCommand.SetSurfaceFrameRate(surface, it)) }
+            }
+        }
+    }
     item {
         SettingsGroup(stringResource(R.string.cpu_gpu_group_heat)) {
             Note(stringResource(R.string.cpu_gpu_heat_note))
         }
     }
 }
+
+/** The surfaces Battery offers a quality and frame rate of their own for; the screen saver joins once it exists. */
+private val SURFACES_WITH_OWN_CHOICE = listOf(VisualSurface.WALLPAPER, VisualSurface.PICTURE_IN_PICTURE)
 
 /**
  * Default paths (was Folders, #101): where Studio saves its videos (#21), the music folders, where
@@ -415,11 +454,12 @@ private fun FolderChoiceGroup(
 }
 
 /**
- * Application preferences (was Behavior): keeping the screen on, what runs in the background (#28),
- * touch, motion and the live wallpaper.
+ * Application preferences (was Behavior): keeping the screen on, the look Geode starts on (#383), what
+ * runs in the background (#28), touch, motion and the live wallpaper.
  */
 internal fun LazyListScope.applicationSection(
     values: SettingsValues,
+    startLooks: List<StartLookChoice>,
     onAction: (SettingsAction) -> Unit,
 ) {
     val behavior = values.behavior
@@ -431,6 +471,7 @@ internal fun LazyListScope.applicationSection(
             }
         }
     }
+    item { StartLookGroup(behavior.startLook, startLooks, change) }
     item {
         SettingsGroup(stringResource(R.string.application_group_background)) {
             SwitchRow(stringResource(R.string.background_music), values.background.music) { change(BackgroundCommand.SetMusic(it)) }
@@ -455,6 +496,19 @@ internal fun LazyListScope.applicationSection(
             SwitchRow(stringResource(R.string.behavior_touch_transform), behavior.touchTransform) {
                 change(BehaviorCommand.SetTouchTransform(it))
             }
+            ChoiceRow(stringResource(R.string.behavior_tilt), TiltAmount.entries, behavior.tilt, { tiltName(it) }) {
+                change(BehaviorCommand.SetTilt(it))
+            }
+            if (behavior.reducedMotion && behavior.tilt != TiltAmount.OFF) Note(stringResource(R.string.behavior_tilt_reduced_motion))
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.behavior_group_style_change)) {
+            val looks = TransitionLook.entries
+            ChoiceRow(stringResource(R.string.behavior_transition_look), looks, behavior.transitionLook, { transitionLookName(it) }) {
+                change(BehaviorCommand.SetTransitionLook(it))
+            }
+            Note(stringResource(R.string.behavior_transition_note))
         }
     }
     item {
@@ -473,6 +527,32 @@ internal fun LazyListScope.applicationSection(
         }
     }
 }
+
+/**
+ * Start on (#383): the last look, or one of the looks the app lists. A chosen look the app no longer
+ * lists, such as a preset since deleted, stays shown by its id until another is picked.
+ */
+@Composable
+private fun StartLookGroup(
+    chosen: StartLook,
+    listed: List<StartLookChoice>,
+    change: (SettingsCommand) -> Unit,
+) {
+    val last = StartLookChoice(StartLook.Last, stringResource(R.string.start_look_last))
+    val options = (listOf(last) + listed).distinctBy { it.look }
+    val shown = if (options.any { it.look == chosen }) options else options + StartLookChoice(chosen, startLookId(chosen))
+    SettingsGroup(stringResource(R.string.start_look_group)) {
+        ChoiceRow(null, shown, shown.first { it.look == chosen }, { it.name }) { change(BehaviorCommand.SetStartLook(it.look)) }
+        Note(stringResource(R.string.start_look_note))
+    }
+}
+
+private fun startLookId(look: StartLook): String =
+    when (look) {
+        StartLook.Last -> ""
+        is StartLook.Style -> look.style.value
+        is StartLook.Preset -> look.preset.value
+    }
 
 internal fun LazyListScope.helpSection(
     onboarding: OnboardingSettings,

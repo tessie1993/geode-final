@@ -17,6 +17,8 @@ struct ProgramKey {
 };
 
 // Persistent glGetProgramBinary/glProgramBinary cache; same directory and entry layout as ProgramBinaryCache.kt.
+// It also keeps translated shader text (projectM's HLSL translated to GLSL, #304) beside the binaries,
+// for every driver alike, so a MilkDrop preset seen before loads without translating or compiling.
 class ProgramBinaryCache {
 public:
     ProgramBinaryCache();
@@ -29,7 +31,13 @@ public:
     std::optional<ProgramKey> keyFor(const std::string& vertexSrc, const std::string& fragmentSrc);
     void markRetrievable(GLuint program);
     GLuint load(const ProgramKey& key);
+    // Makes `program` (one of the caller's, created and not yet linked) from the cache; true when it is
+    // linked from it. On false the program holds nothing worth keeping and is compiled as usual.
+    bool loadInto(const ProgramKey& key, GLuint program);
     void store(const ProgramKey& key, GLuint program);
+    // Translated shader text kept under `key` (any string naming everything the translation read).
+    std::optional<std::string> loadText(const std::string& key);
+    void storeText(const std::string& key, std::string text);
 
 private:
     enum class State { Unprimed, Off, On };
@@ -47,6 +55,9 @@ private:
     void sweep();
     void prune();
     void touch(const std::string& file, bool fromProbation);
+    std::string textFile(const std::string& key) const;
+    void writeText(const std::string& file, const std::string& text);
+    void sweepText();
 
     std::string root_;
     State state_ = State::Unprimed;

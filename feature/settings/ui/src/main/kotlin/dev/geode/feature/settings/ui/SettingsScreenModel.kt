@@ -6,6 +6,7 @@ import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.StartLook
 
 /** The Settings sections, in the order they are shown (#101). */
 enum class SettingsSection {
@@ -26,6 +27,13 @@ data class FontColorChoice(
     val name: String,
 )
 
+/** A look Geode can start on (#383), and the [name] it is shown by; the app lists them. */
+@Immutable
+data class StartLookChoice(
+    val look: StartLook,
+    val name: String,
+)
+
 /**
  * Everything [SettingsScreen] shows. [values] is null while the stored settings are being read.
  * Which [section] is open is App-UI-only state, kept by the route.
@@ -36,6 +44,7 @@ data class SettingsScreenModel(
     val values: SettingsValues?,
     val fontColors: List<FontColorChoice>,
     val appVersion: String,
+    val startLooks: List<StartLookChoice> = emptyList(),
 ) {
     companion object {
         /** The model for Settings' [state], with the rest supplied by the route. */
@@ -44,12 +53,14 @@ data class SettingsScreenModel(
             section: SettingsSection,
             fontColors: List<FontColorChoice>,
             appVersion: String,
+            startLooks: List<StartLookChoice> = emptyList(),
         ): SettingsScreenModel =
             SettingsScreenModel(
                 section = section,
                 values = (state as? SettingsState.Ready)?.values,
                 fontColors = fontColors,
                 appVersion = appVersion,
+                startLooks = startLooks,
             )
     }
 }

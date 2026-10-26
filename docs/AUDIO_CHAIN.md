@@ -34,8 +34,19 @@ AudioTrack ──▶ platform audiofx (Equalizer / BassBoost / Loudness) ──�
                         outside the chain entirely
 ```
 
-The tap (`engine/audio-android/.../PcmTap.kt`) writes into the PCM ring that
-`AudioBus` hands to the analysis engine and every scene. Stages 2–4 are downstream of it.
+The tap (`engine/audio-android/.../PcmTap.kt`) writes into the Visual's one native audio feed
+(`VisualFeed`, `core/api/Feed.hpp`), which runs the analysis and which every Visual reads on its
+drawing thread. Stages 2–4 are downstream of it. The sink is wrapped in `FeedClockSink`, which tells
+the feed when playback pauses or seeks and how far the tap runs ahead of the speaker (about half a
+second of AudioTrack buffer), so the Visual draws the audio being heard. Geode's own player writes
+its mix into the same feed from its audio callback, also before volume and DSP, and reports its
+output latency from the stream's timestamps (Oboe's `getTimestamp(CLOCK_MONOTONIC)`); an output that
+gives no timestamp reports only its buffer, and the feed adds what the output route is known to add
+(`core/audio/feed/HeardClock.cpp`, the route from `OutputRouteWatcher`). Each Visual frame reads the
+audio heard at the moment the frame is expected on screen (Choreographer's frame timeline on API 33+,
+two refreshes after its vsync before that), and Settings' picture sync moves the player's picture
+further either way. The lead over the speaker only ever delays the picture: nothing is drawn ahead of
+the newest audio, and Live input, heard as it is captured, is never moved.
 
 ## Why the chain is owned rather than configured
 

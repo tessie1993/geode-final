@@ -27,21 +27,27 @@ constexpr uint32_t kEventSeqWrap = 1u << 24;
 }  // namespace
 
 AnalysisSession::AnalysisSession(int sampleRateHz, int fftSize, float hopRateHz)
-    : sampleRateHz_(sampleRateHz),
+    : inputRateHz_(sampleRateHz),
+      sampleRateHz_(analysisRateFor(sampleRateHz)),
       fftSize_(fftSize),
       hopRateHz_(hopRateHz),
-      hopSamples_(hopFor(sampleRateHz, hopRateHz, fftSize)),
-      analyzer_(GEODE_BAND_COUNT, fftSize, sampleRateHz, hopRateHz),
+      hopSamples_(hopFor(analysisRateFor(sampleRateHz), hopRateHz, fftSize)),
+      analyzer_(GEODE_BAND_COUNT, fftSize, analysisRateFor(sampleRateHz), hopRateHz),
       chroma_(hopRateHz),
       spectrum_(static_cast<size_t>(fftSize / 2)),
       buffer_(static_cast<size_t>(fftSize) * 4),
-      sideBuffer_(static_cast<size_t>(fftSize) * 4) {}
+      sideBuffer_(static_cast<size_t>(fftSize) * 4),
+      decimator_(decimationFor(sampleRateHz)) {}
 
 void AnalysisSession::setSampleRateHz(int value) {
-    if (value <= 0 || value == sampleRateHz_) return;
-    sampleRateHz_ = value;
-    hopSamples_ = hopFor(value, hopRateHz_, fftSize_);
-    analyzer_.setSampleRateHz(value);
+    if (value <= 0 || value == inputRateHz_) return;
+    inputRateHz_ = value;
+    decimator_.setFactor(decimationFor(value));
+    const int rate = analysisRateFor(value);
+    if (rate == sampleRateHz_) return;
+    sampleRateHz_ = rate;
+    hopSamples_ = hopFor(rate, hopRateHz_, fftSize_);
+    analyzer_.setSampleRateHz(rate);
 }
 
 void AnalysisSession::setTuning(float sensitivity, float refractoryMs, float attackSeconds, float releaseSeconds) {
@@ -54,6 +60,7 @@ void AnalysisSession::setTuning(float sensitivity, float refractoryMs, float att
 void AnalysisSession::reset() {
     analyzer_.reset();
     chroma_.reset();
+    decimator_.reset();
     buffered_ = 0;
     eventSeq_.fill(0);
     eventStrength_.fill(0.0f);
@@ -70,10 +77,27 @@ void AnalysisSession::analyze(const float* mid, const float* side, size_t frames
 }
 
 void AnalysisSession::push(const float* interleaved, size_t frames, int channels) {
-    if (channels <= 0 || frames == 0) return;
+    if (!interleaved || channels <= 0 || frames == 0) return;
+    // Mid and side at the analysis' rate: a hi-res source is brought down to it here, before anything
+    // is measured.
+    if (midIn_.size() < frames) {
+        midIn_.resize(frames);
+        sideIn_.resize(frames);
+    }
+    const size_t step = static_cast<size_t>(channels);
+    size_t n = 0;
+    for (size_t f = 0; f < frames; f++) {
+        const float left = interleaved[f * step];
+        const float right = channels >= 2 ? interleaved[f * step + 1] : left;
+        if (decimator_.push((left + right) * 0.5f, (left - right) * 0.5f, midIn_[n], sideIn_[n])) n++;
+    }
+    append(midIn_.data(), sideIn_.data(), n);
+}
+
+void AnalysisSession::append(const float* mid, const float* side, size_t frames) {
+    if (frames == 0) return;
     // Bound how far this can grow: a producer that pushes without ever pulling must not grow the buffer
-    // without bound. Cap at a few FFT windows and drop the oldest samples once at the cap, mirroring
-    // Renderer::pushPcm's fixed-capacity ring (core/viz/Renderer.cpp).
+    // without bound. Cap at a few FFT windows and drop the oldest samples once at the cap.
     const size_t cap = static_cast<size_t>(fftSize_) * kMaxBufferedWindows;
     if (buffer_.size() < cap && buffered_ + frames > buffer_.size()) {
         const size_t grown = std::min(std::max(buffered_ + frames, buffer_.size() * 2), cap);
@@ -83,7 +107,8 @@ void AnalysisSession::push(const float* interleaved, size_t frames, int channels
     // A single push larger than the cap: keep only its most recent samples.
     if (frames > buffer_.size()) {
         const size_t skip = frames - buffer_.size();
-        interleaved += skip * static_cast<size_t>(channels);
+        mid += skip;
+        side += skip;
         frames = buffer_.size();
     }
     // Still no room (buffer already at the cap): drop the oldest buffered samples.
@@ -94,14 +119,8 @@ void AnalysisSession::push(const float* interleaved, size_t frames, int channels
         std::memmove(sideBuffer_.data(), sideBuffer_.data() + drop, keep * sizeof(float));
         buffered_ = keep;
     }
-    size_t s = 0;
-    for (size_t f = 0; f < frames; f++) {
-        const float left = interleaved[s];
-        const float right = channels >= 2 ? interleaved[s + 1] : left;
-        buffer_[buffered_ + f] = (left + right) * 0.5f;
-        sideBuffer_[buffered_ + f] = (left - right) * 0.5f;
-        s += static_cast<size_t>(channels);
-    }
+    std::copy(mid, mid + frames, buffer_.begin() + static_cast<std::ptrdiff_t>(buffered_));
+    std::copy(side, side + frames, sideBuffer_.begin() + static_cast<std::ptrdiff_t>(buffered_));
     buffered_ += frames;
 }
 

@@ -3,5 +3,11 @@
   "id": "blacklight_bloom",
   "label": "Blacklight Bloom",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

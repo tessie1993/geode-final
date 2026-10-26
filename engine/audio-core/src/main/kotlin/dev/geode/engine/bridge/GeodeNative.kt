@@ -231,11 +231,13 @@ object GeodeNative {
 
     external fun playerLastError(handle: Long): String
 
-    /** Copies up to [frames] stereo float frames of the mix into the direct [buffer]; returns the frames copied. */
-    external fun playerReadTap(
+    /** What the player's error state is about: GEODE_PLAYER_ERROR_* in geode_api.h (0 none, 1 decode, 2 output). */
+    external fun playerErrorKind(handle: Long): Int
+
+    /** The player's mix, before volume and DSP, goes to the [feed] (a [feedCreate] handle; 0 stops it). */
+    external fun playerSetFeed(
         handle: Long,
-        buffer: java.nio.ByteBuffer,
-        frames: Int,
+        feed: Long,
     ): Int
 
     /** [assets] is the app's `android.content.res.AssetManager`; typed as Any because this module has no Android SDK. */
@@ -269,17 +271,11 @@ object GeodeNative {
         on: Boolean,
     ): Int
 
-    external fun vizSetLayer(
-        handle: Long,
-        sceneId: String,
-        mix: Float,
-        blendMode: Int,
-    ): Int
-
     external fun vizSetTransition(
         handle: Long,
         id: String,
         durationMs: Long,
+        seed: Long,
     ): Int
 
     external fun vizBeginParamMorph(
@@ -291,6 +287,19 @@ object GeodeNative {
         handle: Long,
         xy: FloatArray,
         points: Int,
+    ): Int
+
+    external fun vizSetTouchSmear(
+        handle: Long,
+        on: Boolean,
+        strength: Float,
+    ): Int
+
+    external fun vizSetGravity(
+        handle: Long,
+        x: Float,
+        y: Float,
+        z: Float,
     ): Int
 
     external fun vizQueueTouchStroke(
@@ -317,12 +326,6 @@ object GeodeNative {
 
     external fun vizTakeMilkPresetLoaded(handle: Long): String?
 
-    external fun vizPushPcm(
-        handle: Long,
-        mono: FloatArray,
-        count: Int,
-    ): Int
-
     external fun vizSetLfo(
         handle: Long,
         slot: Int,
@@ -346,6 +349,9 @@ object GeodeNative {
         fps: Float,
     ): Int
 
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap (#286). */
+    external fun vizFrameCapFps(handle: Long): Float
+
     /** The Visual quality on screen as a render scale ceiling under the thermal one (#28). */
     external fun vizSetQualityCeiling(
         handle: Long,
@@ -361,6 +367,12 @@ object GeodeNative {
     external fun vizSetOffscreen(
         handle: Long,
         on: Boolean,
+    ): Int
+
+    /** A Render's scene supersample, 1..2 (#345); set before the surface size. */
+    external fun vizSetExportSupersample(
+        handle: Long,
+        factor: Float,
     ): Int
 
     external fun vizKnows(
@@ -399,6 +411,9 @@ object GeodeNative {
     ): Int
 
     external fun vizReleaseScenes(handle: Long): Int
+
+    /** How many times the Customization's Style switching has been due; 0 without a plan. */
+    external fun vizStylesDue(handle: Long): Int
 
     /** Not RT-safe on the native side: only call this on a dsp handle not yet passed to [playerSetDsp]. */
     external fun dspSetSampleRate(
@@ -451,6 +466,133 @@ object GeodeNative {
 
     /** The revision of the last snapshot published, 0 before any. */
     external fun snapshotsRevision(handle: Long): Int
+
+    /** GL thread: the Visual reads the live sound from [feed] at the start of each frame from now on; 0 detaches. */
+    external fun vizAttachFeed(
+        handle: Long,
+        feed: Long,
+    ): Int
+
+    /**
+     * The next frame's audio for a Visual reading no feed (#342): [frames] interleaved stereo frames of
+     * [stereo] ending at the audio heard, the newest [fresh] of them heard since the last frame.
+     */
+    external fun vizSetFramePcm(
+        handle: Long,
+        stereo: FloatArray,
+        frames: Int,
+        fresh: Int,
+    ): Int
+
+    /** When the next frame is expected on screen, in System.nanoTime nanoseconds; 0 draws for now. */
+    external fun vizSetPresentTime(
+        handle: Long,
+        presentNs: Long,
+    ): Int
+
+    /** Freeze reactions (#366) for a Visual reading a feed: its features and audio window hold still. */
+    external fun vizSetReactionsHeld(
+        handle: Long,
+        held: Boolean,
+    ): Int
+
+    /** The Visual's one audio feed (geode_feed); 0 when it could not be created. */
+    external fun feedCreate(): Long
+
+    /** [source] is GEODE_FEED_PLAYER (1) or GEODE_FEED_LIVE (2): the one source the Visual listens to. */
+    external fun feedSelect(
+        handle: Long,
+        source: Int,
+    ): Int
+
+    external fun feedFlush(
+        handle: Long,
+        source: Int,
+    ): Int
+
+    external fun feedSetRunning(
+        handle: Long,
+        source: Int,
+        running: Boolean,
+    ): Int
+
+    external fun feedSetPresentation(
+        handle: Long,
+        source: Int,
+        delayUs: Long,
+        speed: Float,
+    ): Int
+
+    /** [route] is a GEODE_FEED_ROUTE_* code ([dev.geode.engine.audio.OutputRoute.code]). */
+    external fun feedSetRoute(
+        handle: Long,
+        route: Int,
+    ): Int
+
+    /** The Sensitivity in dB (-12..24): a gain on the audio before the analysis and every Style reads it. */
+    external fun feedSetGain(
+        handle: Long,
+        gainDb: Float,
+    ): Int
+
+    /** The person's sync offset in microseconds; positive draws the player's picture later. */
+    external fun feedSetUserOffset(
+        handle: Long,
+        offsetUs: Long,
+    ): Int
+
+    /** The gain on [source]'s window for the scenes, after the Sensitivity; never on the analysis. */
+    external fun feedSetWindowGain(
+        handle: Long,
+        source: Int,
+        gain: Float,
+    ): Int
+
+    /** Returns the frames taken: 0 when [source] is not the one listened to. */
+    external fun feedWrite(
+        handle: Long,
+        source: Int,
+        interleaved: FloatArray,
+        frames: Int,
+        channels: Int,
+        sampleRate: Int,
+    ): Int
+
+    external fun feedSetActive(
+        handle: Long,
+        active: Boolean,
+    ): Int
+
+    external fun feedSetTuning(
+        handle: Long,
+        sensitivity: Float,
+        refractoryMs: Float,
+        attackSeconds: Float,
+        releaseSeconds: Float,
+    ): Int
+
+    external fun feedResetAnalysis(handle: Long): Int
+
+    /** The feed's analysis reads [snapshots] at the start of each hop from now on; 0 detaches. */
+    external fun feedAttachSnapshots(
+        handle: Long,
+        snapshots: Long,
+    ): Int
+
+    /** A Recording's tap on [feed] (geode_feed_tap, #317); 0 when it could not be created. */
+    external fun feedTapCreate(feed: Long): Long
+
+    external fun feedTapDestroy(handle: Long): Int
+
+    /**
+     * The stereo frames heard since the last take, interleaved into [out] (at most half its size), or
+     * silence for the time nothing was heard; the first take gives none. Their rate goes to `rate[0]`.
+     */
+    external fun feedTapTake(
+        handle: Long,
+        out: FloatArray,
+        rate: IntArray,
+    ): Int
 
     /** The Visual reads [snapshots] at the start of each frame from now on; 0 detaches. */
     external fun vizAttachSnapshots(

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "grand_reveal",
+  "label": "Grand Reveal",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 1.0,
+  "reactivity": {"macro": ["energy"], "micro": ["spectrum"]}
+}

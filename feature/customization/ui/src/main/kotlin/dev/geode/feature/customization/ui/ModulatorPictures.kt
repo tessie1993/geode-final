@@ -24,6 +24,9 @@ private const val DRIFT_FAST_PHASE = 1.0
 
 private const val HALF = 0.5f
 
+/** How many heard beats the beat Modulators' pictures span. */
+internal const val PICTURE_BEATS = 16
+
 /** [wave] at [phase], counted in cycles from its start. */
 internal fun waveAt(
     wave: Wave,
@@ -63,3 +66,21 @@ internal fun driftAt(time: Float): Float =
     DRIFT_CENTRE +
         DRIFT_SLOW * sin(TWO_PI * time).toFloat() +
         DRIFT_FAST * sin(TWO_PI * DRIFT_FAST_RATE * time + DRIFT_FAST_PHASE).toFloat()
+
+/** How many changes a beat Modulator waiting [everyBeats] beats has made by [time], a fraction 0..1 of the drawing. */
+private fun changesAt(
+    everyBeats: Int,
+    time: Float,
+): Int = (time.coerceIn(0f, 1f) * PICTURE_BEATS).toInt() / everyBeats.coerceAtLeast(1)
+
+/** A toggle on the beat at [time]: low, then high and low by turns, every [everyBeats] beats. */
+internal fun toggleAt(
+    everyBeats: Int,
+    time: Float,
+): Float = if (changesAt(everyBeats, time) % 2 == 1) 1f else 0f
+
+/** A random value on the beat at [time]: the random wave's held values, a new one every [everyBeats] beats. */
+internal fun randomOnBeatAt(
+    everyBeats: Int,
+    time: Float,
+): Float = RANDOM_STEPS[changesAt(everyBeats, time) % RANDOM_STEPS.size]

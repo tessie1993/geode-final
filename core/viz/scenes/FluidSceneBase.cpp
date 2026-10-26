@@ -45,6 +45,14 @@ GeodeFeatureFrame FluidSceneBase::idleAudioFeatures(float bass, float mid, float
     return f;
 }
 
+std::array<float, 2> FluidSceneBase::inPlaneDown() const {
+    std::array<float, 2> out{};
+    if (gravity_ == nullptr) return out;
+    const float w = gravity_->weight();
+    if (w > 0.0f) gravity::inPlaneDown(gravity_->x() / w, gravity_->y() / w, w, out.data());
+    return out;
+}
+
 void FluidSceneBase::applyQualityTier() {
     const bool userChanged = params_.fluidQuality != lastUserQuality_;
     if (userChanged) {
@@ -88,13 +96,25 @@ void FluidSceneBase::applyChoreographyTo(fluid::Particles& particles) {
     particles.setChoreography(spawnPack_.data(), choreography_.spawnCount, catchPack_.data(), choreography_.catchCount);
 }
 
+void FluidSceneBase::setDrawTarget(GLuint fbo, int width, int height) {
+    targetHanded_ = true;
+    prevFbo_ = static_cast<GLint>(fbo);
+    prevViewport_ = {0, 0, width, height};
+}
+
 void FluidSceneBase::saveFramebufferAndViewport() {
+    if (targetHanded_) return;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo_);
     glGetIntegerv(GL_VIEWPORT, prevViewport_.data());
 }
 
 void FluidSceneBase::saveGlState() {
     saveFramebufferAndViewport();
+    if (targetHanded_) {
+        blendWas_ = false;
+        prevBlendFunc_ = {GL_ONE, GL_ZERO, GL_ONE, GL_ZERO};
+        return;
+    }
     glGetIntegerv(GL_BLEND_SRC_RGB, &prevBlendFunc_[0]);
     glGetIntegerv(GL_BLEND_DST_RGB, &prevBlendFunc_[1]);
     glGetIntegerv(GL_BLEND_SRC_ALPHA, &prevBlendFunc_[2]);

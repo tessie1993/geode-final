@@ -50,10 +50,14 @@ void CymaticsScene::draw(float timeSeconds) {
     hasPending_ = false;
 
     plate_.excite(driveSpectrum(f, dt), GEODE_BAND_COUNT, dt, p.cymaticsFundamental,
-                  kDriveGain * cymatics::safeDrive(p.audioDrive) * (1.0f + kPcmStrikeGain * pcmStrike_), cymatics::ringSeconds(p.cymaticsRing),
+                  kDriveGain * cymatics::safeDrive(p.audioDrive) * extras_.multiplier(mod::Extra::Force, 0.0f) * (1.0f + kPcmStrikeGain * pcmStrike_),
+                  cymatics::ringSeconds(extras::scaled(p.cymaticsRing, extras_[mod::Extra::Decay])),
                   p.cymaticsFocus);
     plate_.advancePhases(dt, p.speed);
-    modeCount_ = plate_.snapshot(std::min(p.cymaticsModes, style_.modeCap), modes_.data(), static_cast<int>(modes_.size()));
+    // While the bar is trusted the plate climbs through its modes over each bar (#294).
+    const int modes = featuremap::cymaticsModes(
+        extras::count(std::min(p.cymaticsModes, style_.modeCap), extras_[mod::Extra::Count], cymatics::kMaxRenderedModes), bus_);
+    modeCount_ = plate_.snapshot(modes, modes_.data(), static_cast<int>(modes_.size()));
 
     float totalAmplitude = 0.0f;
     for (int i = 0; i < modeCount_; ++i) totalAmplitude += modes_[static_cast<size_t>(i) * 4 + 2];
@@ -85,7 +89,7 @@ void CymaticsScene::draw(float timeSeconds) {
     glUniform1i(loc("uStyle"), style_.shaderStyle);
     glUniform4fv(loc("uModes"), uniforms_.arrayCount("uModes", cymatics::kMaxRenderedModes), modes_.data());
     glUniform1i(loc("uModeCount"), modeCount_);
-    const int geometry = style_.geometryOverride >= 0 ? style_.geometryOverride : p.cymaticsGeometry;
+    const int geometry = extras::variant(style_.geometryOverride >= 0 ? style_.geometryOverride : p.cymaticsGeometry, extras_[mod::Extra::Variant], 2);
     glUniform1f(loc("uGeometry"), geometry == 1 ? 1.0f : 0.0f);
     glUniform1f(loc("uScale"), std::clamp(p.cymaticsScale * style_.scale, 0.5f, 8.0f));
     glUniform1f(loc("uHeightNorm"), 1.0f / std::max(totalAmplitude, kMinColorAmplitude));

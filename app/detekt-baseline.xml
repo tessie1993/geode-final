@@ -10,7 +10,6 @@
     <ID>ComplexCondition:VisualizerRenderer.kt$VisualizerRenderer$(p.flowEnabled || sceneNeedsFlow || layerNeedsFlow) &amp;&amp; ff != null &amp;&amp; ff.available &amp;&amp; !fluidActive</ID>
     <ID>ComplexCondition:VisualizerRenderer.kt$VisualizerRenderer$ff == null || !ff.available || fluidActive || target !is EmergenceScene</ID>
     <ID>ComplexCondition:VisualizerRenderer.kt$VisualizerRenderer$target is EmergenceScene &amp;&amp; (p.flowAdvectParticles || targetNeedsFlow) &amp;&amp; ff.available</ID>
-    <ID>InstanceOfCheckForException:ExportController.kt$ExportController$t is kotlinx.coroutines.CancellationException</ID>
     <ID>LoopWithTooManyJumpStatements:Adsr.kt$AdsrEngine.Companion$for</ID>
     <ID>LoopWithTooManyJumpStatements:AudioTranscoder.kt$AudioTranscoder$while</ID>
     <ID>LoopWithTooManyJumpStatements:CompositeGradeTest.kt$CompositeGradeTest$for</ID>
@@ -23,8 +22,8 @@
     <ID>MemberNameEqualsClassName:FluidBuffers.kt$FluidBuffers.Fbo$var fbo = 0 private set</ID>
     <ID>NestedBlockDepth:Adsr.kt$AdsrEngine$fun tick( dt: Float, features: AudioFeatures, ): FloatArray</ID>
     <ID>NestedBlockDepth:AiffPcm.kt$AiffPcm.Companion$internal fun parse(rawStream: InputStream): AiffPcm?</ID>
-    <ID>NestedBlockDepth:AudioTranscoder.kt$AudioTranscoder$fun transcode( uri: Uri, maxDurationMs: Long, startMs: Long = 0L, isCancelled: () -&gt; Boolean = { false }, onProgress: (Float) -&gt; Unit = {}, ): Result</ID>
-    <ID>NestedBlockDepth:AudioTranscoder.kt$AudioTranscoder$private fun transcodeAiff( aiff: dev.geode.audio.AiffPcm, maxDurationMs: Long, startMs: Long, isCancelled: () -&gt; Boolean, onProgress: (Float) -&gt; Unit, ): Result</ID>
+    <ID>NestedBlockDepth:AudioTranscoder.kt$AudioTranscoder$fun transcode( uri: Uri, maxDurationMs: Long, startMs: Long = 0L, gainDb: Double = 0.0, isCancelled: () -&gt; Boolean = { false }, onProgress: (Float) -&gt; Unit = {}, ): Result</ID>
+    <ID>NestedBlockDepth:AudioTranscoder.kt$AudioTranscoder$private fun transcodeAiff( aiff: dev.geode.audio.AiffPcm, maxDurationMs: Long, startMs: Long, gain: Double, isCancelled: () -&gt; Boolean, onProgress: (Float) -&gt; Unit, ): Result</ID>
     <ID>NestedBlockDepth:CymaticsClockSafetyTest.kt$CymaticsClockSafetyTest$private fun enclosingCall( src: String, pos: Int, ): String?</ID>
     <ID>NestedBlockDepth:ExportDefaultsPersistenceTest.kt$ExportDefaultsPersistenceTest$@Test fun everyChoiceCombinationRoundTrips()</ID>
     <ID>NestedBlockDepth:FluidSim.kt$FluidSim$private fun allocGrids(preserve: Boolean)</ID>
@@ -32,7 +31,7 @@
     <ID>NestedBlockDepth:PlayerScreen.kt$internal suspend fun driveSpectrum( live: Boolean, bands: () -&gt; FloatArray, emit: (FloatArray) -&gt; Unit, )</ID>
     <ID>NestedBlockDepth:RippleMathTest.kt$RippleMathTest$private fun ringRadius(h: FloatArray): Float</ID>
     <ID>NestedBlockDepth:SceneFailureTest.kt$SceneFailureTest$private fun shaderFailureBlocks(source: String): List&lt;String&gt;</ID>
-    <ID>NestedBlockDepth:VideoExporter.kt$VideoExporter$private fun encodeInto( pfd: ParcelFileDescriptor, audioUri: Uri, timeline: FeatureTimeline, sceneFactory: SceneFactory, aspect: ExportAspect, sceneParams: SceneParams, lfoConfigs: List&lt;dev.geode.render.LfoConfig&gt;, adsrConfigs: List&lt;dev.geode.render.AdsrConfig&gt;, reducedMotion: Boolean, requestedFps: Int, paramsAt: ((Long) -&gt; SceneParams)?, loopSafe: Boolean, range: ExportRange?, codec: ExportCodec, onProgress: (Float) -&gt; Unit, isCancelled: () -&gt; Boolean, )</ID>
+    <ID>NestedBlockDepth:VideoExporter.kt$VideoExporter$private fun encodeInto( pfd: ParcelFileDescriptor, job: Job, onProgress: (Float) -&gt; Unit, isCancelled: () -&gt; Boolean, pace: () -&gt; Unit, ): Long</ID>
     <ID>ReturnCount:AiffPcm.kt$AiffPcm$fun read(out: ShortArray): Int</ID>
     <ID>ReturnCount:AiffPcm.kt$AiffPcm.Companion$internal fun parse(rawStream: InputStream): AiffPcm?</ID>
     <ID>ReturnCount:AiffPcm.kt$AiffPcm.Companion$private fun readExtended80(din: DataInputStream): Int</ID>
@@ -57,8 +56,6 @@
     <ID>ReturnCount:MusicPlaylistStore.kt$MusicPlaylistStore$fun move( name: String, from: Int, to: Int, ): MusicPlaylist</ID>
     <ID>ReturnCount:MusicPlaylistStore.kt$MusicPlaylistStore$fun rename( oldName: String, newName: String, ): Boolean</ID>
     <ID>ReturnCount:PerformanceMonitor.kt$PerformanceMonitor$fun onFrame(dtSeconds: Float): Int</ID>
-    <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun contextFor( uri: TrackId, browse: List&lt;QueueTrack&gt;, deviceTracks: List&lt;DeviceTrack&gt;, libraryTracks: List&lt;LibraryTrack&gt;, ): List&lt;QueueTrack&gt;</ID>
-    <ID>ReturnCount:PlaybackQueue.kt$PlaybackQueue$fun window( tracks: List&lt;QueueTrack&gt;, startUri: TrackId, ): Window</ID>
     <ID>ReturnCount:PresetLibraryController.kt$PresetLibraryController$fun importPresetLink(text: String): PresetId?</ID>
     <ID>ReturnCount:PresetLink.kt$PresetLink$fun decode(text: String): String?</ID>
     <ID>ReturnCount:PresetStore.kt$PresetStore$fun removeFolder(name: String): Boolean</ID>
@@ -73,10 +70,9 @@
     <ID>ReturnCount:VisualizerRenderer.kt$VisualizerRenderer$private fun sceneFor(id: String): Scene?</ID>
     <ID>ReturnCount:VisualizerRenderer.kt$VisualizerRenderer$private fun transitionProgram(id: String): CompositeProgram</ID>
     <ID>SwallowedException:VideoExporter.kt$VideoExporter$e: Exception</ID>
-    <ID>ThrowsCount:AudioTranscoder.kt$AudioTranscoder$fun transcode( uri: Uri, maxDurationMs: Long, startMs: Long = 0L, isCancelled: () -&gt; Boolean = { false }, onProgress: (Float) -&gt; Unit = {}, ): Result</ID>
-    <ID>ThrowsCount:AudioTranscoder.kt$AudioTranscoder$private fun transcodeAiff( aiff: dev.geode.audio.AiffPcm, maxDurationMs: Long, startMs: Long, isCancelled: () -&gt; Boolean, onProgress: (Float) -&gt; Unit, ): Result</ID>
+    <ID>ThrowsCount:AudioTranscoder.kt$AudioTranscoder$fun transcode( uri: Uri, maxDurationMs: Long, startMs: Long = 0L, gainDb: Double = 0.0, isCancelled: () -&gt; Boolean = { false }, onProgress: (Float) -&gt; Unit = {}, ): Result</ID>
+    <ID>ThrowsCount:AudioTranscoder.kt$AudioTranscoder$private fun transcodeAiff( aiff: dev.geode.audio.AiffPcm, maxDurationMs: Long, startMs: Long, gain: Double, isCancelled: () -&gt; Boolean, onProgress: (Float) -&gt; Unit, ): Result</ID>
     <ID>TooGenericExceptionCaught:AudioTranscoder.kt$AudioTranscoder$t: Throwable</ID>
-    <ID>TooGenericExceptionCaught:ExportController.kt$ExportController$t: Throwable</ID>
     <ID>TooGenericExceptionCaught:VideoExporter.kt$VideoExporter$e: Exception</ID>
     <ID>UnusedPrivateProperty:OfflineAnalyzer.kt$OfflineAnalyzer.StreamingPipeline$c</ID>
     <ID>UseCheckOrError:AudioTranscoder.kt$AudioTranscoder$throw IllegalStateException("Audio transcode stalled (codec made no progress)")</ID>

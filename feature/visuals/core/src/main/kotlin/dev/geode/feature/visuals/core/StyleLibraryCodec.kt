@@ -4,6 +4,7 @@ import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 
 /**
  * How the person's library is saved: plain text, one fact per line, under a first line naming the
@@ -16,7 +17,11 @@ import dev.geode.feature.visuals.api.StyleLibrary
  * recent <style>
  * folder <id> <parent id, or - at the top> <name>
  * style <folder id> <style>
+ * mark <style> <love or never>
  * ```
+ *
+ * A Style with no mark line is Normal (#308). An older Geode skips mark lines, as any line it does not
+ * understand, so the version stays 1.
  *
  * Reading is forgiving: a line it does not understand (broken, or from a newer version) is skipped
  * and the rest is kept, and a folder whose parent is missing or that loops comes back at the top.
@@ -31,6 +36,7 @@ object StyleLibraryCodec {
     private const val RECENT = "recent"
     private const val FOLDER = "folder"
     private const val STYLE = "style"
+    private const val MARK = "mark"
     private const val TOP = "-"
 
     fun encode(library: StyleLibrary): String =
@@ -42,6 +48,7 @@ object StyleLibraryCodec {
                 add("$FOLDER ${folder.id.value} ${folder.parent?.value ?: TOP} ${folder.name}")
                 folder.styles.forEach { add("$STYLE ${folder.id.value} $it") }
             }
+            library.marks.filterValues { it != StyleMark.NORMAL }.forEach { (style, mark) -> add("$MARK $style ${mark.name.lowercase()}") }
         }.joinToString("\n")
 
     fun decode(text: String): StyleLibrary {
@@ -64,8 +71,20 @@ object StyleLibraryCodec {
                 folders.map { folder ->
                     folder.copy(styles = styles.filter { it[1] == folder.id.value.toString() }.mapNotNull { styleId(it[2]) }.distinct())
                 },
+            marks = marks(facts),
         )
     }
+
+    /** The mark lines: Love and Never; a broken or unknown mark is skipped, and the first for a Style wins. */
+    private fun marks(facts: List<List<String>>): Map<SceneId, StyleMark> =
+        facts
+            .filter { it.size == 3 && it[0] == MARK }
+            .mapNotNull { fact ->
+                val style = styleId(fact[1]) ?: return@mapNotNull null
+                val mark = MARKS[fact[2]] ?: return@mapNotNull null
+                style to mark
+            }.distinctBy { it.first }
+            .toMap()
 
     private fun styleIds(
         facts: List<List<String>>,
@@ -106,4 +125,7 @@ object StyleLibraryCodec {
 
     /** A folder line's parts: the word, its id, its parent and its name. */
     private const val FOLDER_PARTS = 4
+
+    /** The marks a mark line may hold, by the word it is written as; Normal is never written. */
+    private val MARKS: Map<String, StyleMark> = listOf(StyleMark.LOVE, StyleMark.NEVER).associateBy { it.name.lowercase() }
 }

@@ -3,6 +3,7 @@ package dev.geode.render.bridge
 import android.content.Context
 import android.content.res.AssetManager
 import dev.geode.analysis.AudioFeatures
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
 import dev.geode.engine.bridge.NativeFailures
@@ -11,7 +12,6 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
-import dev.geode.render.BlendMode
 import dev.geode.render.FrameStats
 import dev.geode.render.LfoConfig
 import dev.geode.render.LfoEngine
@@ -35,6 +35,9 @@ class NativeViz(
     private val cacheDir: String = context.cacheDir.absolutePath
     private val milkTextureDir: String = File(context.filesDir, "milk/textures").absolutePath
 
+    // Changes with every install of the app, so its shader cache can tell an update (ShaderCacheStamp).
+    private val install: String = File(context.applicationInfo.sourceDir).lastModified().toString()
+
     // Written on the GL thread (surfaceCreated) and read from the main and GL threads. Every call uses
     // the handle under the read lock and create()/destroy() swap it under the write lock, so destroy()
     // waits for a call in flight instead of freeing the renderer under it, and two threads racing on a
@@ -52,6 +55,7 @@ class NativeViz(
         lock.write {
             if (handle == 0L) {
                 verifyLayouts()
+                ShaderCacheStamp.forgetIfStale(File(cacheDir), install)
                 val created = GeodeNative.vizCreate(assets, cacheDir)
                 if (created != 0L) GeodeNative.vizSetMilkTextureDir(created, milkTextureDir)
                 handle = created
@@ -84,6 +88,9 @@ class NativeViz(
             if (h == 0L) otherwise else block(h)
         }
 
+    /** Runs [block] with the live native handle under the read lock, or not at all without one (the debug Style lab). */
+    internal fun withHandle(block: (Long) -> Unit) = live(block)
+
     fun knows(sceneId: SceneId): Boolean = liveOr(false) { h -> GeodeNative.vizKnows(h, sceneId.value) }
 
     fun sceneIds(): List<SceneId> {
@@ -112,19 +119,16 @@ class NativeViz(
         live { h -> GeodeNative.vizSetReducedMotion(h, on) }
     }
 
-    fun setLayer(
-        sceneId: SceneId?,
-        mix: Float,
-        blend: BlendMode,
-    ) {
-        live { h -> GeodeNative.vizSetLayer(h, sceneId?.value ?: "", mix, blend.ordinal) }
-    }
-
+    /**
+     * A change of Style's look [id] (one of the No-flash safe looks, or "random" for a draw from them
+     * seeded by [seed]) and its [duration]. Each change starts on the next downbeat while a tempo is heard.
+     */
     fun setTransition(
         id: String,
         duration: Millis,
+        seed: Long = 0L,
     ) {
-        live { h -> GeodeNative.vizSetTransition(h, id, duration.value) }
+        live { h -> GeodeNative.vizSetTransition(h, id, duration.value, seed) }
     }
 
     fun beginParamMorph(seconds: Float) {
@@ -136,6 +140,21 @@ class NativeViz(
         n: Int,
     ) {
         live { h -> GeodeNative.vizSetTouch(h, xy, n) }
+    }
+
+    fun setTouchSmear(
+        on: Boolean,
+        strength: Float,
+    ) {
+        live { h -> GeodeNative.vizSetTouchSmear(h, on, strength) }
+    }
+
+    fun submitGravity(
+        x: Float,
+        y: Float,
+        z: Float,
+    ) {
+        live { h -> GeodeNative.vizSetGravity(h, x, y, z) }
     }
 
     fun queueTouchStroke(
@@ -160,11 +179,35 @@ class NativeViz(
     /** The preset MilkDrop last compiled, handed out once; null until the next one. */
     fun takeMilkPresetLoaded(): String? = liveOr(null) { h -> GeodeNative.vizTakeMilkPresetLoaded(h) }
 
-    fun pushPcm(
-        mono: FloatArray,
-        count: Int,
+    /**
+     * GL thread: from the next frame on, the renderer reads the live sound from [feed] (the features
+     * heard now and the scenes' stereo window) instead of [setFeatures]; null detaches.
+     */
+    fun attachFeed(feed: VisualFeed?) {
+        live { h -> NativeFailures.check(GeodeNative.vizAttachFeed(h, feed?.handle ?: 0L), "vizAttachFeed") }
+    }
+
+    /**
+     * GL thread: the next frame's audio for the scenes, [frames] interleaved stereo frames of [stereo]
+     * ending at the audio heard, the newest [fresh] of them new since the last frame (#342). A Render hands
+     * over its own decode of the track this way, as a feed does live.
+     */
+    fun setFramePcm(
+        stereo: FloatArray,
+        frames: Int,
+        fresh: Int,
     ) {
-        if (count > 0) live { h -> GeodeNative.vizPushPcm(h, mono, count) }
+        live { h -> NativeFailures.check(GeodeNative.vizSetFramePcm(h, stereo, frames, fresh), "vizSetFramePcm") }
+    }
+
+    /** Freeze reactions (#366) on the features and audio window read from an attached feed. */
+    fun setReactionsHeld(held: Boolean) {
+        live { h -> GeodeNative.vizSetReactionsHeld(h, held) }
+    }
+
+    /** When the next frame is expected on screen (System.nanoTime nanoseconds); 0 draws for now. */
+    fun setPresentTime(presentNanos: Long) {
+        live { h -> GeodeNative.vizSetPresentTime(h, presentNanos) }
     }
 
     fun setLfoConfigs(configs: List<LfoConfig>) {
@@ -198,6 +241,9 @@ class NativeViz(
         live { h -> GeodeNative.vizSetPacedFps(h, fps) }
     }
 
+    /** The frame rate the hottest thermal tiers ask the pacer to hold to, or 0 for no cap. */
+    fun frameCapFps(): Float = liveOr(0f) { h -> GeodeNative.vizFrameCapFps(h) }
+
     /** The Visual quality on screen as a render scale ceiling; the thermal ceiling can only lower it. */
     fun setQualityCeiling(ceiling: Float) {
         if (handle != 0L) GeodeNative.vizSetQualityCeiling(handle, ceiling)
@@ -210,6 +256,11 @@ class NativeViz(
 
     fun setOffscreen(on: Boolean) {
         live { h -> GeodeNative.vizSetOffscreen(h, on) }
+    }
+
+    /** GL thread, before [surfaceChanged]: a Render's scene supersample, 1..2 (#345). */
+    fun setExportSupersample(factor: Float) {
+        live { h -> NativeFailures.check(GeodeNative.vizSetExportSupersample(h, factor), "vizSetExportSupersample") }
     }
 
     fun surfaceCreated() {
@@ -243,6 +294,9 @@ class NativeViz(
     fun releaseScenes() {
         live { h -> GeodeNative.vizReleaseScenes(h) }
     }
+
+    /** How many times the Customization's Style switching has been due since its evaluation started over. */
+    fun stylesDue(): Int = liveOr(0) { h -> GeodeNative.vizStylesDue(h) }
 
     /** Full-frame RGBA8 overlay drawn last, premultiplied alpha; null clears. Any thread; latched for the next frame. */
     fun setOverlay(

@@ -1,0 +1,292 @@
+diff --git a/src/api/include/projectM-4/render_opengl.h b/src/api/include/projectM-4/render_opengl.h
+index a0561dd23..7c66a99a5 100644
+--- a/src/api/include/projectM-4/render_opengl.h
++++ b/src/api/include/projectM-4/render_opengl.h
+@@ -53,6 +53,49 @@ PROJECTM_EXPORT void projectm_opengl_render_frame(projectm_handle instance);
+  */
+ PROJECTM_EXPORT void projectm_opengl_render_frame_fbo(projectm_handle instance, uint32_t framebuffer_object_id);
+ 
++/**
++ * @brief Fills @a program from a program cache, linked, and returns true; or returns false to have it
++ *        compiled, after preparing it to be stored if the cache wants to (a retrievable binary).
++ */
++typedef bool (*projectm_program_load_func)(const char* vertex_source, const char* fragment_source, uint32_t program,
++                                           void* user_data);
++
++/**
++ * @brief Hands a program just linked from its sources to a program cache.
++ */
++typedef void (*projectm_program_store_func)(const char* vertex_source, const char* fragment_source, uint32_t program,
++                                            void* user_data);
++
++/**
++ * @brief The translated text kept for @a key (the key's bytes, @a key_length long), or NULL. The text must
++ *        stay valid until the next call on the same thread.
++ */
++typedef const char* (*projectm_shader_text_lookup_func)(const char* key, size_t key_length, void* user_data);
++
++/**
++ * @brief Keeps the translated text @a text for @a key.
++ */
++typedef void (*projectm_shader_text_store_func)(const char* key, size_t key_length, const char* text, void* user_data);
++
++/**
++ * @brief Sets the caches for every shader program the calling thread compiles from now on.
++ *
++ * A preset's warp and composite shaders are translated from HLSL and compiled when it loads, in the
++ * frame of the switch. With these, a host keeps the linked programs (as program binaries, say) and the
++ * translated text across loads and runs, so a preset seen before loads without either step. The caches
++ * are per thread; pass NULL for any of them to leave that one out.
++ *
++ * @param load_program Asked before a program is compiled.
++ * @param store_program Handed every program linked from source.
++ * @param lookup_text Asked before a preset shader is translated.
++ * @param store_text Handed every preset shader translation that compiled.
++ * @param user_data Passed to every callback.
++ */
++PROJECTM_EXPORT void projectm_opengl_set_shader_caches(projectm_program_load_func load_program,
++                                                       projectm_program_store_func store_program,
++                                                       projectm_shader_text_lookup_func lookup_text,
++                                                       projectm_shader_text_store_func store_text, void* user_data);
++
+ #ifdef __cplusplus
+ } // extern "C"
+ #endif
+diff --git a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+index 289331215..07ad6c612 100644
+--- a/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
++++ b/src/libprojectM/MilkdropPreset/MilkdropShader.cpp
+@@ -602,6 +602,56 @@ void MilkdropShader::TranspileHLSLShader(const PresetState& presetState, std::st
+         shaderTypeString = "warp";
+     }
+ 
++    // Collect unique samplers and texsize uniforms
++    std::set<std::string> samplerDeclarations;
++    std::set<std::string> texSizeDeclarations;
++    for (const auto& desc : m_mainTextureDescriptors)
++    {
++        samplerDeclarations.insert(desc.SamplerDeclaration());
++        texSizeDeclarations.insert(desc.TexSizeDeclaration());
++    }
++    for (const auto& desc : presetState.blurTexture.GetDescriptorsForBlurLevel(m_maxBlurLevelRequired))
++    {
++        samplerDeclarations.insert(desc.SamplerDeclaration());
++        // No texsize_blur1 etc.
++    }
++    for (const auto& desc : m_textureSamplerDescriptors)
++    {
++        samplerDeclarations.insert(desc.SamplerDeclaration());
++        texSizeDeclarations.insert(desc.TexSizeDeclaration());
++    }
++
++    const std::string vertexShader = m_type == ShaderType::WarpShader
++                                          ? MilkdropStaticShaders::Get()->GetPresetWarpVertexShader()
++                                          : MilkdropStaticShaders::Get()->GetPresetCompVertexShader();
++
++    // The translation reads the shader's text and the declarations made for it, nothing else: a host
++    // that kept the result for the same key skips the translation (projectm_opengl_set_shader_caches).
++    const auto& hooks = Renderer::Shader::CurrentCacheHooks();
++    std::string cacheKey;
++    if (hooks.lookupText != nullptr || hooks.storeText != nullptr)
++    {
++        cacheKey = shaderTypeString + '\n';
++        for (const auto& declaration : samplerDeclarations)
++        {
++            cacheKey += declaration;
++        }
++        for (const auto& declaration : texSizeDeclarations)
++        {
++            cacheKey += declaration;
++        }
++        cacheKey += '\n' + program;
++    }
++    if (hooks.lookupText != nullptr)
++    {
++        const char* kept = hooks.lookupText(cacheKey.data(), cacheKey.size(), hooks.userData);
++        if (kept != nullptr)
++        {
++            m_shader.CompileProgram(vertexShader, kept);
++            return;
++        }
++    }
++
+     M4::GLSLGenerator generator;
+     M4::Allocator allocator;
+ 
+@@ -632,25 +682,6 @@ void MilkdropShader::TranspileHLSLShader(const PresetState& presetState, std::st
+         sourcePreprocessed.replace(matches.position(), matches.length(), "");
+     }
+ 
+-    // Collect unique samplers and texsize uniforms
+-    std::set<std::string> samplerDeclarations;
+-    std::set<std::string> texSizeDeclarations;
+-    for (const auto& desc : m_mainTextureDescriptors)
+-    {
+-        samplerDeclarations.insert(desc.SamplerDeclaration());
+-        texSizeDeclarations.insert(desc.TexSizeDeclaration());
+-    }
+-    for (const auto& desc : presetState.blurTexture.GetDescriptorsForBlurLevel(m_maxBlurLevelRequired))
+-    {
+-        samplerDeclarations.insert(desc.SamplerDeclaration());
+-        // No texsize_blur1 etc.
+-    }
+-    for (const auto& desc : m_textureSamplerDescriptors)
+-    {
+-        samplerDeclarations.insert(desc.SamplerDeclaration());
+-        texSizeDeclarations.insert(desc.TexSizeDeclaration());
+-    }
+-
+     // Now insert them on top.
+     for (const auto& texSizeDeclaration : texSizeDeclarations)
+     {
+@@ -678,13 +709,12 @@ void MilkdropShader::TranspileHLSLShader(const PresetState& presetState, std::st
+ 
+     // Now we have GLSL source for the preset shader program (hopefully it's valid!)
+     // Compile the preset shader fragment shader with the standard vertex shader and cross our fingers.
+-    if (m_type == ShaderType::WarpShader)
+-    {
+-        m_shader.CompileProgram(MilkdropStaticShaders::Get()->GetPresetWarpVertexShader(), generator.GetResult());
+-    }
+-    else
++    m_shader.CompileProgram(vertexShader, generator.GetResult());
++
++    // Kept only once it compiled: a translation that fails to compile is made again next time.
++    if (hooks.storeText != nullptr)
+     {
+-        m_shader.CompileProgram(MilkdropStaticShaders::Get()->GetPresetCompVertexShader(), generator.GetResult());
++        hooks.storeText(cacheKey.data(), cacheKey.size(), generator.GetResult(), hooks.userData);
+     }
+ }
+ 
+diff --git a/src/libprojectM/ProjectMCWrapper.cpp b/src/libprojectM/ProjectMCWrapper.cpp
+index a2b754373..1774ea9c3 100644
+--- a/src/libprojectM/ProjectMCWrapper.cpp
++++ b/src/libprojectM/ProjectMCWrapper.cpp
+@@ -3,6 +3,7 @@
+ #include <projectM-4/projectM.h>
+ 
+ #include <Audio/AudioConstants.hpp>
++#include <Renderer/Shader.hpp>
+ 
+ #include <cstring>
+ #include <sstream>
+@@ -177,6 +178,20 @@ void projectm_opengl_render_frame_fbo(projectm_handle instance, uint32_t framebu
+     projectMInstance->RenderFrame(framebuffer_object_id);
+ }
+ 
++void projectm_opengl_set_shader_caches(projectm_program_load_func load_program,
++                                       projectm_program_store_func store_program,
++                                       projectm_shader_text_lookup_func lookup_text,
++                                       projectm_shader_text_store_func store_text, void* user_data)
++{
++    libprojectM::Renderer::Shader::CacheHooks hooks;
++    hooks.loadProgram = load_program;
++    hooks.storeProgram = store_program;
++    hooks.lookupText = lookup_text;
++    hooks.storeText = store_text;
++    hooks.userData = user_data;
++    libprojectM::Renderer::Shader::SetCacheHooks(hooks);
++}
++
+ void projectm_set_beat_sensitivity(projectm_handle instance, float sensitivity)
+ {
+     auto projectMInstance = handle_to_instance(instance);
+diff --git a/src/libprojectM/Renderer/Shader.cpp b/src/libprojectM/Renderer/Shader.cpp
+index 4a64ab9db..25c739491 100644
+--- a/src/libprojectM/Renderer/Shader.cpp
++++ b/src/libprojectM/Renderer/Shader.cpp
+@@ -7,6 +7,23 @@
+ namespace libprojectM {
+ namespace Renderer {
+ 
++namespace {
++
++// Per thread: a host with two GL threads (a live picture and an offscreen export) keeps two caches.
++thread_local Shader::CacheHooks cacheHooks;
++
++} // namespace
++
++void Shader::SetCacheHooks(const CacheHooks& hooks)
++{
++    cacheHooks = hooks;
++}
++
++auto Shader::CurrentCacheHooks() -> const CacheHooks&
++{
++    return cacheHooks;
++}
++
+ Shader::Shader()
+     : m_shaderProgram(glCreateProgram())
+ {
+@@ -23,6 +40,13 @@ Shader::~Shader()
+ void Shader::CompileProgram(const std::string& vertexShaderSource,
+                             const std::string& fragmentShaderSource)
+ {
++    const CacheHooks hooks = cacheHooks;
++    if (hooks.loadProgram != nullptr &&
++        hooks.loadProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str(), m_shaderProgram, hooks.userData))
++    {
++        return;
++    }
++
+     auto vertexShader = CompileShader(vertexShaderSource, GL_VERTEX_SHADER);
+     auto fragmentShader = CompileShader(fragmentShaderSource, GL_FRAGMENT_SHADER);
+ 
+@@ -41,6 +65,10 @@ void Shader::CompileProgram(const std::string& vertexShaderSource,
+     glGetProgramiv(m_shaderProgram, GL_LINK_STATUS, &programLinked);
+     if (programLinked == GL_TRUE)
+     {
++        if (hooks.storeProgram != nullptr)
++        {
++            hooks.storeProgram(vertexShaderSource.c_str(), fragmentShaderSource.c_str(), m_shaderProgram, hooks.userData);
++        }
+         return;
+     }
+ 
+diff --git a/src/libprojectM/Renderer/Shader.hpp b/src/libprojectM/Renderer/Shader.hpp
+index e3b0e6639..68359c96d 100644
+--- a/src/libprojectM/Renderer/Shader.hpp
++++ b/src/libprojectM/Renderer/Shader.hpp
+@@ -12,6 +12,8 @@
+ #include <glm/mat3x4.hpp>
+ #include <glm/mat4x4.hpp>
+ 
++#include <cstddef>
++#include <cstdint>
+ #include <map>
+ #include <string>
+ 
+@@ -55,6 +57,32 @@ public:
+         int minor{}; //!< Minor OpenGL shading language version
+     };
+ 
++    /**
++     * Caches a host may give the programs compiled on the calling thread (projectm_opengl_set_shader_caches).
++     * All are optional. loadProgram may make `program` from a cache, linked, and return true instead of
++     * having it compiled; when it returns false it may prepare the program to be stored (setting
++     * GL_PROGRAM_BINARY_RETRIEVABLE_HINT). storeProgram is handed every program linked from source.
++     * lookupText and storeText keep translated preset shader text by a key that names everything the
++     * translation read.
++     */
++    struct CacheHooks {
++        bool (*loadProgram)(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData){};
++        void (*storeProgram)(const char* vertexSource, const char* fragmentSource, uint32_t program, void* userData){};
++        const char* (*lookupText)(const char* key, size_t keyLength, void* userData){};
++        void (*storeText)(const char* key, size_t keyLength, const char* text, void* userData){};
++        void* userData{};
++    };
++
++    /**
++     * @brief Sets the caches for programs compiled on the calling thread from now on.
++     */
++    static void SetCacheHooks(const CacheHooks& hooks);
++
++    /**
++     * @brief The caches set on the calling thread.
++     */
++    static auto CurrentCacheHooks() -> const CacheHooks&;
++
+     /**
+      * Creates a new shader.
+      */

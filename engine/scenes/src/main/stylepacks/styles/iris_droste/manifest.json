@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "iris_droste",
+  "label": "Iris Droste",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "count", "min": 0, "max": 2, "default": 1 },
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 },
+    { "name": "edge", "min": 0, "max": 2, "default": 1 },
+    { "name": "variant", "min": 0, "max": 9, "default": 0 },
+    { "name": "center_x", "min": -1, "max": 1, "default": 0 },
+    { "name": "center_y", "min": -1, "max": 1, "default": 0 }
+  ],
+  "reactions": [
+    { "signal": "bass", "target": "travel", "amount": 0.3, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "hit", "target": "size", "amount": 0.25, "riseMs": 30, "fallMs": 250, "curve": "linear" },
+    { "signal": "treble", "target": "edge", "amount": 0.2, "riseMs": 30, "fallMs": 250, "curve": "linear" }
+  ],
+  "effects": ["fibres", "shadows"],
+  "tiers": {
+    "reduced": { "off": ["fibres"] },
+    "minimal": { "off": ["fibres", "shadows"] }
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
+}

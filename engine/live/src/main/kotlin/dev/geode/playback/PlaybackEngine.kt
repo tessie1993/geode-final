@@ -8,12 +8,11 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.audio.AudioFxController
-import dev.geode.audio.PcmRingBuffer
 import dev.geode.audio.TapRenderersFactory
 import dev.geode.audio.dsp.NativeDspProcessor
 import dev.geode.engine.audio.AudioPresentationClock
-import dev.geode.engine.audio.PcmSink
-import dev.geode.engine.audio.SampleRing
+import dev.geode.engine.audio.FeedSource
+import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.audioandroid.TapBoundaryListener
@@ -21,16 +20,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 @OptIn(UnstableApi::class)
 class PlaybackSession internal constructor(
     private val context: Context,
+    /** The Visual's one audio feed, which the player writes into: [PlaybackEngine.feed]. */
+    val feed: VisualFeed,
 ) {
-    val ring = PcmRingBuffer()
-
-    val sampleRing = SampleRing(capacityFrames = 1 shl 16, channelCount = 2)
-
     @Volatile
     var onAudioFormat: ((sampleRateHz: Int, channelCount: Int, encoding: Int) -> Unit)? = null
 
@@ -38,24 +34,17 @@ class PlaybackSession internal constructor(
 
     internal val clockDriver = SinkClockDriver(presentationClock)
 
-    val captureSink =
-        PcmSink { samples, frames, channels ->
-            ring.writeInterleaved(samples, frames, channels)
-            sampleRing.write(samples, frames, channels)
-        }
+    // ExoPlayer's tap: before speed, silence skipping, DSP and volume, written into the feed as the
+    // player source. The native player writes its own mix into the feed from its audio callback.
+    private val playerSink = feed.sink(FeedSource.PLAYER)
 
     internal val tap =
-        PcmTap(captureSink) { format ->
-            val hook = onAudioFormat
-            if (hook != null) {
-                hook(format.sampleRate.value, format.channelCount, format.encoding)
-            } else {
-                analysis.sampleRateHz = format.sampleRate.value
-            }
+        PcmTap(playerSink) { format ->
+            playerSink.rateHz = format.sampleRate.value
+            onAudioFormat?.invoke(format.sampleRate.value, format.channelCount, format.encoding)
         }.apply {
             boundaryListener =
                 TapBoundaryListener { ended, endedFrames, begun ->
-                    sampleRing.beginEpoch()
                     clockDriver.onTapBoundary(ended, endedFrames, begun)
                 }
         }
@@ -84,10 +73,10 @@ class PlaybackSession internal constructor(
     // cannot doze mid-track with the screen off. Not the WIFI variant: nothing streams.
     private fun buildPlayer(nativeEngine: Boolean): Player =
         if (nativeEngine) {
-            NativePlayer(context, NativeTapPump(tap, clockDriver), NativePlayerDsp(dsp))
+            NativePlayer(context, feed, NativePlayerDsp(dsp))
         } else {
             ExoPlayer
-                .Builder(context, TapRenderersFactory(context, tap, clockDriver, dsp = listOf(dsp)))
+                .Builder(context, TapRenderersFactory(context, tap, clockDriver, dsp = listOf(dsp), feed = feed))
                 .setMediaSourceFactory(
                     androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
                         context,
@@ -115,30 +104,19 @@ class PlaybackSession internal constructor(
 
     val replayGain = ReplayGain(context.contentResolver, scope) { audioFx.setGainDb(it) }
 
-    val analysis = dev.geode.analysis.AnalysisEngine(sampleRing)
+    val analysis = dev.geode.analysis.AnalysisEngine(feed)
 
-    private val interestHook: () -> Unit = { syncAnalysis() }
+    // Where the sound comes out, for outputs that cannot time themselves (#295).
+    private val routes = OutputRouteWatcher(context, feed)
 
     init {
-        dev.geode.audio.AudioBus.onInterestChanged = interestHook
-        syncAnalysis()
-        scope.launch {
-            analysis.features.collect {
-                dev.geode.audio.AudioBus
-                    .publish(it)
-            }
-        }
-    }
-
-    private fun syncAnalysis() {
-        if (dev.geode.audio.AudioBus.hasConsumers) analysis.start(scope) else analysis.stop()
+        // The player is what the Visual hears, until Live input takes over.
+        feed.select(FeedSource.PLAYER)
+        routes.start()
     }
 
     internal fun release() {
-        analysis.close()
-        if (dev.geode.audio.AudioBus.onInterestChanged === interestHook) {
-            dev.geode.audio.AudioBus.onInterestChanged = null
-        }
+        routes.stop()
         scope.cancel()
         onAudioFormat = null
         audioFx.release()
@@ -152,6 +130,12 @@ class PlaybackSession internal constructor(
 }
 
 object PlaybackEngine {
+    /**
+     * The Visual's one audio feed, for the life of the process: every session's player and Live input
+     * write into it, and every Visual (the app's and the live wallpaper's) reads from it.
+     */
+    val feed: VisualFeed by lazy { VisualFeed() }
+
     private var app: Context? = null
     private var session: PlaybackSession? = null
     private var uiHolds = 0
@@ -174,7 +158,7 @@ object PlaybackEngine {
     @Synchronized
     private fun sessionFor(context: Context): PlaybackSession {
         val current = rebindTo(context)
-        return session ?: PlaybackSession(current).also { session = it }
+        return session ?: PlaybackSession(current, feed).also { session = it }
     }
 
     @Synchronized

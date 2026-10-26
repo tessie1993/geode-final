@@ -11,6 +11,382 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The legacy app code is gone (#334).** The old player session and
+  screens, their settings plumbing, the old export and loop-render dialogs
+  and their controller, the export presets and the legacy quality, ratio
+  and codec enums are deleted, with their tests and strings. What Studio's
+  Renders still use — the encoder, the loop render and extender, loudness,
+  chapters — now lives under `studio/media`, and the render service is
+  `studio/RenderService`. The Timeline's auto-cut reads the playing song's
+  analysis when a Render has already made one, instead of an export that no
+  longer exists. Importing earlier videos and v1 editor projects is
+  unchanged.
+
+- **Multi-pass Styles (#332).** A shader Style can declare `multipass` and the
+  engine draws it in passes: its camera into a tiny target, an optional coarse
+  prepass that lets each ray start near its surface, the march at half the
+  target (or another share) with a sub-pixel jitter each frame, and a resolve
+  that upscales by depth and accumulates last frame's picture, reprojected
+  through both cameras with the depth kept in alpha. History is dropped on a
+  camera cut, off screen and where the depth disagrees, and is clamped to this
+  frame's colours around the pixel, so fast moves leave no ghost. The folder
+  stays one manifest and one shader (`lib_multipass`). A Style marches about a
+  quarter of the pixels it did; Mirror Prism is the first to use it.
+
+- **Mirror Prism (#331).** A new Style: a flight down a corridor of black
+  mirror glass laced with neon wireframe, opening every so often into a
+  mirrored chamber where a crystal turns in a neon cage. The mirrors are folded
+  space, so the corridor repeats in every direction and dims with every wall a
+  ray passes through. The crystal's refraction is traced through its facets
+  exactly, once per colour with its own index, so the chamber's light splits
+  into fringes (faked dispersion), and the lens flare and star carry it into
+  the glare. The bass and the passage's swell bend the crystal harder and
+  widen the split; loudness and the bass speed the flight and the light
+  streaming down the rails.
+- **Camera v2: field of view, roll and speed ramp (#330).** Three new
+  Camera controls, each one a Reaction, Macro and Automation target: the
+  field of view springs wide fast and settles slowly, so linked to a hit it
+  punches; the roll turns the camera about the way it looks, speeding up and
+  slowing down smoothly and levelling out when set back to 0; the speed ramp
+  surges the flight and eases off. Every Style that draws a 3D world now
+  turns, widens and rolls a real camera with them; flat pictures roll and
+  narrow. Reduced motion calms all three. Two new Camera moves on the beat:
+  Lens punch and Speed ramp.
+
+- **Five Styles become flyable 3D worlds (#335).** Spiral Eye is a real
+  volume of spiral gas round an iridescent eye that the camera circles;
+  Fractal Temple is a walk down a causeway through a nave of geodesic domes,
+  lamp rings and filigree spires; Blacklight Bloom flies through UV-ink
+  lattices into soap bubbles and out the other side; Merkaba Grid flies a
+  hall of geodesic spheres and turning merkabas under a web sky; Vanishing's
+  falling stack of shells now follows the Camera. Their Extras keep their
+  names, so saved presets load as before.
+
+- **Style packs ship their own images (#391).** A shader Style may declare
+  up to four PNGs in its folder under `textures`, each with a wrap
+  (`repeat`, `mirror`, `clamp`) and a filter (`linear`, `nearest`,
+  `mipmap`), and sample them as `uImage<Name>` with no code outside its
+  shader. The engine decodes them with the platform's image decoder; the
+  pack check and the render check hold them to the format. Origami Peaks
+  is now folded from paper drawn by `tools/style_textures/generate.py`.
+
+- **Renders keep time with the sound (#302).** The levels a Render draws
+  are the analysis hop nearest each frame, no longer half a window early;
+  the tempo a Render reports is the one the track settled on, not its last
+  hop's; and an analysis read back from the cache draws exactly what the
+  fresh one did.
+
+- **Reload the MilkDrop preset that is playing (#382).** On the MilkDrop
+  screen, the preset the Visual shows has a reload button that loads it
+  again from its file, so a fix made to an imported preset can be checked
+  right away.
+
+- **Delete imported MilkDrop presets and textures (#360).** The MilkDrop
+  screen has a bin button on each of the person's own presets and on every
+  texture, behind a confirmation. A deleted preset also leaves Favourites,
+  Recent, folders and its Style switching mark, and if the Visual was
+  showing it, moves on to the Style listed next to it. Presets Geode ships cannot be deleted. Texture
+  links are rebuilt after every delete.
+
+- **MilkDrop accepts BeatDrop-style shader extras (#306).** Geode's projectM
+  (`projectm-v4.1.8-shader-extras.patch`, written from the documented
+  behaviour) now runs preset shaders that read the spectrum and waveform
+  (`get_fft`, `get_wave` and their variants), the pointer (`mouse`, fed from
+  touch), the clock (`sysTime`, `sysDate`; a fixed day in a Render) and
+  `aspect_sd`, that call `tanh`, `sinh`, `cosh`, `radians`, `degrees` or
+  `trunc`, or that ask for random textures above `rand15`. The import report
+  only warns about the few calls still missing, and projectM now tells the
+  app when it drops a shader.
+
+- **Visuals compile before the switch (#304).** projectM's programs now go to
+  Geode's `ProgramBinaryCache`, and its HLSL-to-GLSL translations are kept
+  beside them (`projectm-v4.1.8-program-cache.patch`), so a MilkDrop preset
+  seen before loads without translating or compiling. A Style shown for the
+  first time is built on the frame it is asked for, and its change (which
+  waits for the downbeat, #309) can start only after that, so the compile
+  never lands in the transition's first frame. While the phone is idle and charging, a
+  warm-up job draws every Style and loads every MilkDrop preset offscreen
+  once (`StyleWarmUpService`), again after an app update, a new GPU driver or
+  new presets. The cache survives restarts, starts over with a new driver,
+  and is emptied after an app update (`ShaderCacheStamp`).
+
+- **MilkDrop follows the quality scale at about half the memory traffic
+  (#303).** MilkDrop's engine buffer is now the scene target's size, so it
+  follows Visual quality and the thermal tiers like every family, held to
+  1.6 megapixels live (`kMilkdropMaxMegapixels`; Renders draw at the export
+  size). projectM draws its frame straight onto the scene target and the
+  composite grades it, palette tint included: Geode's own copy and
+  `pm_post_frag` are gone. `projectm-v4.1.8-lean-frame.patch` stops writing
+  the motion vectors' u/v map for presets that show none. Estimated from the
+  passes, at 1080x2400: about 135-150 MB of memory traffic per frame before
+  (2.6 MP x ~52-58 bytes a pixel), about 64-74 MB after (1.6 MP x ~40-46).
+  projectM's two y-flip copies stay: removing them means redrawing every
+  preset pass upside down, which the CI cannot check by eye.
+
+- **Our own starter textures for MilkDrop (#307).** Geode ships 24 textures
+  of its own, drawn from integer hashes by `tools/milk_textures/generate.py`
+  (about 0.9 MB in all) under the names presets ask for most (`worms`,
+  `clouds`, `pic`, `manyfish`, `sunrise`, `cells`, `seaweed`, `lichen`,
+  `rose`, `grad3`, `grad16`, `heart` and more), so imported packs find them on
+  a fresh install. `MilkStarterPack` installs them once beside the presets,
+  never over a texture of the same name. A new projectM patch
+  (`projectm-v4.1.8-texture-pool.patch`) makes the noise textures once per
+  engine instead of on every preset switch (a seeded engine makes them from
+  its seed, so Renders stay frame-exact), skips the hidden link folders when
+  scanning, and draws random textures from each file once.
+
+- **Every MilkDrop preset is a Style (#305).** Each `.milk` in the MilkDrop
+  folder, the ones Geode ships and the person's own, is listed as a Style of
+  its own in the Visuals tab's MilkDrop group and plays through Customization
+  like every Style (`milkdrop:<file>`, `MilkdropStyles`), with the Shared
+  core, in the live Visual, Recordings and Renders. A tap on a preset in the
+  MilkDrop screen shows it. The presets Geode ships are installed into the
+  folder again, and texture links are rebuilt after every import. Each
+  imported preset's report says whether it plays as written, plays without
+  its shader (naming what our projectM cannot translate), or misses textures
+  (naming them). An older preset saved with a MilkDrop preset opens on that
+  preset's Style.
+
+- **Feedback warp layer for shader Styles (#321).** A shader Style can
+  declare `feedback` in its manifest and be drawn as a loop, as MilkDrop
+  draws every preset: its last picture is carried through a coarse motion
+  grid (zoom, rotation, flow, stretch and a swirl about a centre), decayed
+  and tinted, and the Style draws over it. Everything is per second, so it
+  moves and fades alike at 30, 60 and 120 Hz; Speed, the music and the Decay,
+  Flight, Spin, Drift and Swirl Extras drive it, and a pack may bring its own
+  warp stage. The loop is kept in half float (RGB10_A2 where that does not
+  render) and rounded stochastically, so a slow decay fades smoothly to exact
+  black instead of stalling into a ghost; CI runs the loop in every format to
+  prove it. Scope is the first Style drawn this way: its line now leaves
+  echoes that fly outward, turn and part into colour. The previous-frame path
+  also gained two fixes: making a shared input's texture no longer replaces
+  the audio texture for that frame, and the render check no longer draws a
+  Style that reads its last frame into a feedback loop of its own. See
+  docs/style-packs.md, "Feedback".
+- **Changes of Style follow the music (#309, #255).** A change of Style, the
+  person's or Style switching's, now starts on the next downbeat while a tempo
+  is heard (at once while none is, and after a bar and a beat at most when the
+  downbeat is missed), runs eased, and moves on a step with each kick while
+  still ending on time without drums. Settings > Application preferences >
+  Changing Style picks its look from 17 No-flash safe looks (the fade by
+  default) or a seeded Random that never repeats the last; there is no hard
+  cut. The new Style starts from the old one's picture, trails and echo
+  included, instead of from black, and the old one keeps its trails on its way
+  out. While a change waits for its downbeat, the old Style keeps its own
+  Customization: each Customization now names its Style in the plan, and the
+  engine holds one for a Style not yet drawn until the change to it starts.
+  `glslcheck --effects` draws every look along its progress and fails one that
+  dips to black or washes to white.
+
+- **The picture follows the music's structure, rhythm, timbre and space (#294).**
+  One feature bus in the engine reads everything the analysis hears beyond the
+  bands and the beat (downbeat, bar, drums, novelty, sections, build-ups,
+  drops, arrivals, timbre and stereo), shaped so nothing jumps a frame, latched
+  at phrase rate where it should be, and faded out while the tempo is unsure.
+  Shader Styles read it through `lib_scene_features.glsl` (Plasma by section,
+  Kaleido by bar and drums, Voronoi by timbre, Liss by stereo, Tunnel by drops
+  and arrivals), and every other family has its own mapping: Fluid's kick and
+  drop, Life's bar-locked seeding and harmonic rule, Mycelium's branching,
+  Acid's feedback, Cymatics' modes over the bar, Curl Flow's build, Water's
+  downbeat ring and section swell, and MilkDrop's post pass.
+
+- **Spectrum and oscilloscope inputs Styles can trust (#300).** `uAudioTex`
+  grows to 512 x 8 (`AudioInputs`), keeping the old reads at y = 0.25 and
+  0.75: the spectrum is now measured on each frame's stereo window, 30 Hz to
+  16 kHz on a log scale, on one level scale for the whole spectrum under a
+  ceiling that follows the loudest texel, with a noise floor, a fast attack
+  and a slower decay, so bass-heavy music looks bass-heavy; a peak-hold row
+  holds each texel's peak, then lets it fall, and freezes through silence.
+  The scope is a fixed span of the window aligned to the previous frame by
+  searching on the mid, the same offset for left and right, so a steady tone
+  stands still, with left and right rows of their own. `lib_scene_uniforms`
+  adds `apeak()`, `awaveL()` and `awaveR()`, and the Lissajous Style draws
+  left against right. Offline Renders, which have no window, read the
+  analysis' bands and waveform as before.
+
+- **Hi-res and 24-bit files analyse correctly (#299).** The analysis takes
+  audio above 48 kHz down to 48 kHz or less by a whole factor first
+  (`Decimator`: a windowed-sinc low-pass, flat to 16 kHz, with anything
+  that would fold back below 22 kHz at least 75 dB down), so the bands, the
+  hop and the tempo read the same at 44.1, 48, 96 and 192 kHz (the tempo
+  used to read x0.64 at 192 kHz). The live feed stamps and the offline
+  timeline time hops and windows in the source's own frames to match. The
+  native decoder and the offline analysis ask MediaCodec for float PCM, so
+  24-bit files keep their precision, and fall back to 16-bit where a
+  decoder will not. Cached analyses are re-made (analysis version 5).
+
+- **Live input survives real life (#297).** The built-in microphone is
+  chosen explicitly and chosen again if the system routes elsewhere, so a
+  plugged-in headset no longer takes over. Another app taking the
+  microphone, the privacy toggle or going to the background is reported as
+  lost at once (from the recording callbacks, not after four quiet seconds),
+  and Live input resumes by itself when the microphone is free; dismissing
+  the notice stops it. The microphone is let go when the app stops, since
+  there is no microphone foreground service. A failed read reopens the
+  capture up to six times (100 ms doubling to 1 s) and starts a new audio
+  epoch. 48 kHz is asked for first, reads are 256 frames, and the window the
+  scenes draw (MilkDrop's PCM) is raised 6 dB, or 24 dB for the UNPROCESSED
+  source, so the analysis hears the microphone as it is
+  (`geode_feed_set_window_gain`). It applies after the Sensitivity, which
+  reaches the analysis too, so the two multiply on the window.
+
+- **The analysis sleeps when no Visual is shown (#298).** The live Visual
+  watches the audio feed only while it is on screen (the Visuals tab, full
+  screen or picture-in-picture) and the app is started, so another tab, the
+  lock screen or a screen turned off runs no analysis (a Recording keeps
+  it awake while it runs); the log notes
+  "analysis sleeps" and "analysis runs". On waking, the analysis drops what
+  it had before and starts a quarter of a second before the audio heard now,
+  so the Visual has fresh features within a frame rather than replaying old
+  ones or working through seconds of backlog.
+
+- **Vortex Forge (#323).** A new Style: fire and smoke shells spiralling
+  down a funnel into a white-hot core, seen from above and circled slowly by
+  its own camera, with far stars, god rays and star streaks from the core and
+  the 3D particle layer streaming past. Its spiral never winds up: the shells
+  are read in a log-polar frame that slides inward, so they drain into the
+  core forever. Drops and arrivals throw a spark burst (the Surge and Change
+  Reactions push its Force Extra, rising over the No-flash rise and settling
+  over 1.6 s): many more sparks fly out of the core and the shells are blown
+  outward, without brightening the frame. Its variant turns the smoke into a
+  blue galaxy.
+- **A 3D toolkit for Styles, shown in Polyhedra Cathedral (#322).** Three new
+  shader libraries any Style can include: `lib_march3` (an over-relaxed
+  raymarch whose steps lengthen with distance and are checked after the fact,
+  neon glow gathered along the ray, cheap ambient occlusion, and distance and
+  height fog in closed form), `lib_poly3` (icosahedron, dodecahedron,
+  tetrahedron and merkaba solids, their exact wireframes, geodesic sphere
+  tiling and facets, and polar, octahedral and icosahedral folds) and
+  `lib_path3` (Catmull-Rom camera paths, an endless wandering path, a banked
+  camera frame). The new Polyhedra Cathedral flies down a neon lattice nave
+  past wireframe polyhedra with faceted golden hearts under geodesic lanterns;
+  the treble lifts the lattice's light, hits swell the polyhedra and the bass
+  pushes the flight.
+
+- **Shared Style inputs (#312).** A shader Style can declare, in its
+  manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D
+  noise, a 32³ noise volume and the blue-noise mask), its previous frame,
+  that frame blurred at 1/4, 1/8 and 1/16 by the bloom chain's own down
+  filter, and clocks: the frame index and dt, a random vector per visit, the
+  Style's age and a bar clock locked to the heard downbeat. The engine makes
+  and binds only what a Style declares; the noise and, in a Render, the visit
+  vector come from the Render seed, so Renders stay exact. Nebula, Event
+  Horizon and Wormhole Pass draw their clouds from the noise volume, one fetch
+  per octave instead of eight hashes. See docs/style-packs.md, "Shared inputs".
+
+- **Third-party notices are complete and true (#293).** The notices now cover
+  TagLib (with both of its licence options and the choice marked pending,
+  #274), utfcpp, KISS FFT, Oboe, Dagger and Hilt, the AndroidX, Kotlin, Guava,
+  Okio, protobuf-lite and Checker Framework libraries the app pulls in, and
+  the Hash without Sine shader hash. projectM is described as the modified
+  library it is; its ten patches ship inside the app
+  (`assets/third_party/projectm/`); projectm-eval is MIT, not LGPL; the
+  gl-transitions BSD notices and the colour maps' MIT notice are quoted in
+  full; the stale woscope entry is gone; the MPL-1.1 and Apache-2.0 texts are
+  appended. The in-app copy is identical to `THIRD_PARTY_NOTICES`, and a new
+  CI check (`tools/ci/check_notices.py`) keeps it so, along with the shipped
+  patches, every submodule and every shipped dependency group. Dependency
+  review now also fails on a licence outside the permissive allow list.
+- **One Sensitivity for every Style, MilkDrop included (#301).** Settings,
+  Audio, Analysis has a Sensitivity (-12 to +24 dB, stored in
+  `visual_sensitivity_db`): a gain on the Visual's audio feed before the
+  analysis and every Style read it, so it reaches projectM's PCM too and
+  quiet music reacts like loud music. Customize, Advanced has a new Sound
+  section that trims bass, mid, treble and beat one by one (the existing
+  per-signal trims, which ride with the Customization and carry across
+  Style changes).
+
+- **MilkDrop presets react the way they were written (#296).** Two projectM
+  patches: `projectm-v4.1.8-stereo-beats.patch` (upstream `494269e`) takes
+  bass, mid and treble from both channels now that Geode feeds stereo, and
+  `projectm-v4.1.8-loudness.patch` holds the loudness followers and reads a
+  neutral 1.0 in silence, starts them from the first real value and times
+  their warm-up in seconds, so a return from the background, a Render start
+  or a resume after a pause no longer spikes (stock: about 20x on a new
+  engine at 60 Hz, 11x after a 10 s pause). The patch also makes
+  `projectm_set_beat_sensitivity` work, and the Style's beat response now
+  drives it: 1 reacts as written, 0 holds still, 2 doubles every swing.
+  Each frame projectM gets the loudest 576-frame window of the audio heard
+  since the last frame, so no kick falls between frames at 30-60 fps.
+  Renders still feed projectM the features' waveform; real PCM for Renders
+  is not done yet.
+
+- **The Visual lands on the beat you hear (#295).** Each Visual frame now
+  reads the audio heard at the moment it reaches the screen, from
+  Choreographer's frame timeline (API 33+) or two refreshes after its vsync,
+  instead of the moment it starts drawing. Geode's own player times its
+  output with the stream's timestamps; an output that gives none is read its
+  buffer plus what its route is known to add (about 200 ms on Bluetooth,
+  80 ms on LE Audio, 10-25 ms wired, USB and speaker), with the route taken
+  from the connected devices. A new Picture sync setting (Audio, Analysis,
+  ±300 ms) moves the player's picture against the music for anything left
+  over. Live input is never moved, and nothing is ever drawn ahead of the
+  newest audio.
+
+- **Freeze reactions holds MilkDrop too (#366, #276).** With the native audio
+  feed, Freeze reactions is held in the engine: every Style, MilkDrop
+  included, keeps the Sound signals and audio window of the first held frame
+  while the picture's own motion runs on, and beats that fire during the hold
+  are dropped rather than replayed when it ends.
+
+- **Fast Style authoring loop (#284).** Shaders are assembled with `#line`
+  directives, so a compile error names the Style's file and line
+  (`styles/kifs/shader.glsl:12`) on the phone, in the render check and in
+  glslang. Debug builds reload a Style's shader and manifest pushed with adb
+  to their Style lab folder within about a second, keeping the last good
+  shader when a new one fails; release builds compile no hot-reload path.
+  CI checks every Style with glslang (GLSL ES 3.00, CI only), and
+  `tools/glslcheck/check.mjs --watch --push` re-checks and pushes on every
+  save. See docs/style-packs.md, "Authoring loop".
+
+- **projectM v4.1.8 (#275).** The `third_party/projectm` submodule moves
+  from the v4.1.7 tag to v4.1.8: long MilkDrop shaders no longer cost
+  quadratic time to transpile, a self-referencing shader macro no longer
+  hangs the load, float `%` and its precedence translate correctly, an
+  out-of-bounds read in custom waves is fixed, and projectm-eval moves to
+  1.0.7 (`e8c311e`). Geode's patches are rebased onto the tag and renamed
+  `tools/projectm-v4.1.8-*.patch`, and the new
+  `projectm-v4.1.8-plasma-mediump.patch` carries upstream `0227b7a` so the
+  plasma transition stops overflowing at mediump on phones. No Geode code
+  changed: `MilkdropScene` already feeds projectM 576 samples a frame, the
+  size `projectm_pcm_get_max_samples()` now reports.
+
+- **One native audio feed for the Visual (#276).** Every source writes into one
+  native stereo ring (`core/audio/feed/FeedRing`, `core/api/Feed`): the native
+  player from its audio callback, before volume and DSP; ExoPlayer's tap; and
+  Live input, with exactly one source listened to at a time (starting the
+  microphone replaces the player, stopping it gives the player back). The
+  analysis runs natively off the ring on its own thread, and each Visual frame
+  reads, on the drawing thread, the features and a 576-frame stereo window at
+  the audio being heard: ExoPlayer's half-second AudioTrack lead is taken off
+  (`FeedClockSink`), a pause is silent within a frame, audio that stops coming
+  expires to silence, and no window is ever drawn twice. MilkDrop gets both
+  channels. `AudioBus`, the Kotlin PCM rings, the tap pump and the main-thread
+  feature hop are gone; the live wallpaper reads the same feed.
+
+- **The native player handles calls, unplugging and output errors (#281).**
+  Audio focus works as it does for ExoPlayer: a call pauses the music until it
+  ends, another player taking over pauses it, a ducking request lowers it.
+  Unplugging wired or Bluetooth headphones pauses it when the Settings say so.
+  An output that disconnects is reopened with backoff, and after its retries
+  it reports an output error rather than "decoding failed".
+
+- **Frosted glass App UI (#324), and the Elements retired (#333).** The App UI
+  is one classic look of frosted, translucent, matte glass, light or dark (or
+  as the phone is), in `dev.geode.design.glass`: the #270 tokens (blur
+  24/32/40 dp, backdrop clamp 0.35, tint 0.60/0.65, 4% grain, 1 dp edge, matte
+  0.94), Material roles mapped onto glass, Inter, and familiar Material
+  controls with 48 dp touch targets. The playing song's art, blurred and
+  clamped, sits behind Home and the plain player; a calm backdrop behind the
+  other pages. The Bar frosts the page live through Haze 2.0.1; glass over the
+  live Visual is matte until the engine frosts it (#349). Settings > Theme
+  adds Match phone / Dark / Light and Reduce transparency; battery saver,
+  heat, contrast settings and Visuals off calm the glass on their own. Empty,
+  loading and error states say what is going on in one line with one thing to
+  do. `GlassContrastRulesTest` holds every text role to WCAG AA over the worst
+  backdrop in both modes. The Element picker, skins, the Water module, the Home
+  placeholder, the Crystal, stone and forest components, their art, sounds and
+  fonts, and the Element asset pipeline and its CI check are gone.
 
 - **Water's sea-glass controls, on the Element system (#105).** The Crystal
   controls now draw their bodies in the Element chosen in Settings

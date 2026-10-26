@@ -19,6 +19,9 @@ enum class SharedGroup {
     GLITCH_AND_PIXELATE,
     PARTICLES,
     COLOUR_GRADING,
+
+    /** Layer 2's opacity, influence amount and swap ([Layer]); they do nothing while Layer 2 is off. */
+    LAYERS,
 }
 
 /** How a property's value is read. Every value is held as a number so any of them can be a target. */
@@ -69,6 +72,18 @@ enum class SharedProperty(
     ENDLESS_ZOOM(SharedGroup.CAMERA, 0f, 1f, 0f, ValueKind.SWITCH),
     DIVE_SPEED(SharedGroup.CAMERA, 0.05f, 1.2f, 0.3f),
 
+    /**
+     * Widens (above 0) or narrows the camera's lens. It springs open fast and settles slowly, so a
+     * Reaction on it is a FOV punch; a flat picture can only narrow.
+     */
+    FIELD_OF_VIEW(SharedGroup.CAMERA, -1f, 1f, 0f),
+
+    /** Rolls the camera about the way it looks, at this rate either way; the rate speeds up and slows down smoothly. */
+    ROLL(SharedGroup.CAMERA, -1f, 1f, 0f),
+
+    /** Speeds the flight up beyond its cruise, ramping in and easing off. */
+    SPEED_RAMP(SharedGroup.CAMERA, 0f, 1f, 0f),
+
     PALETTE(SharedGroup.COLOUR, 0f, 20f, 0f, ValueKind.STEPPED),
     PALETTE_2(SharedGroup.COLOUR, 0f, 20f, 1f, ValueKind.STEPPED),
     PALETTE_MIX(SharedGroup.COLOUR, 0f, 1f, 0f),
@@ -100,6 +115,19 @@ enum class SharedProperty(
     TRAILS(SharedGroup.TRAILS_AND_ECHO, 0f, 0.98f, 0f),
     TRAIL_ZOOM(SharedGroup.TRAILS_AND_ECHO, -0.5f, 0.5f, 0f),
     TRAIL_WARP(SharedGroup.TRAILS_AND_ECHO, 0f, 1f, 0f),
+
+    /**
+     * A copy of the picture, zoomed by [ECHO_COPY_ZOOM] and flipped by [ECHO_COPY_FLIP], mixed over it for
+     * cheap symmetry and depth (#385); 1 is an even blend and 0 is off. The copy keeps the picture's
+     * overall brightness, and a change of flip fades the copy out and back in, so it never flashes.
+     */
+    ECHO_COPY(SharedGroup.TRAILS_AND_ECHO, 0f, 1f, 0f, luminous = true),
+
+    /** How much larger the echo copy is than the picture, about its centre; below 1 it is smaller and tiles. */
+    ECHO_COPY_ZOOM(SharedGroup.TRAILS_AND_ECHO, 0.5f, 2f, 1f),
+
+    /** 0 the echo copy is not flipped, 1 flipped left to right (where it starts: a mirror), 2 top to bottom, 3 both. */
+    ECHO_COPY_FLIP(SharedGroup.TRAILS_AND_ECHO, 0f, 3f, 1f, ValueKind.STEPPED),
 
     GRAIN(SharedGroup.LENS, 0f, 1f, 0f),
     VIGNETTE(SharedGroup.LENS, 0f, 1f, 0f),
@@ -134,4 +162,19 @@ enum class SharedProperty(
     GAMMA(SharedGroup.COLOUR_GRADING, 0.3f, 2.5f, 1f, luminous = true),
     TEMPERATURE(SharedGroup.COLOUR_GRADING, -1f, 1f, 0f),
     INVERT(SharedGroup.COLOUR_GRADING, 0f, 1f, 0f, ValueKind.SWITCH, luminous = true),
+
+    /**
+     * Red/blue anaglyph 3D for red/cyan glasses (#388), with depth read from the picture's brightness.
+     * Each eye keeps the picture's brightness and the switch fades in and out, so it never flashes.
+     */
+    ANAGLYPH(SharedGroup.LENS, 0f, 1f, 0f, ValueKind.SWITCH, luminous = true),
+
+    /** How strongly Layer 2 is laid over Layer 1; held lower by the flashing blend modes ([LayerBlend.maxOpacity]). */
+    LAYER_OPACITY(SharedGroup.LAYERS, 0f, 1f, 0.5f, luminous = true),
+
+    /** How strongly Layer 2 acts on Layer 1 ([LayerInfluence]). */
+    LAYER_INFLUENCE(SharedGroup.LAYERS, 0f, 1f, 0.5f, luminous = true),
+
+    /** 0 lays Layer 2 over Layer 1, 1 lays Layer 1 over Layer 2; between, a crossfade of the two. */
+    LAYER_SWAP(SharedGroup.LAYERS, 0f, 1f, 0f, luminous = true),
 }

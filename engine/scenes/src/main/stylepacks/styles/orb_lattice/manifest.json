@@ -3,5 +3,10 @@
   "id": "orb_lattice",
   "label": "Orb Lattice",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "extras": [
+    { "name": "size", "min": 0, "max": 2, "default": 1 },
+    { "name": "scale", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

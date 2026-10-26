@@ -55,6 +55,8 @@ uniform float uTile;
 uniform float uTwist;
 uniform float uTemperature;
 uniform float uSolarize;
+// Speed x smoothed loudness, integrated on the CPU (ShaderScene): never jumps.
+uniform float uEnergyPhase;
 
 float aband(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
 float awave(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
@@ -136,6 +138,8 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -157,16 +161,26 @@ vec3 grade(vec3 col) {
 }
 
 // Spectrum tunnel: ring brightness from bands, speed from energy.
+//
+// Structure (#294): a drop throws the tunnel wide, an arrival turns it and sends a ring down it, a
+// section boundary twists it, and the loudness of the passage thickens the rings. Each band against
+// its usual level (#319) has its own part: the bass thickens the rings further, the mid leans the
+// spiral and the treble lights the oscilloscope lines.
 void main() {
     vec2 uv = view();
-    float angle = atan(uv.y, uv.x) / 6.2831 + 0.5;
-    float radius = length(uv) + 0.0001;
-    float depth = 0.3 / radius + uTime * (0.6 + uEnergy * 2.0) + uBeat * uBeatResponse * 0.25;
-    float band = aband(fract(angle + depth * 0.05));
-    float rings = smoothstep(0.35, 0.9, fract(depth * 2.0));
+    float radius = length(uv) * (1.0 - 0.18 * uDropHit) + 0.0001;
+    float angle = atan(uv.y, uv.x) / 6.2831 + 0.5 + 0.1 * uArrival + 0.06 * uSectionHit / (radius + 0.3);
+    angle += 0.04 * (uMidLevel - 0.5) / (radius + 0.5);
+    // Travel is INTEGRATED: uEnergyPhase is speed x loudness summed over time, so a loud passage
+    // speeds the rings up smoothly. `uTime * (0.6 + uEnergy * 2.0)` jumped the whole tunnel every
+    // time loudness moved, further the longer it had been running.
+    float depth = 0.3 / radius + uXFlightTime * 0.6 + uEnergyPhase * 2.0 + uBeat * uBeatResponse * 0.25;
+    float band = aband(fract(angle + depth * 0.05 * uXSpin));
+    float rings = smoothstep(0.35 - 0.15 * uMacro - 0.08 * (uBassLevel - 0.5), 0.9, fract(depth * 2.0 * xm(uXScale)));
     float wave = awave(fract(angle * 2.0));
     vec3 col = pal(depth * 0.15) * (0.15 + band * 1.6) * rings;
-    col += pal(0.6) * wave * uTreble * 0.6;
+    col += pal(0.6) * wave * uTreble * (0.45 + 0.3 * uTrebleLevel);
+    col += pal(0.3) * 0.4 * uArrivalHit * exp(-pow((radius - 1.2 * (1.0 - uArrivalHit)) * 8.0, 2.0));
     col *= smoothstep(1.8, 0.35, radius * uZoom);
     fragColor = vec4(grade(col), 1.0);
 }

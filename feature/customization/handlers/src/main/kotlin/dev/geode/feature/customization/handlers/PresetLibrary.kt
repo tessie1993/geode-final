@@ -30,11 +30,24 @@ class PresetLibrary(
     /**
      * Writes [preset] to the preset folder, replacing a preset of the same name wherever it sits in it,
      * then copies it to the mirror folder. Throws an [IOException] when it could not be saved.
+     *
+     * What the preset it replaces kept but this version cannot set (its MilkDrop preset, and the parts
+     * only a newer Geode reads) is written back with it, untouched (ADR-0004).
      */
     fun save(preset: Preset): SaveOutcome {
         val saved = places.saved()
-        val text = PresetFormat.encode(preset)
-        val path = pathOf(saved, preset.name) ?: fileNameOf(preset.name)
+        val existing = pathOf(saved, preset.name)
+        val replaced = existing?.let { path -> runCatching { PresetFormat.decode(saved.read(path), fallbackStyle) }.getOrNull() }
+        val keptMilkdrop =
+            when (replaced) {
+                is StoredPreset.Current -> replaced.preset.milkdrop
+                is StoredPreset.Legacy -> replaced.preset.milkPreset
+                null -> null
+            }
+        val keptUnread = (replaced as? StoredPreset.Current)?.preset?.unread
+        val merged = preset.copy(milkdrop = preset.milkdrop ?: keptMilkdrop, unread = preset.unread ?: keptUnread)
+        val text = PresetFormat.encode(merged)
+        val path = existing ?: fileNameOf(preset.name)
         saved.write(path, text)
         val mirror = places.mirror() ?: return SaveOutcome.SAVED
         return runCatching { mirror.write(fileNameOf(preset.name), text) }

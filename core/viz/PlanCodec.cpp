@@ -13,6 +13,8 @@ constexpr float kSecondsPerMinute = 60.0f;
 constexpr float kTempoHeardConfidence = 0.4f;
 constexpr size_t kTargetKinds = static_cast<size_t>(Target::Kind::Modulator) + 1;
 constexpr size_t kSourceKinds = static_cast<size_t>(Source::Kind::Modulator) + 1;
+// The largest 24-bit Style name (layer::styleHash).
+constexpr float kMaxStyleName = 16777215.0f;
 
 // Reads the floats in order.
 class Cursor {
@@ -42,6 +44,12 @@ public:
     }
     void steps(std::array<float, kMaxSteps>& out) {
         for (auto& s : out) s = next();
+    }
+    // A Style's 24-bit name (layer::styleHash) is a whole float; anything else names no Style.
+    uint32_t styleName() {
+        const float v = next();
+        const bool named = std::isfinite(v) && v >= 1.0f && v <= kMaxStyleName && v == std::floor(v);
+        return named ? static_cast<uint32_t>(v) : layer::kNoStyle;
     }
 
 private:
@@ -78,7 +86,7 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         r.fallSeconds = in.next();
     }
     for (auto& m : plan.modulators) {
-        m.kind = in.as<ModulatorKind>(static_cast<size_t>(ModulatorKind::RandomDrift) + 1);
+        m.kind = in.as<ModulatorKind>(static_cast<size_t>(ModulatorKind::RandomOnBeat) + 1);
         m.wave = in.as<Wave>(static_cast<size_t>(Wave::Random) + 1);
         m.periodSeconds = in.next();
         m.beatSync = in.flag();
@@ -113,11 +121,22 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         a.spacingSeconds = in.next();
         a.fadeSeconds = in.next();
         a.alternate = in.flag();
+        a.held = in.flag();
         a.stepCount = in.count(kMaxSteps);
         in.steps(a.steps);
     }
+    plan.layer.style = in.styleName();
+    plan.layer.blend = layer::blendAt(in.next());
+    plan.layer.influence = layer::influenceAt(in.next());
+    plan.style = in.styleName();
     out = plan;
     return true;
+}
+
+uint32_t planStyle(const float* data, size_t count) {
+    if (!data || count != kPlanFloats || !(data[0] > 0.5f)) return layer::kNoStyle;
+    Cursor in(data + kPlanFloats - kStyleFloats);
+    return in.styleName();
 }
 
 SignalFrame signalFrame(const GeodeFeatureFrame& f) {

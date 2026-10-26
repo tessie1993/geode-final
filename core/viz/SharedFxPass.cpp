@@ -1,5 +1,6 @@
 #include "geode/viz/SharedFxPass.hpp"
 
+#include <array>
 #include <utility>
 
 namespace geode::viz {
@@ -21,6 +22,7 @@ void SharedFxPass::release() {
     frameA_.release();
     frameB_.release();
     historyValid_ = false;
+    echoCopy_ = sharedfx::EchoCopyFade{};
 }
 
 GLuint SharedFxPass::apply(const SharedEffects& fx, GLuint sceneTex, int width, int height, float dt, float timeSeconds,
@@ -30,6 +32,7 @@ GLuint SharedFxPass::apply(const SharedEffects& fx, GLuint sceneTex, int width, 
     if (!out_->ensure(width, height)) return sceneTex;
     if (!history_->resizePreserving(width, height) || history_->width() != width || history_->height() != height) return sceneTex;
     glBindFramebuffer(GL_FRAMEBUFFER, out_->fbo());
+    out_->discardContents();
     glViewport(0, 0, width, height);
     glDisable(GL_BLEND);
     glUseProgram(program_);
@@ -47,9 +50,14 @@ GLuint SharedFxPass::apply(const SharedEffects& fx, GLuint sceneTex, int width, 
     glUniform1f(uniforms_.loc("uParticleKind"), static_cast<float>(fx.particleKind));
     glUniform1f(uniforms_.loc("uParticleSize"), fx.particleSize);
     glUniform1f(uniforms_.loc("uEchoKeep"), historyValid_ ? sharedfx::echoKeep(fx.trails, dt) : 0.0f);
-    glUniform1f(uniforms_.loc("uEchoZoom"), fx.trailZoom);
-    glUniform1f(uniforms_.loc("uEchoWarp"), fx.trailWarp);
+    glUniform1f(uniforms_.loc("uEchoZoom"), sharedfx::echoZoom(fx.trailZoom, dt));
+    glUniform1f(uniforms_.loc("uEchoWarp"), sharedfx::echoWarp(fx.trailWarp, dt));
     glUniform1f(uniforms_.loc("uMotionKeep"), historyValid_ ? sharedfx::motionKeep(fx.motionBlur, dt) : 0.0f);
+    echoCopy_ = sharedfx::stepEchoCopy(echoCopy_, fx.echoCopyFlip, dt);
+    glUniform1f(uniforms_.loc("uEchoCopy"), sharedfx::echoCopyMix(fx.echoCopy, echoCopy_.presence));
+    glUniform1f(uniforms_.loc("uEchoCopyZoom"), sharedfx::echoCopyZoom(fx.echoCopyZoom));
+    const std::array<float, 2> flip = sharedfx::echoCopyFlipScale(echoCopy_.flip);
+    glUniform2f(uniforms_.loc("uEchoCopyFlip"), flip[0], flip[1]);
     glBindVertexArray(quadVao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);

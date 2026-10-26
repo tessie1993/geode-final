@@ -1,5 +1,0 @@
-# The Element asset pipeline (element_assets.py). Free, open-source libraries only: Pillow (MIT-CMU
-# licence) and NumPy (BSD-3-Clause), for matting and the density exports. `check` needs neither.
-# Exact pins, like the rest of the tooling. NumPy 2.5 needs Python 3.12 or newer.
-pillow==13.0.0
-numpy==2.5.4

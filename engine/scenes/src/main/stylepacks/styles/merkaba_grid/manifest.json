@@ -3,5 +3,11 @@
   "id": "merkaba_grid",
   "label": "Merkaba Grid",
   "family": "shader",
-  "shader": "shader.glsl"
+  "shader": "shader.glsl",
+  "renderScale": 0.5,
+  "detail": "march",
+  "extras": [
+    { "name": "count", "min": 0, "max": 2, "default": 1 }
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

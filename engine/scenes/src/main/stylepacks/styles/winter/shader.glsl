@@ -136,6 +136,7 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -238,9 +239,11 @@ void main() {
 
     // ---- snowfall: three parallax particle layers riding the wind ----
     float snow = 0.0;
-    for (int i = 0; i < 3; i++) {
+    float layers = xcount(3.0);
+    for (int i = 0; i < 6; i++) {
+        if (float(i) >= layers) break;
         float fi = float(i);
-        float depth = 1.0 - fi * 0.28;
+        float depth = max(1.0 - fi * 0.28, 0.1);
         float scale = 7.0 + fi * 6.0;
         // Fall + drift; nearer layers take more wind than far ones, which is
         // the parallax the old smear read produced.
@@ -252,7 +255,7 @@ void main() {
         vec2 jitter = wHash22(cell);
         vec2 fpos = fract(q) - (0.25 + 0.5 * jitter);
         float seed = wHash12(cell * 1.63 + fi * 9.7);
-        float size = (0.045 + 0.06 * seed) * (1.0 + uBass * uBeatResponse * 0.4);
+        float size = (0.045 + 0.06 * seed) * xm(uXSize) * (1.0 + uBass * uBeatResponse * 0.4);
         float flake = smoothstep(size, size * 0.25, length(fpos));
         // Treble makes flakes twinkle; each flake blinks on its own phase, so
         // the twinkle is per-flake texture and never a full-frame flicker.

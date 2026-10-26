@@ -37,6 +37,19 @@ private:
     static constexpr int kMaxTouchBacklog = 24;
     static constexpr float kInkGain = 0.8f;
     static constexpr float kTimeWrapSeconds = 628.31853f;
+    // Tilt: how fast ink runs downhill (uv per second), and the slosh a change of tilt gives. A slosh
+    // is one drop at the downhill edge, only when the tilt has moved by kSloshStep since the last,
+    // and never more than once per kSloshRefractory: the water answers a tilt and then settles, so it
+    // never sways on its own at the slow rates that make people queasy.
+    static constexpr float kRunoff = 0.05f;
+    static constexpr float kSloshStep = 0.25f;
+    static constexpr float kSloshRefractorySeconds = 0.6f;
+    static constexpr float kSloshAmplitude = 0.18f;
+    static constexpr float kSloshRadius = 0.18f;
+    // The ring a trusted downbeat drops at the centre of the pool.
+    static constexpr float kRingRadius = 0.16f;
+
+    void tilt(float dt, float rippleStrength);
 
     static int gridResFor(int tierIndex);
     void queueIdleRain(float dt);
@@ -57,6 +70,8 @@ private:
     std::vector<std::array<float, 6>> touchStrokes_;
     std::vector<std::array<float, 6>> drainedStrokes_;
     std::array<float, 3> rgb_{};
+    std::array<float, 2> sloshTilt_{};
+    float sloshWait_ = 0.0f;
 };
 
 }  // namespace geode::viz

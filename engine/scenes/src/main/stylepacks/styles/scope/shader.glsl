@@ -136,7 +136,9 @@ vec2 view() {
     return uv;
 }
 
+//#include lib_style
 //#include lib_palette
+//#include lib_inputs
 
 vec3 grade(vec3 col) {
     if (uBloom > 0.001) col += uBloom * col * col;
@@ -156,14 +158,18 @@ vec3 grade(vec3 col) {
     return mix(col, max(vec3(1.0) - col, 0.0), uInvert);
 }
 
-// Oscilloscope: the raw waveform as a glowing line.
+// Oscilloscope: the raw waveform as a glowing line, drawn over its own echoes.
 void main() {
     vec2 uv = view();
     float x = clamp(uv.x * 0.5 + 0.5, 0.0, 1.0);
     float w = (awave(x) * 2.0 - 1.0) * (0.5 + uEnergy);
-    float d = abs(uv.y - w * 0.6);
-    float line = exp(-d * 60.0) + exp(-d * 12.0) * 0.35;
-    float grid = (step(fract(uv.x * 4.0), 0.01) + step(fract(uv.y * 4.0), 0.02)) * 0.06;
+    float d = abs(uv.y - w * 0.6 * uXScale);
+    float line = exp(-d * 60.0 / xm(uXThickness)) + exp(-d * 12.0 / xm(uXThickness)) * 0.35;
+    float grid = (step(fract(uv.x * xcount(4.0)), 0.01) + step(fract(uv.y * xcount(4.0)), 0.02)) * 0.06;
     vec3 col = pal(x * 0.5 + uEnergy * 0.3) * line + vec3(grid);
-    fragColor = vec4(grade(col), 1.0);
+    // The loop (manifest "feedback"): uPrevFrame is what this Style drew last frame, carried outward,
+    // turned, swirled and faded by the warp. The line goes over it with max(), so what feeds back is
+    // never brighter than the line itself and the echoes can only fade.
+    vec3 echo = texture(uPrevFrame, vUv).rgb;
+    fragColor = vec4(max(grade(col), echo), 1.0);
 }

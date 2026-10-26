@@ -12,6 +12,7 @@
 #include "scenes/SceneCommon.hpp"
 #include "geode/viz/StyleProfiles.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/FrameRate.hpp"
 
 namespace geode::viz {
 
@@ -19,7 +20,7 @@ namespace geode::viz {
 class LifeScene : public Scene {
 public:
     LifeScene(const styles::LifeStyle& style, ProgramLoader loader, SceneHost host)
-        : id_(style.id), style_(style), loader_(loader), host_(std::move(host)) {}
+        : id_(style.id), base_(style), style_(style), loader_(loader), host_(std::move(host)) {}
     ~LifeScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -32,23 +33,35 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
+    // GROWTH and SPREAD move the rule's own rates, VARIANT the look, FORCE how hard a hit kicks the field.
+    void setExtras(const ExtraValues& values) override {
+        style_ = extras::apply(base_, values);
+        force_ = values.multiplier(mod::Extra::Force, 0.0f);
+    }
 
 private:
     static constexpr int kSimRes = 288;
     static constexpr float kSeedSeconds = 0.5f;
-    static constexpr float kGoldenAngle = 2.399963f;
     static constexpr float kBeatThreshold = 0.3f;
     static constexpr float kCensusSeconds = 4.0f;
     static constexpr float kStarved = 0.004f;
     static constexpr float kOvergrown = 0.985f;
     static constexpr float kEnvRisePerSec = 9.0f;
     static constexpr float kEnvFallPerSec = 2.4f;
+    // The field advances in ticks of a 60 fps frame, each of the Style's substeps, so it grows at
+    // the same speed at 30, 60 and 120 Hz (#280). Four ticks covers the longest frame dt allows.
+    static constexpr float kTicksPerSecond = framerate::kReferenceFps;
+    static constexpr int kMaxTicksPerFrame = 4;
 
     fluid::DoubleFbo* ensureState();
     void census(fluid::DoubleFbo& field, GLint restoreFbo);
 
     std::string id_;
+    // The Style as its pack tunes it, and as its Extras move it this frame.
+    styles::LifeStyle base_;
     styles::LifeStyle style_;
+    float force_ = 1.0f;
     ProgramLoader loader_;
     SceneHost host_;
     SceneParams params_;
@@ -78,7 +91,9 @@ private:
     float kickX_ = 0.5f;
     float kickY_ = 0.5f;
     float censusAge_ = 0.0f;
+    framerate::FixedStepClock ticks_{kTicksPerSecond, kMaxTicksPerFrame};
     const TouchField* touch_ = nullptr;
+    FeatureValues bus_;
 };
 
 }  // namespace geode::viz

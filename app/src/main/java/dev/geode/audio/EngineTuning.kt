@@ -12,6 +12,7 @@ import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.playback.NativePlayer
 import dev.geode.playback.PlaybackSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -21,8 +22,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Applies Settings to the audio engine as they change (#17, Settings slice): the player's speed,
- * pitch, silence skipping and headphone handling, ReplayGain, the equalizer, and the beat detection
- * the Visual reacts to. Settings is the only source; nothing here stores anything.
+ * pitch, silence skipping and headphone handling, ReplayGain, the equalizer, the beat detection
+ * the Visual reacts to, and the Visual's feed: its Sensitivity and picture sync. Settings is the only source; nothing here stores anything.
  *
  * Started once the engine's session opens, and runs for the life of the process, as the engine does.
  */
@@ -50,6 +51,8 @@ class EngineTuning(
             it.skipSilenceEnabled = playback.skipSilence
             it.setHandleAudioBecomingNoisy(playback.pauseWhenUnplugged)
         }
+        // Geode's own player handles unplugging itself, as ExoPlayer does (#281).
+        (player as? NativePlayer)?.setHandleAudioBecomingNoisy(playback.pauseWhenUnplugged)
         session.replayGain.configure(playback.replayGain.ordinal, playback.replayGainPreamp.value, playback.replayGainClipGuard)
     }
 
@@ -57,6 +60,10 @@ class EngineTuning(
         session.analysis.beatSensitivity = analysis.beatSensitivity
         // The beats the person heard, at the gap they chose; the No-flash rule is the engine's, every frame.
         session.analysis.beatMinIntervalMs = analysis.beatMinIntervalMs
+        // The person's sync offset moves the player's picture against what the speaker plays (#295).
+        session.feed.setSyncOffset(analysis.syncOffset)
+        // One gain before the analysis and every Style's audio, MilkDrop's PCM included (#301).
+        session.feed.setSensitivity(analysis.sensitivity.value)
     }
 
     internal companion object {
