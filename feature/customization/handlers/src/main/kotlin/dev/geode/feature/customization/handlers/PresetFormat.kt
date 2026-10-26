@@ -82,22 +82,38 @@ object PresetFormat {
         for (key in keysOf(unread)) {
             when (key) {
                 VERSION -> Unit
-                PARTS, REACTIONS, MODULATORS -> unread.optJSONArray(key)?.let(::items)?.forEach { o.getJSONArray(key).put(it) }
-                SHARED, EXTRAS, SIGNALS ->
-                    unread.optJSONObject(key)?.let { kept ->
-                        val section = o.getJSONObject(key)
-                        for (name in keysOf(kept)) if (!section.has(name)) section.put(name, kept.get(name))
-                    }
-                MACROS ->
-                    unread.optJSONObject(key)?.let { kept ->
-                        val macros = o.getJSONArray(MACROS)
-                        for (index in keysOf(kept)) {
-                            val links = index.toIntOrNull()?.let { macros.optJSONObject(it) }?.optJSONArray(LINKS) ?: continue
-                            kept.optJSONArray(index)?.let(::items)?.forEach { links.put(it) }
-                        }
-                    }
+                PARTS, REACTIONS, MODULATORS -> append(o.getJSONArray(key), unread.optJSONArray(key))
+                SHARED, EXTRAS, SIGNALS -> putMissing(o.getJSONObject(key), unread.optJSONObject(key))
+                MACROS -> appendLinks(o.getJSONArray(MACROS), unread.optJSONObject(key))
                 else -> if (!o.has(key)) o.put(key, unread.get(key))
             }
+        }
+    }
+
+    private fun append(
+        to: JSONArray,
+        kept: JSONArray?,
+    ) {
+        if (kept != null) items(kept).forEach { to.put(it) }
+    }
+
+    private fun putMissing(
+        to: JSONObject,
+        kept: JSONObject?,
+    ) {
+        if (kept == null) return
+        for (name in keysOf(kept)) if (!to.has(name)) to.put(name, kept.get(name))
+    }
+
+    /** Each kept Macro link back onto the Macro at its place. */
+    private fun appendLinks(
+        macros: JSONArray,
+        kept: JSONObject?,
+    ) {
+        if (kept == null) return
+        for (index in keysOf(kept)) {
+            val links = index.toIntOrNull()?.let { macros.optJSONObject(it) }?.optJSONArray(LINKS) ?: continue
+            append(links, kept.optJSONArray(index))
         }
     }
 
