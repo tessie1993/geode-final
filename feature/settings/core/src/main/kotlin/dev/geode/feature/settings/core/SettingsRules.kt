@@ -24,6 +24,7 @@ import dev.geode.feature.settings.api.PlaybackCommand
 import dev.geode.feature.settings.api.PlaybackSettings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.VisualSurface
 
 /**
  * What each command does to the settings, and the ranges every value is kept in. Pure: the reducer
@@ -210,7 +211,17 @@ object SettingsRules {
             is PerformanceCommand.SetVisualFrameRate -> performance.copy(visualFrameRate = command.frameRate)
             is PerformanceCommand.SetSaveMode -> performance.copy(saveMode = command.on)
             is PerformanceCommand.SetVisualsOff -> performance.copy(visualsOff = command.on)
+            is PerformanceCommand.SetSurfaceQuality ->
+                performance.copy(surfaceQuality = performance.surfaceQuality.picked(command.surface, command.quality))
+            is PerformanceCommand.SetSurfaceFrameRate ->
+                performance.copy(surfaceFrameRate = performance.surfaceFrameRate.picked(command.surface, command.frameRate))
         }
+
+    /** These picks with [surface]'s set to [choice], or taken out when it is null so the surface follows the shared one. */
+    private fun <T> Map<VisualSurface, T>.picked(
+        surface: VisualSurface,
+        choice: T?,
+    ): Map<VisualSurface, T> = if (choice == null) this - surface else this + (surface to choice)
 
     private fun LookSettings.inRange(): LookSettings =
         copy(

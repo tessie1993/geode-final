@@ -25,6 +25,9 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.VisualFrameRate
+import dev.geode.feature.settings.api.VisualQuality
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.settings.core.SettingsRules
 import dev.geode.feature.settings.handlers.SettingsKeys as K
 
@@ -187,8 +190,14 @@ internal object SettingsCodec {
             visualFrameRate = enum(K.VISUAL_FRAME_RATE, default.visualFrameRate),
             saveMode = boolean(K.SAVE_MODE, default.saveMode),
             visualsOff = boolean(K.VISUALS_OFF, default.visualsOff),
+            surfaceQuality = bySurface { enumOrNull<VisualQuality>(K.surfaceQuality(it)) },
+            surfaceFrameRate = bySurface { enumOrNull<VisualFrameRate>(K.surfaceFrameRate(it)) },
         )
     }
+
+    /** Each surface's own value, for the surfaces that have a readable one stored. */
+    private fun <T : Any> bySurface(read: (VisualSurface) -> T?): Map<VisualSurface, T> =
+        VisualSurface.entries.mapNotNull { surface -> read(surface)?.let { surface to it } }.toMap()
 
     private fun Reader.folders(): FolderSettings =
         FolderSettings(
@@ -290,7 +299,16 @@ internal object SettingsCodec {
             K.VISUAL_FRAME_RATE to values.performance.visualFrameRate.name,
             K.SAVE_MODE to values.performance.saveMode,
             K.VISUALS_OFF to values.performance.visualsOff,
-        )
+        ) + surfaces(values.performance)
+
+    /** #394's per-surface picks: a surface that follows the shared value has its key removed. */
+    private fun surfaces(performance: PerformanceSettings): Map<String, Any?> =
+        buildMap {
+            for (surface in VisualSurface.entries) {
+                put(K.surfaceQuality(surface), performance.surfaceQuality[surface]?.name)
+                put(K.surfaceFrameRate(surface), performance.surfaceFrameRate[surface]?.name)
+            }
+        }
 
     /** Typed reads from a stored map; a value of the wrong type reads as absent. */
     private class Reader(
@@ -315,7 +333,9 @@ internal object SettingsCodec {
         inline fun <reified T : Enum<T>> enum(
             key: String,
             default: T,
-        ): T = enumValues<T>().firstOrNull { it.name == string(key) } ?: default
+        ): T = enumOrNull(key) ?: default
+
+        inline fun <reified T : Enum<T>> enumOrNull(key: String): T? = enumValues<T>().firstOrNull { it.name == string(key) }
 
         /** An enum stored by its position, kept in range as the old code did. */
         fun <T> ordinal(

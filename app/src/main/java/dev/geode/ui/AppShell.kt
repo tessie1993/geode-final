@@ -77,6 +77,7 @@ import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
@@ -182,7 +183,8 @@ fun AppRoot() {
                 }
             }
     }
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
+    val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
+    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings, surface)
     val element = settingsValues?.look?.element ?: Element.Default
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
