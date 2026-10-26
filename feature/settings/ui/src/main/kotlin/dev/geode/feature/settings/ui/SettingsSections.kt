@@ -347,21 +347,27 @@ internal fun LazyListScope.batterySection(
         }
     }
     // The other places the Visual is drawn can run gentler (#394); each follows the choices above until it has its own.
+    // The screen saver (#406) follows the live wallpaper instead, a quality tier lower.
     for (surface in SURFACES_WITH_OWN_CHOICE) {
+        val followsWallpaper = surface == VisualSurface.SCREEN_SAVER
         item {
             SettingsGroup(visualSurfaceName(surface)) {
-                Note(stringResource(R.string.cpu_gpu_surface_note))
+                Note(stringResource(if (followsWallpaper) R.string.cpu_gpu_screen_saver_note else R.string.cpu_gpu_surface_note))
+                val sameQuality =
+                    stringResource(if (followsWallpaper) R.string.cpu_gpu_tier_below_wallpaper else R.string.cpu_gpu_same_as_visual)
+                val sameFrameRate =
+                    stringResource(if (followsWallpaper) R.string.cpu_gpu_same_as_wallpaper else R.string.cpu_gpu_same_as_visual)
                 ChoiceRow(
                     stringResource(R.string.cpu_gpu_quality),
                     listOf<VisualQuality?>(null) + VisualQuality.entries,
                     performance.surfaceQuality[surface],
-                    { quality -> quality?.let { visualQualityName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                    { quality -> quality?.let { visualQualityName(it) } ?: sameQuality },
                 ) { change(PerformanceCommand.SetSurfaceQuality(surface, it)) }
                 ChoiceRow(
                     stringResource(R.string.cpu_gpu_frame_rate),
                     listOf<VisualFrameRate?>(null) + VisualFrameRate.entries,
                     performance.surfaceFrameRate[surface],
-                    { frameRate -> frameRate?.let { visualFrameRateName(it) } ?: stringResource(R.string.cpu_gpu_same_as_visual) },
+                    { frameRate -> frameRate?.let { visualFrameRateName(it) } ?: sameFrameRate },
                 ) { change(PerformanceCommand.SetSurfaceFrameRate(surface, it)) }
             }
         }
@@ -373,8 +379,8 @@ internal fun LazyListScope.batterySection(
     }
 }
 
-/** The surfaces Battery offers a quality and frame rate of their own for; the screen saver joins once it exists. */
-private val SURFACES_WITH_OWN_CHOICE = listOf(VisualSurface.WALLPAPER, VisualSurface.PICTURE_IN_PICTURE)
+/** The surfaces Battery offers a quality and frame rate of their own for. */
+private val SURFACES_WITH_OWN_CHOICE = listOf(VisualSurface.WALLPAPER, VisualSurface.PICTURE_IN_PICTURE, VisualSurface.SCREEN_SAVER)
 
 /**
  * Default paths (was Folders, #101): where Studio saves its videos (#21), the music folders, where

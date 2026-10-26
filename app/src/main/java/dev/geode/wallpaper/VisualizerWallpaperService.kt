@@ -2,7 +2,6 @@ package dev.geode.wallpaper
 
 import android.app.WallpaperManager
 import android.content.Context
-import android.content.SharedPreferences
 import android.opengl.GLSurfaceView
 import android.os.Bundle
 import android.os.Handler
@@ -10,8 +9,6 @@ import android.os.Looper
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import dagger.hilt.android.AndroidEntryPoint
-import dev.geode.data.GeodePrefsFiles
-import dev.geode.data.PresetStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.VisualSurface
@@ -84,7 +81,7 @@ class VisualizerWallpaperService : WallpaperService() {
             // Drawn for the moment this engine's pacer expects each frame on screen (#295).
             engine.presentation = pacer
             renderer = engine
-            restoreLiveState(engine)
+            LiveLook.restoreInto(this@VisualizerWallpaperService, engine, settings)
             glView =
                 WallpaperGlSurfaceView(this@VisualizerWallpaperService).apply {
                     setEGLContextClientVersion(3)
@@ -95,24 +92,6 @@ class VisualizerWallpaperService : WallpaperService() {
                     // is how "invisible costs nothing" is enforced rather than merely intended.
                     renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
                 }
-        }
-
-        private fun restoreLiveState(engine: VisualizerRenderer) {
-            val prefsFiles = GeodePrefsFiles(this@VisualizerWallpaperService)
-            val prefs = prefsFiles.viz
-            prefs.getString("live_state", null)?.let { json ->
-                runCatching { PresetStore.fromJson(json) }.getOrNull()?.let { preset ->
-                    engine.requestedSceneId = preset.sceneId
-                    engine.sceneParams = preset.params
-                }
-            }
-            prefs.getString("milk_path", null)?.let { path ->
-                if (java.io.File(path).isFile) engine.loadMilkPreset(path)
-            }
-            // Settings, once read; before then, what the old settings file said.
-            engine.reducedMotion =
-                (settings.state.value as? SettingsState.Ready)?.values?.behavior?.reducedMotion
-                    ?: legacyReducedMotion(prefsFiles.general)
         }
 
         // The app's one audio feed, read natively by the renderer each frame: what plays in the app, or
@@ -261,13 +240,6 @@ class VisualizerWallpaperService : WallpaperService() {
 
     private companion object {
         const val TAG = "VisualizerWallpaper"
-
-        /**
-         * Reduced motion as the old settings file kept it: its own switch, or the old first-run
-         * question's answer that asked for it.
-         */
-        fun legacyReducedMotion(prefs: SharedPreferences): Boolean =
-            prefs.getBoolean("gui_reduced_motion", false) || prefs.getString("gui_safety_choice", null) == "REDUCED_MOTION"
 
         /** Bounded on purpose: a wedged GL thread must not turn teardown into an ANR. */
         const val GL_RELEASE_WAIT_MS = 200L

@@ -452,7 +452,7 @@ enum class VisualSurface {
     /** The full-screen Visual shrunk into a picture-in-picture window (#287). */
     PICTURE_IN_PICTURE,
 
-    /** The screen saver, once there is one. */
+    /** Android's screen saver (#406). */
     SCREEN_SAVER,
 }
 

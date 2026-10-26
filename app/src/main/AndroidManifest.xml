@@ -148,6 +148,22 @@
         </service>
 
         <!--
+          The Visual as Android's screen saver (#406): while the phone charges or sits docked, it
+          draws the live wallpaper's look a quality tier lower, from the app's own audio feed. The
+          permission attribute only lets the system bind it; it asks the user for nothing.
+        -->
+        <service
+            android:name=".screensaver.GeodeDreamService"
+            android:exported="true"
+            android:label="@string/screen_saver_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+        <!--
           Music that outlives the screen. Publishes Playback, the app's one
           playback store, as the MediaSession, so playback survives the
           Activity and every transport control becomes a Command to Playback.

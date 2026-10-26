@@ -206,6 +206,9 @@
     <string name="cpu_gpu_surface_screen_saver">Screen saver</string>
     <string name="cpu_gpu_surface_note">Follows Visual on screen until you pick its own.</string>
     <string name="cpu_gpu_same_as_visual">Same as Visual</string>
+    <string name="cpu_gpu_screen_saver_note">Follows the live wallpaper, a step lower in quality, until you pick its own.</string>
+    <string name="cpu_gpu_tier_below_wallpaper">A step below live wallpaper</string>
+    <string name="cpu_gpu_same_as_wallpaper">Same as live wallpaper</string>
     <string name="cpu_gpu_group_heat">Cool down when hot</string>
     <string name="cpu_gpu_heat_note">Automatic: when the phone heats up, the Visual lowers its quality instead of stuttering.</string>
 
