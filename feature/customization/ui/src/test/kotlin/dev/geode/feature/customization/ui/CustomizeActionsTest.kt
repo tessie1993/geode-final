@@ -17,6 +17,7 @@ import dev.geode.feature.customization.api.Reaction
 import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
 import dev.geode.feature.customization.api.Target
@@ -197,5 +198,11 @@ class CustomizeActionsTest {
         val reaction = Reaction(ReactionId(9), ReactionSource.Sound(SoundSignal.MID), Target.Extra(ExtraKind.FLIGHT))
         assertEquals(CustomizationCommand.UpdateReaction(reaction), saveReaction(reaction, isNew = false))
         assertEquals(CustomizationCommand.AddReaction(reaction), saveReaction(reaction, isNew = true))
+    }
+
+    @Test
+    fun `a trim slider sets that signal's gain and keeps its floor`() {
+        val row = TrimRow(SoundSignal.BASS, SignalTrim(gain = 1f, floor = 0.2f))
+        assertEquals(CustomizationCommand.TrimSignal(SoundSignal.BASS, SignalTrim(gain = 2.5f, floor = 0.2f)), trimCommand(row, 2.5f))
     }
 }

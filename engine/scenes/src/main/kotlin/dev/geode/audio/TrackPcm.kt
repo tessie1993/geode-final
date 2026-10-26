@@ -7,6 +7,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import dev.geode.render.offscreen.FramePcm
+import dev.geode.render.offscreen.PcmSpan
 import dev.geode.util.bestEffort
 import java.io.Closeable
 import java.nio.ByteOrder
@@ -28,17 +29,19 @@ class TrackPcm(
     private var opened = false
     private var ended = false
     private var sampleRate = 0
+    private var lastEnd = -1L
 
-    override fun windowAt(
+    override fun spanAt(
         timeUs: Long,
         out: FloatArray,
-    ): Int {
-        val reader = open() ?: return 0
+    ): PcmSpan {
+        val reader = open() ?: return PcmSpan.NONE
         while (!ended && (sampleRate == 0 || window.written < endFrame(timeUs))) {
             if (!reader.next(window) { sampleRate = it }) ended = true
         }
-        if (sampleRate == 0) return 0
-        return window.window(endFrame(timeUs), out, out.size / 2)
+        if (sampleRate == 0) return PcmSpan.NONE
+        val end = endFrame(timeUs)
+        return window.span(end, lastEnd, out, WINDOW_FRAMES).also { lastEnd = end }
     }
 
     override fun close() {
@@ -219,7 +222,10 @@ class TrackPcm(
         /** Empty polls in a row after which a decoder that says nothing more is taken to have stalled. */
         const val MAX_IDLE_POLLS = 500
 
-        /** Two seconds at 48 kHz: far more than a window, so a frame never asks for sound already dropped. */
+        /** The window every scene reads: the engine's GEODE_FEED_WINDOW_FRAMES. */
+        const val WINDOW_FRAMES = 576
+
+        /** Two seconds at 48 kHz: far more than a span, so a frame never asks for sound already dropped. */
         const val RING_FRAMES = 96_000
     }
 }

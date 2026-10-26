@@ -24,6 +24,7 @@ import dev.geode.feature.customization.api.SharedProperty
 import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.StartMode
+import dev.geode.feature.customization.api.StyleMark
 import dev.geode.feature.customization.api.StylePool
 import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Target
@@ -89,6 +90,8 @@ class CustomizationReducerTest {
     private val switchedToTunnel = Edits.switchStyle(julia, styles.manifestOf(JULIA), styles.manifestOf(TUNNEL))
     private val onTunnel = CustomizationState(switchedToTunnel, undo = listOf(julia))
     private val tunnelRedo = CustomizationState(julia, redo = listOf(switchedToTunnel))
+    private val toTunnel = listOf(publish(switchedToTunnel), Emit(CustomizationFact.StyleChanged(TUNNEL)))
+    private val chosenTunnel = onTunnel.copy(stylesBack = listOf(julia))
     private val zoomPreset = PresetRules.capture("Zoom", zoomed, setOf(PresetPart.CAMERA))
     private val newerZoomPreset = zoomPreset.copy(unread = "{\"comets\":{}}")
     private val handState = CustomizationState(withHand, undo = listOf(julia))
@@ -120,6 +123,132 @@ class CustomizationReducerTest {
     private val dragging = CustomizationState(zoomed, undo = listOf(tunnel), previewFrom = julia)
 
     private fun zoomTo(value: Float) = CustomizationCommand.SetShared(SharedProperty.ZOOM, value)
+
+    private fun heldPublish(customization: Customization) = Perform(CustomizationWork.Publish(customization, switchingHeld = true))
+
+    private val heldState = autoState.copy(styleHeld = true)
+    private val editingState = autoState.copy(editing = true)
+    private val heldSpeed = Edits.setShared(autoState.current, SharedProperty.SPEED, 2f)
+    private val tunnelSeen = Edits.setShared(tunnel, SharedProperty.ZOOM, 2f)
+    private val withPalettes = Edits.setAutomations(julia, palettes)
+    private val seenState = CustomizationState(withPalettes, undo = listOf(julia), stylesBack = listOf(tunnelSeen))
+    private val backOnTunnel = tunnelSeen.copy(automations = palettes)
+    private val walkedBack = CustomizationState(backOnTunnel, undo = listOf(julia), stylesForward = listOf(withPalettes))
+
+    private val favouritesState =
+        CustomizationState(
+            Edits.setAutomations(julia, Automations(style = StyleSwitching(pool = StylePool.FAVOURITES))),
+            favouriteStyles = listOf(TUNNEL),
+        )
+    private val favouriteSwitch = Edits.switchStyle(favouritesState.current, styles.manifestOf(JULIA), styles.manifestOf(TUNNEL))
+
+    private val switchingRows: List<Row> =
+        listOf(
+            Row(
+                "a Style switch due while held is passed over",
+                heldState,
+                CustomizationEvent.StyleDue,
+                Next(heldState),
+            ),
+            Row(
+                "a Style switch due while Customize is open is passed over",
+                editingState,
+                CustomizationEvent.StyleDue,
+                Next(editingState),
+            ),
+            Row(
+                "Hold is not history, and the engine holds switching too",
+                autoState,
+                command(CustomizationCommand.HoldStyle(true)),
+                Next(heldState, listOf(heldPublish(autoState.current))),
+            ),
+            Row(
+                "letting go of Hold tells the engine, so its spacing starts again",
+                heldState,
+                command(CustomizationCommand.HoldStyle(false)),
+                Next(autoState, listOf(publish(autoState.current))),
+            ),
+            Row(
+                "Hold while Customize is open already holds: nothing new for the engine",
+                editingState,
+                command(CustomizationCommand.HoldStyle(true)),
+                Next(editingState.copy(styleHeld = true)),
+            ),
+            Row(
+                "opening Customize holds switching",
+                autoState,
+                command(CustomizationCommand.SetEditing(true)),
+                Next(editingState, listOf(heldPublish(autoState.current))),
+            ),
+            Row(
+                "closing Customize lets switching go",
+                editingState,
+                command(CustomizationCommand.SetEditing(false)),
+                Next(autoState, listOf(publish(autoState.current))),
+            ),
+            Row(
+                "closing Customize while held keeps switching held",
+                editingState.copy(styleHeld = true),
+                command(CustomizationCommand.SetEditing(false)),
+                Next(heldState),
+            ),
+            Row(
+                "opening Customize twice changes nothing",
+                editingState,
+                command(CustomizationCommand.SetEditing(true)),
+                Next(editingState),
+            ),
+            Row(
+                "an edit while held reaches the engine still held",
+                heldState,
+                command(CustomizationCommand.SetShared(SharedProperty.SPEED, 2f)),
+                Next(heldState.copy(current = heldSpeed, undo = listOf(julia, autoState.current)), listOf(heldPublish(heldSpeed))),
+            ),
+            Row(
+                "back returns to the Style seen before, as it was, the Automations kept, outside the history",
+                seenState,
+                command(CustomizationCommand.StyleBack),
+                Next(walkedBack, listOf(publish(backOnTunnel), Emit(CustomizationFact.StyleChanged(TUNNEL)))),
+            ),
+            Row("back with nothing seen before", fresh, command(CustomizationCommand.StyleBack), Next(fresh)),
+            Row(
+                "forward returns to the Style back left",
+                walkedBack,
+                command(CustomizationCommand.StyleForward),
+                Next(
+                    CustomizationState(withPalettes, undo = listOf(julia), stylesBack = listOf(backOnTunnel)),
+                    listOf(publish(withPalettes), Emit(CustomizationFact.StyleChanged(JULIA))),
+                ),
+            ),
+            Row("forward with nowhere to go", seenState, command(CustomizationCommand.StyleForward), Next(seenState)),
+            Row(
+                "the Style library's marks and Favourites are kept beside the history",
+                withUndo,
+                command(CustomizationCommand.UseStyleLibrary(mapOf(TUNNEL to StyleMark.LOVE), listOf(TUNNEL))),
+                Next(withUndo.copy(styleMarks = mapOf(TUNNEL to StyleMark.LOVE), favouriteStyles = listOf(TUNNEL))),
+            ),
+            Row(
+                "a Style switch due never picks a Style marked Never",
+                autoState.copy(styleMarks = mapOf(TUNNEL to StyleMark.NEVER)),
+                CustomizationEvent.StyleDue,
+                Next(autoState.copy(styleMarks = mapOf(TUNNEL to StyleMark.NEVER))),
+            ),
+            Row(
+                "a Style switch due on the Favourites goes to a Favourite",
+                favouritesState,
+                CustomizationEvent.StyleDue,
+                Next(
+                    favouritesState.copy(current = favouriteSwitch, styleSwitches = 1, stylesBack = listOf(favouritesState.current)),
+                    listOf(publish(favouriteSwitch), Emit(CustomizationFact.StyleChanged(TUNNEL))),
+                ),
+            ),
+            Row(
+                "a new change of Style forgets the way forward",
+                walkedBack.copy(current = julia, undo = emptyList()),
+                command(CustomizationCommand.ChooseStyle(TUNNEL)),
+                Next(chosenTunnel, toTunnel),
+            ),
+        )
 
     /** A drag's first step of [edit] from [state]: the engine sees [next], the history waits. */
     private fun previews(
@@ -266,7 +395,7 @@ class CustomizationReducerTest {
                     onTunnel,
                     command(CustomizationCommand.Undo),
                     Next(
-                        CustomizationState(julia, redo = listOf(switchedToTunnel)),
+                        CustomizationState(julia, redo = listOf(switchedToTunnel), stylesBack = listOf(switchedToTunnel)),
                         listOf(publish(julia), Emit(CustomizationFact.StyleChanged(JULIA))),
                     ),
                 ),
@@ -274,13 +403,13 @@ class CustomizationReducerTest {
                     "redo across a change of Style",
                     tunnelRedo,
                     command(CustomizationCommand.Redo),
-                    Next(onTunnel, listOf(publish(switchedToTunnel), Emit(CustomizationFact.StyleChanged(TUNNEL)))),
+                    Next(chosenTunnel, toTunnel),
                 ),
                 Row(
                     "choose another Style",
                     fresh,
                     command(CustomizationCommand.ChooseStyle(TUNNEL)),
-                    Next(onTunnel, listOf(publish(switchedToTunnel), Emit(CustomizationFact.StyleChanged(TUNNEL)))),
+                    Next(chosenTunnel, toTunnel),
                 ),
                 Row("choose the same Style", fresh, command(CustomizationCommand.ChooseStyle(JULIA)), Next(fresh)),
                 Row(
@@ -367,7 +496,7 @@ class CustomizationReducerTest {
                     autoState,
                     CustomizationEvent.StyleDue,
                     Next(
-                        autoState.copy(current = autoSwitched, styleSwitches = 2),
+                        autoState.copy(current = autoSwitched, styleSwitches = 2, stylesBack = listOf(autoState.current)),
                         listOf(publish(autoSwitched), Emit(CustomizationFact.StyleChanged(TUNNEL))),
                     ),
                 ),
@@ -376,7 +505,7 @@ class CustomizationReducerTest {
                     picksState,
                     CustomizationEvent.StyleDue,
                     Next(
-                        picksState.copy(current = pickedSwitch, styleSwitches = picked.played),
+                        picksState.copy(current = pickedSwitch, styleSwitches = picked.played, stylesBack = listOf(picksState.current)),
                         listOf(publish(pickedSwitch), Emit(CustomizationFact.StyleChanged(picked.style))),
                     ),
                 ),
@@ -482,7 +611,7 @@ class CustomizationReducerTest {
 
     @Test
     fun `every row of the transition table`() {
-        (rows + previewRows).forEach { row -> assertEquals(row.name, row.expected, reducer.reduce(row.state, row.event)) }
+        (rows + previewRows + switchingRows).forEach { row -> assertEquals(row.name, row.expected, reducer.reduce(row.state, row.event)) }
     }
 
     @Test
@@ -499,6 +628,18 @@ class CustomizationReducerTest {
     }
 
     @Test
+    fun `the trail of Styles seen keeps the latest few`() {
+        val styles = listOf(TUNNEL, JULIA)
+        val walked =
+            (1..CustomizationReducer.MAX_STYLES_SEEN + 6).fold(fresh) { state, n ->
+                reducer.reduce(state, command(CustomizationCommand.ChooseStyle(styles[n % 2]))).state
+            }
+        assertEquals(CustomizationReducer.MAX_STYLES_SEEN, walked.stylesBack.size)
+        assertEquals(JULIA, walked.stylesBack.last().style)
+        assertEquals(TUNNEL, walked.current.style)
+    }
+
+    @Test
     fun `undo is unlimited`() {
         val steps = (1..50).map { CustomizationCommand.SetShared(SharedProperty.SPEED, 1f + it / 100f) }
         val edited = steps.fold(fresh) { state, step -> reducer.reduce(state, command(step)).state }
@@ -511,7 +652,7 @@ class CustomizationReducerTest {
     @Test
     fun `a new store converts old presets and then hands its starting Customization to the engine`() {
         assertEquals(
-            listOf(Perform(CustomizationWork.UpgradePresets), publish(zoomed)),
+            listOf(Perform(CustomizationWork.UpgradePresets), publish(zoomed), Perform(CustomizationWork.FollowStyleCues)),
             CustomizationReducer.start(CustomizationState(zoomed, undo = listOf(julia))),
         )
     }

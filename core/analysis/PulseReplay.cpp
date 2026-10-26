@@ -26,7 +26,7 @@ void decide(const float* flux, size_t fluxCount, const float* rms, size_t rmsCou
         const bool isOnset = picker.accept(flux[i]);
         out[i].transient = picker.strength();
         tempo.step(flux[i]);
-        const bool beat = grid.step(tempo.periodFrames(), tempo.confidence(), isOnset);
+        const bool beat = grid.step(tempo.periodFrames(), tempo.phase(), tempo.confidence(), isOnset);
         out[i].beat = beat ? 1.0f : 0.0f;
         out[i].strength = beat ? picker.strength() : 0.0f;
         out[i].phase = grid.phase();

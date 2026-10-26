@@ -48,7 +48,6 @@ modulator can push it back into the hazardous range.
 |---|---|
 | `apply` | glitch, bloom, brightness, intensity, contrast |
 | `limitLfoRate` | an LFO aimed at a luminance target; the rate is the hazard, not the amplitude |
-| `beatMinIntervalMs` | the floor between beat-driven hits |
 | `layer::opacityCap`, `layer::Mixer` | Layer 2: Difference and Exclusion held to the flash depth; opacity, influence and swap slewed (a full swing over at least 0.5 s), every change of Style or mode faded |
 | `transitionStyle` / `transitionId` | a hard cut becomes a crossfade |
 | `FlashLimiter` | the finished frame itself — see below |
@@ -56,6 +55,10 @@ modulator can push it back into the hazardous range.
 
 There is no Strobe and no Flash parameter any more (#89); presets that carry them still load and
 the values are ignored.
+
+Beats are not throttled for safety. The analysis hears every beat, at any tempo (the gap between
+two beats is the person's choice in Settings, from 200 ms), and the limits above bound what the
+Visual draws from them: a beat moves, swells or shifts colour, it never flashes.
 
 **The No-flash limiter.** `core/viz/FlashLimiter` (pure, host-tested in
 `core/tests/flash_limiter_test.cpp`) bounds what reaches the screen, whatever produced it: every

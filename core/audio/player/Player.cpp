@@ -429,8 +429,17 @@ void Player::pauseOutput() {
 void Player::reportLatency() {
     if (++latencyTicks_ < kLatencyTicks) return;
     latencyTicks_ = 0;
+    if (!output_.running()) return;
     const double ms = output_.latencyMillis();
-    if (ms >= 0.0) mixer_.setFeedDelay(static_cast<int64_t>(ms * 1'000'000.0));
+    if (ms >= 0.0) {
+        mixer_.setFeedDelay(static_cast<int64_t>(ms * 1'000'000.0), true);
+        return;
+    }
+    // An output that gives no timestamp (some OpenSL ES paths, a stream not yet timed): its buffer is all
+    // that is known, and the feed adds what the output route is known to add.
+    const int rate = output_.sampleRate();
+    const int32_t frames = output_.bufferedFrames();
+    if (rate > 0 && frames > 0) mixer_.setFeedDelay(int64_t{frames} * 1'000'000'000 / rate, false);
 }
 
 void Player::noteError(const std::string& message) {

@@ -1,5 +1,6 @@
 package dev.geode.engine.audio
 
+import dev.geode.engine.types.Millis
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -77,6 +78,9 @@ class VisualFeedTest {
         feed.flush(FeedSource.PLAYER)
         feed.setRunning(FeedSource.PLAYER, false)
         feed.setPresentation(FeedSource.PLAYER, 500_000L, 1f)
+        feed.setRoute(OutputRoute.BLUETOOTH)
+        feed.setSyncOffset(Millis(-40))
+        feed.setSensitivity(6f)
         feed.setTuning(3f, 333f, 0.01f, 0.1f)
         feed.resetAnalysis()
         feed.attachSnapshots(null)
@@ -86,6 +90,9 @@ class VisualFeedTest {
                 "feedFlush",
                 "feedSetRunning",
                 "feedSetPresentation",
+                "feedSetRoute",
+                "feedSetUserOffset",
+                "feedSetGain",
                 "feedSetTuning",
                 "feedResetAnalysis",
                 "feedAttachSnapshots",
@@ -99,5 +106,21 @@ class VisualFeedTest {
     fun `source codes match the native feed's`() {
         assertEquals(1, FeedSource.PLAYER.code)
         assertEquals(2, FeedSource.LIVE.code)
+    }
+
+    @Test
+    fun `route codes match the native feed's`() {
+        assertEquals(
+            listOf(0, 1, 2, 3, 4, 5, 6),
+            listOf(
+                OutputRoute.UNKNOWN,
+                OutputRoute.SPEAKER,
+                OutputRoute.WIRED,
+                OutputRoute.USB,
+                OutputRoute.BLUETOOTH,
+                OutputRoute.BLUETOOTH_LE,
+                OutputRoute.HDMI,
+            ).map { it.code },
+        )
     }
 }

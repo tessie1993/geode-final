@@ -53,15 +53,28 @@ data class OffscreenRenderSpec(
 }
 
 /**
- * The sound a Render hands its scenes each frame (#342): the window of the track, interleaved stereo,
- * that ends at [timeUs]. Fills [out] and returns how many stereo frames it wrote (0 when there is none).
- * Asked in the order the frames are drawn.
+ * One frame's sound (#342): [frames] stereo frames ending at the moment the frame shows, the newest
+ * [fresh] of them heard since the frame before, as the live feed hands them over.
+ */
+data class PcmSpan(
+    val frames: Int,
+    val fresh: Int,
+) {
+    companion object {
+        val NONE: PcmSpan = PcmSpan(0, 0)
+    }
+}
+
+/**
+ * The sound a Render hands its scenes each frame (#342): the track up to [timeUs], interleaved stereo,
+ * into [out]: the window every scene reads, and before it whatever was heard since the last frame, so
+ * MilkDrop misses no beat between frames. Asked in the order the frames are drawn.
  */
 fun interface FramePcm {
-    fun windowAt(
+    fun spanAt(
         timeUs: Long,
         out: FloatArray,
-    ): Int
+    ): PcmSpan
 }
 
 /**
@@ -84,7 +97,7 @@ class OffscreenSceneRenderer(
 ) {
     private var native: NativeViz? = null
     private var snapshots: NativeSnapshots? = null
-    private val window = FloatArray(PCM_WINDOW_FRAMES * 2)
+    private val span = FloatArray(PCM_SPAN_FRAMES * 2)
 
     /** Builds the native renderer, its scene and its look; must run with the target GL context current. */
     fun prepare() {
@@ -129,8 +142,8 @@ class OffscreenSceneRenderer(
         val features = timeline.featuresAround(frameMs(g), halfwayBeforeMs(g), halfwayBeforeMs(g + 1))
         viz.setFeatures(features)
         pcm?.let { sound ->
-            val frames = sound.windowAt(g * MICROS_PER_SECOND / spec.fps, window)
-            if (frames > 0) viz.setFramePcm(window, frames)
+            val heard = sound.spanAt(g * MICROS_PER_SECOND / spec.fps, span)
+            if (heard.frames > 0) viz.setFramePcm(span, heard.frames, heard.fresh)
         }
         // The render clock is exact: frame g is drawn g / fps seconds into the track, so every step is
         // one frame long, where whole milliseconds would alternate 16 and 17 ms at 60 fps, and a ranged
@@ -180,7 +193,7 @@ class OffscreenSceneRenderer(
         const val MILLIS_PER_SECOND = 1_000L
         const val MICROS_PER_SECOND = 1_000_000L
 
-        /** The stereo window each frame hands the scenes: the engine's GEODE_FEED_WINDOW_FRAMES. */
-        const val PCM_WINDOW_FRAMES = 576
+        /** The longest span of sound a frame hands the scenes: the engine's GEODE_FEED_SPAN_FRAMES. */
+        const val PCM_SPAN_FRAMES = 4096
     }
 }

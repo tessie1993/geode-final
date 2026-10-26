@@ -7,6 +7,7 @@ import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsState
 
@@ -19,6 +20,8 @@ data class StyleItem(
     /** The Visual shows it now. */
     val current: Boolean,
     val favourite: Boolean,
+    /** How the person marked it for automatic Style switching (#308). */
+    val mark: StyleMark = StyleMark.NORMAL,
 )
 
 /** One folder as the Visuals tab lists it: [name], and how many Styles and folders it holds ([count]). */
@@ -79,6 +82,12 @@ sealed interface VisualsAction {
         val favourite: Boolean,
     ) : VisualsAction
 
+    /** Marks [style] Love, Normal or Never for automatic Style switching (#308). */
+    data class SetMark(
+        val style: SceneId,
+        val mark: StyleMark,
+    ) : VisualsAction
+
     /** App UI only: what the search field holds. */
     data class Search(
         val query: String,
@@ -133,6 +142,7 @@ fun VisualsAction.toCommand(openFolder: FolderId?): VisualsCommand? =
     when (this) {
         is VisualsAction.Choose -> VisualsCommand.Choose(style)
         is VisualsAction.SetFavourite -> VisualsCommand.SetFavourite(style, favourite)
+        is VisualsAction.SetMark -> VisualsCommand.SetMark(style, mark)
         is VisualsAction.CreateFolder -> VisualsCommand.CreateFolder(name, openFolder)
         is VisualsAction.RenameFolder -> VisualsCommand.RenameFolder(folder, name)
         is VisualsAction.DeleteFolder -> VisualsCommand.DeleteFolder(folder)
@@ -150,7 +160,7 @@ fun VisualsState.toTabModel(
     val favourites = library.favourites.toSet()
     val byId = styles.associateBy { it.id }
 
-    fun entries(list: List<StyleEntry>) = list.map { it.toItem(current, it.id in favourites) }
+    fun entries(list: List<StyleEntry>) = list.map { it.toItem(current, it.id in favourites, library.markOf(it.id)) }
 
     fun items(ids: List<SceneId>) = entries(ids.mapNotNull { byId[it] })
 
@@ -200,7 +210,8 @@ fun VisualsState.toFullScreenModel(controlsShown: Boolean): FullScreenModel {
 private fun StyleEntry.toItem(
     current: SceneId?,
     favourite: Boolean,
-) = StyleItem(id, name, group, current = id == current, favourite = favourite)
+    mark: StyleMark,
+) = StyleItem(id, name, group, current = id == current, favourite = favourite, mark = mark)
 
 /** "Calm / Deep" for Deep inside Calm. */
 private fun pathName(

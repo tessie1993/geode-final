@@ -12,6 +12,9 @@ out vec4 fragColor;
 //#include lib_sdf3
 //#include lib_touch
 //#include lib_camera
+// The noise volume (manifest "inputs": noise_vol): fbmVol is lib_sdf3's fbm3 at one texture fetch per
+// octave instead of eight lattice hashes.
+//#include lib_inputs
 
 // Wormhole Pass: fly at a wormhole, through its throat, and out under a
 // different sky - then the next one appears far ahead.
@@ -81,8 +84,8 @@ vec3 sky(vec3 d, float k, float footprint) {
     vec3 salt = vec3(k * 13.1, k * 7.7, k * 3.3);
     if (k < 0.5) {
         // Violet nebula: layered clouds with dark lanes.
-        float n = fbm3(d * 2.2 + salt, 4);
-        float lane = smoothstep(0.5, 0.75, fbm3(d * 5.0 + salt + 9.0, 3));
+        float n = fbmVol(d * 2.2 + salt, 4);
+        float lane = smoothstep(0.5, 0.75, fbmVol(d * 5.0 + salt + 9.0, 3));
         col = mix(vec3(0.03, 0.02, 0.07), mix(vec3(0.45, 0.25, 0.85), pal(0.7), 0.4), smoothstep(0.35, 0.8, n));
         col += mix(vec3(0.95, 0.4, 0.6), pal(0.9), 0.4) * 0.35 * smoothstep(0.6, 0.9, n) * (1.0 - lane);
     } else if (k < 1.5) {
@@ -90,16 +93,16 @@ vec3 sky(vec3 d, float k, float footprint) {
         vec3 gn = normalize(vec3(0.3, 1.0, -0.2));
         float lat = dot(d, gn);
         float band = exp(-lat * lat * 10.0);
-        float dust = smoothstep(0.45, 0.75, fbm3(d * 6.0 + salt, 3));
+        float dust = smoothstep(0.45, 0.75, fbmVol(d * 6.0 + salt, 3));
         col = vec3(0.02, 0.025, 0.05) + mix(vec3(1.0, 0.8, 0.5), pal(0.1), 0.35) * band * (0.55 - 0.4 * dust);
         col += mix(vec3(1.0, 0.9, 0.75), pal(0.12), 0.2) * 0.5 * exp(-lat * lat * 60.0) * (1.0 - dust);
     } else if (k < 2.5) {
         // Teal aurora cloud: sheets folded by a slow warp.
         vec3 w = d * 1.8 + salt;
-        w += 0.6 * vec3(fbm3(w + 1.0, 2), fbm3(w + 5.0, 2), fbm3(w + 9.0, 2));
-        float sheet = pow(1.0 - abs(2.0 * fbm3(w, 4) - 1.0), 4.0);
+        w += 0.6 * vec3(fbmVol(w + 1.0, 2), fbmVol(w + 5.0, 2), fbmVol(w + 9.0, 2));
+        float sheet = pow(1.0 - abs(2.0 * fbmVol(w, 4) - 1.0), 4.0);
         col = vec3(0.01, 0.03, 0.04) + mix(vec3(0.2, 0.9, 0.7), pal(0.4), 0.4) * sheet * 0.55;
-        col += mix(vec3(0.3, 0.4, 1.0), pal(0.6), 0.4) * 0.12 * smoothstep(0.3, 0.9, fbm3(d * 1.2 + salt, 2));
+        col += mix(vec3(0.3, 0.4, 1.0), pal(0.6), 0.4) * 0.12 * smoothstep(0.3, 0.9, fbmVol(d * 1.2 + salt, 2));
     } else {
         // A red giant with a dust shell.
         vec3 sunDir = normalize(vec3(0.5, 0.25, 0.8));
@@ -109,7 +112,7 @@ vec3 sky(vec3 d, float k, float footprint) {
         col = vec3(0.04, 0.015, 0.02);
         col += mix(vec3(1.0, 0.35, 0.15), pal(0.02), 0.3) * (0.25 * pow(c, 12.0) + 0.6 * pow(c, 120.0));
         col += mix(vec3(1.0, 0.6, 0.35), pal(0.06), 0.2) * disc * (0.5 + 0.5 * limb) * 1.4;
-        float shell = smoothstep(0.4, 0.8, fbm3(d * 3.0 + salt, 4)) * pow(c, 3.0);
+        float shell = smoothstep(0.4, 0.8, fbmVol(d * 3.0 + salt, 4)) * pow(c, 3.0);
         col += mix(vec3(0.8, 0.3, 0.2), pal(0.95), 0.4) * shell * 0.35;
     }
     col += starLayer(d, 80.0, 0.12, footprint, k * 101.0) * 1.6;

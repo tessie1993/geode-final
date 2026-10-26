@@ -1,8 +1,10 @@
 package dev.geode.feature.visuals.core
 
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.api.VisualsState
@@ -49,6 +51,10 @@ class LibraryEditsTest {
     private fun withFolders(vararg changed: Folder) = nested.copy(folders = changed.toList())
 
     private val lateNight = StyleLibrary(recent = listOf(tunnel), folders = listOf(Folder(one, "Late night", null, emptyList())))
+
+    private fun marked(vararg marks: Pair<SceneId, StyleMark>) = StyleLibrary(recent = listOf(tunnel), marks = marks.toMap())
+
+    private val loved = ready.copy(library = marked(ink to StyleMark.LOVE))
 
     private val calm = nested.folders[0]
     private val deep = nested.folders[1]
@@ -181,6 +187,20 @@ class LibraryEditsTest {
             Row("take out a Style that is not there", folders, VisualsCommand.RemoveFromFolder(two, tunnel), same(folders)),
             Row("take out of a folder that is not there", folders, VisualsCommand.RemoveFromFolder(FolderId(9), tunnel), same(folders)),
             Row("edit a folder before the library loads", fresh, VisualsCommand.DeleteFolder(one), same(fresh)),
+            // Marks for Style switching (#308): Normal is no mark at all.
+            Row("love a Style", ready, VisualsCommand.SetMark(ink, StyleMark.LOVE), changed(ready, marked(ink to StyleMark.LOVE))),
+            Row("never a Style", ready, VisualsCommand.SetMark(ink, StyleMark.NEVER), changed(ready, marked(ink to StyleMark.NEVER))),
+            Row("mark it again", loved, VisualsCommand.SetMark(ink, StyleMark.LOVE), same(loved)),
+            Row("a Normal mark takes the mark away", loved, VisualsCommand.SetMark(ink, StyleMark.NORMAL), changed(loved, marked())),
+            Row("Normal on a Style with no mark", ready, VisualsCommand.SetMark(ink, StyleMark.NORMAL), same(ready)),
+            Row("mark a Style this version does not draw", ready, VisualsCommand.SetMark(gone, StyleMark.LOVE), same(ready)),
+            Row(
+                "a Normal mark takes away a mark on a Style no longer drawn",
+                ready.copy(library = marked(gone to StyleMark.NEVER)),
+                VisualsCommand.SetMark(gone, StyleMark.NORMAL),
+                changed(ready, marked()),
+            ),
+            Row("mark before the library loads", fresh, VisualsCommand.SetMark(ink, StyleMark.LOVE), same(fresh)),
         )
 
     @Test

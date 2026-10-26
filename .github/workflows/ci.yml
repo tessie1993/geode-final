@@ -487,6 +487,19 @@ jobs:
         run: |
           "$RUNNER_TEMP/gitleaks" dir --redact --verbose .
 
+  # The notices the app ships (THIRD_PARTY_NOTICES and its in-app copy) stay true to what it bundles.
+  # The self-test first proves the check still catches drift.
+  notices:
+    name: Third-party notices
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Notices match what the app ships
+        run: |
+          python3 tools/ci/check_notices.py --self-test
+          python3 tools/ci/check_notices.py
+
   dependency-review:
     name: Dependency review
     if: github.event_name == 'pull_request'
@@ -496,6 +509,13 @@ jobs:
       - uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+          # Permissive licences only (THIRD_PARTY_NOTICES): a new or changed dependency under any
+          # other licence fails. LGPL is allowed only for a native shared library, which Gradle
+          # dependencies are not, so it is not listed. JUnit 4 (EPL-1.0) is test-only.
+          allow-licenses: >-
+            Apache-2.0, MIT, MIT-0, BSD-2-Clause, BSD-3-Clause, ISC, Zlib, BSL-1.0, 0BSD,
+            CC0-1.0, Unlicense, OFL-1.1, Unicode-3.0, Unicode-DFS-2016
+          allow-dependencies-licenses: pkg:maven/junit/junit
 
   # Instrumented tests need a real Android runtime: MediaStore, a live MediaSession and the
   # permission model do not exist off a device, and Robolectric's shadows misreport some of them.

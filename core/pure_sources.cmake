@@ -24,6 +24,7 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/player/OutputRetry.cpp
     audio/feed/FeedRing.cpp
     audio/feed/FeatureHistory.cpp
+    audio/feed/HeardClock.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
@@ -72,9 +73,11 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/RenderScale.cpp
     viz/TileFrame.cpp
     viz/StylePacks.cpp
+    viz/LensFx.cpp
     viz/StyleLab.cpp
     viz/StyleProfiles.cpp
     viz/StyleExtras.cpp
+    viz/StyleInputs.cpp
     viz/ThermalGovernor.cpp
     viz/TouchField.cpp
     viz/GravityField.cpp

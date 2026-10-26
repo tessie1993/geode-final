@@ -1,5 +1,7 @@
 package dev.geode.audio
 
+import dev.geode.render.offscreen.PcmSpan
+
 /**
  * The last [capacityFrames] stereo frames of a track decoded in order, and the window of them that ends at
  * any frame still held: what a Render hands the scenes for each video frame (#342). Mono is heard in both
@@ -56,6 +58,25 @@ class PcmWindow(
             out[i * STEREO + 1] = if (held) ring[slot + 1] else 0f
         }
         return count
+    }
+
+    /**
+     * What a frame whose sound ends at frame [end] hands the scenes, after one that ended at [previous]
+     * (negative for none, when everything since the start is new): its newest [windowFrames] frames, and
+     * before them every frame since [previous], into [out] as far as it holds. Returns how many it wrote,
+     * and how many of them are new.
+     */
+    fun span(
+        end: Long,
+        previous: Long,
+        out: FloatArray,
+        windowFrames: Int,
+    ): PcmSpan {
+        val room = out.size / STEREO
+        val since = if (previous < 0) end else end - previous
+        val fresh = since.coerceIn(0L, (room - windowFrames).coerceAtLeast(0).toLong()).toInt()
+        val frames = window(end, out, minOf(room, fresh + windowFrames))
+        return PcmSpan(frames, minOf(fresh, frames))
     }
 
     private companion object {

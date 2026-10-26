@@ -70,6 +70,8 @@ geode_core_library(geode_viz viz
     viz/TrailPass.cpp
     viz/SharedFxPass.cpp
     viz/HdrPass.cpp
+    viz/SharedInputs.cpp
+    viz/LensPasses.cpp
     viz/NoFlashPass.cpp
     viz/SceneRegistry.cpp
     viz/Renderer.cpp

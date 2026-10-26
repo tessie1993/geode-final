@@ -1,5 +1,6 @@
 package dev.geode.audio
 
+import dev.geode.render.offscreen.PcmSpan
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -55,5 +56,23 @@ class PcmWindowTest {
         assertEquals(1L, pcm.written)
         // The window is never longer than its buffer.
         assertEquals(1, pcm.window(1, FloatArray(2), 4))
+    }
+
+    @Test
+    fun `a frame's span is its window and every frame heard since the last`() {
+        val pcm = PcmWindow(16)
+        pcm.write(FloatArray(20) { (it / 2 + 1).toFloat() }, 10, 2)
+        val out = FloatArray(16)
+        // The first frame, at frame 4: everything from the start is new, before a window of 2.
+        assertEquals(PcmSpan(6, 4), pcm.span(4, -1, out, 2))
+        assertArrayEquals(floatArrayOf(0f, 0f, 0f, 0f, 1f, 1f, 2f, 2f, 3f, 3f, 4f, 4f), out.copyOf(12), 0f)
+        // The next, at frame 7: three new frames before the window, ending at frame 7.
+        assertEquals(PcmSpan(5, 3), pcm.span(7, 4, out, 2))
+        assertArrayEquals(floatArrayOf(3f, 3f, 4f, 4f, 5f, 5f, 6f, 6f, 7f, 7f), out.copyOf(10), 0f)
+        // A long gap keeps only what the buffer holds; the same moment again has nothing new.
+        assertEquals(PcmSpan(8, 6), pcm.span(10, 1, out, 2))
+        assertEquals(PcmSpan(2, 0), pcm.span(10, 10, out, 2))
+        // A window wider than the buffer still fills the buffer, with nothing counted new.
+        assertEquals(PcmSpan(8, 0), pcm.span(10, 9, out, 20))
     }
 }

@@ -274,6 +274,25 @@ object BuiltInStyles {
             shader("colonnade_cuts", false, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
         )
 
+    /**
+     * The rest of the camera library (#396) and the wave 1 worlds (#310): each moves a camera of its own
+     * through its world (lib_camera), so each owns its flight; their Extras and music are their packs'.
+     */
+    private val cameraWorlds: List<StyleManifest> =
+        listOf(
+            "vertigo_well",
+            "ten_powers",
+            "star_gate",
+            "frozen_moment",
+            "toy_town",
+            "loop_coaster",
+            "penrose_climb",
+            "tide_line",
+            "warp_drive",
+            "mandala_cavern",
+            "iris_droste",
+        ).map { shader(it, true) }
+
     private fun life(id: String): StyleManifest =
         style(id, StyleFamily.LIFE, false, listOf(react(HIT, FORCE, 0.3f), react(LEVEL, GROWTH, 0.1f)))
 
@@ -411,8 +430,8 @@ object BuiltInStyles {
 
     /** The Styles the #11 audit designed (their own Reactions and starting values) and the ones that fly their own camera. */
     internal val designed: List<StyleManifest> =
-        classicShaders + newerShaders + worldShaders + cameraWorldShaders + cameraJourneys + lifeStyles + mycoStyles +
-            acidStyles + fluidStyles + listOf(curlFlow, water) + cymaticsStyles + milkDrop
+        classicShaders + newerShaders + worldShaders + cameraWorldShaders + cameraJourneys + cameraWorlds + lifeStyles +
+            mycoStyles + acidStyles + fluidStyles + listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     /**
      * [audited], then a plain manifest (its pack's family and Extras, no Reactions or own flight) for

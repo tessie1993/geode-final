@@ -12,6 +12,9 @@ out vec4 fragColor;
 //#include lib_sdf3
 //#include lib_touch
 //#include lib_camera
+// The noise volume (manifest "inputs": noise_vol): fbmVol is lib_sdf3's fbm3 at one texture fetch per
+// octave instead of eight lattice hashes.
+//#include lib_inputs
 
 // Event Horizon: an inspiral orbit around a black hole whose gravity bends the
 // whole sky.
@@ -81,11 +84,11 @@ vec3 starfield(vec3 d, float footprint, float drift) {
     vec3 gn = normalize(vec3(0.25, 1.0, 0.35));
     float lat = dot(d, gn);
     float band = exp(-lat * lat * 14.0);
-    float dust = fbm3(d * 3.2 + 4.0, 4);
-    float lanes = smoothstep(0.35, 0.7, fbm3(d * 7.0 + 11.0, 3));
+    float dust = fbmVol(d * 3.2 + 4.0, 4);
+    float lanes = smoothstep(0.35, 0.7, fbmVol(d * 7.0 + 11.0, 3));
     vec3 sky = mix(pal(0.62), vec3(0.5, 0.55, 0.85), 0.5) * 0.05;
     sky += mix(pal(0.08), vec3(1.0, 0.85, 0.7), 0.45) * band * (0.25 + 0.5 * dust) * (1.0 - 0.6 * lanes);
-    sky += pal(0.55) * 0.12 * smoothstep(0.45, 0.85, fbm3(d * 1.6 + 2.0, 3)) * (0.3 + band);
+    sky += pal(0.55) * 0.12 * smoothstep(0.45, 0.85, fbmVol(d * 1.6 + 2.0, 3)) * (0.3 + band);
     // Stars: one candidate per cell of a grid on the direction, kept only when
     // the cell's hash says so. The disc of each widens with the pixel's angular
     // footprint and dims by the same area, so a star stretched by the lens
@@ -119,7 +122,7 @@ vec3 discEmission(float r, float a, float clock) {
     // shears into streaks the longer it orbits.
     float spinA = a - clock * 0.9 * pow(EH_DISC_IN / r, 1.5);
     vec3 q = vec3(cos(spinA) * r, sin(spinA) * r, r * 1.7);
-    float turb = fbm3(q * 0.9, 3);
+    float turb = fbmVol(q * 0.9, 3);
     float lanes = 0.55 + 0.45 * sin(r * 5.5 + 3.0 * turb);
     // The spectrum, ring by ring.
     float ring = aband(clamp(x, 0.0, 1.0) * 0.85 + 0.02);

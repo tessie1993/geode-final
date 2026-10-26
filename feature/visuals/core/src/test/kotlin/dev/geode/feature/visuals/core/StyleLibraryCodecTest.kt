@@ -4,6 +4,7 @@ import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.core.Fixtures.ink
 import dev.geode.feature.visuals.core.Fixtures.milk
 import dev.geode.feature.visuals.core.Fixtures.nested
@@ -21,6 +22,7 @@ class StyleLibraryCodecTest {
             favourites = listOf(milk, ink),
             recent = listOf(ink, tunnel),
             folders = nested.folders + Folder(FolderId(4), "Late night: slow & low", null, listOf(ink, milk)),
+            marks = mapOf(milk to StyleMark.LOVE, tunnel to StyleMark.NEVER),
         )
 
     private val written =
@@ -37,6 +39,8 @@ class StyleLibraryCodecTest {
         folder 4 - Late night: slow & low
         style 4 fluid_ink
         style 4 milkdrop
+        mark milkdrop love
+        mark tunnel never
         """.trimIndent()
 
     @Test
@@ -48,6 +52,25 @@ class StyleLibraryCodecTest {
     fun `what is written reads back the same`() {
         assertEquals(library, StyleLibraryCodec.decode(StyleLibraryCodec.encode(library)))
         assertEquals(StyleLibrary(), StyleLibraryCodec.decode(StyleLibraryCodec.encode(StyleLibrary())))
+    }
+
+    @Test
+    fun `a Normal mark is never written, and a broken mark line is skipped`() {
+        assertEquals("geode-style-library 1", StyleLibraryCodec.encode(StyleLibrary(marks = mapOf(ink to StyleMark.NORMAL))))
+        val lines =
+            listOf(
+                "geode-style-library 1",
+                "mark tunnel adore",
+                "mark milkdrop normal",
+                "mark fluid_ink never",
+                "mark fluid_ink love",
+                "mark  love",
+                "mark ink",
+            )
+        val read = StyleLibraryCodec.decode(lines.joinToString("\n"))
+        assertEquals(mapOf(ink to StyleMark.NEVER), read.marks)
+        assertEquals(StyleMark.NORMAL, read.markOf(tunnel))
+        assertEquals(StyleMark.NEVER, read.markOf(ink))
     }
 
     @Test
