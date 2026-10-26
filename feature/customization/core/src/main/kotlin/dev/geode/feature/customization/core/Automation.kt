@@ -11,6 +11,7 @@ import dev.geode.feature.customization.api.StyleSwitching
 import dev.geode.feature.customization.api.Trigger
 import kotlin.math.PI
 import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -55,6 +56,27 @@ object Automation {
 
     /** Whether Style switching takes a [level] (as heard) for silence. */
     fun silent(level: Float): Boolean = level < SILENCE_LEVEL
+
+    /** How far Style switching's big-moment threshold rises after a switch: this much of the room above it (#362). */
+    const val THRESHOLD_RISE: Float = 0.5f
+
+    /** The half-life the raised threshold relaxes back over, in played time. */
+    val THRESHOLD_HALF_LIFE: Millis = Millis(15_000)
+
+    /**
+     * Style switching's big-moment [threshold] [sinceLast] (played) after its last switch, null when it
+     * has not switched yet (#362): raised [THRESHOLD_RISE] of the way to 1, the raise halving every
+     * [THRESHOLD_HALF_LIFE]. A loud, busy master then does not switch on every chorus, yet keeps its
+     * variety without a longer fixed spacing. The engine's raisedThreshold is the same.
+     */
+    fun raisedThreshold(
+        threshold: Float,
+        sinceLast: Millis?,
+    ): Float {
+        if (sinceLast == null) return threshold
+        val halvings = maxOf(sinceLast.value, 0L).toDouble() / THRESHOLD_HALF_LIFE.value
+        return threshold + maxOf(1f - threshold, 0f) * THRESHOLD_RISE * 2.0.pow(-halvings).toFloat()
+    }
 
     /** Whether [cadence] lets a move happen [sinceLast] after its last one (null: there was none yet). */
     fun spaced(

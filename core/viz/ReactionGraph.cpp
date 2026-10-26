@@ -45,6 +45,12 @@ int wrapPalette(int64_t index) {
 
 bool silent(float level) { return level < kSilenceLevel; }
 
+float raisedThreshold(float threshold, float sinceSeconds) {
+    const float since = std::isfinite(sinceSeconds) ? std::max(sinceSeconds, 0.0f) : 0.0f;
+    const float room = std::max(1.0f - threshold, 0.0f);
+    return threshold + room * kThresholdRise * std::exp2(-since / kThresholdHalfLifeSeconds);
+}
+
 float crossfade(float elapsedSeconds, float lengthSeconds) {
     if (!(lengthSeconds > 0.0f)) return 1.0f;
     const float x = unit(elapsedSeconds / lengthSeconds);
@@ -210,9 +216,11 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         const AutomationSpec& automation = plan.automations[i];
         const int every = std::max(automation.everyBeats, 1);
         const int64_t block = beat / every;
+        const bool switching = automation.kind == AutomationKind::StyleSwitch;
         bool fired = false;
         if (automation.trigger == TriggerKind::BigMoments) {
-            const float threshold = std::isnan(automation.threshold) ? 1.0f : automation.threshold;
+            float threshold = std::isnan(automation.threshold) ? 1.0f : automation.threshold;
+            if (switching && lastMove_[i] >= 0.0) threshold = raisedThreshold(threshold, static_cast<float>(seconds_ - lastMove_[i]));
             fired = armed_[i] && bigMoment >= threshold;
             armed_[i] = bigMoment < threshold;
         } else {
@@ -220,7 +228,6 @@ const Evaluated& ReactionGraph::evaluate(const CustomizationPlan& plan, const Si
         }
         lastBlock_[i] = block;
         const double spacing = std::isfinite(automation.spacingSeconds) ? std::max(automation.spacingSeconds, 0.0f) : 0.0;
-        const bool switching = automation.kind == AutomationKind::StyleSwitch;
         if (automation.held || (switching && longQuiet)) spacedFrom_[i] = seconds_;
         const bool spaced = spacedFrom_[i] < 0.0 || seconds_ - spacedFrom_[i] >= spacing;
         const bool moves = fired && !automation.held && !(switching && quiet) && spaced;

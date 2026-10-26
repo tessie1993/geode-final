@@ -373,4 +373,16 @@ class AutomationTest {
         assertFalse(Automation.silent(Automation.SILENCE_LEVEL))
         assertFalse(Automation.silent(0.5f))
     }
+
+    @Test
+    fun `Style switching's threshold rises after a switch and relaxes with a half-life`() {
+        val halfLife = Automation.THRESHOLD_HALF_LIFE
+        assertEquals(0.6f, Automation.raisedThreshold(0.6f, null), 1e-6f)
+        assertEquals(0.8f, Automation.raisedThreshold(0.6f, Millis.ZERO), 1e-6f)
+        assertEquals(0.7f, Automation.raisedThreshold(0.6f, halfLife), 1e-6f)
+        assertEquals(0.65f, Automation.raisedThreshold(0.6f, halfLife + halfLife), 1e-6f)
+        assertEquals(0.8f, Automation.raisedThreshold(0.6f, Millis(-5_000)), 1e-6f)
+        assertEquals(1f, Automation.raisedThreshold(1f, Millis.ZERO), 0f)
+        assertEquals(1.5f, Automation.raisedThreshold(1.5f, Millis.ZERO), 0f)
+    }
 }

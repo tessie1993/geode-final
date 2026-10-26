@@ -54,6 +54,16 @@ constexpr float kSilenceSeconds = 2.5f;
 // Whether Style switching takes a frame whose Level is `level` for silence.
 bool silent(float level);
 
+// How far Style switching's big-moment threshold rises after a switch, as a fraction of the room left
+// above it, and the half-life it relaxes back over, in seconds played (#362). Automation.THRESHOLD_RISE
+// and THRESHOLD_HALF_LIFE in :feature:customization:core mirror them.
+constexpr float kThresholdRise = 0.5f;
+constexpr float kThresholdHalfLifeSeconds = 15.0f;
+
+// Style switching's big-moment threshold `sinceSeconds` (played) after its last switch: `threshold`
+// raised kThresholdRise of the way to 1, the raise halving every kThresholdHalfLifeSeconds.
+float raisedThreshold(float threshold, float sinceSeconds);
+
 enum class ModulatorField : uint8_t { Rate, Depth, Pattern };
 constexpr size_t kModulatorFieldCount = 3;
 
@@ -112,6 +122,9 @@ float macroLink(float base, float low, float high, float value);
 // Style switching also waits during silence (#361): never while the Level heard (before the trims) is
 // under kSilenceLevel, and once that has lasted kSilenceSeconds of play, its spacing starts again when
 // sound returns. A pause, the gap between tracks or a quiet intro never switches.
+// On big moments, Style switching's threshold rises after each switch and relaxes back with a half-life
+// (#362, raisedThreshold), so a loud, busy master does not switch on every chorus, yet keeps its variety
+// without a longer fixed spacing.
 //
 //   StyleSwitch  no target: counts each move into Evaluated::stylesDue, from which the reducer moves
 //                to the next Style (CustomizationEvent.StyleDue) and the engine crossfades;

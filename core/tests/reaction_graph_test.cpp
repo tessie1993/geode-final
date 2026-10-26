@@ -644,6 +644,42 @@ TEST(Automations, OnlyStyleSwitchingWaitsForSilence) {
     EXPECT_GT(graph.evaluate(plan, at(0.0f), kAutomationDt)[Shared::PaletteMix], 0.0f) << "a palette change fades in, in silence too";
 }
 
+TEST(Automations, TheRaisedThresholdRelaxesWithAHalfLife) {
+    EXPECT_NEAR(raisedThreshold(0.6f, 0.0f), 0.8f, kTolerance) << "half the room above it";
+    EXPECT_NEAR(raisedThreshold(0.6f, kThresholdHalfLifeSeconds), 0.7f, kTolerance);
+    EXPECT_NEAR(raisedThreshold(0.6f, 2.0f * kThresholdHalfLifeSeconds), 0.65f, kTolerance);
+    EXPECT_NEAR(raisedThreshold(0.6f, 1e6f), 0.6f, kTolerance);
+    EXPECT_NEAR(raisedThreshold(0.6f, -5.0f), 0.8f, kTolerance) << "never higher than straight after";
+    EXPECT_NEAR(raisedThreshold(0.6f, std::numeric_limits<float>::quiet_NaN()), 0.8f, kTolerance);
+    EXPECT_EQ(raisedThreshold(1.0f, 0.0f), 1.0f);
+    EXPECT_EQ(raisedThreshold(1.5f, 0.0f), 1.5f) << "no room above it";
+}
+
+TEST(Automations, AfterASwitchTheNextBigMomentMustBeBigger) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    plan.add(onBigMoments(AutomationKind::StyleSwitch, 0.6f, 0.0f));
+    ReactionGraph graph;
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt).stylesDue, 1u);
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt).stylesDue, 1u) << "raised to about 0.8";
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.85f), kAutomationDt).stylesDue, 2u) << "a bigger one still switches";
+    for (int i = 0; i < 600; ++i) graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt).stylesDue, 3u) << "relaxed a minute later";
+}
+
+TEST(Automations, OnlyStyleSwitchingRaisesItsThreshold) {
+    CustomizationPlan plan = CustomizationPlan::defaults();
+    AutomationSpec palette = onBigMoments(AutomationKind::Palette, 0.6f, 0.0f);
+    palette.fadeSeconds = 0.05f;
+    plan.add(palette);
+    ReactionGraph graph;
+    graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt);
+    graph.evaluate(plan, atTempo(0.5f), kAutomationDt);
+    graph.evaluate(plan, big(SoundSignal::Surge, 0.65f), kAutomationDt);
+    EXPECT_EQ(graph.evaluate(plan, atTempo(0.5f), kAutomationDt)[Shared::Palette], 2.0f) << "two changes";
+}
+
 TEST(Automations, APaletteChangeCrossfadesIntoTheNextPaletteAndWrapsRound) {
     CustomizationPlan plan = CustomizationPlan::defaults();
     plan.shared[static_cast<size_t>(Shared::Palette)] = toUnit(Shared::Palette, 20.0f);

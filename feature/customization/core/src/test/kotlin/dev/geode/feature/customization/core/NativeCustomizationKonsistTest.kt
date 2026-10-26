@@ -138,4 +138,12 @@ class NativeCustomizationKonsistTest {
         val seconds = constant(graph, "kSilenceSeconds").removeSuffix("f").toFloat()
         assertEquals(Automation.SILENCE.value.toFloat() / MILLIS_PER_SECOND, seconds, 0f)
     }
+
+    @Test
+    fun `the engine raises Style switching's threshold as the model does`() {
+        val graph = read("core/viz/include/geode/viz/ReactionGraph.hpp")
+        assertEquals(Automation.THRESHOLD_RISE, constant(graph, "kThresholdRise").removeSuffix("f").toFloat(), 0f)
+        val seconds = constant(graph, "kThresholdHalfLifeSeconds").removeSuffix("f").toFloat()
+        assertEquals(Automation.THRESHOLD_HALF_LIFE.value.toFloat() / MILLIS_PER_SECOND, seconds, 0f)
+    }
 }
