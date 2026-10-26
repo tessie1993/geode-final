@@ -1,6 +1,7 @@
 package dev.geode.design.glass
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -193,6 +194,29 @@ fun GlassFade(
     ) {
         content()
     }
+}
+
+/**
+ * Shows [target] through [content], and cross-fades when it changes: a calm fade, never a slide, for
+ * tab changes and for panels and sheets over the live Visual (#355). The content of the state being
+ * left stays on screen while it fades out, so a panel closing with a null [target] fades too. It snaps
+ * under reduced motion.
+ */
+@Composable
+fun <T> GlassCrossfade(
+    target: T,
+    modifier: Modifier = Modifier,
+    label: String = "glassCrossfade",
+    content: @Composable (T) -> Unit,
+) {
+    val reduced = LocalReducedMotion.current
+    Crossfade(
+        targetState = target,
+        modifier = modifier,
+        animationSpec = if (reduced) snap() else tween(GlassTokens.FADE_MILLIS),
+        label = label,
+        content = content,
+    )
 }
 
 /** The live blur for [kind] in [style]: blurred, a little desaturated, clamped toward the base, tinted. */
