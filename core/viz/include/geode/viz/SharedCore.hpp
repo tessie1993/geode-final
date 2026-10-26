@@ -24,8 +24,9 @@ enum class Shared : uint8_t {
     Saturation, Brightness, Intensity, Contrast, Gamma, Temperature, Invert,
     Anaglyph,
     LayerOpacity, LayerInfluence, LayerSwap,
+    PanX, PanY, Turn,
 };
-constexpr size_t kSharedCount = 68;
+constexpr size_t kSharedCount = 71;
 
 // ExtraKind's size and MACRO_COUNT in :feature:customization:api.
 constexpr size_t kExtraCount = 23;

@@ -152,6 +152,9 @@
     <string name="customize_property_field_of_view">Field of view</string>
     <string name="customize_property_roll">Roll</string>
     <string name="customize_property_speed_ramp">Speed ramp</string>
+    <string name="customize_property_pan_x">Pan across</string>
+    <string name="customize_property_pan_y">Pan up and down</string>
+    <string name="customize_property_turn">Turn</string>
     <string name="customize_property_palette">Palette</string>
     <string name="customize_property_palette_2">Second palette</string>
     <string name="customize_property_palette_mix">Palette mix</string>
@@ -416,6 +419,9 @@
     <string name="customize_help_property_field_of_view">Widens or narrows the lens. It springs open fast and settles slowly, so linked to a hit it punches.</string>
     <string name="customize_help_property_roll">Rolls the camera around the way it looks, faster the further from 0; the roll speeds up and slows down smoothly.</string>
     <string name="customize_help_property_speed_ramp">Speeds the flight up beyond its cruise: it ramps in and eases off.</string>
+    <string name="customize_help_property_pan_x">Moves the Camera left or right and holds it there. Drag with two fingers to set it.</string>
+    <string name="customize_help_property_pan_y">Moves the Camera up or down and holds it there. Drag with two fingers to set it.</string>
+    <string name="customize_help_property_turn">Turns the Camera and holds it there, up to half a turn either way. Twist with two fingers to set it.</string>
     <string name="customize_help_property_palette">The set of colours the picture is painted with.</string>
     <string name="customize_help_property_palette_2">A second set of colours to blend in.</string>
     <string name="customize_help_property_palette_mix">How much of the second palette shows.</string>

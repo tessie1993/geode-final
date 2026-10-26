@@ -356,5 +356,93 @@ TEST(CameraRig, ReducedMotionSlowsTheSpeedRampLikeTravel) {
     EXPECT_NEAR(run(rig, ramping(1.0f), 20.0f, true).rampSpeed, 0.3f * camera::kRampSpeed, 1e-3f);
 }
 
+// ---- pan and turn, where two fingers leave the Camera (#397) -----------------------------------------
+
+CameraInput placed(float panX, float panY, float turn) {
+    CameraInput in;
+    in.panX = panX;
+    in.panY = panY;
+    in.turn = turn;
+    return in;
+}
+
+TEST(CameraRig, PanAndTurnAreReadFromTheFrameKeptInRange) {
+    mod::NativeFrame f;
+    f.shared[static_cast<size_t>(mod::Shared::PanX)] = 2.0f;
+    f.shared[static_cast<size_t>(mod::Shared::PanY)] = -0.25f;
+    f.shared[static_cast<size_t>(mod::Shared::Turn)] = kNaN;
+    const CameraInput in = CameraInput::from(f);
+    EXPECT_EQ(in.panX, 1.0f);
+    EXPECT_NEAR(in.panY, -0.25f, 1e-6f);
+    EXPECT_EQ(in.turn, 0.0f);
+    f.shared[static_cast<size_t>(mod::Shared::Turn)] = -3.0f;
+    EXPECT_EQ(CameraInput::from(f).turn, -1.0f);
+}
+
+TEST(CameraRig, ThePanGlidesToWhereItIsSetAndStaysThere) {
+    CameraRig rig;
+    const CameraPose& gliding = run(rig, placed(1.0f, -0.5f, 0.0f), 0.4f);
+    EXPECT_NEAR(gliding.panX, glided(0.0f, 1.0f, camera::kGlideHz, 0.4f) * camera::kMaxPan, kTolerance);
+    EXPECT_FALSE(gliding.still());
+    const CameraPose& held = run(rig, placed(1.0f, -0.5f, 0.0f), 12.0f);
+    EXPECT_NEAR(held.panX, camera::kMaxPan, kTolerance);
+    EXPECT_NEAR(held.panY, -0.5f * camera::kMaxPan, kTolerance);
+    // Held, not a rate: another ten seconds leave it where it is.
+    const float x = held.panX;
+    EXPECT_NEAR(run(rig, placed(1.0f, -0.5f, 0.0f), 10.0f).panX, x, kTolerance);
+}
+
+TEST(CameraRig, ThePanLooksTheCameraOfAStyleAcrossSoTheWorldFollows) {
+    CameraRig rig;
+    const CameraPose& right = run(rig, placed(1.0f, 0.0f, 0.0f), 12.0f);
+    // A pan right turns the camera left (negative yaw): the forward column points to -x.
+    EXPECT_NEAR(right.rotation[6], -std::sin(camera::kMaxPanYaw), kTolerance);
+    EXPECT_NEAR(right.rotation[8], std::cos(camera::kMaxPanYaw), kTolerance);
+    // The orbit itself is untouched.
+    EXPECT_EQ(right.yaw, 0.0f);
+    const CameraPose& up = run(rig, placed(0.0f, 1.0f, 0.0f), 12.0f);
+    EXPECT_NEAR(up.rotation[7], -std::sin(camera::kMaxPanPitch), kTolerance);
+    EXPECT_NEAR(up.rotation[6], 0.0f, kTolerance);
+}
+
+TEST(CameraRig, TheTurnIsHeldOnTheRollAndDoesNotKeepTurning) {
+    CameraRig rig;
+    const CameraPose& turned = run(rig, placed(0.0f, 0.0f, 0.5f), 12.0f);
+    EXPECT_NEAR(turned.roll, 0.5f * camera::kMaxTurn, kTolerance);
+    EXPECT_FALSE(turned.still());
+    EXPECT_NEAR(run(rig, placed(0.0f, 0.0f, 0.5f), 10.0f).roll, 0.5f * camera::kMaxTurn, kTolerance);
+    // Half a turn either way is the same picture; the roll may name it either way round.
+    EXPECT_NEAR(turn(run(rig, placed(0.0f, 0.0f, -1.0f), 12.0f).roll, -camera::kMaxTurn), 0.0f, 1e-3f);
+}
+
+TEST(CameraRig, TheRollLevelsBackToTheTurnNotPastIt) {
+    CameraInput in = placed(0.0f, 0.0f, 0.25f);
+    in.roll = 1.0f;
+    CameraRig rig;
+    run(rig, in, 2.0f);
+    in.roll = 0.0f;
+    EXPECT_NEAR(turn(run(rig, in, 30.0f).roll, 0.25f * camera::kMaxTurn), 0.0f, 1e-3f);
+}
+
+TEST(CameraRig, PanAndTurnBackAtZeroLeaveThePictureAsItWas) {
+    CameraRig rig;
+    run(rig, placed(-1.0f, 1.0f, 1.0f), 3.0f);
+    const CameraPose& back = run(rig, CameraInput{}, 20.0f);
+    EXPECT_TRUE(back.still());
+    EXPECT_EQ(back.panX, 0.0f);
+    EXPECT_EQ(back.panY, 0.0f);
+    EXPECT_EQ(back.roll, 0.0f);
+    EXPECT_NEAR(back.rotation[0], 1.0f, 1e-6f);
+    rig.reset();
+    EXPECT_EQ(run(rig, CameraInput{}, 0.1f).panX, 0.0f);
+}
+
+TEST(CameraRig, ReducedMotionKeepsWhereTheFingersLeftTheCamera) {
+    CameraRig rig;
+    const CameraPose& p = run(rig, placed(0.5f, 0.5f, 0.5f), 12.0f, true);
+    EXPECT_NEAR(p.panX, 0.5f * camera::kMaxPan, kTolerance);
+    EXPECT_NEAR(p.roll, 0.5f * camera::kMaxTurn, kTolerance);
+}
+
 }  // namespace
 }  // namespace geode::viz

@@ -1205,6 +1205,8 @@ public final class dev/geode/feature/customization/api/SharedProperty : java/lan
 	public static final field PALETTE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field PALETTE_2 Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field PALETTE_MIX Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PAN_X Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field PAN_Y Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field PARTICLES Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field PARTICLE_KIND Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field PARTICLE_SIZE Ldev/geode/feature/customization/api/SharedProperty;
@@ -1230,6 +1232,7 @@ public final class dev/geode/feature/customization/api/SharedProperty : java/lan
 	public static final field TRAIL_ZOOM Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field TRAVEL Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field TURBULENCE Ldev/geode/feature/customization/api/SharedProperty;
+	public static final field TURN Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field TWIST Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field VIGNETTE Ldev/geode/feature/customization/api/SharedProperty;
 	public static final field WARP Ldev/geode/feature/customization/api/SharedProperty;

@@ -255,6 +255,24 @@ TEST(TileCompositeIdentity, TheRollCountsEitherWayOnlyWhereTheCompositeMovesTheP
     }
 }
 
+TEST(TileCompositeIdentity, ThePanCountsBothAxesTogetherOnlyWhereTheCompositeMovesThePicture) {
+    for (const float sign : {1.0f, -1.0f}) {
+        CompositeLook pan = gated();
+        pan.camPanX = 0.00011f * sign;
+        EXPECT_FALSE(compositeIsIdentity(pan)) << sign;
+        pan.camPanX = 0.00006f * sign;
+        EXPECT_TRUE(compositeIsIdentity(pan)) << sign;
+        pan.camPanY = -0.00006f * sign;
+        EXPECT_FALSE(compositeIsIdentity(pan)) << sign << " both axes add";
+        pan.camPanX = 0.0f;
+        pan.camPanY = 0.0001f * sign;
+        EXPECT_TRUE(compositeIsIdentity(pan)) << sign;
+        pan.camPanY = 0.5f * sign;
+        pan.camMoves = 0.5f;
+        EXPECT_TRUE(compositeIsIdentity(pan)) << sign << " on a Style with its own camera";
+    }
+}
+
 TEST(TileCompositeIdentity, TheShakeAddsItsThreeAxesBeforeTheThreshold) {
     CompositeLook look;
     look.camShakeX = 0.0000004f;

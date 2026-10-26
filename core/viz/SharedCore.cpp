@@ -80,6 +80,9 @@ constexpr std::array<SharedSpec, kSharedCount> kTable = {{
     {"LAYER_OPACITY", 0.0f, 1.0f, 0.5f, K::Continuous, true},
     {"LAYER_INFLUENCE", 0.0f, 1.0f, 0.5f, K::Continuous, true},
     {"LAYER_SWAP", 0.0f, 1.0f, 0.0f, K::Continuous, true},
+    {"PAN_X", -1.0f, 1.0f, 0.0f, K::Continuous, false},
+    {"PAN_Y", -1.0f, 1.0f, 0.0f, K::Continuous, false},
+    {"TURN", -1.0f, 1.0f, 0.0f, K::Continuous, false},
 }};
 }  // namespace
 

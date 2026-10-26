@@ -156,14 +156,16 @@ uniform float uUnderlayAmount;
 // plane in perspective (radians, x yaw, y pitch), uCamDive holds the 0..1 phases of a dive through the
 // picture (x travel, y endless zoom), and the shake (xy offset, z roll) moves every picture alike.
 // uCamRoll is the Camera's roll (radians), turning the picture about its centre; a narrowed lens
-// arrives folded into uCamPush (CameraPose::flatPush). Every one of them is 0 at the Camera's
-// starting values, and then nothing here runs.
+// arrives folded into uCamPush (CameraPose::flatPush). uCamPan is the held pan (#397), in fractions of
+// the frame (x right, y up): the picture moves by it, mirrored past its edge. Every one of them is 0 at
+// the Camera's starting values, and then nothing here runs.
 uniform vec4 uCamGate;
 uniform float uCamPush;
 uniform vec2 uCamTilt;
 uniform vec3 uCamShake;
 uniform vec2 uCamDive;
 uniform float uCamRoll;
+uniform vec2 uCamPan;
 
 float compHash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -232,6 +234,9 @@ vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
     if (abs(uCamShake.x) + abs(uCamShake.y) + abs(uCamShake.z) > 0.000001) {
         c = mat2(cos(uCamShake.z), -sin(uCamShake.z), sin(uCamShake.z), cos(uCamShake.z)) * c - uCamShake.xy;
     }
+    // The pan before the roll, so a drag moves the picture the way the fingers went however it is turned.
+    bool panned = cam && abs(uCamPan.x) + abs(uCamPan.y) > 0.0001;
+    if (panned) c -= uCamPan;
     if (cam && abs(uCamRoll) > 0.0001) {
         // Turned in the picture's true proportions, so the roll never shears it.
         vec2 r = mat2(cos(uCamRoll), -sin(uCamRoll), sin(uCamRoll), cos(uCamRoll)) * vec2(c.x * uRatio, c.y);
@@ -312,7 +317,7 @@ vec2 geo(vec2 uv, vec4 gate, bool cam, float scale) {
         p = (floor(p * px) + 0.5) / px;
     }
     // A dive looks past the picture's edge: mirror it there rather than smear the clamped border.
-    if (scale > 1.0) p = 1.0 - abs(1.0 - mod(p, 2.0));
+    if (scale > 1.0 || panned) p = 1.0 - abs(1.0 - mod(p, 2.0));
     return p;
 }
 

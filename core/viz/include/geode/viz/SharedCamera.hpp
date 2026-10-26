@@ -20,6 +20,9 @@ namespace geode::viz {
 //     camera the lens widens or narrows and rolls (lib_camera's cameraView()) and the ramp flies it
 //     faster down its own flight; on a flat picture the composite narrows (a picture has no more of
 //     itself to show wider), rolls the picture, and the ramp speeds the travel's dive.
+//   - pan and turn (#397), where two fingers leave the Camera: held, not rates. A Style that owns its
+//     camera looks across by the pan and rolls by the turn; on a flat picture the composite moves the
+//     picture by the pan and turns it by the turn. The turn rides on the roll, so both paths draw it.
 // Zoom, rotation, sway, drift and endless zoom keep the paths every Style already draws them on (the
 // shader Styles' view(), the composite's geometry block, MilkDrop's own post pass).
 //
@@ -37,6 +40,9 @@ struct CameraInput {
     float fieldOfView = 0.0f;
     float roll = 0.0f;
     float speedRamp = 0.0f;
+    float panX = 0.0f;
+    float panY = 0.0f;
+    float turn = 0.0f;
 
     // The Camera values of one evaluated frame, in the Shared core's units.
     static CameraInput from(const mod::NativeFrame& frame);
@@ -66,9 +72,14 @@ struct CameraPose {
     // camera's roll about the way it looks, in radians (within half a turn of upright).
     float lens = 0.0f;
     float roll = 0.0f;
+    // The held pan of a flat picture, in fractions of the frame (x right, y up). A Style that owns its
+    // camera gets it as a look in `rotation` instead.
+    float panX = 0.0f;
+    float panY = 0.0f;
     // The flight speed the ramp adds, in world units a second (0 at rest).
     float rampSpeed = 0.0f;
-    // The orbit as a rotation, column-major (uCamRot): yaw about the vertical, then pitch.
+    // The orbit, and the pan's look, as a rotation, column-major (uCamRot): yaw about the vertical, then
+    // pitch.
     std::array<float, 9> rotation{1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     // True when the composite has nothing of the Camera to draw.
@@ -119,6 +130,12 @@ constexpr float kLevelRate = 0.8f;
 constexpr float kRampSpeed = 6.0f;
 constexpr float kRampRiseHz = 1.4f;
 constexpr float kRampFallHz = 0.6f;
+// The pan (#397): a full pan moves a flat picture this fraction of the frame, and turns a camera of a
+// Style's own this far across (yaw) and up or down (pitch), in radians. A full turn is half a turn.
+constexpr float kMaxPan = 0.5f;
+constexpr float kMaxPanYaw = 0.6f;
+constexpr float kMaxPanPitch = 0.4f;
+constexpr float kMaxTurn = 3.1415927f;
 }  // namespace camera
 
 class CameraRig {
@@ -141,7 +158,12 @@ private:
     float shake_ = 0.0f;
     float lens_ = 0.0f;
     float rollRate_ = 0.0f;
+    // The roll's own angle, before the held turn is added.
+    float rollAngle_ = 0.0f;
     float ramp_ = 0.0f;
+    float panX_ = 0.0f;
+    float panY_ = 0.0f;
+    float turn_ = 0.0f;
     std::array<float, 4> wobble_{};
 };
 

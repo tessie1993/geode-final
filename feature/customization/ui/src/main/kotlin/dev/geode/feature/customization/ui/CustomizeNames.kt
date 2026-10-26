@@ -90,6 +90,9 @@ internal fun propertyName(property: SharedProperty): String =
             SharedProperty.FIELD_OF_VIEW -> R.string.customize_property_field_of_view
             SharedProperty.ROLL -> R.string.customize_property_roll
             SharedProperty.SPEED_RAMP -> R.string.customize_property_speed_ramp
+            SharedProperty.PAN_X -> R.string.customize_property_pan_x
+            SharedProperty.PAN_Y -> R.string.customize_property_pan_y
+            SharedProperty.TURN -> R.string.customize_property_turn
             SharedProperty.PALETTE -> R.string.customize_property_palette
             SharedProperty.PALETTE_2 -> R.string.customize_property_palette_2
             SharedProperty.PALETTE_MIX -> R.string.customize_property_palette_mix

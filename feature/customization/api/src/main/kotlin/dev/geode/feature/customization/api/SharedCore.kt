@@ -177,4 +177,19 @@ enum class SharedProperty(
 
     /** 0 lays Layer 2 over Layer 1, 1 lays Layer 1 over Layer 2; between, a crossfade of the two. */
     LAYER_SWAP(SharedGroup.LAYERS, 0f, 1f, 0f, luminous = true),
+
+    /**
+     * Where the Camera is placed across and up and down (#397): 1 moves the picture half the frame right
+     * (or up), and in a Style that owns its camera the camera looks that way. It stays where it is set,
+     * unlike [DRIFT_X] and [DRIFT_Y], which scroll. Two fingers dragging the Visual set it.
+     */
+    PAN_X(SharedGroup.CAMERA, -1f, 1f, 0f),
+    PAN_Y(SharedGroup.CAMERA, -1f, 1f, 0f),
+
+    /**
+     * The Camera turned about the way it looks, held where it is set (#397): 1 is half a turn
+     * anticlockwise. Unlike [ROTATION] and [ROLL], which are rates, it does not keep turning. Two
+     * fingers twisting the Visual set it.
+     */
+    TURN(SharedGroup.CAMERA, -1f, 1f, 0f),
 }

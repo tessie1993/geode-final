@@ -352,7 +352,7 @@ const COMPOSITE_NEUTRAL = {
   uPostPalTint: 0, uPostPalBase: 0, uPostPalSpan: 1,
   uFlowStrength: 0, uRippleTexel: [1 / 64, 1 / 64], uRippleStrength: 0, uRippleSpecular: 0,
   uUnderlayBlend: 0, uUnderlayAmount: 0,
-  uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0], uCamRoll: 0,
+  uCamGate: [1, 1, 1, 1], uCamPush: 0, uCamTilt: [0, 0], uCamShake: [0, 0, 0], uCamDive: [0, 0], uCamRoll: 0, uCamPan: [0, 0],
   // Layer 2 off (presence 0); --layers turns it on.
   uGateL: [1, 1, 1, 1], uCamGateL: [1, 1], uLayerPresence: 0, uLayerBlend: 0, uLayerOpacity: 0.6, uLayerInfluence: 0,
   uLayerAmount: 0.7, uLayerSwap: 0,
@@ -391,6 +391,7 @@ const COMPOSITE_EFFECTS = {
   camera_endless_zoom: { uCamDive: [0, 0.7] },
   camera_shake: { uCamShake: [0.02, -0.015, 0.02] },
   camera_roll: { uCamRoll: 0.6 },
+  camera_pan: { uCamPan: [0.3, -0.2] },
 };
 
 // Layer 2 (lib_layers.glsl, Layers.hpp): one frame per blend mode and per influence, the stand-in

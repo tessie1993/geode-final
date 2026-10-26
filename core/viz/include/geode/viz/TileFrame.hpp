@@ -44,6 +44,8 @@ struct CompositeLook {
     float camEndless = 0.0f;
     float camPush = 0.0f;
     float camRoll = 0.0f;
+    float camPanX = 0.0f;
+    float camPanY = 0.0f;
     float camTiltYaw = 0.0f;
     float camTiltPitch = 0.0f;
     float camShakeX = 0.0f;

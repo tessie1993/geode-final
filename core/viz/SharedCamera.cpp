@@ -58,13 +58,17 @@ CameraInput CameraInput::from(const mod::NativeFrame& f) {
     in.fieldOfView = std::clamp(finiteOr(f[mod::Shared::FieldOfView], 0.0f), -1.0f, 1.0f);
     in.roll = std::clamp(finiteOr(f[mod::Shared::Roll], 0.0f), -1.0f, 1.0f);
     in.speedRamp = std::clamp(finiteOr(f[mod::Shared::SpeedRamp], 0.0f), 0.0f, 1.0f);
+    in.panX = std::clamp(finiteOr(f[mod::Shared::PanX], 0.0f), -1.0f, 1.0f);
+    in.panY = std::clamp(finiteOr(f[mod::Shared::PanY], 0.0f), -1.0f, 1.0f);
+    in.turn = std::clamp(finiteOr(f[mod::Shared::Turn], 0.0f), -1.0f, 1.0f);
     return in;
 }
 
 bool CameraPose::still() const {
     return push < kStill && std::fabs(tiltYaw) < kStill && std::fabs(tiltPitch) < kStill && travelDive < kStill &&
            endlessDive < kStill && std::fabs(shakeX) < kStill && std::fabs(shakeY) < kStill &&
-           std::fabs(shakeRoll) < kStill && lens > -kStill && std::fabs(roll) < kStill;
+           std::fabs(shakeRoll) < kStill && lens > -kStill && std::fabs(roll) < kStill && std::fabs(panX) < kStill &&
+           std::fabs(panY) < kStill;
 }
 
 float CameraPose::flatPush() const {
@@ -78,6 +82,9 @@ const CameraPose& CameraRig::step(const CameraInput& in, float hit, float dt, bo
     push_ = glide(push_, in.pushIn, t, camera::kGlideHz);
     yaw_ = glide(yaw_, in.orbitYaw, t, camera::kGlideHz);
     pitch_ = glide(pitch_, in.orbitPitch, t, camera::kGlideHz);
+    panX_ = glide(panX_, in.panX, t, camera::kGlideHz);
+    panY_ = glide(panY_, in.panY, t, camera::kGlideHz);
+    turn_ = glide(turn_, in.turn, t, camera::kGlideHz);
     const float travel = in.travel * camera::kTravelSpeed * (reducedMotion ? kReducedTravel : 1.0f);
     travelSpeed_ = glide(travelSpeed_, travel, t, camera::kGlideHz);
     stepLens(in, t, reducedMotion);
@@ -98,11 +105,18 @@ const CameraPose& CameraRig::step(const CameraInput& in, float hit, float dt, bo
     p.travel = std::fmod(p.travel + flight * t, camera::kTravelWrap);
     p.travelDive = divePhase(p.travelDive, flight * camera::kTravelDivePerUnit, t);
     p.lens = std::fabs(lens_) < kStill ? 0.0f : lens_ * camera::kLensOctaves;
-    p.roll = wrapAngle(p.roll + rollRate_ * t);
-    if (std::fabs(p.roll) < kStill && std::fabs(rollRate_) < kStill) {
-        p.roll = 0.0f;
+    rollAngle_ = wrapAngle(rollAngle_ + rollRate_ * t);
+    if (std::fabs(rollAngle_) < kStill && std::fabs(rollRate_) < kStill) {
+        rollAngle_ = 0.0f;
         rollRate_ = 0.0f;
     }
+    // The held turn rides on the roll; the roll levels back to the turn, not past it.
+    const float turn = std::fabs(turn_) < kStill ? 0.0f : turn_ * camera::kMaxTurn;
+    p.roll = turn == 0.0f ? rollAngle_ : wrapAngle(rollAngle_ + turn);
+    const float panX = std::fabs(panX_) < kStill ? 0.0f : panX_;
+    const float panY = std::fabs(panY_) < kStill ? 0.0f : panY_;
+    p.panX = panX * camera::kMaxPan;
+    p.panY = panY * camera::kMaxPan;
     p.endlessDive = divePhase(p.endlessDive, in.endlessZoom ? in.diveSpeed * camera::kEndlessDiveHz : 0.0f, t);
     const float amount = shake_ < kStill ? 0.0f : shake_;
     const auto wave = [&](size_t i) { return std::sin(kTwoPi * wobble_[i]); };
@@ -110,9 +124,12 @@ const CameraPose& CameraRig::step(const CameraInput& in, float hit, float dt, bo
     p.shakeY = amount * camera::kMaxShake * (kWobbleMix * wave(2) + (1.0f - kWobbleMix) * wave(3));
     p.shakeRoll = amount * camera::kMaxShakeRoll * wave(3);
 
-    // Yaw about y, then pitch about x: R = Ry * Rx, stored column by column.
-    const float cy = std::cos(p.yaw), sy = std::sin(p.yaw);
-    const float cx = std::cos(p.pitch), sx = std::sin(p.pitch);
+    // Yaw about y, then pitch about x: R = Ry * Rx, stored column by column. The pan looks the way the
+    // picture moved from: a pan right turns the camera left, so the world follows the fingers.
+    const float lookYaw = p.yaw - panX * camera::kMaxPanYaw;
+    const float lookPitch = p.pitch + panY * camera::kMaxPanPitch;
+    const float cy = std::cos(lookYaw), sy = std::sin(lookYaw);
+    const float cx = std::cos(lookPitch), sx = std::sin(lookPitch);
     p.rotation = {cy, 0.0f, -sy, sy * sx, cx, cy * sx, sy * cx, -sx, cy * cx};
     return p;
 }
@@ -127,7 +144,7 @@ void CameraRig::stepLens(const CameraInput& in, float t, bool reducedMotion) {
     float rate = in.roll * camera::kMaxRollRate * (reducedMotion ? kReducedRoll : 1.0f);
     // With no roll set, the camera rolls back upright the shortest way and comes to rest there.
     if (std::fabs(rate) < kStill) {
-        rate = std::clamp(-pose_.roll * camera::kLevelHz, -camera::kLevelRate, camera::kLevelRate);
+        rate = std::clamp(-rollAngle_ * camera::kLevelHz, -camera::kLevelRate, camera::kLevelRate);
     }
     rollRate_ = approach(rollRate_, rate, camera::kRollAccel * t);
     const float ramp = in.speedRamp * camera::kRampSpeed * (reducedMotion ? kReducedTravel : 1.0f);
