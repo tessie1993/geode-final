@@ -37,8 +37,9 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   Geode's `ProgramBinaryCache`, and its HLSL-to-GLSL translations are kept
   beside them (`projectm-v4.1.8-program-cache.patch`), so a MilkDrop preset
   seen before loads without translating or compiling. A Style shown for the
-  first time is built a frame before the switch, so the compile never lands
-  in the transition's first frame. While the phone is idle and charging, a
+  first time is built on the frame it is asked for, and its change (which
+  waits for the downbeat, #309) can start only after that, so the compile
+  never lands in the transition's first frame. While the phone is idle and charging, a
   warm-up job draws every Style and loads every MilkDrop preset offscreen
   once (`StyleWarmUpService`), again after an app update, a new GPU driver or
   new presets. The cache survives restarts, starts over with a new driver,
@@ -80,6 +81,34 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   its shader (naming what our projectM cannot translate), or misses textures
   (naming them). An older preset saved with a MilkDrop preset opens on that
   preset's Style.
+
+- **Feedback warp layer for shader Styles (#321).** A shader Style can
+  declare `feedback` in its manifest and be drawn as a loop, as MilkDrop
+  draws every preset: its last picture is carried through a coarse motion
+  grid (zoom, rotation, flow, stretch and a swirl about a centre), decayed
+  and tinted, and the Style draws over it. Everything is per second, so it
+  moves and fades alike at 30, 60 and 120 Hz; Speed, the music and the Decay,
+  Flight, Spin, Drift and Swirl Extras drive it, and a pack may bring its own
+  warp stage. The loop is kept in half float (RGB10_A2 where that does not
+  render) and rounded stochastically, so a slow decay fades smoothly to exact
+  black instead of stalling into a ghost; CI runs the loop in every format to
+  prove it. Scope is the first Style drawn this way: its line now leaves
+  echoes that fly outward, turn and part into colour. The previous-frame path
+  also gained two fixes: making a shared input's texture no longer replaces
+  the audio texture for that frame, and the render check no longer draws a
+  Style that reads its last frame into a feedback loop of its own. See
+  docs/style-packs.md, "Feedback".
+- **Changes of Style follow the music (#309, #255).** A change of Style, the
+  person's or Style switching's, now starts on the next downbeat while a tempo
+  is heard (at once while none is, and after a bar and a beat at most when the
+  downbeat is missed), runs eased, and moves on a step with each kick while
+  still ending on time without drums. Settings > Application preferences >
+  Changing Style picks its look from 17 No-flash safe looks (the fade by
+  default) or a seeded Random that never repeats the last; there is no hard
+  cut. The new Style starts from the old one's picture, trails and echo
+  included, instead of from black, and the old one keeps its trails on its way
+  out. `glslcheck --effects` draws every look along its progress and fails one
+  that dips to black or washes to white.
 
 - **The picture follows the music's structure, rhythm, timbre and space (#294).**
   One feature bus in the engine reads everything the analysis hears beyond the

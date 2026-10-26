@@ -27,6 +27,7 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -156,6 +157,7 @@ internal object SettingsCodec {
             reducedMotion = boolean(K.REDUCED_MOTION, false) || string(K.LEGACY_SAFETY_CHOICE) == LEGACY_REDUCED_MOTION,
             tilt = enum(K.TILT, default.tilt),
             startLook = startLook(string(K.START_LOOK)),
+            transitionLook = TransitionLook.ofId(string(K.TRANSITION_LOOK)) ?: default.transitionLook,
         )
     }
 
@@ -320,6 +322,7 @@ internal object SettingsCodec {
             K.SAVE_MODE to values.performance.saveMode,
             K.VISUALS_OFF to values.performance.visualsOff,
             K.START_LOOK to startLook(values.behavior.startLook),
+            K.TRANSITION_LOOK to values.behavior.transitionLook.id,
         ) + surfaces(values.performance)
 
     /** #394's per-surface picks: a surface that follows the shared value has its key removed. */

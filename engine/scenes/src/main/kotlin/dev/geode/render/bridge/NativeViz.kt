@@ -119,11 +119,16 @@ class NativeViz(
         live { h -> GeodeNative.vizSetReducedMotion(h, on) }
     }
 
+    /**
+     * A change of Style's look [id] (one of the No-flash safe looks, or "random" for a draw from them
+     * seeded by [seed]) and its [duration]. Each change starts on the next downbeat while a tempo is heard.
+     */
     fun setTransition(
         id: String,
         duration: Millis,
+        seed: Long = 0L,
     ) {
-        live { h -> GeodeNative.vizSetTransition(h, id, duration.value) }
+        live { h -> GeodeNative.vizSetTransition(h, id, duration.value, seed) }
     }
 
     fun beginParamMorph(seconds: Float) {

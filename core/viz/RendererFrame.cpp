@@ -42,6 +42,7 @@ float Renderer::beginFrame(double timeSeconds) {
         frameCustomization_ = requestedCustomization_;
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
+        frameTransitionSeed_ = transitionSeed_;
     }
     featureBus_.step(frameFeatures_, dt);
     frameBus_ = reducedMotion_.load(std::memory_order_relaxed) ? featurebus::calmed(featureBus_.values(), safety::kReducedMotionScale)
@@ -71,32 +72,57 @@ void Renderer::latchFramePcm() {
     }
 }
 
-Scene* Renderer::resolveActiveScene() {
+Scene* Renderer::resolveActiveScene(float dt) {
     std::string requestedId;
     {
         std::lock_guard<std::mutex> lock(stateLock_);
         requestedId = requestedSceneId_;
     }
-    // A Style shown for the first time is built on this frame (its programs compiled, or read back from
-    // the binary cache) and switched to on the next, so the compile never lands in the transition's
-    // first frame, the most visible one (#304). A Render switches at once: its frames are counted.
+    // A Style shown for the first time is built on the frame it is first asked for (its programs compiled,
+    // or read back from the binary cache), and its change can start on a later frame only, so the compile
+    // never lands in the transition's first frame, the most visible one (#304). A Render does not wait: its
+    // frames are counted, so it changes exactly as the gate says.
     const bool prepared = builtScene(requestedId) != nullptr;
     Scene* requested = sceneFor(requestedId);
     sceneJustSwitched_ = false;
-    if (requested && !prepared && activeScene_ && requested != activeScene_ && !thermal_.offscreen()) return activeScene_;
-    if (requested && requested != activeScene_) {
+    inheritTrails_ = false;
+    if (!requested || requested == activeScene_) {
+        switchGate_.cancel();
+        return activeScene_;
+    }
+    // The first Style, or the first after a cut: drawn at once, from a clear picture.
+    if (!activeScene_) {
         lastTimeS_ = frameNowS_;
-        const bool cuts = TransitionCatalog::builtIn(frameTransitionId_) == TransitionStyle::Cut;
-        if (!cuts && activeScene_) {
-            outgoingScene_ = activeScene_;
-            outgoingParams_ = lastFinalParams_;
-            transitionStartS_ = frameNowS_;
-        }
         activeScene_ = requested;
         sceneJustSwitched_ = true;
         requested->beginVisit();
+        return activeScene_;
     }
+    // A change of Style, automatic or the person's, waits for the next downbeat while a tempo is heard
+    // (#309). Its look is drawn when it is asked for, so the look's program is built while it waits.
+    if (!switchGate_.waiting()) {
+        pendingLookSlot_ = transition::lookSlot(frameTransitionId_, frameTransitionSeed_, looksDrawn_, lookSlot_);
+        compositePass_.warmTransition(transition::kSafeLooks[static_cast<size_t>(pendingLookSlot_)]);
+        switchGate_.arm();
+    }
+    // The frame that built the new Style only arms the wait; the downbeat is listened for from the next.
+    if (!prepared && !thermal_.offscreen()) return activeScene_;
+    if (switchGate_.step(frameFeatures_, dt)) startTransition(requested);
     return activeScene_;
+}
+
+void Renderer::startTransition(Scene* next) {
+    lastTimeS_ = frameNowS_;
+    outgoingScene_ = activeScene_;
+    outgoingParams_ = lastFinalParams_;
+    lookSlot_ = pendingLookSlot_;
+    looksDrawn_++;
+    frameLook_ = transition::kSafeLooks[static_cast<size_t>(lookSlot_)];
+    transitionProgress_.start(static_cast<float>(frameTransitionDurationMs_) / 1000.0f);
+    activeScene_ = next;
+    sceneJustSwitched_ = true;
+    inheritTrails_ = true;
+    next->beginVisit();
 }
 
 SceneParams Renderer::resolveParams(float dt) {
@@ -266,40 +292,57 @@ void Renderer::deliverPcm(Scene& scene) {
     scene.acceptPcmSpan(frameSpan_.data(), frameSpanFrames_, frameSpanFresh_);
 }
 
-void Renderer::bindSecondaryTarget(const Framebuffer& target) {
-    glBindFramebuffer(GL_FRAMEBUFFER, target.fbo());
-    glViewport(0, 0, target.width(), target.height());
-    glClear(GL_COLOR_BUFFER_BIT);
-    secondaryTex_ = target.tex();
-}
-
 float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {
     float progress = 1.0f;
     secondaryTex_ = fboB_.tex();
     if (outgoingScene_) {
-        progress = std::clamp(static_cast<float>((frameNowS_ - transitionStartS_) * 1000.0 / frameTransitionDurationMs_), 0.0f, 1.0f);
-        if (progress >= 1.0f) {
+        // Eased, on the clock, and a step on with each kick (#309).
+        progress = transition::ease(transitionProgress_.step(dt, frameFeatures_.kick));
+        if (transitionProgress_.done()) {
             outgoingScene_ = nullptr;
             outgoingParams_.reset();
         } else {
-            // The Style on its way out draws at half size each way (#311): a quarter of the fill for a
-            // picture that is only fading, warping or sliding away. Full size if that target cannot be had.
-            const tile::Size half = tile::outgoingSize({renderWidth_, renderHeight_});
-            const bool halved = fboOut_.ensure(half.width, half.height);
-            const Framebuffer& target = halved ? fboOut_ : fboB_;
-            bindSecondaryTarget(target);
-            const SceneParams& op = outgoingParams_ ? *outgoingParams_ : p;
-            prepareScene(*outgoingScene_, extrasFor(outgoingScene_->id(), nullptr));
-            outgoingScene_->setParams(op);
-            deliverPcm(*outgoingScene_);
-            outgoingScene_->update(gainAdjusted(frameFeatures_, op), dt);
-            outgoingScene_->setDrawTarget(target.fbo(), target.width(), target.height());
-            outgoingScene_->draw(timeSeconds_);
+            drawOutgoing(p, dt);
         }
     }
     // After the outgoing picture, which may have just ended: Layer 2 keeps going through a transition.
     drawLayerTarget(p, dt);
     return progress;
+}
+
+void Renderer::drawOutgoing(const SceneParams& p, float dt) {
+    // The Style on its way out draws at half size each way (#311): a quarter of the fill for a picture
+    // that is only fading, warping or sliding away. Full size if that target cannot be had.
+    const tile::Size half = tile::outgoingSize({renderWidth_, renderHeight_});
+    const bool halved = fboOut_.ensure(half.width, half.height);
+    const Framebuffer& target = halved ? fboOut_ : fboB_;
+    const SceneParams& op = outgoingParams_ ? *outgoingParams_ : p;
+    glBindFramebuffer(GL_FRAMEBUFFER, target.fbo());
+    glViewport(0, 0, target.width(), target.height());
+    secondaryTex_ = target.tex();
+    // A Style that keeps its last frame keeps it on its way out too: on the change's first frame the
+    // scene target still holds its last picture, trails and all, which its own target starts from
+    // (#309). After that its target is its own.
+    const float keep = outgoingScene_->trailRetention(op);
+    bool kept = keep > 0.0f && !sceneJustSwitched_;
+    if (keep > 0.0f && sceneJustSwitched_ && fboA_.ok() && fboA_.format() == target.format()) {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, fboA_.fbo());
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.fbo());
+        glBlitFramebuffer(0, 0, fboA_.width(), fboA_.height(), 0, 0, target.width(), target.height(), GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        glBindFramebuffer(GL_FRAMEBUFFER, target.fbo());
+        kept = true;
+    }
+    if (kept) {
+        trailPass_.drawFadeQuad(TrailPass::fadeAlpha(keep, dt), quadVao_);
+    } else {
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    prepareScene(*outgoingScene_, extrasFor(outgoingScene_->id(), nullptr));
+    outgoingScene_->setParams(op);
+    deliverPcm(*outgoingScene_);
+    outgoingScene_->update(gainAdjusted(frameFeatures_, op), dt);
+    outgoingScene_->setDrawTarget(target.fbo(), target.width(), target.height());
+    outgoingScene_->draw(timeSeconds_);
 }
 
 void Renderer::drawLayerTarget(const SceneParams& p, float dt) {
@@ -340,7 +383,9 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
     glBindFramebuffer(GL_FRAMEBUFFER, fboA_.fbo());
     glViewport(0, 0, renderWidth_, renderHeight_);
     const float keep = scene.trailRetention(p);
-    if (keep > 0.0f && !sceneJustSwitched_) {
+    // A Style switched to through a change starts from the picture the one before it left, its trails
+    // included, rather than from black (#309).
+    if (keep > 0.0f && (!sceneJustSwitched_ || inheritTrails_)) {
         trailPass_.apply(p, keep, timeSeconds_, dt, fboA_, quadVao_, renderWidth_, renderHeight_);
     } else {
         glClear(GL_COLOR_BUFFER_BIT);
@@ -361,8 +406,9 @@ GLuint Renderer::applySharedEffects(float dt) {
         sharedFx_.forgetHistory();
         return sceneTex;
     }
-    // A new Style starts its trails afresh rather than echoing the old one.
-    if (sceneJustSwitched_) sharedFx_.forgetHistory();
+    // A Style changed to through a change of Style carries on the echo of the one before it (#309);
+    // the first Style, or the first after a cut, starts its trails afresh.
+    if (sceneJustSwitched_ && !inheritTrails_) sharedFx_.forgetHistory();
     return sharedFx_.apply(frameEffects_, sceneTex, renderWidth_, renderHeight_, dt, timeSeconds_, quadVao_);
 }
 
@@ -405,8 +451,8 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.rippleSpecular = rippleOn ? std::clamp(p.rippleOverlaySpecular, 0.0f, 1.0f) : 0.0f;
     in.progress = progress;
     in.hasOutgoing = outgoingScene_ != nullptr;
-    in.transitionId = frameTransitionId_;
-    in.transitionStyle = safety::transitionStyle(TransitionCatalog::builtIn(frameTransitionId_).value_or(TransitionStyle::Fade));
+    in.transitionId = frameLook_;
+    in.transitionStyle = safety::transitionStyle(TransitionCatalog::builtIn(frameLook_).value_or(TransitionStyle::Fade));
     in.ratio = static_cast<float>(renderWidth_) / static_cast<float>(renderHeight_);
     in.timeSeconds = timeSeconds_;
     const float hit = live::hit(frameFeatures_);
@@ -496,7 +542,7 @@ void Renderer::wireFlow(Scene& target, const SceneParams& p) {
 
 void Renderer::render(double timeSeconds, GLuint targetFbo) {
     const float dt = beginFrame(timeSeconds);
-    Scene* scene = resolveActiveScene();
+    Scene* scene = resolveActiveScene(dt);
     resolveLayer(dt);
     updateRenderSize(dt, scene);
     if (!scene || !ensureTargets()) {

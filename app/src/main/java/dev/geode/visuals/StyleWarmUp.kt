@@ -63,7 +63,11 @@ object StyleWarmUp {
         context: Context,
         stamp: String,
     ) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_STAMP, stamp).apply()
+        context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_STAMP, stamp)
+            .apply()
     }
 
     private const val TAG = "StyleWarmUp"

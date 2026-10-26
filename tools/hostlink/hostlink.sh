@@ -12,7 +12,8 @@
 #
 # What it does not prove: anything about the Android toolchain (clang, the
 # NDK's libc++, 16 KB page alignment, LTO), the rest of the audio/analysis/library trees
-# (they need kissfft, oboe, taglib and mediandk), or that anything runs.
+# (they need oboe, taglib and mediandk; only analysis/Spectrum and kissfft come along, for
+# viz's audio inputs), or that anything runs.
 #
 # Stubs, all named: android/asset_manager.h and android/log.h are replaced by
 # C-linkage declarations, projectM's two CMake-generated headers
@@ -22,8 +23,8 @@
 #
 # projectM's public headers come from the exact commit the submodule pins,
 # fetched sparsely (one network round trip, ~2 MB), with the repo's own
-# patches applied to them (render-fbo backport, then render clock) - the same
-# patches tools/projectm-patches.cmake applies at configure time.
+# header changes of the repo's own patches applied to them, in the order
+# tools/projectm-patches.cmake applies them at configure time.
 #
 #   tools/hostlink/hostlink.sh            # exit 0 on a clean link
 #   HOSTLINK_KEEP=1 tools/hostlink/hostlink.sh   # keep the work dir
@@ -41,8 +42,10 @@ if [[ ! -d "$WORK/pm" ]]; then
   git -C "$WORK/pm" sparse-checkout set src/api/include >/dev/null
   git -C "$WORK/pm" fetch -q --depth 1 origin "$PM_COMMIT"
   git -C "$WORK/pm" checkout -q FETCH_HEAD
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-fbo-backport.patch"
-  git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-render-clock.patch"
+  # Every patch that changes a public header, in the order tools/projectm-patches.cmake applies them.
+  for patch in render-fbo-backport render-clock loudness program-cache shader-extras; do
+    git -C "$WORK/pm" apply --include='src/api/include/*' "$ROOT/tools/projectm-v4.1.8-$patch.patch"
+  done
 fi
 cp "$WORK/pm/src/api/include/projectM-4/"*.h "$WORK/inc/projectM-4/"
 printf '#pragma once\n#define PROJECTM_EXPORT\n' > "$WORK/inc/projectM-4/projectM_export.h"
@@ -97,6 +100,13 @@ mapfile -t SRCS < <(cat "$ROOT/core/CMakeLists.txt" "$ROOT/core/pure_sources.cma
   | grep -E '^\s+(viz|render|util)/' | tr -d ' ' | sort -u)
 PUBLIC_INCS=()
 for d in "$ROOT"/core/*/include; do PUBLIC_INCS+=(-I "$d"); done
+# viz's audio inputs (#300) take their spectrum from the analysis library's Spectrum, which wraps
+# kissfft: build that one analysis unit and kissfft's real FFT too, configured as the device build is
+# (float samples). The submodule must be checked out: git submodule update --init third_party/kissfft.
+KISS="$ROOT/third_party/kissfft"
+[[ -f "$KISS/kiss_fftr.h" ]] || { echo "hostlink: third_party/kissfft is not checked out"; exit 1; }
+PUBLIC_INCS+=(-I "$KISS" -Dkiss_fft_scalar=float)
+SRCS+=(analysis/Spectrum.cpp)
 echo "hostlink: compiling ${#SRCS[@]} translation units"
 fail=0
 for f in "${SRCS[@]}"; do
@@ -105,6 +115,9 @@ for f in "${SRCS[@]}"; do
   if ! g++ -std=c++20 -fvisibility=hidden -Wall -Wextra -fPIC -c -I "$ROOT/core/$lib" "${PUBLIC_INCS[@]}" -I "$WORK/inc" "$ROOT/core/$f" -o "$obj"; then
     echo "hostlink: COMPILE FAILED $f"; fail=1
   fi
+done
+for c in kiss_fft.c kiss_fftr.c; do
+  gcc -fPIC -O1 -Dkiss_fft_scalar=float -I "$KISS" -c "$KISS/$c" -o "$WORK/obj/kissfft_${c%.c}.o" || { echo "hostlink: COMPILE FAILED kissfft/$c"; fail=1; }
 done
 [[ $fail -eq 0 ]] || exit 1
 

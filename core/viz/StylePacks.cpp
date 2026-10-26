@@ -40,6 +40,7 @@ constexpr const char* kTierOffKey = "off";
 constexpr const char* kInputsKey = "inputs";
 constexpr const char* kLensKey = "lens";
 constexpr const char* kParticlesKey = "particles3d";
+constexpr const char* kFeedbackKey = "feedback";
 constexpr const char* kShaderFamily = "shader";
 
 constexpr const char* kTypeInt = "int";
@@ -420,6 +421,48 @@ std::optional<lens::ParticleSpec> parseParticles(const Value& manifest, const st
     return lens::sanitized(spec);
 }
 
+struct Feedback {
+    feedback::WarpSpec spec;
+    std::string shaderPath;
+};
+
+// "feedback": the warp layer (FeedbackWarp.hpp), {"decay", "zoom", "rotate", "flow", "stretch", "warp",
+// "tint", "center", "react", "shader"}, every part optional. Only a shader Style draws it, and it reads
+// the warped picture as its previous frame, so it must declare that input.
+std::optional<Feedback> parseFeedback(const Value& manifest, const StylePack& pack, const std::string& where,
+                                      std::vector<PackProblem>& problems) {
+    Feedback out;
+    bool ok = true;
+    const Value* declared = section(manifest, kFeedbackKey, ok, where, problems);
+    if (!ok) return std::nullopt;
+    if (declared == nullptr) return out;
+    if (pack.family != kShaderFamily) {
+        report(problems, PackError::BadValue, where, "only a shader Style can declare \"feedback\"");
+        return std::nullopt;
+    }
+    if (!inputs::has(pack.inputs, inputs::Input::PreviousFrame)) {
+        report(problems, PackError::BadValue, where, "a Style with \"feedback\" reads it as \"previous_frame\", which \"inputs\" must declare");
+        return std::nullopt;
+    }
+    feedback::WarpSpec& spec = out.spec;
+    ok = readNumber(*declared, "decay", spec.decay, where, problems) && readNumber(*declared, "zoom", spec.zoom, where, problems) &&
+         readNumber(*declared, "rotate", spec.rotate, where, problems) && readNumbers(*declared, "flow", spec.flow, where, problems) &&
+         readNumbers(*declared, "stretch", spec.stretch, where, problems) && readNumber(*declared, "warp", spec.warp, where, problems) &&
+         readNumbers(*declared, "tint", spec.tint, where, problems) && readNumbers(*declared, "center", spec.center, where, problems) &&
+         readNumber(*declared, "react", spec.react, where, problems);
+    if (!ok) return std::nullopt;
+    if (const Value* shader = declared->get(kShaderKey)) {
+        if (shader->kind() != Value::Kind::String || shader->string().empty()) {
+            report(problems, PackError::BadValue, where, "the feedback \"shader\" must name a file in the pack");
+            return std::nullopt;
+        }
+        out.shaderPath = packFilePath(pack.id, shader->string());
+    }
+    spec.on = true;
+    spec = feedback::sanitized(spec);
+    return out;
+}
+
 }  // namespace
 
 std::string stylesPath(std::string_view name) {
@@ -582,6 +625,10 @@ std::optional<StylePack> parseManifest(const std::string& folderId, const std::s
     const auto particles = parseParticles(*doc, folderId, problems);
     if (!particles) return std::nullopt;
     pack.particles3d = *particles;
+    auto warp = parseFeedback(*doc, pack, folderId, problems);
+    if (!warp) return std::nullopt;
+    pack.feedback = warp->spec;
+    pack.feedbackShaderPath = std::move(warp->shaderPath);
     return pack;
 }
 

@@ -268,7 +268,10 @@ class MilkdropStoreTest {
         assertEquals(setOf("aurora_veil.milk"), folder.stored.getValue(MilkdropKind.PRESETS).keys)
         assertEquals(emptySet<String>(), folder.stored.getValue(MilkdropKind.TEXTURES).keys)
         assertEquals(MilkdropShelf(listOf(aurora, tidal), emptyList()), visuals.state.value.milkdrop)
-        assertNull(visuals.state.value.styles.firstOrNull { it.id == MilkdropStyles.of("beach.milk") })
+        assertNull(
+            visuals.state.value.styles
+                .firstOrNull { it.id == MilkdropStyles.of("beach.milk") },
+        )
         assertEquals(emptyList<FeatureFailure>(), failures)
     }
 

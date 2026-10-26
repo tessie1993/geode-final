@@ -6,8 +6,9 @@ shader Style, its fragment shader. styles/index.json lists the Styles in picker 
 styles/families.json declares each family's parameters with their types and ranges. Both the Kotlin
 side (StylePacks.kt) and the native side (geode/viz/StylePacks.hpp) read these files; this check holds
 them to the format, plus the rules that span packs (every folder listed exactly once, an Extra name
-meaning the same range on every Style, every Extra a shader Style declares read by its shader, and a
-shader Style reading exactly the shared inputs it declares).
+meaning the same range on every Style, every Extra a shader Style declares read by its shader, a
+shader Style reading exactly the shared inputs it declares, and a feedback warp stage that settles what
+it keeps).
 
 The packs are the one source of a Style's Extras. The Kotlin side lists them in a generated file
 (PackExtras.kt in :feature:customization:core), which this check holds to the packs.
@@ -44,7 +45,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "inputs", "lens", "particles3d",
+    "effects", "tiers", "inputs", "lens", "particles3d", "feedback",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -110,6 +111,19 @@ LENS_PARTS = {
 PARTICLES = ("amount", {"amount": ("number", 0.0, 1.0), "kind": ({"streaks", "sparks"}, None, None),
                         "count": ("number", 0.25, 2.0), "speed": ("number", 0.1, 3.0), "size": ("number", 0.3, 3.0),
                         "tint": ("rgb", 0.0, 2.0)})
+# The feedback warp layer (geode/viz/FeedbackWarp.hpp): each field as (type, low, high), as the lens
+# parts above. A Style with feedback reads the warped picture as its previous frame, so it declares
+# that input; its own warp stage, if it names one, is a file in its folder that includes lib_feedback
+# and hands what it keeps to fbSettle() (or keeps the shared fbWarp()). The Extras the warp reads are
+# read by the engine, so its shader need not read them itself.
+FEEDBACK_FIELDS = {
+    "decay": ("number", 0.05, 0.95), "zoom": ("number", 0.5, 2.0), "rotate": ("number", -3.0, 3.0),
+    "flow": ("pair", -0.5, 0.5), "stretch": ("pair", 0.5, 2.0), "warp": ("number", 0.0, 1.0),
+    "tint": ("rgb", 0.0, 1.0), "center": ("pair", 0.0, 1.0), "react": ("number", 0.0, 1.0),
+}
+FEEDBACK_EXTRAS = {"decay", "flight", "spin", "drift", "swirl"}
+FEEDBACK_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_feedback[ \t]*$", re.MULTILINE)
+FEEDBACK_SETTLES = re.compile(r"\b(fbSettle|fbWarp)\s*\(")
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -284,6 +298,8 @@ def strip_comments(source: str) -> str:
 
 def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report) -> None:
     names = [e["name"] for e in manifest.get("extras", []) if isinstance(e, dict) and isinstance(e.get("name"), str)]
+    if isinstance(manifest.get("feedback"), dict):
+        names = [name for name in names if name not in FEEDBACK_EXTRAS]
     if not names:
         return
     source = shader.read_text(encoding="utf-8")
@@ -445,6 +461,9 @@ def check_manifest(
             check_feature_reads(shader_file, where, report)
     elif "shader" in manifest:
         report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
+    warp = check_feedback(manifest, family, folder, where, report)
+    if warp is not None:
+        expected.add(warp)
     if files != expected:
         report.error(where, f"the folder holds {sorted(files)}, expected {sorted(expected)}")
     if "renderScale" in manifest:
@@ -491,6 +510,46 @@ def check_part(name: str, part: object, shape: tuple, where: str, report: Report
         ok = is_number(value) and low <= value <= high and (kind != "int" or float(value).is_integer())
         if not ok:
             report.error(where, f'"{name}" "{key}" must be {"a whole number" if kind == "int" else "a number"} in [{low}, {high}]')
+
+
+def check_feedback(manifest: dict, family: str, folder: Path, where: str, report: Report) -> str | None:
+    """The feedback warp layer; returns the file name of the Style's own warp stage, if it names one."""
+    if "feedback" not in manifest:
+        return None
+    feedback = manifest["feedback"]
+    if not isinstance(feedback, dict):
+        report.error(where, '"feedback" must be an object')
+        return None
+    if family != SHADER_FAMILY:
+        report.error(where, '"feedback" needs a shader Style')
+    inputs = manifest.get("inputs", [])
+    if not isinstance(inputs, list) or "previous_frame" not in inputs:
+        report.error(where, 'a Style with "feedback" reads the warped picture as "previous_frame", which "inputs" must declare')
+    unknown = set(feedback) - set(FEEDBACK_FIELDS) - {"shader"}
+    if unknown:
+        report.error(where, f'"feedback" may hold only {sorted(set(FEEDBACK_FIELDS) | {"shader"})}, not {sorted(unknown)}')
+    for key, (kind, low, high) in FEEDBACK_FIELDS.items():
+        if key not in feedback:
+            continue
+        value = feedback[key]
+        if kind in ("pair", "rgb"):
+            size = 2 if kind == "pair" else 3
+            if not (isinstance(value, list) and len(value) == size and all(is_number(v) and low <= v <= high for v in value)):
+                report.error(where, f'"feedback" "{key}" must be {size} numbers in [{low}, {high}]')
+        elif not (is_number(value) and low <= value <= high):
+            report.error(where, f'"feedback" "{key}" must be a number in [{low}, {high}]')
+    if "shader" not in feedback:
+        return None
+    name = feedback["shader"]
+    if not is_text(name) or "/" in name or not (folder / name).is_file():
+        report.error(where, 'the feedback "shader" must be a file in the Style\'s own folder')
+        return None
+    source = (folder / name).read_text(encoding="utf-8")
+    if not FEEDBACK_INCLUDE.search(source):
+        report.error(where, f"the warp stage {name} includes lib_feedback (//#include lib_feedback)")
+    if not FEEDBACK_SETTLES.search(strip_comments(source)):
+        report.error(where, f"the warp stage {name} hands what it keeps to fbSettle() (or keeps fbWarp())")
+    return name
 
 
 def check_lens(manifest: dict, family: str, where: str, report: Report) -> None:
@@ -649,10 +708,19 @@ GOOD_MANIFESTS = {
         "particles3d": {"kind": "sparks", "amount": 0.7, "count": 1, "speed": 1.2, "size": 1, "tint": [1, 0.8, 0.6]},
     },
     "drum": {"version": 1, "id": "drum", "label": "Drum", "family": "plate", "parameters": {"mode": 2}},
+    "loop": {
+        "version": 1, "id": "loop", "label": "Loop", "family": "shader", "shader": "shader.glsl", "inputs": ["previous_frame"],
+        "extras": [{"name": "decay", "min": 0, "max": 2, "default": 1}],
+        "feedback": {"decay": 0.5, "zoom": 1.2, "rotate": 0.1, "flow": [0, 0.05], "stretch": [1, 1.1], "warp": 0.3,
+                     "tint": [1, 0.9, 0.8], "center": [0.5, 0.5], "react": 0.5, "shader": "warp.glsl"},
+    },
 }
 
 
 GOOD_SHADER = "//#include lib_style\n//#include lib_inputs\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n"
+LOOP_SHADER = "//#include lib_inputs\nvoid main() { vec3 c = texture(uPrevFrame, vUv).rgb; }\n"
+LOOP_WARP = "//#include lib_feedback\nvoid main() { fragColor = vec4(fbSettle(fbFetch(vSrc)), 1.0); }\n"
+LOOP_FILES = [("shader.glsl", LOOP_SHADER), ("warp.glsl", LOOP_WARP)]
 
 
 def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
@@ -664,9 +732,10 @@ def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str
         (styles / style_id).mkdir()
         (styles / style_id / MANIFEST_FILE).write_text(json.dumps(manifest))
     for style_id, shader in shaders.items():
-        # A file name, holding a shader that reads the good tree's Extra, or (name, its source).
-        name, source = shader if isinstance(shader, tuple) else (shader, GOOD_SHADER)
-        (styles / style_id / name).write_text(source)
+        # A file name, holding a shader that reads the good tree's Extra, (name, its source), or a list of those.
+        for entry in shader if isinstance(shader, list) else [shader]:
+            name, source = entry if isinstance(entry, tuple) else (entry, GOOD_SHADER)
+            (styles / style_id / name).write_text(source)
     return styles
 
 
@@ -674,7 +743,7 @@ def run_case(mutate) -> list[str]:
     families = copy.deepcopy(GOOD_FAMILIES)
     manifests = copy.deepcopy(GOOD_MANIFESTS)
     index = list(manifests)
-    shaders = {"orb": "shader.glsl"}
+    shaders = {"orb": "shader.glsl", "loop": list(LOOP_FILES)}
     mutate(families, index, manifests, shaders)
     with tempfile.TemporaryDirectory() as tmp:
         return check(write_tree(Path(tmp), families, index, manifests, shaders))
@@ -753,6 +822,24 @@ def self_test() -> int:
         "inputs without lib_inputs": lambda f, i, m, s: s.update(
             {"orb": ("shader.glsl", "//#include lib_style\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n")}),
         "inputs on a non-shader family": setter(["drum", "inputs"], ["clocks"]),
+        "feedback not an object": setter(["loop", "feedback"], 0.5),
+        "feedback on a non-shader family": setter(["drum", "feedback"], {"decay": 0.5}),
+        "feedback without the previous frame": lambda f, i, m, s: (
+            m["loop"].update({"inputs": []}), s.update({"loop": [("shader.glsl", "void main() {}\n"), ("warp.glsl", LOOP_WARP)]})),
+        "feedback with an unknown key": setter(["loop", "feedback", "gain"], 2),
+        "feedback decay that never fades": setter(["loop", "feedback", "decay"], 1.0),
+        "feedback zoom out of range": setter(["loop", "feedback", "zoom"], 3),
+        "feedback flow not a pair": setter(["loop", "feedback", "flow"], [0.1]),
+        "feedback tint that brightens": setter(["loop", "feedback", "tint"], [1, 1, 1.2]),
+        "feedback warp shader missing": lambda f, i, m, s: s.update({"loop": [("shader.glsl", LOOP_SHADER)]}),
+        "feedback warp shader outside the folder": setter(["loop", "feedback", "shader"], "../warp.glsl"),
+        "feedback warp shader without lib_feedback": lambda f, i, m, s: s.update(
+            {"loop": [("shader.glsl", LOOP_SHADER), ("warp.glsl", "void main() { fragColor = vec4(fbSettle(vec3(1.0)), 1.0); }\n")]}),
+        "feedback warp shader that never settles": lambda f, i, m, s: s.update(
+            {"loop": [("shader.glsl", LOOP_SHADER), ("warp.glsl", "//#include lib_feedback\nvoid main() { fragColor = texture(uFbPrev, vSrc); }\n")]}),
+        "warp Extra on a Style without feedback": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 1},
+                                                                             {"name": "decay", "min": 0, "max": 2, "default": 1}]),
+        "stray file beside a feedback Style": lambda f, i, m, s: s.update({"loop": list(LOOP_FILES) + [("notes.glsl", "")]}),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),

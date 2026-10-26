@@ -64,7 +64,13 @@ object MilkStarterPack {
     private fun assets(
         context: Context,
         dir: String,
-    ): List<String> = runCatching { context.assets.list(dir).orEmpty().toList() }.getOrDefault(emptyList())
+    ): List<String> =
+        runCatching {
+            context.assets
+                .list(dir)
+                .orEmpty()
+                .toList()
+        }.getOrDefault(emptyList())
 
     private fun copy(
         context: Context,

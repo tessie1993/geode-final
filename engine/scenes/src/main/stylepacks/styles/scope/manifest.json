@@ -4,9 +4,22 @@
   "label": "Scope",
   "family": "shader",
   "shader": "shader.glsl",
+  "inputs": ["previous_frame"],
+  "feedback": {
+    "decay": 0.45,
+    "zoom": 1.35,
+    "rotate": 0.12,
+    "warp": 0.25,
+    "tint": [1, 0.92, 0.8],
+    "react": 0.6,
+    "shader": "warp.glsl"
+  },
   "extras": [
     { "name": "thickness", "min": 0, "max": 2, "default": 1 },
     { "name": "count", "min": 0, "max": 2, "default": 1 },
-    { "name": "scale", "min": 0, "max": 2, "default": 1 }
+    { "name": "scale", "min": 0, "max": 2, "default": 1 },
+    { "name": "decay", "min": 0, "max": 2, "default": 1 },
+    { "name": "spin", "min": 0, "max": 2, "default": 1 },
+    { "name": "swirl", "min": 0, "max": 2, "default": 1 }
   ]
 }

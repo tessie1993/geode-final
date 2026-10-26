@@ -205,7 +205,12 @@ internal class RecordingEncoder private constructor(
             var audio: MediaCodec? = null
             var muxer: MediaMuxer? = null
             try {
-                val capabilities = video.codecInfo.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC).videoCapabilities
+                // A video encoder always reports video capabilities; one that does not cannot record.
+                val capabilities =
+                    video.codecInfo.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC).videoCapabilities ?: run {
+                        video.release()
+                        return null
+                    }
                 val alignWidth = capabilities.widthAlignment
                 val alignHeight = capabilities.heightAlignment
                 val size = RecordingMath.sizeFor(screenWidth, screenHeight, alignWidth, alignHeight, capabilities::isSizeSupported)

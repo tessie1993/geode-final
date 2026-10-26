@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/LensFx.hpp"
 #include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/StyleInputs.hpp"
@@ -93,6 +94,11 @@ struct StylePack {
     // each held to its range; everything is off when the manifest declares neither.
     lens::LensSpec lensEffects;
     lens::ParticleSpec particles3d;
+    // The feedback warp layer the Style opts into ("feedback", FeedbackWarp.hpp), held to its ranges; off
+    // when the manifest does not declare it. Its own warp stage's asset path (`styles/<id>/<file>`),
+    // or empty for the shared one (shaders/feedback_warp_frag.glsl).
+    feedback::WarpSpec feedback;
+    std::string feedbackShaderPath;
 
     // The resolved value of `key`; 0 for a key the family does not declare.
     float parameter(std::string_view key) const;

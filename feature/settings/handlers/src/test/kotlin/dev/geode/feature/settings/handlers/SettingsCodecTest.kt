@@ -34,6 +34,7 @@ import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -227,6 +228,19 @@ class SettingsCodecTest {
             assertEquals(amount, SettingsCodec.decode(stored).behavior.tilt)
         }
         assertEquals(TiltAmount.SUBTLE, SettingsCodec.decode(mapOf("gui_tilt" to "SIDEWAYS")).behavior.tilt)
+    }
+
+    @Test
+    fun `the look of a change of Style is kept by its id in its own key, the fade when nothing is stored`() {
+        assertEquals("fade", newKeysAtDefaults["gui_transition_look"])
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_transition_look" in it })
+        for (look in TransitionLook.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(behavior = BehaviorSettings(transitionLook = look)))
+            assertEquals(look.id, stored["gui_transition_look"])
+            assertEquals(look, SettingsCodec.decode(stored).behavior.transitionLook)
+        }
+        assertEquals(TransitionLook.FADE, SettingsCodec.decode(mapOf("gui_transition_look" to "cut")).behavior.transitionLook)
+        assertEquals(TransitionLook.FADE, SettingsCodec.decode(mapOf("gui_transition_look" to 3)).behavior.transitionLook)
     }
 
     @Test

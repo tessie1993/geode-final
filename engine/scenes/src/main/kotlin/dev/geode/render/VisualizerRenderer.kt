@@ -106,8 +106,17 @@ class VisualizerRenderer(
     @Volatile
     var transitionDuration: Millis = DEFAULT_TRANSITION
 
+    /**
+     * The look of a change of Style (#309): one of the No-flash safe looks the Settings picker offers,
+     * or "random" for a draw from them seeded by [transitionSeed]. The engine draws the fade for any
+     * other, and starts each change on the next downbeat while a tempo is heard.
+     */
     @Volatile
     var transitionId: String = TransitionStyle.FADE.name.lowercase()
+
+    /** The seed of the random look's draws: Style switching's own while it is on, so the draws repeat. */
+    @Volatile
+    var transitionSeed: Long = 0L
 
     @Volatile
     var onShaderError: (String?) -> Unit = {}
@@ -373,7 +382,7 @@ class VisualizerRenderer(
         }
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
-        nativeViz.setTransition(transitionId, transitionDuration)
+        nativeViz.setTransition(transitionId, transitionDuration, transitionSeed)
         // The rate the pacer actually draws at, the thermal frame cap included, so the load scale and
         // the hint session judge each frame against the time it really has.
         val paced = pacedFps()

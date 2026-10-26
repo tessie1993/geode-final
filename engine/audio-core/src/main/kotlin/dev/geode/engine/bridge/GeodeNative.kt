@@ -275,6 +275,7 @@ object GeodeNative {
         handle: Long,
         id: String,
         durationMs: Long,
+        seed: Long,
     ): Int
 
     external fun vizBeginParamMorph(
