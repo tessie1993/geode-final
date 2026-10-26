@@ -863,11 +863,12 @@ void ShaderScene::drawBuffers() {
             Framebuffer& target = bufferTarget(i, bufferChain_.target(i));
             glBindFramebuffer(GL_FRAMEBUFFER, target.fbo());
             Framebuffer::discardBound(target.fbo());
-            glViewport(0, 0, target.width(), target.height());
             glUseProgram(program);
             // The pass's own cache stands in for the image pass's while its uniforms go up.
             std::swap(uniforms_, bufferUniforms_[static_cast<size_t>(i)]);
             uploadFrame();
+            // After uploadFrame(), which sets the scene target's viewport: the pass draws all of its buffer.
+            glViewport(0, 0, target.width(), target.height());
             glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(target.width()), static_cast<float>(target.height()));
             glUniform2f(uniforms_.loc("uMpJitter"), 0.0f, 0.0f);
             bindBuffers(static_cast<float>(i));
