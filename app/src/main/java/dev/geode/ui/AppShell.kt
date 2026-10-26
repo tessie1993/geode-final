@@ -131,7 +131,10 @@ fun AppRoot() {
             LifecycleEventObserver { _, event ->
                 when (event) {
                     Lifecycle.Event.ON_RESUME -> if (drawVisual) visualizerView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> visualizerView.onPause()
+                    // In picture-in-picture (#287) the activity is paused but still on screen, so the
+                    // Visual goes on drawing; it stops when the window closes and the activity stops.
+                    Lifecycle.Event.ON_PAUSE -> if (context.findActivity()?.isInPictureInPictureMode != true) visualizerView.onPause()
+                    Lifecycle.Event.ON_STOP -> visualizerView.onPause()
                     else -> Unit
                 }
             }
@@ -145,6 +148,9 @@ fun AppRoot() {
     val ui by appUi.state.collectAsStateWithLifecycle()
     val playing by shell.playback.state.collectAsStateWithLifecycle()
     val loaded = playing.player != PlayerState.Idle
+    // Leaving the full-screen Visual's app shrinks it into a picture-in-picture window (#287).
+    val inPip = rememberPictureInPicture(PictureInPicture.allowed(ui.fullScreen, visualsOff), shell.playback)
+    LaunchedEffect(inPip) { if (inPip && drawVisual) visualizerView.onResume() }
     // Back closes what is on top, then goes Home, then leaves the app (#182). The sheets, the search
     // and the full-screen Visual handle their own Back above this one.
     BackHandler { appUi.send(AppUiCommand.Back) }
@@ -258,13 +264,16 @@ fun AppRoot() {
                 )
             }
             if (ui.fullScreen) {
-                FullScreenVisual(shell, keepScreenOn, visual)
+                FullScreenVisual(shell, keepScreenOn, visual, inPip)
             }
-            PlayerSheet(shell, ui.sheet)
-            ui.banner?.let { banner ->
-                FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
+            // The picture-in-picture window shows the Visual alone; what covered it comes back with the app.
+            if (!inPip) {
+                PlayerSheet(shell, ui.sheet)
+                ui.banner?.let { banner ->
+                    FailureBanner(banner, onDismiss = { appUi.send(AppUiCommand.DismissBanner) }, Modifier.statusBarsPadding())
+                }
+                DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
             }
-            DeveloperOverlayHost(shell.diagnostics, Modifier.statusBarsPadding())
             // First-run setup, and the Save folder step again whenever the folder is lost (#187).
             FirstRunSetup(
                 shell.settings,
@@ -279,7 +288,7 @@ fun AppRoot() {
 /** The monotonic clock Playback's marks use (ADR-0004). */
 private fun elapsedNow(): Millis = Millis(SystemClock.elapsedRealtime())
 
-private tailrec fun Context.findActivity(): Activity? =
+internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
         is Activity -> this
         is ContextWrapper -> baseContext.findActivity()
@@ -367,25 +376,29 @@ private fun PlayerSheet(
 
 /**
  * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, and the way into the
- * Customize sheet. Leaving it is the App UI's Back.
+ * Customize sheet. Leaving it is the App UI's Back. In picture-in-picture ([inPip], #287) the window
+ * shows the Visual alone, with no App UI over it.
  */
 @Composable
 private fun FullScreenVisual(
     shell: ShellViewModel,
     keepScreenOn: Boolean,
     visual: @Composable () -> Unit,
+    inPip: Boolean,
 ) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         visual()
-        FullScreenVisualRoute(shell.visuals, keepScreenOn = keepScreenOn, onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) })
-        TextButton(
-            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
-            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),
-        ) { Text(stringResource(R.string.visuals_open_customize)) }
-        TextButton(
-            onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
-            modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp),
-        ) { Text(stringResource(R.string.visuals_open_capture)) }
+        if (!inPip) {
+            FullScreenVisualRoute(shell.visuals, keepScreenOn = keepScreenOn, onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) })
+            TextButton(
+                onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
+                modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),
+            ) { Text(stringResource(R.string.visuals_open_customize)) }
+            TextButton(
+                onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CAPTURE)) },
+                modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(16.dp),
+            ) { Text(stringResource(R.string.visuals_open_capture)) }
+        }
     }
 }
 
