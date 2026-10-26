@@ -710,6 +710,16 @@ internal object PackExtras {
                 extra(FOG, 0f, 2f, 1f),
             ),
             pack(
+                "mirror_prism",
+                SHADER,
+                extra(FLIGHT, 0f, 2f, 1f),
+                extra(SIZE, 0f, 2f, 1f),
+                extra(SPIN, 0f, 2f, 1f),
+                extra(EDGE, 0f, 2f, 1f),
+                extra(SPREAD, 0f, 2f, 1f),
+                extra(FOG, 0f, 2f, 1f),
+            ),
+            pack(
                 "iris_droste",
                 SHADER,
                 extra(SCALE, 0f, 2f, 1f),

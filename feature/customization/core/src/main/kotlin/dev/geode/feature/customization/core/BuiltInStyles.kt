@@ -296,6 +296,7 @@ object BuiltInStyles {
             "warp_drive",
             "mandala_cavern",
             "polyhedra_cathedral",
+            "mirror_prism",
             "iris_droste",
         ).map { shader(it, true) }
 

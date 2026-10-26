@@ -11,6 +11,17 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Mirror Prism (#331).** A new Style: a flight down a corridor of black
+  mirror glass laced with neon wireframe, opening every so often into a
+  mirrored chamber where a crystal turns in a neon cage. The mirrors are folded
+  space, so the corridor repeats in every direction and dims with every wall a
+  ray passes through. The crystal's refraction is traced through its facets
+  exactly, once per colour with its own index, so the chamber's light splits
+  into fringes (faked dispersion), and the lens flare and star carry it into
+  the glare. The bass and the passage's swell bend the crystal harder and
+  widen the split; loudness and the bass speed the flight and the light
+  streaming down the rails.
+
 - **Reload the MilkDrop preset that is playing (#382).** On the MilkDrop
   screen, the preset the Visual shows has a reload button that loads it
   again from its file, so a fix made to an imported preset can be checked
