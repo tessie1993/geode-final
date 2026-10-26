@@ -4,6 +4,7 @@ import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.CustomizationFact
 import dev.geode.feature.customization.api.CustomizationState
+import dev.geode.feature.customization.api.Preset
 import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
@@ -18,7 +19,8 @@ import dev.geode.kernel.ReportFailure
  *   engine; an edit that changes nothing leaves everything as it is.
  * - Undo and redo are unlimited for the session; reset to Style is an edit like any other.
  * - Playing or stopping a hand-started Modulator is live: it reaches the engine but not the history.
- * - Presets keep the ticked parts; a preset applied on another Style brings only the shared parts.
+ * - Presets keep the ticked parts; a preset applied on another Style brings only the shared parts. A
+ *   preset with parts only a newer Geode reads applies the rest and says so ([NEEDS_NEWER_GEODE]).
  * - Setting the Automations is the person's edit; what the Automations do by themselves, Style
  *   switching's moves ([CustomizationEvent.StyleDue]), is live and stays out of the history. They are
  *   kept across a change of Style and a reset to Style, and never saved in a preset.
@@ -37,7 +39,7 @@ class CustomizationReducer(
     ): Next<CustomizationState, CustomizationEffect> =
         when (event) {
             is CustomizationEvent.Command -> command(state, event.command)
-            is CustomizationEvent.PresetLoaded -> edit(state, PresetRules.apply(state.current, event.preset, styles))
+            is CustomizationEvent.PresetLoaded -> applyPreset(state, event.preset)
             is CustomizationEvent.WorkFailed -> Next(state, listOf(ReportFailure(event.failure.message)))
             CustomizationEvent.StyleDue -> autoSwitch(state)
         }
@@ -93,8 +95,17 @@ class CustomizationReducer(
                     Next(state, listOf(Perform(CustomizationWork.SavePreset(PresetRules.capture(command.name, current, command.parts)))))
                 }
             is CustomizationCommand.LoadPreset -> Next(state, listOf(Perform(CustomizationWork.LoadPreset(command.id))))
-            is CustomizationCommand.ApplyPreset -> edit(state, PresetRules.apply(current, command.preset, styles))
+            is CustomizationCommand.ApplyPreset -> applyPreset(state, command.preset)
         }
+    }
+
+    /** [preset]'s parts applied as one edit, with the note when some of it needs a newer Geode. */
+    private fun applyPreset(
+        state: CustomizationState,
+        preset: Preset,
+    ): Next<CustomizationState, CustomizationEffect> {
+        val applied = edit(state, PresetRules.apply(state.current, preset, styles))
+        return if (preset.unread == null) applied else applied.copy(effects = applied.effects + ReportFailure(NEEDS_NEWER_GEODE))
     }
 
     private fun chooseStyle(

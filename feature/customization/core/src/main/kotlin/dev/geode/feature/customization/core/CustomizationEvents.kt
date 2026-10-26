@@ -10,6 +10,12 @@ import dev.geode.kernel.Effect
 /** The name Customization reports its failures under, on the app-wide error channel. */
 const val CUSTOMIZATION_FEATURE = "customization"
 
+/**
+ * The short note a preset brings when some of its parts need a newer Geode (ADR-0004): the rest is
+ * applied, and those parts are kept in the preset file but not applied. It goes to the app-wide banner.
+ */
+const val NEEDS_NEWER_GEODE: String = "some parts of this preset need a newer Geode: they are kept, but not applied"
+
 /** Everything the reducer handles: the commands, and what the handlers report back. */
 sealed interface CustomizationEvent {
     data class Command(

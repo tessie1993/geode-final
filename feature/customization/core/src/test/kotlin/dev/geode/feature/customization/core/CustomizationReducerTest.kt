@@ -89,6 +89,7 @@ class CustomizationReducerTest {
     private val onTunnel = CustomizationState(switchedToTunnel, undo = listOf(julia))
     private val tunnelRedo = CustomizationState(julia, redo = listOf(switchedToTunnel))
     private val zoomPreset = PresetRules.capture("Zoom", zoomed, setOf(PresetPart.CAMERA))
+    private val newerZoomPreset = zoomPreset.copy(unread = "{\"comets\":{}}")
     private val handState = CustomizationState(withHand, undo = listOf(julia))
     private val handId = withHand.modulators.single().id
     private val playing = Edits.playModulator(withHand, handId, true)
@@ -293,6 +294,18 @@ class CustomizationReducerTest {
                 ),
                 Row("apply a partial preset", fresh, command(CustomizationCommand.ApplyPreset(zoomPreset)), edited(fresh, zoomed)),
                 Row("a loaded partial preset", fresh, CustomizationEvent.PresetLoaded(zoomPreset), edited(fresh, zoomed)),
+                Row(
+                    "a loaded preset with parts only a newer Geode reads applies the rest and says so",
+                    fresh,
+                    CustomizationEvent.PresetLoaded(newerZoomPreset),
+                    edited(fresh, zoomed).let { it.copy(effects = it.effects + ReportFailure(NEEDS_NEWER_GEODE)) },
+                ),
+                Row(
+                    "an applied preset with parts only a newer Geode reads says so even when nothing else changes",
+                    withUndo,
+                    command(CustomizationCommand.ApplyPreset(newerZoomPreset)),
+                    Next(withUndo, listOf(ReportFailure(NEEDS_NEWER_GEODE))),
+                ),
                 Row(
                     "a loaded preset from another Style brings only the shared parts",
                     fresh,
