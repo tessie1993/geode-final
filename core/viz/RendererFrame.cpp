@@ -145,6 +145,13 @@ ExtraValues Renderer::extrasFor(const std::string& sceneId, const mod::NativeFra
 void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {
     scene.setCamera(camera_.pose());
     scene.setExtras(extras);
+    scene.setQuality(qualityFor(scene.id()));
+}
+
+quality::Budget Renderer::qualityFor(const std::string& sceneId) const {
+    const packs::StylePack* pack = registry_.pack(sceneId);
+    const quality::Budgets& budgets = pack != nullptr ? pack->tiers : quality::defaults();
+    return budgets[static_cast<size_t>(thermal_.tier())];
 }
 
 void Renderer::resolveLayerScene() {

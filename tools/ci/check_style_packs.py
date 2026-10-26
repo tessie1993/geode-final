@@ -28,7 +28,10 @@ STYLES = ROOT / "engine" / "scenes" / "src" / "main" / "stylepacks" / "styles"
 FORMAT_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
-MANIFEST_KEYS = {"version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions"}
+MANIFEST_KEYS = {
+    "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
+    "effects", "tiers",
+}
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
 DETAIL_USES = {"none", "march"}
@@ -38,6 +41,12 @@ MAX_MACROS = 6
 MIN_AMOUNT = -1.0
 MAX_AMOUNT = 1.0
 REACTION_CURVES = {"linear", "ease_in", "ease_out", "smooth"}
+# The thermal tiers a Style may budget (geode/viz/QualityTiers.hpp); "full" is always the whole budget.
+TIER_NAMES = ("eased", "reduced", "minimal")
+TIER_KEYS = {"steps", "off"}
+MAX_EFFECTS = 8
+MIN_TIER_STEPS = 0.25
+MAX_TIER_STEPS = 1.0
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -264,6 +273,37 @@ def check_manifest(
     check_extras(manifest, where, report, extra_ranges)
     check_macros(manifest, where, report)
     check_reactions(manifest, where, report)
+    check_tiers(manifest, where, report)
+
+
+def check_tiers(manifest: dict, where: str, report: Report) -> None:
+    effects = manifest.get("effects", [])
+    if not isinstance(effects, list) or len(effects) > MAX_EFFECTS or not all(isinstance(e, str) and NAME_PATTERN.match(e) for e in effects):
+        report.error(where, f'"effects" must be a list of at most {MAX_EFFECTS} lower-case names')
+        return
+    if len(set(effects)) != len(effects):
+        report.error(where, '"effects" names an effect twice')
+    tiers = manifest.get("tiers", {})
+    if not isinstance(tiers, dict):
+        report.error(where, '"tiers" must be an object')
+        return
+    for name, tier in tiers.items():
+        if name not in TIER_NAMES:
+            report.error(where, f'"tiers" may declare only {list(TIER_NAMES)}, not {name!r}')
+            continue
+        if not isinstance(tier, dict) or set(tier) - TIER_KEYS:
+            report.error(where, f'tier "{name}" may hold only {sorted(TIER_KEYS)}')
+            continue
+        if "steps" in tier and (not is_number(tier["steps"]) or not MIN_TIER_STEPS <= tier["steps"] <= MAX_TIER_STEPS):
+            report.error(where, f'tier "{name}" "steps" must be a number in [{MIN_TIER_STEPS}, {MAX_TIER_STEPS}]')
+        off = tier.get("off", [])
+        if not isinstance(off, list) or any(e not in effects for e in off):
+            report.error(where, f'tier "{name}" "off" must list effects named in "effects"')
+    # A hotter tier is never richer than a cooler one: the engine enforces it, the pack should say it.
+    steps = [tiers.get(n, {}).get("steps") if isinstance(tiers.get(n), dict) else None for n in TIER_NAMES]
+    declared = [s for s in steps if is_number(s)]
+    if declared != sorted(declared, reverse=True):
+        report.error(where, '"tiers" "steps" must not rise from "eased" to "minimal"')
 
 
 def check(styles: Path) -> list[str]:
@@ -302,6 +342,7 @@ GOOD_MANIFESTS = {
     "orb": {
         "version": 1, "id": "orb", "label": "Orb", "family": "shader", "shader": "shader.glsl", "renderScale": 0.75,
         "detail": "march", "extras": [{"name": "density", "min": 0, "max": 2, "default": 1}],
+        "effects": ["halo"], "tiers": {"reduced": {"steps": 0.7, "off": ["halo"]}, "minimal": {"steps": 0.5}},
         "macros": [{"name": "energy", "links": [{"target": "density", "amount": 0.5}]}],
         "reactions": [{"signal": "bass", "target": "density", "amount": 1, "riseMs": 20, "fallMs": 300, "curve": "smooth"}],
     },
@@ -364,6 +405,13 @@ def self_test() -> int:
         "shader on a non-shader family": setter(["drum", "shader"], "shader.glsl"),
         "render scale out of range": setter(["orb", "renderScale"], 0.2),
         "bad detail": setter(["orb", "detail"], "max"),
+        "tier that is not a tier": setter(["orb", "tiers", "full"], {"steps": 1}),
+        "tier steps out of range": setter(["orb", "tiers", "reduced", "steps"], 0.1),
+        "tier switching off an undeclared effect": setter(["orb", "tiers", "reduced", "off"], ["glow"]),
+        "tier with an unknown key": setter(["orb", "tiers", "minimal", "fps"], 30),
+        "tier steps rising with heat": setter(["orb", "tiers", "minimal", "steps"], 0.9),
+        "effect named twice": setter(["orb", "effects"], ["halo", "halo"]),
+        "too many effects": setter(["orb", "effects"], [f"fx{n}" for n in range(MAX_EFFECTS + 1)]),
         "unknown parameter": setter(["drum", "parameters", "hue"], 1),
         "parameter out of range": setter(["drum", "parameters", "mode"], 9),
         "int parameter with a fraction": setter(["drum", "parameters", "mode"], 1.5),

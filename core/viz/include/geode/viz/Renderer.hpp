@@ -126,6 +126,8 @@ private:
     ExtraValues extrasFor(const std::string& sceneId, const mod::NativeFrame* frame) const;
     // Hands a scene this frame's Camera and its Extras before it draws.
     void prepareScene(Scene& scene, const ExtraValues& extras);
+    // What the settled thermal tier lets the Style spend, as its pack declares (#286).
+    quality::Budget qualityFor(const std::string& sceneId) const;
     void composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt);
     void deliverPcm(Scene& scene);
     void stepOverlays(Scene& scene, const SceneParams& p, float dt);

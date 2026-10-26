@@ -4,6 +4,8 @@
 #include <atomic>
 #include <cmath>
 
+#include "geode/viz/QualityTiers.hpp"
+
 namespace geode::viz {
 
 enum class ThermalTier { Full, Eased, Reduced, Minimal };
@@ -77,6 +79,9 @@ public:
     bool offscreen() const { return offscreenDepth_.load() > 0; }
     void setPacedFps(float fps) { pacedFps_.store(fps); }
     float pacedFps() const { return pacedFps_.load(); }
+    // The frame rate the display should be held to: quality::FrameRateStep::kCappedFps once the hottest
+    // tiers have held, 0 (no cap) otherwise. The host folds it into its frame pacer (#286).
+    float frameCapFps() const { return frameCap_.load(); }
 
     void setPlatformStatus(int status) { osStatus_.store(status); }
     // NaN means no forecast; sampled by the host at most once a second.
@@ -111,6 +116,8 @@ private:
     std::atomic<int> offscreenDepth_{0};
     std::atomic<float> pacedFps_{0.0f};
     std::atomic<float> qualityCeiling_{kMaxQualityCeiling};
+    quality::FrameRateStep frameStep_;
+    std::atomic<float> frameCap_{0.0f};
     float sampleClock_ = 0.0f;
     float hotDwellSeconds_ = 0.0f;
     float coolDwellSeconds_ = 0.0f;

@@ -210,7 +210,9 @@ void ShaderScene::draw(float timeSeconds) {
     }
     set1f("uPalLutMix", flag(lutSelected));
     set1f("uPalLutRow", paletteRowCoordinate(std::max(p.paletteLut, 0)));
-    set1f("uSteps", marchSteps(p.marchDetail));
+    // The Detail budget, cut to the share the thermal tier allows, and the effects it switches off.
+    set1f("uSteps", static_cast<float>(quality::marchSteps(static_cast<int>(marchSteps(p.marchDetail)), quality_.stepScale)));
+    glUniform1i(uniforms_.loc("uFxOff"), static_cast<GLint>(quality_.effectsOff));
     uploadMotion();
     uploadTouch();
     uploadCamera();

@@ -38,6 +38,7 @@ public:
     void setTouchField(const TouchField* field) override { touchField_ = field; }
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
+    void setQuality(const quality::Budget& budget) override { quality_ = budget; }
     bool ownsCamera() const override { return ownsCamera_; }
 
 private:
@@ -202,6 +203,7 @@ private:
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;
+    quality::Budget quality_;
 };
 
 }  // namespace geode::viz

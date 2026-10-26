@@ -113,6 +113,9 @@ class VisualizerRenderer(
     private var nativeAdsr: List<AdsrConfig>? = null
     private var nativeThermalSampleMs = 0L
 
+    // GL thread only: the performance-hint session that reports each frame's work (#286).
+    private val frameHint = FrameWorkHint(context)
+
     // GL thread only: stepped once per drawn frame, so each live event reaches exactly one frame.
     private val displayEvents = DisplayEvents()
 
@@ -131,7 +134,10 @@ class VisualizerRenderer(
     }
 
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
-    fun releaseScenes() = nativeViz.destroy()
+    fun releaseScenes() {
+        frameHint.close()
+        nativeViz.destroy()
+    }
 
     fun loadMilkPreset(path: String) {
         lastMilkPreset = path
@@ -168,6 +174,7 @@ class VisualizerRenderer(
         config: EGLConfig?,
     ) {
         ThermalGovernor.attach(appContext)
+        frameHint.open(pacedFps())
         nativeViz.surfaceCreated()
         attachedSnapshots = null
         nativeParams = null
@@ -182,6 +189,7 @@ class VisualizerRenderer(
     ) = nativeViz.surfaceChanged(width, height)
 
     override fun onDrawFrame(gl: GL10?) {
+        val workStart = System.nanoTime()
         nativeViz.setScene(requestedSceneId)
         syncNativeState()
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
@@ -190,7 +198,11 @@ class VisualizerRenderer(
             lastMilkPreset = path
             onMilkPresetLoaded(path)
         }
+        frameHint.report(System.nanoTime() - workStart)
     }
+
+    /** The rate the pacer actually draws at: its own cap held to the thermal frame cap. */
+    private fun pacedFps(): Float = FrameCap.effectiveFps(ThermalGovernor.pacedFps, ThermalGovernor.frameCapFps)
 
     private fun syncNativeState() {
         val wanted = snapshots
@@ -206,13 +218,18 @@ class VisualizerRenderer(
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
-        nativeViz.setPacedFps(ThermalGovernor.pacedFps)
+        // The rate the pacer actually draws at, the thermal frame cap included, so the load scale and
+        // the hint session judge each frame against the time it really has.
+        val paced = pacedFps()
+        nativeViz.setPacedFps(paced)
+        frameHint.retarget(paced)
         nativeViz.setQualityCeiling(qualityCeiling)
         val now = SystemClock.elapsedRealtime()
         if (now - nativeThermalSampleMs >= THERMAL_SAMPLE_MS) {
             nativeThermalSampleMs = now
             nativeViz.setThermal(ThermalGovernor.platformStatus, ThermalGovernor.thermalHeadroom())
             nativeViz.setFrameLoad(FramePacer.activeStats())
+            ThermalGovernor.frameCapFps = nativeViz.frameCapFps()
         }
         pcmProvider()?.let { chunk -> nativeViz.pushPcm(chunk.data, chunk.count) }
     }

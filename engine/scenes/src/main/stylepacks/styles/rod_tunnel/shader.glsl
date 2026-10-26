@@ -54,6 +54,8 @@ out vec4 fragColor;
 #define ROD_FAR 26.0
 #define ROD_STRANDS 14.0
 #define ROD_FOG 0.09
+/** The manifest's "effects", by position: what the thermal tiers may switch off (uFxOff). */
+#define ROD_FX_MOTES 0
 
 /**
  * Bead modulation: amplitude and frequency at the deepest point of the morph.
@@ -209,8 +211,10 @@ void main() {
     }
     col += coreCol * (0.6 + 0.9 * bassA) * onAxis * 2.0 / (1.0 + 0.02 * tGlow * tGlow);
     col += coreCol * 0.06 * (0.6 + 0.9 * bassA) / (1.0 + dot(uv, uv) * 3.0);
-    // Sparks drifting between the rods, fading in with each new spawn.
-    col += mix(coreCol, vec3(1.0), 0.4) * fluidMotes(uv, 6.0, 0.13) * 0.18;
+    // Sparks drifting between the rods, fading in with each new spawn. The curl
+    // field under them costs eight noise lookups a pixel, so the hot tiers drop
+    // them first (the manifest's "motes" effect).
+    if (fxOn(ROD_FX_MOTES)) col += mix(coreCol, vec3(1.0), 0.4) * fluidMotes(uv, 6.0, 0.13) * 0.18;
 
     if (!touchIdle()) {
         col += pal(0.5 + 0.15 * sin(uTime * 0.05)) * min(touchWake(uv), 3.0) * 0.05;
