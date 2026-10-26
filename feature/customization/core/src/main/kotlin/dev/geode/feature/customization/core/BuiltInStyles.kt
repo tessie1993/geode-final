@@ -308,6 +308,7 @@ object BuiltInStyles {
             shader("event_horizon", true, emptyList(), listOf(react(TREBLE, SharedProperty.HUE_SHIFT, 0.08f))),
             shader("wormhole_pass", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.08f))),
             shader("grand_reveal", true, emptyList(), listOf(react(MID, SharedProperty.HUE_SHIFT, 0.08f))),
+            shader("torchlight", true, emptyList(), listOf(react(BASS, SharedProperty.SHAKE, 0.1f))),
         )
 
     private fun life(
