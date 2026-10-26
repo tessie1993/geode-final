@@ -14,12 +14,13 @@
     <string name="settings_off">Off</string>
 
     <!-- Look -->
-    <string name="look_group_element">Element</string>
-    <string name="look_element">Choose the look of the whole app</string>
-    <string name="look_element_water">Water</string>
-    <string name="look_element_wood">Wood</string>
-    <string name="look_element_stone">Stone</string>
-    <string name="look_element_bioluminescence">Bioluminescence</string>
+    <string name="look_group_appearance">Appearance</string>
+    <string name="look_theme_mode">Light or dark</string>
+    <string name="look_theme_system">Match phone</string>
+    <string name="look_theme_dark">Dark</string>
+    <string name="look_theme_light">Light</string>
+    <string name="look_reduce_transparency">Reduce transparency</string>
+    <string name="look_reduce_transparency_note">Solid panels instead of frosted glass. Easier to read, and a little kinder to the battery.</string>
     <string name="look_group_colour">Colour</string>
     <string name="look_accent_intensity">Accent intensity  %1$d%%</string>
     <string name="look_background_dim">Background dim  %1$d%%</string>
@@ -38,11 +39,6 @@
     <string name="look_corner_pill">Pill</string>
     <string name="look_compact_player">Compact player</string>
     <string name="look_clear_visuals_menu">Clear Visuals menu</string>
-    <string name="look_group_home">Home</string>
-    <string name="look_ambient_mode">Ambient</string>
-    <string name="look_ambient_drifting">Drifting</string>
-    <string name="look_ambient_still">Still</string>
-    <string name="look_ambient_off">Off</string>
 
     <!-- Audio -->
     <string name="audio_group_playback">Playback</string>

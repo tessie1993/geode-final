@@ -7,7 +7,6 @@ import dev.geode.feature.settings.api.BackgroundSettings
 import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportFrameRate
@@ -45,14 +44,6 @@ internal object SettingsCodec {
 
     private val WHITE = Argb(0xFFFFFFFF.toInt())
 
-    /** The forest theme ids the Elements replaced (#103), and the Element each one became. */
-    private val FOREST_THEME_IDS =
-        mapOf(
-            "DeepForest" to Element.WOOD,
-            "NightForest" to Element.BIOLUMINESCENCE,
-            "EarthLichen" to Element.STONE,
-        )
-
     private val LOUDNESS_IDS =
         mapOf(
             ExportLoudness.YOUTUBE to "youtube",
@@ -84,9 +75,9 @@ internal object SettingsCodec {
 
     private fun Reader.look(): LookSettings {
         val default = LookSettings()
-        val element = string(K.ELEMENT)
         return LookSettings(
-            element = Element.entries.firstOrNull { it.name == element } ?: FOREST_THEME_IDS[element] ?: Element.Default,
+            themeMode = enum(K.THEME_MODE, default.themeMode),
+            reduceTransparency = boolean(K.REDUCE_TRANSPARENCY, default.reduceTransparency),
             accentIntensity = float(K.ACCENT_INTENSITY, default.accentIntensity),
             backgroundDim = float(K.BACKGROUND_DIM, default.backgroundDim),
             fontColor = int(K.FONT_COLOR)?.let(::Argb) ?: WHITE.takeIf { boolean(K.LEGACY_WHITE_FONT, false) },
@@ -96,7 +87,6 @@ internal object SettingsCodec {
             cornerStyle = enum(K.CORNER_STYLE, default.cornerStyle),
             compactPlayer = boolean(K.COMPACT_PLAYER, default.compactPlayer),
             clearVisualsMenu = boolean(K.CLEAR_VISUALS_MENU, default.clearVisualsMenu),
-            ambientMode = enum(K.AMBIENT_MODE, default.ambientMode),
         )
     }
 
@@ -208,7 +198,8 @@ internal object SettingsCodec {
 
     private fun look(look: LookSettings): Map<String, Any?> =
         mapOf(
-            K.ELEMENT to look.element.name,
+            K.THEME_MODE to look.themeMode.name,
+            K.REDUCE_TRANSPARENCY to look.reduceTransparency,
             K.ACCENT_INTENSITY to look.accentIntensity,
             K.BACKGROUND_DIM to look.backgroundDim,
             K.FONT_COLOR to look.fontColor?.value,
@@ -218,7 +209,8 @@ internal object SettingsCodec {
             K.CORNER_STYLE to look.cornerStyle.name,
             K.COMPACT_PLAYER to look.compactPlayer,
             K.CLEAR_VISUALS_MENU to look.clearVisualsMenu,
-            K.AMBIENT_MODE to look.ambientMode.name,
+            K.RETIRED_ELEMENT to null,
+            K.RETIRED_AMBIENT_MODE to null,
         )
 
     private fun playback(playback: PlaybackSettings): Map<String, Any?> =

@@ -1,7 +1,6 @@
 package dev.geode.feature.settings.handlers
 
 import dev.geode.engine.types.Millis
-import dev.geode.feature.settings.api.AmbientMode
 import dev.geode.feature.settings.api.AnalysisSettings
 import dev.geode.feature.settings.api.Argb
 import dev.geode.feature.settings.api.BackgroundSettings
@@ -9,7 +8,6 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
-import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCodec
@@ -31,6 +29,7 @@ import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import org.junit.Assert.assertEquals
@@ -301,57 +300,42 @@ class SettingsCodecTest {
     }
 
     @Test
-    fun `the ambient mode is kept by name and read back`() {
-        for (mode in AmbientMode.entries) {
-            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(ambientMode = mode)))
+    fun `the theme mode is kept by name and read back`() {
+        for (mode in ThemeMode.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(themeMode = mode)))
 
-            assertEquals(mode.name, stored["gui_ambient_mode"])
-            assertEquals(mode, SettingsCodec.decode(stored).look.ambientMode)
+            assertEquals(mode.name, stored["gui_theme_mode"])
+            assertEquals(mode, SettingsCodec.decode(stored).look.themeMode)
         }
     }
 
     @Test
-    fun `the Element is kept by name and read back`() {
-        for (element in Element.entries) {
-            val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(element = element)))
-
-            assertEquals(element.name, stored["gui_element"])
-            assertEquals(element, SettingsCodec.decode(stored).look.element)
-        }
+    fun `a missing or unknown theme mode follows the phone`() {
+        assertEquals(ThemeMode.SYSTEM, SettingsCodec.decode(today).look.themeMode)
+        assertEquals(ThemeMode.SYSTEM, SettingsCodec.decode(mapOf("gui_theme_mode" to "SEPIA")).look.themeMode)
+        assertEquals(ThemeMode.SYSTEM, SettingsCodec.decode(mapOf("gui_theme_mode" to 2)).look.themeMode)
     }
 
     @Test
-    fun `a missing or unknown ambient mode loads as Drifting`() {
-        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(today).look.ambientMode)
-        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to "Wobbling")).look.ambientMode)
-        assertEquals(AmbientMode.DRIFTING, SettingsCodec.decode(mapOf("gui_ambient_mode" to 2)).look.ambientMode)
-        assertEquals("DRIFTING", SettingsCodec.encode(SettingsValues())["gui_ambient_mode"])
+    fun `reduce transparency is kept and read back, off by default`() {
+        val stored = SettingsCodec.encode(SettingsValues(look = LookSettings(reduceTransparency = true)))
+
+        assertEquals(true, stored["gui_reduce_transparency"])
+        assertTrue(SettingsCodec.decode(stored).look.reduceTransparency)
+        assertFalse(SettingsCodec.decode(today).look.reduceTransparency)
     }
 
     @Test
-    fun `the ambient mode is new, so it is read from no old file`() {
-        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_ambient_mode" in it })
+    fun `the theme mode and reduce transparency are new, so they are read from no old file`() {
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_theme_mode" in it || "gui_reduce_transparency" in it })
     }
 
     @Test
-    fun `a forest theme id loads as the Element that replaced it`() {
-        fun loaded(id: String) = SettingsCodec.decode(mapOf("gui_element" to id)).look.element
+    fun `the retired Element and Ambient are removed when settings are written`() {
+        val stored = SettingsCodec.encode(SettingsCodec.decode(mapOf("gui_element" to "WATER", "gui_ambient_mode" to "STILL")))
 
-        assertEquals(Element.WOOD, loaded("DeepForest"))
-        assertEquals(Element.BIOLUMINESCENCE, loaded("NightForest"))
-        assertEquals(Element.STONE, loaded("EarthLichen"))
-    }
-
-    @Test
-    fun `a missing or unknown Element loads as Water`() {
-        assertEquals(Element.WATER, SettingsCodec.decode(today).look.element)
-        assertEquals(Element.WATER, SettingsCodec.decode(mapOf("gui_element" to "Lapis")).look.element)
-        assertEquals(Element.WATER, SettingsCodec.decode(mapOf("gui_element" to 2)).look.element)
-    }
-
-    @Test
-    fun `the Element is new, so it is read from no old file`() {
-        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_element" in it })
+        assertTrue(stored.containsKey("gui_element") && stored["gui_element"] == null)
+        assertTrue(stored.containsKey("gui_ambient_mode") && stored["gui_ambient_mode"] == null)
     }
 
     @Test

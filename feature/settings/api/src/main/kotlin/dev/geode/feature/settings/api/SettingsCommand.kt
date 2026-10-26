@@ -10,8 +10,12 @@ import dev.geode.engine.types.Millis
 sealed interface SettingsCommand
 
 sealed interface LookCommand : SettingsCommand {
-    data class SetElement(
-        val element: Element,
+    data class SetThemeMode(
+        val mode: ThemeMode,
+    ) : LookCommand
+
+    data class SetReduceTransparency(
+        val on: Boolean,
     ) : LookCommand
 
     data class SetAccentIntensity(
@@ -49,10 +53,6 @@ sealed interface LookCommand : SettingsCommand {
 
     data class SetClearVisualsMenu(
         val on: Boolean,
-    ) : LookCommand
-
-    data class SetAmbientMode(
-        val mode: AmbientMode,
     ) : LookCommand
 }
 

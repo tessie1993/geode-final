@@ -6,7 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** What the Visual, the floating assets and Renders take from the CPU/GPU settings (#28). */
+/** What the Visual and Renders take from the CPU/GPU settings (#28). */
 class PerformanceSettingsTest {
     @Test
     fun `out of the box the Visual is drawn at full quality and at the screen's maximum`() {
@@ -14,7 +14,6 @@ class PerformanceSettingsTest {
 
         assertEquals(VisualQuality.HIGH, defaults.visual)
         assertEquals(VisualFrameRate.SCREEN_MAX, defaults.frameRate)
-        assertFalse(defaults.floatingAssetsHeldStill)
         assertFalse(defaults.rendersSlowed)
     }
 
@@ -27,12 +26,11 @@ class PerformanceSettingsTest {
     }
 
     @Test
-    fun `save mode lowers the quality, caps the frame rate at 30, holds the assets still and slows renders`() {
+    fun `save mode lowers the quality, caps the frame rate at 30 and slows renders`() {
         val saving = PerformanceSettings(VisualQuality.HIGH, VisualFrameRate.SCREEN_MAX, saveMode = true)
 
         assertEquals(VisualQuality.SAVER, saving.visual)
         assertEquals(VisualFrameRate.FPS30, saving.frameRate)
-        assertTrue(saving.floatingAssetsHeldStill)
         assertTrue(saving.rendersSlowed)
     }
 

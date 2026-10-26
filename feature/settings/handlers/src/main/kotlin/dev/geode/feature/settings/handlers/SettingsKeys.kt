@@ -18,11 +18,11 @@ internal object SettingsKeys {
 
     // Look (geode-prefs).
 
-    /**
-     * New with the Elements (#103), so in no old file. Stored by name; the forest theme ids an earlier
-     * design used read as the matching Element ([SettingsCodec]).
-     */
-    const val ELEMENT = "gui_element"
+    /** Light, dark or the phone's own (#324), new so in no old file. Stored by name. */
+    const val THEME_MODE = "gui_theme_mode"
+
+    /** Reduce transparency (#324), new so in no old file. */
+    const val REDUCE_TRANSPARENCY = "gui_reduce_transparency"
     const val ACCENT_INTENSITY = "gui_accent_intensity"
     const val BACKGROUND_DIM = "gui_background_dim"
     const val FONT_COLOR = "gui_font_color"
@@ -33,8 +33,9 @@ internal object SettingsKeys {
     const val COMPACT_PLAYER = "gui_compact_player"
     const val CLEAR_VISUALS_MENU = "gui_clear_visuals_menu"
 
-    /** Ambient (#100), new so in no old file. Stored by name. */
-    const val AMBIENT_MODE = "gui_ambient_mode"
+    /** The retired Element and Ambient (#333): removed from the store when settings are next written. */
+    const val RETIRED_ELEMENT = "gui_element"
+    const val RETIRED_AMBIENT_MODE = "gui_ambient_mode"
 
     // Playback (geode-player).
     const val SPEED = "speed"
