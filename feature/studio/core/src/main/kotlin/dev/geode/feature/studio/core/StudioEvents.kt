@@ -1,6 +1,7 @@
 package dev.geode.feature.studio.core
 
 import dev.geode.feature.studio.api.NewVideo
+import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderExtras
@@ -11,6 +12,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderProblem
+import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.SaveFolder
 import dev.geode.feature.studio.api.StudioCommand
@@ -128,7 +130,23 @@ data class NewRender(
         id: RenderId,
         batch: RenderId,
     ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop)
+
+    /** The setup it was made from, as its video keeps it to be made again (#327). */
+    fun toSpec(): RenderSpec =
+        RenderSpec(
+            tracks = tracks,
+            look = look,
+            format = format,
+            length = length,
+            project = project,
+            playlist = if (tracks.size > 1) PlaylistMode.ONE_CONTINUOUS_VIDEO else PlaylistMode.ONE_VIDEO_PER_TRACK,
+            extras = extras,
+            milkdrop = milkdrop,
+        )
 }
+
+/** [this] Render before it was queued: its choices without its id, batch or status. */
+internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop)
 
 /** What went wrong in the handlers. */
 enum class StudioFailure {
@@ -137,7 +155,7 @@ enum class StudioFailure {
     ADD_VIDEOS,
     DELETE_FILES,
 
-    /** The look could not be frozen when a Render was queued. */
+    /** The look could not be frozen when a Render was queued, or read back to make one again. */
     FREEZE_LOOK,
 
     /** A Render could not be saved to the queue. */
@@ -201,6 +219,15 @@ sealed interface StudioWork {
      */
     data class QueueRenders(
         val renders: List<NewRender>,
+    ) : StudioWork
+
+    /**
+     * Queue [render] with the look frozen for the Render whose video is [file] (#327); it comes back with
+     * its id in [StudioEvent.RendersQueued].
+     */
+    data class QueueRenderAgain(
+        val file: String,
+        val render: NewRender,
     ) : StudioWork
 
     /** Make [render]'s video with the look frozen for it; it reports its progress, then how it ended. */

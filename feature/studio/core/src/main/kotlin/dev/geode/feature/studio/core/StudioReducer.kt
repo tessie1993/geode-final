@@ -101,6 +101,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioCommand.MoveVideo -> move(state, command)
             is StudioCommand.AddVideos -> addVideos(state, command.videos, command.project)
             is StudioCommand.QueueRender -> RenderQueue.queue(state, command.spec)
+            is StudioCommand.RenderAgain -> RenderQueue.again(state, command.video, command.spec)
             is StudioCommand.CancelRenders -> RenderQueue.cancel(state, command.renders)
             StudioCommand.ClearFinishedRenders -> RenderQueue.clearFinished(state)
         }

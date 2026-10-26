@@ -24,6 +24,8 @@ import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.Video
+import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
@@ -61,6 +63,8 @@ class RenderQueueTest {
     private val second = job(2, tide)
     private val firstRunning = first.copy(status = running())
     private val video = NewVideo(VideoKind.RENDER, "Night Drive", "content://media/video/3", null, Millis(30_000), 720, 1280, "Night Drive")
+    private val madeWith = RenderSpec(listOf(night), look, format, section, trip.id, PlaylistMode.ONE_VIDEO_PER_TRACK, extras)
+    private val made = video.copy(madeWith = madeWith)
 
     private val ready = StudioState(loading = false, projects = listOf(trip, gigs), defaultProject = gigs.id)
     private val waiting = ready.copy(renders = listOf(first, second))
@@ -319,7 +323,7 @@ class RenderQueueTest {
                 busy,
                 ended(1, RenderEnd.Saved(video)),
                 ready.copy(renders = listOf(first.copy(status = RenderStatus.Done), second.copy(status = running()))),
-                Perform(StudioWork.AddVideos(trip.id, listOf(video))),
+                Perform(StudioWork.AddVideos(trip.id, listOf(made))),
                 Perform(StudioWork.Render(second.copy(status = running()))),
             ),
             row(
@@ -327,14 +331,14 @@ class RenderQueueTest {
                 busy.copy(projects = listOf(gigs), renders = listOf(firstRunning)),
                 ended(1, RenderEnd.Saved(video)),
                 busy.copy(projects = listOf(gigs), renders = listOf(first.copy(status = RenderStatus.Done))),
-                Perform(StudioWork.AddVideos(gigs.id, listOf(video))),
+                Perform(StudioWork.AddVideos(gigs.id, listOf(made))),
             ),
             row(
                 "a saved Render with no Project left is handed back",
                 busy.copy(projects = emptyList(), defaultProject = null, renders = listOf(firstRunning)),
                 ended(1, RenderEnd.Saved(video)),
                 busy.copy(projects = emptyList(), defaultProject = null, renders = listOf(first.copy(status = RenderStatus.Done))),
-                Emit(StudioFact.ProjectNeeded(listOf(video))),
+                Emit(StudioFact.ProjectNeeded(listOf(made))),
             ),
             row(
                 "a failed Render is reported and the next starts",
@@ -359,6 +363,67 @@ class RenderQueueTest {
             ),
             row("the end of a Render that is not running is ignored", waiting, ended(1, RenderEnd.Cancelled), waiting),
             row("the end of an unknown Render is ignored", busy, ended(9, RenderEnd.Cancelled), busy),
+        )
+
+    private val rendered =
+        Video(VideoId(5), trip.id, VideoKind.RENDER, "Night Drive", "content://media/video/5", null, Millis(30_000), 720, 1280, "")
+            .copy(madeWith = madeWith)
+    private val recorded = rendered.copy(id = VideoId(6), kind = VideoKind.RECORDING, madeWith = null)
+    private val withVideos = ready.copy(videos = listOf(rendered, recorded))
+    private val square = RenderFormat(aspect = RenderAspect.R1_1, size = RenderSize.FHD1080, fps = 24)
+    private val againSpec = RenderSpec(listOf(tide), RenderLook.Current, square, RenderLength.WholeTrack, trip.id, milkdrop = "deep.milk")
+
+    private fun again(
+        video: Long,
+        spec: RenderSpec = againSpec,
+    ) = command(StudioCommand.RenderAgain(VideoId(video), spec))
+
+    private fun againAs(project: ProjectId) =
+        Perform(
+            StudioWork.QueueRenderAgain(
+                rendered.file,
+                NewRender(listOf(night), look, square, RenderLength.WholeTrack, project, RenderExtras(), "deep.milk"),
+            ),
+        )
+
+    private val againRows: List<Row> =
+        listOf(
+            row(
+                "a Render is made again with the new choices, its own Track and its frozen look",
+                withVideos,
+                again(5),
+                withVideos,
+                againAs(trip.id),
+            ),
+            row(
+                "a Render made again for a Project that is gone goes to the default one",
+                withVideos,
+                again(5, againSpec.copy(project = ProjectId(9))),
+                withVideos,
+                againAs(gigs.id),
+            ),
+            row(
+                "with no Project for it a Render is not made again",
+                withVideos.copy(defaultProject = null),
+                again(5, againSpec.copy(project = null)),
+                withVideos.copy(defaultProject = null),
+                ReportFailure(NO_PROJECT_REFUSAL),
+            ),
+            row(
+                "no Render is made again while Visuals off is on",
+                withVideos.copy(visualsOff = true),
+                again(5),
+                withVideos.copy(visualsOff = true),
+                ReportFailure(VISUALS_OFF_REFUSAL),
+            ),
+            row("a video Studio did not render cannot be made again", withVideos, again(6), withVideos),
+            row("an unknown video cannot be made again", withVideos, again(9), withVideos),
+            row(
+                "a frame rate no Render may have is ignored",
+                withVideos,
+                again(5, againSpec.copy(format = square.copy(fps = 500))),
+                withVideos,
+            ),
         )
 
     private val cancelRows: List<Row> =
@@ -416,7 +481,7 @@ class RenderQueueTest {
 
     @Test
     fun `every row of the transition table`() {
-        for (row in queueRows + startRows + keepGoingRows + progressRows + endRows + cancelRows) {
+        for (row in queueRows + startRows + keepGoingRows + progressRows + endRows + againRows + cancelRows) {
             assertEquals(row.name, row.to, StudioReducer.reduce(row.from, row.event))
         }
     }
@@ -432,6 +497,15 @@ class RenderQueueTest {
         )
         assertEquals(first, newRenders[0].queuedAs(RenderId(1), RenderId(1)))
         assertEquals(job(2, tide, batch = 1), newRenders[1].queuedAs(RenderId(2), RenderId(1)))
+    }
+
+    @Test
+    fun `a Render's video keeps the setup it was made from`() {
+        val single = NewRender(listOf(night), look, format, section, trip.id, extras, "deep.milk")
+        assertEquals(madeWith.copy(milkdrop = "deep.milk"), single.toSpec())
+        val playlist = single.copy(tracks = listOf(night, tide))
+        assertEquals(PlaylistMode.ONE_CONTINUOUS_VIDEO, playlist.toSpec().playlist)
+        assertEquals(single, single.queuedAs(RenderId(3), RenderId(3)).toNewRender())
     }
 
     @Test

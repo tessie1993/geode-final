@@ -13,7 +13,10 @@ import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.Video
+import dev.geode.feature.studio.api.VideoId
 
 /** A playlist the Render setup offers: its [name] and its [tracks], in order. */
 data class RenderPlaylist(
@@ -48,14 +51,17 @@ data class RenderChoices(
 
 /**
  * The Render setup as it is being filled in: the [spec] so far, the platform [preset] it was filled
- * from (null for Custom), and the playlist it renders, if any. App UI state, kept by the route until
- * the Render is queued.
+ * from (null for Custom), and the playlist it renders, if any. When it makes a Render [again] (#327),
+ * that video's Track and frozen look are fixed, and [againName] is its name. App UI state, kept by the
+ * route until the Render is queued.
  */
 @Immutable
 data class RenderDraft(
     val spec: RenderSpec,
     val preset: RenderPreset? = null,
     val playlist: String? = null,
+    val again: VideoId? = null,
+    val againName: String = "",
 ) {
     /** [spec]'s tracks as one Track, replacing any playlist. */
     fun track(track: RenderTrack): RenderDraft = copy(spec = spec.copy(tracks = listOf(track)), playlist = null)
@@ -81,7 +87,26 @@ data class RenderDraft(
     /** Whether it can be queued: something to render and a Project for it. */
     val ready: Boolean get() = spec.tracks.isNotEmpty() && spec.project != null
 
+    /** What Render queues: a new Render, or the Render [again] made again with these choices. */
+    val command: StudioCommand
+        get() = again?.let { StudioCommand.RenderAgain(it, spec) } ?: StudioCommand.QueueRender(spec)
+
     companion object {
+        /**
+         * "Render again" on [video] (#327): the setup it was made from, to change its shape, quality or
+         * frame rate, into its Project, or the default one when that is gone. Null for a video Studio did
+         * not render.
+         */
+        fun again(
+            video: Video,
+            state: StudioState,
+        ): RenderDraft? {
+            val made = video.madeWith ?: return null
+            val known = state.projects.map { it.id }
+            val project = made.project?.takeIf { it in known } ?: state.defaultProject ?: state.projects.firstOrNull()?.id
+            return RenderDraft(made.copy(project = project), again = video.id, againName = video.name)
+        }
+
         /** A new setup starts from Settings' Export preferences and the default Project (#22). */
         fun startingFrom(state: StudioState): RenderDraft =
             RenderDraft(

@@ -106,6 +106,9 @@
     <string name="studio_render_project">Project</string>
     <string name="studio_render_no_project">Create a Project first: the video is saved into one.</string>
     <string name="studio_render_start">Render</string>
+    <string name="studio_render_again">Render again</string>
+    <string name="studio_render_again_title">Render again</string>
+    <string name="studio_render_again_note">Made again from “%1$s”, with its track and its look. Change the shape, quality or frame rate; it becomes a Render of its own.</string>
     <string name="studio_render_queue">Renders</string>
     <string name="studio_render_clear">Clear finished</string>
     <string name="studio_render_cancel_rest">Cancel the rest</string>

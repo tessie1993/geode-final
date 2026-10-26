@@ -439,6 +439,11 @@ fun VideoScreen(
         Text(stringResource(video.kind.label), style = MaterialTheme.typography.titleMedium)
         VideoFacts(video)
         Text(stringResource(R.string.studio_in_project, model.project.name), style = MaterialTheme.typography.bodyMedium)
+        if (video.madeWith != null) {
+            OutlinedButton(onClick = { onAction(StudioAction.RenderAgain(video.id)) }) {
+                Text(stringResource(R.string.studio_render_again))
+            }
+        }
     }
 }
 

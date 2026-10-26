@@ -193,9 +193,14 @@ fun RenderSetupDialog(
                 Modifier.verticalScroll(rememberScrollState()).padding(StudioDimens.padding),
                 verticalArrangement = Arrangement.spacedBy(StudioDimens.gap),
             ) {
-                Text(stringResource(R.string.studio_render_title), style = MaterialTheme.typography.headlineSmall)
-                SourcePicker(draft, choices, onDraft)
-                LookPicker(draft, choices, onDraft)
+                val title = if (draft.again == null) R.string.studio_render_title else R.string.studio_render_again_title
+                Text(stringResource(title), style = MaterialTheme.typography.headlineSmall)
+                if (draft.again == null) {
+                    SourcePicker(draft, choices, onDraft)
+                    LookPicker(draft, choices, onDraft)
+                } else {
+                    Note(stringResource(R.string.studio_render_again_note, draft.againName))
+                }
                 MilkdropPicker(draft, choices, onDraft)
                 FormatPicker(draft, onDraft)
                 ProjectPicker(draft, projects, onDraft)

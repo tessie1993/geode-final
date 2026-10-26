@@ -8,6 +8,7 @@ import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderSpec
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.VideoId
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.ReportFailure
@@ -41,6 +42,26 @@ internal object RenderQueue {
         val project = state.projectFor(spec.project)
         if (refusal != null || project == null) return Next(state, listOf(ReportFailure(refusal ?: NO_PROJECT_REFUSAL)))
         return Next(state, listOf(Perform(StudioWork.QueueRenders(RenderPlan.rendersOf(spec, project)))))
+    }
+
+    /**
+     * Makes the Render [video] again with [spec]'s choices (#327): the same Track and the look frozen for
+     * it, so it reproduces the Render at another shape or quality. A video Studio did not render does
+     * nothing; the refusals are [queue]'s.
+     */
+    fun again(
+        state: StudioState,
+        video: VideoId,
+        spec: RenderSpec,
+    ): Next<StudioState, StudioEffect> {
+        val made = state.videos.firstOrNull { it.id == video } ?: return Next(state)
+        val from = made.madeWith ?: return Next(state)
+        if (spec.format.fps !in RenderFormat.FRAME_RATES) return Next(state)
+        val project = state.projectFor(spec.project)
+        val refusal = if (state.visualsOff) VISUALS_OFF_REFUSAL else null
+        if (refusal != null || project == null) return Next(state, listOf(ReportFailure(refusal ?: NO_PROJECT_REFUSAL)))
+        val render = NewRender(from.tracks, from.look, spec.format, spec.length, project, spec.extras, spec.milkdrop)
+        return Next(state, listOf(Perform(StudioWork.QueueRenderAgain(made.file, render))))
     }
 
     fun queued(
@@ -92,7 +113,8 @@ internal object RenderQueue {
             when (val end = event.end) {
                 is RenderEnd.Saved -> {
                     val done = state.replacing(job.copy(status = RenderStatus.Done))
-                    addVideos(done, listOf(end.video), job.project)
+                    // The video keeps the setup it was made from, so it can be made again (#327).
+                    addVideos(done, listOf(end.video.copy(madeWith = job.toNewRender().toSpec())), job.project)
                 }
                 is RenderEnd.Failed ->
                     Next(

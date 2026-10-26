@@ -13,6 +13,7 @@ import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderStatus
+import dev.geode.feature.studio.api.StudioCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -114,5 +115,24 @@ class RenderModelTest {
         assertTrue(isOwnSection(FIRST_SECTION))
         assertFalse(isOwnSection(FIRST_MINUTE))
         assertFalse(isOwnSection(RenderLength.WholeTrack))
+    }
+
+    @Test
+    fun `Render again opens the setup a Render was made from, and queues it as made again`() {
+        val made = RenderDraft.startingFrom(state).track(PreviewStudio.night).spec.copy(project = PreviewStudio.trip.id)
+        val video = state.videos.first().copy(madeWith = made)
+        val again = checkNotNull(RenderDraft.again(video, state))
+        assertEquals(made, again.spec)
+        assertEquals(video.id, again.again)
+        assertEquals(video.name, again.againName)
+        val square = again.custom(again.spec.copy(format = again.spec.format.copy(aspect = RenderAspect.R1_1)))
+        assertEquals(StudioCommand.RenderAgain(video.id, square.spec), square.command)
+        // A fresh setup queues a new Render.
+        val fresh = RenderDraft.startingFrom(state).track(PreviewStudio.night)
+        assertEquals(StudioCommand.QueueRender(fresh.spec), fresh.command)
+        // Its Project gone, it goes to the default one; a video Studio did not render cannot be made again.
+        val gone = video.copy(madeWith = made.copy(project = ProjectId(99)))
+        assertEquals(PreviewStudio.gigs.id, RenderDraft.again(gone, state)?.spec?.project)
+        assertNull(RenderDraft.again(video.copy(madeWith = null), state))
     }
 }

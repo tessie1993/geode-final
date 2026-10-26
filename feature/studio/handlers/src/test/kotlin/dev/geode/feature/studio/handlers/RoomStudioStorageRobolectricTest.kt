@@ -164,4 +164,21 @@ class RoomStudioStorageRobolectricTest {
             assertEquals(later.single().id, later.single().batch)
             assertEquals(emptyList<RenderJob>(), storage.queueRenders(emptyList(), FrozenLook("look"), Millis(3)))
         }
+
+    @Test
+    fun `a made Render's video keeps the setup it was made from, and its look, after a restart`() =
+        runBlocking {
+            val trip = storage.createProject("Trip", Millis(1), makeDefault = true)
+            val chosen = render(listOf(night), RenderLook.Preset(PresetId("Calm")), RenderLength.WholeTrack).copy(milkdrop = "a.milk")
+            val made = storage.queueRenders(listOf(chosen), FrozenLook("calm look"), Millis(1)).single()
+            val file = "content://media/video/9"
+            storage.renderSaved(made.id, file)
+            val video = take.copy(kind = VideoKind.RENDER, file = file, madeWith = chosen.toSpec())
+
+            assertEquals(chosen.toSpec(), storage.addVideos(trip.id, listOf(video)).single().madeWith)
+            val reread = RoomStudioStorage(database.dao())
+            assertEquals(listOf(chosen.toSpec(), null), (reread.videos() + reread.addVideos(trip.id, listOf(take))).map { it.madeWith })
+            assertEquals(FrozenLook("calm look"), reread.lookOfVideo(file))
+            assertEquals(null, reread.lookOfVideo("content://media/video/1"))
+        }
 }
