@@ -80,8 +80,11 @@ class OffscreenSceneRenderer(
         targetFbo: Int = 0,
     ) {
         val viz = checkNotNull(native) { "renderFrame() before prepare()" }
-        val timeMs = frameStartMs(frame)
-        val features = timeline.featuresAt(spec.rangeStartMs + timeMs, frameStartMs(frame + 1) - timeMs)
+        // Each frame shows the events heard within half a frame of it (#302): the windows of
+        // consecutive frames share their edges, so every event reaches exactly one frame.
+        val start = spec.rangeStartMs
+        val features =
+            timeline.featuresAround(start + frameStartMs(frame), start + halfwayBeforeMs(frame), start + halfwayBeforeMs(frame + 1))
         viz.setFeatures(features)
         // The render clock is exact: frame k is drawn k / fps seconds in, so every step is one frame
         // long, where whole milliseconds would alternate 16 and 17 ms at 60 fps.
@@ -99,6 +102,9 @@ class OffscreenSceneRenderer(
     }
 
     private fun frameStartMs(frame: Int): Long = frame * MILLIS_PER_SECOND / spec.fps
+
+    /** The moment half a frame before frame [frame]: (2k − 1) / (2 fps) seconds. */
+    private fun halfwayBeforeMs(frame: Int): Long = Math.floorDiv((2L * frame - 1) * MILLIS_PER_SECOND, 2L * spec.fps)
 
     private companion object {
         const val TAG = "OffscreenSceneRenderer"
