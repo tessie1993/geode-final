@@ -157,6 +157,17 @@ sealed interface VisualsCommand {
     /** Forgets [MilkdropShelf.lastImport], once the person has read it. */
     data object DismissImportReport : VisualsCommand
 
+    /**
+     * Deletes the person's own MilkDrop file [file] of [kind] (a preset's file name, or a texture's), for
+     * good (#360). The presets Geode ships cannot be deleted. Deleting the preset the Visual shows moves
+     * it on to the Style listed beside it. Does nothing while an import runs or before the MilkDrop
+     * folder has been listed, nor for a file it does not list.
+     */
+    data class DeleteMilkdrop(
+        val kind: MilkdropKind,
+        val file: String,
+    ) : VisualsCommand
+
     /** Lists the presets again, to pick up ones saved elsewhere (Customize, or the preset folder). */
     data object ReloadPresets : VisualsCommand
 

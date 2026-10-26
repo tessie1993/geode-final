@@ -31,7 +31,8 @@ import dev.geode.kernel.ReportFailure
  * listed as a Style of its own in the MilkDrop group (#305), so it is chosen like any other. An import runs one
  * at a time, and only once the folder has been listed; while it runs, another is ignored. Its report
  * stays until the person dismisses it or starts the next import. An import that fails as a whole is
- * reported on the app-wide error channel, and the next one may start.
+ * reported on the app-wide error channel, and the next one may start. The person's own presets and
+ * textures can be deleted ([MilkdropEdits], #360).
  */
 object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
     /** What the store carries out once, when it is built. */
@@ -57,6 +58,7 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsEvent.ImportRefused -> Next(state, listOf(Emit(VisualsFact.PresetNotImported(event.problem))))
             is VisualsEvent.MilkdropListed -> listed(state, event)
             is VisualsEvent.MilkdropImported -> imported(state, event)
+            is VisualsEvent.MilkdropDeleted -> deleted(state, event)
             is VisualsEvent.WorkFailed -> failed(state, event.failure)
         }
 
@@ -86,6 +88,7 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
             is VisualsCommand.ImportPresetFile -> Next(state, listOf(Perform(VisualsWork.ImportPresetFile(command.uri))))
             is VisualsCommand.ImportMilkdrop -> import(state, command)
             VisualsCommand.DismissImportReport -> dismiss(state)
+            is VisualsCommand.DeleteMilkdrop -> MilkdropEdits.delete(state, command)
         }
 
     /**
@@ -182,6 +185,19 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
                 milkdrop = MilkdropShelf(event.presets, event.textures, importing = false, lastImport = event.report),
             ),
         )
+
+    private fun deleted(
+        state: VisualsState,
+        event: VisualsEvent.MilkdropDeleted,
+    ): Next<VisualsState, VisualsEffect> {
+        val shelf = state.milkdrop ?: return Next(state)
+        return Next(
+            state.copy(
+                styles = StyleEntries.withMilkdrop(state.styles, event.presets),
+                milkdrop = shelf.copy(presets = event.presets, textures = event.textures),
+            ),
+        )
+    }
 
     /** [state] with [library], saved. */
     internal fun saving(

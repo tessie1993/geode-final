@@ -257,4 +257,38 @@ class MilkdropStoreTest {
                 ?.imported,
         )
     }
+
+    @Test
+    fun `the person's own preset and a texture are deleted from the folder and the lists`() {
+        val visuals = store()
+
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "beach.milk"))
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.TEXTURES, "clouds.png"))
+
+        assertEquals(setOf("aurora_veil.milk"), folder.stored.getValue(MilkdropKind.PRESETS).keys)
+        assertEquals(emptySet<String>(), folder.stored.getValue(MilkdropKind.TEXTURES).keys)
+        assertEquals(MilkdropShelf(listOf(aurora, tidal), emptyList()), visuals.state.value.milkdrop)
+        assertNull(visuals.state.value.styles.firstOrNull { it.id == MilkdropStyles.of("beach.milk") })
+        assertEquals(emptyList<FeatureFailure>(), failures)
+    }
+
+    @Test
+    fun `a preset Geode ships is never deleted`() {
+        val visuals = store()
+
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "aurora_veil.milk"))
+
+        assertEquals(setOf("aurora_veil.milk", "beach.milk"), folder.stored.getValue(MilkdropKind.PRESETS).keys)
+    }
+
+    @Test
+    fun `a delete that fails is reported and the lists stay`() {
+        val visuals = store()
+        folder.failDelete += "beach.milk"
+
+        visuals.send(VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "beach.milk"))
+
+        assertEquals(MilkdropShelf(listOf(aurora, own("beach"), tidal), listOf("clouds.png")), visuals.state.value.milkdrop)
+        assertEquals(listOf(FeatureFailure(VISUALS_FEATURE, WorkFailure.MILKDROP_NOT_DELETED.message)), failures)
+    }
 }

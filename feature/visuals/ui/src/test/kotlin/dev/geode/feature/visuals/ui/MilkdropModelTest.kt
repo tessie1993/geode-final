@@ -27,6 +27,7 @@ class MilkdropModelTest {
 
         assertEquals(MilkdropModel(loading = true, importing = false, presets = emptyList(), textures = emptyList(), report = null), model)
         assertFalse(model.canImport)
+        assertFalse(model.canDelete)
     }
 
     @Test
@@ -38,6 +39,7 @@ class MilkdropModelTest {
             model,
         )
         assertTrue(model.canImport)
+        assertTrue(model.canDelete)
     }
 
     @Test
@@ -46,6 +48,19 @@ class MilkdropModelTest {
 
         assertTrue(model.importing)
         assertFalse(model.canImport)
+        assertFalse(model.canDelete)
+    }
+
+    @Test
+    fun `a confirmed delete sends the file and its kind`() {
+        assertEquals(
+            VisualsCommand.DeleteMilkdrop(MilkdropKind.PRESETS, "mine.milk"),
+            MilkdropAction.Delete(MilkdropKind.PRESETS, "mine.milk").toCommand(),
+        )
+        assertEquals(
+            VisualsCommand.DeleteMilkdrop(MilkdropKind.TEXTURES, "clouds.png"),
+            MilkdropAction.Delete(MilkdropKind.TEXTURES, "clouds.png").toCommand(),
+        )
     }
 
     @Test

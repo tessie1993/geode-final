@@ -108,6 +108,17 @@ class FakeMilkdropFolder(
         check(name !in failWrite) { "disk full" }
         stored.getValue(kind)[name] = bytes
     }
+
+    /** Names whose delete fails. */
+    val failDelete = mutableSetOf<String>()
+
+    override suspend fun delete(
+        kind: MilkdropKind,
+        name: String,
+    ) {
+        check(name !in failDelete) { "read-only" }
+        stored.getValue(kind).remove(name)
+    }
 }
 
 /** Picked files by uri; a uri it does not know is unreadable, and [throwing] ones throw. */

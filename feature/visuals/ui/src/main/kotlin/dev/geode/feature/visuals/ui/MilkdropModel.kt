@@ -25,6 +25,9 @@ data class MilkdropModel(
 ) {
     /** Whether an import can start now. */
     val canImport: Boolean get() = !loading && !importing
+
+    /** Whether the person's own presets and textures can be deleted now: not while an import runs (#360). */
+    val canDelete: Boolean get() = !loading && !importing
 }
 
 /** Everything the person can do on the MilkDrop screen. */
@@ -41,6 +44,12 @@ sealed interface MilkdropAction {
     data class Play(
         val file: String,
     ) : MilkdropAction
+
+    /** Delete the person's own preset or texture [file] of [kind], for good, once they have confirmed it (#360). */
+    data class Delete(
+        val kind: MilkdropKind,
+        val file: String,
+    ) : MilkdropAction
 }
 
 /** The Command an action sends; null for one the route carries out itself. */
@@ -49,6 +58,7 @@ fun MilkdropAction.toCommand(): VisualsCommand? =
         is MilkdropAction.Pick -> null
         MilkdropAction.DismissReport -> VisualsCommand.DismissImportReport
         is MilkdropAction.Play -> VisualsCommand.Choose(MilkdropStyles.of(file))
+        is MilkdropAction.Delete -> VisualsCommand.DeleteMilkdrop(kind, file)
     }
 
 /** The MilkDrop screen's model. */

@@ -11,6 +11,13 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Delete imported MilkDrop presets and textures (#360).** The MilkDrop
+  screen has a bin button on each of the person's own presets and on every
+  texture, behind a confirmation. A deleted preset also leaves Favourites,
+  Recent and folders, and if the Visual was showing it, moves on to the
+  Style listed next to it. Presets Geode ships cannot be deleted. Texture
+  links are rebuilt after every delete.
+
 - **MilkDrop accepts BeatDrop-style shader extras (#306).** Geode's projectM
   (`projectm-v4.1.8-shader-extras.patch`, written from the documented
   behaviour) now runs preset shaders that read the spectrum and waveform

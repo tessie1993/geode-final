@@ -136,7 +136,7 @@ fun MilkdropRoute(
                         MilkdropKind.PRESETS -> presetPicker.launch(PRESET_TYPES)
                         MilkdropKind.TEXTURES -> texturePicker.launch(TEXTURE_TYPES)
                     }
-                MilkdropAction.DismissReport, is MilkdropAction.Play -> action.toCommand()?.let(visuals::send)
+                MilkdropAction.DismissReport, is MilkdropAction.Play, is MilkdropAction.Delete -> action.toCommand()?.let(visuals::send)
             }
         },
         modifier,

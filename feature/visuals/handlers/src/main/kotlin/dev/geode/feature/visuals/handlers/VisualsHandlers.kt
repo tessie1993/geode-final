@@ -119,6 +119,11 @@ class VisualsHandlers(
                     ?.let { (milks, textures) -> results.report(VisualsEvent.MilkdropListed(milks, textures)) }
             is VisualsWork.ImportMilkdrop ->
                 attempt(results, WorkFailure.MILKDROP_NOT_IMPORTED) { importMilkdrop(work.kind, work.files) }?.let(results::report)
+            is VisualsWork.DeleteMilkdrop ->
+                attempt(results, WorkFailure.MILKDROP_NOT_DELETED) {
+                    milkdrop.delete(work.kind, work.file)
+                    listing()
+                }?.let { (milks, textures) -> results.report(VisualsEvent.MilkdropDeleted(milks, textures)) }
         }
     }
 
