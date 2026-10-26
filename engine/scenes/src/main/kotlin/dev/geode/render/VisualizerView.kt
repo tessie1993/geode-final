@@ -46,8 +46,9 @@ class VisualizerView(
         setEGLContextClientVersion(3)
         // RGB888 with no depth or stencil: every pass draws into its own targets and the window takes
         // only the finished frame, so GLSurfaceView's default 16-bit depth buffer was never read, yet a
-        // tiled GPU still had to clear and resolve it every frame (#311).
-        setEGLConfigChooser(8, 8, 8, 0, 0, 0)
+        // tiled GPU still had to clear and resolve it every frame (#311). Recordable where the phone
+        // offers it, so a Recording's encoder surface shares the live context (#317).
+        setEGLConfigChooser(RecordableConfigChooser())
         // Asked for before the renderer is attached: the host stops this view whenever it goes
         // invisible, and rebuilding every scene, shader and FBO on each resume would cost a visible
         // black flash. The driver is free to refuse, which is why onSurfaceCreated stays re-entrant.

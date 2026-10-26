@@ -1,12 +1,12 @@
 package dev.geode.ui
 
 import dev.geode.data.EditorProjectStore
-import dev.geode.editor.ClipId
-import dev.geode.editor.EditResult
-import dev.geode.editor.EditorHistory
-import dev.geode.editor.EditorProject
-import dev.geode.editor.KeyframeId
-import dev.geode.editor.MarkerId
+import dev.geode.feature.studio.core.edit.ClipId
+import dev.geode.feature.studio.core.edit.EditResult
+import dev.geode.feature.studio.core.edit.EditorHistory
+import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.core.edit.KeyframeId
+import dev.geode.feature.studio.core.edit.MarkerId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

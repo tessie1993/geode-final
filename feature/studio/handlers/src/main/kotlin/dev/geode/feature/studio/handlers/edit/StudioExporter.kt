@@ -1,4 +1,4 @@
-package dev.geode.export
+package dev.geode.feature.studio.handlers.edit
 
 import android.content.ContentValues
 import android.content.Context
@@ -15,7 +15,8 @@ import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
-import dev.geode.util.bestEffort
+import dev.geode.feature.studio.api.RenderCodec
+import dev.geode.feature.studio.core.edit.ClipEdit
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -53,7 +54,7 @@ class StudioExporter(
         sourceDurationMs: Long,
         edit: ClipEdit,
         displayName: String,
-        codec: ExportCodec = ExportCodec.H264,
+        codec: RenderCodec = RenderCodec.H264,
         destination: Uri? = null,
         onProgress: (Float) -> Unit,
     ): Result {
@@ -77,14 +78,14 @@ class StudioExporter(
 
     /**
      * Renders [composition] and saves it either to Movies/Geode (when [destination] is null) or
-     * straight into the SAF document [destination] the caller already opened — the same choice
-     * [VideoExporter.exportToDestination] offers the visualizer export path.
+     * straight into the SAF document [destination] the caller already opened — the same choice the
+     * Render path's exporter offers.
      */
     suspend fun exportComposition(
         composition: Composition,
         outputDurationMs: Long,
         displayName: String,
-        codec: ExportCodec = ExportCodec.H264,
+        codec: RenderCodec = RenderCodec.H264,
         destination: Uri? = null,
         onProgress: (Float) -> Unit,
     ): Result {
@@ -93,7 +94,7 @@ class StudioExporter(
         try {
             val outcome =
                 withContext(Dispatchers.Main) {
-                    runTransformer(composition, scratch, outputDurationMs, codec.available(), onProgress)
+                    runTransformer(composition, scratch, outputDurationMs, mimeTypeOf(codec), onProgress)
                 }
             if (outcome != null) return outcome
             if (cancelled) return Result.Cancelled
@@ -114,14 +115,14 @@ class StudioExporter(
         composition: Composition,
         output: File,
         outputDurationMs: Long,
-        codec: ExportCodec,
+        mimeType: String,
         onProgress: (Float) -> Unit,
     ): Result? =
         suspendCancellableCoroutine { continuation ->
             val built =
                 Transformer
                     .Builder(context)
-                    .setVideoMimeType(codec.mimeType)
+                    .setVideoMimeType(mimeType)
                     .addListener(
                         object : Transformer.Listener {
                             override fun onCompleted(
@@ -210,7 +211,7 @@ class StudioExporter(
 
     /**
      * Copies [file] into the SAF document [destination] the caller already created via
-     * `CreateDocument`. Mirrors [VideoExporter.exportToDestination]'s write, and cleans up the
+     * `CreateDocument`. Mirrors the Render path's write to a chosen document, and cleans up the
      * (now empty or partial) document on any failure rather than leaving a broken file behind.
      */
     private fun publishToDestination(

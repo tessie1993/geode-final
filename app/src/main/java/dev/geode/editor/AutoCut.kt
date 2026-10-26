@@ -2,6 +2,14 @@ package dev.geode.editor
 
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.feature.studio.core.edit.Clip
+import dev.geode.feature.studio.core.edit.ClipContent
+import dev.geode.feature.studio.core.edit.ClipId
+import dev.geode.feature.studio.core.edit.MIN_CLIP_DURATION_MS
+import dev.geode.feature.studio.core.edit.Marker
+import dev.geode.feature.studio.core.edit.MarkerColour
+import dev.geode.feature.studio.core.edit.MarkerId
+import dev.geode.feature.studio.core.edit.MarkerOrigin
 
 /*
  * Auto-cut — Product Spec §9.
@@ -324,3 +332,9 @@ private fun MutableList<TransientHit>.offer(
         louderThanLast && clearOfPrevious -> set(lastIndex, candidate)
     }
 }
+
+private fun lerp(
+    from: Float,
+    to: Float,
+    fraction: Float,
+): Float = from + (to - from) * fraction

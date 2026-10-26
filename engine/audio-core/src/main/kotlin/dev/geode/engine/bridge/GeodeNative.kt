@@ -554,6 +554,21 @@ object GeodeNative {
         snapshots: Long,
     ): Int
 
+    /** A Recording's tap on [feed] (geode_feed_tap, #317); 0 when it could not be created. */
+    external fun feedTapCreate(feed: Long): Long
+
+    external fun feedTapDestroy(handle: Long): Int
+
+    /**
+     * The stereo frames heard since the last take, interleaved into [out] (at most half its size), or
+     * silence for the time nothing was heard; the first take gives none. Their rate goes to `rate[0]`.
+     */
+    external fun feedTapTake(
+        handle: Long,
+        out: FloatArray,
+        rate: IntArray,
+    ): Int
+
     /** The Visual reads [snapshots] at the start of each frame from now on; 0 detaches. */
     external fun vizAttachSnapshots(
         handle: Long,

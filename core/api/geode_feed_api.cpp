@@ -4,6 +4,7 @@
 
 #include "geode/api/geode_api.h"
 #include "FeedHandle.hpp"
+#include "geode/audio/feed/FeedTap.hpp"
 
 namespace {
 
@@ -29,6 +30,12 @@ FeedSource sourceOf(int source) {
 }
 
 }  // namespace
+
+// The tap shares the feed, so a Recording that outlives the feed's handle still reads a live ring.
+struct geode_feed_tap {
+    std::shared_ptr<geode::api::Feed> feed;
+    geode::audio::feed::FeedTap tap;
+};
 
 extern "C" {
 
@@ -91,6 +98,24 @@ GeodeStatus geode_feed_attach_snapshots(geode_feed* f, geode_snapshots* snapshot
     if (!f) return GEODE_STATUS_NULL_HANDLE;
     f->feed->attachSnapshots(snapshots);
     return GEODE_STATUS_OK;
+}
+
+geode_feed_tap* geode_feed_tap_create(geode_feed* f) {
+    if (!f) return nullptr;
+    auto tap = std::make_unique<geode_feed_tap>();
+    tap->feed = f->feed;
+    return tap.release();
+}
+
+void geode_feed_tap_destroy(geode_feed_tap* t) {
+    std::unique_ptr<geode_feed_tap> owned(t);
+}
+
+size_t geode_feed_tap_take(geode_feed_tap* t, float* out, size_t max_frames, int* rate_hz) {
+    if (!t) return 0;
+    const geode::audio::feed::FeedTap::Take taken = t->tap.take(t->feed->ring(), geode::api::Feed::nowNs(), out, max_frames);
+    if (rate_hz) *rate_hz = taken.rateHz;
+    return taken.frames;
 }
 
 }  // extern "C"

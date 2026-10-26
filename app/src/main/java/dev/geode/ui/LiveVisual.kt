@@ -17,6 +17,7 @@ import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
+import dev.geode.studio.LiveVisualSource
 
 /**
  * Binds the one live Visual to its sources (#17). Customization reaches it through the plan alone:
@@ -46,10 +47,12 @@ fun LiveVisualBindings(
         renderer.feed = session.feed
         renderer.onShaderError = { error -> error?.let { RingLog.note(TAG, "shader: $it") } }
         renderer.onStyleDue = styleCues::raise
-        // While the Visual is bound, the analysis runs.
+        // While the Visual is bound, the analysis runs, and a Recording can draw from it (#317).
         session.feed.acquire()
+        LiveVisualSource.bind(renderer)
         onDispose {
             renderer.onStyleDue = {}
+            LiveVisualSource.unbind(renderer)
             session.feed.release()
             renderer.feed = null
             PlaybackEngine.releaseUi()

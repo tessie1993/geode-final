@@ -26,6 +26,7 @@ geode_drums* drumsOf(jlong handle) { return reinterpret_cast<geode_drums*>(handl
 geode_dsp* dspOf(jlong handle) { return reinterpret_cast<geode_dsp*>(handle); }
 geode_snapshots* snapshotsOf(jlong handle) { return reinterpret_cast<geode_snapshots*>(handle); }
 geode_feed* feedOf(jlong handle) { return reinterpret_cast<geode_feed*>(handle); }
+geode_feed_tap* feedTapOf(jlong handle) { return reinterpret_cast<geode_feed_tap*>(handle); }
 
 // A call on a feed handle with nothing to return: NULL_HANDLE for 0, otherwise OK once `action` ran.
 template <typename Action>
@@ -449,6 +450,40 @@ Java_dev_geode_engine_bridge_GeodeNative_feedResetAnalysis(JNIEnv* env, jobject,
 JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_feedAttachSnapshots(JNIEnv* env, jobject, jlong handle, jlong snapshots) {
     return statusCall(env, "feedAttachSnapshots", [&] { return geode_feed_attach_snapshots(feedOf(handle), snapshotsOf(snapshots)); });
+}
+
+JNIEXPORT jlong JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedTapCreate(JNIEnv* env, jobject, jlong feed) {
+    return valueCall(env, "feedTapCreate", jlong{0}, [&] { return reinterpret_cast<jlong>(geode_feed_tap_create(feedOf(feed))); });
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedTapDestroy(JNIEnv* env, jobject, jlong handle) {
+    return statusCall(env, "feedTapDestroy", [&] {
+        if (!handle) return GEODE_STATUS_NULL_HANDLE;
+        geode_feed_tap_destroy(feedTapOf(handle));
+        return GEODE_STATUS_OK;
+    });
+}
+
+// The stereo frames written into `out` (interleaved), at most what it holds; their rate goes to rate[0].
+JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_feedTapTake(JNIEnv* env, jobject, jlong handle, jfloatArray out, jintArray rate) {
+    return valueCall(env, "feedTapTake", jint{0}, [&]() -> jint {
+        if (!handle || !out) return 0;
+        const jsize capacity = env->GetArrayLength(out) / 2;
+        if (capacity <= 0) return 0;
+        // Taken into native memory first, so the array is never pinned while the ring is read.
+        std::vector<float> taken(static_cast<size_t>(capacity) * 2);
+        int rateHz = 0;
+        const size_t frames = geode_feed_tap_take(feedTapOf(handle), taken.data(), static_cast<size_t>(capacity), &rateHz);
+        if (frames > 0) env->SetFloatArrayRegion(out, 0, static_cast<jsize>(frames * 2), taken.data());
+        if (rate && env->GetArrayLength(rate) > 0) {
+            const jint value = rateHz;
+            env->SetIntArrayRegion(rate, 0, 1, &value);
+        }
+        return static_cast<jint>(frames);
+    });
 }
 
 }

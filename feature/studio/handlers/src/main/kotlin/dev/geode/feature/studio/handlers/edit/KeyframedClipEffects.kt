@@ -1,10 +1,11 @@
-package dev.geode.export
+package dev.geode.feature.studio.handlers.edit
 
 import android.graphics.Matrix
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.MatrixTransformation
 import androidx.media3.effect.RgbMatrix
+import dev.geode.feature.studio.core.edit.ClipEdit
 import kotlin.math.cos
 import kotlin.math.sin
 import android.opengl.Matrix as GlMatrix

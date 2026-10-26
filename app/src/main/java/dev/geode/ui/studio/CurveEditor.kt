@@ -31,11 +31,11 @@ import dev.geode.R
 import dev.geode.design.glass.GlassSheet
 import dev.geode.design.glass.GlassSlider
 import dev.geode.editor.AnimatableParam
-import dev.geode.editor.BezierCurve
-import dev.geode.editor.EaseShape
-import dev.geode.editor.Interpolation
-import dev.geode.editor.Keyframe
-import dev.geode.editor.ParamValue
+import dev.geode.feature.studio.core.edit.BezierCurve
+import dev.geode.feature.studio.core.edit.EaseShape
+import dev.geode.feature.studio.core.edit.Interpolation
+import dev.geode.feature.studio.core.edit.Keyframe
+import dev.geode.feature.studio.core.edit.ParamValue
 
 /** Interpolation, curve handles and the value of one key. Every change is a new [Keyframe]. */
 @Composable
