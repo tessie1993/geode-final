@@ -305,6 +305,7 @@ object BuiltInStyles {
     private val cameraWorldShaders: List<StyleManifest> =
         listOf(
             shader("hyper_lattice", true, emptyList()),
+            shader("dew_macro", true, emptyList()),
         )
 
     private fun life(
