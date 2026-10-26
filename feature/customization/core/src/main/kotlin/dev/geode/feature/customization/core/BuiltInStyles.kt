@@ -257,6 +257,23 @@ object BuiltInStyles {
             "pulsar_orbit",
         ).map { shader(it, true) }
 
+    /**
+     * The camera library's journeys (#396): each Style is built around one camera move and, where it
+     * draws a 3D world, owns its Camera (lib_camera). Their motion is their own clock; their Reactions
+     * only shift colour or push the Camera, never brightness.
+     */
+    private val cameraJourneys: List<StyleManifest> =
+        listOf(
+            shader("little_planet", true, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.1f))),
+            shader("event_horizon", true, listOf(react(TREBLE, SharedProperty.HUE_SHIFT, 0.08f))),
+            shader("wormhole_pass", true, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.08f))),
+            shader("grand_reveal", true, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.08f))),
+            shader("torchlight", true, listOf(react(BASS, SharedProperty.SHAKE, 0.1f))),
+            shader("train_window", false, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
+            shader("folding_city", true, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
+            shader("colonnade_cuts", false, listOf(react(MID, SharedProperty.HUE_SHIFT, 0.06f))),
+        )
+
     private fun life(id: String): StyleManifest =
         style(id, StyleFamily.LIFE, false, listOf(react(HIT, FORCE, 0.3f), react(LEVEL, GROWTH, 0.1f)))
 
@@ -394,8 +411,8 @@ object BuiltInStyles {
 
     /** The Styles the #11 audit designed (their own Reactions and starting values) and the ones that fly their own camera. */
     internal val designed: List<StyleManifest> =
-        classicShaders + newerShaders + worldShaders + cameraWorldShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
-            listOf(curlFlow, water) + cymaticsStyles + milkDrop
+        classicShaders + newerShaders + worldShaders + cameraWorldShaders + cameraJourneys + lifeStyles + mycoStyles +
+            acidStyles + fluidStyles + listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     /**
      * [audited], then a plain manifest (its pack's family and Extras, no Reactions or own flight) for
