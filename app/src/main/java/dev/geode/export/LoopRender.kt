@@ -504,7 +504,7 @@ class LoopRender(
                     height = job.aspect.height,
                     fps = job.choice.fps,
                     totalFrames = sourceFrames,
-                    rangeStartMs = job.loopStartMs,
+                    firstFrame = OffscreenRenderSpec.firstFrameAt(job.loopStartMs, job.choice.fps),
                     look = job.look(stop),
                 ),
         )

@@ -1,6 +1,7 @@
 package dev.geode.render.offscreen
 
 import android.content.Context
+import android.opengl.GLES30
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.engine.bridge.NativeSnapshots
@@ -18,15 +19,36 @@ import dev.geode.util.bestEffort
  * as it does live, so a Render draws the Style's defaults, the Shared core, the Camera, the Extras,
  * the Macros, the Reactions, the Modulators and the Automations, and whatever the shared renderer
  * learns to draw reaches Renders with it (#337).
+ *
+ * Frames sit on the track's own grid: frame g is the moment g / [fps] seconds into the track, and the
+ * sequence is [totalFrames] of them from [firstFrame]. A sequence that starts past the track's start is
+ * pre-rolled ([OffscreenSceneRenderer.preRoll]) so it opens warm, as the same frame of a whole-track
+ * Render does (#344).
  */
 data class OffscreenRenderSpec(
     val width: Int,
     val height: Int,
     val fps: Int,
     val totalFrames: Int,
-    val rangeStartMs: Long,
+    val firstFrame: Long,
     val look: CustomizationSnapshot,
-)
+) {
+    companion object {
+        /** The frame of the track's grid at [fps] nearest [startMs]: where a sequence from there starts. */
+        fun firstFrameAt(
+            startMs: Long,
+            fps: Int,
+        ): Long = if (startMs <= 0 || fps <= 0) 0L else (startMs * fps + MILLIS_PER_SECOND / 2) / MILLIS_PER_SECOND
+
+        /** Where frame [frame] of the grid at [fps] falls, in whole milliseconds, rounded down. */
+        fun frameMs(
+            frame: Long,
+            fps: Int,
+        ): Long = Math.floorDiv(frame * MILLIS_PER_SECOND, fps.toLong())
+
+        private const val MILLIS_PER_SECOND = 1_000L
+    }
+}
 
 /**
  * The sound a Render hands its scenes each frame (#342): the window of the track, interleaved stereo,
@@ -86,7 +108,9 @@ class OffscreenSceneRenderer(
     }
 
     /**
-     * Renders frame [frame] of the sequence into [targetFbo] (0 = the default framebuffer).
+     * Renders frame [frame] of the sequence into [targetFbo] (0 = the default framebuffer): frame
+     * [OffscreenRenderSpec.firstFrame] + [frame] of the track's grid. A negative [frame] is one before
+     * the sequence, as [preRoll] draws them.
      *
      * [prepare] must have run first. The caller presents the result — swapping an encoder
      * surface, reading pixels back, whatever it needs.
@@ -96,19 +120,41 @@ class OffscreenSceneRenderer(
         targetFbo: Int = 0,
     ) {
         val viz = checkNotNull(native) { "renderFrame() before prepare()" }
+        val g = spec.firstFrame + frame
         // Each frame shows the events heard within half a frame of it (#302): the windows of
         // consecutive frames share their edges, so every event reaches exactly one frame.
-        val start = spec.rangeStartMs
-        val features =
-            timeline.featuresAround(start + frameStartMs(frame), start + halfwayBeforeMs(frame), start + halfwayBeforeMs(frame + 1))
+        val features = timeline.featuresAround(frameMs(g), halfwayBeforeMs(g), halfwayBeforeMs(g + 1))
         viz.setFeatures(features)
         pcm?.let { sound ->
-            val frames = sound.windowAt(start * MICROS_PER_MILLI + frame * MICROS_PER_SECOND / spec.fps, window)
+            val frames = sound.windowAt(g * MICROS_PER_SECOND / spec.fps, window)
             if (frames > 0) viz.setFramePcm(window, frames)
         }
-        // The render clock is exact: frame k is drawn k / fps seconds in, so every step is one frame
-        // long, where whole milliseconds would alternate 16 and 17 ms at 60 fps.
-        viz.render(frame.toDouble() / spec.fps, targetFbo)
+        // The render clock is exact: frame g is drawn g / fps seconds into the track, so every step is
+        // one frame long, where whole milliseconds would alternate 16 and 17 ms at 60 fps, and a ranged
+        // sequence keeps the clock a whole-track Render has at the same frame.
+        viz.render(g.toDouble() / spec.fps, targetFbo)
+    }
+
+    /**
+     * Draws every frame of the track before the sequence, without presenting any (#344): simulations,
+     * trails, Reaction followers, Modulators and the Automations' beat clock then stand at the first
+     * frame exactly as they do in a whole-track Render, given the same seeds (#339). [afterFrame] runs
+     * after each, with how many are done of how many, so the caller can pace and report; it stops early
+     * once [isCancelled].
+     */
+    fun preRoll(
+        isCancelled: () -> Boolean,
+        afterFrame: (done: Long, of: Long) -> Unit = { _, _ -> },
+    ) {
+        val count = spec.firstFrame
+        var done = 0L
+        while (done < count && !isCancelled()) {
+            renderFrame((done - count).toInt())
+            // Nothing is swapped, so the driver is told to get on with each frame rather than pile them up.
+            GLES30.glFlush()
+            done++
+            afterFrame(done, count)
+        }
     }
 
     /** Frees the native renderer and its exchange. Safe to call more than once. */
@@ -121,15 +167,14 @@ class OffscreenSceneRenderer(
         snapshots = null
     }
 
-    private fun frameStartMs(frame: Int): Long = frame * MILLIS_PER_SECOND / spec.fps
+    private fun frameMs(frame: Long): Long = OffscreenRenderSpec.frameMs(frame, spec.fps)
 
-    /** The moment half a frame before frame [frame]: (2k − 1) / (2 fps) seconds. */
-    private fun halfwayBeforeMs(frame: Int): Long = Math.floorDiv((2L * frame - 1) * MILLIS_PER_SECOND, 2L * spec.fps)
+    /** The moment half a frame before frame [frame]: (2g − 1) / (2 fps) seconds. */
+    private fun halfwayBeforeMs(frame: Long): Long = Math.floorDiv((2L * frame - 1) * MILLIS_PER_SECOND, 2L * spec.fps)
 
     private companion object {
         const val TAG = "OffscreenSceneRenderer"
         const val MILLIS_PER_SECOND = 1_000L
-        const val MICROS_PER_MILLI = 1_000L
         const val MICROS_PER_SECOND = 1_000_000L
 
         /** The stereo window each frame hands the scenes: the engine's GEODE_FEED_WINDOW_FRAMES. */

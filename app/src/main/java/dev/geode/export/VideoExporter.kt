@@ -297,7 +297,10 @@ class VideoExporter(
             encoder.start()
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).also { muxerRef = it }
-            val rangeStartMs = range?.startMs ?: 0L
+            // A ranged Render starts on the frame of the track's own grid nearest its start, so its frames are
+            // the same frames a whole-track Render draws there, and its sound starts with that frame (#344).
+            val firstFrame = OffscreenRenderSpec.firstFrameAt(range?.startMs ?: 0L, fps)
+            val rangeStartMs = OffscreenRenderSpec.frameMs(firstFrame, fps)
             val aac =
                 AudioTranscoder(context)
                     .transcode(
@@ -335,11 +338,17 @@ class VideoExporter(
                             height = aspect.height,
                             fps = fps,
                             totalFrames = totalFrames,
-                            rangeStartMs = rangeStartMs,
+                            firstFrame = firstFrame,
                             look = job.look,
                         ),
                 ).also { rendererRef = it }
             renderer.prepare()
+            // Everything before the range is drawn first, unseen, so the range opens warm (#344).
+            val work = (firstFrame + totalFrames).toFloat()
+            renderer.preRoll(isCancelled) { done, _ ->
+                onProgress(0.1f + done / work * 0.85f)
+                pace()
+            }
 
             var videoTrack = -1
             var audioTrack = -1
@@ -372,7 +381,7 @@ class VideoExporter(
                         audioFeedRef ?: AudioFeed(muxer, audioTrack, aac, exportDurationUs).also { audioFeedRef = it }
                     feed.writeUpTo(timeMs * 1000L)
                 }
-                onProgress(0.1f + frame / totalFrames.toFloat() * 0.85f)
+                onProgress(0.1f + (firstFrame + frame) / work * 0.85f)
                 pace()
             }
             encoder.signalEndOfInputStream()
