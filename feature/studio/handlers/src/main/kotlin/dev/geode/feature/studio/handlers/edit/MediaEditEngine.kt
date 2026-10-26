@@ -91,6 +91,7 @@ class MediaEditEngine(
                         cut.edit,
                         name,
                         format.codec,
+                        sourceSize = FrameSize(source.width, source.height),
                         onProgress = rendering,
                     )
                 endOf(result, job.name, frameOf(cut), progress)

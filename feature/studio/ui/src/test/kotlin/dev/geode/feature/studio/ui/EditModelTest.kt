@@ -7,7 +7,9 @@ import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSession
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
@@ -17,6 +19,9 @@ import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderStatus
 import dev.geode.feature.studio.api.StudioState
+import dev.geode.feature.studio.api.Video
+import dev.geode.feature.studio.api.VideoId
+import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.api.edit.ClipContent
 import dev.geode.feature.studio.api.edit.ClipEdit
 import dev.geode.feature.studio.api.edit.EditError
@@ -128,5 +133,34 @@ class EditModelTest {
         assertEquals(2_000L, scale.msOf(1_000f))
         assertEquals(10_000L, scale.msOf(99_999f))
         assertEquals(5_000f, scale.contentPx, 0f)
+    }
+
+    @Test
+    fun `Make Short draws its section, crop and choice, landing in its source's Project first`() {
+        val trip = Project(ProjectId(1), "Trip", Millis(1))
+        val video = Video(VideoId(4), trip.id, VideoKind.RENDER, source.name, source.file, null, source.length, 1920, 1080, "")
+        val edit = ClipEdit(startMs = 1_000L, endMs = 6_000L, ratio = RenderAspect.R9_16)
+        val state = ready.copy(projects = listOf(trip), videos = listOf(video), edit = EditSession.Short(video.id, source, edit, true))
+
+        val short = (state.toEditModel() as EditScreenModel.Short).model
+
+        assertEquals(trip.id, short.home)
+        assertEquals(5_000L, short.sectionMs)
+        assertTrue(short.slidesAcross)
+        assertTrue(short.canExport)
+        assertTrue(short.canRedraw)
+        assertFalse(short.redraw)
+        assertFalse(short.copy(source = source.copy(width = 1080, height = 1920)).slidesAcross)
+        assertFalse(short.copy(edit = edit.copy(endMs = 61_000L)).canExport)
+    }
+
+    @Test
+    fun `a Short's slider keeps the section under a minute and over a second`() {
+        assertEquals(1_000L to 30_000L, shortSection(1_000L, 30_000L, 200_000L, startMoved = true))
+        assertEquals(10_000L to 69_999L, shortSection(10_000L, 90_000L, 200_000L, startMoved = true))
+        assertEquals(30_001L to 90_000L, shortSection(10_000L, 90_000L, 200_000L, startMoved = false))
+        assertEquals(0L to 40_000L, shortSection(-5L, 45_000L, 40_000L, startMoved = false))
+        assertNull(shortSection(5_000L, 5_500L, 40_000L, startMoved = true))
+        assertEquals(5_000L to 6_000L, shortSection(5_000L, 6_000L, 40_000L, startMoved = true))
     }
 }

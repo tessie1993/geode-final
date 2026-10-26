@@ -221,6 +221,7 @@ class RoomStudioStorage(
             width = width,
             height = height,
             song = song,
+            sourceId = source?.value,
         )
 
     private fun VideoEntity.toVideo(madeWith: RenderSpec?) =
@@ -236,5 +237,6 @@ class RoomStudioStorage(
             height = height,
             song = song,
             madeWith = madeWith,
+            source = sourceId?.let(::VideoId),
         )
 }

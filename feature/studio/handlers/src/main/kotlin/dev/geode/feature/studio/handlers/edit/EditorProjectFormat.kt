@@ -202,6 +202,8 @@ object EditorProjectFormat {
             .put("gammaRed", e.gammaRed.toDouble())
             .put("gammaGreen", e.gammaGreen.toDouble())
             .put("gammaBlue", e.gammaBlue.toDouble())
+            .put("cropX", e.cropX.toDouble())
+            .put("cropY", e.cropY.toDouble())
 
     fun clipEdit(o: JSONObject): ClipEdit =
         ClipEdit(
@@ -224,6 +226,8 @@ object EditorProjectFormat {
             gammaRed = o.optDouble("gammaRed", 1.0).toFloat(),
             gammaGreen = o.optDouble("gammaGreen", 1.0).toFloat(),
             gammaBlue = o.optDouble("gammaBlue", 1.0).toFloat(),
+            cropX = o.optDouble("cropX", CENTRED).toFloat(),
+            cropY = o.optDouble("cropY", CENTRED).toFloat(),
         )
 
     private fun marker(m: Marker): JSONObject =
@@ -384,6 +388,9 @@ object EditorProjectFormat {
             "audio" -> LaneKind.Audio
             else -> throw IllegalArgumentException("unknown lane kind: $name")
         }
+
+    /** Where a crop sits until it is moved, as a saved number. */
+    private const val CENTRED: Double = ClipEdit.CENTRED.toDouble()
 
     private inline fun <reified T : Enum<T>> enumOr(
         name: String,

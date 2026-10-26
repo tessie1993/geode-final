@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.ui
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -20,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.ProjectId
@@ -100,6 +102,8 @@ fun StudioRoute(
     var filter by rememberSaveable { mutableStateOf<VideoKind?>(null) }
     val pickFolder = rememberSaveFolderPicker(onSaveFolderPicked)
     val pickVideo = rememberVideoPicker { studio.send(it) }
+    val context = LocalContext.current
+    val shareTitle = stringResource(R.string.studio_share_title)
 
     LaunchedEffect(studio) {
         studio.events.collect { fact ->
@@ -125,6 +129,7 @@ fun StudioRoute(
             StudioAction.OpenRender -> draft = RenderDraft.startingFrom(state)
             is StudioAction.RenderAgain ->
                 draft = state.videos.firstOrNull { it.id == action.video }?.let { RenderDraft.again(it, state) }
+            is StudioAction.Share -> share(context, action.video, shareTitle)
             StudioAction.Back -> if (video != null) video = null else project = null
         }
     }
@@ -154,6 +159,25 @@ fun StudioRoute(
         )
     }
 }
+
+/**
+ * Hands [video] to the system's share sheet with a read grant for its file (#328); Geode itself posts
+ * nothing anywhere and stays offline. A phone with nothing to share to does nothing.
+ */
+private fun share(
+    context: Context,
+    video: Video,
+    title: String,
+) {
+    val send =
+        Intent(Intent.ACTION_SEND)
+            .setType(VIDEO_TYPE)
+            .putExtra(Intent.EXTRA_STREAM, Uri.parse(video.file))
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    runCatching { context.startActivity(Intent.createChooser(send, title)) }
+}
+
+private const val VIDEO_TYPE = "video/mp4"
 
 /** The video's own thumbnail, or the stored one; the placeholder until it loads or when there is none. */
 @Composable

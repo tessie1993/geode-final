@@ -469,7 +469,7 @@ private fun Note(text: String) {
 }
 
 @Composable
-private fun presetLabel(preset: RenderPreset?): String =
+internal fun presetLabel(preset: RenderPreset?): String =
     stringResource(
         when (preset) {
             RenderPreset.TIKTOK_AND_SHORTS -> R.string.studio_preset_tiktok

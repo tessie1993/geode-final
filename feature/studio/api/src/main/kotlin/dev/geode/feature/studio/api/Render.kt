@@ -267,12 +267,22 @@ sealed interface RenderStatus {
 }
 
 /**
+ * What a video in the queue is made from (#328, #329): a Short, an Export as sibling or a Render's
+ * finishing Edit is made from the video [file] and lands in the library as a [kind], linked to it.
+ */
+data class MadeFrom(
+    val file: String,
+    val kind: VideoKind,
+)
+
+/**
  * One video the queue makes (#338): its [tracks] (one Track, or a whole playlist for one continuous
  * video) with the choices of the [RenderSpec] it was queued from. [batch] is the first Render queued
  * with it, so every track of one playlist shares it; [project] is the Project its video lands in;
  * [milkdrop] the MilkDrop preset it plays when its look is MilkDrop (#341). An Edit's export (#318)
  * waits in the same queue: it has an [edit] and no tracks, and its video is cut, not drawn, so it runs
- * while Visuals off is on too.
+ * while Visuals off is on too. [madeFrom] is the video it is made from, for a Short, an Export as
+ * sibling or a Render's finishing Edit (#328, #329).
  */
 data class RenderJob(
     val id: RenderId,
@@ -286,6 +296,7 @@ data class RenderJob(
     val status: RenderStatus = RenderStatus.Queued,
     val milkdrop: String? = null,
     val edit: EditJob? = null,
+    val madeFrom: MadeFrom? = null,
 ) {
     /** The video's name: its Track's title, every title of a continuous playlist, or the Edit's name. */
     val title: String get() = edit?.name ?: tracks.joinToString(TITLE_SEPARATOR) { it.title }

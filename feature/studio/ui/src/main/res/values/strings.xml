@@ -141,4 +141,10 @@
     <string name="studio_render_problem_encoder">the phone would not encode it at this size or frame rate</string>
     <string name="studio_render_problem_saved">the video could not be saved</string>
     <string name="studio_render_problem_engine">the engine stopped unexpectedly</string>
+    <!-- Make Short, Export as and Share (#328) -->
+    <string name="studio_make_short">Make Short</string>
+    <string name="studio_export_as">Export as…</string>
+    <string name="studio_share">Share</string>
+    <string name="studio_share_title">Share video</string>
+    <string name="studio_made_from">Made from %1$s</string>
 </resources>

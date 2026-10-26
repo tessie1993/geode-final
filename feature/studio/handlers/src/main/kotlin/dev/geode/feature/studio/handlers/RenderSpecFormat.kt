@@ -7,6 +7,7 @@ import dev.geode.feature.studio.api.EditCut
 import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
@@ -14,6 +15,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.NewRender
 import dev.geode.feature.studio.handlers.edit.EditorProjectFormat
 import org.json.JSONArray
@@ -45,6 +47,7 @@ internal object RenderSpecFormat {
             .put(LOUDNESS, render.extras.loudness.name)
             .putOpt(MILKDROP, render.milkdrop)
             .putOpt(EDIT, render.edit?.let(::edit))
+            .putOpt(MADE_FROM, render.madeFrom?.let(::madeFrom))
             .toString()
     }
 
@@ -70,7 +73,16 @@ internal object RenderSpecFormat {
             extras = RenderExtras(enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS)),
             milkdrop = if (o.has(MILKDROP)) o.getString(MILKDROP) else null,
             edit = o.optJSONObject(EDIT)?.let(::editOf),
+            madeFrom = o.optJSONObject(MADE_FROM)?.let(::madeFromOf),
         )
+    }
+
+    private fun madeFrom(made: MadeFrom): JSONObject = JSONObject().put(FILE, made.file).put(KIND, made.kind.name)
+
+    /** Null when the kind is not one this version knows: the video then lands as what made it says. */
+    private fun madeFromOf(o: JSONObject): MadeFrom? {
+        val kind = VideoKind.entries.firstOrNull { it.name == o.optString(KIND) } ?: return null
+        return MadeFrom(o.getString(FILE), kind)
     }
 
     private fun edit(job: EditJob): JSONObject =
@@ -78,9 +90,15 @@ internal object RenderSpecFormat {
             .put(NAME, job.name)
             .put(SOURCES, job.sources.name)
             .put(CUT, cut(job.cut))
+            .put(LOUDNESS, job.loudness.name)
 
     private fun editOf(o: JSONObject): EditJob =
-        EditJob(o.optString(NAME), cutOf(o.getJSONObject(CUT)), enumOr(o.optString(SOURCES), EditSources.REFERENCE))
+        EditJob(
+            o.optString(NAME),
+            cutOf(o.getJSONObject(CUT)),
+            enumOr(o.optString(SOURCES), EditSources.REFERENCE),
+            enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS),
+        )
 
     private fun cut(cut: EditCut): JSONObject =
         when (cut) {
@@ -183,4 +201,5 @@ internal object RenderSpecFormat {
     private const val FILE = "file"
     private const val WIDTH = "width"
     private const val HEIGHT = "height"
+    private const val MADE_FROM = "madeFrom"
 }

@@ -17,11 +17,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ContentCut
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -55,6 +57,7 @@ import dev.geode.design.glass.GlassMessage
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.Shape
 import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.Video
@@ -449,7 +452,11 @@ private fun KindChip(
     FilterChip(selected = selected, onClick = onClick, label = { Text(label) })
 }
 
-/** A video's page: its thumbnail, length, shape and song, and Move to Project. Stateless (ADR-0003). */
+/**
+ * A video's page: its thumbnail, length, shape and song, what it was made from, Move to Project, and
+ * what can be made of it: an Edit, a Short, a sibling at another preset, the Render again, and Share.
+ * Stateless (ADR-0003).
+ */
 @Composable
 fun VideoScreen(
     model: VideoModel,
@@ -458,8 +465,9 @@ fun VideoScreen(
     thumbnail: Thumbnail = { video, mod -> ThumbnailPlaceholder(video, mod) },
 ) {
     val video = model.video
+    var exporting by remember { mutableStateOf(false) }
     Column(
-        modifier.fillMaxSize().padding(StudioDimens.padding),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(StudioDimens.padding),
         verticalArrangement = Arrangement.spacedBy(StudioDimens.gap),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -471,14 +479,89 @@ fun VideoScreen(
         Text(stringResource(video.kind.label), style = MaterialTheme.typography.titleMedium)
         VideoFacts(video)
         Text(stringResource(R.string.studio_in_project, model.project.name), style = MaterialTheme.typography.bodyMedium)
+        model.source?.let { source ->
+            TextButton(onClick = { onAction(StudioAction.OpenVideo(source.id)) }) {
+                Text(stringResource(R.string.studio_made_from, source.name))
+            }
+        }
+        Button(onClick = { onAction(StudioAction.Share(video)) }) {
+            Icon(Icons.Rounded.Share, contentDescription = null)
+            Text(stringResource(R.string.studio_share), Modifier.padding(start = StudioDimens.gap))
+        }
         OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenVideo(video.id))) }) {
             Text(stringResource(R.string.edit_this_video))
         }
+        if (model.canMakeShort) {
+            OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.MakeShort(video.id))) }) {
+                Text(stringResource(R.string.studio_make_short))
+            }
+        }
+        OutlinedButton(onClick = { exporting = true }) { Text(stringResource(R.string.studio_export_as)) }
         if (video.madeWith != null) {
             OutlinedButton(onClick = { onAction(StudioAction.RenderAgain(video.id)) }) {
                 Text(stringResource(R.string.studio_render_again))
             }
         }
+    }
+    if (exporting) {
+        ExportAsDialog(model) { command ->
+            exporting = false
+            command?.let { onAction(StudioAction.Send(it)) }
+        }
+    }
+}
+
+/**
+ * Export as… (#328): a preset and the Project the sibling lands in, which must be chosen (the video's
+ * own first). Says whether the Render is drawn again or the video cropped. [onDone] gets null when the
+ * person backs out.
+ */
+@Composable
+internal fun ExportAsDialog(
+    model: VideoModel,
+    onDone: (StudioCommand.ExportAs?) -> Unit,
+) {
+    var preset by remember { mutableStateOf(RenderPreset.TIKTOK_AND_SHORTS) }
+    var project by remember(model.project.id) { mutableStateOf(model.project.id) }
+    AlertDialog(
+        onDismissRequest = { onDone(null) },
+        title = { Text(stringResource(R.string.export_as_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+                Note(stringResource(if (model.redraws) R.string.export_as_redraw else R.string.export_as_crop))
+                Text(stringResource(R.string.export_as_preset), style = MaterialTheme.typography.titleSmall)
+                RenderPreset.entries.forEach { choice ->
+                    ChoiceRow(presetLabel(choice), choice == preset) { preset = choice }
+                }
+                Text(stringResource(R.string.export_as_project), style = MaterialTheme.typography.titleSmall)
+                model.projects.forEach { choice ->
+                    ChoiceRow(choice.name, choice.id == project) { project = choice.id }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDone(StudioCommand.ExportAs(model.video.id, preset, project)) }) {
+                Text(stringResource(R.string.export_as_go))
+            }
+        },
+        dismissButton = { TextButton(onClick = { onDone(null) }) { Text(stringResource(R.string.studio_cancel)) } },
+    )
+}
+
+@Composable
+private fun ChoiceRow(
+    label: String,
+    selected: Boolean,
+    onPick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onPick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(label, Modifier.padding(start = StudioDimens.gap))
     }
 }
 

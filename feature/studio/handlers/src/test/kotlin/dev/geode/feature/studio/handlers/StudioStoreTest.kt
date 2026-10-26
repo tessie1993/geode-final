@@ -36,6 +36,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
+import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderSpec
@@ -768,6 +769,51 @@ class StudioStoreTest {
     }
 
     /** A store with the take in its default Project, the clip editor open on it, and [sources] chosen. */
+    @Test
+    fun `a Short of a Recording is cropped through the queue and lands as a Short linked to it`() {
+        settings.ready(FolderUri("content://tree/videos"))
+        val (studio, trip) = projectWithTake()
+        val recording =
+            studio.state.value.videos
+                .single()
+
+        studio.send(EditCommand.MakeShort(recording.id))
+        studio.send(EditCommand.ChangeShort(500L, 3_500L, cropX = 0.5f, cropY = 0.25f))
+        studio.send(EditCommand.Export())
+
+        val job = editEngine.exported.single()
+        assertEquals("take Short", job.name)
+        assertEquals(RenderLoudness.MINUS_14_LUFS, job.loudness)
+        val cut = job.cut as EditCut.OneClip
+        assertEquals(RenderAspect.R9_16, cut.edit.ratio)
+        assertEquals(0.25f, cut.edit.cropY)
+        val short =
+            studio.state.value.videos
+                .single { it.kind == VideoKind.SHORT }
+        assertEquals(trip, short.project)
+        assertEquals(recording.id, short.source)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `Export as keeps the link to its source through the queue`() {
+        settings.ready(FolderUri("content://tree/videos"))
+        val (studio, trip) = projectWithTake()
+        val recording =
+            studio.state.value.videos
+                .single()
+
+        studio.send(StudioCommand.ExportAs(recording.id, RenderPreset.SQUARE, trip))
+
+        val sibling =
+            studio.state.value.videos
+                .last()
+        assertEquals(VideoKind.RECORDING, sibling.kind)
+        assertEquals(recording.id, sibling.source)
+        assertEquals(RenderAspect.R1_1, (editEngine.exported.single().cut as EditCut.OneClip).edit.ratio)
+        assertEquals(storage.videosById.getValue(sibling.id).source, recording.id)
+    }
+
     private fun editingTake(sources: EditSources): Studio {
         settings.ready(FolderUri("content://tree/videos"), export = ExportSettings(editSources = sources))
         val (studio, _) = projectWithTake()
@@ -1112,8 +1158,20 @@ private class FakeStudioStorage : StudioStorage {
     ): List<Video> {
         ensureWorking()
         return videos.map {
-            Video(VideoId(nextId++), project, it.kind, it.name, it.file, it.thumbnail, it.length, it.width, it.height, it.song, it.madeWith)
-                .also { video -> videosById[video.id] = video }
+            Video(
+                VideoId(nextId++),
+                project,
+                it.kind,
+                it.name,
+                it.file,
+                it.thumbnail,
+                it.length,
+                it.width,
+                it.height,
+                it.song,
+                it.madeWith,
+                it.source,
+            ).also { video -> videosById[video.id] = video }
         }
     }
 

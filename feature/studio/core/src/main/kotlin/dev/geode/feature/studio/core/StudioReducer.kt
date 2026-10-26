@@ -118,6 +118,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
             is StudioCommand.RenderAgain -> RenderQueue.again(state, command.video, command.spec)
             is StudioCommand.CancelRenders -> RenderQueue.cancel(state, command.renders)
             StudioCommand.ClearFinishedRenders -> RenderQueue.clearFinished(state)
+            is StudioCommand.ExportAs -> Siblings.exportAs(state, command)
             is RecordingCommand -> Recordings.command(state, command)
             is EditCommand -> Edits.command(state, command)
         }

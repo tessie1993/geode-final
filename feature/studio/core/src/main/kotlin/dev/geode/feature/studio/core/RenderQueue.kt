@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.core
 
+import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
@@ -126,7 +127,7 @@ internal object RenderQueue {
                     // A Render's video keeps the setup it was made from, so it can be made again (#327);
                     // an Edit's is cut from videos, and has none.
                     val madeWith = if (job.edit == null) job.toNewRender().toSpec() else null
-                    addVideos(done, listOf(end.video.copy(madeWith = madeWith)), job.project)
+                    addVideos(done, listOf(linked(state, job, end.video).copy(madeWith = madeWith)), job.project)
                 }
                 is RenderEnd.Failed ->
                     Next(
@@ -161,4 +162,18 @@ internal object RenderQueue {
     }
 
     private fun StudioState.replacing(job: RenderJob): StudioState = copy(renders = renders.map { if (it.id == job.id) job else it })
+
+    /**
+     * [video] as what [job] was made as (#328, #329): a Short, sibling or finishing Edit takes its kind
+     * and links to the video it was made from, while that is still in the library.
+     */
+    private fun linked(
+        state: StudioState,
+        job: RenderJob,
+        video: NewVideo,
+    ): NewVideo {
+        val from = job.madeFrom ?: return video
+        val source = state.videos.firstOrNull { it.file == from.file }?.id
+        return video.copy(kind = from.kind, source = source)
+    }
 }

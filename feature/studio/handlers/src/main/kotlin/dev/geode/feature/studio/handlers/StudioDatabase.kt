@@ -18,8 +18,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /**
  * Studio's own database (ADR-0004): the Projects, the videos in them with only the common fields
  * (#21), the user's default Project, since version 2 the Renders: the queue, and each finished
- * Render's choices and frozen look so it can be made again (#338, #327), and since version 3 which
- * one-time imports are done (#347).
+ * Render's choices and frozen look so it can be made again (#338, #327), since version 3 which
+ * one-time imports are done (#347), and since version 4 the video a Short or sibling was made from
+ * (#328).
  *
  * Every version is migrated step by step (ADR-0004). A new version adds its [Migration] to
  * [MIGRATIONS] and a sample of the version before it under `src/test/resources/db`.
@@ -33,11 +34,11 @@ abstract class StudioDatabase : RoomDatabase() {
     abstract fun dao(): StudioDao
 
     companion object {
-        const val VERSION = 3
+        const val VERSION = 4
         const val NAME = "studio.db"
 
         /** Every migration, oldest first. */
-        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports)
+        val MIGRATIONS: Array<Migration> = arrayOf(AddRenders, AddImports, AddVideoSources)
 
         fun open(
             context: Context,
@@ -68,6 +69,13 @@ object AddImports : Migration(2, 3) {
     }
 }
 
+/** Version 4 (#328): the video a Short or an Export as sibling was made from. */
+object AddVideoSources : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `videos` ADD COLUMN `sourceId` INTEGER")
+    }
+}
+
 @Entity(tableName = "projects")
 data class ProjectEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -88,6 +96,8 @@ data class VideoEntity(
     val width: Int,
     val height: Int,
     val song: String,
+    /** The video it was made from, for a Short or a sibling (#328); null otherwise. */
+    val sourceId: Long? = null,
 )
 
 /** Studio's own choices, in one row: the default Project (null when none is chosen). */

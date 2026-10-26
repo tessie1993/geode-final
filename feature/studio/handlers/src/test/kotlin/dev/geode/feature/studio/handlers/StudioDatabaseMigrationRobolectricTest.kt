@@ -151,6 +151,30 @@ class StudioDatabaseMigrationRobolectricTest {
         }
 
     @Test
+    fun `a version 3 database keeps its library and imports, and its videos link to no source yet`() =
+        runBlocking {
+            val name = "studio-v3-sample.db"
+            writeSample(name, version = 3, script = "db/studio-v3.sql")
+
+            val database = StudioDatabase.open(context, name)
+            val storage = RoomStudioStorage(database.dao())
+            try {
+                val videos = storage.videos()
+                assertEquals(listOf("Night Drive", "old.mp4"), videos.map { it.name })
+                assertEquals(listOf<VideoId?>(null, null), videos.map { it.source })
+                assertTrue(storage.imported("old-studio-videos"))
+                assertEquals(ProjectId(1), storage.defaultProject())
+                // Version 4 keeps the video a Short was made from (#328).
+                val short = NewVideo(VideoKind.SHORT, "Night Drive Short", "content://media/77", null, Millis(30_000), 1080, 1920, "")
+                val added = storage.addVideos(ProjectId(1), listOf(short.copy(source = VideoId(1)))).single()
+                assertEquals(VideoId(1), added.source)
+                assertEquals(added, storage.videos().last())
+            } finally {
+                database.close()
+            }
+        }
+
+    @Test
     fun `the database is at the version the samples lead up to`() {
         assertEquals(1 + StudioDatabase.MIGRATIONS.size, StudioDatabase.VERSION)
     }

@@ -10,8 +10,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.PresetId
 import dev.geode.engine.types.TrackId
+import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
+import dev.geode.feature.studio.api.RenderAspect
 import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
@@ -28,6 +30,7 @@ import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.api.edit.ClipEdit
 
 // The Studio screens' previews (ADR-0003). The theme is Material's own, as in the other features' screens.
 
@@ -203,4 +206,31 @@ internal fun RenderSetupPlaylistPreview() =
                 .playlist(PreviewStudio.choices.playlists.first())
                 .preset(RenderPreset.TIKTOK_AND_SHORTS)
         RenderSetupDialog(draft, PreviewStudio.choices, PreviewStudio.state.projects, onDraft = {}, onRender = {}, onDismiss = {})
+    }
+
+@Preview(name = "Make Short, cropped")
+@Composable
+internal fun ShortPreview() =
+    PreviewTheme {
+        val beach = PreviewStudio.videos.first()
+        val source = EditSource(beach.file, beach.name, beach.length, beach.width, beach.height)
+        val edit = ClipEdit(startMs = 12_000L, endMs = 47_000L, ratio = RenderAspect.R9_16, cropX = 0.3f)
+        ShortScreen(ShortModel(source, edit, canRedraw = true, redraw = false, PreviewStudio.state.projects, beach.project), onAction = {})
+    }
+
+@Preview(name = "Make Short, drawn again", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+internal fun ShortRedrawPreview() =
+    PreviewTheme(dark = true) {
+        val beach = PreviewStudio.videos.first()
+        val source = EditSource(beach.file, beach.name, beach.length, beach.width, beach.height)
+        val edit = ClipEdit(endMs = 59_000L, ratio = RenderAspect.R9_16)
+        ShortScreen(ShortModel(source, edit, canRedraw = true, redraw = true, PreviewStudio.state.projects, beach.project), onAction = {})
+    }
+
+@Preview(name = "Export as")
+@Composable
+internal fun ExportAsPreview() =
+    PreviewTheme {
+        ExportAsDialog(checkNotNull(PreviewStudio.state.toVideoModel(VideoId(2)))) {}
     }
