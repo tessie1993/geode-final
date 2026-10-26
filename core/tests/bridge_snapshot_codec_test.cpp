@@ -31,7 +31,7 @@ constexpr size_t kSoundFields = 4;
 
 // The same snapshot CustomizationSnapshotTest.kt encodes; both sides must produce this digest. It changes
 // whenever the schema's layout does (an array count included): recompute it then, on both sides.
-constexpr const char* kFixtureDigest = "2430e73cb995b321ada9e42abf225f93188664160e614e8e7a592550dfa6ef77";
+constexpr const char* kFixtureDigest = "19b40d155b51cac434e2587caf9e4edd30e1285fae1b276e6b256ef1ef8d4e2d";
 
 CustomizationSnapshot fixture() {
     CustomizationSnapshot s;
