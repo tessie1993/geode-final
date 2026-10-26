@@ -20,8 +20,10 @@ keystore.properties
 secrets.properties
 google-services.json
 
-# Agent tooling is local-only and is not tracked in this repository.
-.claude/
+# Agent tooling is local-only and is not tracked in this repository, except the shared project
+# settings (which plugins Geode sessions load).
+.claude/*
+!.claude/settings.json
 .agents/
 .codex/
 AGENTS.md
