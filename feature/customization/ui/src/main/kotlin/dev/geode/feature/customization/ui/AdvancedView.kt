@@ -112,6 +112,8 @@ private fun SliderGroup(
             row = row,
             label = targetName(row.target, panel.model),
             onSet = { panel.slide(row.target, it) },
+            onPreview = { panel.preview(row.target, it) },
+            onReset = { panel.send(CustomizationCommand.ResetValue(row.target)) },
             onReactTo = { panel.open(CustomizePage.ChooseSource(target = row.target)) },
         )
     }

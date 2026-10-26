@@ -17,7 +17,11 @@ import dev.geode.kernel.ReportFailure
  * - Every edit is a pure function of the current Customization ([Edits]). An edit that changes
  *   something becomes one undo step, clears the redo history and hands the new Customization to the
  *   engine; an edit that changes nothing leaves everything as it is.
- * - Undo and redo are unlimited for the session; reset to Style is an edit like any other.
+ * - Undo and redo are unlimited for the session; reset to Style, and resetting one value, are edits
+ *   like any other.
+ * - A dragged control is previewed ([CustomizationCommand.Preview]): each step reaches the engine but
+ *   not the history, and the drag ends with the edit itself, one undo step back to before the drag.
+ *   Anything else that comes first settles the drag as that one step.
  * - Playing or stopping a hand-started Modulator is live: it reaches the engine but not the history.
  * - Presets keep the ticked parts; a preset applied on another Style brings only the shared parts. A
  *   preset with parts only a newer Geode reads applies the rest and says so ([NEEDS_NEWER_GEODE]).
@@ -38,11 +42,46 @@ class CustomizationReducer(
         event: CustomizationEvent,
     ): Next<CustomizationState, CustomizationEffect> =
         when (event) {
-            is CustomizationEvent.Command -> command(state, event.command)
-            is CustomizationEvent.PresetLoaded -> applyPreset(state, event.preset)
+            is CustomizationEvent.Command -> command(if (endsPreview(event.command)) settled(state) else state, event.command)
+            is CustomizationEvent.PresetLoaded -> applyPreset(settled(state), event.preset)
             is CustomizationEvent.WorkFailed -> Next(state, listOf(ReportFailure(event.failure.message)))
-            CustomizationEvent.StyleDue -> autoSwitch(state)
+            CustomizationEvent.StyleDue -> autoSwitch(settled(state))
         }
+
+    /** Whether [command] settles a drag before it is handled: anything but a preview and the value edits a drag ends with. */
+    private fun endsPreview(command: CustomizationCommand): Boolean = command !is CustomizationCommand.Preview && !previewable(command)
+
+    /** Whether a drag can preview [command]: the value edits. */
+    private fun previewable(command: CustomizationCommand): Boolean =
+        when (command) {
+            is CustomizationCommand.SetShared,
+            is CustomizationCommand.SetExtra,
+            is CustomizationCommand.SetMacro,
+            is CustomizationCommand.TrimSignal,
+            is CustomizationCommand.UpdateReaction,
+            is CustomizationCommand.UpdateModulator,
+            -> true
+            else -> false
+        }
+
+    /** A drag left open becomes one undo step back to before it, so what comes next starts from there. */
+    private fun settled(state: CustomizationState): CustomizationState {
+        val from = state.previewFrom ?: return state
+        if (from == state.current) return state.copy(previewFrom = null)
+        return state.copy(undo = state.undo + from, redo = emptyList(), previewFrom = null)
+    }
+
+    /** One step of a drag: [edit] reaches the engine, the history waits for the drag to end. */
+    private fun preview(
+        state: CustomizationState,
+        edit: CustomizationCommand,
+    ): Next<CustomizationState, CustomizationEffect> {
+        if (!previewable(edit)) return Next(state)
+        val current = state.current
+        val next = command(state, edit).state.current
+        if (next == current) return Next(state)
+        return Next(state.copy(current = next, previewFrom = state.previewFrom ?: current), handOver(current, next))
+    }
 
     /**
      * Style switching's move to its next Style ([Automation.nextStyle]): live, like a hand-started
@@ -83,6 +122,8 @@ class CustomizationReducer(
             is CustomizationCommand.SetAutomations -> edit(state, Edits.setAutomations(current, command.automations))
             is CustomizationCommand.UseVisualizerStyles -> Next(state.copy(visualizerStyles = command.styles))
             CustomizationCommand.ResetToStyle -> edit(state, Edits.resetToStyle(current, styles.manifestOf(current.style)))
+            is CustomizationCommand.ResetValue -> edit(state, Edits.resetValue(current, styles.manifestOf(current.style), command.target))
+            is CustomizationCommand.Preview -> preview(state, command.edit)
             is CustomizationCommand.KeepForCompare -> Next(state.copy(compare = state.compare + (command.slot to current)))
             is CustomizationCommand.Compare ->
                 state.compare[command.slot]?.let { kept -> edit(state, kept.copy(automations = current.automations)) } ?: Next(state)
@@ -117,16 +158,23 @@ class CustomizationReducer(
         return edit(state, Edits.switchStyle(state.current, styles.manifestOf(state.current.style), target))
     }
 
-    /** One undo step to [next], unless it changes nothing. */
+    /**
+     * One undo step to [next], unless it changes nothing. At the end of a drag the step goes back to
+     * before the drag, and the engine, which followed the drag, hears only what it has not seen yet.
+     */
     private fun edit(
         state: CustomizationState,
         next: Customization,
-    ): Next<CustomizationState, CustomizationEffect> =
-        if (next == state.current) {
-            Next(state)
+    ): Next<CustomizationState, CustomizationEffect> {
+        val shown = state.current
+        val from = state.previewFrom ?: shown
+        val handOver = if (next == shown) emptyList() else handOver(shown, next)
+        return if (next == from) {
+            Next(state.copy(current = next, previewFrom = null), handOver)
         } else {
-            Next(state.copy(current = next, undo = state.undo + state.current, redo = emptyList()), handOver(state.current, next))
+            Next(state.copy(current = next, undo = state.undo + from, redo = emptyList(), previewFrom = null), handOver)
         }
+    }
 
     /** A live change: handed to the engine, kept out of the history. */
     private fun live(

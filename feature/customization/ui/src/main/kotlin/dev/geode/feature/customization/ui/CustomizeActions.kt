@@ -120,6 +120,16 @@ fun learnOrSet(
 ): CustomizationCommand? =
     if (learning != null) CustomizationCommand.AddReaction(newReaction(learning, target)) else sliderCommand(target, value)
 
+/**
+ * What a slider dragged to [value] previews (#285): the edit letting go would make, shown while the
+ * finger moves. Nothing in Learn mode ([learning]), where letting go links the slider instead.
+ */
+fun previewCommand(
+    learning: ReactionSource?,
+    target: Target,
+    value: Float,
+): CustomizationCommand? = if (learning != null) null else sliderCommand(target, value)?.let(CustomizationCommand::Preview)
+
 /** The toggle flipped: an effect turned off goes back to its minimum; one turned on to its on value. */
 fun EffectToggle.toggled(): CustomizationCommand.SetShared {
     val onValue = if (property.kind == ValueKind.SWITCH) property.max else EFFECT_ON_VALUES[property] ?: property.max
