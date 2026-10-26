@@ -296,24 +296,36 @@ public final class dev/geode/feature/visuals/api/StyleLibrary {
 	public static final field Companion Ldev/geode/feature/visuals/api/StyleLibrary$Companion;
 	public static final field RECENT_LIMIT I
 	public fun <init> ()V
-	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;)V
-	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/util/List;
-	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;)Ldev/geode/feature/visuals/api/StyleLibrary;
-	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/StyleLibrary;Ljava/util/List;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/StyleLibrary;
+	public final fun component4 ()Ljava/util/Map;
+	public final fun copy (Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;)Ldev/geode/feature/visuals/api/StyleLibrary;
+	public static synthetic fun copy$default (Ldev/geode/feature/visuals/api/StyleLibrary;Ljava/util/List;Ljava/util/List;Ljava/util/List;Ljava/util/Map;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/StyleLibrary;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun folder-pVAacu8 (J)Ldev/geode/feature/visuals/api/Folder;
 	public final fun foldersIn-vvmBIh4 (Ldev/geode/feature/visuals/api/FolderId;)Ljava/util/List;
 	public final fun getFavourites ()Ljava/util/List;
 	public final fun getFolders ()Ljava/util/List;
+	public final fun getMarks ()Ljava/util/Map;
 	public final fun getRecent ()Ljava/util/List;
 	public fun hashCode ()I
+	public final fun markOf-TBnmCe8 (Ljava/lang/String;)Ldev/geode/feature/visuals/api/StyleMark;
 	public fun toString ()Ljava/lang/String;
 }
 
 public final class dev/geode/feature/visuals/api/StyleLibrary$Companion {
+}
+
+public final class dev/geode/feature/visuals/api/StyleMark : java/lang/Enum {
+	public static final field LOVE Ldev/geode/feature/visuals/api/StyleMark;
+	public static final field NEVER Ldev/geode/feature/visuals/api/StyleMark;
+	public static final field NORMAL Ldev/geode/feature/visuals/api/StyleMark;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Ldev/geode/feature/visuals/api/StyleMark;
+	public static fun values ()[Ldev/geode/feature/visuals/api/StyleMark;
 }
 
 public abstract interface class dev/geode/feature/visuals/api/VisualsCommand {
@@ -563,6 +575,19 @@ public final class dev/geode/feature/visuals/api/VisualsCommand$SetFavourite : d
 	public static synthetic fun copy-lpQj4BY$default (Ldev/geode/feature/visuals/api/VisualsCommand$SetFavourite;Ljava/lang/String;ZILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$SetFavourite;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFavourite ()Z
+	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/visuals/api/VisualsCommand$SetMark : dev/geode/feature/visuals/api/VisualsCommand {
+	public synthetic fun <init> (Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleMark;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-7EMWfhs ()Ljava/lang/String;
+	public final fun component2 ()Ldev/geode/feature/visuals/api/StyleMark;
+	public final fun copy-lpQj4BY (Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleMark;)Ldev/geode/feature/visuals/api/VisualsCommand$SetMark;
+	public static synthetic fun copy-lpQj4BY$default (Ldev/geode/feature/visuals/api/VisualsCommand$SetMark;Ljava/lang/String;Ldev/geode/feature/visuals/api/StyleMark;ILjava/lang/Object;)Ldev/geode/feature/visuals/api/VisualsCommand$SetMark;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMark ()Ldev/geode/feature/visuals/api/StyleMark;
 	public final fun getStyle-7EMWfhs ()Ljava/lang/String;
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;

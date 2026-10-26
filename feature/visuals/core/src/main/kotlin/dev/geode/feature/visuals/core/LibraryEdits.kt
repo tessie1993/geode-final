@@ -3,6 +3,7 @@ package dev.geode.feature.visuals.core
 import dev.geode.feature.visuals.api.Folder
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.api.VisualsState
@@ -31,6 +32,20 @@ internal object LibraryEdits {
             command.favourite && (style in favourites || !state.draws(style)) -> library
             command.favourite -> library.copy(favourites = listOf(style) + favourites)
             else -> library.copy(favourites = favourites - style)
+        }
+    }
+
+    /** [command]'s mark on its Style (#308); a Style this version does not draw cannot be marked. */
+    fun mark(
+        library: StyleLibrary,
+        state: VisualsState,
+        command: VisualsCommand.SetMark,
+    ): StyleLibrary {
+        val style = command.style
+        return when {
+            command.mark == StyleMark.NORMAL -> library.copy(marks = library.marks - style)
+            state.draws(style) -> library.copy(marks = library.marks + (style to command.mark))
+            else -> library
         }
     }
 

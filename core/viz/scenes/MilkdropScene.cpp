@@ -111,6 +111,8 @@ std::optional<std::string> MilkdropScene::takeFallback() {
     return out;
 }
 
+float MilkdropScene::pictureZoom() const { return milkdrop::pictureZoom(featuremap::milkdropZoom(bus_)); }
+
 double MilkdropScene::nowSeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
@@ -131,11 +133,13 @@ void MilkdropScene::acceptPcm(const float* samples, int count) {
     pcmCount_ += n;
 }
 
-void MilkdropScene::acceptStereoPcm(const float* interleaved, int frames) {
+void MilkdropScene::acceptPcmSpan(const float* interleaved, int frames, int fresh) {
     const int n = std::min(frames, kEnginePcmSamples);
     if (!interleaved || n <= 0) return;
-    // The newest frames of the window, replacing the last one: a window is added to projectM once.
-    std::copy(interleaved + static_cast<size_t>(frames - n) * 2, interleaved + static_cast<size_t>(frames) * 2, stereo_.begin());
+    // Replacing the last window: a window is added to projectM once. projectM measures one window a frame,
+    // so the loudest one heard since the last frame goes in, and no kick falls between two frames.
+    const int start = milkdrop::loudestWindow(interleaved, frames, n, fresh);
+    std::copy(interleaved + static_cast<size_t>(start) * 2, interleaved + static_cast<size_t>(start + n) * 2, stereo_.begin());
     stereoFrames_ = n;
 }
 
@@ -371,7 +375,9 @@ void MilkdropScene::draw(float timeSeconds) {
     applyFrameSettings();
     loadPendingPreset(now);
     if (engineWidth_ <= 0 || engineHeight_ <= 0) return;
-    projectm_set_beat_sensitivity(engine_.get(), std::clamp(0.2f + params_.beatResponse, 0.2f, 3.0f));
+    // How far bass, mid and treble swing (tools/projectm-v4.1.8-loudness.patch): the Style's beat response,
+    // where 1 leaves the preset reacting as it was written.
+    projectm_set_beat_sensitivity(engine_.get(), milkdrop::beatSensitivity(params_.beatResponse));
     const auto& touchPoints = touch_ ? touch_->points() : std::array<float, TouchField::kMaxPoints * TouchField::kPointStride>{};
     const milkdrop::Pointer pointer = milkdrop::pointerFromTouch(touch_ ? touch_->liveCount() : 0, touchPoints[0], touchPoints[1]);
     projectm_set_pointer(engine_.get(), pointer.x, pointer.y, pointer.down);

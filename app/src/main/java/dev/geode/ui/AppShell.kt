@@ -203,7 +203,10 @@ fun AppRoot() {
             }
     }
     val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings, surface)
+    val visualShown = VisualWatch.shown(onVisualsTab = ui.place == Place.VISUALS, fullScreen = ui.fullScreen)
+    if (!visualsOff) {
+        LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.styleCues, shell.settings, surface, visualShown)
+    }
     // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
     var reactionsHeld by remember { mutableStateOf(false) }
     LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }
@@ -307,6 +310,7 @@ fun AppRoot() {
             }
             // The picture-in-picture window shows the Visual alone; what covered it comes back with the app.
             if (!inPip) {
+                RecordingProjectHost(shell)
                 val sheetOverVisual = ui.place == Place.VISUALS || (ui.fullScreen && !visualsOff)
                 PlayerSheet(shell, ui.sheet, if (sheetOverVisual) GlassBackdrop.Visual else GlassBackdrop.Live(source))
                 ui.banner?.let { banner ->
@@ -366,7 +370,10 @@ private fun MusicLibrary(shell: ShellViewModel) {
 private fun StudioPlace(shell: ShellViewModel) {
     val library by shell.library.state.collectAsStateWithLifecycle()
     val visuals by shell.visuals.state.collectAsStateWithLifecycle()
-    val choices = remember(library.songs, library.playlists, visuals.presets) { renderChoicesOf(library, visuals.presets) }
+    val choices =
+        remember(library.songs, library.playlists, visuals.presets, visuals.milkdrop) {
+            renderChoicesOf(library, visuals.presets, visuals.milkdrop)
+        }
     Box(Modifier.fillMaxSize()) {
         StudioRoute(
             shell.studio,
@@ -435,10 +442,10 @@ private fun PlayerSheet(
 }
 
 /**
- * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, and the way into the
- * Customize sheet. Leaving it is the App UI's Back. In picture-in-picture ([inPip], #287) the window
- * shows the Visual alone, with no App UI over it. The freeze switch ([reactionsHeld], #366) holds the
- * Sound signals while the picture keeps moving.
+ * Full-screen visual mode (#17): the one live Visual under Visuals' own overlay, the way into the
+ * Customize sheet, and the Record control (#317). Leaving it is the App UI's Back. In
+ * picture-in-picture ([inPip], #287) the window shows the Visual alone, with no App UI over it. The
+ * freeze switch ([reactionsHeld], #366) holds the Sound signals while the picture keeps moving.
  */
 @Composable
 private fun FullScreenVisual(
@@ -474,6 +481,8 @@ private fun FullScreenVisual(
                 filled = false,
                 modifier = Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(GlassSpacing.Large),
             ) { Text(stringResource(R.string.visuals_open_capture)) }
+            // Clear of the overlay's bars, top and bottom.
+            RecordControlHost(shell, Modifier.align(Alignment.CenterEnd).navigationBarsPadding().padding(GlassSpacing.Large))
             GlassButton(
                 onClick = { onHeldChange(!reactionsHeld) },
                 filled = false,

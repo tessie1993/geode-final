@@ -12,10 +12,12 @@ import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import dev.geode.analysis.FeatureTimeline
+import dev.geode.audio.TrackPcm
 import dev.geode.engine.bridge.CustomizationSnapshot
 import dev.geode.render.SceneFactory
 import dev.geode.render.offscreen.OffscreenRenderSpec
 import dev.geode.render.offscreen.OffscreenSceneRenderer
+import dev.geode.render.offscreen.StyleSwitches
 import dev.geode.util.bestEffort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -121,6 +123,10 @@ class VideoExporter(
         val range: ExportRange? = null,
         val loopSafe: Boolean = false,
         val codec: ExportCodec = ExportCodec.H264,
+        /** How many times over the scene is drawn before it is brought to the frame (#345). */
+        val supersample: Float = 1f,
+        /** The look's Style switching, replayed frame by frame (#343); none keeps one Style throughout. */
+        val switches: StyleSwitches? = null,
     )
 
     sealed interface Result {
@@ -280,6 +286,7 @@ class VideoExporter(
         var eglRef: EncoderSurface? = null
         var rendererRef: OffscreenSceneRenderer? = null
         var audioFeedRef: AudioFeed? = null
+        var pcmRef: TrackPcm? = null
         var muxerStarted = false
         var muxerStopped = false
         try {
@@ -295,7 +302,10 @@ class VideoExporter(
             encoder.start()
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).also { muxerRef = it }
-            val rangeStartMs = range?.startMs ?: 0L
+            // A ranged Render starts on the frame of the track's own grid nearest its start, so its frames are
+            // the same frames a whole-track Render draws there, and its sound starts with that frame (#344).
+            val firstFrame = OffscreenRenderSpec.firstFrameAt(range?.startMs ?: 0L, fps)
+            val rangeStartMs = OffscreenRenderSpec.frameMs(firstFrame, fps)
             val aac =
                 AudioTranscoder(context)
                     .transcode(
@@ -319,22 +329,33 @@ class VideoExporter(
             val totalFrames = (exportDurationUs * fps / 1_000_000L).toInt().coerceAtLeast(1)
             val frameDurationNs = 1_000_000_000L / fps
 
+            // The track decoded in step with the frames, so the scenes hear the real sound (#342).
+            val pcm = TrackPcm(context, job.audioUri).also { pcmRef = it }
             val renderer =
                 OffscreenSceneRenderer(
                     context = context,
                     sceneFactory = job.sceneFactory,
                     timeline = timeline,
+                    pcm = pcm,
+                    switches = job.switches,
                     spec =
                         OffscreenRenderSpec(
                             width = aspect.width,
                             height = aspect.height,
                             fps = fps,
                             totalFrames = totalFrames,
-                            rangeStartMs = rangeStartMs,
+                            firstFrame = firstFrame,
                             look = job.look,
+                            supersample = job.supersample,
                         ),
                 ).also { rendererRef = it }
             renderer.prepare()
+            // Everything before the range is drawn first, unseen, so the range opens warm (#344).
+            val work = (firstFrame + totalFrames).toFloat()
+            renderer.preRoll(isCancelled) { done, _ ->
+                onProgress(0.1f + done / work * 0.85f)
+                pace()
+            }
 
             var videoTrack = -1
             var audioTrack = -1
@@ -367,7 +388,7 @@ class VideoExporter(
                         audioFeedRef ?: AudioFeed(muxer, audioTrack, aac, exportDurationUs).also { audioFeedRef = it }
                     feed.writeUpTo(timeMs * 1000L)
                 }
-                onProgress(0.1f + frame / totalFrames.toFloat() * 0.85f)
+                onProgress(0.1f + (firstFrame + frame) / work * 0.85f)
                 pace()
             }
             encoder.signalEndOfInputStream()
@@ -410,6 +431,7 @@ class VideoExporter(
             return exportDurationUs / MICROS_PER_MILLI
         } finally {
             bestEffort(TAG, "rendererRef?.release()") { rendererRef?.release() }
+            bestEffort(TAG, "pcmRef?.close()") { pcmRef?.close() }
             bestEffort(TAG, "audioFeedRef?.close()") { audioFeedRef?.close() }
             if (muxerStarted && !muxerStopped) runCatching { muxerRef?.stop() }
             bestEffort(TAG, "muxerRef?.release()") { muxerRef?.release() }

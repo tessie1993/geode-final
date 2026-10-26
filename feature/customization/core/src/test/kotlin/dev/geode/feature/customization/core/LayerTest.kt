@@ -128,7 +128,7 @@ class LayerTest {
                     command(CustomizationCommand.ChooseStyle(TUNNEL)),
                     Edits.switchStyle(layered, styles.manifestOf(JULIA), styles.manifestOf(TUNNEL)).let { next ->
                         Next(
-                            CustomizationState(next, listOf(julia, layered)),
+                            CustomizationState(next, listOf(julia, layered), stylesBack = listOf(layered)),
                             listOf(publish(next), Emit(CustomizationFact.StyleChanged(TUNNEL))),
                         )
                     },

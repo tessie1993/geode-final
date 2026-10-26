@@ -153,4 +153,20 @@ class NativeCustomizationKonsistTest {
         val riseSeconds = constant(reactions, "kNoFlashMinRiseSeconds").removeSuffix("f").toFloat()
         assertEquals(NO_FLASH_MIN_RISE.value.toFloat() / MILLIS_PER_SECOND, riseSeconds, 0f)
     }
+
+    @Test
+    fun `the engine waits for the same silence as the model`() {
+        val graph = read("core/viz/include/geode/viz/ReactionGraph.hpp")
+        assertEquals(Automation.SILENCE_LEVEL, constant(graph, "kSilenceLevel").removeSuffix("f").toFloat(), 0f)
+        val seconds = constant(graph, "kSilenceSeconds").removeSuffix("f").toFloat()
+        assertEquals(Automation.SILENCE.value.toFloat() / MILLIS_PER_SECOND, seconds, 0f)
+    }
+
+    @Test
+    fun `the engine raises Style switching's threshold as the model does`() {
+        val graph = read("core/viz/include/geode/viz/ReactionGraph.hpp")
+        assertEquals(Automation.THRESHOLD_RISE, constant(graph, "kThresholdRise").removeSuffix("f").toFloat(), 0f)
+        val seconds = constant(graph, "kThresholdHalfLifeSeconds").removeSuffix("f").toFloat()
+        assertEquals(Automation.THRESHOLD_HALF_LIFE.value.toFloat() / MILLIS_PER_SECOND, seconds, 0f)
+    }
 }

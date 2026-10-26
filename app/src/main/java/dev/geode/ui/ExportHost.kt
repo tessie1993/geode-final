@@ -62,13 +62,16 @@ import dev.geode.design.glass.GlassSectionHeader
 import dev.geode.design.glass.GlassSlider
 import dev.geode.design.glass.GlassSpacing
 import dev.geode.design.glass.glassSurface
-import dev.geode.export.ClipEdit
-import dev.geode.export.ClipLook
-import dev.geode.export.CubeLut
-import dev.geode.export.ExportAspect
-import dev.geode.export.ExportQuality
-import dev.geode.export.ExportRatio
 import dev.geode.export.StudioClip
+import dev.geode.feature.studio.api.RenderAspect
+import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderSize
+import dev.geode.feature.studio.core.RenderPlan
+import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.core.edit.ClipLook
+import dev.geode.feature.studio.handlers.edit.CubeLut
+import dev.geode.feature.studio.handlers.edit.clipping
+import dev.geode.feature.studio.handlers.edit.videoEffects
 import dev.geode.ui.studio.TimelineEditor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -186,7 +189,7 @@ private fun ClipPreview(
 
     val aspect =
         edit.ratio?.let { r ->
-            ExportAspect.of(edit.quality, r).let { it.width.toFloat() / it.height }
+            RenderPlan.frameOf(RenderFormat(aspect = r, size = edit.quality)).let { it.width.toFloat() / it.height }
         } ?: if (clip.width > 0 && clip.height > 0) {
             clip.width.toFloat() / clip.height
         } else {
@@ -461,8 +464,8 @@ private fun ClipFrameSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StudioChip(stringResource(R.string.studio_as_shot), selected = edit.ratio == null) { onEdit(edit.copy(ratio = null)) }
-            ExportRatio.entries.forEach { r ->
-                StudioChip(r.label, selected = edit.ratio == r) { onEdit(edit.copy(ratio = r)) }
+            RenderAspect.entries.forEach { r ->
+                StudioChip("${r.wide}:${r.high}", selected = edit.ratio == r) { onEdit(edit.copy(ratio = r)) }
             }
         }
         if (edit.ratio != null) {
@@ -477,7 +480,7 @@ private fun ClipQualityPicker(
     onEdit: (ClipEdit) -> Unit,
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ExportQuality.entries.forEach { q ->
+        CLIP_SIZES.forEach { q ->
             StudioChip("${q.shortSide}p", selected = edit.quality == q) { onEdit(edit.copy(quality = q)) }
         }
     }
@@ -682,3 +685,6 @@ private fun android.content.Context.viewVideo(uri: Uri) {
 }
 
 private const val REBUILD_SETTLE_MS = 250L
+
+/** The sizes the clip editor reframes to, as it always offered them. */
+private val CLIP_SIZES = listOf(RenderSize.HD720, RenderSize.FHD1080, RenderSize.UHD4K)

@@ -7,10 +7,11 @@
 namespace geode::analysis {
 
 OnsetPeakPicker::OnsetPeakPicker(float hopRateHz, float windowSeconds, float sensitivity, float refractorySeconds,
-                                 float localMaxSeconds)
+                                 float localMaxSeconds, float minStrength)
     : hopRateHz_(hopRateHz),
       sensitivity_(sensitivity),
       refractorySeconds_(refractorySeconds),
+      minStrength_(minStrength),
       windowSize_(std::max(static_cast<int>(std::lround(hopRateHz * windowSeconds)), 3)),
       window_(static_cast<size_t>(windowSize_)),
       scratch_(static_cast<size_t>(windowSize_)),
@@ -19,7 +20,7 @@ OnsetPeakPicker::OnsetPeakPicker(float hopRateHz, float windowSeconds, float sen
       framesSinceOnset_(INT_MAX / 2),
       peakDecayPerFrame_(std::exp(-1.0f / (hopRateHz * kPeakMemorySeconds))) {}
 
-bool OnsetPeakPicker::accept(float onset) {
+bool OnsetPeakPicker::accept(float onset, bool eligible) {
     const float preceding = precedingMax();
 
     window_[writeIndex_] = onset;
@@ -28,16 +29,20 @@ bool OnsetPeakPicker::accept(float onset) {
 
     const float med = median();
     const float spread = std::max(std::max(deviation(med), med * kSpreadFloorFraction), kMinSpread);
-    threshold_ = med + sensitivity_ * spread;
+    threshold_ = std::max(med + sensitivity_ * spread, med * (1.0f + kMedianFloorPerSensitivity * sensitivity_));
 
+    // Hops since the last onset, this one included: an onset `refractoryFrames` hops after the last is allowed,
+    // so onsets can come exactly the refractory time apart and never closer.
+    framesSinceOnset_ = std::min(framesSinceOnset_ + 1, 1000000);
     const int refractoryFrames = std::max(static_cast<int>(std::lround(hopRateHz_ * refractorySeconds_)), 1);
-    const bool isOnset = onset > threshold_ && onset > kNumericFloor && onset > preceding && framesSinceOnset_ > refractoryFrames;
-
     const float decayedPeak = peakEnvelope_ * peakDecayPerFrame_;
-    strength_ = isOnset ? std::clamp(onset / std::max(decayedPeak, kNumericFloor), 0.0f, 1.0f) : 0.0f;
-    peakEnvelope_ = std::max(onset, decayedPeak);
+    const float candidate = std::min(onset / std::max(decayedPeak, kNumericFloor), 1.0f);
+    const bool isOnset = eligible && onset > threshold_ && onset > kMinOnset && onset > preceding &&
+                         framesSinceOnset_ >= refractoryFrames && candidate >= minStrength_;
 
-    framesSinceOnset_ = isOnset ? 0 : std::min(framesSinceOnset_ + 1, 1000000);
+    strength_ = isOnset ? candidate : 0.0f;
+    peakEnvelope_ = std::max(onset, decayedPeak);
+    if (isOnset) framesSinceOnset_ = 0;
 
     recent_[recentIndex_] = onset;
     recentIndex_ = (recentIndex_ + 1) % localMaxSize_;

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/FeatureBus.hpp"
 #include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/QualityTiers.hpp"
@@ -14,6 +15,8 @@
 #include "geode/viz/TouchField.hpp"
 
 namespace geode::viz {
+
+class SharedInputs;
 
 enum class SceneFamily { Shader, Milkdrop, Fluid };
 
@@ -34,6 +37,14 @@ public:
     // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
     virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
+    // The same frame's longer span of interleaved stereo audio, ending where the window ends, of which the
+    // newest `fresh` frames were heard since the last frame (0 when that is not known). For a scene that
+    // measures the audio itself and must not miss what fell between two windows (MilkDrop).
+    virtual void acceptPcmSpan(const float* interleaved, int frames, int fresh) {
+        (void) interleaved;
+        (void) frames;
+        (void) fresh;
+    }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
@@ -42,8 +53,17 @@ public:
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // The music's structure, rhythm, timbre and space this frame (FeatureBus.hpp), handed over with the
+    // Camera: shader Styles read it as lib_scene_features' uniforms, the other families through featuremap.
+    virtual void setFeatureBus(const FeatureValues& values) { (void) values; }
     // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
     virtual void setQuality(const quality::Budget& budget) { (void) budget; }
+    // The renderer's shared Style inputs (SharedInputs.hpp), handed over before init(); a shader Style
+    // binds the ones its pack declares.
+    virtual void setSharedInputs(SharedInputs* inputs) { (void) inputs; }
+    // The Style starts to be drawn: it became Layer 1 or Layer 2. Its visit clocks start over and its
+    // kept frames are let go (StyleInputs.hpp).
+    virtual void beginVisit() {}
     // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just
     // before draw(). A Style that draws through targets of its own comes back to this one from here
     // rather than asking the driver: a glGet makes a threaded driver wait for its queue (#311). The
@@ -52,6 +72,9 @@ public:
     // True when the Style moves a camera of its own from the Camera (a raymarched world reading
     // lib_camera.glsl); the composite then leaves push-in, orbit and travel to it.
     virtual bool ownsCamera() const { return false; }
+    // How far the composite zooms this Style's picture in, on top of the Shared core's zoom: for a Style
+    // whose own post pass went into the composite (MilkDrop's lean-in on downbeats and drops, #294, #303).
+    virtual float pictureZoom() const { return 1.0f; }
     // > 0 keeps the previous frame in the scene target (Curl Flow); 0 clears it.
     virtual float trailRetention(const SceneParams& params) const { (void) params; return 0.0f; }
     virtual GLuint velocityTexture() const { return 0; }

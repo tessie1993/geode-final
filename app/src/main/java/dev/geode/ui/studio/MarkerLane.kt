@@ -16,12 +16,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import dev.geode.editor.Marker
-import dev.geode.editor.MarkerId
-import dev.geode.editor.MarkerSet
-import dev.geode.editor.SnapContext
-import dev.geode.editor.SnapMode
-import dev.geode.editor.SnapTarget
+import dev.geode.feature.studio.core.edit.Marker
+import dev.geode.feature.studio.core.edit.MarkerId
+import dev.geode.feature.studio.core.edit.MarkerSet
+import dev.geode.feature.studio.core.edit.SnapContext
+import dev.geode.feature.studio.core.edit.SnapMode
+import dev.geode.feature.studio.core.edit.SnapTarget
 import kotlin.math.abs
 
 private data class MarkerDrag(

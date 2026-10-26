@@ -4,10 +4,12 @@
 
 namespace geode::analysis {
 
-bool BeatGrid::step(float periodFrames, float confidence, bool onset) {
+bool BeatGrid::step(float periodFrames, float tempoPhase, float confidence, bool onset) {
     locked_ = confidence >= kLockConfidence && periodFrames > 0.0f;
 
-    if (periodFrames > 0.0f) {
+    if (locked_) {
+        phase_ = tempoPhase;
+    } else if (periodFrames > 0.0f) {
         phase_ += 1.0f / periodFrames;
         while (phase_ >= 1.0f) phase_ -= 1.0f;
     }
@@ -18,16 +20,10 @@ bool BeatGrid::step(float periodFrames, float confidence, bool onset) {
         phase_ = 0.0f;
         beat_ = true;
     } else {
+        // On the grid when it lands within the tolerance of a beat; an offbeat hit, or one the tempo has not
+        // caught up with yet, is not, and the grid keeps the tempo's phase either way.
         const float error = phase_ > 0.5f ? phase_ - 1.0f : phase_;
-        if (std::fabs(error) <= kOnGridTolerance) {
-            phase_ -= error * kPhaseCorrection;
-            if (phase_ < 0.0f) phase_ += 1.0f;
-            beat_ = true;
-        } else {
-            // Off the grid: an offbeat hit, or the tempo moved. It is not counted as on the grid, and
-            // the grid keeps its phase; the tempo tracker follows a moving tempo within seconds.
-            beat_ = false;
-        }
+        beat_ = std::fabs(error) <= kOnGridTolerance;
     }
     return beat_;
 }

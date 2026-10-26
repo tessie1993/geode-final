@@ -10,7 +10,10 @@ import dev.geode.feature.library.api.PlaylistRef
 import dev.geode.feature.library.api.Song
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.ui.LookChoice
+import dev.geode.feature.studio.ui.MilkdropChoice
 import dev.geode.feature.studio.ui.RenderPlaylist
+import dev.geode.feature.visuals.api.MilkdropPreset
+import dev.geode.feature.visuals.api.MilkdropShelf
 import dev.geode.feature.visuals.api.PresetShelf
 import dev.geode.feature.visuals.api.SavedPreset
 import org.junit.Assert.assertEquals
@@ -50,5 +53,25 @@ class RenderChoicesOfTest {
         assertEquals(listOf(RenderPlaylist("Evening", listOf(nightTrack, tideTrack))), choices.playlists)
         assertEquals(listOf(LookChoice(PresetId("Calm"), "Calm")), choices.presets)
         assertEquals(emptyList<LookChoice>(), renderChoicesOf(library, null).presets)
+    }
+
+    @Test
+    fun `MilkDrop presets are offered as Visuals lists them`() {
+        val shelf =
+            MilkdropShelf(
+                presets =
+                    listOf(
+                        MilkdropPreset("aurora_veil.milk", "Aurora Veil", "Geode", builtIn = true),
+                        MilkdropPreset("Beach at dusk.milk", "Beach at dusk", null, builtIn = false),
+                    ),
+            )
+
+        val choices = renderChoicesOf(LibraryState(), null, shelf)
+
+        assertEquals(
+            listOf(MilkdropChoice("aurora_veil.milk", "Aurora Veil"), MilkdropChoice("Beach at dusk.milk", "Beach at dusk")),
+            choices.milkdrop,
+        )
+        assertEquals(emptyList<MilkdropChoice>(), renderChoicesOf(LibraryState(), null).milkdrop)
     }
 }

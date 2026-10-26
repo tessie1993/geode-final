@@ -63,6 +63,9 @@ import dev.geode.feature.customization.api.Target
  */
 enum class AdvancedSection {
     REACTIONS,
+
+    /** The Sound signals' trims (#301). */
+    SOUND,
     CAMERA,
     EFFECTS,
     EXTRAS,

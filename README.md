@@ -138,4 +138,4 @@ portability, not device checks.
 - [docs/DEVICE_CHECKS.md](docs/DEVICE_CHECKS.md) — on-device checklist.
 - `tools/build-projectm.md` — how projectM is built from the submodule.
 - `THIRD_PARTY_NOTICES` — licences and attributions; the in-app notices asset
-  mirrors this file.
+  is an exact copy of this file (checked in CI by `tools/ci/check_notices.py`).

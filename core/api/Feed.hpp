@@ -25,6 +25,9 @@ public:
     static constexpr size_t kPushFrames = 256;
     // The analysis' rate until a source says otherwise.
     static constexpr int kInitialRateHz = 48000;
+    // How far before the frame heard now an analysis that slept starts again: enough for its window and
+    // a few hops, little enough to catch up within the next Visual frame.
+    static constexpr float kWakeLookbackSeconds = 0.25f;
 
     Feed();
     ~Feed();
@@ -39,9 +42,11 @@ public:
     void resetAnalysis();
     void attachSnapshots(geode_snapshots* snapshots);
 
-    // The drawing thread: this frame's features and the `frames` stereo frames heard now. Returns false,
-    // with an empty frame and silence, when nothing is heard.
-    bool read(GeodeFeatureFrame& features, float* stereo, size_t frames);
+    // The drawing thread: this frame's features and the `frames` stereo frames heard when the frame reaches
+    // the screen, at presentNs on the steady clock (0 or less for now). Returns false, with an empty frame
+    // and silence, when nothing is heard. `heard`, when given, gets where the window ends.
+    bool read(GeodeFeatureFrame& features, float* stereo, size_t frames, int64_t presentNs = 0,
+              audio::feed::ReadPoint* heard = nullptr);
 
     static int64_t nowNs();
 
@@ -56,6 +61,7 @@ private:
     int analysisRate_ = kInitialRateHz;
     uint32_t analysedEpoch_ = 0;
     bool resetPending_ = true;
+    bool wakePending_ = false;
     uint64_t cursor_ = 0;
     std::vector<float> scratch_;
     std::atomic<bool> active_{false};

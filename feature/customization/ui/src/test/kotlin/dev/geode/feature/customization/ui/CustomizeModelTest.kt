@@ -19,6 +19,7 @@ import dev.geode.feature.customization.api.ReactionId
 import dev.geode.feature.customization.api.ReactionSource
 import dev.geode.feature.customization.api.SharedGroup
 import dev.geode.feature.customization.api.SharedProperty
+import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.SoundSignal
 import dev.geode.feature.customization.api.Target
 import dev.geode.feature.customization.api.ValueKind
@@ -226,6 +227,20 @@ class CustomizeModelTest {
     }
 
     @Test
+    fun `the Hold and the Styles seen come from the state`() {
+        val plain = CustomizationState(customization).toCustomizeModel()
+        assertFalse(plain.styleHeld)
+        assertFalse(plain.canGoBack)
+        assertFalse(plain.canGoForward)
+        val walked =
+            CustomizationState(customization, styleHeld = true, stylesBack = listOf(customization), stylesForward = listOf(customization))
+                .toCustomizeModel()
+        assertTrue(walked.styleHeld)
+        assertTrue(walked.canGoBack)
+        assertTrue(walked.canGoForward)
+    }
+
+    @Test
     fun `the controls the Style ignores are greyed out, and only those`() {
         val ignored = setOf(Target.Shared(SharedProperty.SPEED), Target.Shared(SharedProperty.KALEIDOSCOPE), Target.MacroSlot(0))
         val shown = CustomizationState(customization).toCustomizeModel(ignored = ignored)
@@ -247,6 +262,25 @@ class CustomizeModelTest {
                 .any { it.ignored } ||
                 model.effects.any { it.ignored } ||
                 model.macros.any { it.ignored },
+        )
+    }
+
+    @Test
+    fun `bass, mid, treble and beat each show their trim, neutral when none is set`() {
+        val trimmed =
+            customization.copy(
+                signals = mapOf(SoundSignal.MID to SignalTrim(gain = 2f), SoundSignal.KICK to SignalTrim(gain = 3f)),
+            )
+        val trims = CustomizationState(trimmed).toCustomizeModel().trims
+
+        assertEquals(
+            listOf(
+                TrimRow(SoundSignal.BASS, SignalTrim.NEUTRAL),
+                TrimRow(SoundSignal.MID, SignalTrim(gain = 2f)),
+                TrimRow(SoundSignal.TREBLE, SignalTrim.NEUTRAL),
+                TrimRow(SoundSignal.BEAT, SignalTrim.NEUTRAL),
+            ),
+            trims,
         )
     }
 }

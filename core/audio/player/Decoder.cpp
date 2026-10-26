@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <initializer_list>
 #include <cstring>
 #include <string>
 
@@ -15,6 +16,7 @@ namespace geode::audio::player {
 namespace {
 
 constexpr int64_t kOutputTimeoutUs = 10'000;
+constexpr int32_t kEncodingPcm16 = 2;      // android.media.AudioFormat.ENCODING_PCM_16BIT
 constexpr int32_t kEncodingPcmFloat = 4;   // android.media.AudioFormat.ENCODING_PCM_FLOAT
 constexpr float kInt16Scale = 1.0f / 32768.0f;
 
@@ -23,6 +25,19 @@ bool isAudioMime(const char* mime) { return mime && std::strncmp(mime, "audio/",
 int64_t framesToUs(int64_t frames, int rate) { return rate > 0 ? frames * 1'000'000 / rate : 0; }
 
 int64_t usToFrames(int64_t us, int rate) { return us * rate / 1'000'000; }
+
+// A decoder for `format`, asked for float PCM first so a 24-bit file keeps its precision (#299); one that
+// will not give float is asked for 16-bit. The output format says which it gives (convertPending).
+AMediaCodec* configuredDecoder(const char* mime, AMediaFormat* format) {
+    for (const int32_t encoding : {kEncodingPcmFloat, kEncodingPcm16}) {
+        AMediaCodec* codec = AMediaCodec_createDecoderByType(mime);
+        if (!codec) return nullptr;
+        AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_PCM_ENCODING, encoding);
+        if (AMediaCodec_configure(codec, format, nullptr, nullptr, 0) == AMEDIA_OK) return codec;
+        AMediaCodec_delete(codec);
+    }
+    return nullptr;
+}
 
 }  // namespace
 
@@ -60,9 +75,8 @@ std::unique_ptr<Decoder> Decoder::open(int fd, int64_t offset, int64_t length, s
             AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_SAMPLE_RATE, &sampleRate);
             AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_CHANNEL_COUNT, &channels);
             AMediaFormat_getInt64(format, AMEDIAFORMAT_KEY_DURATION, &durationUs);
-            AMediaCodec* codec = AMediaCodec_createDecoderByType(mime);
-            if (codec && AMediaCodec_configure(codec, format, nullptr, nullptr, 0) == AMEDIA_OK &&
-                AMediaExtractor_selectTrack(native->extractor, i) == AMEDIA_OK) {
+            AMediaCodec* codec = configuredDecoder(mime, format);
+            if (codec && AMediaExtractor_selectTrack(native->extractor, i) == AMEDIA_OK) {
                 native->codec = codec;
             } else if (codec) {
                 AMediaCodec_delete(codec);

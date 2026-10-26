@@ -1,34 +1,34 @@
 package dev.geode.data
 
-import dev.geode.editor.BezierCurve
-import dev.geode.editor.Clip
-import dev.geode.editor.ClipContent
-import dev.geode.editor.ClipId
-import dev.geode.editor.ClipTransition
-import dev.geode.editor.EaseShape
-import dev.geode.editor.EditorProject
-import dev.geode.editor.Interpolation
-import dev.geode.editor.Keyframe
-import dev.geode.editor.KeyframeId
-import dev.geode.editor.KeyframeSheet
-import dev.geode.editor.KeyframeTrack
-import dev.geode.editor.Lane
-import dev.geode.editor.LaneId
-import dev.geode.editor.LaneKind
-import dev.geode.editor.Marker
-import dev.geode.editor.MarkerColour
-import dev.geode.editor.MarkerId
-import dev.geode.editor.MarkerOrigin
-import dev.geode.editor.MarkerSet
-import dev.geode.editor.OverlayBlend
-import dev.geode.editor.ParamId
-import dev.geode.editor.ParamValue
-import dev.geode.editor.Timeline
 import dev.geode.engine.types.SceneId
-import dev.geode.export.ClipEdit
-import dev.geode.export.ClipLook
-import dev.geode.export.ExportQuality
-import dev.geode.export.ExportRatio
+import dev.geode.feature.studio.api.RenderAspect
+import dev.geode.feature.studio.api.RenderSize
+import dev.geode.feature.studio.core.edit.BezierCurve
+import dev.geode.feature.studio.core.edit.Clip
+import dev.geode.feature.studio.core.edit.ClipContent
+import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.core.edit.ClipId
+import dev.geode.feature.studio.core.edit.ClipLook
+import dev.geode.feature.studio.core.edit.ClipTransition
+import dev.geode.feature.studio.core.edit.EaseShape
+import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.core.edit.Interpolation
+import dev.geode.feature.studio.core.edit.Keyframe
+import dev.geode.feature.studio.core.edit.KeyframeId
+import dev.geode.feature.studio.core.edit.KeyframeSheet
+import dev.geode.feature.studio.core.edit.KeyframeTrack
+import dev.geode.feature.studio.core.edit.Lane
+import dev.geode.feature.studio.core.edit.LaneId
+import dev.geode.feature.studio.core.edit.LaneKind
+import dev.geode.feature.studio.core.edit.Marker
+import dev.geode.feature.studio.core.edit.MarkerColour
+import dev.geode.feature.studio.core.edit.MarkerId
+import dev.geode.feature.studio.core.edit.MarkerOrigin
+import dev.geode.feature.studio.core.edit.MarkerSet
+import dev.geode.feature.studio.core.edit.OverlayBlend
+import dev.geode.feature.studio.core.edit.ParamId
+import dev.geode.feature.studio.core.edit.ParamValue
+import dev.geode.feature.studio.core.edit.Timeline
 import dev.geode.render.scene.SceneCapabilities
 import org.json.JSONArray
 import org.json.JSONObject
@@ -187,8 +187,8 @@ internal object EditorProjectJson {
             invert = o.optBoolean("invert", false),
             speed = o.optDouble("speed", 1.0).toFloat(),
             rotationDegrees = o.optDouble("rotationDegrees", 0.0).toFloat(),
-            ratio = o.stringOrNull("ratio")?.let { name -> ExportRatio.entries.firstOrNull { it.name == name } },
-            quality = enumOr(o.optString("quality"), ExportQuality.FHD1080),
+            ratio = o.stringOrNull("ratio")?.let { name -> RenderAspect.entries.firstOrNull { it.name == name } },
+            quality = enumOr(o.optString("quality"), RenderSize.FHD1080),
             mute = o.optBoolean("mute", false),
             caption = o.optString("caption", ""),
             lutUri = o.stringOrNull("lutUri"),

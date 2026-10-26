@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "tide_line",
+  "label": "Waterline",
+  "family": "shader",
+  "shader": "shader.glsl",
+  "renderScale": 0.6,
+  "detail": "march",
+  "extras": [
+    {
+      "name": "scale",
+      "min": 0,
+      "max": 2,
+      "default": 1
+    },
+    {
+      "name": "fog",
+      "min": 0,
+      "max": 2,
+      "default": 1
+    }
+  ]
+}

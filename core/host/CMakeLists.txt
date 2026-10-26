@@ -102,8 +102,10 @@ file(GLOB GEODE_HOST_TEST_SOURCES CONFIGURE_DEPENDS "${GEODE_ROOT}/core/tests/*_
 add_executable(geode_core_tests ${GEODE_HOST_TEST_SOURCES})
 target_compile_options(geode_core_tests PRIVATE -Wall -Wextra)
 target_link_libraries(geode_core_tests PRIVATE geode_core_pure GTest::gtest_main)
-# The asset root the Style packs ship from (styles/ under it), so the tests read the real packs.
+# The asset root the Style packs ship from (styles/ under it), so the tests read the real packs, and
+# the shared shader libraries (shaders/lib_*.glsl).
 target_compile_definitions(geode_core_tests PRIVATE
-    GEODE_STYLE_PACK_ROOT="${GEODE_ROOT}/engine/scenes/src/main/stylepacks")
+    GEODE_STYLE_PACK_ROOT="${GEODE_ROOT}/engine/scenes/src/main/stylepacks"
+    GEODE_SHADER_ROOT="${GEODE_ROOT}/app/src/main/assets/shaders")
 include(GoogleTest)
 gtest_discover_tests(geode_core_tests)

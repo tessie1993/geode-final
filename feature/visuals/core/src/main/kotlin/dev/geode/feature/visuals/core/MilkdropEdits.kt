@@ -12,7 +12,7 @@ import dev.geode.kernel.Perform
 /**
  * Deleting the person's own MilkDrop presets and textures (#360). Only a file the shelf lists can go, and
  * never a preset Geode ships. A preset is a Style of its own (#305), so deleting one also takes it out of
- * the Favourites, Recent and every folder, and, when the Visual shows it, moves the Visual on to the
+ * the Favourites, Recent, every folder and its mark (#308), and, when the Visual shows it, moves the Visual on to the
  * Style listed after it (before it, for the last). The shelf changes once the folder says the file is
  * gone ([VisualsEvent.MilkdropDeleted]); a delete that fails is reported and changes nothing.
  */
@@ -54,5 +54,6 @@ internal object MilkdropEdits {
             favourites = favourites - style,
             recent = recent - style,
             folders = folders.map { folder -> if (style in folder.styles) folder.copy(styles = folder.styles - style) else folder },
+            marks = marks - style,
         )
 }

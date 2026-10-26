@@ -121,7 +121,7 @@ object Rules {
      * [automations] as [customization] can run them:
      * - a cadence's threshold within [Trigger.BigMoments.MIN_THRESHOLD]..1, its bars within
      *   1..[MAX_AUTOMATION_BARS], its spacing within 0..[Cadence.MAX_SPACING];
-     * - Style switching's transition and the palette fade within their ranges;
+     * - Style switching's transition and the palette fade within their ranges, each chosen Style once;
      * - Camera moves at a strength in 0..1, one of each kind;
      * - lanes on targets that exist, each target in one lane only, at most [Automations.MAX_LANES]
      *   lanes of [Automations.MAX_LANE_TARGETS] targets and [Automations.MAX_LANE_STEPS] steps, every
@@ -138,6 +138,7 @@ object Rules {
                     it.copy(
                         cadence = cadence(it.cadence),
                         transition = it.transition.coerceIn(StyleSwitching.MIN_TRANSITION, StyleSwitching.MAX_TRANSITION),
+                        chosen = it.chosen.distinct(),
                     )
                 },
             palette =

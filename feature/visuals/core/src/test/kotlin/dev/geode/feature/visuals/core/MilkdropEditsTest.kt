@@ -9,6 +9,7 @@ import dev.geode.feature.visuals.api.MilkdropShelf
 import dev.geode.feature.visuals.api.StyleEntry
 import dev.geode.feature.visuals.api.StyleGroup
 import dev.geode.feature.visuals.api.StyleLibrary
+import dev.geode.feature.visuals.api.StyleMark
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsState
 import dev.geode.feature.visuals.core.Fixtures.command
@@ -43,18 +44,20 @@ class MilkdropEditsTest {
             StyleEntry(zetaId, "zeta", StyleGroup.MILKDROP),
         )
 
-    /** Mine is a favourite, in Recent and in a folder; the tunnel shows. */
+    /** Mine is a favourite, in Recent, in a folder and Loved; the tunnel shows. */
     private val library =
         StyleLibrary(
             favourites = listOf(mineId, tunnel),
             recent = listOf(tunnel, mineId),
             folders = listOf(Folder(one, "Calm", null, listOf(mineId, tunnel)), Folder(two, "Empty", null, emptyList())),
+            marks = mapOf(mineId to StyleMark.LOVE, tunnel to StyleMark.NEVER),
         )
     private val withoutMine =
         StyleLibrary(
             favourites = listOf(tunnel),
             recent = listOf(tunnel),
             folders = listOf(Folder(one, "Calm", null, listOf(tunnel)), Folder(two, "Empty", null, emptyList())),
+            marks = mapOf(tunnel to StyleMark.NEVER),
         )
 
     private val listed = ready.copy(styles = others + milkStyles, library = library, milkdrop = MilkdropShelf(presets, textures))

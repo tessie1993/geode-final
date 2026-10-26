@@ -155,10 +155,10 @@ TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     std::vector<float> data = carried();
     const float link[kMacroLinkFloats] = {5, 1, 12, 0, 0.8f, 0.2f};
     std::copy(std::begin(link), std::end(link), data.begin() + static_cast<std::ptrdiff_t>(kLinksAt + kMacroLinkFloats));
-    const float automation[12] = {2, 1, 3, 0, -0.3f, 4, 1, 0.7f, 8, 2.5f, 1, 3};
+    const float automation[13] = {2, 1, 3, 0, -0.3f, 4, 1, 0.7f, 8, 2.5f, 1, 1, 3};
     const size_t automationAt = kAutomationsAt + kAutomationFloats;
     std::copy(std::begin(automation), std::end(automation), data.begin() + static_cast<std::ptrdiff_t>(automationAt));
-    data[automationAt + 12 + 2] = 0.6f;
+    data[automationAt + 13 + 2] = 0.6f;
     const CustomizationPlan plan = decoded(data);
     const MacroLinkSpec& l = plan.macroLinks[1];
     EXPECT_EQ(l.macro, 5);
@@ -177,7 +177,9 @@ TEST(PlanCodec, ReadsAMacroLinkAndAnAutomationInTheirPlaces) {
     EXPECT_EQ(a.spacingSeconds, 8.0f);
     EXPECT_EQ(a.fadeSeconds, 2.5f);
     EXPECT_TRUE(a.alternate);
+    EXPECT_TRUE(a.held);
     EXPECT_EQ(a.stepCount, 3);
+    EXPECT_FALSE(plan.automations[0].held);
     EXPECT_EQ(a.steps[2], 0.6f);
 }
 

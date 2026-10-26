@@ -1,7 +1,11 @@
 package dev.geode.editor
 
 import dev.geode.R
-import dev.geode.export.ClipEdit
+import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.core.edit.ClipParams
+import dev.geode.feature.studio.core.edit.ParamId
+import dev.geode.feature.studio.core.edit.ParamKind
+import dev.geode.feature.studio.core.edit.ParamValue
 import dev.geode.render.scene.CymaticsMath
 import dev.geode.render.scene.MarchBudget
 import dev.geode.render.scene.ParamKeys
@@ -46,13 +50,11 @@ object AnimatableParams {
             byId[id]?.writeScene?.invoke(params, value) ?: params
         }
 
+    /** The clip grade values are Studio's (#318); this only gives them their labels. */
     fun applyToClip(
         base: ClipEdit,
         values: Map<ParamId, ParamValue>,
-    ): ClipEdit =
-        values.entries.fold(base) { edit, (id, value) ->
-            byId[id]?.writeClip?.invoke(edit, value) ?: edit
-        }
+    ): ClipEdit = ClipParams.applyTo(base, values)
 
     private fun scalar(
         field: String,
@@ -108,38 +110,29 @@ object AnimatableParams {
         writeScene = { p, v -> if (v is ParamValue.Choice) write(p, v.index.coerceIn(0, choices.lastIndex)) else p },
     )
 
-    private fun clipScalar(
-        field: String,
-        labelRes: Int,
-        min: Float,
-        max: Float,
-        read: (ClipEdit) -> Float,
-        write: (ClipEdit, Float) -> ClipEdit,
-    ) = AnimatableParam(
-        id = ParamId(CLIP + field),
-        kind = ParamKind.SCALAR,
-        labelRes = labelRes,
-        min = min,
-        max = max,
-        readClip = { ParamValue.Scalar(read(it)) },
-        writeClip = { e, v -> if (v is ParamValue.Scalar) write(e, v.value.coerceIn(min, max)) else e },
-    )
-
     private fun clipTable(): List<AnimatableParam> =
-        listOf(
-            clipScalar("brightness", R.string.studio_brightness, -1f, 1f, { it.brightness }) { e, v -> e.copy(brightness = v) },
-            clipScalar("contrast", R.string.studio_contrast, -1f, 1f, { it.contrast }) { e, v -> e.copy(contrast = v) },
-            clipScalar("saturation", R.string.studio_saturation, -100f, 100f, { it.saturation }) { e, v -> e.copy(saturation = v) },
-            clipScalar("hueDegrees", R.string.studio_hue_shift, -180f, 180f, { it.hueDegrees }) { e, v -> e.copy(hueDegrees = v) },
-            clipScalar("speed", R.string.studio_speed, 0.25f, 4f, { it.speed }) { e, v -> e.copy(speed = v) },
-            clipScalar(
-                "rotationDegrees",
-                R.string.studio_rotate,
-                -180f,
-                180f,
-                { it.rotationDegrees },
-            ) { e, v -> e.copy(rotationDegrees = v) },
-        )
+        ClipParams.all.map { param ->
+            AnimatableParam(
+                id = param.id,
+                kind = ParamKind.SCALAR,
+                labelRes = clipLabel(param.id),
+                min = param.min,
+                max = param.max,
+                readClip = { ParamValue.Scalar(param.read(it)) },
+                writeClip = { e, v -> ClipParams.applyTo(e, mapOf(param.id to v)) },
+            )
+        }
+
+    private fun clipLabel(id: ParamId): Int =
+        when (id.value.removePrefix(CLIP)) {
+            "brightness" -> R.string.studio_brightness
+            "contrast" -> R.string.studio_contrast
+            "saturation" -> R.string.studio_saturation
+            "hueDegrees" -> R.string.studio_hue_shift
+            "speed" -> R.string.studio_speed
+            "rotationDegrees" -> R.string.studio_rotate
+            else -> 0
+        }
 
     // Ranges follow the old Customize sliders, so an animated value never leaves what they offered.
     private fun sceneTable(): List<AnimatableParam> =

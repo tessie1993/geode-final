@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <utility>
 
 #include "CompositeGrade.hpp"
 #include "SharedParams.hpp"
 #include "geode/viz/LiveSignal.hpp"
+#include "geode/viz/MilkdropAdaptation.hpp"
 #include "geode/viz/StyleProfiles.hpp"
 #include "geode/render/Quad.hpp"
 
@@ -41,6 +43,9 @@ float Renderer::beginFrame(double timeSeconds) {
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
     }
+    featureBus_.step(frameFeatures_, dt);
+    frameBus_ = reducedMotion_.load(std::memory_order_relaxed) ? featurebus::calmed(featureBus_.values(), safety::kReducedMotionScale)
+                                                               : featureBus_.values();
     latchFramePcm();
     applyMilkRequests();
     applyOverlayUploads();
@@ -51,10 +56,15 @@ float Renderer::beginFrame(double timeSeconds) {
 }
 
 void Renderer::latchFramePcm() {
-    framePcmFrames_ = std::exchange(pendingPcmFrames_, 0);
+    frameSpanFrames_ = std::exchange(pendingPcmFrames_, 0);
+    frameSpanFresh_ = std::exchange(pendingPcmFresh_, 0);
+    std::copy(pendingPcm_.begin(), pendingPcm_.begin() + static_cast<std::ptrdiff_t>(frameSpanFrames_) * 2, frameSpan_.begin());
+    // The window is the newest kPcmWindowFrames of the span.
+    framePcmFrames_ = std::min(frameSpanFrames_, kPcmWindowFrames);
+    const int first = frameSpanFrames_ - framePcmFrames_;
     for (int i = 0; i < framePcmFrames_; ++i) {
-        const float left = pendingPcm_[static_cast<size_t>(2 * i)];
-        const float right = pendingPcm_[static_cast<size_t>(2 * i + 1)];
+        const float left = frameSpan_[static_cast<size_t>(2 * (first + i))];
+        const float right = frameSpan_[static_cast<size_t>(2 * (first + i) + 1)];
         framePcm_[static_cast<size_t>(2 * i)] = left;
         framePcm_[static_cast<size_t>(2 * i + 1)] = right;
         framePcmMono_[static_cast<size_t>(i)] = 0.5f * (left + right);
@@ -84,6 +94,7 @@ Scene* Renderer::resolveActiveScene() {
         }
         activeScene_ = requested;
         sceneJustSwitched_ = true;
+        requested->beginVisit();
     }
     return activeScene_;
 }
@@ -123,6 +134,7 @@ SceneParams Renderer::resolveParams(float dt) {
         layerParams_.rippleOverlayEnabled = false;
     }
     lastFinalParams_ = p;
+    stepLensEffects(dt);
     postRotationAngle_ = grade::integrateRotation(postRotationAngle_, p.rotation, dt);
     postCyclePhase_ = grade::integrateCyclePhase(postCyclePhase_, p.cycleSpeed, dt, p.colorCycle);
     postBeatPulse_ = postBeat_.step(live::hit(frameFeatures_), dt);
@@ -140,6 +152,19 @@ void Renderer::applyCustomization(SceneParams& p, float dt, bool reducedMotion) 
     frameEffects_ = shared ? SharedEffects::from(*shared) : SharedEffects{};
     camera_.step(shared ? CameraInput::from(*shared) : CameraInput{}, live::hit(frameFeatures_), dt, reducedMotion);
     activeExtras_ = extrasFor(sceneId, shared ? &*shared : nullptr);
+}
+
+void Renderer::stepLensEffects(float dt) {
+    const packs::StylePack* pack = activeScene_ != nullptr ? registry_.pack(activeScene_->id()) : nullptr;
+    const lens::LensSpec spec = pack != nullptr ? pack->lensEffects : lens::LensSpec{};
+    const lens::ParticleSpec particles = pack != nullptr ? pack->particles3d : lens::ParticleSpec{};
+    const int tier = static_cast<int>(thermal_.tier());
+    const bool optionalPasses = thermalTierInfo(thermal_.tier()).optionalPasses;
+    const bool reducedMotion = reducedMotion_.load(std::memory_order_relaxed);
+    const lens::Drive drive{live::level(frameFeatures_), live::hit(frameFeatures_)};
+    frameGlare_ = lensDrive_.step(spec, drive, tier, optionalPasses, reducedMotion, dt);
+    frameDof_ = lens::dofFor(spec, tier, optionalPasses);
+    frameParticles_ = particleFlight_.step(particles, drive, tier, reducedMotion, dt);
 }
 
 const mod::FamilyRanges& Renderer::rangesFor(const std::string& sceneId) {
@@ -165,6 +190,7 @@ void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {
         scene.setCamera(pose);
     }
     scene.setExtras(extras);
+    scene.setFeatureBus(frameBus_);
     scene.setQuality(qualityFor(scene.id()));
 }
 
@@ -194,7 +220,10 @@ void Renderer::resolveLayer(float dt) {
     // A Style that stops being drawable as Layer 2 (it became the active one) still fades out: its
     // scene is then Layer 1's, and its picture is read from there (layerTexture).
     frameLayer_ = layerMixer_.step(request, dt);
-    layerScene_ = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+    Scene* const layer = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+    // A Style that starts to be drawn as Layer 2 starts a visit; Layer 1's own Style is already on one.
+    if (layer != nullptr && layer != layerScene_ && layer != activeScene_) layer->beginVisit();
+    layerScene_ = layer;
 }
 
 const std::string& Renderer::layerStyleId(uint32_t name) {
@@ -234,6 +263,7 @@ void Renderer::deliverPcm(Scene& scene) {
     if (framePcmFrames_ <= 0) return;
     scene.acceptPcm(framePcmMono_.data(), framePcmFrames_);
     scene.acceptStereoPcm(framePcm_.data(), framePcmFrames_);
+    scene.acceptPcmSpan(frameSpan_.data(), frameSpanFrames_, frameSpanFresh_);
 }
 
 void Renderer::bindSecondaryTarget(const Framebuffer& target) {
@@ -325,13 +355,15 @@ void Renderer::drawSceneTarget(Scene& scene, const SceneParams& p, float dt) {
 }
 
 GLuint Renderer::applySharedEffects(float dt) {
+    // Depth of field first: it reads the depth the Style wrote into the scene target's alpha.
+    const GLuint sceneTex = dofPass_.apply(frameDof_, fboA_.tex(), renderWidth_, renderHeight_, quadVao_);
     if (!frameEffects_.active()) {
         sharedFx_.forgetHistory();
-        return fboA_.tex();
+        return sceneTex;
     }
     // A new Style starts its trails afresh rather than echoing the old one.
     if (sceneJustSwitched_) sharedFx_.forgetHistory();
-    return sharedFx_.apply(frameEffects_, fboA_.tex(), renderWidth_, renderHeight_, dt, timeSeconds_, quadVao_);
+    return sharedFx_.apply(frameEffects_, sceneTex, renderWidth_, renderHeight_, dt, timeSeconds_, quadVao_);
 }
 
 void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLuint sceneTex, GLuint targetFbo, float dt) {
@@ -387,6 +419,8 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.fx = fx;
     in.gateA = grade::gateFor(activeScene_->family()).toVec4();
     Scene* other = outgoingScene_ ? outgoingScene_ : activeScene_;
+    // A Style's own zoom, crossfaded with the transition so it never jumps when the picture changes.
+    in.fx.zoom *= milkdrop::crossfadedZoom(activeScene_->pictureZoom(), other->pictureZoom(), progress, outgoingScene_ != nullptr);
     in.gateB = grade::gateFor(other->family()).toVec4();
     // The Camera's flat moves for every picture whose Style does not move a camera of its own, and the
     // flat endless zoom for the ones whose renderer has none (the fluid family, and MilkDrop since its
@@ -411,21 +445,25 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.dither = !hdr;
     // A composite that would hand the picture on unchanged (the default look of most Styles) is not
     // drawn: the tonemap reads the scene target itself, one full-screen pass fewer (#311). Without the
-    // HDR pipeline the composite is the pass that writes the final picture, so it always runs.
-    const bool skipped = hdr && tile::compositeIsIdentity(CompositePass::lookOf(in));
+    // HDR pipeline the composite is the pass that writes the final picture, so it always runs. The 3D
+    // particle layer draws into the composite's target, so it keeps the composite on. (Depth of field
+    // needs no composite: sceneTex is already its focused picture.)
+    const bool skipped = hdr && !frameParticles_.on() && tile::compositeIsIdentity(CompositePass::lookOf(in));
+    const GLuint compositeFbo = hdr ? hdrPass_.compositeFbo() : finalFbo;
+    const tile::Size compositeSize = hdr ? frame : finalSize;
     if (!skipped) {
-        const GLuint compositeFbo = hdr ? hdrPass_.compositeFbo() : finalFbo;
-        const tile::Size compositeSize = hdr ? frame : finalSize;
         glBindFramebuffer(GL_FRAMEBUFFER, compositeFbo);
         Framebuffer::discardBound(compositeFbo);
         glViewport(0, 0, compositeSize.width, compositeSize.height);
         glDisable(GL_BLEND);
         compositePass_.draw(in);
+        // The 3D particle layer, added onto the picture as light, so the bloom catches it.
+        particlePass_.draw(frameParticles_, camera_.pose(), compositeFbo, compositeSize.width, compositeSize.height, quadVao_);
     }
     if (hdr) {
         const GLuint source = skipped ? sceneTex : hdrPass_.compositeTex();
         hdrPass_.resolve(tone::bloomFor(p.bloom, thermalTierInfo(thermal_.tier()).optionalPasses), source, finalFbo, finalSize.width,
-                         finalSize.height, quadVao_);
+                         finalSize.height, quadVao_, frameGlare_);
     }
     // The offscreen Render waits for each frame's own measurement, so every frame it writes is the one asked for.
     if (limited) noFlash_.present(dt, targetFbo, width_, height_, quadVao_, thermal_.offscreen());
