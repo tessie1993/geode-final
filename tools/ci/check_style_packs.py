@@ -160,9 +160,11 @@ FEEDBACK_FIELDS = {
     "tint": ("rgb", 0.0, 1.0), "center": ("pair", 0.0, 1.0), "react": ("number", 0.0, 1.0),
 }
 # What the warp paints into the loop (lib_feedback's fbPaint): the outer and inner borders (#363), each
-# needing its width above 0; FeedbackWarp.hpp kMaxBorderSize.
+# needing its width above 0 (FeedbackWarp.hpp kMaxBorderSize), and the streaks.
 FEEDBACK_BORDER = ("size", {"size": ("number", 0.0, 0.1), "color": ("rgb", 0.0, 1.0), "alpha": ("number", 0.0, 1.0)})
-FEEDBACK_PARTS = {"outer": FEEDBACK_BORDER, "inner": FEEDBACK_BORDER}
+# The streaks along the motion field (#386): FeedbackWarp.hpp kMinStreakCells, kMaxStreakCells.
+FEEDBACK_STREAKS = ("amount", {"amount": ("number", 0.0, 1.0), "color": ("rgb", 0.0, 1.0), "cells": ("int", 6, 40)})
+FEEDBACK_PARTS = {"outer": FEEDBACK_BORDER, "inner": FEEDBACK_BORDER, "streaks": FEEDBACK_STREAKS}
 FEEDBACK_EXTRAS = {"decay", "flight", "spin", "drift", "swirl"}
 FEEDBACK_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_feedback[ \t]*$", re.MULTILINE)
 FEEDBACK_SETTLES = re.compile(r"\b(fbSettle|fbWarp)\s*\(")
@@ -854,7 +856,8 @@ GOOD_MANIFESTS = {
         "extras": [{"name": "decay", "min": 0, "max": 2, "default": 1}],
         "feedback": {"decay": 0.5, "zoom": 1.2, "rotate": 0.1, "flow": [0, 0.05], "stretch": [1, 1.1], "warp": 0.3,
                      "tint": [1, 0.9, 0.8], "center": [0.5, 0.5], "react": 0.5, "shader": "warp.glsl",
-                     "outer": {"size": 0.02, "color": [1, 0.8, 0.6], "alpha": 0.5}, "inner": {"size": 0.01, "alpha": 0.3}},
+                     "outer": {"size": 0.02, "color": [1, 0.8, 0.6], "alpha": 0.5}, "inner": {"size": 0.01, "alpha": 0.3},
+                     "streaks": {"amount": 0.4, "color": [0.6, 0.8, 1], "cells": 20}},
         "reactivity": {"micro": ["bands"]},
     },
 }
@@ -984,6 +987,10 @@ def self_test() -> int:
         "feedback border too wide": setter(["loop", "feedback", "inner", "size"], 0.3),
         "feedback border that brightens": setter(["loop", "feedback", "outer", "color"], [1, 1, 1.5]),
         "feedback border with an unknown key": setter(["loop", "feedback", "inner", "glow"], 1),
+        "feedback streaks without an amount": setter(["loop", "feedback", "streaks"], {"cells": 12}),
+        "feedback streaks at amount 0": setter(["loop", "feedback", "streaks", "amount"], 0),
+        "feedback streaks in a broken grid": setter(["loop", "feedback", "streaks", "cells"], 12.5),
+        "feedback streaks too dense": setter(["loop", "feedback", "streaks", "cells"], 64),
         "feedback warp shader missing": lambda f, i, m, s: s.update({"loop": [("shader.glsl", LOOP_SHADER)]}),
         "feedback warp shader outside the folder": setter(["loop", "feedback", "shader"], "../warp.glsl"),
         "feedback warp shader without lib_feedback": lambda f, i, m, s: s.update(

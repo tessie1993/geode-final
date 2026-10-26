@@ -276,7 +276,7 @@ const FEEDBACK_VALUES = {
   uFbGrid: [32, 24], uFbMap: [0.995, -0.002, 0.002, 0.995], uFbShift: [0, 0], uFbStretch: [1, 1], uFbCenter: [0.5, 0.5],
   uFbAspect: 1, uFbWarp: 0.0025, uFbPhase: 3.7, uFbTexel: [0, 0], uFbDt: 1 / 60, uFbKeep: [0.987, 0.985, 0.983],
   uFbFloor: 1 / 256 / 60, uFbHalf: 0, uFbStep: 1 / 255, uFbSeed: 2220,
-  uFbOuter: [1, 1, 1, 0], uFbOuterSize: 0, uFbInner: [1, 1, 1, 0], uFbInnerSize: 0,
+  uFbOuter: [1, 1, 1, 0], uFbOuterSize: 0, uFbInner: [1, 1, 1, 0], uFbInnerSize: 0, uFbStreak: [1, 1, 1, 0], uFbStreakCell: 1 / 16,
 };
 const FEEDBACK_TEXTURES = { uFbPrev: 'history' };
 
@@ -557,9 +557,13 @@ function effectJobs(registry, size) {
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
   jobs.push(warpJob('feedback_warp_shared', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size));
-  // What the warp paints into the loop (lib_feedback's fbPaint): the borders (#363).
+  // What the warp paints into the loop (lib_feedback's fbPaint): the borders (#363), and the streaks
+  // along a motion field that grows and turns fast enough to show them everywhere but the centre (#386).
   jobs.push(warpJob('feedback_warp_borders', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size, {
     uFbOuter: [1, 0.8, 0.5, 0.6], uFbOuterSize: 0.03, uFbInner: [0.3, 0.6, 1, 0.4], uFbInnerSize: 0.02,
+  }));
+  jobs.push(warpJob('feedback_warp_streaks', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size, {
+    uFbMap: [0.99, -0.008, 0.008, 0.99], uFbStreak: [0.6, 0.9, 1, 1], uFbStreakCell: 1 / 12,
   }));
   jobs.push(...settleJobs(registry));
   return jobs;

@@ -587,6 +587,8 @@ void ShaderScene::uploadWarp(int width, int height) {
     glUniform1f(u.loc("uFbOuterSize"), step.outer.size);
     glUniform4f(u.loc("uFbInner"), step.inner.color[0], step.inner.color[1], step.inner.color[2], step.inner.cover);
     glUniform1f(u.loc("uFbInnerSize"), step.inner.size);
+    glUniform4f(u.loc("uFbStreak"), step.streaks.color[0], step.streaks.color[1], step.streaks.color[2], step.streaks.cover);
+    glUniform1f(u.loc("uFbStreakCell"), step.streaks.size);
 }
 
 void ShaderScene::presentFeedback() {

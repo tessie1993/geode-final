@@ -294,6 +294,30 @@ TEST(StyleManifest, ReadsTheBordersItPaintsIntoTheLoop) {
     EXPECT_EQ(plain->feedback.inner, geode::viz::feedback::Border{});
 }
 
+TEST(StyleManifest, ReadsTheStreaksItDrawsAlongTheMotion) {
+    std::vector<packs::PackProblem> problems;
+    const auto pack = manifest("x", R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"],
+        "feedback": {"rotate": 0.5, "streaks": {"amount": 0.4, "color": [0.5, 0.75, 1], "cells": 24.4}}})", problems);
+    ASSERT_TRUE(pack.has_value()) << (problems.empty() ? "" : problems.front().detail);
+    const geode::viz::feedback::Streaks& streaks = pack->feedback.streaks;
+    EXPECT_FLOAT_EQ(streaks.amount, 0.4f);
+    EXPECT_FLOAT_EQ(streaks.color[0], 0.5f);
+    EXPECT_FLOAT_EQ(streaks.color[1], 0.75f);
+    EXPECT_FLOAT_EQ(streaks.color[2], 1.0f);
+    EXPECT_EQ(streaks.cells, 24);
+    // Held to the grid's range.
+    const auto dense = manifest("y", R"({"version": 1, "id": "y", "label": "Y", "family": "shader", "inputs": ["previous_frame"],
+        "feedback": {"streaks": {"amount": 0.4, "cells": 400}}})", problems);
+    ASSERT_TRUE(dense.has_value());
+    EXPECT_EQ(dense->feedback.streaks.cells, geode::viz::feedback::kMaxStreakCells);
+    EXPECT_TRUE(problems.empty());
+    // A loop that names none draws none.
+    const auto plain = manifest("z", R"({"version": 1, "id": "z", "label": "Z", "family": "shader", "inputs": ["previous_frame"],
+        "feedback": {}})", problems);
+    ASSERT_TRUE(plain.has_value());
+    EXPECT_EQ(plain->feedback.streaks, geode::viz::feedback::Streaks{});
+}
+
 TEST(StyleManifest, RejectsBadFeedback) {
     const char* bad[] = {
         R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": 0.5})",
@@ -309,6 +333,10 @@ TEST(StyleManifest, RejectsBadFeedback) {
         R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"outer": {"size": "wide"}}})",
         R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"inner": {"color": [1, 1]}}})",
         R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"inner": {"alpha": [1]}}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"streaks": true}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"streaks": {"amount": "some"}}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"streaks": {"cells": [12]}}})",
+        R"({"version": 1, "id": "x", "label": "X", "family": "shader", "inputs": ["previous_frame"], "feedback": {"streaks": {"color": 1}}})",
     };
     for (const char* text : bad) {
         std::vector<packs::PackProblem> problems;

@@ -536,6 +536,66 @@ TEST(FeedbackPaint, TheMotionEasesTheBordersInWithEachVisit) {
     EXPECT_EQ(feedback::Motion{}.step(feedback::WarpSpec{}, feedback::Drive{}, dt).outer.cover, 0.0f);
 }
 
+// ---- the streaks along the motion field (#386) ----------------------------------------------------
+
+TEST(FeedbackStreaks, PaintOnlyWithAnAmountOnTheirGrid) {
+    feedback::Streaks streaks;
+    streaks.amount = 0.75f;
+    streaks.color = {0.2f, 0.4f, 0.8f};
+    streaks.cells = 20;
+    const feedback::Paint full = feedback::streakPaint(streaks, 0.5f, feedback::kPaintFadeSeconds);
+    EXPECT_NEAR(full.cover, 0.5f, 1e-6f);
+    EXPECT_FLOAT_EQ(full.size, 0.05f);
+    EXPECT_FLOAT_EQ(full.color[0], 0.2f);
+    EXPECT_FLOAT_EQ(full.color[1], 0.4f);
+    EXPECT_FLOAT_EQ(full.color[2], 0.8f);
+    EXPECT_NEAR(feedback::streakPaint(streaks, 0.5f, 0.5f * feedback::kPaintFadeSeconds).cover, 0.25f, 1e-6f);
+    EXPECT_EQ(feedback::streakPaint(streaks, 0.0f, feedback::kPaintFadeSeconds).cover, 0.0f);
+    streaks.amount = 0.0f;
+    EXPECT_EQ(feedback::streakPaint(streaks, 0.5f, feedback::kPaintFadeSeconds).cover, 0.0f);
+    // Off by default, on the default grid.
+    const feedback::Paint none = feedback::streakPaint(feedback::Streaks{}, 0.5f, feedback::kPaintFadeSeconds);
+    EXPECT_EQ(none.cover, 0.0f);
+    EXPECT_FLOAT_EQ(none.size, 1.0f / static_cast<float>(feedback::kDefaultStreakCells));
+}
+
+TEST(FeedbackStreaks, AreHeldToTheirRanges) {
+    feedback::WarpSpec wild;
+    wild.streaks.amount = 2.0f;
+    wild.streaks.color = {-1.0f, kNan, 3.0f};
+    wild.streaks.cells = 500;
+    feedback::WarpSpec held = feedback::sanitized(wild);
+    EXPECT_FLOAT_EQ(held.streaks.amount, 1.0f);
+    EXPECT_FLOAT_EQ(held.streaks.color[0], 0.0f);
+    EXPECT_FLOAT_EQ(held.streaks.color[1], 1.0f);
+    EXPECT_FLOAT_EQ(held.streaks.color[2], 1.0f);
+    EXPECT_EQ(held.streaks.cells, feedback::kMaxStreakCells);
+    wild.streaks.amount = kNan;
+    wild.streaks.cells = 1;
+    held = feedback::sanitized(wild);
+    EXPECT_FLOAT_EQ(held.streaks.amount, 0.0f);
+    EXPECT_EQ(held.streaks.cells, feedback::kMinStreakCells);
+    // The paint is held too: the coarsest grid at most, the finest at least.
+    EXPECT_FLOAT_EQ(feedback::streakPaint(wild.streaks, 0.5f, 1.0f).size, 1.0f / static_cast<float>(feedback::kMinStreakCells));
+    wild.streaks.cells = 99;
+    EXPECT_FLOAT_EQ(feedback::streakPaint(wild.streaks, 0.5f, 1.0f).size, 1.0f / static_cast<float>(feedback::kMaxStreakCells));
+}
+
+TEST(FeedbackStreaks, TheMotionEasesThemInWithEachVisit) {
+    feedback::WarpSpec spec;
+    spec.streaks.amount = 0.6f;
+    spec.streaks.cells = 10;
+    feedback::Motion motion;
+    const float dt = 1.0f / 60.0f;
+    const feedback::Step first = motion.step(spec, feedback::Drive{}, dt);
+    EXPECT_NEAR(first.streaks.cover, feedback::paintPerFrame(0.6f, dt) * feedback::paintFade(dt), 1e-7f);
+    EXPECT_FLOAT_EQ(first.streaks.size, 0.1f);
+    feedback::Step later = first;
+    for (int i = 0; i < 120; ++i) later = motion.step(spec, feedback::Drive{}, dt);
+    EXPECT_NEAR(later.streaks.cover, feedback::paintPerFrame(0.6f, dt), 1e-7f);
+    EXPECT_EQ(feedback::Motion{}.step(feedback::WarpSpec{}, feedback::Drive{}, dt).streaks.cover, 0.0f);
+}
+
 // ---- the store -------------------------------------------------------------------------------------
 
 TEST(FeedbackStore, KnowsEachFormatsSpacing) {

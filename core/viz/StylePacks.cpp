@@ -436,8 +436,17 @@ bool readBorder(const Value& declared, const char* key, feedback::Border& out, c
            readNumber(*border, "alpha", out.alpha, where, problems);
 }
 
+// The streaks along the motion field, {"amount", "color", "cells"}, each part optional; true when absent.
+bool readStreaks(const Value& declared, feedback::Streaks& out, const std::string& where, std::vector<PackProblem>& problems) {
+    bool ok = true;
+    const Value* streaks = section(declared, "streaks", ok, where, problems);
+    if (streaks == nullptr) return ok;
+    return readNumber(*streaks, "amount", out.amount, where, problems) && readNumbers(*streaks, "color", out.color, where, problems) &&
+           readWhole(*streaks, "cells", out.cells, where, problems);
+}
+
 // "feedback": the warp layer (FeedbackWarp.hpp), {"decay", "zoom", "rotate", "flow", "stretch", "warp",
-// "tint", "center", "react", "outer", "inner", "shader"}, every part optional. Only a shader Style draws it, and it reads
+// "tint", "center", "react", "outer", "inner", "streaks", "shader"}, every part optional. Only a shader Style draws it, and it reads
 // the warped picture as its previous frame, so it must declare that input.
 std::optional<Feedback> parseFeedback(const Value& manifest, const StylePack& pack, const std::string& where,
                                       std::vector<PackProblem>& problems) {
@@ -460,7 +469,7 @@ std::optional<Feedback> parseFeedback(const Value& manifest, const StylePack& pa
          readNumbers(*declared, "stretch", spec.stretch, where, problems) && readNumber(*declared, "warp", spec.warp, where, problems) &&
          readNumbers(*declared, "tint", spec.tint, where, problems) && readNumbers(*declared, "center", spec.center, where, problems) &&
          readNumber(*declared, "react", spec.react, where, problems) && readBorder(*declared, "outer", spec.outer, where, problems) &&
-         readBorder(*declared, "inner", spec.inner, where, problems);
+         readBorder(*declared, "inner", spec.inner, where, problems) && readStreaks(*declared, spec.streaks, where, problems);
     if (!ok) return std::nullopt;
     if (const Value* shader = declared->get(kShaderKey)) {
         if (shader->kind() != Value::Kind::String || shader->string().empty()) {

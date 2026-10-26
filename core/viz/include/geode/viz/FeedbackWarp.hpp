@@ -62,7 +62,8 @@ inline constexpr int kGridRows = 24;
 inline constexpr int kGridVertices = kGridColumns * kGridRows * 6;
 
 // What the warp paints into the loop before it keeps it (lib_feedback.glsl fbPaint): borders, whose
-// copies the zoom carries inward into a tunnel or outward off the frame (#363). What is painted is a
+// copies the zoom carries inward into a tunnel or outward off the frame (#363), and short streaks laid
+// along the motion field, which the loop then draws out into trails (#386). What is painted is a
 // source of light like the Style's own drawing, so the loop's decay still bounds it; it eases in over
 // the first kPaintFadeSeconds of each visit, so nothing appears in one frame.
 inline constexpr float kMaxBorderSize = 0.1f;
@@ -76,6 +77,22 @@ struct Border {
     float alpha = 0.0f;
 
     bool operator==(const Border&) const = default;
+};
+
+// The streaks' grid: `cells` cells down the frame (square, so more across a wide one), each holding one
+// short line through its centre along the way the picture moves there, longer where it moves faster
+// and gone where it is still.
+inline constexpr int kMinStreakCells = 6;
+inline constexpr int kMaxStreakCells = 40;
+inline constexpr int kDefaultStreakCells = 16;
+
+// The streaks: painted in `color` with `amount`, the share of it a line takes on over a second.
+struct Streaks {
+    float amount = 0.0f;
+    std::array<float, 3> color{1.0f, 1.0f, 1.0f};
+    int cells = kDefaultStreakCells;
+
+    bool operator==(const Streaks&) const = default;
 };
 
 struct WarpSpec {
@@ -101,6 +118,8 @@ struct WarpSpec {
     // The borders painted into the loop (#363); off while their size or alpha is 0.
     Border outer;
     Border inner;
+    // The streaks along the motion field (#386); off while their amount is 0.
+    Streaks streaks;
 
     bool operator==(const WarpSpec&) const = default;
 };
@@ -133,8 +152,8 @@ struct Affine {
     std::array<float, 2> shift{0.0f, 0.0f};
 };
 
-// One frame of a border as the warp paints it: its colour and the share of it painted this frame
-// (`cover`, 0 while the border is off), and its width in frame heights.
+// One frame of a border or the streaks as the warp paints them: the colour and the share of it painted
+// this frame (`cover`, 0 while off), and the border's width or the streaks' cell, in frame heights.
 struct Paint {
     std::array<float, 3> color{1.0f, 1.0f, 1.0f};
     float cover = 0.0f;
@@ -159,6 +178,7 @@ struct Step {
     // The borders painted this frame, before the keep.
     Paint outer;
     Paint inner;
+    Paint streaks;
 };
 
 // How much faster than the Style's own pace the warp moves: the speed times (1 + react x (swell +
@@ -190,6 +210,10 @@ float paintFade(float age);
 // A border as one frame of `dt` paints it, `age` seconds into the visit: nothing while its size or
 // alpha is 0.
 Paint borderPaint(const Border& border, float dt, float age);
+
+// The streaks as one frame of `dt` paints them, `age` seconds into the visit: nothing while their
+// amount is 0; `size` is one cell of their grid, 1 / cells frame heights.
+Paint streakPaint(const Streaks& streaks, float dt, float age);
 
 // `p` through `affine`: map * p + shift.
 std::array<float, 2> apply(const Affine& affine, const std::array<float, 2>& p);

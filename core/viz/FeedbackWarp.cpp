@@ -34,6 +34,14 @@ Border sanitizedBorder(const Border& border) {
     return out;
 }
 
+Streaks sanitizedStreaks(const Streaks& streaks) {
+    Streaks out;
+    out.amount = unit(streaks.amount);
+    for (size_t c = 0; c < 3; ++c) out.color[c] = held(streaks.color[c], 0.0f, 1.0f, 1.0f);
+    out.cells = std::clamp(streaks.cells, kMinStreakCells, kMaxStreakCells);
+    return out;
+}
+
 }  // namespace
 
 WarpSpec sanitized(const WarpSpec& spec) {
@@ -52,6 +60,7 @@ WarpSpec sanitized(const WarpSpec& spec) {
     out.react = held(spec.react, 0.0f, kMaxReact, 0.0f);
     out.outer = sanitizedBorder(spec.outer);
     out.inner = sanitizedBorder(spec.inner);
+    out.streaks = sanitizedStreaks(spec.streaks);
     return out;
 }
 
@@ -127,6 +136,15 @@ Paint borderPaint(const Border& raw, float dt, float age) {
     return out;
 }
 
+Paint streakPaint(const Streaks& raw, float dt, float age) {
+    const Streaks streaks = sanitizedStreaks(raw);
+    Paint out;
+    out.color = streaks.color;
+    out.size = 1.0f / static_cast<float>(streaks.cells);
+    out.cover = paintPerFrame(streaks.amount, dt) * paintFade(age);
+    return out;
+}
+
 std::array<float, 2> apply(const Affine& affine, const std::array<float, 2>& p) {
     const auto& m = affine.map;
     return {m[0] * p[0] + m[2] * p[1] + affine.shift[0], m[1] * p[0] + m[3] * p[1] + affine.shift[1]};
@@ -153,6 +171,7 @@ Step Motion::step(const WarpSpec& raw, const Drive& drive, float dt) {
     age_ = std::min(age_ + t, kPaintFadeSeconds);
     out.outer = borderPaint(spec.outer, t, age_);
     out.inner = borderPaint(spec.inner, t, age_);
+    out.streaks = streakPaint(spec.streaks, t, age_);
     return out;
 }
 
