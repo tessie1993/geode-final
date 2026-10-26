@@ -65,6 +65,16 @@ struct FeatureValues {
     float stereoWidth = 0.0f;
     float stereoPan = 0.0f;
     float stereoCorrelation = 1.0f;
+
+    // ---- the bands against the song's usual level (#319), bass, mid and treble in that order ----
+    // Each band read against its own usual level in this song, so a quiet song and a loud one, or a
+    // bass-light mix and a bass-heavy one, move a picture alike. The level follows quickly and reads
+    // 0.5 at the usual level and 1 at twice it; the presence is the same reading followed over
+    // seconds (how much of the band the passage has); the hits rise when the band jumps well above
+    // its usual level and decay.
+    std::array<float, 3> bandLevel{};
+    std::array<float, 3> bandHits{};
+    std::array<float, 3> bandPresence{};
 };
 
 namespace featurebus {
@@ -83,13 +93,34 @@ private:
     bool rising_ = false;
 };
 
+// One band against its usual level in this song (#319). The usual level follows what is heard, up
+// over seconds and down more slowly, and holds through silence, so a pause does not make the next
+// note read as a jump; it starts at the first level heard.
+class UsualBand {
+public:
+    void step(float band, float dt);
+    float level() const { return level_; }
+    float presence() const { return presence_; }
+    float hits() const { return hit_.value(); }
+    float usual() const { return usual_; }
+    void reset();
+
+private:
+    float usual_ = 0.0f;
+    bool heard_ = false;
+    float level_ = 0.0f;
+    float presence_ = 0.0f;
+    bool armed_ = true;
+    Hit hit_;
+};
+
 // One-pole toward `target` with its own rise and fall rates, framerate independent.
 float slew(float current, float target, float dt, float riseHz, float fallHz);
 // Shortest signed step from `from` to `to` on the 0..1 circle.
 float wrappedStep(float from, float to);
 // How far a tempo is trusted from the tracker's confidence and stability, 0..1.
 float trustOf(float pulseConfidence, float tempoStability);
-// The values with every hit (the drums, the downbeat, the one-shot hits and the strikes) scaled by `scale`,
+// The values with every hit (the drums, the downbeat, the one-shot hits, the strikes and the bands' hits) scaled by `scale`,
 // for Reduce motion; the slow values, the timbre and the space are left as they are.
 FeatureValues calmed(const FeatureValues& v, float scale);
 
@@ -131,6 +162,23 @@ constexpr HitShape kArrivalHit{0.15f, 1.2f};
 constexpr HitShape kDropGlow{0.6f, 0.12f};
 constexpr HitShape kArrivalGlow{0.8f, 0.2f};
 
+// The bands against their usual level (#319). A band softer than kAudible is not heard and leaves its
+// usual level where it is; the usual level never falls below kUsualFloor, so a near-silent band does
+// not read every whisper as a jump. A hit fires when the band reaches kBandHitRatio times its usual
+// level, with half its strength there and all of it at twice that, and fires again once the band has
+// fallen back under kBandRearmRatio.
+constexpr size_t kBands = 3;
+constexpr float kAudible = 1e-3f;
+constexpr float kUsualFloor = 0.02f;
+constexpr float kUsualRiseSeconds = 4.0f;
+constexpr float kUsualFallSeconds = 16.0f;
+constexpr float kLevelRiseHz = 20.0f;
+constexpr float kLevelFallHz = 6.0f;
+constexpr float kPresenceHz = 0.5f;
+constexpr float kBandHitRatio = 1.5f;
+constexpr float kBandRearmRatio = 1.1f;
+constexpr HitShape kBandHit{0.02f, 8.0f};
+
 // Timbre is averaged between latches and glides to each new average. A latch comes every phrase of
 // kBarsPerPhrase trusted downbeats (no sooner than kMinLatchSeconds), at a section boundary, or after
 // kFallbackLatchSeconds without either; the first comes kFirstLatchSeconds in.
@@ -158,6 +206,7 @@ private:
     void stepRhythm(const GeodeFeatureFrame& f, float dt);
     void stepStructure(const GeodeFeatureFrame& f, float dt);
     void stepTimbre(const GeodeFeatureFrame& f, float dt);
+    void stepBands(const GeodeFeatureFrame& f, float dt);
 
     FeatureValues values_;
     featurebus::Hit kick_;
@@ -178,17 +227,20 @@ private:
     std::array<float, 4> sums_{};
     std::array<float, 4> targets_{0.0f, 0.5f, 0.0f, 0.0f};
     float fluxPeak_ = featurebus::kFluxFloor;
+    std::array<featurebus::UsualBand, featurebus::kBands> bands_;
 };
 
 // The uniforms ShaderScene uploads from the bus, as lib_scene_features.glsl declares them, in upload order.
 // A host test holds the list, the library and the shipped Styles to each other: every one is declared,
 // nothing else is, and at least one Style reads each.
 // clang-format off
-constexpr std::array<const char*, 24> kFeatureUniforms = {
+constexpr std::array<const char*, 33> kFeatureUniforms = {
     "uKick", "uSnare", "uHat", "uBeatInBar", "uDownbeat", "uDownbeatConfidence", "uPulseConfidence", "uTempoStability",
     "uNovelty", "uSection", "uBuildup", "uDrop", "uArrival", "uMacro", "uSectionHit", "uDropHit", "uArrivalHit",
     "uCentroid", "uHarmonicity", "uFlux", "uOnset",
     "uStereoWidth", "uStereoPan", "uStereoCorrelation",
+    "uBassLevel", "uMidLevel", "uTrebleLevel", "uBassHits", "uMidHits", "uTrebleHits",
+    "uBassPresence", "uMidPresence", "uTreblePresence",
 };
 // clang-format on
 // The values in kFeatureUniforms' order.

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <vector>
 
 #include "geode/viz/FeatureBus.hpp"
@@ -458,6 +459,145 @@ TEST(FeatureBusSpace, StereoValuesGlideAndAreClamped) {
     EXPECT_NEAR(bus.values().stereoCorrelation, 1.0f - 1.5f * k, kTolerance);
 }
 
+// ---- the bands against their usual level (#319) ---------------------------------------------------------
+
+void run(fb::UsualBand& band, float level, float seconds) {
+    const int frames = static_cast<int>(std::lround(seconds / kDt));
+    for (int i = 0; i < frames; ++i) band.step(level, kDt);
+}
+
+TEST(FeatureBusBands, ASteadyBandReadsHalfAtItsUsualLevelAndNeverHits) {
+    fb::UsualBand band;
+    band.step(0.4f, kDt);
+    EXPECT_EQ(band.usual(), 0.4f) << "starts at the first level heard";
+    run(band, 0.4f, 30.0f);
+    EXPECT_EQ(band.usual(), 0.4f);
+    EXPECT_EQ(band.level(), 0.5f);
+    EXPECT_EQ(band.presence(), 0.5f);
+    EXPECT_EQ(band.hits(), 0.0f);
+}
+
+TEST(FeatureBusBands, AJumpWellAboveTheUsualLevelHitsOnceUntilTheBandFallsBack) {
+    fb::UsualBand band;
+    run(band, 0.4f, 30.0f);
+    band.step(0.8f, kDt);
+    EXPECT_GT(band.hits(), 0.0f);
+    EXPECT_LT(band.hits(), 0.6f) << "rises over the attack instead of stepping";
+    band.step(0.8f, kDt);
+    const float usual = band.usual();
+    EXPECT_GT(usual, 0.4f);
+    EXPECT_NEAR(band.hits(), 0.5f * 0.8f / (0.4f + 0.4f * (1.0f - std::exp(-kDt / fb::kUsualRiseSeconds))) / fb::kBandHitRatio,
+                1e-3f);
+    run(band, 0.8f, 0.25f);
+    EXPECT_GT(band.level(), 0.85f);
+    EXPECT_LT(band.presence(), 0.6f) << "the presence follows over seconds";
+    run(band, 0.8f, 1.0f);
+    EXPECT_LT(band.hits(), 0.01f) << "a held jump is one hit";
+    run(band, 0.4f, 0.5f);
+    band.step(0.8f, kDt);
+    band.step(0.8f, kDt);
+    EXPECT_GT(band.hits(), 0.3f) << "falling back re-arms it";
+}
+
+TEST(FeatureBusBands, AJumpShortOfTheRatioDoesNotHit) {
+    fb::UsualBand band;
+    run(band, 0.4f, 30.0f);
+    run(band, 0.4f * fb::kBandHitRatio * 0.98f, 0.5f);
+    EXPECT_EQ(band.hits(), 0.0f);
+}
+
+TEST(FeatureBusBands, AHeldBandAboveTheRearmLevelDoesNotHitAgain) {
+    fb::UsualBand band;
+    run(band, 0.2f, 30.0f);
+    run(band, 0.6f, 0.05f);
+    run(band, 0.2f * fb::kBandRearmRatio * 1.3f, 0.02f);
+    run(band, 0.9f, 0.05f);
+    EXPECT_LT(band.hits(), 0.65f) << "never fell back under the rearm level";
+}
+
+TEST(FeatureBusBands, TheUsualLevelHoldsThroughSilence) {
+    fb::UsualBand band;
+    run(band, 0.4f, 10.0f);
+    run(band, 0.0f, 60.0f);
+    EXPECT_EQ(band.usual(), 0.4f);
+    EXPECT_EQ(band.level(), 0.0f);
+    EXPECT_EQ(band.presence(), 0.0f);
+    for (int i = 0; i < 120; ++i) {
+        band.step(0.4f, kDt);
+        ASSERT_EQ(band.hits(), 0.0f) << "the music coming back is not a jump";
+    }
+    EXPECT_NEAR(band.level(), 0.5f, 1e-3f);
+}
+
+TEST(FeatureBusBands, TheUsualLevelRisesFasterThanItFalls) {
+    fb::UsualBand rising;
+    run(rising, 0.2f, 30.0f);
+    run(rising, 0.6f, 4.0f);
+    EXPECT_NEAR(rising.usual(), 0.2f + 0.4f * (1.0f - std::exp(-4.0f / fb::kUsualRiseSeconds)), 1e-3f);
+    fb::UsualBand falling;
+    run(falling, 0.6f, 30.0f);
+    run(falling, 0.2f, 4.0f);
+    EXPECT_NEAR(falling.usual(), 0.6f - 0.4f * (1.0f - std::exp(-4.0f / fb::kUsualFallSeconds)), 1e-3f);
+    run(rising, 0.6f, 120.0f);
+    EXPECT_NEAR(rising.level(), 0.5f, 1e-3f) << "a louder song comes to read as usual";
+}
+
+TEST(FeatureBusBands, AFaintBandIsReadAgainstTheFloorAndSilenceIsNotHeard) {
+    fb::UsualBand faint;
+    run(faint, 0.005f, 10.0f);
+    EXPECT_EQ(faint.usual(), fb::kUsualFloor);
+    EXPECT_NEAR(faint.level(), 0.5f * 0.005f / fb::kUsualFloor, 1e-4f);
+    fb::UsualBand silent;
+    run(silent, fb::kAudible, 10.0f);
+    EXPECT_EQ(silent.usual(), 0.0f);
+    EXPECT_EQ(silent.level(), 0.0f);
+    fb::UsualBand broken;
+    broken.step(std::nanf(""), kDt);
+    broken.step(std::numeric_limits<float>::infinity(), kDt);
+    broken.step(2.0f, kDt);
+    EXPECT_EQ(broken.usual(), 1.0f) << "kept to 0..1, nothing not a number";
+    EXPECT_TRUE(std::isfinite(broken.level()));
+}
+
+TEST(FeatureBusBands, ResetStartsOver) {
+    fb::UsualBand band;
+    run(band, 0.7f, 5.0f);
+    band.step(1.0f, kDt);
+    band.reset();
+    EXPECT_EQ(band.usual(), 0.0f);
+    EXPECT_EQ(band.level(), 0.0f);
+    EXPECT_EQ(band.presence(), 0.0f);
+    EXPECT_EQ(band.hits(), 0.0f);
+    band.step(0.3f, kDt);
+    EXPECT_EQ(band.usual(), 0.3f);
+}
+
+TEST(FeatureBus, EachBandIsReadAgainstItsOwnUsualLevel) {
+    FeatureBus bus;
+    GeodeFeatureFrame f{};
+    f.bass = 0.6f;
+    f.mid = 0.2f;
+    f.treble = 0.05f;
+    run(bus, f, 30.0f);
+    for (size_t b = 0; b < fb::kBands; ++b) {
+        EXPECT_EQ(bus.values().bandLevel[b], 0.5f) << b;
+        EXPECT_EQ(bus.values().bandPresence[b], 0.5f) << b;
+    }
+    f.treble = 0.15f;
+    bus.step(f, kDt);
+    bus.step(f, kDt);
+    EXPECT_EQ(bus.values().bandHits[0], 0.0f);
+    EXPECT_EQ(bus.values().bandHits[1], 0.0f);
+    EXPECT_GT(bus.values().bandHits[2], 0.5f) << "the treble tripled";
+    EXPECT_GT(bus.values().bandLevel[2], bus.values().bandLevel[0]);
+    const auto uniforms = uniformValues(bus.values());
+    EXPECT_EQ(uniforms[29], bus.values().bandHits[2]);
+    bus.reset();
+    EXPECT_EQ(bus.values().bandHits[2], 0.0f);
+    bus.step(f, kDt);
+    EXPECT_EQ(bus.values().bandHits[2], 0.0f) << "a reset forgets the usual level, so nothing is a jump";
+}
+
 // ---- the whole bus -----------------------------------------------------------------------------------
 
 TEST(FeatureBus, SilenceSettlesAndHoldsStill) {
@@ -564,6 +704,21 @@ TEST(FeatureBus, ReduceMotionCalmsTheHitsAndNothingElse) {
     EXPECT_EQ(c.stereoCorrelation, 1.0f);
 }
 
+TEST(FeatureBus, ReduceMotionCalmsTheBandHitsButNotTheirLevels) {
+    FeatureValues v;
+    v.bandHits = {1.0f, 0.5f, 0.25f};
+    v.bandLevel = {0.5f, 0.5f, 0.5f};
+    v.bandPresence = {0.5f, 0.5f, 0.5f};
+    const FeatureValues c = fb::calmed(v, 0.4f);
+    EXPECT_NEAR(c.bandHits[0], 0.4f, kTolerance);
+    EXPECT_NEAR(c.bandHits[1], 0.2f, kTolerance);
+    EXPECT_NEAR(c.bandHits[2], 0.1f, kTolerance);
+    for (size_t b = 0; b < fb::kBands; ++b) {
+        EXPECT_EQ(c.bandLevel[b], 0.5f);
+        EXPECT_EQ(c.bandPresence[b], 0.5f);
+    }
+}
+
 TEST(FeatureBus, UniformValuesFollowTheUniformNames) {
     FeatureValues v;
     v.kick = 1.0f;
@@ -590,6 +745,9 @@ TEST(FeatureBus, UniformValuesFollowTheUniformNames) {
     v.stereoWidth = 22.0f;
     v.stereoPan = 23.0f;
     v.stereoCorrelation = 24.0f;
+    v.bandLevel = {25.0f, 26.0f, 27.0f};
+    v.bandHits = {28.0f, 29.0f, 30.0f};
+    v.bandPresence = {31.0f, 32.0f, 33.0f};
     const auto values = uniformValues(v);
     for (size_t u = 0; u < values.size(); ++u) EXPECT_EQ(values[u], static_cast<float>(u + 1)) << kFeatureUniforms[u];
 }
