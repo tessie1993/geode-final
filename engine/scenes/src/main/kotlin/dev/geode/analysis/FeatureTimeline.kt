@@ -1,6 +1,5 @@
 package dev.geode.analysis
 
-import dev.geode.engine.audio.DrumChannels
 import dev.geode.engine.audio.PulseReplay
 
 data class TimelineFrame(
@@ -17,12 +16,14 @@ class FeatureTimeline(
     val durationMs: Long = frames.lastOrNull()?.timeMs ?: 0L
     val averageEnergy: Float = if (frames.isEmpty()) 0f else frames.map { it.features.rms }.average().toFloat()
     val averageCentroid: Float = if (frames.isEmpty()) 0f else frames.map { it.features.centroid }.average().toFloat()
-    val bpm: Float = frames.lastOrNull()?.features?.bpm ?: 0f
+
+    /**
+     * The track's settled tempo (#302): the one its Song map lays the beat grid at, not wherever the
+     * last hop's tempo had drifted to by the fade-out. 0 when no tempo was heard.
+     */
+    val bpm: Float = SongMap.tempoOf(frames) ?: 0f
     val beatDensity: Float =
         if (frames.isEmpty()) 0f else frames.count { it.features.beat } / (frames.size / 60f + 1e-6f)
-
-    private val frameSpacingMs: Double =
-        if (frames.size > 1) durationMs.toDouble() / (frames.size - 1) else hopMs.toDouble()
 
     fun withBeatSensitivity(
         beatSensitivity: Float,
@@ -67,41 +68,18 @@ class FeatureTimeline(
         return FeatureTimeline(out, hopMs, key, hopRateHz)
     }
 
-    fun withDrumChannels(sampleRateHz: Int = 48_000): FeatureTimeline {
-        if (frames.isEmpty()) return this
-        val bandCount = frames[0].features.bands.size
-        if (bandCount == 0) return this
-        val out = ArrayList<TimelineFrame>(frames.size)
-        var anyChanged = false
-        DrumChannels(bandCount, hopRateHz, sampleRateHz).use { channels ->
-            for (fr in frames) {
-                val f = fr.features
-                if (f.bands.size != bandCount) {
-                    out += fr
-                    continue
-                }
-                channels.step(f.bands)
-                if (channels.kick == f.kick && channels.snare == f.snare && channels.hat == f.hat) {
-                    out += fr
-                    continue
-                }
-                anyChanged = true
-                out +=
-                    TimelineFrame(
-                        fr.timeMs,
-                        f.copy(kick = channels.kick, snare = channels.snare, hat = channels.hat),
-                    )
-            }
-        }
-        return if (anyChanged) FeatureTimeline(out, hopMs, key, hopRateHz) else this
+    /**
+     * The frame timed nearest [timeMs], the later one on a tie. Frames are stamped at the middle of
+     * their window (#302), so the first is not at 0 and the moment is found by time, not by counting
+     * hops from the start, which would draw the levels half a window early.
+     */
+    private fun indexAt(timeMs: Long): Int {
+        val after = framesUpTo(timeMs)
+        if (after == 0) return 0
+        if (after == frames.size) return frames.size - 1
+        val before = after - 1
+        return if (timeMs - frames[before].timeMs < frames[after].timeMs - timeMs) before else after
     }
-
-    private fun indexAt(timeMs: Long): Int =
-        if (frameSpacingMs > 0.0) {
-            Math.round(timeMs / frameSpacingMs).toInt().coerceIn(0, frames.size - 1)
-        } else {
-            0
-        }
 
     /**
      * The features to draw at [timeMs]. With a [spanMs], the span is one rendered frame: the

@@ -7,6 +7,7 @@ import dev.geode.feature.studio.api.EditCut
 import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSource
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
@@ -14,6 +15,7 @@ import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderTrack
+import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.NewRender
 import dev.geode.feature.studio.handlers.edit.EditorProjectFormat
 import org.json.JSONArray
@@ -43,8 +45,12 @@ internal object RenderSpecFormat {
             .put(LENGTH, length(render.length))
             .put(PROJECT, render.project.value)
             .put(LOUDNESS, render.extras.loudness.name)
+            .put(CAPTIONS, render.extras.captions)
+            .put(TITLE_CARD, render.extras.titleCard)
+            .put(END_CARD, render.extras.endCard)
             .putOpt(MILKDROP, render.milkdrop)
             .putOpt(EDIT, render.edit?.let(::edit))
+            .putOpt(MADE_FROM, render.madeFrom?.let(::madeFrom))
             .toString()
     }
 
@@ -67,10 +73,25 @@ internal object RenderSpecFormat {
             format = format,
             length = lengthOf(o.optJSONObject(LENGTH)),
             project = ProjectId(o.getLong(PROJECT)),
-            extras = RenderExtras(enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS)),
+            extras =
+                RenderExtras(
+                    loudness = enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS),
+                    captions = o.optBoolean(CAPTIONS, false),
+                    titleCard = o.optBoolean(TITLE_CARD, false),
+                    endCard = o.optBoolean(END_CARD, false),
+                ),
             milkdrop = if (o.has(MILKDROP)) o.getString(MILKDROP) else null,
             edit = o.optJSONObject(EDIT)?.let(::editOf),
+            madeFrom = o.optJSONObject(MADE_FROM)?.let(::madeFromOf),
         )
+    }
+
+    private fun madeFrom(made: MadeFrom): JSONObject = JSONObject().put(FILE, made.file).put(KIND, made.kind.name)
+
+    /** Null when the kind is not one this version knows: the video then lands as what made it says. */
+    private fun madeFromOf(o: JSONObject): MadeFrom? {
+        val kind = VideoKind.entries.firstOrNull { it.name == o.optString(KIND) } ?: return null
+        return MadeFrom(o.getString(FILE), kind)
     }
 
     private fun edit(job: EditJob): JSONObject =
@@ -78,9 +99,15 @@ internal object RenderSpecFormat {
             .put(NAME, job.name)
             .put(SOURCES, job.sources.name)
             .put(CUT, cut(job.cut))
+            .put(LOUDNESS, job.loudness.name)
 
     private fun editOf(o: JSONObject): EditJob =
-        EditJob(o.optString(NAME), cutOf(o.getJSONObject(CUT)), enumOr(o.optString(SOURCES), EditSources.REFERENCE))
+        EditJob(
+            o.optString(NAME),
+            cutOf(o.getJSONObject(CUT)),
+            enumOr(o.optString(SOURCES), EditSources.REFERENCE),
+            enumOr(o.optString(LOUDNESS), RenderLoudness.LEAVE_AS_IS),
+        )
 
     private fun cut(cut: EditCut): JSONObject =
         when (cut) {
@@ -112,10 +139,14 @@ internal object RenderSpecFormat {
         EditSource(o.getString(FILE), o.optString(NAME), Millis(o.optLong(LENGTH_MS)), o.optInt(WIDTH), o.optInt(HEIGHT))
 
     private fun track(track: RenderTrack): JSONObject =
-        JSONObject().put(ID, track.id.value).put(TITLE, track.title).put(LENGTH_MS, track.length.value)
+        JSONObject()
+            .put(ID, track.id.value)
+            .put(TITLE, track.title)
+            .put(LENGTH_MS, track.length.value)
+            .put(ARTIST, track.artist)
 
     private fun trackOf(o: JSONObject): RenderTrack =
-        RenderTrack(TrackId(o.getString(ID)), o.optString(TITLE), Millis(o.optLong(LENGTH_MS)))
+        RenderTrack(TrackId(o.getString(ID)), o.optString(TITLE), Millis(o.optLong(LENGTH_MS)), o.optString(ARTIST))
 
     private fun look(look: RenderLook): JSONObject =
         when (look) {
@@ -183,4 +214,9 @@ internal object RenderSpecFormat {
     private const val FILE = "file"
     private const val WIDTH = "width"
     private const val HEIGHT = "height"
+    private const val MADE_FROM = "madeFrom"
+    private const val CAPTIONS = "captions"
+    private const val TITLE_CARD = "titleCard"
+    private const val END_CARD = "endCard"
+    private const val ARTIST = "artist"
 }

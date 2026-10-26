@@ -163,6 +163,7 @@ internal fun EditPlace(
             )
         is EditScreenModel.OneClip -> ClipEditorScreen(model.model, onAction, modifier, tools)
         is EditScreenModel.Cut -> TimelineScreen(model.model, onAction, modifier, tools, notice)
+        is EditScreenModel.Short -> ShortScreen(model.model, onAction, modifier, tools)
     }
 }
 

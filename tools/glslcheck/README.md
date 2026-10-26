@@ -59,7 +59,8 @@ dither and the floor must stall into a ghost, which proves the check can tell.
   the shader never reads them. That is a finding about the shader, not an
   error.
 - Textures are named stand-ins (`audio`, `palette`, `dye`, ...), RGBA8 where
-  the app uses float formats. The shared Style inputs' noise (`lib_inputs.glsl`)
+  the app uses float formats. A Style's own images (its manifest's
+  `"textures"`) are the real files, with the pack's wrap and filter. The shared Style inputs' noise (`lib_inputs.glsl`)
   is drawn as `core/viz/StyleInputs.cpp` draws it, from the same seed.
 - A Style whose linked program still reads a shared input (`uNoiseVol`,
   `uPrevFrame`, `uFrame`, ...) that its manifest's `inputs` does not declare

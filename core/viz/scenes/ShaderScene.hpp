@@ -12,12 +12,14 @@
 #include "geode/viz/AudioInputs.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
+#include "geode/render/ImageDecoder.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
 #include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/FrameRate.hpp"
 #include "geode/viz/MultiPass.hpp"
 #include "geode/viz/SharedInputs.hpp"
 #include "geode/viz/StyleInputs.hpp"
+#include "geode/viz/StylePacks.hpp"
 
 namespace geode::viz {
 
@@ -27,6 +29,15 @@ struct ShaderFeedback {
     feedback::WarpSpec spec;
     std::string vertex;
     std::string fragment;
+};
+
+// One image a shader Style ships in its pack ("textures", #391): decoded, with the sampler the shader reads
+// it by and the wrap and filter the pack chose.
+struct ShaderImage {
+    std::string uniform;
+    packs::TextureWrap wrap = packs::TextureWrap::Repeat;
+    packs::TextureFilter filter = packs::TextureFilter::Linear;
+    Image image;
 };
 
 // The engine's passes a shader Style opts into ("multipass", MultiPass.hpp): its spec and the resolve's
@@ -46,11 +57,12 @@ public:
 
     // `inputs`: the shared Style inputs the pack declares (StyleInputs.hpp); only these are made and bound.
     // `feedback`: the warp layer, when the pack opts into it; the Style then reads the warped picture as
-    // its previous frame and what it draws is kept.
+    // its previous frame and what it draws is kept. `images`: the pack's own images, at most
+    // packs::kMaxTextures, each bound to its sampler on a unit of its own.
     // `multipass`: the engine's passes, when the pack opts into them; the Style is then drawn as its camera,
     // a coarse prepass and its march at a share of the target, and resolved onto the target.
     ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt,
+                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt, std::vector<ShaderImage> images = {},
                 std::optional<ShaderMultipass> multipass = std::nullopt);
     ~ShaderScene() override;
 
@@ -173,6 +185,9 @@ private:
     // The shared inputs the pack declares: their clocks and their textures (lib_inputs.glsl).
     void uploadInputs();
     GLuint inputTexture(inputs::Input input);
+    // The pack's own images (#391): made at init(), bound each frame on units above the shared inputs'.
+    void createImages();
+    void uploadImages();
     // After the draw: keeps this frame for the next one, as the previous frame and the blur levels the
     // pack declares, then binds the draw target again. `source` holds the frame: the draw target, or the
     // kept picture of a Style with feedback.
@@ -194,6 +209,8 @@ private:
     // What this frame runs: nothing extra unless the pack declares multipass, the resolve built and the
     // scene targets are half float.
     multipass::Plan passPlan() const;
+    // The unit the Style reads its coarse prepass on: the first above the pack's images.
+    GLint coarseUnit() const { return kFirstImageUnit + static_cast<GLint>(images_.size()); }
     // Draws the Style through its passes and resolves it onto the draw target, the Style's program bound
     // and its uniforms set; false, with nothing drawn, when the passes' targets cannot be made.
     bool drawPasses(const multipass::Plan& plan);
@@ -323,6 +340,12 @@ private:
     Framebuffer passCoarse_{"styleCoarse"};
     std::array<Framebuffer, 2> passCamera_{Framebuffer("styleCamera0"), Framebuffer("styleCamera1")};
     Framebuffer passResolved_{"styleResolved"};
+
+    // ---- the pack's own images ("textures", #391) ---------------------------
+    // The first unit they take: above the audio, flow, palette and the shared inputs' (3..11).
+    static constexpr GLint kFirstImageUnit = 12;
+    std::vector<ShaderImage> images_;
+    std::array<Texture, packs::kMaxTextures> imageTex_{};
 
     float stepsDetail_ = -1.0f;
     float stepsBudget_ = 0.0f;

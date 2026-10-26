@@ -18,6 +18,7 @@ styles/
   <id>/
     manifest.json       the Style
     shader.glsl         its fragment shader (shader Styles only)
+    *.png               the images it ships, if any ("Images" below)
 ```
 
 ## `index.json`
@@ -92,8 +93,9 @@ sound, the bands, the spectrum and the stereo image, so its Styles declare exact
 | `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 | `lens` | no | The shared lens effects (#313, `geode/viz/LensFx.hpp`), each part optional: `threshold` (0.5–1, the light the glare gathers from), `flare` (`amount`, `ghosts` 1–8, `halo`, `dispersion`), `godRays` (`amount`, `source` [x, y] in 0–1 from the bottom left, `length` 0.1–1, `decay` 0.8–0.99), `streaks` (`amount`, `shape` `star`, `zoom` or `anamorphic`, `spokes` 2–8, `length` 0.1–1) and `depthOfField` (`aperture`, `focus` 0.05–0.95). Amounts, halo, dispersion and aperture are 0–1, and each part needs its `amount` (`aperture` for depth of field) above 0. Depth of field is for shader Styles only: the shader writes its depth into alpha as t / (t + the subject's distance), 1 for nothing hit. |
 | `reactivity` | yes | The Style's reactivity profile (#319): what it reacts to at each level of the music, `macro` (sections and energy), `meso` (the bar and the beat) and `micro` (onsets and the spectrum), each a list of the features below. A shader Style declares exactly what its own code reads, its shader and its feedback warp stage (its copy of `view()` and of the audio taps aside: those are the Shared core's controls; nor what the engine's warp does with `react` and the Extras); any other Style declares exactly what its family declares. CI rejects a feature nothing reads and one read but not declared. |
-| `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1) and `react` (0–1, how much the music speeds the motion), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
+| `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1), `react` (0–1, how much the music speeds the motion), `outer` and `inner` (the borders painted into the loop: `size` 0–0.1 frame heights, above 0, `color` [r, g, b] 0–1 and `alpha` 0–1, the share of the colour a band takes on in a second), `streaks` (lines along the motion field: `amount` 0–1, above 0, the share of the colour a line takes on in a second, `color` [r, g, b] 0–1 and `cells` 6–40, the grid's cells down the frame), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
 | `multipass` | no | The engine's passes ("Multi-pass Styles" below), each part optional: `scale` (0.25–0.75, default 0.5, the march's share of the target), `coarse` and `temporal` (booleans, default true). Shader Styles only, never with `feedback`; the shader includes `lib_multipass` and does its part of each pass that runs. |
+| `textures` | no | The Style's own images ("Images" below), at most 4: each a `name` (lower-case letters, digits and `_`, starting with a letter), a PNG `file` in its folder, and optionally `wrap` (`repeat`, the default, `mirror` or `clamp`) and `filter` (`linear`, the default, `nearest` or `mipmap`). Shader Styles only. |
 | `particles3d` | no | The shared 3D particle layer (#314): `amount` (above 0, up to 1), `kind` (`streaks` or `sparks`), and multipliers `count` (0.25–2), `speed` (0.1–3) and `size` (0.3–3), and a `tint` [r, g, b] in 0–2. |
 
 Every lens effect and the particles are light: they run inside the HDR frame graph, before the
@@ -127,6 +129,30 @@ The noise is drawn from the Render seed, and so is `uVisitRand` in a Render, so 
 frames every time. The previous frame and the blur levels are the Style's own picture: what feeds back
 must stay below 1, or the loop grows into a flash. A Style's kept frames start black at each visit.
 
+## Images
+
+A shader Style may ship its own images, and use them with no code anywhere but its shader (#391). Each
+is a PNG in the Style's folder, 8 bits a channel and at most 1024 pixels a side, declared under
+`textures`; the shader declares its sampler itself and reads it:
+
+```json
+"textures": [ { "name": "paper", "file": "paper.png", "wrap": "repeat", "filter": "mipmap" } ]
+```
+
+```glsl
+uniform highp sampler2D uImagePaper;   // uImage and the name's words capitalised: fold_ramp is uImageFoldRamp
+```
+
+The engine decodes each image with the platform's decoder when it builds the Style, uploads it as RGBA8
+(not premultiplied, its bottom row at texture coordinate 0, like every other picture a shader reads) with
+the pack's wrap on both axes and its filter, and binds it on a unit of its own above the shared inputs'.
+`mipmap` adds the chain of halved copies, so an image seen far off or small does not shimmer; a shader
+that samples one inside a raymarch's loop or branch picks the level itself with `textureLod`, since the
+implicit derivatives are undefined there. The pack check fails an image that is missing, not such a PNG,
+or never sampled, and a shader that samples an image its pack does not declare; the render check binds
+the real file. Images are ours: drawn by `tools/style_textures/generate.py` (or made here by hand), never
+taken from elsewhere.
+
 ## Feedback
 
 A shader Style that declares `feedback` is drawn as a loop, the way MilkDrop draws every preset
@@ -150,6 +176,15 @@ rounds stochastically: a slow decay multiplied into any fixed number of bits sta
 step no longer moves the stored value, a ghost that never fades. A dither of one step of the format
 keeps the expected value on the exact decay, and 1/256 taken off each second ends every trail at exact
 black. The CI render check runs the loop in all three formats and fails on a ghost.
+
+What the loop paints is asked for in the manifest, with no code: `outer` paints a band along the
+frame's edge and `inner` one just inside it (#363). They are painted into the kept picture before it
+decays, so a zoom below 1 carries their copies inward into the classic tunnel and one above 1 carries
+them off the frame. `streaks` lays a short line through the centre of each cell of a square grid, along
+the way the motion grid moves the picture there, longer where it moves faster and gone where it is
+still (#386); the loop draws each out into a trail, so the motion reads at a glance. What is painted
+fades with the loop like anything the Style draws, and eases in over the first second of each visit
+(`FeedbackWarp.hpp` `kPaintFadeSeconds`), so nothing appears in one frame.
 
 A Style's own warp stage (`"shader"` under `feedback`) is a fragment shader that includes
 `lib_feedback`: it reads the kept picture with `fbFetch()` wherever it likes around `vSrc` (where

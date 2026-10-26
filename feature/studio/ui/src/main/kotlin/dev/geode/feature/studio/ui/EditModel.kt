@@ -9,7 +9,10 @@ import androidx.compose.ui.Modifier
 import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.EditSession
 import dev.geode.feature.studio.api.EditSource
+import dev.geode.feature.studio.api.Project
+import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderStatus
+import dev.geode.feature.studio.api.Shorts
 import dev.geode.feature.studio.api.StudioState
 import dev.geode.feature.studio.api.edit.ClipEdit
 import dev.geode.feature.studio.api.edit.ClipId
@@ -165,7 +168,61 @@ data class TimelineModel(
     val exports: List<EditExportRow> = emptyList(),
 )
 
-/** The editor on screen: opening, the clip editor, or the Timeline. */
+/**
+ * What Make Short draws (#328): the [source] and the [edit] holding its section and crop, whether it
+ * can be drawn again rather than cropped ([canRedraw], [redraw]), the [projects] it can land in, with its
+ * source's Project ([home]) first chosen, and the Edits being exported.
+ */
+@Immutable
+data class ShortModel(
+    val source: EditSource,
+    val edit: ClipEdit,
+    val canRedraw: Boolean,
+    val redraw: Boolean,
+    val projects: List<Project>,
+    val home: ProjectId?,
+    val exports: List<EditExportRow> = emptyList(),
+) {
+    /** The video's length, at least a millisecond, so a slider always has a range. */
+    val lengthMs: Long get() = source.length.value.coerceAtLeast(1L)
+
+    /** How long the Short is. */
+    val sectionMs: Long get() = edit.endMs - edit.startMs
+
+    /** Whether the picture is wider than 9:16, so the crop slides across rather than down. */
+    val slidesAcross: Boolean get() = source.width.toLong() * SHORT_HIGH > source.height.toLong() * SHORT_WIDE
+
+    /** Whether the section is one a Short may have. */
+    val canExport: Boolean get() = Shorts.fits(edit.startMs, edit.endMs, source.length.value)
+}
+
+private const val SHORT_WIDE = 9L
+private const val SHORT_HIGH = 16L
+
+/**
+ * The section a Short's slider asks for, kept to what a Short may have: under a minute, by moving the
+ * end along when the start moved ([startMoved]) and the start otherwise; null when it would be under
+ * [Shorts.SHORTEST_MS], so the slider stays where it was.
+ */
+fun shortSection(
+    startMs: Long,
+    endMs: Long,
+    lengthMs: Long,
+    startMoved: Boolean,
+): Pair<Long, Long>? {
+    val start = startMs.coerceIn(0L, lengthMs)
+    val end = endMs.coerceIn(0L, lengthMs)
+    val longest = Shorts.LIMIT_MS - 1
+    val kept =
+        when {
+            end - start <= longest -> start to end
+            startMoved -> start to start + longest
+            else -> end - longest to end
+        }
+    return kept.takeIf { it.second - it.first >= Shorts.SHORTEST_MS }
+}
+
+/** The editor on screen: opening, the clip editor, the Timeline, or Make Short. */
 sealed interface EditScreenModel {
     /** A picked video or the Timeline's cut is being read; [cut] for the Timeline. */
     data class Opening(
@@ -179,6 +236,10 @@ sealed interface EditScreenModel {
     data class Cut(
         val model: TimelineModel,
     ) : EditScreenModel
+
+    data class Short(
+        val model: ShortModel,
+    ) : EditScreenModel
 }
 
 /** The editor open in [this] state, or null when none is. */
@@ -191,6 +252,18 @@ fun StudioState.toEditModel(): EditScreenModel? =
         is EditSession.Cut ->
             EditScreenModel.Cut(
                 TimelineModel(open.project, open.playheadMs, open.history.canUndo, open.history.canRedo, open.refused, editExports()),
+            )
+        is EditSession.Short ->
+            EditScreenModel.Short(
+                ShortModel(
+                    open.source,
+                    open.edit,
+                    open.canRedraw,
+                    open.redraw,
+                    projects,
+                    videos.firstOrNull { it.id == open.video }?.project,
+                    editExports(),
+                ),
             )
     }
 

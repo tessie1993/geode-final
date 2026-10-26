@@ -22,7 +22,8 @@ data class ProjectRow(
 
 /**
  * What the Project list draws (ADR-0003: an immutable screen model). [folderMissing] when Settings say
- * no save folder is picked yet; [noDefault] when Projects exist but none is the default.
+ * no save folder is picked yet; [noDefault] when Projects exist but none is the default. [savedCuts]
+ * are the earlier editor's cuts the Timeline can open (#347).
  */
 @Immutable
 data class ProjectListModel(
@@ -30,6 +31,7 @@ data class ProjectListModel(
     val projects: List<ProjectRow>,
     val folderMissing: Boolean,
     val noDefault: Boolean,
+    val savedCuts: List<String> = emptyList(),
 ) {
     /** Whether a new Project starts out as the default: when there is none yet. */
     val newIsDefault: Boolean get() = projects.none { it.isDefault }
@@ -48,13 +50,25 @@ data class ProjectModel(
     val deletePrompt: DeletePromptModel,
 )
 
-/** What a video's page draws. */
+/**
+ * What a video's page draws: the [video], its [project] and the [others] it can move to, the video it
+ * was made from when that is still there ([source], #328), and whether Export as draws it again
+ * ([redraws]: a Render while the Visual is on) rather than cropping it.
+ */
 @Immutable
 data class VideoModel(
     val video: Video,
     val project: Project,
     val others: List<Project>,
-)
+    val source: Video? = null,
+    val redraws: Boolean = false,
+) {
+    /** Make Short is offered on every Render and Recording (#328). */
+    val canMakeShort: Boolean get() = video.kind == VideoKind.RENDER || video.kind == VideoKind.RECORDING
+
+    /** Every Project, where a sibling may land. */
+    val projects: List<Project> get() = listOf(project) + others
+}
 
 /**
  * What the delete confirmation draws (owner decision on #21: "Delete N videos too?"). [others] are
@@ -83,6 +97,7 @@ fun StudioState.toProjectList(): ProjectListModel {
         projects = rows,
         folderMissing = saveFolder == SaveFolder.NotChosen,
         noDefault = rows.isNotEmpty() && rows.none { it.isDefault },
+        savedCuts = savedCuts,
     )
 }
 
@@ -102,7 +117,8 @@ fun StudioState.toProjectModel(
 fun StudioState.toVideoModel(id: VideoId): VideoModel? {
     val video = videos.firstOrNull { it.id == id } ?: return null
     val project = projects.firstOrNull { it.id == video.project } ?: return null
-    return VideoModel(video, project, projects - project)
+    val source = video.source?.let { from -> videos.firstOrNull { it.id == from } }
+    return VideoModel(video, project, projects - project, source, redraws = video.madeWith != null && !visualsOff)
 }
 
 /** The delete confirmation for [row], with [all] the Projects there are and [default] the default one. */
@@ -174,6 +190,11 @@ sealed interface StudioAction {
     /** Open the Render setup to make [video], a Render, again at another shape or quality (#327). */
     data class RenderAgain(
         val video: VideoId,
+    ) : StudioAction
+
+    /** Share [video] through the system's share sheet (#328); the app stays offline. */
+    data class Share(
+        val video: Video,
     ) : StudioAction
 
     data object Back : StudioAction

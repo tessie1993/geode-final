@@ -58,9 +58,9 @@ constexpr std::array<InputSampler, 9> kInputSamplers = {{
     {inputs::Input::Blur3, "uBlur3", GL_TEXTURE_2D, 11},
 }};
 
-// The engine's passes (MultiPass.hpp): the Style's coarse prepass on its own unit above the inputs, and
-// the resolve's four textures.
-constexpr GLint kCoarseUnit = 12;
+// The engine's passes (MultiPass.hpp): the resolve's four textures. The Style's coarse prepass takes the
+// first unit above the pack's images (coarseUnit()), within the 16 every GLES 3 device has.
+constexpr GLint kGuaranteedUnits = 16;
 constexpr GLint kResolveMarchUnit = 0;
 constexpr GLint kResolveHistoryUnit = 1;
 constexpr GLint kResolveCamNowUnit = 2;
@@ -109,7 +109,8 @@ float wrappedDelta(float from, float to, float period) {
 }  // namespace
 
 ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                         inputs::Set inputs, std::optional<ShaderFeedback> feedback, std::optional<ShaderMultipass> multipass)
+                         inputs::Set inputs, std::optional<ShaderFeedback> feedback, std::vector<ShaderImage> images,
+                         std::optional<ShaderMultipass> multipass)
     : id_(std::move(id)),
       vertexSrc_(std::move(vertexSrc)),
       currentFragment_(std::move(fragmentSrc)),
@@ -117,8 +118,10 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
       host_(std::move(host)),
       inputs_(inputs),
       feedback_(std::move(feedback)),
-      multipass_(std::move(multipass)) {
+      multipass_(std::move(multipass)),
+      images_(std::move(images)) {
     pendingFragment_ = currentFragment_;
+    if (images_.size() > imageTex_.size()) images_.resize(imageTex_.size());
 }
 
 ShaderScene::~ShaderScene() { release(); }
@@ -153,6 +156,43 @@ void ShaderScene::init() {
     const bool rendering = host_.rendering && host_.rendering();
     const auto live = static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
     visitSeed_ = inputs::visitSeed(rendering ? inputs::kNoiseSeed : live, id_);
+    createImages();
+}
+
+namespace {
+
+GLint glWrap(packs::TextureWrap wrap) {
+    switch (wrap) {
+        case packs::TextureWrap::Repeat: return GL_REPEAT;
+        case packs::TextureWrap::Mirror: return GL_MIRRORED_REPEAT;
+        case packs::TextureWrap::Clamp: return GL_CLAMP_TO_EDGE;
+    }
+    return GL_REPEAT;
+}
+
+}  // namespace
+
+void ShaderScene::createImages() {
+    for (size_t i = 0; i < images_.size(); ++i) {
+        const ShaderImage& image = images_[i];
+        const bool nearest = image.filter == packs::TextureFilter::Nearest;
+        // Made on its own unit, so making it never replaces what unit 0 holds.
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + kFirstImageUnit + static_cast<GLint>(i)));
+        imageTex_[i].createFromPixels(image.image.rgba.data(), image.image.width, image.image.height, glWrap(image.wrap),
+                                      nearest ? GL_NEAREST : GL_LINEAR, image.filter == packs::TextureFilter::Mipmap);
+    }
+    glActiveTexture(GL_TEXTURE0);
+}
+
+void ShaderScene::uploadImages() {
+    if (images_.empty()) return;
+    for (size_t i = 0; i < images_.size(); ++i) {
+        if (!imageTex_[i].ok()) continue;
+        const GLint unit = kFirstImageUnit + static_cast<GLint>(i);
+        imageTex_[i].bind(unit);
+        glUniform1i(uniforms_.loc(images_[i].uniform), unit);
+    }
+    glActiveTexture(GL_TEXTURE0);
 }
 
 void ShaderScene::setSharedInputs(SharedInputs* shared) {
@@ -340,6 +380,7 @@ void ShaderScene::draw(float timeSeconds) {
     uploadExtras();
     uploadFeatures();
     uploadInputs();
+    uploadImages();
     // A single pass draws the picture from the camera, as a Style without passes does (lib_multipass).
     set1f("uMpPass", kPassPicture);
     set1f("uMpUseCoarse", 0.0f);
@@ -621,6 +662,12 @@ void ShaderScene::uploadWarp(int width, int height) {
     glUniform1f(u.loc("uFbHalf"), flag(half));
     glUniform1f(u.loc("uFbStep"), half ? 0.0f : feedback::quantum(0.0f, precision));
     glUniform1f(u.loc("uFbSeed"), static_cast<float>(warpFrame_));
+    glUniform4f(u.loc("uFbOuter"), step.outer.color[0], step.outer.color[1], step.outer.color[2], step.outer.cover);
+    glUniform1f(u.loc("uFbOuterSize"), step.outer.size);
+    glUniform4f(u.loc("uFbInner"), step.inner.color[0], step.inner.color[1], step.inner.color[2], step.inner.cover);
+    glUniform1f(u.loc("uFbInnerSize"), step.inner.size);
+    glUniform4f(u.loc("uFbStreak"), step.streaks.color[0], step.streaks.color[1], step.streaks.color[2], step.streaks.cover);
+    glUniform1f(u.loc("uFbStreakCell"), step.streaks.size);
 }
 
 void ShaderScene::presentFeedback() {
@@ -648,7 +695,10 @@ void ShaderScene::buildResolveIfNeeded() {
 multipass::Plan ShaderScene::passPlan() const {
     if (!multipass_ || feedback_ || resolveProgram_ == 0 || sharedInputs_ == nullptr) return multipass::Plan{};
     const bool halfFloat = sharedInputs_->format() == Framebuffer::Format::Rgba16F;
-    return multipass::plan(multipass_->spec, drawWidth_, drawHeight_, halfFloat);
+    multipass::Plan plan = multipass::plan(multipass_->spec, drawWidth_, drawHeight_, halfFloat);
+    // A pack with four images leaves no unit for the prepass: its rays start at the camera.
+    if (coarseUnit() >= kGuaranteedUnits) plan.coarse = false;
+    return plan;
 }
 
 bool ShaderScene::drawPasses(const multipass::Plan& plan) {
@@ -676,7 +726,7 @@ bool ShaderScene::drawPasses(const multipass::Plan& plan) {
     if (plan.coarse) drawPass(passCoarse_.fbo(), plan.coarseSize.width, plan.coarseSize.height, kPassCoarse, false, still);
     const std::array<float, 2> jitterUv{jitter[0] / static_cast<float>(plan.march.width), jitter[1] / static_cast<float>(plan.march.height)};
     if (plan.coarse) {
-        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + kCoarseUnit));
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + coarseUnit()));
         glBindTexture(GL_TEXTURE_2D, passCoarse_.tex());
         glActiveTexture(GL_TEXTURE0);
     }
@@ -703,7 +753,7 @@ void ShaderScene::drawPass(GLuint fbo, int width, int height, float pass, bool u
     glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(width), static_cast<float>(height));
     set1f("uMpPass", pass);
     set1f("uMpUseCoarse", flag(useCoarse));
-    glUniform1i(uniforms_.loc("uMpCoarse"), kCoarseUnit);
+    glUniform1i(uniforms_.loc("uMpCoarse"), std::min(coarseUnit(), kGuaranteedUnits - 1));
     glUniform2f(uniforms_.loc("uMpJitter"), jitterUv[0], jitterUv[1]);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
@@ -800,6 +850,7 @@ void ShaderScene::release() {
     resolveBuilt_ = false;
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
     audioTex_.release();
+    for (Texture& image : imageTex_) image.release();
     releaseHistory();
     program_ = 0;
     vao_ = 0;

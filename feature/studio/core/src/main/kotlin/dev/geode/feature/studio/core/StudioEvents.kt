@@ -2,6 +2,7 @@ package dev.geode.feature.studio.core
 
 import dev.geode.feature.studio.api.EditJob
 import dev.geode.feature.studio.api.EditSources
+import dev.geode.feature.studio.api.MadeFrom
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
@@ -21,6 +22,7 @@ import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
+import dev.geode.feature.studio.api.edit.SubtitleCue
 import dev.geode.kernel.Effect
 
 /** Everything Studio's reducer handles: Commands, and what its handlers find out. */
@@ -86,6 +88,25 @@ sealed interface StudioEvent {
         val render: RenderId,
         val end: RenderEnd,
     ) : StudioEvent
+
+    /**
+     * The old Studio's videos in `Movies/Geode` were imported, once (#347): [videos] were saved into the
+     * new [project] made for them.
+     */
+    data class OldVideosImported(
+        val project: Project,
+        val videos: List<Video>,
+    ) : StudioEvent
+
+    /**
+     * What a finished [render]'s extras need was read (#329): its saved [video], and the song's synced
+     * [lyrics] in its own time (empty without captions, or when it has none).
+     */
+    data class FinishReady(
+        val render: RenderJob,
+        val video: NewVideo,
+        val lyrics: List<SubtitleCue>,
+    ) : StudioEvent
 }
 
 /** How a Render ended. */
@@ -118,7 +139,8 @@ data class RenderSettings(
 /**
  * A Render about to be queued: a [RenderJob] before Studio's database gives it its id and batch. Every
  * Render queued together has the same [look]; [milkdrop] is the MilkDrop preset it plays (#341). An
- * Edit's export (#318) has its [edit] and no tracks.
+ * Edit's export (#318) has its [edit] and no tracks. [madeFrom] is the video a Short, an Export as
+ * sibling or a finishing Edit is made from (#328, #329).
  */
 data class NewRender(
     val tracks: List<RenderTrack>,
@@ -129,12 +151,14 @@ data class NewRender(
     val extras: RenderExtras,
     val milkdrop: String? = null,
     val edit: EditJob? = null,
+    val madeFrom: MadeFrom? = null,
 ) {
     /** It as saved: its [id], and the [batch] it was queued in. It waits until the queue starts it. */
     fun queuedAs(
         id: RenderId,
         batch: RenderId,
-    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop, edit = edit)
+    ): RenderJob =
+        RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop, edit = edit, madeFrom = madeFrom)
 
     /** The setup it was made from, as its video keeps it to be made again (#327). */
     fun toSpec(): RenderSpec =
@@ -151,7 +175,7 @@ data class NewRender(
 }
 
 /** [this] Render before it was queued: its choices without its id, batch or status. */
-internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop, edit)
+internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop, edit, madeFrom)
 
 /** What went wrong in the handlers. */
 enum class StudioFailure {
@@ -177,6 +201,9 @@ enum class StudioFailure {
 
     /** An Edit's videos could not be copied beside it, so it was not queued (#318). */
     COPY_SOURCES,
+
+    /** The old Studio's videos could not be brought into the library (#347); it tries again next start. */
+    IMPORT_OLD_VIDEOS,
 }
 
 /** Work for Studio's handlers. */
@@ -261,6 +288,24 @@ sealed interface StudioWork {
     data class ForgetRender(
         val render: RenderId,
     ) : StudioWork
+
+    /**
+     * Import the old Studio's videos in `Movies/Geode` that the library does not hold yet into a new
+     * Project named [OLD_VIDEOS_PROJECT], unless that was done before (#347). Only the first time counts:
+     * an import with nothing to bring is done too. What was brought comes back in
+     * [StudioEvent.OldVideosImported].
+     */
+    data object ImportOldVideos : StudioWork
+
+    /**
+     * Read the song's synced lyrics, from a local `.lrc` file or its own tags, when the finished [render]
+     * wants captions, so its extras are made as an Edit of its [video] (#329); they come back in
+     * [StudioEvent.FinishReady].
+     */
+    data class FinishRender(
+        val render: RenderJob,
+        val video: NewVideo,
+    ) : StudioWork
 }
 
 typealias StudioEffect = Effect<StudioWork, StudioEvent, StudioFact>
@@ -278,7 +323,11 @@ fun describe(failure: StudioFailure): String =
         StudioFailure.LOAD_CUT -> "Could not read the saved cut, so the Timeline starts empty"
         StudioFailure.SAVE_CUT -> "Could not save the last change to the cut"
         StudioFailure.COPY_SOURCES -> "Could not copy the Edit's videos, so it was not exported"
+        StudioFailure.IMPORT_OLD_VIDEOS -> "Could not bring the earlier Studio's videos into the library"
     }
+
+/** The Project the old Studio's videos are imported into (#347). */
+const val OLD_VIDEOS_PROJECT = "Earlier videos"
 
 /** How the reducer describes a Render of [title] that failed with [problem], on the app-wide banner. */
 fun describe(

@@ -6,6 +6,7 @@ import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import dev.geode.feature.studio.core.Loudness
 import dev.geode.util.bestEffort
 import java.io.BufferedOutputStream
 import java.io.File
@@ -67,10 +68,21 @@ class AudioTranscoder(
         return out
     }
 
+    /** Multiplies the 16-bit samples of [pcm] (native order, from its position on) by [factor], held to range (#329). */
+    private fun applyGain(
+        pcm: ByteBuffer,
+        factor: Double,
+    ) {
+        if (factor == 1.0) return
+        val samples = pcm.duplicate().order(java.nio.ByteOrder.nativeOrder()).asShortBuffer()
+        for (i in 0 until samples.remaining()) samples.put(i, Loudness.scaled(samples.get(i), factor))
+    }
+
     private fun transcodeAiff(
         aiff: dev.geode.audio.AiffPcm,
         maxDurationMs: Long,
         startMs: Long,
+        gain: Double,
         isCancelled: () -> Boolean,
         onProgress: (Float) -> Unit,
     ): Result {
@@ -147,6 +159,7 @@ class AudioTranscoder(
                             }
                         }
                         bb.limit(frames * channels * 2)
+                        applyGain(bb, gain)
                         pcmCarry = bb
                         onProgress(aiff.progress)
                     }
@@ -224,15 +237,18 @@ class AudioTranscoder(
         }
     }
 
+    /** [uri]'s sound as AAC, from [startMs] for [maxDurationMs] (0: to the end), levelled by [gainDb] (#329). */
     fun transcode(
         uri: Uri,
         maxDurationMs: Long,
         startMs: Long = 0L,
+        gainDb: Double = 0.0,
         isCancelled: () -> Boolean = { false },
         onProgress: (Float) -> Unit = {},
     ): Result {
+        val gain = Loudness.factorOf(gainDb)
         dev.geode.audio.AiffPcm.open(context, uri)?.let { aiff ->
-            return transcodeAiff(aiff, maxDurationMs, startMs, isCancelled, onProgress)
+            return transcodeAiff(aiff, maxDurationMs, startMs, gain, isCancelled, onProgress)
         }
         val extractor = MediaExtractor()
         val srcFormat: MediaFormat
@@ -397,6 +413,7 @@ class AudioTranscoder(
                                 } else {
                                     srcChannels
                                 }
+                            applyGain(copy, gain)
                             val mixed =
                                 if (bufChannels > channels) {
                                     downmix(copy, bufChannels, channels)

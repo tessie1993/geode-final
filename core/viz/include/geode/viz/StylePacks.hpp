@@ -71,6 +71,37 @@ struct ExtraSpec {
     float defaultValue = 0.0f;
 };
 
+// How a Style's own image repeats past its edges and how it is filtered ("textures", #391).
+enum class TextureWrap {
+    Repeat,  // tiles: the default
+    Mirror,  // tiles, every other copy mirrored, so no edge shows a seam
+    Clamp,   // the edge pixels go on
+};
+enum class TextureFilter {
+    Linear,   // blended between the nearest four pixels: the default
+    Nearest,  // the nearest pixel, hard-edged
+    Mipmap,   // blended across a chain of halved copies too, so a far or small use does not shimmer
+};
+
+// At most this many images per Style, each on its own sampler unit above the shared inputs'.
+inline constexpr int kMaxTextures = 4;
+// The longest side a pack image may have, in pixels (CI holds shipped images to it).
+inline constexpr int kMaxTextureSide = 1024;
+
+// One image a Style ships in its own pack ("textures"): a PNG beside its manifest, which its shader samples
+// as uImage<Name> (textureUniform) with the wrap and filter the pack chose, and nothing in code names it.
+struct TextureSpec {
+    std::string name;
+    // The image's asset path (`styles/<id>/<file>`).
+    std::string path;
+    TextureWrap wrap = TextureWrap::Repeat;
+    TextureFilter filter = TextureFilter::Linear;
+};
+
+// The sampler a shader reads the image `name` by: uImage and the name's words capitalised and run
+// together (paper: uImagePaper, fold_ramp: uImageFoldRamp).
+std::string textureUniform(std::string_view name);
+
 struct StylePack {
     std::string id;
     std::string label;
@@ -103,6 +134,8 @@ struct StylePack {
     // The engine's passes the Style opts into ("multipass", MultiPass.hpp): its march at a share of the
     // target, the coarse prepass and the temporal accumulation; off when the manifest does not declare it.
     multipass::Spec multipass;
+    // The images the Style ships in its pack ("textures"), in the manifest's order; shader Styles only.
+    std::vector<TextureSpec> textures;
 
     // The resolved value of `key`; 0 for a key the family does not declare.
     float parameter(std::string_view key) const;

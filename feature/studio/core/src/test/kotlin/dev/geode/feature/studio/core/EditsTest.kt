@@ -129,8 +129,8 @@ class EditsTest {
         name,
         open(before, playheadMs),
         command(edit),
-        editing(EditSession.Cut(EditorHistory(before).push(after), playheadMs)),
-        Perform(EditWork.SaveCut(after)),
+        editing(EditSession.Cut(EditorHistory(before).push(after), playheadMs)).copy(cutRevision = 1),
+        Perform(EditWork.SaveCut(after, 1)),
     )
 
     /** A change to [cut] that is refused with [error]: the cut stays and says why. */
@@ -194,7 +194,7 @@ class EditsTest {
                 editing(EditSession.OneClip(picked)),
                 command(EditCommand.OpenCut),
                 editing(EditSession.LoadingCut),
-                Perform(EditWork.LoadCut),
+                Perform(EditWork.LoadCut()),
             ),
             row("an open Timeline stays as it is", open(playheadMs = 700), command(EditCommand.OpenCut), open(playheadMs = 700)),
             row(
@@ -204,6 +204,51 @@ class EditsTest {
                 open(cut),
             ),
             row("a cut loaded after the Timeline closed is dropped", ready, EditEvent.CutLoaded(cut), ready),
+            row(
+                "the earlier editor's cuts are listed",
+                ready,
+                EditEvent.CutsListed(listOf("Gig", "Trailer")),
+                ready.copy(savedCuts = listOf("Gig", "Trailer")),
+            ),
+            row(
+                "an earlier cut opens by its name",
+                ready.copy(savedCuts = listOf("Gig")),
+                command(EditCommand.OpenSavedCut("Gig")),
+                editing(EditSession.LoadingCut, ready.copy(savedCuts = listOf("Gig"))),
+                Perform(EditWork.LoadCut("Gig")),
+            ),
+            row(
+                "a cut the earlier editor did not keep opens nothing",
+                ready.copy(savedCuts = listOf("Gig")),
+                command(EditCommand.OpenSavedCut("Other")),
+                ready.copy(savedCuts = listOf("Gig")),
+            ),
+            row(
+                "an earlier cut already open stays as it is",
+                editing(EditSession.Cut(EditorHistory(cut), 300L, name = "Gig"), ready.copy(savedCuts = listOf("Gig"))),
+                command(EditCommand.OpenSavedCut("Gig")),
+                editing(EditSession.Cut(EditorHistory(cut), 300L, name = "Gig"), ready.copy(savedCuts = listOf("Gig"))),
+            ),
+            row(
+                "the Timeline's own cut opens in place of an earlier one",
+                editing(EditSession.Cut(EditorHistory(cut), name = "Gig")),
+                command(EditCommand.OpenCut),
+                editing(EditSession.LoadingCut),
+                Perform(EditWork.LoadCut()),
+            ),
+            row(
+                "an earlier cut opens under its name",
+                editing(EditSession.LoadingCut),
+                EditEvent.CutLoaded(cut, "Gig"),
+                editing(EditSession.Cut(EditorHistory(cut), name = "Gig")),
+            ),
+            row(
+                "a change to an earlier cut is kept under its name",
+                editing(EditSession.Cut(EditorHistory(cut), name = "Gig")),
+                command(EditCommand.DeleteMarker(mark.id)),
+                editing(EditSession.Cut(EditorHistory(cut).push(cut.copy(markers = MarkerSet())), name = "Gig")).copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut.copy(markers = MarkerSet()), 1, "Gig")),
+            ),
             row("closing the Timeline", open(), command(EditCommand.Close), ready),
             row("closing the clip editor", editing(EditSession.OneClip(picked)), command(EditCommand.Close), ready),
         )
@@ -320,8 +365,25 @@ class EditsTest {
                     EditSession.Cut(
                         EditorHistory(cut).push(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false))))),
                     ),
-                ),
-                Perform(EditWork.SaveCut(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false)))))),
+                ).copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false)))), 1)),
+            ),
+            row(
+                "each save is numbered after the last, so an older one never lands over it",
+                open().copy(cutRevision = 41),
+                command(EditCommand.EnableClip(words.id, false)),
+                editing(
+                    EditSession.Cut(
+                        EditorHistory(cut).push(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false))))),
+                    ),
+                ).copy(cutRevision = 42),
+                Perform(EditWork.SaveCut(cut.lanes(mediaLane, textLane.copy(clips = listOf(words.copy(enabled = false)))), 42)),
+            ),
+            row(
+                "a refused change saves nothing and keeps the count",
+                open().copy(cutRevision = 7),
+                command(EditCommand.SplitClip(words.id, 3_500L)),
+                open(cut, 0L, EditError.OutsideClip).copy(cutRevision = 7),
             ),
             unchanged("a change that changes nothing is no step of undo", EditCommand.EnableClip(words.id, true)),
             unchanged("the Timeline's changes do nothing while it is closed", EditCommand.AddLane(LaneKind.Text, "Text"), ready),
@@ -464,16 +526,28 @@ class EditsTest {
 
     private val historyRows: List<Row> =
         listOf(
-            row("undo goes back a step and saves", withPast, command(EditCommand.Undo), undone, Perform(EditWork.SaveCut(cut))),
-            row("redo goes forward a step and saves", undone, command(EditCommand.Redo), withPast, Perform(EditWork.SaveCut(after))),
+            row(
+                "undo goes back a step and saves",
+                withPast,
+                command(EditCommand.Undo),
+                undone.copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut, 1)),
+            ),
+            row(
+                "redo goes forward a step and saves",
+                undone.copy(cutRevision = 1),
+                command(EditCommand.Redo),
+                withPast.copy(cutRevision = 2),
+                Perform(EditWork.SaveCut(after, 2)),
+            ),
             unchanged("nothing to undo", EditCommand.Undo),
             unchanged("nothing to redo", EditCommand.Redo),
             row(
                 "an undone refusal is forgotten",
                 editing(EditSession.Cut(EditorHistory(cut).push(after), refused = EditError.TooShort)),
                 command(EditCommand.Undo),
-                undone,
-                Perform(EditWork.SaveCut(cut)),
+                undone.copy(cutRevision = 1),
+                Perform(EditWork.SaveCut(cut, 1)),
             ),
             row("the playhead moves, saving nothing", open(), command(EditCommand.MovePlayhead(2_500L)), open(playheadMs = 2_500L)),
             row("the playhead stops at the start", open(playheadMs = 900L), command(EditCommand.MovePlayhead(-5L)), open()),
@@ -525,6 +599,20 @@ class EditsTest {
                 open(video),
                 command(EditCommand.Export(trip.id)),
                 open(video),
+                queued(EditCut.Cut(video), CUT_NAME, trip.id),
+            ),
+            row(
+                "an earlier cut is exported under its name",
+                editing(EditSession.Cut(EditorHistory(video), name = "Gig")),
+                command(EditCommand.Export(trip.id)),
+                editing(EditSession.Cut(EditorHistory(video), name = "Gig")),
+                queued(EditCut.Cut(video), "Gig", trip.id),
+            ),
+            row(
+                "a cut with a blank name is exported as a cut",
+                editing(EditSession.Cut(EditorHistory(video), name = " ")),
+                command(EditCommand.Export(trip.id)),
+                editing(EditSession.Cut(EditorHistory(video), name = " ")),
                 queued(EditCut.Cut(video), CUT_NAME, trip.id),
             ),
             row(

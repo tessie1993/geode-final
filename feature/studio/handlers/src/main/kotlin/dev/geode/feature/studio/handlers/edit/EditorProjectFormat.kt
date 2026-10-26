@@ -34,10 +34,11 @@ import org.json.JSONObject
 /**
  * The saved shape of an [EditorProject] (#318): the Timeline's draft in `files/editor`, and an Edit's
  * cut as the render queue keeps it until it is exported. Variants carry a "type"/"kind" tag; unknown
- * tags fail the read. Versioned JSON (ADR-0004).
+ * tags fail the read. Versioned JSON (ADR-0004): version 1 is the old editor's, which only
+ * [OldEditorProjects] reads, bringing it up to this version first (#347).
  */
 object EditorProjectFormat {
-    const val VERSION = 1
+    const val VERSION = 2
 
     fun toJson(project: EditorProject): String = toObject(project).toString(2)
 
@@ -62,11 +63,13 @@ object EditorProjectFormat {
         o: JSONObject,
         scene: (String) -> String = { it },
     ): EditorProject {
-        require(o.optInt("version", VERSION) <= VERSION) { "editor project from a newer app" }
+        val version = o.optInt("version", OldEditorProjects.VERSION)
+        require(version <= VERSION) { "editor project from a newer app" }
+        val current = if (version < VERSION) OldEditorProjects.upgrade(o) else o
         return EditorProject(
-            timeline = timeline(o.getJSONObject("timeline"), scene),
-            markers = MarkerSet().addAll(o.optJSONArray("markers").items(::marker)),
-            keyframes = KeyframeSheet().withTracks(o.optJSONArray("keyframes").items(::track)),
+            timeline = timeline(current.getJSONObject("timeline"), scene),
+            markers = MarkerSet().addAll(current.optJSONArray("markers").items(::marker)),
+            keyframes = KeyframeSheet().withTracks(current.optJSONArray("keyframes").items(::track)),
         )
     }
 
@@ -199,6 +202,8 @@ object EditorProjectFormat {
             .put("gammaRed", e.gammaRed.toDouble())
             .put("gammaGreen", e.gammaGreen.toDouble())
             .put("gammaBlue", e.gammaBlue.toDouble())
+            .put("cropX", e.cropX.toDouble())
+            .put("cropY", e.cropY.toDouble())
 
     fun clipEdit(o: JSONObject): ClipEdit =
         ClipEdit(
@@ -221,6 +226,8 @@ object EditorProjectFormat {
             gammaRed = o.optDouble("gammaRed", 1.0).toFloat(),
             gammaGreen = o.optDouble("gammaGreen", 1.0).toFloat(),
             gammaBlue = o.optDouble("gammaBlue", 1.0).toFloat(),
+            cropX = o.optDouble("cropX", CENTRED).toFloat(),
+            cropY = o.optDouble("cropY", CENTRED).toFloat(),
         )
 
     private fun marker(m: Marker): JSONObject =
@@ -381,6 +388,9 @@ object EditorProjectFormat {
             "audio" -> LaneKind.Audio
             else -> throw IllegalArgumentException("unknown lane kind: $name")
         }
+
+    /** Where a crop sits until it is moved, as a saved number. */
+    private const val CENTRED: Double = ClipEdit.CENTRED.toDouble()
 
     private inline fun <reified T : Enum<T>> enumOr(
         name: String,

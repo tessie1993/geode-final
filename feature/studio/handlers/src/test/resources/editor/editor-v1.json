@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "timeline": {
+    "durationMs": 8000,
+    "lanes": [
+      {
+        "id": "lane-a",
+        "kind": "media",
+        "name": "Media 1",
+        "muted": false,
+        "locked": false,
+        "clips": [
+          {
+            "id": "clip-a",
+            "startMs": 0,
+            "durationMs": 5000,
+            "sourceInMs": 1000,
+            "sourceDurationMs": 12000,
+            "label": "Beach",
+            "enabled": true,
+            "transition": {"id": "fade", "durationMs": 400},
+            "content": {
+              "type": "video",
+              "uri": "content://media/external/video/media/31",
+              "edit": {
+                "startMs": 1000,
+                "endMs": 6000,
+                "look": "NEON",
+                "brightness": 0.1,
+                "contrast": 0.22,
+                "saturation": 65,
+                "hueDegrees": 14,
+                "monochrome": false,
+                "invert": false,
+                "speed": 1.0,
+                "rotationDegrees": 0,
+                "ratio": "R9_16",
+                "quality": "UHD4K",
+                "mute": true,
+                "caption": "Summer",
+                "gammaRed": 1.0,
+                "gammaGreen": 1.0,
+                "gammaBlue": 1.2
+              }
+            }
+          },
+          {
+            "id": "clip-b",
+            "startMs": 5000,
+            "durationMs": 3000,
+            "sourceInMs": 0,
+            "sourceDurationMs": 9000,
+            "label": "",
+            "enabled": true,
+            "content": {
+              "type": "video",
+              "uri": "content://media/external/video/media/32",
+              "edit": {"look": "SEPIA", "ratio": "R2_1", "quality": "SD360"}
+            }
+          }
+        ]
+      },
+      {
+        "id": "lane-b",
+        "kind": "text",
+        "name": "Text 1",
+        "muted": false,
+        "locked": true,
+        "clips": [
+          {
+            "id": "clip-c",
+            "startMs": 500,
+            "durationMs": 2000,
+            "label": "",
+            "enabled": true,
+            "content": {"type": "text", "text": "Hello"}
+          }
+        ]
+      }
+    ]
+  },
+  "markers": [
+    {"id": "marker-a", "atMs": 2500, "name": "Drop", "colour": "CYAN", "note": "", "origin": {"type": "manual"}}
+  ],
+  "keyframes": []
+}
