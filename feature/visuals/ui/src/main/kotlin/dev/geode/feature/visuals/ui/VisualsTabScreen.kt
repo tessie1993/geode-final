@@ -1,7 +1,6 @@
 package dev.geode.feature.visuals.ui
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,12 +40,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import dev.geode.design.forest.ForestGlass
 import dev.geode.design.forest.ForestShapes
 import dev.geode.design.forest.ForestSpacing
+import dev.geode.design.glass.GlassBackdrop
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.glassSurface
 import dev.geode.feature.visuals.api.FolderId
 import dev.geode.feature.visuals.api.StyleGroup
 
@@ -407,10 +407,9 @@ private fun NameDialog(
     )
 }
 
-/** Frosted glass over the live Visual, opaque enough to carry text (ForestGlass.TEXT_OPACITY_MIN). */
+/** A glass card over the live Visual: matte, so it carries text, until the engine frosts the Visual (#349). */
 @Composable
-internal fun Modifier.glass(): Modifier =
-    clip(ForestShapes.Card).background(MaterialTheme.colorScheme.surface.copy(alpha = ForestGlass.TEXT_OPACITY_MIN))
+internal fun Modifier.glass(): Modifier = glassSurface(GlassKind.CARD, MaterialTheme.shapes.large, GlassBackdrop.Visual)
 
 /** The name a family is listed under. */
 @get:StringRes

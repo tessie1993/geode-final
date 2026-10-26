@@ -55,11 +55,13 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import dev.geode.R
-import dev.geode.design.CrystalButton
-import dev.geode.design.CrystalOverline
-import dev.geode.design.CrystalSlider
-import dev.geode.design.crystalPanel
-import dev.geode.design.theme.accentTextColor
+import dev.geode.design.glass.GlassButton
+import dev.geode.design.glass.GlassChip
+import dev.geode.design.glass.GlassKind
+import dev.geode.design.glass.GlassSectionHeader
+import dev.geode.design.glass.GlassSlider
+import dev.geode.design.glass.GlassSpacing
+import dev.geode.design.glass.glassSurface
 import dev.geode.export.ClipEdit
 import dev.geode.export.ClipLook
 import dev.geode.export.CubeLut
@@ -113,7 +115,7 @@ fun ExportRoute(viewModel: StudioViewModel = geodeViewModel()) {
             Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            CrystalOverline(stringResource(R.string.app_name))
+            GlassSectionHeader(stringResource(R.string.app_name))
             Text(stringResource(R.string.export_title), style = MaterialTheme.typography.headlineSmall)
             Text(
                 stringResource(R.string.studio_empty_body),
@@ -121,8 +123,8 @@ fun ExportRoute(viewModel: StudioViewModel = geodeViewModel()) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CrystalButton(onClick = { picker.launch(arrayOf("video/*")) }) { Text(stringResource(R.string.studio_open_video)) }
-                CrystalButton(filled = false, onClick = { timelineOpen = true }) { Text(stringResource(R.string.editor_open)) }
+                GlassButton(onClick = { picker.launch(arrayOf("video/*")) }) { Text(stringResource(R.string.studio_open_video)) }
+                GlassButton(filled = false, onClick = { timelineOpen = true }) { Text(stringResource(R.string.editor_open)) }
             }
         }
     } else {
@@ -364,7 +366,7 @@ private fun ClipTrimSummary(
                 ""
             },
         style = MaterialTheme.typography.labelMedium,
-        color = accentTextColor(),
+        color = MaterialTheme.colorScheme.primary,
     )
 }
 
@@ -416,7 +418,7 @@ private fun ClipLookSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            CrystalButton(filled = false, onClick = { lutPicker.launch(arrayOf("*/*")) }) { Text(stringResource(R.string.studio_lut_pick)) }
+            GlassButton(filled = false, onClick = { lutPicker.launch(arrayOf("*/*")) }) { Text(stringResource(R.string.studio_lut_pick)) }
             if (edit.lutUri != null) {
                 TextButton(onClick = { onEdit(edit.copy(lutUri = null)) }) { Text(stringResource(R.string.studio_lut_clear)) }
             }
@@ -550,7 +552,7 @@ private fun ClipEditorRunning(
         stringResource(R.string.studio_rendering, (progress * 100).roundToInt()),
         style = MaterialTheme.typography.labelMedium,
     )
-    CrystalButton(filled = false, onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+    GlassButton(filled = false, onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
 }
 
 @Composable
@@ -562,10 +564,10 @@ private fun ClipEditorDone(
     val chooserTitle = stringResource(R.string.studio_share_chooser)
     Text(stringResource(R.string.studio_saved), style = MaterialTheme.typography.bodyMedium)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CrystalButton(
+        GlassButton(
             onClick = { context.shareVideo(resultUri, chooserTitle) },
         ) { Text(stringResource(R.string.studio_send_ellipsis)) }
-        CrystalButton(
+        GlassButton(
             filled = false,
             onClick = { context.viewVideo(resultUri) },
         ) { Text(stringResource(R.string.studio_play)) }
@@ -597,7 +599,7 @@ private fun ClipEditorIdle(
         )
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CrystalButton(enabled = canExport, onClick = onExport) {
+        GlassButton(enabled = canExport, onClick = onExport) {
             Text(stringResource(R.string.studio_render))
         }
         TextButton(enabled = canExport, onClick = onExportToDestination) {
@@ -621,15 +623,11 @@ private fun StudioSection(
     Column(
         Modifier
             .fillMaxWidth()
-            .crystalPanel(
-                0.28f,
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.primary,
-                corner = 20.dp,
-            ).padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .glassSurface(GlassKind.CARD, MaterialTheme.shapes.large)
+            .padding(GlassSpacing.Large),
+        verticalArrangement = Arrangement.spacedBy(GlassSpacing.Medium),
     ) {
-        CrystalOverline(title)
+        GlassSectionHeader(title)
         content()
     }
 }
@@ -648,7 +646,7 @@ private fun StudioSlider(
             stringResource(R.string.studio_slider_value, label, "%.${decimals}f".format(value), unit),
             style = MaterialTheme.typography.labelMedium,
         )
-        CrystalSlider(value = value, onValueChange = onChange, valueRange = range)
+        GlassSlider(value = value, onValueChange = onChange, valueRange = range)
     }
 }
 
@@ -658,24 +656,7 @@ private fun StudioChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Box(
-        Modifier
-            .crystalPanel(
-                if (selected) 0.5f else 0.2f,
-                MaterialTheme.colorScheme.surfaceVariant,
-                MaterialTheme.colorScheme.primary,
-                corner = 14.dp,
-                glowStrength = if (selected) 1f else 0.3f,
-                prismatic = selected,
-            ).clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) accentTextColor() else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    GlassChip(selected = selected, onClick = onClick, label = label)
 }
 
 private fun clock(ms: Long): String = "%d:%02d".format(ms / 60_000, (ms / 1000) % 60)

@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.geode.R
-import dev.geode.design.CrystalButton
+import dev.geode.design.glass.GlassButton
 import dev.geode.editor.EditError
 import dev.geode.editor.LaneKind
 import dev.geode.editor.TapInSession
@@ -46,15 +46,15 @@ fun EditorHeader(
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.weight(1f),
         )
-        CrystalButton(compact = true, filled = false, enabled = canUndo, onClick = onUndo) { Text(stringResource(R.string.editor_undo)) }
-        CrystalButton(compact = true, filled = false, enabled = canRedo, onClick = onRedo) { Text(stringResource(R.string.editor_redo)) }
-        CrystalButton(
+        GlassButton(compact = true, filled = false, enabled = canUndo, onClick = onUndo) { Text(stringResource(R.string.editor_undo)) }
+        GlassButton(compact = true, filled = false, enabled = canRedo, onClick = onRedo) { Text(stringResource(R.string.editor_redo)) }
+        GlassButton(
             compact = true,
             filled = false,
             onClick = { onZoom(1f / ZOOM_STEP) },
         ) { Text(stringResource(R.string.editor_zoom_out)) }
-        CrystalButton(compact = true, filled = false, onClick = { onZoom(ZOOM_STEP) }) { Text(stringResource(R.string.editor_zoom_in)) }
-        CrystalButton(compact = true, enabled = !exporting, onClick = onExport) { Text(stringResource(R.string.editor_export)) }
+        GlassButton(compact = true, filled = false, onClick = { onZoom(ZOOM_STEP) }) { Text(stringResource(R.string.editor_zoom_in)) }
+        GlassButton(compact = true, enabled = !exporting, onClick = onExport) { Text(stringResource(R.string.editor_export)) }
     }
 }
 
@@ -79,35 +79,35 @@ fun EditorToolbar(
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         if (tapSession == null) {
             LANE_KINDS.forEach { (kind, label) ->
-                CrystalButton(compact = true, filled = false, onClick = { onAddLane(kind) }) {
+                GlassButton(compact = true, filled = false, onClick = { onAddLane(kind) }) {
                     Text(stringResource(R.string.editor_add_lane, stringResource(label)))
                 }
             }
-            CrystalButton(compact = true, filled = false, onClick = onAddMarker) { Text(stringResource(R.string.editor_add_marker)) }
-            CrystalButton(compact = true, filled = false, onClick = onTapStart) { Text(stringResource(R.string.editor_tap_in)) }
-            CrystalButton(compact = true, filled = false, onClick = onAutoCut) { Text(stringResource(R.string.editor_auto_cut)) }
+            GlassButton(compact = true, filled = false, onClick = onAddMarker) { Text(stringResource(R.string.editor_add_marker)) }
+            GlassButton(compact = true, filled = false, onClick = onTapStart) { Text(stringResource(R.string.editor_tap_in)) }
+            GlassButton(compact = true, filled = false, onClick = onAutoCut) { Text(stringResource(R.string.editor_auto_cut)) }
             if (hasLyrics) {
-                CrystalButton(compact = true, filled = false, onClick = onLyricCaptions) {
+                GlassButton(compact = true, filled = false, onClick = onLyricCaptions) {
                     Text(stringResource(R.string.editor_lyric_captions))
                 }
             }
-            CrystalButton(compact = true, filled = false, onClick = onImportSrt) { Text(stringResource(R.string.editor_import_srt)) }
-            CrystalButton(compact = true, filled = false, onClick = onExportSrt) { Text(stringResource(R.string.editor_export_srt)) }
-            CrystalButton(compact = true, filled = false, onClick = onExportChapters) {
+            GlassButton(compact = true, filled = false, onClick = onImportSrt) { Text(stringResource(R.string.editor_import_srt)) }
+            GlassButton(compact = true, filled = false, onClick = onExportSrt) { Text(stringResource(R.string.editor_export_srt)) }
+            GlassButton(compact = true, filled = false, onClick = onExportChapters) {
                 Text(stringResource(R.string.editor_export_chapters))
             }
         } else {
-            CrystalButton(compact = true, onClick = onTap) { Text(stringResource(R.string.editor_tap)) }
+            GlassButton(compact = true, onClick = onTap) { Text(stringResource(R.string.editor_tap)) }
             Text(
                 stringResource(R.string.editor_tap_count, tapSession.count),
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.align(Alignment.CenterVertically),
             )
-            CrystalButton(compact = true, filled = false, enabled = tapSession.count > 0, onClick = onTapUndo) {
+            GlassButton(compact = true, filled = false, enabled = tapSession.count > 0, onClick = onTapUndo) {
                 Text(stringResource(R.string.editor_tap_undo))
             }
-            CrystalButton(compact = true, filled = false, onClick = onTapDone) { Text(stringResource(R.string.editor_tap_done)) }
-            CrystalButton(compact = true, filled = false, onClick = onTapCancel) { Text(stringResource(R.string.action_cancel)) }
+            GlassButton(compact = true, filled = false, onClick = onTapDone) { Text(stringResource(R.string.editor_tap_done)) }
+            GlassButton(compact = true, filled = false, onClick = onTapCancel) { Text(stringResource(R.string.action_cancel)) }
         }
     }
 }
@@ -132,27 +132,27 @@ fun SelectionToolbar(
     onAnimateClip: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        CrystalButton(compact = true, filled = false, onClick = onAnimateProgramme) { Text(stringResource(R.string.curve_animate_scene)) }
+        GlassButton(compact = true, filled = false, onClick = onAnimateProgramme) { Text(stringResource(R.string.curve_animate_scene)) }
         if (clipSelected) {
-            CrystalButton(compact = true, filled = false, onClick = onAnimateClip) { Text(stringResource(R.string.curve_animate_clip)) }
+            GlassButton(compact = true, filled = false, onClick = onAnimateClip) { Text(stringResource(R.string.curve_animate_clip)) }
             if (canTransition) {
-                CrystalButton(compact = true, filled = false, onClick = onTransition) {
+                GlassButton(compact = true, filled = false, onClick = onTransition) {
                     Text(stringResource(R.string.editor_transition_ellipsis))
                 }
             }
-            CrystalButton(compact = true, filled = false, onClick = onSplit) { Text(stringResource(R.string.editor_split)) }
-            CrystalButton(compact = true, filled = false, onClick = onDelete) { Text(stringResource(R.string.editor_delete)) }
-            CrystalButton(compact = true, filled = false, onClick = onRippleDelete) { Text(stringResource(R.string.editor_ripple_delete)) }
-            CrystalButton(compact = true, filled = false, onClick = onDuplicate) { Text(stringResource(R.string.editor_duplicate)) }
-            CrystalButton(compact = true, filled = false, onClick = onToggleEnabled) {
+            GlassButton(compact = true, filled = false, onClick = onSplit) { Text(stringResource(R.string.editor_split)) }
+            GlassButton(compact = true, filled = false, onClick = onDelete) { Text(stringResource(R.string.editor_delete)) }
+            GlassButton(compact = true, filled = false, onClick = onRippleDelete) { Text(stringResource(R.string.editor_ripple_delete)) }
+            GlassButton(compact = true, filled = false, onClick = onDuplicate) { Text(stringResource(R.string.editor_duplicate)) }
+            GlassButton(compact = true, filled = false, onClick = onToggleEnabled) {
                 Text(stringResource(if (clipEnabled) R.string.editor_disable else R.string.editor_enable))
             }
         }
         if (markerSelected) {
-            CrystalButton(compact = true, filled = false, onClick = onDeleteMarker) { Text(stringResource(R.string.editor_delete_marker)) }
+            GlassButton(compact = true, filled = false, onClick = onDeleteMarker) { Text(stringResource(R.string.editor_delete_marker)) }
         }
         if (keySelected) {
-            CrystalButton(compact = true, filled = false, onClick = onDeleteKey) { Text(stringResource(R.string.editor_delete_key)) }
+            GlassButton(compact = true, filled = false, onClick = onDeleteKey) { Text(stringResource(R.string.editor_delete_key)) }
         }
     }
 }

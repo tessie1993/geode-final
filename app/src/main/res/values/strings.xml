@@ -97,6 +97,14 @@
     <string name="action_favourite_add">Add to favourites</string>
     <string name="action_favourite_remove">Remove from favourites</string>
     <string name="action_resume_last_played">Resume last played</string>
+    <string name="home_now_playing">Now playing</string>
+    <string name="home_nothing_playing">Nothing playing yet</string>
+    <string name="home_nothing_playing_hint">Pick up where you left off, or choose a song in Music.</string>
+    <string name="home_shortcut_visuals">Choose a look</string>
+    <string name="home_shortcut_visuals_hint">Styles for the Visual</string>
+    <string name="home_shortcut_studio">Make a video</string>
+    <string name="home_shortcut_studio_hint">Renders and recordings</string>
+    <string name="player_close">Close the player</string>
 
     <!-- A–B loop: one control, three states, named so colour is not the only cue. -->
     <string name="ab_loop_idle">A–B</string>

@@ -31,19 +31,21 @@ import dev.geode.design.theme.LocalReducedMotion
  */
 @Composable
 fun CalmBackdrop(modifier: Modifier = Modifier) {
+    Spacer(modifier.fillMaxSize().calmBackdrop())
+}
+
+/** The [CalmBackdrop] drawn behind this content, for a whole-screen page such as first-run setup. */
+@Composable
+fun Modifier.calmBackdrop(): Modifier {
     val style = LocalGlassStyle.current
-    Spacer(
-        modifier
-            .fillMaxSize()
-            .drawWithCache {
-                val fields = style.colors.fields.map { fieldBrush(it, size, style.fieldStrength) }
-                onDrawBehind {
-                    drawRect(style.colors.base)
-                    fields.forEach { drawRect(it) }
-                    drawRect(GlassGrain.brush, alpha = GlassTokens.GRAIN_ALPHA, blendMode = BlendMode.Overlay)
-                }
-            },
-    )
+    return drawWithCache {
+        val fields = style.colors.fields.map { fieldBrush(it, size, style.fieldStrength) }
+        onDrawBehind {
+            drawRect(style.colors.base)
+            fields.forEach { drawRect(it) }
+            drawRect(GlassGrain.brush, alpha = GlassTokens.GRAIN_ALPHA, blendMode = BlendMode.Overlay)
+        }
+    }
 }
 
 /**
