@@ -320,11 +320,13 @@ object BuiltInStyles {
 
     /**
      * The Visuals v3 Styles. Vortex Forge (#323) owns its camera (lib_camera) and reads FORCE above its
-     * neutral 1 as its spark burst, which drops and arrivals throw.
+     * neutral 1 as its spark burst, which drops and arrivals throw. Reaction Garden (#387) grows through its
+     * own buffer passes; the bass seeds more of it, which grows forms, never light.
      */
     private val forgeShaders: List<StyleManifest> =
         listOf(
             shader("vortex_forge", true, listOf(burst(SURGE, 0.5f), burst(CHANGE, 0.4f))),
+            shader("reaction_garden", false, listOf(react(BASS, GROWTH, 0.2f))),
         )
 
     private fun life(id: String): StyleManifest =

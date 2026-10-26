@@ -588,6 +588,14 @@ TEST(ShippedStylePacks, EveryBufferStyleShipsEachPassAndFitsItsUnits) {
     }
     // At least one shipping Style draws through its own buffers, so the passes run on every device.
     EXPECT_GE(buffered, 1);
+    const packs::StylePack* garden = registry.find("reaction_garden");
+    ASSERT_NE(garden, nullptr);
+    EXPECT_EQ(garden->buffers.count, 2);
+    EXPECT_FLOAT_EQ(garden->buffers.scale[0], 0.5f);
+    EXPECT_FLOAT_EQ(garden->buffers.scale[1], 0.5f);
+    ASSERT_EQ(garden->bufferShaderPaths.size(), 2u);
+    EXPECT_EQ(garden->bufferShaderPaths[0], "styles/reaction_garden/buffer_a.glsl");
+    EXPECT_EQ(garden->bufferShaderPaths[1], "styles/reaction_garden/buffer_b.glsl");
 }
 
 TEST(StylePackPaths, AnImageIsSampledByItsNameInPascalCase) {

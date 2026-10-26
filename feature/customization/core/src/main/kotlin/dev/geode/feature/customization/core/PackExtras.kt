@@ -731,5 +731,12 @@ internal object PackExtras {
                 extra(CENTER_X, -1f, 1f, 0f),
                 extra(CENTER_Y, -1f, 1f, 0f),
             ),
+            pack(
+                "reaction_garden",
+                SHADER,
+                extra(GROWTH, 0f, 2f, 1f),
+                extra(DECAY, 0f, 2f, 1f),
+                extra(VARIANT, 0f, 9f, 0f),
+            ),
         )
 }
