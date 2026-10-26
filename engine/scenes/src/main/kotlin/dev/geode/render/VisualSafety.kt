@@ -86,24 +86,6 @@ object VisualSafety {
             requested
         }
 
-    /**
-     * Caps how hard a second layer may be blended in.
-     *
-     * Additive and difference blending both drive large luminance swings at full mix, so both are
-     * held to [MAX_FLASH_DEPTH] rather than switched off — the mode stays usable, it just cannot
-     * reach flash territory.
-     */
-    fun layerMix(
-        requested: Float,
-        mode: BlendMode,
-    ): Float {
-        val mix = requested.coerceIn(0f, 1f)
-        return when (mode) {
-            BlendMode.DIFFERENCE, BlendMode.ADD -> minOf(mix, MAX_FLASH_DEPTH)
-            else -> mix
-        }
-    }
-
     private val LfoTarget.isLuminance: Boolean
         get() =
             when (this) {

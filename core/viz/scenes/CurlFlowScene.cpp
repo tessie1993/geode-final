@@ -91,6 +91,10 @@ void CurlFlowScene::draw(float timeSeconds) {
         quad_.unbind();
 
         applyChoreographyTo(particles_);
+        // Tilt (#315): the particles fall toward down, the drag capping their speed.
+        const std::array<float, 2> down = inPlaneDown();
+        particles_.fallX = down[0] * kParticleFall;
+        particles_.fallY = down[1] * kParticleFall;
         particles_.step(lastDt_, fld.tex(), aspect_, 1.0f, wallTime_);
         hasPending_ = false;
     }

@@ -28,6 +28,10 @@ public:
     bool inkEnabled = false;
     float inkFlow = 1.0f;
     float inkDissipation = 0.35f;
+    // Tilt: how fast the ink runs downhill, in uv per second on top of the waves' own transport.
+    // Zero leaves the ink exactly as it was.
+    float runoffX = 0.0f;
+    float runoffY = 0.0f;
     std::function<void(const std::string&)> onShaderError = [](const std::string&) {};
 
     int simRes() const { return simRes_; }

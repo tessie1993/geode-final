@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <vector>
 
+#include "geode/util/ShaderAssembly.hpp"
+
 namespace geode::viz {
 
 GLint UniformCache::loc(const std::string& name) {
@@ -58,7 +60,8 @@ GLuint compile(GLenum type, const std::string& source, std::string* error) {
     GLint status = 0;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (status == 0) {
-        if (error) *error = infoLog(shader, false);
+        // Locations name the author's file and line, from the #line directives the assembly put in.
+        if (error) *error = geode::shader::remapLog(infoLog(shader, false), source);
         glDeleteShader(shader);
         return 0;
     }

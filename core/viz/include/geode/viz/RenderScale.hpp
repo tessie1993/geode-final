@@ -46,6 +46,16 @@ constexpr float kMaxStyleRenderScale = 1.0f;
 // [kMinStyleRenderScale, kMaxStyleRenderScale]; kDefaultStyleRenderScale when nothing usable is declared.
 float styleRenderScale(std::optional<double> declared);
 
+// While Layer 2 is on (Layers.hpp) two Styles draw every frame, each into a scene target of the same
+// size. Both then draw at the softer of their two Style scales times kLayeredRenderScale, so the frame
+// costs about what one Style costs alone (two targets at 0.75 x 0.75 of the pixels each is 1.1 of one).
+// Renders are not touched: they always draw at the export size.
+constexpr float kLayeredRenderScale = 0.75f;
+
+// The Style scale both pictures draw at: `styleScale` alone, or with Layer 2 on, the softer of it and
+// Layer 2's `layerStyleScale`, times kLayeredRenderScale.
+float layeredStyleScale(float styleScale, bool layered, float layerStyleScale);
+
 // The floor under style x min(load, thermal), so no combination draws softer than this.
 constexpr float kMinQualityScale = 0.5f;
 
@@ -136,6 +146,9 @@ struct ScaleInputs {
     bool offscreen = false;  // a Render: exact export size
     float exportSupersample = kExportSupersample;
     float styleScale = 1.0f;
+    // Layer 2 is drawn this frame, at its own Style's scale.
+    bool layered = false;
+    float layerStyleScale = 1.0f;
     float loadScale = 1.0f;
     float thermalCeiling = 1.0f;
 };

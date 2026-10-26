@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/QualityTiers.hpp"
 #include "geode/viz/SharedCamera.hpp"
@@ -33,6 +34,8 @@ public:
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
+    // Which way is down (GravityField), stepped once per frame before any scene draws.
+    virtual void setGravityField(const GravityField* field) { (void) field; }
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
@@ -52,6 +55,9 @@ public:
     // The fluid scene runs its own flow field; the water scene owns the ripples and the touch smears.
     virtual bool isFluid() const { return false; }
     virtual bool isWater() const { return false; }
+    // True when the Style draws the finger's strokes itself (Water's ripples); every other Style gets
+    // them as the shared ripple smear, and only while the person has that smear on.
+    virtual bool ownsTouchStrokes() const { return isWater(); }
     virtual void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength) {
         (void) nx; (void) ny; (void) ndx; (void) ndy; (void) dt; (void) strength;
     }

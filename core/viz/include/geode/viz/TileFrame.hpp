@@ -33,6 +33,7 @@ Size outgoingSize(Size render);
 // no transition is running, as the composite uploads it (CompositePass::lookOf). The names follow its
 // uniforms; the gates are uGateA and the Camera's x and z of uCamGate.
 struct CompositeLook {
+    // Layer 2 drawn this frame (a presence above 0), and a transition's outgoing picture.
     bool hasLayer = false;
     bool hasOutgoing = false;
     // uGateA: x geometry and stylize, y mirror and invert, z grade, zoom and rotation, w beat pulse.

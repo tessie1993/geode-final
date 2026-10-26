@@ -1,5 +1,7 @@
 package dev.geode.feature.settings.handlers
 
+import dev.geode.feature.settings.api.VisualSurface
+
 /**
  * Where each setting is stored. The keys and their formats are today's, unchanged (#38): a key in
  * DataStore has the name and type it had in its SharedPreferences file. The files they come from
@@ -73,6 +75,7 @@ internal object SettingsKeys {
     const val TOUCH_SMEAR_STRENGTH = "gui_touch_smear_strength"
     const val TOUCH_TRANSFORM = "gui_touch_transform"
     const val REDUCED_MOTION = "gui_reduced_motion"
+    const val TILT = "gui_tilt"
 
     // Export (geode-prefs).
     const val EXPORT_QUALITY = "export_quality"
@@ -109,6 +112,23 @@ internal object SettingsKeys {
      * absent for the last look.
      */
     const val START_LOOK = "start_look"
+
+    /**
+     * New with #394, so in no old file: a surface's own quality and frame rate, by name, one key each.
+     * Absent when the surface follows [VISUAL_QUALITY] and [VISUAL_FRAME_RATE].
+     */
+    fun surfaceQuality(surface: VisualSurface): String = "${VISUAL_QUALITY}_${surfaceId(surface)}"
+
+    fun surfaceFrameRate(surface: VisualSurface): String = "${VISUAL_FRAME_RATE}_${surfaceId(surface)}"
+
+    /** Spelled out, so renaming a surface in code never moves what was stored for it. */
+    private fun surfaceId(surface: VisualSurface): String =
+        when (surface) {
+            VisualSurface.VISUAL -> "visual"
+            VisualSurface.WALLPAPER -> "wallpaper"
+            VisualSurface.PICTURE_IN_PICTURE -> "pip"
+            VisualSurface.SCREEN_SAVER -> "screen_saver"
+        }
 
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"

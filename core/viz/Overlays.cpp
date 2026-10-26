@@ -60,22 +60,22 @@ void Overlays::stepRippleOverlay(const GeodeFeatureFrame& features, const SceneP
     r.step(dt);
 }
 
-void Overlays::drainTouchStrokes(Scene& scene) {
+void Overlays::drainTouchStrokes(Scene& scene, float smearStrength) {
     drained_.clear();
     {
         std::lock_guard<std::mutex> lock(strokeLock_);
         drained_.swap(strokes_);
     }
     if (drained_.empty()) return;
-    const bool water = scene.isWater();
+    const bool own = scene.ownsTouchStrokes();
     fluid::RippleSim* r = ripple_ ? &*ripple_ : nullptr;
     const float aspect = r ? r->aspect() : 1.0f;
     for (const TouchStroke& st : drained_) {
-        if (water) {
+        if (own) {
             scene.queueTouchStroke(st.nx * 2.0f - 1.0f, 1.0f - st.ny * 2.0f, st.ndx * 2.0f, -st.ndy * 2.0f, st.dt, st.strength);
-        } else if (r && r->available()) {
+        } else if (smearStrength > 0.0f && r && r->available()) {
             r->queueStroke((st.nx * 2.0f - 1.0f) * aspect, 1.0f - st.ny * 2.0f, st.ndx * 2.0f * aspect, -st.ndy * 2.0f, st.dt, kTouchRadius,
-                           st.strength);
+                           st.strength * smearStrength);
         }
     }
 }

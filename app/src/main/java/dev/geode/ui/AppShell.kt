@@ -73,10 +73,13 @@ import dev.geode.feature.playback.ui.MiniPlayerRoute
 import dev.geode.feature.playback.ui.PlayerAction
 import dev.geode.feature.playback.ui.PlayerRoute
 import dev.geode.feature.playback.ui.QueueRoute
+import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.Element
 import dev.geode.feature.settings.api.FolderCommand
 import dev.geode.feature.settings.api.FolderUri
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.studio.ui.StudioRoute
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
@@ -182,15 +185,21 @@ fun AppRoot() {
                 }
             }
     }
-    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings)
+    val surface = if (inPip) VisualSurface.PICTURE_IN_PICTURE else VisualSurface.VISUAL
+    if (!visualsOff) LiveVisualBindings(visualizerView, shell.customization, shell.snapshots, shell.settings, surface)
     // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
     var reactionsHeld by remember { mutableStateOf(false) }
     LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }
     val element = settingsValues?.look?.element ?: Element.Default
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.
-    val visual: @Composable () -> Unit = {
-        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize())
+    // Full-screen mode hands the host the double tap that shows and hides its controls; the Visuals
+    // tab, where the tab UI is the thing being touched, passes none.
+    // Settings' Tilt as the weight the engine fades to: Subtle is half, Full all. Reduce motion stills
+    // it whatever the setting says (#315); the host also stops it under Battery Saver.
+    val tilt = settingsValues?.behavior?.let(::tiltWeight) ?: 0f
+    val visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit = { onDoubleTap ->
+        if (!visualsOff) VisualizerCanvasHost(visualizerView, Modifier.fillMaxSize(), onDoubleTap, tilt)
     }
     GeodeTheme(element, gui) {
         val open: (Place) -> Unit = { appUi.send(AppUiCommand.Open(it)) }
@@ -222,7 +231,7 @@ fun AppRoot() {
                 Place.VISUALS ->
                     // Full-screen mode hosts the Visual itself, so it is never in two places at once.
                     VisualsPlace(shell, onEnterFullScreen = { appUi.send(AppUiCommand.EnterFullScreen) }) {
-                        if (!ui.fullScreen) visual()
+                        if (!ui.fullScreen) visual(null)
                     }
                 Place.STUDIO -> StudioPlace(shell)
                 Place.SETTINGS -> SettingsPlace(shell, onStartTutorial = { tutorialRunning = true })
@@ -287,6 +296,21 @@ fun AppRoot() {
         }
     }
 }
+
+/** How strongly tilt moves the Visual for these Settings, 0 when it must not move it at all. */
+internal fun tiltWeight(behavior: BehaviorSettings): Float =
+    when {
+        behavior.reducedMotion -> 0f
+        else ->
+            when (behavior.tilt) {
+                TiltAmount.OFF -> 0f
+                TiltAmount.SUBTLE -> TILT_SUBTLE
+                TiltAmount.FULL -> 1f
+            }
+    }
+
+/** Subtle tilt: half of Full. */
+private const val TILT_SUBTLE = 0.5f
 
 /** The monotonic clock Playback's marks use (ADR-0004). */
 private fun elapsedNow(): Millis = Millis(SystemClock.elapsedRealtime())
@@ -387,15 +411,25 @@ private fun PlayerSheet(
 private fun FullScreenVisual(
     shell: ShellViewModel,
     keepScreenOn: Boolean,
-    visual: @Composable () -> Unit,
+    visual: @Composable (onDoubleTap: (() -> Unit)?) -> Unit,
     inPip: Boolean,
     reactionsHeld: Boolean,
     onHeldChange: (Boolean) -> Unit,
 ) {
+    // Whether the overlay's controls show is App-UI-only state, and it outlives a rotation. The double
+    // tap that toggles them is the Visual host's own, so every other touch draws in the Visual.
+    var controlsShown by rememberSaveable { mutableStateOf(true) }
+    val toggleControls = { controlsShown = !controlsShown }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        visual()
+        visual(if (inPip) null else toggleControls)
         if (!inPip) {
-            FullScreenVisualRoute(shell.visuals, keepScreenOn = keepScreenOn, onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) })
+            FullScreenVisualRoute(
+                shell.visuals,
+                controlsShown = controlsShown,
+                keepScreenOn = keepScreenOn,
+                onToggleControls = toggleControls,
+                onExit = { shell.appUi.send(AppUiCommand.ExitFullScreen) },
+            )
             TextButton(
                 onClick = { shell.appUi.send(AppUiCommand.OpenSheet(Sheet.CUSTOMIZE)) },
                 modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(16.dp),

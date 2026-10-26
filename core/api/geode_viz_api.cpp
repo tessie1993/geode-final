@@ -106,10 +106,6 @@ void geode_viz_set_reduced_motion(geode_viz* v, int on) {
     if (v) v->renderer.setReducedMotion(on != 0);
 }
 
-void geode_viz_set_layer(geode_viz* v, const char* scene_id, float mix, int blend_mode) {
-    if (v) v->renderer.setLayer(text(scene_id), mix, blend_mode);
-}
-
 void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms) {
     if (v) v->renderer.setTransition(text(id), duration_ms);
 }
@@ -127,6 +123,14 @@ void geode_viz_queue_touch_stroke(geode_viz* v, float nx, float ny, float ndx, f
     if (v) v->renderer.queueTouchStroke(nx, ny, ndx, ndy, dt, strength);
 }
 
+void geode_viz_set_touch_smear(geode_viz* v, int on, float strength) {
+    if (v) v->renderer.setTouchSmear(on != 0, strength);
+}
+
+void geode_viz_set_gravity(geode_viz* v, float x, float y, float z) {
+    if (v) v->renderer.submitGravity(x, y, z);
+}
+
 void geode_viz_load_milk_preset(geode_viz* v, const char* path) {
     if (v && path) v->renderer.loadMilkPreset(path);
 }
@@ -138,6 +142,12 @@ void geode_viz_reload_milk_preset(geode_viz* v) {
 void geode_viz_set_milk_texture_dir(geode_viz* v, const char* dir) {
     if (v && dir) v->renderer.setMilkTextureDir(dir);
 }
+
+#ifdef GEODE_STYLE_HOT_RELOAD
+void geode_viz_set_style_lab(geode_viz* v, const char* dir) {
+    if (v && dir) v->renderer.setStyleLab(dir);
+}
+#endif
 
 size_t geode_viz_take_milk_preset_loaded(geode_viz* v, char* out, size_t capacity) {
     if (!v) return 0;

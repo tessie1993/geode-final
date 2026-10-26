@@ -190,6 +190,10 @@ sealed interface BehaviorCommand : SettingsCommand {
         val on: Boolean,
     ) : BehaviorCommand
 
+    data class SetTilt(
+        val amount: TiltAmount,
+    ) : BehaviorCommand
+
     /** The look Geode opens on (#383); a Style or preset with a blank id means [StartLook.Last]. */
     data class SetStartLook(
         val look: StartLook,
@@ -274,6 +278,18 @@ sealed interface PerformanceCommand : SettingsCommand {
 
     data class SetVisualFrameRate(
         val frameRate: VisualFrameRate,
+    ) : PerformanceCommand
+
+    /** The quality [surface] draws at (#394); null makes it follow [SetVisualQuality] again. */
+    data class SetSurfaceQuality(
+        val surface: VisualSurface,
+        val quality: VisualQuality?,
+    ) : PerformanceCommand
+
+    /** The frame rate [surface] draws at (#394); null makes it follow [SetVisualFrameRate] again. */
+    data class SetSurfaceFrameRate(
+        val surface: VisualSurface,
+        val frameRate: VisualFrameRate?,
     ) : PerformanceCommand
 
     data class SetSaveMode(
