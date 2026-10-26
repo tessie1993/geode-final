@@ -45,6 +45,28 @@ public final class dev/geode/feature/settings/api/AnalysisCommand$SetReactToMicr
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/settings/api/AnalysisCommand$SetSensitivity : dev/geode/feature/settings/api/AnalysisCommand {
+	public synthetic fun <init> (FLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-HT4dDpk ()F
+	public final fun copy-19VAEfk (F)Ldev/geode/feature/settings/api/AnalysisCommand$SetSensitivity;
+	public static synthetic fun copy-19VAEfk$default (Ldev/geode/feature/settings/api/AnalysisCommand$SetSensitivity;FILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$SetSensitivity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSensitivity-HT4dDpk ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/settings/api/AnalysisCommand$SetSyncOffset : dev/geode/feature/settings/api/AnalysisCommand {
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun copy-TrJcsQA (J)Ldev/geode/feature/settings/api/AnalysisCommand$SetSyncOffset;
+	public static synthetic fun copy-TrJcsQA$default (Ldev/geode/feature/settings/api/AnalysisCommand$SetSyncOffset;JILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisCommand$SetSyncOffset;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getOffset-CmsKos8 ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/settings/api/AnalysisCommand$UseBeatTuning : dev/geode/feature/settings/api/AnalysisCommand {
 	public fun <init> (Ldev/geode/feature/settings/api/BeatTuning;)V
 	public final fun component1 ()Ldev/geode/feature/settings/api/BeatTuning;
@@ -58,19 +80,23 @@ public final class dev/geode/feature/settings/api/AnalysisCommand$UseBeatTuning 
 
 public final class dev/geode/feature/settings/api/AnalysisSettings {
 	public static final field Companion Ldev/geode/feature/settings/api/AnalysisSettings$Companion;
-	public synthetic fun <init> (FFFZILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (FFFZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFZJFILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (FFFZJFLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()F
 	public final fun component2 ()F
 	public final fun component3-mTnqTo4 ()F
 	public final fun component4 ()Z
-	public final fun copy-ZTKKQuU (FFFZ)Ldev/geode/feature/settings/api/AnalysisSettings;
-	public static synthetic fun copy-ZTKKQuU$default (Ldev/geode/feature/settings/api/AnalysisSettings;FFFZILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisSettings;
+	public final fun component5-CmsKos8 ()J
+	public final fun component6-HT4dDpk ()F
+	public final fun copy-7llPWNI (FFFZJF)Ldev/geode/feature/settings/api/AnalysisSettings;
+	public static synthetic fun copy-7llPWNI$default (Ldev/geode/feature/settings/api/AnalysisSettings;FFFZJFILjava/lang/Object;)Ldev/geode/feature/settings/api/AnalysisSettings;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getBeatMinIntervalMs ()F
 	public final fun getBeatSensitivity ()F
 	public final fun getPresetMorph-mTnqTo4 ()F
 	public final fun getReactToMicrophone ()Z
+	public final fun getSensitivity-HT4dDpk ()F
+	public final fun getSyncOffset-CmsKos8 ()J
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -80,6 +106,8 @@ public final class dev/geode/feature/settings/api/AnalysisSettings$Companion {
 	public final fun getBEAT_SENSITIVITY ()Lkotlin/ranges/ClosedFloatingPointRange;
 	public final fun getPRESET_MORPH ()Lkotlin/ranges/ClosedRange;
 	public final fun getPRESET_MORPH_DEFAULT-mTnqTo4 ()F
+	public final fun getSENSITIVITY ()Lkotlin/ranges/ClosedRange;
+	public final fun getSYNC_OFFSET ()Lkotlin/ranges/ClosedRange;
 }
 
 public final class dev/geode/feature/settings/api/Argb {
