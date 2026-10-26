@@ -54,10 +54,6 @@ class OfflineAnalyzer(
         // (normal completion, "No audio track in file", a codec error, or cancellation),
         // not only on the success path.
         return pipeline.use { streaming ->
-            val info = MediaCodec.BufferInfo()
-            var inputDone = false
-            var outputDone = false
-            var lastProgress = 0f
             try {
                 extractor.setDataSource(context, uri, null)
                 val trackIndex =
@@ -71,17 +67,7 @@ class OfflineAnalyzer(
                 val mime = requireNotNull(format.getString(MediaFormat.KEY_MIME))
                 val codec = floatDecoder(mime, format).also { codecRef = it }
                 codec.start()
-                while (!outputDone) {
-                    if (!stillWanted()) throw CancellationException("analysis cancelled")
-                    if (!inputDone) {
-                        inputDone =
-                            queueOne(codec, extractor) { sampleUs ->
-                                lastProgress =
-                                    progressed(sampleUs, durationUs, lastProgress, onProgress)
-                            }
-                    }
-                    outputDone = drainOne(codec, info, streaming)
-                }
+                decodeAll(codec, extractor, streaming, durationUs, onProgress, stillWanted)
             } finally {
                 codecRef?.let {
                     bestEffort(TAG, "it.stop()") { it.stop() }
@@ -91,6 +77,29 @@ class OfflineAnalyzer(
             }
             onProgress(1f)
             streaming.finish()
+        }
+    }
+
+    /** Runs the decoder over the whole track into [pipeline], reporting progress; cancels when no longer wanted. */
+    private fun decodeAll(
+        codec: MediaCodec,
+        extractor: MediaExtractor,
+        pipeline: StreamingPipeline,
+        durationUs: Long,
+        onProgress: (Float) -> Unit,
+        stillWanted: () -> Boolean,
+    ) {
+        val info = MediaCodec.BufferInfo()
+        var inputDone = false
+        var outputDone = false
+        var lastProgress = 0f
+        while (!outputDone) {
+            if (!stillWanted()) throw CancellationException("analysis cancelled")
+            if (!inputDone) {
+                inputDone =
+                    queueOne(codec, extractor) { sampleUs -> lastProgress = progressed(sampleUs, durationUs, lastProgress, onProgress) }
+            }
+            outputDone = drainOne(codec, info, pipeline)
         }
     }
 
