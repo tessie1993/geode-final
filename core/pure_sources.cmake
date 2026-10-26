@@ -77,6 +77,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/StyleProfiles.cpp
     viz/StyleExtras.cpp
     viz/StyleInputs.cpp
+    viz/FeedbackWarp.cpp
     viz/ThermalGovernor.cpp
     viz/TouchField.cpp
     viz/GravityField.cpp

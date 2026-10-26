@@ -12,11 +12,20 @@
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
+#include "geode/viz/FeedbackWarp.hpp"
 #include "geode/viz/FrameRate.hpp"
 #include "geode/viz/SharedInputs.hpp"
 #include "geode/viz/StyleInputs.hpp"
 
 namespace geode::viz {
+
+// The feedback warp a shader Style opts into ("feedback", FeedbackWarp.hpp): its spec and the warp
+// stage's assembled sources, the shared ones or the pack's own fragment.
+struct ShaderFeedback {
+    feedback::WarpSpec spec;
+    std::string vertex;
+    std::string fragment;
+};
 
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
@@ -24,8 +33,10 @@ public:
     static constexpr int kAudioTexWidth = 512;
 
     // `inputs`: the shared Style inputs the pack declares (StyleInputs.hpp); only these are made and bound.
+    // `feedback`: the warp layer, when the pack opts into it; the Style then reads the warped picture as
+    // its previous frame and what it draws is kept.
     ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                inputs::Set inputs = 0);
+                inputs::Set inputs = 0, std::optional<ShaderFeedback> feedback = std::nullopt);
     ~ShaderScene() override;
 
     const std::string& id() const override { return id_; }
@@ -145,9 +156,20 @@ private:
     void uploadInputs();
     GLuint inputTexture(inputs::Input input);
     // After the draw: keeps this frame for the next one, as the previous frame and the blur levels the
-    // pack declares, then binds the draw target again.
-    void captureHistory();
+    // pack declares, then binds the draw target again. `source` holds the frame: the draw target, or the
+    // kept picture of a Style with feedback.
+    void captureHistory(GLuint source);
     void releaseHistory();
+    // ---- the feedback warp (FeedbackWarp.hpp) ----
+    // Builds the warp stage's program the first time a Style with feedback draws.
+    void buildWarpIfNeeded();
+    // Before the Style draws: the kept picture carried through the motion grid, decayed and settled into
+    // warped_, which the Style reads as uPrevFrame; then binds kept_, free once warped, for the Style to
+    // draw into. False, with nothing bound, when the warp cannot run this frame.
+    bool warpFeedback();
+    void uploadWarp(int width, int height);
+    // After the Style drew into kept_: shows it, copied onto the renderer's target.
+    void presentFeedback();
     void set1f(const char* name, float value);
     float marchSteps(float detail);
 
@@ -241,6 +263,20 @@ private:
     int drawWidth_ = 0;
     int drawHeight_ = 0;
     Framebuffer previous_{"stylePrevious"};
+    // ---- the feedback warp (FeedbackWarp.hpp) ------------------------------
+    std::optional<ShaderFeedback> feedback_;
+    GLuint warpProgram_ = 0;
+    UniformCache warpUniforms_;
+    bool warpBuilt_ = false;
+    feedback::Motion warpMotion_;
+    feedback::Step warpStep_;
+    // Counts the warp's frames for its dither, wrapping well inside what a float holds exactly.
+    std::uint32_t warpFrame_ = 0;
+    // True while this frame's Style draws into kept_ over the warped picture.
+    bool feeding_ = false;
+    // What the Style drew last frame and keeps (it draws into it), and that carried through the warp.
+    Framebuffer kept_{"styleFeedback"};
+    Framebuffer warped_{"styleFeedbackWarped"};
     // The bloom chain's sizes (tone::bloomLevels): 1/2, then blur1..3 at 1/4, 1/8 and 1/16.
     std::array<Framebuffer, kBlurChain> blur_{Framebuffer("styleBlur0"), Framebuffer("styleBlur1"), Framebuffer("styleBlur2"),
                                               Framebuffer("styleBlur3")};

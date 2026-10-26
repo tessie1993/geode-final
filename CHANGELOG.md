@@ -11,6 +11,23 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Feedback warp layer for shader Styles (#321).** A shader Style can
+  declare `feedback` in its manifest and be drawn as a loop, as MilkDrop
+  draws every preset: its last picture is carried through a coarse motion
+  grid (zoom, rotation, flow, stretch and a swirl about a centre), decayed
+  and tinted, and the Style draws over it. Everything is per second, so it
+  moves and fades alike at 30, 60 and 120 Hz; Speed, the music and the Decay,
+  Flight, Spin, Drift and Swirl Extras drive it, and a pack may bring its own
+  warp stage. The loop is kept in half float (RGB10_A2 where that does not
+  render) and rounded stochastically, so a slow decay fades smoothly to exact
+  black instead of stalling into a ghost; CI runs the loop in every format to
+  prove it. Scope is the first Style drawn this way: its line now leaves
+  echoes that fly outward, turn and part into colour. The previous-frame path
+  also gained two fixes: making a shared input's texture no longer replaces
+  the audio texture for that frame, and the render check no longer draws a
+  Style that reads its last frame into a feedback loop of its own. See
+  docs/style-packs.md, "Feedback".
+
 - **Shared Style inputs (#312).** A shader Style can declare, in its
   manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D
   noise, a 32³ noise volume and the blue-noise mask), its previous frame,

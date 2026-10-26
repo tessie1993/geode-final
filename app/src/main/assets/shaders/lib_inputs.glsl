@@ -13,7 +13,8 @@
 //   noise_hq        uNoiseHq     smoother, every 8 texels
 //   noise_vol       uNoiseVol    32x32x32 RGBA white noise; vnoiseVol and fbmVol below
 //   blue_noise      uBlueNoise   the 64x64 blue-noise mask (one channel), for dithering a march
-//   previous_frame  uPrevFrame   the last frame this Style drew, at its size (HDR: may exceed 1)
+//   previous_frame  uPrevFrame   the last frame this Style drew, at its size (HDR: may exceed 1); with
+//                                "feedback", that frame carried through the warp (lib_feedback.glsl)
 //   blur1..blur3    uBlur1..3    that frame blurred, at 1/4, 1/8 and 1/16 of its size
 //   clocks          uFrame       frames drawn this visit (wraps at 2^24), uFrameDt the frame's
 //                                seconds, uVisitRand four random values drawn once per visit, and

@@ -342,7 +342,16 @@ internal object PackExtras {
             pack("plasma", SHADER, extra(SCALE, 0f, 2f, 1f), extra(DRIFT, 0f, 2f, 1f)),
             pack("bars", SHADER, extra(COUNT, 0f, 2f, 1f), extra(THICKNESS, 0f, 2f, 1f), extra(EDGE, 0f, 2f, 1f)),
             pack("ring", SHADER, extra(SIZE, 0f, 2f, 1f), extra(THICKNESS, 0f, 2f, 1f), extra(SPIN, 0f, 2f, 1f)),
-            pack("scope", SHADER, extra(THICKNESS, 0f, 2f, 1f), extra(COUNT, 0f, 2f, 1f), extra(SCALE, 0f, 2f, 1f)),
+            pack(
+                "scope",
+                SHADER,
+                extra(THICKNESS, 0f, 2f, 1f),
+                extra(COUNT, 0f, 2f, 1f),
+                extra(SCALE, 0f, 2f, 1f),
+                extra(DECAY, 0f, 2f, 1f),
+                extra(SPIN, 0f, 2f, 1f),
+                extra(SWIRL, 0f, 2f, 1f),
+            ),
             pack("liss", SHADER, extra(COUNT, 0f, 2f, 1f), extra(SIZE, 0f, 2f, 1f), extra(SCALE, 0f, 2f, 1f)),
             pack("warp", SHADER, extra(COUNT, 0f, 2f, 1f), extra(FLIGHT, 0f, 2f, 1f)),
             pack(
