@@ -24,5 +24,6 @@
     "eased": { "steps": 0.85 },
     "reduced": { "steps": 0.7, "off": ["sparks"] },
     "minimal": { "steps": 0.5, "off": ["rims", "sparks"] }
-  }
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

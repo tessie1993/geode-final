@@ -9,5 +9,6 @@
     { "name": "hold", "min": 0, "max": 2, "default": 1 },
     { "name": "scale", "min": 0, "max": 2, "default": 1 },
     { "name": "complexity", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["onset", "bands", "spectrum"]}
 }

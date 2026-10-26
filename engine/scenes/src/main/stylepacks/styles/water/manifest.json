@@ -9,5 +9,6 @@
     { "name": "force", "min": 0, "max": 2, "default": 1 },
     { "name": "fog", "min": 0, "max": 2, "default": 1 },
     { "name": "swirl", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["section"], "meso": ["bar"], "micro": ["drums", "bands"]}
 }

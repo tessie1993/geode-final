@@ -2,5 +2,6 @@
   "version": 1,
   "id": "milkdrop",
   "label": "Milkdrop",
-  "family": "milkdrop"
+  "family": "milkdrop",
+  "reactivity": {"macro": ["drop"], "meso": ["bar"], "micro": ["onset", "wave"]}
 }

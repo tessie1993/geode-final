@@ -6,8 +6,9 @@ shader Style, its fragment shader. styles/index.json lists the Styles in picker 
 styles/families.json declares each family's parameters with their types and ranges. Both the Kotlin
 side (StylePacks.kt) and the native side (geode/viz/StylePacks.hpp) read these files; this check holds
 them to the format, plus the rules that span packs (every folder listed exactly once, an Extra name
-meaning the same range on every Style, every Extra a shader Style declares read by its shader, and a
-shader Style reading exactly the shared inputs it declares).
+meaning the same range on every Style, every Extra a shader Style declares read by its shader, a
+shader Style reading exactly the shared inputs it declares, and every Style's reactivity profile naming
+exactly what its shader or its family's renderer reads).
 
 The packs are the one source of a Style's Extras. The Kotlin side lists them in a generated file
 (PackExtras.kt in :feature:customization:core), which this check holds to the packs.
@@ -44,7 +45,7 @@ NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {
     "version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions",
-    "effects", "tiers", "inputs", "lens", "particles3d",
+    "effects", "tiers", "inputs", "lens", "particles3d", "reactivity",
 }
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -110,6 +111,43 @@ LENS_PARTS = {
 PARTICLES = ("amount", {"amount": ("number", 0.0, 1.0), "kind": ({"streaks", "sparks"}, None, None),
                         "count": ("number", 0.25, 2.0), "speed": ("number", 0.1, 3.0), "size": ("number", 0.3, 3.0),
                         "tint": ("rgb", 0.0, 2.0)})
+# The reactivity profile (#319): what a Style reacts to at each of the three levels of the music,
+# macro (sections and energy), meso (the bar and the beat) and micro (onsets and the spectrum). Each
+# feature is named with the words a shader reads it by: the feature bus's uniforms (lib_scene_features),
+# the shared audio uniforms and taps (lib_scene_uniforms), the motion layer (lib_scene_motion) and the
+# bar shared input. A Style that is not a shader Style reacts as its family's renderer does, which
+# families.json declares under the same key.
+REACTIVITY = {
+    "macro": {
+        "section": ("uSection", "uSectionHit"),
+        "novelty": ("uNovelty",),
+        "energy": ("uMacro", "uSwell", "uEnergy", "uEnergySmooth", "uEnergyPhase", "uFlowPhase"),
+        "buildup": ("uBuildup",),
+        "drop": ("uDrop", "uDropHit"),
+        "arrival": ("uArrival", "uArrivalHit"),
+        "timbre": ("uCentroid", "uHarmonicity"),
+        "presence": ("uBassPresence", "uMidPresence", "uTreblePresence"),
+    },
+    "meso": {
+        "bar": ("uBarPhase", "uBarConfidence", "uBeatInBar", "uDownbeat", "uDownbeatConfidence"),
+        "beat": ("uBeat", "uBeatPhase", "uPulseConfidence", "uTempoStability"),
+    },
+    "micro": {
+        "onset": ("uOnset", "uFlux", "uSpike", "uMoveDir", "uSpawnSeed", "uSpawnAge", "spawnGrow", "uFormPhase"),
+        "drums": ("uKick", "uSnare", "uHat"),
+        "hits": ("uBassHits", "uMidHits", "uTrebleHits"),
+        "bands": ("uBass", "uMid", "uTreble", "uBassSmooth", "uMidSmooth", "uTrebleSmooth", "uBassLevel", "uMidLevel", "uTrebleLevel"),
+        "spectrum": ("aband", "apeak", "uAudioTex"),
+        "wave": ("awave", "awaveL", "awaveR"),
+        "space": ("uStereoWidth", "uStereoPan", "uStereoCorrelation"),
+    },
+}
+# What a shader Style reads of the music is what its own code reads, not the shared controls every
+# Style carries: an older Style's own copy of view() (the Shared core's shake, pulse and beat response,
+# which the person sets) and of the audio taps are left out before the shader is read.
+VIEW_FUNCTION = re.compile(r"\bvec2\s+view\s*\(\s*\)\s*\{")
+TAP_DEFINITIONS = re.compile(r"\bfloat\s+(?:aband|apeak|awave|awaveL|awaveR)\s*\(\s*float\s+\w+\s*\)\s*\{[^{}]*\}")
+UNIFORM_DECLARATION = re.compile(r"\buniform\s+[^;]*;")
 INDEX_FILE = "index.json"
 FAMILIES_FILE = "families.json"
 MANIFEST_FILE = "manifest.json"
@@ -168,7 +206,9 @@ def check_ignores(entry: dict, name: str, report: Report) -> None:
             seen.add(ignored)
 
 
-def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
+def check_families(doc: dict, report: Report, profiles: dict[str, set[tuple[str, str]]] | None = None) -> dict[str, dict[str, dict]]:
+    """Each family's parameters; the "reactivity" of each family that declares one goes into `profiles`."""
+    profiles = {} if profiles is None else profiles
     families: dict[str, dict[str, dict]] = {}
     entries = doc.get("families")
     if not isinstance(entries, list):
@@ -183,6 +223,12 @@ def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
             report.error(FAMILIES_FILE, f'family "{name}" is declared twice')
             continue
         check_ignores(entry, name, report)
+        if "reactivity" in entry:
+            where = f"{FAMILIES_FILE} {name}"
+            if name == SHADER_FAMILY:
+                report.error(where, 'a shader Style\'s own shader says what it reads; the family declares no "reactivity"')
+            else:
+                profiles[name] = profile_of(entry["reactivity"], where, report)
         specs: dict[str, dict] = {}
         for spec in entry["parameters"]:
             where = f"{FAMILIES_FILE} {name}"
@@ -319,6 +365,76 @@ def check_feature_reads(shader: Path, where: str, report: Report) -> None:
         report.error(where, "the shader includes lib_scene_features but reads none of its uniforms")
 
 
+def profile_of(declared: object, where: str, report: Report) -> set[tuple[str, str]]:
+    """A "reactivity" object as (level, feature) pairs, every problem with its shape reported."""
+    pairs: set[tuple[str, str]] = set()
+    if not isinstance(declared, dict):
+        report.error(where, f'"reactivity" must be an object of the levels {list(REACTIVITY)}')
+        return pairs
+    for level, features in declared.items():
+        if level not in REACTIVITY:
+            report.error(where, f'"reactivity" level {level!r} is not one of {list(REACTIVITY)}')
+            continue
+        if not isinstance(features, list) or not all(isinstance(f, str) for f in features):
+            report.error(where, f'"reactivity" "{level}" must be a list of features')
+            continue
+        for feature in features:
+            if feature not in REACTIVITY[level]:
+                report.error(where, f'"reactivity" "{level}" names "{feature}", not one of {sorted(REACTIVITY[level])}')
+            elif (level, feature) in pairs:
+                report.error(where, f'"reactivity" "{level}" names "{feature}" twice')
+            else:
+                pairs.add((level, feature))
+    if not pairs:
+        report.error(where, '"reactivity" must name at least one feature: every Style reacts to the music')
+    return pairs
+
+
+def without_function(code: str, opening: re.Pattern) -> str:
+    """`code` without every function `opening` starts, its braces matched."""
+    while (match := opening.search(code)) is not None:
+        depth, at = 1, match.end()
+        while depth and at < len(code):
+            depth += {"{": 1, "}": -1}.get(code[at], 0)
+            at += 1
+        code = code[: match.start()] + code[at:]
+    return code
+
+
+def shader_reactivity(source: str) -> set[tuple[str, str]]:
+    """The (level, feature) pairs a shader's own code reads."""
+    code = strip_comments(source)
+    code = UNIFORM_DECLARATION.sub(" ", TAP_DEFINITIONS.sub(" ", without_function(code, VIEW_FUNCTION)))
+    return {
+        (level, feature)
+        for level, features in REACTIVITY.items()
+        for feature, words in features.items()
+        if any(re.search(rf"\b{word}\b", code) for word in words)
+    }
+
+
+def check_reactivity(
+    manifest: dict, family: str, shader: Path | None, profiles: dict[str, set[tuple[str, str]]], where: str, report: Report
+) -> None:
+    """Every Style declares its reactivity profile, and it names exactly what is read: by the shader for
+    a shader Style, by the family's renderer for the others. A declaration nothing reads is rejected."""
+    if "reactivity" not in manifest:
+        report.error(where, 'every Style declares its "reactivity" profile')
+        return
+    declared = profile_of(manifest["reactivity"], where, report)
+    if family == SHADER_FAMILY:
+        if shader is None:
+            return
+        read, reader = shader_reactivity(shader.read_text(encoding="utf-8")), "the shader"
+    else:
+        read, reader = profiles.get(family, set()), f'family "{family}"\'s renderer'
+    for level, feature in sorted(declared - read, key=lambda p: (list(REACTIVITY).index(p[0]), p[1])):
+        words = " or ".join(REACTIVITY[level][feature])
+        report.error(where, f'"reactivity" "{level}" declares "{feature}" but {reader} never reads it ({words})')
+    for level, feature in sorted(read - declared, key=lambda p: (list(REACTIVITY).index(p[0]), p[1])):
+        report.error(where, f'{reader} reads "{feature}" but "reactivity" "{level}" does not declare it')
+
+
 def check_inputs(manifest: dict, family: str, shader: Path | None, where: str, report: Report) -> None:
     declared = manifest.get("inputs", [])
     if not isinstance(declared, list) or not all(isinstance(name, str) for name in declared):
@@ -415,6 +531,7 @@ def check_manifest(
     families: dict[str, dict[str, dict]],
     report: Report,
     extra_ranges: dict[str, tuple[float, float, str]],
+    profiles: dict[str, set[tuple[str, str]]],
 ) -> None:
     where = folder.name
     manifest = load_json(folder / MANIFEST_FILE, report)
@@ -460,6 +577,7 @@ def check_manifest(
     check_tiers(manifest, where, report)
     check_inputs(manifest, family, shader_file, where, report)
     check_lens(manifest, family, where, report)
+    check_reactivity(manifest, family, shader_file, profiles, where, report)
 
 
 def check_part(name: str, part: object, shape: tuple, where: str, report: Report) -> None:
@@ -549,7 +667,8 @@ def check(styles: Path) -> list[str]:
     index_doc = load_json(styles / INDEX_FILE, report)
     if families_doc is None or index_doc is None:
         return report.errors
-    families = check_families(families_doc, report)
+    profiles: dict[str, set[tuple[str, str]]] = {}
+    families = check_families(families_doc, report, profiles)
     ids = check_index(index_doc, report)
     folders = sorted(p.name for p in styles.iterdir() if p.is_dir())
     for missing in sorted(set(ids) - set(folders)):
@@ -562,7 +681,7 @@ def check(styles: Path) -> list[str]:
     extra_ranges: dict[str, tuple[float, float, str]] = {}
     for style_id in ids:
         if (styles / style_id).is_dir():
-            check_manifest(styles / style_id, families, report, extra_ranges)
+            check_manifest(styles / style_id, families, report, extra_ranges, profiles)
     return report.errors
 
 
@@ -628,7 +747,8 @@ GOOD_FAMILIES = {
     "version": 1,
     "families": [
         {"name": "shader", "parameters": []},
-        {"name": "plate", "ignores": ["SPEED"], "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
+        {"name": "plate", "ignores": ["SPEED"], "reactivity": {"meso": ["beat"], "micro": ["bands"]},
+         "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
     ],
 }
 GOOD_MANIFESTS = {
@@ -647,12 +767,21 @@ GOOD_MANIFESTS = {
             "depthOfField": {"aperture": 0.5, "focus": 0.4},
         },
         "particles3d": {"kind": "sparks", "amount": 0.7, "count": 1, "speed": 1.2, "size": 1, "tint": [1, 0.8, 0.6]},
+        "reactivity": {"macro": ["energy"], "micro": ["spectrum"]},
     },
-    "drum": {"version": 1, "id": "drum", "label": "Drum", "family": "plate", "parameters": {"mode": 2}},
+    "drum": {
+        "version": 1, "id": "drum", "label": "Drum", "family": "plate", "parameters": {"mode": 2},
+        "reactivity": {"meso": ["beat"], "micro": ["bands"]},
+    },
 }
 
 
-GOOD_SHADER = "//#include lib_style\n//#include lib_inputs\nvoid main() { float s = uXScale + fbmVol(vec3(uFrame), 3); }\n"
+GOOD_SHADER = (
+    "//#include lib_style\n//#include lib_inputs\n"
+    "vec2 view() { return vec2(uBeat * uBass); }\n"
+    "float aband(float x) { return texture(uAudioTex, vec2(x, 0.25)).r; }\n"
+    "void main() { float s = uXScale + fbmVol(vec3(uFrame), 3) + aband(0.5) * uEnergy; }\n"
+)
 
 
 def write_tree(root: Path, families: dict, index: list[str], manifests: dict[str, dict], shaders: dict[str, object]) -> Path:
@@ -767,6 +896,23 @@ def self_test() -> int:
         "lib_scene_features included and never read": lambda f, i, m, s: s.update(
             {"orb": ("shader.glsl", GOOD_SHADER + "//#include lib_scene_features\n// uKick\nfloat k() { return uKickX; }\n")}
         ),
+        "no reactivity profile": setter(["orb", "reactivity"], DELETE),
+        "no reactivity profile on a family Style": setter(["drum", "reactivity"], DELETE),
+        "reactivity not an object": setter(["orb", "reactivity"], ["spectrum"]),
+        "reactivity level that is no level": setter(["orb", "reactivity", "mega"], ["energy"]),
+        "reactivity level not a list": setter(["orb", "reactivity", "micro"], "spectrum"),
+        "reactivity feature at the wrong level": setter(["orb", "reactivity"], {"macro": ["energy", "spectrum"]}),
+        "reactivity naming a feature twice": setter(["orb", "reactivity", "micro"], ["spectrum", "spectrum"]),
+        "empty reactivity profile": setter(["drum", "reactivity"], {"micro": []}),
+        "reactivity the shader never reads": setter(["orb", "reactivity", "micro"], ["spectrum", "drums"]),
+        "reactivity only the shared view() reads": setter(["orb", "reactivity", "meso"], ["beat"]),
+        "reactivity read only by a tap's own definition": lambda f, i, m, s: s.update(
+            {"orb": ("shader.glsl", GOOD_SHADER.replace("aband(0.5) * uEnergy", "uEnergy"))}),
+        "shader reads reactivity it does not declare": setter(["orb", "reactivity"], {"micro": ["spectrum"]}),
+        "reactivity the family never reads": setter(["drum", "reactivity", "micro"], ["bands", "wave"]),
+        "family reactivity its Style does not declare": setter(["drum", "reactivity"], {"meso": ["beat"]}),
+        "family reactivity on the shader family": lambda f, i, m, s: f["families"][0].update({"reactivity": {"micro": ["bands"]}}),
+        "family reactivity naming no feature": lambda f, i, m, s: f["families"][1].update({"reactivity": {"micro": ["comets"]}}),
         "too many Macros": setter(["orb", "macros"], [{"name": f"m{n}", "links": []} for n in range(MAX_MACROS + 1)]),
         "Macro amount out of range": setter(["orb", "macros"], [{"name": "energy", "links": [{"target": "x", "amount": 2}]}]),
         "Reaction with negative rise": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": -1, "fallMs": 0, "curve": "linear"}]),

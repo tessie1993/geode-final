@@ -8,5 +8,6 @@
   "detail": "march",
   "extras": [
     { "name": "fog", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "meso": ["beat"], "micro": ["onset", "bands", "spectrum"]}
 }

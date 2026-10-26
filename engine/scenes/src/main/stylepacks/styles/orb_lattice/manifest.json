@@ -7,5 +7,6 @@
   "extras": [
     { "name": "size", "min": 0, "max": 2, "default": 1 },
     { "name": "scale", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

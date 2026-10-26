@@ -23,5 +23,6 @@
   "tiers": {
     "reduced": { "off": ["fibres"] },
     "minimal": { "off": ["fibres", "shadows"] }
-  }
+  },
+  "reactivity": {"macro": ["energy"], "micro": ["onset", "bands"]}
 }

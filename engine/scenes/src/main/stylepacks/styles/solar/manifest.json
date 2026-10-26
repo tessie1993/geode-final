@@ -13,5 +13,6 @@
     "threshold": 0.8,
     "godRays": {"amount": 0.55, "source": [0.5, 0.5], "length": 0.75, "decay": 0.95},
     "streaks": {"amount": 0.3, "shape": "star", "spokes": 6, "length": 0.6}
-  }
+  },
+  "reactivity": {"meso": ["beat"], "micro": ["bands", "spectrum"]}
 }

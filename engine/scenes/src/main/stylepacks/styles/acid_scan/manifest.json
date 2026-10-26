@@ -23,5 +23,6 @@
     { "name": "drift", "min": 0, "max": 2, "default": 1 },
     { "name": "viscosity", "min": 0, "max": 2, "default": 1 },
     { "name": "swirl", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"macro": ["drop"], "micro": ["onset", "bands", "spectrum"]}
 }

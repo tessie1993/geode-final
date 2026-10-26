@@ -8,5 +8,6 @@
     { "name": "count", "min": 0, "max": 2, "default": 1 },
     { "name": "thickness", "min": 0, "max": 2, "default": 1 },
     { "name": "edge", "min": 0, "max": 2, "default": 1 }
-  ]
+  ],
+  "reactivity": {"micro": ["bands", "spectrum"]}
 }
