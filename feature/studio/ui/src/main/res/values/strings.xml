@@ -100,6 +100,11 @@
     <string name="studio_render_whole">Whole track</string>
     <string name="studio_render_first_minute">First minute</string>
     <string name="studio_render_section">A section</string>
+    <string name="studio_render_loop">Seamless loop</string>
+    <string name="studio_render_loop_note">One loop of the track\'s opening, up to five minutes and trimmed to whole bars, that plays round with no seam.</string>
+    <string name="studio_render_minutes">N minutes</string>
+    <string name="studio_render_minutes_field">Minutes (1 to 600)</string>
+    <string name="studio_render_minutes_note">A seamless loop of the Visual repeated for as long as you choose, with the track played again and again.</string>
     <string name="studio_render_section_from">From (m:ss)</string>
     <string name="studio_render_section_length">Length (m:ss)</string>
     <string name="studio_render_section_note">A section that runs past the end of the track stops with it.</string>

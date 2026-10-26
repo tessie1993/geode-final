@@ -333,12 +333,48 @@ private fun FormatPicker(
     Heading(stringResource(R.string.studio_render_codec))
     Chips(RenderCodec.entries, { format.codec == it }, { codecLabel(it) }) { set(format.copy(codec = it)) }
     Heading(stringResource(R.string.studio_render_length))
-    val lengths = listOf(RenderLength.WholeTrack, FIRST_MINUTE, FIRST_SECTION)
-    Chips(lengths, { if (it == FIRST_SECTION) isOwnSection(spec.length) else spec.length == it }, { lengthLabel(it) }) {
+    val lengths = listOf(RenderLength.WholeTrack, FIRST_MINUTE, FIRST_SECTION, RenderLength.Loop, AN_HOUR)
+    Chips(lengths, { lengthChosen(it, spec.length) }, { lengthLabel(it) }) {
         onDraft(draft.custom(spec.copy(length = it)))
     }
     val section = spec.length as? RenderLength.Section
     if (section != null && isOwnSection(section)) SectionFields(draft, section, onDraft)
+    val minutes = spec.length as? RenderLength.Minutes
+    if (minutes != null) MinutesField(draft, minutes, onDraft)
+    if (spec.length == RenderLength.Loop) Note(stringResource(R.string.studio_render_loop_note))
+}
+
+/** Whether the chip for [option] shows [length]: "A section" and "N minutes" stand for any of theirs. */
+private fun lengthChosen(
+    option: RenderLength,
+    length: RenderLength,
+): Boolean =
+    when (option) {
+        FIRST_SECTION -> isOwnSection(length)
+        is RenderLength.Minutes -> length is RenderLength.Minutes
+        else -> option == length
+    }
+
+/** How many minutes the video runs; a number it cannot be keeps the last good one. */
+@Composable
+private fun MinutesField(
+    draft: RenderDraft,
+    minutes: RenderLength.Minutes,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    var text by remember { mutableStateOf(minutes.minutes.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { typed ->
+            text = typed
+            parseMinutes(typed)?.let { onDraft(draft.custom(draft.spec.copy(length = RenderLength.Minutes(it)))) }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.studio_render_minutes_field)) },
+        isError = parseMinutes(text) == null,
+        singleLine = true,
+    )
+    Note(stringResource(R.string.studio_render_minutes_note))
 }
 
 /** The section's start and length as `m:ss`; a field that does not read as a time keeps the last good one. */
@@ -475,6 +511,8 @@ private fun lengthLabel(length: RenderLength): String =
         when (length) {
             RenderLength.WholeTrack -> R.string.studio_render_whole
             FIRST_MINUTE -> R.string.studio_render_first_minute
+            RenderLength.Loop -> R.string.studio_render_loop
+            is RenderLength.Minutes -> R.string.studio_render_minutes
             else -> R.string.studio_render_section
         },
     )

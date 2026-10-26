@@ -172,7 +172,9 @@ class LoopExtend(
      * Lays [audio] over repeats of [reel] and saves the result.
      *
      * The caller keeps ownership of [reel]: the same loops can be extended again to a different
-     * length or soundtrack without rendering anything a second time.
+     * length or soundtrack without rendering anything a second time. With [maxDurationUs] the video
+     * stops there even when [audio] runs longer (a Studio Render of N minutes, #346); 0 runs it to the
+     * end of [audio].
      */
     @Suppress("ReturnCount")
     suspend fun extend(
@@ -183,6 +185,7 @@ class LoopExtend(
         sizeLimitBytes: Long = MUXER_SAFE_BYTES,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
+        maxDurationUs: Long = 0L,
     ): Result =
         withContext(Dispatchers.Default) {
             if (reel.loops.isEmpty()) return@withContext Result.Failed("There is no rendered loop to extend.")
@@ -192,7 +195,7 @@ class LoopExtend(
                     is AudioBuild.Failed -> return@withContext Result.Failed(built.message)
                 }
             try {
-                write(reel, soundtrack, fileName, destination, sizeLimitBytes, onProgress, isCancelled)
+                write(reel, soundtrack, fileName, destination, sizeLimitBytes, onProgress, isCancelled, maxDurationUs)
             } finally {
                 soundtrack.release()
             }
@@ -229,9 +232,11 @@ class LoopExtend(
         sizeLimitBytes: Long,
         onProgress: (Float) -> Unit,
         isCancelled: () -> Boolean,
+        maxDurationUs: Long,
     ): Result {
         if (soundtrack.totalUs <= 0L) return Result.Failed("That soundtrack decoded to nothing — the file may be empty or corrupt.")
-        val plan = LoopExtendPlan.of(reel.loopDurationUs, soundtrack.totalUs, reel.loops.size)
+        val totalUs = if (maxDurationUs > 0L) minOf(soundtrack.totalUs, maxDurationUs) else soundtrack.totalUs
+        val plan = LoopExtendPlan.of(reel.loopDurationUs, totalUs, reel.loops.size)
         val estimate = plan.estimatedBytes(reel.bytes / reel.loops.size, soundtrack.bytes)
         if (estimate > sizeLimitBytes) return Result.Failed(oversizeMessage(plan, estimate, sizeLimitBytes, soundtrack.bytes))
         val target =
@@ -308,7 +313,8 @@ class LoopExtend(
                 done++
                 onProgress(AUDIO_PROGRESS_SPAN + (1f - AUDIO_PROGRESS_SPAN) * done / plan.repeats)
             }
-            audio.writeUpTo(Long.MAX_VALUE)
+            // The sound stops with the video: a soundtrack longer than the plan is cut where the plan ends.
+            audio.writeUpTo(plan.totalDurationUs)
             writer.stop()
             stopped = true
             onProgress(1f)

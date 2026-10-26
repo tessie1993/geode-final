@@ -84,14 +84,19 @@ internal object RenderSpecFormat {
         when (length) {
             RenderLength.WholeTrack -> JSONObject().put(KIND, WHOLE)
             is RenderLength.Section -> JSONObject().put(KIND, SECTION).put(START_MS, length.start.value).put(LENGTH_MS, length.length.value)
+            RenderLength.Loop -> JSONObject().put(KIND, LOOP)
+            is RenderLength.Minutes -> JSONObject().put(KIND, MINUTES).put(MINUTES, length.minutes)
         }
 
-    private fun lengthOf(o: JSONObject?): RenderLength =
-        if (o?.optString(KIND) == SECTION) {
-            RenderLength.Section(Millis(o.getLong(START_MS)), Millis(o.getLong(LENGTH_MS)))
-        } else {
-            RenderLength.WholeTrack
+    private fun lengthOf(o: JSONObject?): RenderLength {
+        if (o == null) return RenderLength.WholeTrack
+        return when (o.optString(KIND)) {
+            SECTION -> RenderLength.Section(Millis(o.getLong(START_MS)), Millis(o.getLong(LENGTH_MS)))
+            LOOP -> RenderLength.Loop
+            MINUTES -> RenderLength.Minutes(o.getInt(MINUTES))
+            else -> RenderLength.WholeTrack
         }
+    }
 
     private inline fun <reified T : Enum<T>> enumOr(
         name: String,
@@ -116,6 +121,8 @@ internal object RenderSpecFormat {
     private const val LENGTH = "length"
     private const val WHOLE = "whole"
     private const val SECTION = "section"
+    private const val LOOP = "loop"
+    private const val MINUTES = "minutes"
     private const val PROJECT = "project"
     private const val LOUDNESS = "loudness"
     private const val MILKDROP = "milkdrop"

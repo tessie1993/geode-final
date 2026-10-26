@@ -153,4 +153,32 @@ class RenderPlanTest {
         val tall = RenderFormat(aspect = RenderAspect.R9_16, size = RenderSize.QHD1440, quality = RenderQuality.HIGH)
         assertEquals(1.5f, RenderPlan.supersampleOf(tall), 0f)
     }
+
+    @Test
+    fun `a seamless loop is as long as the Track, within the loop limits, and is the whole video`() {
+        assertEquals(LongForm(Millis(215_000), Millis(215_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis(215_000)))
+        assertEquals(LongForm(Millis(30_000), Millis(30_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis(12_000)))
+        assertEquals(LongForm(Millis(300_000), Millis(300_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis(900_000)))
+        assertEquals(LongForm(Millis(300_000), Millis(300_000)), RenderPlan.longFormOf(RenderLength.Loop, Millis.ZERO))
+    }
+
+    @Test
+    fun `an N-minute Render repeats the loop to that many minutes, within ten hours`() {
+        assertEquals(LongForm(Millis(215_000), Millis(3_600_000)), RenderPlan.longFormOf(RenderLength.Minutes(60), Millis(215_000)))
+        assertEquals(Millis(60_000), RenderPlan.longFormOf(RenderLength.Minutes(0), Millis(215_000))?.total)
+        assertEquals(Millis(36_000_000), RenderPlan.longFormOf(RenderLength.Minutes(5_000), Millis(215_000))?.total)
+        assertNull(RenderPlan.longFormOf(RenderLength.WholeTrack, Millis(215_000)))
+        assertNull(RenderPlan.longFormOf(RenderLength.Section(Millis(1_000), Millis(30_000)), Millis(215_000)))
+        assertNull(RenderPlan.sectionOf(RenderLength.Loop, Millis(215_000)))
+    }
+
+    @Test
+    fun `the Track plays back to back for as long as the video runs`() {
+        assertEquals(17, RenderPlan.playsFor(Millis(3_600_000), Millis(215_000)))
+        assertEquals(2, RenderPlan.playsFor(Millis(430_000), Millis(215_000)))
+        assertEquals(3, RenderPlan.playsFor(Millis(430_001), Millis(215_000)))
+        assertEquals(1, RenderPlan.playsFor(Millis(100_000), Millis(215_000)))
+        assertEquals(1, RenderPlan.playsFor(Millis.ZERO, Millis(215_000)))
+        assertEquals(1, RenderPlan.playsFor(Millis(3_600_000), Millis.ZERO))
+    }
 }

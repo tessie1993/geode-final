@@ -181,4 +181,16 @@ class RoomStudioStorageRobolectricTest {
             assertEquals(FrozenLook("calm look"), reread.lookOfVideo(file))
             assertEquals(null, reread.lookOfVideo("content://media/video/1"))
         }
+
+    @Test
+    fun `a loop and an N-minute Render read back as queued`() =
+        runBlocking {
+            val loop = render(listOf(night), RenderLook.Current, RenderLength.Loop)
+            val hour = render(listOf(tide), RenderLook.Current, RenderLength.Minutes(60))
+
+            val queued = storage.queueRenders(listOf(loop, hour), FrozenLook("look"), Millis(4))
+
+            assertEquals(queued, RoomStudioStorage(database.dao()).unfinishedRenders())
+            assertEquals(listOf(RenderLength.Loop, RenderLength.Minutes(60)), queued.map { it.length })
+        }
 }

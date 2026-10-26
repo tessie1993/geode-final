@@ -22,6 +22,15 @@ data class TrackSection(
 )
 
 /**
+ * A long-form Render (#346): a seamless [loop] of the Visual from the Track's start, repeated to [total].
+ * The loop is trimmed to whole bars once the Track's tempo is known, so [total] may run past it.
+ */
+data class LongForm(
+    val loop: Millis,
+    val total: Millis,
+)
+
+/**
  * The pure decisions behind a Render (#338): which Renders a setup queues, and the frame size, bit rate
  * and section each is made at. The size and section rules are the old export's (`ExportAspect`,
  * `ExportRange`), moved here with tests.
@@ -114,6 +123,39 @@ object RenderPlan {
         val frame = frameOf(format)
         val room = MAX_SCENE_SIDE.toFloat() / maxOf(frame.width, frame.height)
         return minOf(wanted, room)
+    }
+
+    /** The shortest and longest a seamless loop is (the old loop render's limits). */
+    val MIN_LOOP: Millis = Millis(30_000)
+    val MAX_LOOP: Millis = Millis(300_000)
+
+    private const val MILLIS_PER_MINUTE = 60_000L
+
+    /**
+     * The long form [length] asks for of a Track of [trackLength], or null when it is not a loop: a loop
+     * as long as the Track, kept between [MIN_LOOP] and [MAX_LOOP] (the longest when the length is not
+     * known); for [RenderLength.Loop] that is the whole video, and for [RenderLength.Minutes] it repeats
+     * to that many minutes, kept within [RenderLength.Minutes.RANGE].
+     */
+    fun longFormOf(
+        length: RenderLength,
+        trackLength: Millis,
+    ): LongForm? {
+        val loop = Millis(if (trackLength.value > 0) trackLength.value.coerceIn(MIN_LOOP.value, MAX_LOOP.value) else MAX_LOOP.value)
+        return when (length) {
+            RenderLength.Loop -> LongForm(loop, loop)
+            is RenderLength.Minutes -> LongForm(loop, Millis(length.minutes.coerceIn(RenderLength.Minutes.RANGE) * MILLIS_PER_MINUTE))
+            RenderLength.WholeTrack, is RenderLength.Section -> null
+        }
+    }
+
+    /** How many times a Track of [trackLength] plays back to back to last [total]: at least once. */
+    fun playsFor(
+        total: Millis,
+        trackLength: Millis,
+    ): Int {
+        if (trackLength.value <= 0) return 1
+        return ((total.value + trackLength.value - 1) / trackLength.value).toInt().coerceAtLeast(1)
     }
 
     /**

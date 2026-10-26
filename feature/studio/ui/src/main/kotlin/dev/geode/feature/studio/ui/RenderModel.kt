@@ -126,6 +126,12 @@ val FIRST_MINUTE: RenderLength = RenderLength.Section(Millis.ZERO, Millis(59_000
 /** Where "A section" starts when the person first picks it: the first half minute, then changed by hand. */
 val FIRST_SECTION: RenderLength.Section = RenderLength.Section(Millis.ZERO, Millis(30_000))
 
+/** What "N minutes" starts from when the person first picks it: an hour, then changed by hand (#346). */
+val AN_HOUR: RenderLength.Minutes = RenderLength.Minutes(60)
+
+/** [text] as a number of minutes a Render may last, or null when it is not one (#346). */
+fun parseMinutes(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it in RenderLength.Minutes.RANGE }
+
 /** Whether [length] is a section the person set by hand, not the whole Track or the first minute. */
 fun isOwnSection(length: RenderLength): Boolean = length is RenderLength.Section && length != FIRST_MINUTE
 

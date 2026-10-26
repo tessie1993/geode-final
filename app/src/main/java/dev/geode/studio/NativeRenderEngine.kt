@@ -14,6 +14,11 @@ import dev.geode.engine.types.SceneId
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
 import dev.geode.export.ExportRange
+import dev.geode.export.LongFormAudio
+import dev.geode.export.LoopExtend
+import dev.geode.export.LoopRender
+import dev.geode.export.LoopSpec
+import dev.geode.export.MixClip
 import dev.geode.export.VideoExporter
 import dev.geode.feature.customization.api.Customization
 import dev.geode.feature.settings.api.Settings
@@ -21,11 +26,13 @@ import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.RenderCodec
+import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderJob
 import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderProblem
 import dev.geode.feature.studio.api.RenderTrack
 import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.core.LongForm
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderPlan
 import dev.geode.feature.studio.handlers.FrozenLook
@@ -84,21 +91,105 @@ class NativeRenderEngine(
         if (isCancelled()) return RenderEnd.Cancelled
         val format = job.format
         val frame = RenderPlan.frameOf(format)
+        val scene = StyleScene(customization.style, milkdropPathOf(customization, job))
+        RenderPlan.longFormOf(job.length, track.length)?.let { longForm ->
+            val drawn = LongFormDrawing(track, uri, timeline, scene, customization, values, format)
+            return renderLongForm(longForm, drawn, progress, isCancelled)
+        }
         val section = RenderPlan.sectionOf(job.length, track.length)
         val made =
             VideoExporter.Job(
                 audioUri = uri,
                 timeline = timeline,
-                sceneFactory = StyleScene(customization.style, milkdropPathOf(customization, job)),
+                sceneFactory = scene,
                 look = EngineSnapshots.forRender(customization, values),
                 aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
                 fps = format.fps,
                 range = section?.let { ExportRange(it.start.value, it.length.value) },
-                codec = if (format.codec == RenderCodec.HEVC) ExportCodec.HEVC else ExportCodec.H264,
+                codec = codecOf(format),
                 supersample = RenderPlan.supersampleOf(format),
             )
         val result = encode(made, track, progress, isCancelled) ?: return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
         return endOf(result, track, frame.width, frame.height)
+    }
+
+    /** What a long-form Render draws: its Track and analysis, its Style and look, and its format. */
+    private class LongFormDrawing(
+        val track: RenderTrack,
+        val uri: Uri,
+        val timeline: FeatureTimeline,
+        val scene: SceneFactory,
+        val customization: Customization,
+        val values: SettingsValues,
+        val format: RenderFormat,
+    )
+
+    /**
+     * A seamless loop, or N minutes of one (#346): the old loop render draws one loop of the Track's
+     * opening, trimmed to whole bars, and dissolves its tail into its opening frames so it wraps with no
+     * seam; the old extender repeats the encoded loop, without drawing it again, under the Track played
+     * back to back until the video is as long as asked. A loop alone carries the Track's sound for its
+     * own length.
+     */
+    private suspend fun renderLongForm(
+        longForm: LongForm,
+        drawn: LongFormDrawing,
+        progress: (RenderPhase, Float) -> Unit,
+        isCancelled: () -> Boolean,
+    ): RenderEnd {
+        val format = drawn.format
+        val frame = RenderPlan.frameOf(format)
+        val rendered =
+            LoopRender(context).render(
+                timeline = drawn.timeline,
+                sceneFactory = drawn.scene,
+                aspect = ExportAspect(frame.width, frame.height, RenderPlan.bitRateOf(format)),
+                spec = LoopSpec.of(longForm.loop.value, fps = format.fps, bpm = drawn.timeline.bpm),
+                look = { stop -> EngineSnapshots.forRender(stop.applyTo(drawn.customization), drawn.values) },
+                codec = codecOf(format),
+                onProgress = { progress(RenderPhase.RENDERING, ANALYSIS_SHARE + it * LOOP_SHARE) },
+                isCancelled = isCancelled,
+                audioUri = drawn.uri,
+                supersample = RenderPlan.supersampleOf(format),
+                pace = { pace(isCancelled) },
+            )
+        val reel =
+            when (rendered) {
+                is LoopRender.Result.Rendered -> rendered.reel
+                is LoopRender.Result.Failed -> {
+                    RingLog.note(TAG, "the Render's loop was not made: ${rendered.message}")
+                    return RenderEnd.Failed(RenderProblem.ENCODER_REFUSED)
+                }
+                LoopRender.Result.Cancelled -> return RenderEnd.Cancelled
+            }
+        try {
+            // A loop alone is as long as the loop came out, once trimmed to whole bars.
+            val totalUs = if (longForm.total == longForm.loop) reel.loopDurationUs else longForm.total.value * MICROS_PER_MILLI
+            val trackLength = if (drawn.track.length.value > 0) drawn.track.length else Millis(drawn.timeline.durationMs)
+            val clip = MixClip(drawn.uri, drawn.track.title)
+            val plays = RenderPlan.playsFor(Millis(totalUs / MICROS_PER_MILLI), trackLength)
+            val audio = if (plays == 1) LongFormAudio.SingleTrack(clip) else LongFormAudio.Mix(List(plays) { clip })
+            val extended =
+                LoopExtend(context).extend(
+                    reel = reel,
+                    audio = audio,
+                    fileName = fileNameOf(drawn.track),
+                    onProgress = { progress(RenderPhase.SAVING, REPEAT_FROM + it * (1f - REPEAT_FROM)) },
+                    isCancelled = isCancelled,
+                    maxDurationUs = totalUs,
+                )
+            return when (extended) {
+                is LoopExtend.Result.Saved ->
+                    RenderEnd.Saved(videoOf(drawn.track, extended.uri, extended.durationMs, frame.width, frame.height))
+                is LoopExtend.Result.Failed -> {
+                    RingLog.note(TAG, "the Render's long video was not saved: ${extended.message}")
+                    RenderEnd.Failed(RenderProblem.NOT_SAVED)
+                }
+                LoopExtend.Result.Cancelled -> RenderEnd.Cancelled
+            }
+        } finally {
+            reel.delete()
+        }
     }
 
     /** The frozen look as a Customization, or null when it cannot be read. */
@@ -166,25 +257,34 @@ class NativeRenderEngine(
         height: Int,
     ): RenderEnd =
         when (result) {
-            is VideoExporter.Result.Saved ->
-                RenderEnd.Saved(
-                    NewVideo(
-                        kind = VideoKind.RENDER,
-                        name = track.title,
-                        file = result.uri.toString(),
-                        thumbnail = null,
-                        length = Millis(result.lengthMs),
-                        width = width,
-                        height = height,
-                        song = track.title,
-                    ),
-                )
+            is VideoExporter.Result.Saved -> RenderEnd.Saved(videoOf(track, result.uri, result.lengthMs, width, height))
             is VideoExporter.Result.Failed -> {
                 RingLog.note(TAG, "the Render was not saved: ${result.message}")
                 RenderEnd.Failed(RenderProblem.NOT_SAVED)
             }
             VideoExporter.Result.Cancelled -> RenderEnd.Cancelled
         }
+
+    /** A finished Render's video, named after its Track. */
+    private fun videoOf(
+        track: RenderTrack,
+        uri: Uri,
+        lengthMs: Long,
+        width: Int,
+        height: Int,
+    ): NewVideo =
+        NewVideo(
+            kind = VideoKind.RENDER,
+            name = track.title,
+            file = uri.toString(),
+            thumbnail = null,
+            length = Millis(lengthMs),
+            width = width,
+            height = height,
+            song = track.title,
+        )
+
+    private fun codecOf(format: RenderFormat): ExportCodec = if (format.codec == RenderCodec.HEVC) ExportCodec.HEVC else ExportCodec.H264
 
     /**
      * The Track's whole-song analysis with Settings' beat tuning, from the cache when it holds one, laid
@@ -250,6 +350,12 @@ class NativeRenderEngine(
 
         /** How much of a Render's progress the analysis takes; the encoder's own progress shares the rest. */
         const val ANALYSIS_SHARE = 0.1f
+
+        /** How much of a long-form Render's progress drawing its loop takes; repeating it takes the rest. */
+        const val LOOP_SHARE = 0.8f
+        const val REPEAT_FROM = ANALYSIS_SHARE + LOOP_SHARE
+
+        const val MICROS_PER_MILLI = 1_000L
 
         /** Where the encoder's progress moves from its sound to its frames, and on to saving (see VideoExporter). */
         const val FRAMES_FROM = 0.1f

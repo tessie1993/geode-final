@@ -135,4 +135,16 @@ class RenderModelTest {
         assertEquals(PreviewStudio.gigs.id, RenderDraft.again(gone, state)?.spec?.project)
         assertNull(RenderDraft.again(video.copy(madeWith = null), state))
     }
+
+    @Test
+    fun `an N-minute Render is typed in whole minutes, up to ten hours`() {
+        assertEquals(90, parseMinutes(" 90 "))
+        assertEquals(1, parseMinutes("1"))
+        assertEquals(600, parseMinutes("600"))
+        assertNull(parseMinutes("0"))
+        assertNull(parseMinutes("601"))
+        assertNull(parseMinutes("1.5"))
+        assertNull(parseMinutes(""))
+        assertEquals(RenderLength.Minutes(60), AN_HOUR)
+    }
 }

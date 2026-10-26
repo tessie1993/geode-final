@@ -92,6 +92,26 @@ sealed interface RenderLength {
         val start: Millis,
         val length: Millis,
     ) : RenderLength
+
+    /**
+     * One seamless loop (#346): the Visual of the Track's opening, as long as the Track up to five
+     * minutes and trimmed to whole bars, whose last frame dissolves into its first, so it plays round
+     * with no seam. The Track's sound runs under it for the loop's length.
+     */
+    data object Loop : RenderLength
+
+    /**
+     * [minutes] long (#346): a seamless loop of the Visual repeated until then, under the Track played
+     * again and again. The loop is rendered once and repeated without drawing anything twice.
+     */
+    data class Minutes(
+        val minutes: Int,
+    ) : RenderLength {
+        companion object {
+            /** The lengths a Render may be: up to ten hours. */
+            val RANGE: IntRange = 1..600
+        }
+    }
 }
 
 /**
