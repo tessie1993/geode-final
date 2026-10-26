@@ -71,6 +71,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
   over 1.6 s): many more sparks fly out of the core and the shells are blown
   outward, without brightening the frame. Its variant turns the smoke into a
   blue galaxy.
+- **A 3D toolkit for Styles, shown in Polyhedra Cathedral (#322).** Three new
+  shader libraries any Style can include: `lib_march3` (an over-relaxed
+  raymarch whose steps lengthen with distance and are checked after the fact,
+  neon glow gathered along the ray, cheap ambient occlusion, and distance and
+  height fog in closed form), `lib_poly3` (icosahedron, dodecahedron,
+  tetrahedron and merkaba solids, their exact wireframes, geodesic sphere
+  tiling and facets, and polar, octahedral and icosahedral folds) and
+  `lib_path3` (Catmull-Rom camera paths, an endless wandering path, a banked
+  camera frame). The new Polyhedra Cathedral flies down a neon lattice nave
+  past wireframe polyhedra with faceted golden hearts under geodesic lanterns;
+  the treble lifts the lattice's light, hits swell the polyhedra and the bass
+  pushes the flight.
 
 - **Shared Style inputs (#312).** A shader Style can declare, in its
   manifest's `inputs`, seeded noise textures (white, smooth and smoother 2D
