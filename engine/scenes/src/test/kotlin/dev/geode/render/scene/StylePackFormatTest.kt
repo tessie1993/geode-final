@@ -11,7 +11,7 @@ class StylePackFormatTest {
         """
         {"version": 1, "families": [
           {"name": "shader", "parameters": []},
-          {"name": "cymatics", "parameters": [
+          {"name": "cymatics", "ignores": ["SPEED", "TURBULENCE"], "parameters": [
             {"key": "mode", "type": "int", "min": 0, "max": 4},
             {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1.25},
             {"key": "cap", "type": "int", "min": 1, "max": 8, "default": 8}
@@ -159,6 +159,16 @@ class StylePackFormatTest {
         assertEquals(ParameterSpec("gain", ParameterType.FLOAT, 0f, 2f, 1.25f), cymatics.parameters[1])
     }
 
+    @Test
+    fun `a family names the Shared core properties it ignores, and its Styles carry them`() {
+        assertEquals(setOf("SPEED", "TURBULENCE"), families.single { it.kind == SceneKind.CYMATICS }.ignores)
+        assertEquals(emptySet<String>(), families.single { it.kind == SceneKind.SHADER }.ignores)
+        val (drum, _) = parse("drum", """{"version": 1, "id": "drum", "label": "Drum", "family": "cymatics", "parameters": {"mode": 1}}""")
+        assertEquals(setOf("SPEED", "TURBULENCE"), checkNotNull(drum).ignores)
+        val (orb, _) = parse("orb", """{"version": 1, "id": "orb", "label": "Orb", "family": "shader"}""")
+        assertEquals(emptySet<String>(), checkNotNull(orb).ignores)
+    }
+
     private fun familyWith(parameter: String): String = """{"version": 1, "families": [{"name": "shader", "parameters": [$parameter]}]}"""
 
     @Test
@@ -170,6 +180,8 @@ class StylePackFormatTest {
                 """{"version": 1}""" to PackError.MISSING_FIELD,
                 familyWith("""{"key": "k", "type": "bool", "min": 0, "max": 1}""") to PackError.BAD_VALUE,
                 familyWith("""{"key": "k", "type": "int", "min": 2, "max": 1}""") to PackError.BAD_VALUE,
+                """{"version": 1, "families": [{"name": "shader", "ignores": [3], "parameters": []}]}""" to PackError.BAD_VALUE,
+                """{"version": 1, "families": [{"name": "shader", "ignores": [""], "parameters": []}]}""" to PackError.BAD_VALUE,
             )
         cases.forEach { (text, error) ->
             val problems = mutableListOf<PackProblem>()

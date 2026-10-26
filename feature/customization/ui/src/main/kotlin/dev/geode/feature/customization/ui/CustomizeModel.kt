@@ -70,7 +70,10 @@ data class LiveMeters(
     }
 }
 
-/** One of the 6 Macro knobs: its [value], what it moves ([links]), and the sources that drive it ([drivers]). */
+/**
+ * One of the 6 Macro knobs: its [value], what it moves ([links]), and the sources that drive it
+ * ([drivers]). [ignored]: every link moves something the current Style does not use (#365).
+ */
 @Immutable
 data class MacroKnob(
     val index: Int,
@@ -79,13 +82,15 @@ data class MacroKnob(
     val links: List<MacroLink>,
     val drivers: List<ReactionSource>,
     val live: Float?,
+    val ignored: Boolean = false,
 )
 
-/** An on/off effect of the basic view. */
+/** An on/off effect of the basic view; [ignored] when the current Style does not use it (#365). */
 @Immutable
 data class EffectToggle(
     val property: SharedProperty,
     val on: Boolean,
+    val ignored: Boolean = false,
 )
 
 /**
@@ -105,7 +110,8 @@ internal val RATIO_PROPERTIES: Set<SharedProperty> =
 
 /**
  * One slider of the Advanced view: a Shared core property in its own units ([min]..[max]), or an
- * Extra as 0..1. [linked] says whether a Reaction moves it; [ratio] that it moves by ratios.
+ * Extra as 0..1. [linked] says whether a Reaction moves it; [ratio] that it moves by ratios;
+ * [ignored] whether the current Style leaves it alone (#365), which greys it out.
  */
 @Immutable
 data class SliderRow(
@@ -116,6 +122,7 @@ data class SliderRow(
     val kind: ValueKind,
     val linked: Boolean,
     val ratio: Boolean = false,
+    val ignored: Boolean = false,
 ) {
     /**
      * Where [value] sits along the slider, 0..1 of its travel: by the ratio of [value] to [min] on a
@@ -186,12 +193,15 @@ data class CustomizeModel(
 
 /**
  * Customize's model of this state. [looks] and [presets] are offered by the place that opens
- * Customize; [live] carries the engine's live values when there are any.
+ * Customize; [live] carries the engine's live values when there are any; [ignored] are the controls
+ * the current Style leaves alone, greyed out (#365), which the opening place works out from the
+ * Style's family.
  */
 fun CustomizationState.toCustomizeModel(
     looks: List<LookChip> = emptyList(),
     presets: List<PresetChip> = emptyList(),
     live: LiveMeters = LiveMeters.NONE,
+    ignored: Set<Target> = emptySet(),
 ): CustomizeModel {
     val customization = current
     val reactions = customization.reactions
@@ -209,6 +219,7 @@ fun CustomizationState.toCustomizeModel(
                 property.kind,
                 target in linkedTargets,
                 ratio = property in RATIO_PROPERTIES,
+                ignored = target in ignored,
             )
         }
     val extraKinds = ExtraKind.entries.filter { it in customization.extras }
@@ -226,9 +237,10 @@ fun CustomizationState.toCustomizeModel(
                     links = macro.links,
                     drivers = reactions.filter { it.target == Target.MacroSlot(index) }.map { it.source },
                     live = live.macros[index],
+                    ignored = Target.MacroSlot(index) in ignored,
                 )
             },
-        effects = EFFECT_TOGGLES.map { EffectToggle(it, sharedValue(it) > it.min) },
+        effects = EFFECT_TOGGLES.map { EffectToggle(it, sharedValue(it) > it.min, ignored = Target.Shared(it) in ignored) },
         palette = sharedValue(SharedProperty.PALETTE).toInt(),
         looks = looks,
         presets = presets,

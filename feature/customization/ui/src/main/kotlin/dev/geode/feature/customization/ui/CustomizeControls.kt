@@ -21,8 +21,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +41,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -50,6 +53,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
@@ -94,16 +98,18 @@ internal fun ChipFlow(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** One chip that is either chosen or not. */
+/** One chip that is either chosen or not; greyed out when not [enabled]. */
 @Composable
 internal fun ChoiceChip(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     FilterChip(
         selected = selected,
         onClick = onClick,
+        enabled = enabled,
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = ForestShapes.Chip,
     )
@@ -124,7 +130,9 @@ private fun valueText(
  * One slider of the Advanced view (#285). While it is dragged the Visual follows the finger
  * ([onPreview]), and letting go sets the value ([onSet]), so one drag is one undo step. A multiplicative
  * control moves by ratios ([SliderRow.ratio]). A switch for on/off properties. The reset button puts
- * the value back to the Style's own ([onReset]); a long-press on its name offers "React to…".
+ * the value back to the Style's own ([onReset]); a long-press on its name offers "React to…". A row
+ * the current Style does not use is greyed out and says so (#365). Its − and + take fine steps, and
+ * coarse ones on a long-press (#392). A tap on its name shows its one-line [help] (#393).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -135,17 +143,27 @@ internal fun ValueSlider(
     onPreview: (Float) -> Unit,
     onReset: () -> Unit,
     onReactTo: () -> Unit,
+    help: String? = null,
 ) {
     var dragging by remember { mutableStateOf(false) }
     var held by remember { mutableFloatStateOf(row.value) }
     val shown = if (dragging) held else row.value
+    var explained by remember { mutableStateOf(false) }
     val colors = LocalForestColors.current
     val reactTo = stringResource(R.string.customize_react_to)
+    val explain = stringResource(R.string.customize_explain)
+    val enabled = !row.ignored
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .combinedClickable(onClick = {}, onLongClick = onReactTo, onLongClickLabel = reactTo),
+                .alpha(if (enabled) 1f else IGNORED_ALPHA)
+                .combinedClickable(
+                    onClickLabel = explain,
+                    onLongClickLabel = reactTo,
+                    onLongClick = onReactTo,
+                    onClick = { explained = !explained },
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -158,14 +176,20 @@ internal fun ValueSlider(
                 )
             }
             if (row.kind == ValueKind.SWITCH) {
-                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) })
+                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) }, enabled = enabled)
             } else {
+                val nudge = { up: Boolean, coarse: Boolean ->
+                    onSet(nudged(row.value, row.min, row.max, row.kind, up, coarse))
+                }
+                NudgeButton(up = false, enabled = enabled) { nudge(false, it) }
                 Text(valueText(row.kind, shown), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
+                NudgeButton(up = true, enabled = enabled) { nudge(true, it) }
             }
-            IconButton(onClick = onReset) {
+            IconButton(onClick = onReset, enabled = enabled) {
                 Icon(Icons.Filled.Restore, contentDescription = stringResource(R.string.customize_reset_value, label))
             }
         }
+        if (explained && help != null) HelpLine(help)
         if (row.kind != ValueKind.SWITCH) {
             Slider(
                 value = row.position(shown),
@@ -179,8 +203,62 @@ internal fun ValueSlider(
                     if (dragging) onSet(held)
                     dragging = false
                 },
+                enabled = enabled,
             )
         }
+        if (row.ignored) {
+            Text(
+                stringResource(R.string.customize_ignored),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+            )
+        }
+    }
+}
+
+/** A control's one-line help (#393), shown under its name. */
+@Composable
+internal fun HelpLine(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = LocalForestColors.current.textSecondary,
+        modifier = Modifier.padding(bottom = ForestSpacing.ExtraSmall),
+    )
+}
+
+/**
+ * A row's − or + ([up]): a tap is a fine step and a long-press a coarse one (#392), each handed to
+ * [onNudge] with whether it is coarse.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun NudgeButton(
+    up: Boolean,
+    enabled: Boolean = true,
+    onNudge: (coarse: Boolean) -> Unit,
+) {
+    val fine = stringResource(if (up) R.string.customize_step_up else R.string.customize_step_down)
+    val coarse = stringResource(if (up) R.string.customize_step_up_coarse else R.string.customize_step_down_coarse)
+    Box(
+        Modifier
+            .size(ForestSpacing.TapTarget)
+            .combinedClickable(
+                enabled = enabled,
+                onClickLabel = fine,
+                role = Role.Button,
+                onLongClickLabel = coarse,
+                onLongClick = { onNudge(true) },
+                onClick = { onNudge(false) },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (up) Icons.Filled.Add else Icons.Filled.Remove,
+            contentDescription = fine,
+            tint = LocalForestColors.current.textSecondary,
+            modifier = Modifier.size(ForestSpacing.Large),
+        )
     }
 }
 
@@ -245,7 +323,7 @@ internal fun MacroKnobView(
     val colors = LocalForestColors.current
     val percent = (shown * 100).roundToInt()
     val description = stringResource(R.string.customize_macro_knob, knob.name, percent)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.alpha(if (knob.ignored) IGNORED_ALPHA else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
                 .size(CustomizeDimens.knob)
@@ -291,6 +369,15 @@ internal fun MacroKnobView(
             Text(stringResource(R.string.customize_percent, percent), style = MaterialTheme.typography.titleMedium)
         }
         Text(knob.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (knob.ignored) {
+            Text(
+                stringResource(R.string.customize_macro_ignored),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (driver != null) {
             Text(
                 driver,

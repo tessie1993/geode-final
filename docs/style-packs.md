@@ -45,6 +45,12 @@ declares the parameters its renderer reads from the Style it draws:
 A parameter without a `default` must be set by every Style of the family. The C++ profiles read exactly
 these keys; a host test fails if a key and a profile field drift apart.
 
+A family may also list, under `ignores`, the Shared core properties its renderer never reads, named as
+presets name them: MilkDrop paces itself and takes raw sound, so it has
+`"ignores": ["SPEED", "AUDIO_DRIVE", …]`. Customize greys those controls out on the family's Styles,
+and any Macro that moves only them (#365). Only the Kotlin side reads it; the Customization tests
+check every name is a real property.
+
 ## `manifest.json`
 
 ```json
