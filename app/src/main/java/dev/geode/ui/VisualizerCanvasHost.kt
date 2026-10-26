@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.PowerManager
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,6 +38,9 @@ import java.util.concurrent.atomic.AtomicInteger
  * Visual is on screen: the sensor runs only while a host is shown, the app is resumed, [tilt] (the
  * weight Settings asks for, 0 for off) is above zero and Battery Saver is off, and stops the moment
  * any of those ends.
+ *
+ * Given a [zoom], two fingers also pinch the Camera's zoom while [pinchZoom] (Settings' "Pinch and drag
+ * the Visual") is on, and the zoom stays where the pinch leaves it ([PinchZoom], #397).
  */
 @Composable
 fun VisualizerCanvasHost(
@@ -44,6 +48,8 @@ fun VisualizerCanvasHost(
     modifier: Modifier = Modifier,
     onDoubleTap: (() -> Unit)? = null,
     tilt: Float = 0f,
+    zoom: PinchZoom.Target? = null,
+    pinchZoom: Boolean = false,
 ) {
     // On screen only while the app is in front: a Visual hosted behind another app is not seen.
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -72,14 +78,19 @@ fun VisualizerCanvasHost(
                 stroke = view.visualizerRenderer::queueTouchStroke,
             )
         }
-    val input = remember(view, touch) { VisualTouchInput(view.context, touch) { doubleTap.value?.invoke() } }
+    val pinch =
+        remember(view, zoom) {
+            zoom?.let { PinchZoom(ViewConfiguration.get(view.context).scaledTouchSlop.toFloat(), it) }
+        }
+    pinch?.enabled = pinchZoom
+    val input = remember(view, touch, pinch) { VisualTouchInput(view.context, touch, pinch) { doubleTap.value?.invoke() } }
     AndroidView(
         factory = {
             (view.parent as? ViewGroup)?.removeView(view)
-            view.setOnTouchListener(input)
             view
         },
         modifier = modifier,
+        update = { it.setOnTouchListener(input) },
     )
     // Leaving a place must not leave a finger pinned on the engine; the renderer's own reset path
     // stays authoritative for everything else.
