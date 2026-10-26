@@ -59,12 +59,20 @@ Retired with the Elements and their scenes. Backdrops never move on their own.
 _Avoid_: using the word for anything current
 
 **Style**:
-One selectable look for the Visual, such as a shader look, a Fluid look, a Cymatics profile or a MilkDrop preset. There are about 100 of them.
-_Avoid_: Scene (an engine term), effect, visualizer
+One version or variation of a Style family, such as one Fluid look, one Cymatics profile or one imported MilkDrop file. There are about 100 of them, picked on the family's screen.
+_Avoid_: effect, visualizer, preset
 
 **Customization**:
 The user's choices for how a Style looks and how it reacts to sound.
 _Avoid_: Params, settings, tweaks
+
+**Style family**:
+One shader or engine type (Fluid, Cymatics, a shader family, MilkDrop, a Camera family) and the group of Styles made from it. Styles in one family share its Extras and its default Macros.
+_Avoid_: kind, category, pack
+
+**Preset**:
+A snapshot of a Customization, with its Advanced patch when one is used, saved so it can be brought back or applied again. It is not a Style. A MilkDrop file is never called a preset on its own: it is a MilkDrop file, and once imported it is a Style of the MilkDrop family.
+_Avoid_: look, snapshot, saved settings, MilkDrop preset (write MilkDrop file)
 
 **Layer**:
 Layer 2 is a second Style drawn over the Style itself (Layer 1) and part of its Customization: it is laid over Layer 1 by one of ten blend modes, can act on it (bend, swirl, cut-out, tint, outline), can swap places with it, and can loop. Its opacity, influence and swap are Shared core controls, so Reactions and Modulators can move them. MilkDrop can be Layer 1 but never Layer 2.
@@ -79,7 +87,7 @@ A value measured live from the audio that is playing, such as level, a band, a d
 _Avoid_: Feature, analysis, track structure
 
 **Macro**:
-One large control in the basic Customize view. It is a single value: changing it changes every property linked to it. Each Style has 6, shipped as suggestions that the user can clear, rebuild, rename or remap.
+One large control at the top of Customize, and the whole of the quick-tweak strip over the full-screen Visual. It is a single value: changing it changes every property linked to it. Each Style has 6, shipped as a hand-made default set for its Style family that the user can clear, rebuild, rename or remap.
 _Avoid_: Preset knob, master slider
 
 **Shared core**:
@@ -91,8 +99,8 @@ A Style's own controls on top of the Shared core, taken from that Style's real s
 _Avoid_: Scene params, custom params
 
 **Advanced view**:
-The detailed layer of Customize under the Macros, opened on request.
-_Avoid_: Expert mode, pro tab
+The Advanced tab of Customize: a patch bay where any property of the Visual can be modulated by a Modulator or by another property, and where Reactions and Modulators are made and linked.
+_Avoid_: Expert mode, pro tab, modulation matrix
 
 **Reaction**:
 A link from one Sound signal or Modulator to one target: a property of the Visual or Camera, a Macro, another Modulator, or an on/off switch. It has an amount and direction, rise and fall, a range and a curve.
@@ -116,8 +124,24 @@ _Avoid_: Strobe safety, epilepsy mode
 One piece of music on the device, as the Library lists it and the player plays it.
 _Avoid_: song, file
 
+**Library**:
+Everything Music shows of the music on the device, in five views: Tracks, Albums, Artists, Playlists and Folders. It opens on Tracks.
+_Avoid_: collection, media library, catalog
+
+**Playlist**:
+An ordered list of Tracks the person makes and keeps inside Geode. An .m3u file found with the music can be imported as a copy, and any Playlist can be exported as one; the file is never the Playlist itself.
+_Avoid_: queue, mix, m3u (for the concept)
+
+**Queue**:
+The Tracks that play next. Playing a Track from any list makes that list the Queue; it can be reordered, trimmed and added to, it is kept across restarts, and changing it never changes the Playlist it came from.
+_Avoid_: up next, play queue, now-playing list
+
+**Plain player**:
+Music's full-screen now-playing page: the Player controls over the Track's artwork as its Backdrop, with no Visual. Always reachable from Music; the Mini-player opens it only when Visuals off is on.
+_Avoid_: now-playing screen, artwork player
+
 **Live input**:
-The microphone as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording. There is no line or USB input.
+The microphone as the sound source in place of a Track: the Visual reacts to the room instead of the music. It is a choice of sound source, not a Recording, and there is no line or USB input. It is unlocked once in Settings; from then on the Visuals tab's Behavior group carries the switch.
 _Avoid_: capture, mic mode
 
 ### Studio
@@ -131,8 +155,8 @@ A named group of Renders, Recordings, Edits and Shorts, kept as its own folder i
 _Avoid_: album, collection, folder (for the concept)
 
 **Preset folder**:
-The optional folder where saved Customization presets go, chosen in Settings > Default paths and separate from the Save folder. Until one is chosen, presets stay inside the app.
-_Avoid_: preset path, library folder
+The optional folder where Presets go, chosen in Settings > Default paths and separate from the Save folder. Until one is chosen, Presets stay inside the app.
+_Avoid_: looks folder, preset path, library folder
 
 **Save folder**:
 The one folder on the device where every Project lives, chosen by the user during the first-run setup. The app does not finish starting until a Save folder is chosen, and if it is lost later (deleted, or access withdrawn) the app asks again before going on.
