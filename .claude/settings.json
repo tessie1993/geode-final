@@ -1,0 +1,29 @@
+{
+  "enabledPlugins": {
+    "dart-flutter@synced": false,
+    "vgv-ai-flutter-plugin@synced": false,
+    "flutter@synced": false,
+    "blender-reference-modeling@synced": false,
+    "blender-reference-modeling-opus@synced": false,
+    "blender-reference-modeling-sonnet@synced": false,
+    "blender-reference-modeling-fable@synced": false,
+    "blender-reference-modeling-haiku@synced": false,
+    "unreal-engine-skills-for-claude-code@synced": false,
+    "substance-3d-texturing@synced": false,
+    "animejs@synced": false,
+    "animated-component-libraries@synced": false,
+    "react-three-fiber@synced": false,
+    "rive-interactive@synced": false,
+    "authoring-motion@synced": false,
+    "react-spring-physics@synced": false,
+    "meta-skills@synced": false,
+    "web3d-integration-patterns@synced": false,
+    "extended-3d-scroll@synced": false,
+    "threejs-webgl@synced": false,
+    "book-writing@synced": false,
+    "searchfit-seo@synced": false,
+    "canva@synced": false,
+    "cowork-plugin-management@synced": false,
+    "enterprise-search@synced": false
+  }
+}
