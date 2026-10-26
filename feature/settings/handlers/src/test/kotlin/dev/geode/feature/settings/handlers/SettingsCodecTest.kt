@@ -312,6 +312,18 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `the frame rate starts at 60, and a stored Screen max is still the screen's maximum`() {
+        assertEquals("FPS60", SettingsCodec.encode(SettingsValues())["visual_frame_rate"])
+        assertEquals(VisualFrameRate.FPS60, SettingsCodec.decode(emptyMap()).performance.visualFrameRate)
+
+        val screenMax = SettingsCodec.decode(mapOf("visual_frame_rate" to "SCREEN_MAX"))
+
+        assertEquals(VisualFrameRate.SCREEN_MAX, screenMax.performance.visualFrameRate)
+        assertEquals(VisualFrameRate.SCREEN_MAX, screenMax.performance.frameRateFor(VisualSurface.WALLPAPER))
+        assertEquals("SCREEN_MAX", SettingsCodec.encode(screenMax)["visual_frame_rate"])
+    }
+
+    @Test
     fun `every export size is stored by its name`() {
         val names = ExportQuality.entries.map { idOf(it) }
 

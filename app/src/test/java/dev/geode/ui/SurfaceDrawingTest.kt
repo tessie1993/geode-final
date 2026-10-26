@@ -32,6 +32,13 @@ class SurfaceDrawingTest {
     }
 
     @Test
+    fun `out of the box every surface paces at 60, and a chosen Screen max runs at the panel's rate`() {
+        assertEquals(SurfaceDrawing(1f, FrameRatePolicy.Capped(60f)), SurfaceDrawing.of(PerformanceSettings(), VisualSurface.WALLPAPER))
+        val screenMax = PerformanceSettings(visualFrameRate = VisualFrameRate.SCREEN_MAX)
+        assertEquals(SurfaceDrawing(1f, FrameRatePolicy.Native), SurfaceDrawing.of(screenMax, VisualSurface.VISUAL))
+    }
+
+    @Test
     fun `save mode draws every surface at Saver quality and 30 fps`() {
         val saving = PerformanceSettings(surfaceQuality = mapOf(VisualSurface.PICTURE_IN_PICTURE to VisualQuality.HIGH), saveMode = true)
 

@@ -392,7 +392,8 @@ enum class VisualSurface {
  */
 data class PerformanceSettings(
     val visualQuality: VisualQuality = VisualQuality.HIGH,
-    val visualFrameRate: VisualFrameRate = VisualFrameRate.SCREEN_MAX,
+    /** 60 out of the box, the rate the Visual always drew at; the screen's maximum is a choice. */
+    val visualFrameRate: VisualFrameRate = VisualFrameRate.FPS60,
     /** Saves battery and heat: lower Visual quality, 30 fps, still floating assets, slower renders. */
     val saveMode: Boolean = false,
     /**

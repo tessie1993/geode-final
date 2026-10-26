@@ -224,8 +224,8 @@ class SettingsRulesTest {
                 defaults.copy(performance = performance.copy(visualQuality = VisualQuality.BALANCED)),
             ),
             Row(
-                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.FPS60),
-                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.FPS60)),
+                PerformanceCommand.SetVisualFrameRate(VisualFrameRate.SCREEN_MAX),
+                defaults.copy(performance = performance.copy(visualFrameRate = VisualFrameRate.SCREEN_MAX)),
             ),
             Row(PerformanceCommand.SetSaveMode(true), defaults.copy(performance = performance.copy(saveMode = true))),
             Row(PerformanceCommand.SetVisualsOff(true), defaults.copy(performance = performance.copy(visualsOff = true))),

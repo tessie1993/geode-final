@@ -9,21 +9,21 @@ import org.junit.Test
 /** What the Visual, the floating assets and Renders take from the CPU/GPU settings (#28). */
 class PerformanceSettingsTest {
     @Test
-    fun `out of the box the Visual is drawn at full quality and at the screen's maximum`() {
+    fun `out of the box the Visual is drawn at full quality and at 60 fps`() {
         val defaults = PerformanceSettings()
 
         assertEquals(VisualQuality.HIGH, defaults.visual)
-        assertEquals(VisualFrameRate.SCREEN_MAX, defaults.frameRate)
+        assertEquals(VisualFrameRate.FPS60, defaults.frameRate)
         assertFalse(defaults.floatingAssetsHeldStill)
         assertFalse(defaults.rendersSlowed)
     }
 
     @Test
     fun `without save mode the chosen quality and frame rate are used`() {
-        val chosen = PerformanceSettings(visualQuality = VisualQuality.BALANCED, visualFrameRate = VisualFrameRate.FPS60)
+        val chosen = PerformanceSettings(visualQuality = VisualQuality.BALANCED, visualFrameRate = VisualFrameRate.SCREEN_MAX)
 
         assertEquals(VisualQuality.BALANCED, chosen.visual)
-        assertEquals(VisualFrameRate.FPS60, chosen.frameRate)
+        assertEquals(VisualFrameRate.SCREEN_MAX, chosen.frameRate)
     }
 
     @Test
