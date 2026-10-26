@@ -8,10 +8,10 @@
 namespace geode::viz {
 
 // The Shared core effects that work on every Style's finished picture before the composite pass
-// (#11): Trails and echo (with the echo copy, #385), the two blurs (soft focus and motion blur) and the one particle layer.
-// The rest of the Shared core (kaleidoscope and mirror, the lens effects, warp and ripple, glitch
-// and pixelate, colour grading) is drawn by composite_frag.glsl. Every value starts at 0, so a
-// Style looks as it did until someone turns an effect up. SharedFxPass draws them.
+// (#11): Trails and echo (with the echo copy, #385), the two blurs (soft focus and motion blur) and
+// the one particle layer. The rest of the Shared core (kaleidoscope and mirror, the lens effects, warp
+// and ripple, glitch and pixelate, colour grading) is drawn by composite_frag.glsl. Every amount
+// starts at 0, so a Style looks as it did until someone turns an effect up. SharedFxPass draws them.
 struct SharedEffects {
     float trails = 0.0f;
     float trailZoom = 0.0f;
