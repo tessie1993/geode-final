@@ -119,6 +119,14 @@ sealed interface VisualsCommand {
         val style: SceneId,
     ) : VisualsCommand
 
+    /**
+     * Start the Style the Visual shows over from its beginning (#400): its simulations reseed, and its
+     * clocks and kept frames start again, faded through rather than cut. A MilkDrop preset loads again
+     * from its file. Answered with [VisualsFact.StartedOver], which the engine's host carries out; does
+     * nothing before Customization has said which Style is shown.
+     */
+    data object StartOver : VisualsCommand
+
     /** Adds [style] to the Favourites, or takes it out. */
     data class SetFavourite(
         val style: SceneId,
@@ -252,6 +260,11 @@ sealed interface VisualsFact {
     /** The folder [id] was made, so the screen can open it. */
     data class FolderCreated(
         val id: FolderId,
+    ) : VisualsFact
+
+    /** The person asked to start [style], the Style shown, over (#400); the engine's host starts it over. */
+    data class StartedOver(
+        val style: SceneId,
     ) : VisualsFact
 
     /** The preset is ready to hand to the share sheet. */

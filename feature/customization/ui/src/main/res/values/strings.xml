@@ -24,6 +24,7 @@
     <string name="customize_all_presets">All presets</string>
     <string name="customize_no_presets">No presets for this Style yet. Save one from the top bar.</string>
     <string name="customize_looks">Looks</string>
+    <string name="customize_start_over">Start over</string>
     <string name="customize_percent">%1$d%%</string>
     <string name="customize_driver_more">%1$s +%2$d</string>
     <string name="customize_macro_knob">%1$s, %2$d%%</string>

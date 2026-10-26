@@ -99,7 +99,7 @@ class VisualsRoutesTest {
     }
 
     @Test
-    fun `full-screen mode steps through the Styles, hides its controls and leaves`() {
+    fun `full-screen mode steps through the Styles, starts one over, hides its controls and leaves`() {
         var exits = 0
         compose.setContent {
             var controlsShown by remember { mutableStateOf(true) }
@@ -114,6 +114,7 @@ class VisualsRoutesTest {
 
         compose.onNodeWithContentDescription("Next Style").performClick()
         compose.onNodeWithContentDescription("Previous Style").performClick()
+        compose.onNodeWithContentDescription("Start over").performClick()
         compose.onNodeWithText("Fluid Ink").assertExists()
         compose.onNodeWithContentDescription("Leave full screen").performClick()
         // The overlay takes no touches (they belong to the Style), so the toggle is its accessibility action.
@@ -121,7 +122,10 @@ class VisualsRoutesTest {
         compose.onNodeWithText("Fluid Ink").assertDoesNotExist()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
 
-        assertEquals(listOf(VisualsCommand.Choose(SceneId("fluid_aurora")), VisualsCommand.Choose(SceneId("bars"))), visuals.sent)
+        assertEquals(
+            listOf(VisualsCommand.Choose(SceneId("fluid_aurora")), VisualsCommand.Choose(SceneId("bars")), VisualsCommand.StartOver),
+            visuals.sent,
+        )
         assertEquals(2, exits)
         assertTrue(
             compose.activity.window.decorView

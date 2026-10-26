@@ -222,6 +222,8 @@ data class CustomizeModel(
     val layer: Layer = Layer.OFF,
     /** The trims of [TRIMMED_SIGNALS], in that order. */
     val trims: List<TrimRow> = emptyList(),
+    /** Whether the opening place can start the Style over (#400), which only the engine can do. */
+    val canStartOver: Boolean = false,
 ) {
     fun isCurrent(look: LookChip): Boolean = look.style == style
 

@@ -134,6 +134,9 @@ sealed interface FullScreenAction {
         val style: SceneId,
     ) : FullScreenAction
 
+    /** Start the Style shown over from its beginning (#400). */
+    data object StartOver : FullScreenAction
+
     data object Exit : FullScreenAction
 }
 

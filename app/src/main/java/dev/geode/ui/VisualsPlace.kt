@@ -44,6 +44,7 @@ import dev.geode.feature.customization.ui.PresetChip
 import dev.geode.feature.customization.ui.StyleFolderChip
 import dev.geode.feature.visuals.api.PresetShare
 import dev.geode.feature.visuals.api.StyleGroup
+import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.core.PresetLinks
 import dev.geode.feature.visuals.ui.MilkdropRoute
 import dev.geode.feature.visuals.ui.PresetsRoute
@@ -174,6 +175,8 @@ fun CustomizePanel(
                 IgnoredControls.properties(StylePacks.find(StyleTargets.sceneOf(style))?.ignores.orEmpty()),
             ),
         onBrowsePresets = onBrowsePresets,
+        // Start over (#400): Visuals says which Style was shown, and the engine's host starts it over.
+        onStartOver = { shell.visuals.send(VisualsCommand.StartOver) },
     )
 }
 

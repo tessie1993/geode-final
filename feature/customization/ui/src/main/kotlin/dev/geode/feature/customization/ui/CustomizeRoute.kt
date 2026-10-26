@@ -22,7 +22,8 @@ import kotlin.random.Random
  * [presets] and [live] are what the opening place offers: the look picker's Styles, this Style's saved
  * presets, and the engine's live values when it has them. [ignored] are the controls the current
  * Style leaves alone, greyed out (#365). [onBrowsePresets] opens the Presets browser (#144), which the
- * Visuals feature keeps. While it is open, Style switching waits (#282).
+ * Visuals feature keeps. [onStartOver] starts the Style over from its beginning (#400), which only the
+ * engine can do; without it, the panel offers no Start over. While it is open, Style switching waits (#282).
  */
 @Composable
 fun CustomizeRoute(
@@ -35,6 +36,7 @@ fun CustomizeRoute(
     live: LiveMeters = LiveMeters.NONE,
     ignored: Set<Target> = emptySet(),
     onBrowsePresets: () -> Unit = {},
+    onStartOver: (() -> Unit)? = null,
 ) {
     // While Customize is open Style switching waits, so a switch never throws away fresh edits (#282).
     DisposableEffect(customization) {
@@ -43,7 +45,7 @@ fun CustomizeRoute(
     }
     val state by customization.state.collectAsStateWithLifecycle()
     CustomizeScreen(
-        model = state.toCustomizeModel(looks, presets, live, ignored),
+        model = state.toCustomizeModel(looks, presets, live, ignored).copy(canStartOver = onStartOver != null),
         onAction = { action ->
             when (action) {
                 is CustomizeAction.Send -> customization.send(action.command)
@@ -51,6 +53,7 @@ fun CustomizeRoute(
                 CustomizeAction.Share -> onShare(state.current)
                 CustomizeAction.Hide -> onHide()
                 CustomizeAction.BrowsePresets -> onBrowsePresets()
+                CustomizeAction.StartOver -> onStartOver?.invoke()
             }
         },
         modifier = modifier,

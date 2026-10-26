@@ -49,8 +49,10 @@ fun VisualsRoute(
         visuals.events.collect { fact ->
             when (fact) {
                 is VisualsFact.FolderCreated -> open = fact.id.value
-                // The Presets browser's facts are its own route's.
-                is VisualsFact.PresetShareReady, is VisualsFact.PresetImported, is VisualsFact.PresetNotImported -> Unit
+                // The Presets browser's facts are its own route's, and Start over is the engine host's (#400).
+                is VisualsFact.PresetShareReady, is VisualsFact.PresetImported, is VisualsFact.PresetNotImported,
+                is VisualsFact.StartedOver,
+                -> Unit
             }
         }
     }
@@ -97,6 +99,7 @@ fun FullScreenVisualRoute(
             when (action) {
                 FullScreenAction.ToggleControls -> onToggleControls()
                 is FullScreenAction.Choose -> visuals.send(VisualsCommand.Choose(action.style))
+                FullScreenAction.StartOver -> visuals.send(VisualsCommand.StartOver)
                 FullScreenAction.Exit -> onExit()
             }
         },

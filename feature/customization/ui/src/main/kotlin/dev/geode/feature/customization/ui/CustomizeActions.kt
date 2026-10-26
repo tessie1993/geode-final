@@ -42,6 +42,9 @@ sealed interface CustomizeAction {
 
     /** Open the Presets browser (#144), beside this Style's preset chips. */
     data object BrowsePresets : CustomizeAction
+
+    /** Start the Style over from its beginning (#400), beside the look picker. The engine's, so the route's. */
+    data object StartOver : CustomizeAction
 }
 
 /** Surprise me keeps every Macro within this range, clear of both ends (#12). */

@@ -100,6 +100,7 @@ import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.feature.studio.ui.StudioRoute
+import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.ui.FullScreenVisualRoute
 import dev.geode.render.VisualizerView
 import dev.geode.studio.renderChoicesOf
@@ -211,6 +212,10 @@ fun AppRoot() {
     // Freeze reactions (#366): live only, so it is never saved and starts off with every launch.
     var reactionsHeld by remember { mutableStateOf(false) }
     LaunchedEffect(reactionsHeld) { visualizerView.visualizerRenderer.reactionsHeld = reactionsHeld }
+    // Start over (#400), from full-screen mode or Customize: the engine starts the Style it draws over.
+    LaunchedEffect(shell.visuals, visualizerView) {
+        shell.visuals.events.collect { if (it is VisualsFact.StartedOver) visualizerView.visualizerRenderer.startOver() }
+    }
     val look = settingsValues?.look
     val keepScreenOn = settingsValues?.playback?.keepScreenOn ?: false
     // The one live Visual, hosted by whichever place shows it; nothing at all while Visuals are off.

@@ -11,6 +11,12 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Start over (#400).** Full-screen mode and the Customize panel have a
+  Start over button that starts the Style shown from its beginning: a fresh
+  copy of it, its simulations reseeded and its clocks and feedback new, fades
+  in over the old one, so nothing cuts or flashes. A MilkDrop preset loads
+  again from its file instead.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio

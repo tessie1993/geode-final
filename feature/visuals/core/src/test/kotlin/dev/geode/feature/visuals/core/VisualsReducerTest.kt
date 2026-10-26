@@ -3,6 +3,7 @@ package dev.geode.feature.visuals.core
 import dev.geode.engine.types.SceneId
 import dev.geode.feature.visuals.api.StyleLibrary
 import dev.geode.feature.visuals.api.VisualsCommand
+import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.api.VisualsState
 import dev.geode.feature.visuals.core.Fixtures.command
 import dev.geode.feature.visuals.core.Fixtures.fresh
@@ -13,6 +14,7 @@ import dev.geode.feature.visuals.core.Fixtures.ready
 import dev.geode.feature.visuals.core.Fixtures.reduce
 import dev.geode.feature.visuals.core.Fixtures.saved
 import dev.geode.feature.visuals.core.Fixtures.tunnel
+import dev.geode.kernel.Emit
 import dev.geode.kernel.Next
 import dev.geode.kernel.Perform
 import dev.geode.kernel.ReportFailure
@@ -46,6 +48,14 @@ class VisualsReducerTest {
             Row("choose before Customization has said", fresh, chooseInk, Next(fresh, listOf(askForInk))),
             Row("choose the Style already shown", ready, command(VisualsCommand.Choose(tunnel)), same(ready)),
             Row("choose a Style this version does not draw", ready, command(VisualsCommand.Choose(gone)), same(ready)),
+            // Start over (#400) is the engine's to carry out: the store only says which Style was shown.
+            Row(
+                "start over the Style shown",
+                ready,
+                command(VisualsCommand.StartOver),
+                Next(ready, listOf(Emit(VisualsFact.StartedOver(tunnel)))),
+            ),
+            Row("start over before Customization has said", fresh, command(VisualsCommand.StartOver), same(fresh)),
             // Following Customization: every new Style goes to the front of Recent, which is saved.
             Row(
                 "Customization shows another Style",

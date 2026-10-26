@@ -56,7 +56,7 @@ fun PresetsRoute(
                 is VisualsFact.PresetShareReady -> share(fact.share)
                 is VisualsFact.PresetImported -> notice = PresetNotice.Imported(fact.id.value)
                 is VisualsFact.PresetNotImported -> notice = PresetNotice.NotImported(fact.problem)
-                is VisualsFact.FolderCreated -> Unit
+                is VisualsFact.FolderCreated, is VisualsFact.StartedOver -> Unit
             }
         }
     }

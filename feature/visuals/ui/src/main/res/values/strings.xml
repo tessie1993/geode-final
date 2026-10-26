@@ -71,6 +71,7 @@
 
     <!-- Full-screen visual mode. -->
     <string name="visuals_exit_full_screen">Leave full screen</string>
+    <string name="visuals_start_over">Start over</string>
     <string name="visuals_previous_style">Previous Style</string>
     <string name="visuals_next_style">Next Style</string>
     <string name="visuals_show_controls">Show or hide the controls</string>

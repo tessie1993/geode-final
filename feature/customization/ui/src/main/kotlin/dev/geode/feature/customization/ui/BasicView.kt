@@ -24,7 +24,7 @@ private const val KNOBS_PER_ROW = 3
 
 /**
  * The basic view (#12): the 6 Macro knobs, the effect toggles, the way into Layer 2, the palette chips,
- * this Style's presets and the look picker strip.
+ * this Style's presets and the look picker strip, with Start over (#400) beside it.
  */
 @Composable
 internal fun BasicView(panel: PanelState) {
@@ -101,8 +101,14 @@ internal fun BasicView(panel: PanelState) {
         }
     }
 
-    if (model.looks.isNotEmpty()) {
-        SectionTitle(stringResource(R.string.customize_looks))
+    if (model.looks.isNotEmpty() || model.canStartOver) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            SectionTitle(stringResource(R.string.customize_looks), Modifier.weight(1f))
+            // Start over (#400): this Style from its beginning, its simulations reseeded, faded through.
+            if (model.canStartOver) {
+                TextButton(onClick = { panel.onAction(CustomizeAction.StartOver) }) { Text(stringResource(R.string.customize_start_over)) }
+            }
+        }
         ChipStrip {
             model.looks.forEach { look ->
                 ChoiceChip(look.name, model.isCurrent(look)) { panel.send(CustomizationCommand.ChooseStyle(look.style)) }

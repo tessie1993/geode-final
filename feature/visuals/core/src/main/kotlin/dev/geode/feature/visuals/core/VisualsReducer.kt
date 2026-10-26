@@ -68,6 +68,7 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
     ): Next<VisualsState, VisualsEffect> =
         when (command) {
             is VisualsCommand.Choose -> choose(state, command.style)
+            VisualsCommand.StartOver -> startOver(state)
             is VisualsCommand.SetFavourite -> edit(state) { LibraryEdits.favourite(it, state, command) }
             is VisualsCommand.SetMark -> edit(state) { LibraryEdits.mark(it, state, command) }
             is VisualsCommand.CreateFolder -> LibraryEdits.create(state, command)
@@ -126,6 +127,12 @@ object VisualsReducer : Reducer<VisualsState, VisualsEvent, VisualsEffect> {
         } else {
             Next(state, listOf(Perform(VisualsWork.ChooseStyle(style))))
         }
+
+    /** Start over (#400) is the engine's: the store only says which Style the person saw start over. */
+    private fun startOver(state: VisualsState): Next<VisualsState, VisualsEffect> {
+        val current = state.current ?: return Next(state)
+        return Next(state, listOf(Emit(VisualsFact.StartedOver(current))))
+    }
 
     private fun shown(
         state: VisualsState,
