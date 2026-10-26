@@ -150,6 +150,10 @@ _Avoid_: Take, screen capture
 Recording the Visual and the sound together, in real time, as a video: what makes a Recording. Nothing else is called capture.
 _Avoid_: screen grab, record (for the microphone)
 
+**Snapshot**:
+A still picture of the Visual as it is drawn at that moment, never the App UI, saved at the screen's full size as a PNG in Pictures/Geode. It belongs to no Project and is not part of Studio's library. Taking one is not Capture.
+_Avoid_: screenshot, photo, capture (for a still)
+
 **Edit**:
 A video made by cutting, looping and adding effects to one or more Renders or Recordings.
 _Avoid_: Project, timeline, sequence

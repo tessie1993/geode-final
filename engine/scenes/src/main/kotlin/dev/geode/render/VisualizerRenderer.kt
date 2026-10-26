@@ -13,6 +13,7 @@ import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
+import java.util.concurrent.ConcurrentLinkedQueue
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -173,6 +174,9 @@ class VisualizerRenderer(
     // GL thread only: the encoder surface the frames are copied into now.
     private var recorder: FrameRecorder? = null
 
+    // The stills asked for (#405): any thread adds one, and the GL thread reads the next frame drawn for them.
+    private val stills = ConcurrentLinkedQueue<(VisualStill?) -> Unit>()
+
     /** The window's size in pixels as last drawn, 0 before it has one: a Recording's picture size. */
     @Volatile
     var surfaceWidth: Int = 0
@@ -221,8 +225,25 @@ class VisualizerRenderer(
         return nativeViz.sceneIds()
     }
 
+    /**
+     * Reads the next frame drawn back for a Snapshot (#405), the Visual alone at the window's full
+     * size, and hands it to [onStill] on the GL thread: null when it could not be read, or when this
+     * renderer is let go first. Nothing is handed over while no frame is drawn; [cancelStill] takes
+     * the request back. Reading the frame is the only work done on the GL thread; whatever is made
+     * of it belongs off it.
+     */
+    fun requestStill(onStill: (VisualStill?) -> Unit) {
+        stills.add(onStill)
+    }
+
+    /** Takes back a still asked for with [requestStill] that has not been handed over yet. */
+    fun cancelStill(onStill: (VisualStill?) -> Unit) {
+        stills.remove(onStill)
+    }
+
     /** Frees the native renderer; only when this renderer is being discarded, on the GL thread. */
     fun releaseScenes() {
+        handStills { null }
         recorder?.release()
         recorder = null
         frameHint.close()
@@ -322,6 +343,8 @@ class VisualizerRenderer(
         syncNativeState()
         nativeViz.setPresentTime(presentation?.expectedPresentNanos() ?: 0L)
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
+        // Read before the Recording's copy, which makes another surface current for a moment.
+        if (stills.isNotEmpty()) handStills { StillReader.read(surfaceWidth, surfaceHeight) }
         record()
         nativeViz.pollError(onShaderError)
         nativeViz.takeMilkPresetLoaded()?.let { path ->
@@ -333,6 +356,14 @@ class VisualizerRenderer(
         if (due > stylesDue) onStyleDue()
         stylesDue = due
         frameHint.report(System.nanoTime() - workStart)
+    }
+
+    /** Hands each request waiting now a still of its own, from [read] (#405). */
+    private inline fun handStills(read: () -> VisualStill?) {
+        while (true) {
+            val onStill = stills.poll() ?: return
+            onStill(read())
+        }
     }
 
     /** Copies the frame just drawn into the Recording's encoder surface, while one is set (#317). */

@@ -133,6 +133,10 @@
     <string name="action_dismiss">Dismiss</string>
     <string name="preset_link_imported">Preset \"%1$s\" imported — it is in Visuals › Presets.</string>
     <string name="preset_link_unreadable">That preset link could not be read. It may have been cut short in transit.</string>
+    <!-- A Snapshot's short confirmation (#405). -->
+    <string name="snapshot_saved">Snapshot saved to Pictures/Geode</string>
+    <string name="snapshot_no_visual">No Visual is showing to take a Snapshot of</string>
+    <string name="snapshot_not_saved">The Snapshot could not be saved</string>
     <string name="visuals_tab_style">Style</string>
     <string name="visuals_tab_customize">Customize</string>
     <string name="visuals_tab_modulators">Modulators &amp; Automation</string>

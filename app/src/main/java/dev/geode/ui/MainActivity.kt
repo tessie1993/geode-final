@@ -19,6 +19,7 @@ import dev.geode.R
 import dev.geode.feature.library.api.LibraryCommand
 import dev.geode.feature.library.api.Pick
 import dev.geode.feature.settings.api.SettingsState
+import dev.geode.feature.visuals.api.SnapshotProblem
 import dev.geode.feature.visuals.api.VisualsCommand
 import dev.geode.feature.visuals.api.VisualsFact
 import dev.geode.feature.visuals.core.PresetLinks
@@ -45,17 +46,26 @@ class MainActivity : ComponentActivity() {
         intent.data = null
     }
 
-    private suspend fun tellPresetImports() {
+    /** How a shared preset's import went, and a Snapshot's short confirmation (#405), wherever either was asked for. */
+    private suspend fun tellVisualsFacts() {
         shell.visuals.events.collect { fact ->
-            val message =
+            val (message, length) =
                 when (fact) {
-                    is VisualsFact.PresetImported -> getString(R.string.preset_link_imported, fact.id.value)
-                    is VisualsFact.PresetNotImported -> getString(R.string.preset_link_unreadable)
+                    is VisualsFact.PresetImported -> getString(R.string.preset_link_imported, fact.id.value) to Toast.LENGTH_LONG
+                    is VisualsFact.PresetNotImported -> getString(R.string.preset_link_unreadable) to Toast.LENGTH_LONG
+                    is VisualsFact.SnapshotSaved -> getString(R.string.snapshot_saved) to Toast.LENGTH_SHORT
+                    is VisualsFact.SnapshotNotSaved -> getString(snapshotProblem(fact.problem)) to Toast.LENGTH_SHORT
                     else -> return@collect
                 }
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            Toast.makeText(this, message, length).show()
         }
     }
+
+    private fun snapshotProblem(problem: SnapshotProblem): Int =
+        when (problem) {
+            SnapshotProblem.NO_VISUAL -> R.string.snapshot_no_visual
+            SnapshotProblem.NOT_SAVED -> R.string.snapshot_not_saved
+        }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -88,7 +98,7 @@ class MainActivity : ComponentActivity() {
             AppRoot()
         }
         keepSplashUntilUserDataLoaded()
-        lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { tellPresetImports() } }
+        lifecycleScope.launch { repeatOnLifecycle(Lifecycle.State.STARTED) { tellVisualsFacts() } }
         if (savedInstanceState == null) {
             importSharedPreset(intent)
             playFromSearch(intent)

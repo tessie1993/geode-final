@@ -135,6 +135,9 @@ sealed interface FullScreenAction {
     ) : FullScreenAction
 
     data object Exit : FullScreenAction
+
+    /** Saves a Snapshot of the Visual (#405). */
+    data object Snapshot : FullScreenAction
 }
 
 /** The Command an action sends, with [openFolder] the folder open now; null for App-UI-only actions. */

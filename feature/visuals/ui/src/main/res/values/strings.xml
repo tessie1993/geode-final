@@ -74,6 +74,7 @@
     <string name="visuals_previous_style">Previous Style</string>
     <string name="visuals_next_style">Next Style</string>
     <string name="visuals_show_controls">Show or hide the controls</string>
+    <string name="visuals_snapshot">Snapshot</string>
 
     <!-- MilkDrop presets and textures, and importing them (#145). -->
     <string name="milkdrop_title">MilkDrop</string>

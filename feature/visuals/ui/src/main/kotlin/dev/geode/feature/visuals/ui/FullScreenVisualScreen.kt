@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.FullscreenExit
+import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +37,7 @@ import dev.geode.engine.types.SceneId
 /**
  * Full-screen visual mode (#43): the one live Visual fills the screen, and this is the App UI over it.
  * It has no background, so the Visual the app keeps running behind it shows through. The controls are
- * the Style's name, the Styles either side of it, and the way back.
+ * the Style's name, a Snapshot (#405), the Styles either side of it, and the way back.
  *
  * Every touch on the picture belongs to the Style (#290), so this layer handles no pointer input of
  * its own: the Visual's host turns a double tap into [FullScreenAction.ToggleControls], and touches
@@ -88,6 +89,9 @@ private fun Controls(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            FilledTonalIconButton(onClick = { onAction(FullScreenAction.Snapshot) }) {
+                Icon(Icons.Rounded.PhotoCamera, contentDescription = stringResource(R.string.visuals_snapshot))
+            }
             FilledTonalIconButton(onClick = { onAction(FullScreenAction.Exit) }) {
                 Icon(Icons.Rounded.FullscreenExit, contentDescription = stringResource(R.string.visuals_exit_full_screen))
             }

@@ -100,6 +100,7 @@ fun FullScreenVisualRoute(
                 FullScreenAction.ToggleControls -> onToggleControls()
                 is FullScreenAction.Choose -> visuals.send(VisualsCommand.Choose(action.style))
                 FullScreenAction.Exit -> onExit()
+                FullScreenAction.Snapshot -> visuals.send(VisualsCommand.Snapshot)
             }
         },
         modifier,

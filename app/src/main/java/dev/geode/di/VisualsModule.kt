@@ -28,6 +28,8 @@ import dev.geode.feature.visuals.handlers.visualsStore
 import dev.geode.geodeContainer
 import dev.geode.kernel.FeatureRuntime
 import dev.geode.render.scene.SceneIds
+import dev.geode.studio.LiveVisualSnapshots
+import dev.geode.ui.LiveVisualPresence
 import dev.geode.visuals.AppPresetFiles
 import dev.geode.visuals.EngineSnapshots
 import dev.geode.visuals.InstalledMilkdropFolder
@@ -131,6 +133,8 @@ object VisualsModule {
             builtInMilkdrop =
                 MilkCatalog.load(application).presets.map { MilkdropPreset(it.file, it.name, it.author, builtIn = true) },
             runtime = runtime,
+            // A Snapshot reads the live Visual's frame, as a Recording does (#405).
+            snapshots = LiveVisualSnapshots(application, LiveVisualPresence::isShown, Dispatchers.Default),
         ).also { visuals ->
             // Style switching's Visualizer styles are the Styles Visuals lists, in its order (#282).
             val listed = visuals.state.value.styles
