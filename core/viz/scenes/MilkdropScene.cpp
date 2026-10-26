@@ -66,11 +66,13 @@ void MilkdropScene::acceptPcm(const float* samples, int count) {
     pcmCount_ += n;
 }
 
-void MilkdropScene::acceptStereoPcm(const float* interleaved, int frames) {
+void MilkdropScene::acceptPcmSpan(const float* interleaved, int frames, int fresh) {
     const int n = std::min(frames, kEnginePcmSamples);
     if (!interleaved || n <= 0) return;
-    // The newest frames of the window, replacing the last one: a window is added to projectM once.
-    std::copy(interleaved + static_cast<size_t>(frames - n) * 2, interleaved + static_cast<size_t>(frames) * 2, stereo_.begin());
+    // Replacing the last window: a window is added to projectM once. projectM measures one window a frame,
+    // so the loudest one heard since the last frame goes in, and no kick falls between two frames.
+    const int start = milkdrop::loudestWindow(interleaved, frames, n, fresh);
+    std::copy(interleaved + static_cast<size_t>(start) * 2, interleaved + static_cast<size_t>(start + n) * 2, stereo_.begin());
     stereoFrames_ = n;
 }
 
@@ -320,7 +322,9 @@ void MilkdropScene::draw(float timeSeconds) {
     loadPendingPreset(now);
     if (!frame_.ensure(engineWidth_, engineHeight_)) return;
     const SceneParams& p = params_;
-    projectm_set_beat_sensitivity(engine_.get(), std::clamp(0.2f + p.beatResponse, 0.2f, 3.0f));
+    // How far bass, mid and treble swing (tools/projectm-v4.1.8-loudness.patch): the Style's beat response,
+    // where 1 leaves the preset reacting as it was written.
+    projectm_set_beat_sensitivity(engine_.get(), milkdrop::beatSensitivity(p.beatResponse));
 
     // The engine composites its frame straight into the scene's FBO. The window surface is never
     // read or written here, so the result does not depend on the EGL config the host chose.
@@ -339,7 +343,8 @@ void MilkdropScene::draw(float timeSeconds) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, frame_.tex());
     glUniform1i(postLocs_.loc("uTex"), 0);
-    set1f("uZoom", p.zoom * (1.0f + beatPulse_ * p.beatResponse * 0.08f));
+    // Geode's own post pass leans in on a trusted downbeat and a drop; the preset's variables are left alone (#294).
+    set1f("uZoom", p.zoom * (1.0f + beatPulse_ * p.beatResponse * 0.08f + featuremap::milkdropZoom(bus_)));
     set1f("uRotation", rotationAngle_);
     set1f("uZoomPhase", zoomPhase_);
     set1f("uMirrorX", p.mirror ? 1.0f : 0.0f);

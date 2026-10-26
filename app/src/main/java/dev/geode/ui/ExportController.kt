@@ -5,6 +5,7 @@ import android.net.Uri
 import dev.geode.analysis.FeatureTimeline
 import dev.geode.data.ExportDefaults
 import dev.geode.engine.bridge.CustomizationSnapshot
+import dev.geode.engine.types.Millis
 import dev.geode.export.DriftStop
 import dev.geode.export.ExportAspect
 import dev.geode.export.ExportCodec
@@ -18,9 +19,21 @@ import dev.geode.export.LoopSpec
 import dev.geode.export.LoudnessAdvice
 import dev.geode.export.LoudnessTarget
 import dev.geode.export.MixClip
-import dev.geode.export.ProjectComposition
 import dev.geode.export.TimeOfDayDrift
 import dev.geode.export.VideoExporter
+import dev.geode.feature.studio.api.NewVideo
+import dev.geode.feature.studio.api.RenderAspect
+import dev.geode.feature.studio.api.RenderCodec
+import dev.geode.feature.studio.api.RenderFormat
+import dev.geode.feature.studio.api.RenderSize
+import dev.geode.feature.studio.api.VideoKind
+import dev.geode.feature.studio.core.RenderPlan
+import dev.geode.feature.studio.core.edit.ClipEdit
+import dev.geode.feature.studio.core.edit.EditorProject
+import dev.geode.feature.studio.handlers.edit.EditOutput
+import dev.geode.feature.studio.handlers.edit.ProjectComposition
+import dev.geode.feature.studio.handlers.edit.StudioExporter
+import dev.geode.feature.studio.handlers.edit.TransitionShaders
 import dev.geode.render.SceneFactory
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -77,6 +90,15 @@ class ExportController internal constructor(
         /** What new renders start with, from Settings. */
         val exportDefaults: ExportDefaults
 
+        /** The GL Transitions the Edit pipeline draws between clips (#318); none by default. */
+        val transitions: TransitionShaders get() = TransitionShaders { null }
+
+        /**
+         * A cut or a clip was exported as [video]: Studio puts it into the default Project as an Edit
+         * (#318). Nothing by default.
+         */
+        fun cutSaved(video: NewVideo) = Unit
+
         /**
          * The look a render draws: the current Customization moved by [drift], as the engine reads it
          * (#337). The open editor's scene keyframes no longer animate a render: the Customization's plan
@@ -86,7 +108,7 @@ class ExportController internal constructor(
     }
 
     private val exporter = VideoExporter(application)
-    private val studioExporter = dev.geode.export.StudioExporter(application)
+    private val studioExporter = StudioExporter(application)
 
     private val _exportState = MutableStateFlow(ExportUiState())
     val exportState: StateFlow<ExportUiState> = _exportState
@@ -291,7 +313,7 @@ class ExportController internal constructor(
 
     fun startStudioExport(
         clip: dev.geode.export.StudioClip,
-        edit: dev.geode.export.ClipEdit,
+        edit: ClipEdit,
         destination: Uri? = null,
     ) {
         if (_studio.value.phase.isBusy) return
@@ -305,9 +327,10 @@ class ExportController internal constructor(
                         sourceDurationMs = clip.durationMs,
                         edit = edit,
                         displayName = name,
-                        codec = defaultCodec(),
+                        codec = editCodec(),
                         destination = destination,
                     ) { p -> _studio.update { it.copy(phase = ExportPhase.Running(p.coerceIn(0f, 1f))) } }
+                if (result is StudioExporter.Result.Saved) host.cutSaved(clipVideo(clip, edit, result))
                 _studio.update { it.copy(phase = result.toPhase()) }
                 refreshStudioClips()
                 studioJob = null
@@ -315,11 +338,12 @@ class ExportController internal constructor(
     }
 
     fun startProjectExport(
-        project: dev.geode.editor.EditorProject,
+        project: EditorProject,
         destination: Uri? = null,
     ) {
         if (_studio.value.phase.isBusy) return
-        val built = ProjectComposition.build(application, project, host.exportDefaults)
+        val output = editOutput()
+        val built = ProjectComposition.build(application, project, output, host.transitions)
         if (built !is ProjectComposition.Outcome.Ready) {
             _studio.update { it.copy(phase = ExportPhase.Failed(application.getString(dev.geode.R.string.editor_export_no_video))) }
             return
@@ -329,9 +353,10 @@ class ExportController internal constructor(
             scope.launch {
                 val name = "geode_cut_${System.currentTimeMillis()}.mp4"
                 val result =
-                    studioExporter.exportComposition(built.composition, built.durationMs, name, defaultCodec(), destination) { p ->
+                    studioExporter.exportComposition(built.composition, built.durationMs, name, output.codec, destination) { p ->
                         _studio.update { it.copy(phase = ExportPhase.Running(p.coerceIn(0f, 1f))) }
                     }
+                if (result is StudioExporter.Result.Saved) host.cutSaved(cutVideo(output, result))
                 _studio.update { it.copy(phase = result.toPhase()) }
                 refreshStudioClips()
                 studioJob = null
@@ -339,6 +364,52 @@ class ExportController internal constructor(
     }
 
     private fun defaultCodec(): ExportCodec = host.exportDefaults.codec
+
+    /** The codec an Edit is exported with, from the export defaults. */
+    private fun editCodec(): RenderCodec = if (defaultCodec() == ExportCodec.HEVC) RenderCodec.HEVC else RenderCodec.H264
+
+    /** What a cut is exported as, from the export defaults (#318). */
+    private fun editOutput(): EditOutput {
+        val defaults = host.exportDefaults
+        return EditOutput(RenderAspect.valueOf(defaults.ratio.name), defaults.fps, defaults.loopSafe, editCodec())
+    }
+
+    /** A cut saved from the Timeline, as Studio's library shows it: its frame from the export defaults. */
+    private fun cutVideo(
+        output: EditOutput,
+        saved: StudioExporter.Result.Saved,
+    ): NewVideo {
+        val frame = RenderPlan.frameOf(RenderFormat(aspect = output.aspect, size = RenderSize.valueOf(host.exportDefaults.quality.name)))
+        return editVideo(saved, frame.width, frame.height)
+    }
+
+    /** A clip saved from the clip editor: reframed to its shape, or at its own size. */
+    private fun clipVideo(
+        clip: dev.geode.export.StudioClip,
+        edit: ClipEdit,
+        saved: StudioExporter.Result.Saved,
+    ): NewVideo {
+        val shape = edit.ratio
+        if (shape == null) return editVideo(saved, clip.width, clip.height)
+        val frame = RenderPlan.frameOf(RenderFormat(aspect = shape, size = edit.quality))
+        return editVideo(saved, frame.width, frame.height)
+    }
+
+    private fun editVideo(
+        saved: StudioExporter.Result.Saved,
+        width: Int,
+        height: Int,
+    ): NewVideo =
+        NewVideo(
+            kind = VideoKind.EDIT,
+            name = saved.uri.lastPathSegment.orEmpty(),
+            file = saved.uri.toString(),
+            thumbnail = null,
+            length = Millis(saved.durationMs),
+            width = width,
+            height = height,
+            song = "",
+        )
 
     // The main export's UI (SettingsDialog) has no path to this controller's public API for
     // per-render options that aren't already threaded through startExport's callers, so the

@@ -34,6 +34,8 @@ PACK_EXTRAS_KT = (
     ROOT / "feature" / "customization" / "core" / "src" / "main" / "kotlin" / "dev" / "geode" / "feature" / "customization" / "core"
     / "PackExtras.kt"
 )
+# The feature bus's uniforms (#294): a Style that includes the library reads at least one of them.
+FEATURES_LIB = ROOT / "app" / "src" / "main" / "assets" / "shaders" / "lib_scene_features.glsl"
 
 FORMAT_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -68,6 +70,7 @@ STYLE_HELPERS = {"count": "xcount", "variant": "xvariant"}
 # lib_dmt's flight path clock, which ShaderScene runs at the FLIGHT Extra's rate as it runs uXFlightTime.
 ENGINE_CLOCKS = {"flight": "uFlight"}
 STYLE_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_style[ \t]*$", re.MULTILINE)
+FEATURES_INCLUDE = re.compile(r"^[ \t]*//#include[ \t]+lib_scene_features[ \t]*$", re.MULTILINE)
 # The thermal tiers a Style may budget (geode/viz/QualityTiers.hpp); "full" is always the whole budget.
 TIER_NAMES = ("eased", "reduced", "minimal")
 TIER_KEYS = {"steps", "off"}
@@ -316,6 +319,22 @@ def check_shader_reads(manifest: dict, shader: Path, where: str, report: Report)
             report.error(where, f'extra "{name}" is declared but the shader never reads {extra_uniform(name)}')
 
 
+def feature_uniforms() -> list[str]:
+    code = strip_comments(FEATURES_LIB.read_text(encoding="utf-8"))
+    return re.findall(r"\buniform\s+(?:(?:highp|mediump|lowp)\s+)?\w+\s+(\w+)\s*;", code)
+
+
+def check_feature_reads(shader: Path, where: str, report: Report) -> None:
+    """Including lib_scene_features declares that the Style follows the music's structure, rhythm,
+    timbre or space; one that reads none of it is declared-but-unread, like an unread Extra."""
+    source = shader.read_text(encoding="utf-8")
+    if not FEATURES_INCLUDE.search(source):
+        return
+    code = strip_comments(source)
+    if not any(re.search(rf"\b{name}\b", code) for name in feature_uniforms()):
+        report.error(where, "the shader includes lib_scene_features but reads none of its uniforms")
+
+
 def check_inputs(manifest: dict, family: str, shader: Path | None, where: str, report: Report) -> None:
     declared = manifest.get("inputs", [])
     if not isinstance(declared, list) or not all(isinstance(name, str) for name in declared):
@@ -439,6 +458,7 @@ def check_manifest(
             expected.add(shader)
             shader_file = folder / shader
             check_shader_reads(manifest, shader_file, where, report)
+            check_feature_reads(shader_file, where, report)
     elif "shader" in manifest:
         report.error(where, f'family "{family}" draws with its own shaders; only a shader Style names one')
     warp = check_feedback(manifest, family, folder, where, report)
@@ -831,6 +851,9 @@ def self_test() -> int:
         "extra not starting neutral": setter(["orb", "extras"], [{"name": "scale", "min": 0, "max": 2, "default": 1.5}]),
         "extra the shader never reads": setter(["orb", "extras"], [{"name": "fog", "min": 0, "max": 2, "default": 1}]),
         "shader Extras without lib_style": lambda f, i, m, s: s.update({"orb": ("shader.glsl", "void main() { float s = uXScale; }\n")}),
+        "lib_scene_features included and never read": lambda f, i, m, s: s.update(
+            {"orb": ("shader.glsl", GOOD_SHADER + "//#include lib_scene_features\n// uKick\nfloat k() { return uKickX; }\n")}
+        ),
         "too many Macros": setter(["orb", "macros"], [{"name": f"m{n}", "links": []} for n in range(MAX_MACROS + 1)]),
         "Macro amount out of range": setter(["orb", "macros"], [{"name": "energy", "links": [{"target": "x", "amount": 2}]}]),
         "Reaction with negative rise": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": -1, "fallMs": 0, "curve": "linear"}]),

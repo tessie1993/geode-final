@@ -89,7 +89,7 @@ Lesser General Public License v2.1 (LGPL-2.1):
   Copyright (C)2003-2019 projectM Team
 
 Geode ships a MODIFIED copy. It is built from the projectM v4.1.8 release
-(tag v4.1.8, commit 4967dc003e5206d7df3ff447287f7609c47d2343) with four
+(tag v4.1.8, commit 4967dc003e5206d7df3ff447287f7609c47d2343) with six
 patches applied at build time:
 
   projectm-v4.1.8-render-fbo-backport.patch  renders into a caller's
@@ -100,6 +100,13 @@ patches applied at build time:
   projectm-v4.1.8-plasma-mediump.patch       upstream master commit 0227b7a:
                                              the plasma transition's noise no
                                              longer overflows at mediump
+  projectm-v4.1.8-stereo-beats.patch         upstream master commit 494269e:
+                                             bass, mid and treble from both
+                                             channels
+  projectm-v4.1.8-loudness.patch             the loudness followers hold in
+                                             silence and warm up over seconds
+                                             of audio; beat sensitivity is
+                                             honoured
   projectm-eval-render-clock.patch           (applied to the bundled
                                              projectm-eval) lets the seeded
                                              instance feed rand() as well

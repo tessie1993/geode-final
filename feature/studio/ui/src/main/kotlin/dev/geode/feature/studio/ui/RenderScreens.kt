@@ -193,9 +193,15 @@ fun RenderSetupDialog(
                 Modifier.verticalScroll(rememberScrollState()).padding(StudioDimens.padding),
                 verticalArrangement = Arrangement.spacedBy(StudioDimens.gap),
             ) {
-                Text(stringResource(R.string.studio_render_title), style = MaterialTheme.typography.headlineSmall)
-                SourcePicker(draft, choices, onDraft)
-                LookPicker(draft, choices, onDraft)
+                val title = if (draft.again == null) R.string.studio_render_title else R.string.studio_render_again_title
+                Text(stringResource(title), style = MaterialTheme.typography.headlineSmall)
+                if (draft.again == null) {
+                    SourcePicker(draft, choices, onDraft)
+                    LookPicker(draft, choices, onDraft)
+                } else {
+                    Note(stringResource(R.string.studio_render_again_note, draft.againName))
+                }
+                MilkdropPicker(draft, choices, onDraft)
                 FormatPicker(draft, onDraft)
                 ProjectPicker(draft, projects, onDraft)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -280,6 +286,26 @@ private fun LookPicker(
     }
 }
 
+/** The MilkDrop preset the Render plays if its look is MilkDrop (#341); kept with the Render. */
+@Composable
+private fun MilkdropPicker(
+    draft: RenderDraft,
+    choices: RenderChoices,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    if (choices.milkdrop.isEmpty()) return
+    Heading(stringResource(R.string.studio_render_milkdrop))
+    Note(stringResource(R.string.studio_render_milkdrop_note))
+    LazyColumn(Modifier.heightIn(max = StudioDimens.pickerHeight)) {
+        item {
+            Choice(stringResource(R.string.studio_render_milkdrop_none), draft.spec.milkdrop == null) { onDraft(draft.milkdrop(null)) }
+        }
+        items(choices.milkdrop, key = { it.file }) { choice ->
+            Choice(choice.name, draft.spec.milkdrop == choice.file) { onDraft(draft.milkdrop(choice.file)) }
+        }
+    }
+}
+
 @Composable
 private fun FormatPicker(
     draft: RenderDraft,
@@ -307,9 +333,84 @@ private fun FormatPicker(
     Heading(stringResource(R.string.studio_render_codec))
     Chips(RenderCodec.entries, { format.codec == it }, { codecLabel(it) }) { set(format.copy(codec = it)) }
     Heading(stringResource(R.string.studio_render_length))
-    Chips(listOf(RenderLength.WholeTrack, FIRST_MINUTE), { spec.length == it }, { lengthLabel(it) }) {
+    val lengths = listOf(RenderLength.WholeTrack, FIRST_MINUTE, FIRST_SECTION, RenderLength.Loop, AN_HOUR)
+    Chips(lengths, { lengthChosen(it, spec.length) }, { lengthLabel(it) }) {
         onDraft(draft.custom(spec.copy(length = it)))
     }
+    val section = spec.length as? RenderLength.Section
+    if (section != null && isOwnSection(section)) SectionFields(draft, section, onDraft)
+    val minutes = spec.length as? RenderLength.Minutes
+    if (minutes != null) MinutesField(draft, minutes, onDraft)
+    if (spec.length == RenderLength.Loop) Note(stringResource(R.string.studio_render_loop_note))
+}
+
+/** Whether the chip for [option] shows [length]: "A section" and "N minutes" stand for any of theirs. */
+private fun lengthChosen(
+    option: RenderLength,
+    length: RenderLength,
+): Boolean =
+    when (option) {
+        FIRST_SECTION -> isOwnSection(length)
+        is RenderLength.Minutes -> length is RenderLength.Minutes
+        else -> option == length
+    }
+
+/** How many minutes the video runs; a number it cannot be keeps the last good one. */
+@Composable
+private fun MinutesField(
+    draft: RenderDraft,
+    minutes: RenderLength.Minutes,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    var text by remember { mutableStateOf(minutes.minutes.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { typed ->
+            text = typed
+            parseMinutes(typed)?.let { onDraft(draft.custom(draft.spec.copy(length = RenderLength.Minutes(it)))) }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.studio_render_minutes_field)) },
+        isError = parseMinutes(text) == null,
+        singleLine = true,
+    )
+    Note(stringResource(R.string.studio_render_minutes_note))
+}
+
+/** The section's start and length as `m:ss`; a field that does not read as a time keeps the last good one. */
+@Composable
+private fun SectionFields(
+    draft: RenderDraft,
+    section: RenderLength.Section,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    var start by remember { mutableStateOf(section.start.clock()) }
+    var length by remember { mutableStateOf(section.length.clock()) }
+    Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        OutlinedTextField(
+            value = start,
+            onValueChange = { text ->
+                start = text
+                parseClock(text)?.let { onDraft(draft.section(it, section.length)) }
+            },
+            modifier = Modifier.weight(StudioDimens.FILL),
+            label = { Text(stringResource(R.string.studio_render_section_from)) },
+            isError = parseClock(start) == null,
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = length,
+            onValueChange = { text ->
+                length = text
+                parseClock(text)?.let { onDraft(draft.section(section.start, it)) }
+            },
+            modifier = Modifier.weight(StudioDimens.FILL),
+            label = { Text(stringResource(R.string.studio_render_section_length)) },
+            isError = parseClock(length) == null,
+            singleLine = true,
+        )
+    }
+    Note(stringResource(R.string.studio_render_section_note))
 }
 
 @Composable
@@ -406,7 +507,15 @@ private fun codecLabel(codec: RenderCodec): String =
 
 @Composable
 private fun lengthLabel(length: RenderLength): String =
-    stringResource(if (length == RenderLength.WholeTrack) R.string.studio_render_whole else R.string.studio_render_first_minute)
+    stringResource(
+        when (length) {
+            RenderLength.WholeTrack -> R.string.studio_render_whole
+            FIRST_MINUTE -> R.string.studio_render_first_minute
+            RenderLength.Loop -> R.string.studio_render_loop
+            is RenderLength.Minutes -> R.string.studio_render_minutes
+            else -> R.string.studio_render_section
+        },
+    )
 
 private const val PERCENT = 100
 private const val SECONDS_PER_MINUTE = 60L

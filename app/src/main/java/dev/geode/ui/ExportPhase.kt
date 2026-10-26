@@ -1,8 +1,8 @@
 package dev.geode.ui
 
 import android.net.Uri
-import dev.geode.export.StudioExporter
 import dev.geode.export.VideoExporter
+import dev.geode.feature.studio.handlers.edit.StudioExporter
 
 sealed interface ExportPhase {
     data object Idle : ExportPhase

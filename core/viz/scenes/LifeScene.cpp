@@ -130,7 +130,8 @@ void LifeScene::draw(float timeSeconds) {
     kick_ = std::max(kick_ - dt * 5.0f, 0.0f);
     if (hit * p.beatResponse > kBeatThreshold) {
         kick_ = (0.4f + 0.6f * std::clamp(hit, 0.0f, 1.5f)) * drive * force_;
-        kickAngle_ += kGoldenAngle;
+        // On the bar's clock while the bar is trusted, else the golden-angle walk (#294).
+        kickAngle_ = featuremap::lifeKickAngle(kickAngle_, bus_);
         kickX_ = 0.5f + 0.32f * std::cos(kickAngle_);
         kickY_ = 0.5f + 0.32f * std::sin(kickAngle_);
     }
@@ -155,12 +156,14 @@ void LifeScene::draw(float timeSeconds) {
     glUniform1f(stepLocs_.loc("uDt"), style_.dt);
     glUniform1i(stepLocs_.loc("uCore"), style_.core);
     glUniform1i(stepLocs_.loc("uGrowth"), style_.growth);
-    glUniform1f(stepLocs_.loc("uMu"), style_.mu);
+    // Harmonicity leans the rule a few percent toward growth or away from it, at phrase rate.
+    const float rule = featuremap::lifeRuleScale(bus_);
+    glUniform1f(stepLocs_.loc("uMu"), style_.mu * rule);
     glUniform1f(stepLocs_.loc("uSigma"), style_.sigma);
     glUniform1f(stepLocs_.loc("uRadius"), style_.radius);
     glUniform1i(stepLocs_.loc("uRings"), style_.rings);
     glUniform3f(stepLocs_.loc("uB"), style_.b1, style_.b2, style_.b3);
-    glUniform1f(stepLocs_.loc("uF"), style_.feed);
+    glUniform1f(stepLocs_.loc("uF"), style_.feed * rule);
     glUniform1f(stepLocs_.loc("uK"), style_.kill);
     glUniform2f(stepLocs_.loc("uDiff"), 1.0f, 0.5f);
     glUniform1f(stepLocs_.loc("uAniso"), style_.aniso);

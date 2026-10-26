@@ -46,6 +46,8 @@ private:
     static constexpr float kSloshRefractorySeconds = 0.6f;
     static constexpr float kSloshAmplitude = 0.18f;
     static constexpr float kSloshRadius = 0.18f;
+    // The ring a trusted downbeat drops at the centre of the pool.
+    static constexpr float kRingRadius = 0.16f;
 
     void tilt(float dt, float rippleStrength);
 

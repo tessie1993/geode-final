@@ -364,3 +364,235 @@ TEST(FeedRingTest, TheOldestReadableFrameIsNeverBeforeTheEpoch) {
     ring.flush(FeedSource::Player);
     EXPECT_EQ(ring.oldestReadable(), 100u);
 }
+
+TEST(FeedRingTest, AReaderResumesALookbackBeforeTheFrameHeardNow) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 10000, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 9000u);
+    EXPECT_EQ(ring.resumeFrom(0, 0), 10000u);
+    EXPECT_EQ(ring.resumeFrom(0, 9999), 1u);
+}
+
+TEST(FeedRingTest, AReaderResumesBehindTheSpeakerForASourceThatRunsAhead) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    writeRamp(ring, 0, 10000, 0);
+    // 100 ms at 48 kHz is 4,800 frames between the newest frame and the speaker.
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 10000u - 4800u - 1000u);
+}
+
+TEST(FeedRingTest, AReaderNeverResumesBeforeTheOldestReadableFrame) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 100, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
+    ring.flush(FeedSource::Player);
+    writeRamp(ring, 0, 50, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 100u);
+    writeRamp(ring, 0, 3 * kSmall, 0);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 150u + 3 * kSmall - 1000u);
+    EXPECT_EQ(ring.resumeFrom(0, 2 * kSmall), ring.oldestReadable());
+    EXPECT_GT(ring.oldestReadable(), 100u);
+}
+
+TEST(FeedRingTest, AReaderResumesFromTheStartWhenNothingIsSelected) {
+    FeedRing ring(kSmall);
+    EXPECT_EQ(ring.resumeFrom(0, 1000), 0u);
+}
+
+TEST(FeedRingTest, AWindowGainRaisesTheWindowOnlyAndIsLimited) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Live);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 1.0f);
+    const float pcm[4] = {0.1f, -0.2f, 0.6f, -0.6f};
+    ring.write(FeedSource::Live, pcm, 2, 2, kRate, 0);
+    ring.setWindowGain(FeedSource::Live, 2.0f);
+    float out[6] = {9, 9, 9, 9, 9, 9};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 3), 2u);
+    // The frame before the epoch stays silent; the rest are raised and held within [-1, 1].
+    EXPECT_EQ(out[0], 0.0f);
+    EXPECT_EQ(out[1], 0.0f);
+    EXPECT_FLOAT_EQ(out[2], 0.2f);
+    EXPECT_FLOAT_EQ(out[3], -0.4f);
+    EXPECT_FLOAT_EQ(out[4], 1.0f);
+    EXPECT_FLOAT_EQ(out[5], -1.0f);
+    // What the analysis reads is as written.
+    float raw[4] = {};
+    EXPECT_EQ(ring.copyRange(0, 2, raw), 2u);
+    EXPECT_FLOAT_EQ(raw[2], 0.6f);
+    EXPECT_FLOAT_EQ(raw[3], -0.6f);
+}
+
+TEST(FeedRingTest, AWindowGainBelongsToItsSourceAndIsClamped) {
+    FeedRing ring(kSmall);
+    ring.setWindowGain(FeedSource::Live, 100.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), FeedRing::kMaxWindowGain);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Player), 1.0f);
+    ring.setWindowGain(FeedSource::Live, -1.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 0.0f);
+    ring.setWindowGain(FeedSource::Live, std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::Live), 1.0f);
+    ring.setWindowGain(FeedSource::None, 4.0f);
+    EXPECT_FLOAT_EQ(ring.windowGain(FeedSource::None), 1.0f);
+    // The player's window is untouched by the microphone's gain.
+    ring.setWindowGain(FeedSource::Live, 4.0f);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 3, 1, 0);
+    float out[2] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 1), 1u);
+    EXPECT_FLOAT_EQ(out[0], 3.0f);
+}
+
+TEST(FeedRingTest, TheWindowGainComesAfterTheSensitivityAndOnlyOnTheWindow) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Live);
+    const float pcm[2] = {0.1f, -0.05f};
+    ring.write(FeedSource::Live, pcm, 1, 2, kRate, 0);
+    ring.setGainDb(20.0f * std::log10(2.0f));
+    ring.setWindowGain(FeedSource::Live, 3.0f);
+    float out[2] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), out, 1), 1u);
+    // Both gains multiply on the window: 0.1 x 2 x 3.
+    EXPECT_NEAR(out[0], 0.6f, 1e-5f);
+    EXPECT_NEAR(out[1], -0.3f, 1e-5f);
+    // The analysis gets the Sensitivity alone.
+    float raw[2] = {};
+    EXPECT_EQ(ring.copyRange(0, 1, raw), 1u);
+    EXPECT_NEAR(raw[0], 0.2f, 1e-5f);
+    EXPECT_NEAR(raw[1], -0.1f, 1e-5f);
+}
+
+TEST(FeedRingTest, AnUnmeasuredDelayIsToppedUpWithTheRoute) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 30000, 0);
+    EXPECT_EQ(ring.route(), geode::audio::feed::OutputRoute::Unknown);
+    ring.setRoute(geode::audio::feed::OutputRoute::Bluetooth);
+    EXPECT_EQ(ring.route(), geode::audio::feed::OutputRoute::Bluetooth);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    EXPECT_EQ(ring.locate(0).end, 30000u - 4800u);
+    // 100 ms of buffer plus Bluetooth's 200 ms.
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f, false);
+    EXPECT_EQ(ring.locate(0).end, 30000u - 14400u);
+    ring.setRoute(geode::audio::feed::OutputRoute::Wired);
+    EXPECT_EQ(ring.locate(0).end, 30000u - 5280u);
+}
+
+TEST(FeedRingTest, AnUnmeasuredDelayKeepsTheSourceLiveForItsWholeLatency) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 30000, 0);
+    ring.setRoute(geode::audio::feed::OutputRoute::Bluetooth);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f, false);
+    EXPECT_TRUE(ring.locate(FeedRing::kInitialPacketNs + 300 * kMs).live);
+    EXPECT_FALSE(ring.locate(FeedRing::kInitialPacketNs + 300 * kMs + 1).live);
+}
+
+TEST(FeedRingTest, TheUserOffsetMovesThePlayersPicture) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 30000, 0);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    ring.setUserOffset(50 * kMs);
+    EXPECT_EQ(ring.userOffsetNs(), 50 * kMs);
+    EXPECT_EQ(ring.locate(0).end, 30000u - 7200u);
+    // An earlier picture, but never one ahead of what was written.
+    ring.setUserOffset(-50 * kMs);
+    EXPECT_EQ(ring.locate(0).end, 30000u - 2400u);
+    ring.setUserOffset(-100 * kMs);
+    EXPECT_EQ(ring.locate(0).end, 30000u);
+    ring.setUserOffset(-150 * kMs);
+    EXPECT_EQ(ring.locate(0).end, 30000u);
+    EXPECT_TRUE(ring.locate(0).live);
+}
+
+TEST(FeedRingTest, TheUserOffsetIsClampedAndLeavesLivenessAlone) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 30000, 0);
+    ring.setUserOffset(10'000 * kMs);
+    EXPECT_EQ(ring.userOffsetNs(), geode::audio::feed::heard::kMaxUserOffsetNs);
+    ring.setUserOffset(-10'000 * kMs);
+    EXPECT_EQ(ring.userOffsetNs(), -geode::audio::feed::heard::kMaxUserOffsetNs);
+    ring.setUserOffset(400 * kMs);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    EXPECT_TRUE(ring.locate(FeedRing::kInitialPacketNs + 100 * kMs).live);
+    EXPECT_FALSE(ring.locate(FeedRing::kInitialPacketNs + 100 * kMs + 1).live);
+}
+
+TEST(FeedRingTest, LiveInputIsNeverMovedByTheUserOffset) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Live);
+    writeRamp(ring, 0, 30000, 0, FeedSource::Live);
+    ring.setUserOffset(200 * kMs);
+    EXPECT_EQ(ring.locate(0).end, 30000u);
+    ring.setPresentation(FeedSource::Live, 100 * kMs, 1.0f);
+    EXPECT_EQ(ring.locate(0).end, 30000u - 4800u);
+}
+
+TEST(FeedRingTest, AFrameIsReadAtTheAudioHeardWhenItReachesTheScreen) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 30000, 0);
+    ring.setPresentation(FeedSource::Player, 100 * kMs, 1.0f);
+    EXPECT_EQ(ring.locate(0, 10 * kMs).end, 30000u - 4800u + 480u);
+    EXPECT_EQ(ring.locate(5 * kMs, 10 * kMs).end, 30000u - 4800u + 720u);
+    // A present time already past reads now.
+    EXPECT_EQ(ring.locate(0, -10 * kMs).end, 30000u - 4800u);
+}
+
+TEST(FeedRingTest, TheScreenNeverReachesPastTheNewestFrame) {
+    FeedRing ring(2 * kSmall);
+    ring.select(FeedSource::Player);
+    writeRamp(ring, 0, 30000, 0);
+    ring.setPresentation(FeedSource::Player, 10 * kMs, 1.0f);
+    EXPECT_EQ(ring.locate(0, 20 * kMs).end, 30000u);
+    // A source heard as it is written has nothing ahead to show.
+    ring.setPresentation(FeedSource::Player, 0, 1.0f);
+    EXPECT_EQ(ring.locate(0, 20 * kMs).end, 30000u);
+    // Liveness is judged now, not at the present time.
+    EXPECT_TRUE(ring.locate(FeedRing::kInitialPacketNs, 50 * kMs).live);
+}
+
+TEST(FeedRingTest, TheSensitivityIsAGainOnEverythingRead) {
+    FeedRing ring(kSmall);
+    ring.select(FeedSource::Player);
+    const float pcm[] = {0.25f, -0.125f, 0.5f, 0.0625f};
+    ring.write(FeedSource::Player, pcm, 2, 2, kRate, 0);
+    EXPECT_FLOAT_EQ(ring.gain(), 1.0f);
+    ring.setGainDb(20.0f);
+    EXPECT_FLOAT_EQ(ring.gain(), 10.0f);
+    float out[4] = {};
+    EXPECT_EQ(ring.copyRange(0, 2, out), 2u);
+    EXPECT_FLOAT_EQ(out[0], 2.5f);
+    EXPECT_FLOAT_EQ(out[1], -1.25f);
+    EXPECT_FLOAT_EQ(out[2], 5.0f);
+    EXPECT_FLOAT_EQ(out[3], 0.625f);
+    float window[4] = {};
+    EXPECT_EQ(ring.copy(ring.locate(0), window, 2), 2u);
+    EXPECT_FLOAT_EQ(window[0], 2.5f);
+    EXPECT_FLOAT_EQ(window[3], 0.625f);
+    // A lower Sensitivity turns it down; what is stored is untouched.
+    ring.setGainDb(-6.0f);
+    ring.copyRange(0, 2, out);
+    EXPECT_NEAR(out[0], 0.25f * 0.501187f, 1e-5f);
+    ring.setGainDb(0.0f);
+    ring.copyRange(0, 2, out);
+    EXPECT_FLOAT_EQ(out[0], 0.25f);
+}
+
+TEST(FeedRingTest, TheSensitivityIsHeldToItsRange) {
+    FeedRing ring(kSmall);
+    ring.setGainDb(40.0f);
+    EXPECT_NEAR(ring.gain(), std::pow(10.0f, FeedRing::kMaxGainDb / 20.0f), 1e-3f);
+    ring.setGainDb(-40.0f);
+    EXPECT_NEAR(ring.gain(), std::pow(10.0f, FeedRing::kMinGainDb / 20.0f), 1e-5f);
+    ring.setGainDb(std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(ring.gain(), 1.0f);
+    ring.setGainDb(-std::numeric_limits<float>::infinity());
+    EXPECT_FLOAT_EQ(ring.gain(), 1.0f);
+    EXPECT_FLOAT_EQ(FeedRing::kMinGainDb, -12.0f);
+    EXPECT_FLOAT_EQ(FeedRing::kMaxGainDb, 24.0f);
+}

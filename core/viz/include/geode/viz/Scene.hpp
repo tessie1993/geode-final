@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "geode/api/geode_api.h"
+#include "geode/viz/FeatureBus.hpp"
 #include "geode/viz/GravityField.hpp"
 #include "geode/viz/Params.hpp"
 #include "geode/viz/QualityTiers.hpp"
@@ -36,6 +37,14 @@ public:
     // a live feed (silence while nothing is heard) and never otherwise.
     virtual void acceptPcm(const float* samples, int count) { (void) samples; (void) count; }
     virtual void acceptStereoPcm(const float* interleaved, int frames) { (void) interleaved; (void) frames; }
+    // The same frame's longer span of interleaved stereo audio, ending where the window ends, of which the
+    // newest `fresh` frames were heard since the last frame (0 when that is not known). For a scene that
+    // measures the audio itself and must not miss what fell between two windows (MilkDrop).
+    virtual void acceptPcmSpan(const float* interleaved, int frames, int fresh) {
+        (void) interleaved;
+        (void) frames;
+        (void) fresh;
+    }
     virtual void setFlow(GLuint texture, float strength) { (void) texture; (void) strength; }
     virtual void setPaletteLut(GLuint texture) { (void) texture; }
     virtual void setTouchField(const TouchField* field) { (void) field; }
@@ -44,6 +53,9 @@ public:
     // The Camera this frame (SharedCamera.hpp) and the Style's own Extras, handed over before setParams.
     virtual void setCamera(const CameraPose& pose) { (void) pose; }
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
+    // The music's structure, rhythm, timbre and space this frame (FeatureBus.hpp), handed over with the
+    // Camera: shader Styles read it as lib_scene_features' uniforms, the other families through featuremap.
+    virtual void setFeatureBus(const FeatureValues& values) { (void) values; }
     // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
     virtual void setQuality(const quality::Budget& budget) { (void) budget; }
     // The renderer's shared Style inputs (SharedInputs.hpp), handed over before init(); a shader Style

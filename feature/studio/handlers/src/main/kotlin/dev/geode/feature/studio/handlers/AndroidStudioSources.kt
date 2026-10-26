@@ -10,6 +10,7 @@ import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.VideoKind
+import kotlinx.coroutines.flow.Flow
 
 /** Where the old Studio saved its exports, as a MediaStore relative path. */
 private const val OLD_STUDIO_PATH = "Movies/Geode"
@@ -80,18 +81,22 @@ class AndroidVideoFiles(
 
 /**
  * Studio's sources on the phone, for `:app` to wire (#17): the save folder and the Renders' settings
- * come from [settings]; `:app` fills the [looks] and the [engine] Renders are made with (#338, #316).
+ * come from [settings]; `:app` fills the [looks] and the [engine] Renders are made with (#338, #316),
+ * the [recorder] of the live Visual (#317), and says whether the app is [inFront] of the person (#28).
  */
 fun androidStudioSources(
     context: Context,
     settings: Settings,
     looks: RenderLooks,
     engine: RenderEngine,
+    inFront: Flow<Boolean>,
+    recorder: LiveRecorder = LiveRecorder.None,
 ): StudioSources =
     StudioSources(
         storage = RoomStudioStorage(StudioDatabase.open(context).dao()),
         saveFolder = saveFolderOf(settings),
         files = AndroidVideoFiles(context),
         now = { Millis(System.currentTimeMillis()) },
-        renders = RenderSources(renderSettingsOf(settings), looks, engine),
+        renders = RenderSources(renderSettingsOf(settings), looks, engine, inFront),
+        recorder = recorder,
     )

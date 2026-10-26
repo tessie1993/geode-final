@@ -137,6 +137,7 @@ vec2 view() {
 }
 
 //#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -178,7 +179,11 @@ void main() {
     }
     float cellId = fract(dot(mc, vec2(0.13, 0.37)));
     float e = aband(cellId);
-    vec3 col = pal(cellId) * (0.1 + e * 1.6) * smoothstep(0.0, 0.35, md);
-    col += pal(cellId) * exp(-md * 10.0 * xm(uXEdge)) * e;
+    // Timbre (#294), latched at phrase rate: noisy, busy sound cuts crisp thin seams, tonal calm
+    // sound blooms soft ones; a bright sound turns the cells cool and metallic, a dark one warm.
+    float rough = clamp(0.6 * (1.0 - uHarmonicity) + 0.4 * max(uFlux, uOnset), 0.0, 1.0);
+    vec3 col = pal(cellId + 0.15 * uCentroid) * (0.1 + e * 1.6) * smoothstep(0.0, mix(0.45, 0.2, rough), md);
+    col += pal(cellId) * exp(-md * mix(7.0, 16.0, rough) * xm(uXEdge)) * e;
+    col *= mix(vec3(1.06, 1.0, 0.92), vec3(0.92, 1.0, 1.08), uCentroid);
     fragColor = vec4(grade(col), 1.0);
 }

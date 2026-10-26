@@ -30,6 +30,7 @@ public:
     void setExtras(const ExtraValues& values) override { extras_ = values; }
     void setDrawTarget(GLuint fbo, int width, int height) override;
     void setGravityField(const GravityField* field) override { gravity_ = field; }
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
 
 protected:
     float tickPcm(float dt) { return pcmPulse_.tick(dt); }
@@ -67,6 +68,8 @@ protected:
     ExtraValues extras_ = ExtraValues::neutral();
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
+    // The feature bus this frame (featuremap draws it).
+    FeatureValues bus_;
     bool hasPending_ = false;
     GeodeFeatureFrame pending_{};
     bool hasLast_ = false;

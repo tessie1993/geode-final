@@ -9,6 +9,7 @@
 
 #include "geode/render/Framebuffer.hpp"
 #include "geode/render/Program.hpp"
+#include "geode/viz/AudioInputs.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
@@ -30,7 +31,9 @@ struct ShaderFeedback {
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
-    static constexpr int kAudioTexWidth = 512;
+    // uAudioTex: the shared audio inputs (AudioInputs, lib_scene_uniforms.glsl).
+    static constexpr int kAudioTexWidth = AudioInputs::kWidth;
+    static constexpr int kAudioTexRows = AudioInputs::kRows;
 
     // `inputs`: the shared Style inputs the pack declares (StyleInputs.hpp); only these are made and bound.
     // `feedback`: the warp layer, when the pack opts into it; the Style then reads the warped picture as
@@ -48,13 +51,14 @@ public:
     void draw(float timeSeconds) override;
     void release() override;
 
-    void acceptPcm(const float* samples, int count) override;
+    void acceptStereoPcm(const float* interleaved, int frames) override;
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
     void setGravityField(const GravityField* field) override { gravityField_ = field; }
     void setCamera(const CameraPose& pose) override { camera_ = pose; }
     void setExtras(const ExtraValues& extras) override { extras_ = extras; }
+    void setFeatureBus(const FeatureValues& values) override { features_ = values; }
     void setQuality(const quality::Budget& budget) override { quality_ = budget; }
     void setSharedInputs(SharedInputs* shared) override;
     void beginVisit() override;
@@ -152,6 +156,8 @@ private:
     // The Camera (uCam*, lib_camera.glsl) and the Style's Extras (uX*, lib_style.glsl).
     void uploadCamera();
     void uploadExtras();
+    // The feature bus as lib_scene_features.glsl's uniforms (kFeatureUniforms).
+    void uploadFeatures();
     // The shared inputs the pack declares: their clocks and their textures (lib_inputs.glsl).
     void uploadInputs();
     GLuint inputTexture(inputs::Input input);
@@ -189,7 +195,8 @@ private:
     std::mutex pendingLock_;
     std::optional<std::string> pendingFragment_;
 
-    std::array<float, kAudioTexWidth * 2> texData_{};
+    std::array<float, kAudioTexWidth * kAudioTexRows> texData_{};
+    AudioInputs audioInputs_;
     float bass_ = 0.0f;
     float mid_ = 0.0f;
     float treble_ = 0.0f;
@@ -231,9 +238,6 @@ private:
     float cyclePhase_ = 0.0f;
     float shaderTime_ = 0.0f;
 
-    std::vector<float> pcm_;
-    int pcmCount_ = 0;
-    std::array<float, kAudioTexWidth> waveRow_{};
 
     GLuint flowTex_ = 0;
     float flowStrength_ = 0.0f;
@@ -245,6 +249,7 @@ private:
 
     CameraPose camera_;
     ExtraValues extras_ = ExtraValues::neutral();
+    FeatureValues features_;
     // uXFlightTime, uXSpinTime and uXDriftTime: the clocks the rate Extras run.
     std::array<float, 3> rateClocks_{};
     // The compiled Style reads uCamRot: it moves a camera of its own.

@@ -21,18 +21,18 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import dev.geode.editor.Clip
-import dev.geode.editor.ClipContent
-import dev.geode.editor.ClipEdge
-import dev.geode.editor.ClipId
-import dev.geode.editor.EditResult
-import dev.geode.editor.Lane
-import dev.geode.editor.OverlapPolicy
-import dev.geode.editor.SnapContext
-import dev.geode.editor.SnapMode
-import dev.geode.editor.SnapTarget
-import dev.geode.editor.Timeline
-import dev.geode.editor.snap
+import dev.geode.feature.studio.core.edit.Clip
+import dev.geode.feature.studio.core.edit.ClipContent
+import dev.geode.feature.studio.core.edit.ClipEdge
+import dev.geode.feature.studio.core.edit.ClipId
+import dev.geode.feature.studio.core.edit.EditResult
+import dev.geode.feature.studio.core.edit.Lane
+import dev.geode.feature.studio.core.edit.OverlapPolicy
+import dev.geode.feature.studio.core.edit.SnapContext
+import dev.geode.feature.studio.core.edit.SnapMode
+import dev.geode.feature.studio.core.edit.SnapTarget
+import dev.geode.feature.studio.core.edit.Timeline
+import dev.geode.feature.studio.core.edit.snap
 
 /** What a drag on a clip is doing: sliding it or pulling one of its edges. */
 private enum class DragMode {

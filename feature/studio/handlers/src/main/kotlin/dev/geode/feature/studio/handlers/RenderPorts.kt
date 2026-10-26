@@ -21,6 +21,7 @@ import dev.geode.feature.studio.core.RenderSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
@@ -56,11 +57,15 @@ fun interface RenderEngine {
     ): RenderEnd
 }
 
-/** What Studio's Renders need beyond its storage: Settings' choices for them, the look and the engine. */
+/**
+ * What Studio's Renders need beyond its storage: Settings' choices for them, the look, the engine, and
+ * whether the app is in front of the person ([inFront], #28), which `:app` follows.
+ */
 class RenderSources(
     val settings: Flow<RenderSettings>,
     val looks: RenderLooks,
     val engine: RenderEngine,
+    val inFront: Flow<Boolean> = flowOf(true),
 )
 
 /** Settings' Visuals off and Export preferences as Studio's Renders read them, through Settings' interface. */
@@ -70,7 +75,7 @@ fun renderSettingsOf(settings: Settings): Flow<RenderSettings> =
         .map { renderSettingsOf(it.values) }
         .distinctUntilChanged()
 
-/** What a new Render starts from in [values] (#22, #28), and whether Visuals off is on (#196). */
+/** What a new Render starts from in [values] (#22, #28), whether Visuals off is on (#196), and Renders keep going (#28). */
 fun renderSettingsOf(values: SettingsValues): RenderSettings {
     val export = values.export
     val format =
@@ -80,7 +85,7 @@ fun renderSettingsOf(values: SettingsValues): RenderSettings {
             fps = export.frameRate.fps,
             codec = if (export.codec == ExportCodec.HEVC) RenderCodec.HEVC else RenderCodec.H264,
         )
-    return RenderSettings(values.performance.visualsOff, format, RenderExtras(loudnessOf(export.loudness)))
+    return RenderSettings(values.performance.visualsOff, format, RenderExtras(loudnessOf(export.loudness)), values.background.renders)
 }
 
 private fun aspectOf(ratio: ExportRatio): RenderAspect =

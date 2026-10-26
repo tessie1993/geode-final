@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.LinkOff
+import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,6 +39,7 @@ import dev.geode.design.glass.LocalGlassStyle
 import dev.geode.feature.customization.api.CustomizationCommand
 import dev.geode.feature.customization.api.MacroLink
 import dev.geode.feature.customization.api.SharedGroup
+import dev.geode.feature.customization.api.SignalTrim
 import dev.geode.feature.customization.api.ValueKind
 import kotlin.math.roundToInt
 
@@ -60,6 +62,7 @@ internal fun AdvancedView(
     }
     when (page.section) {
         AdvancedSection.REACTIONS -> ReactionsSection(panel, page)
+        AdvancedSection.SOUND -> SoundSection(panel)
         AdvancedSection.CAMERA -> SliderGroup(panel, panel.model.shared.getValue(SharedGroup.CAMERA))
         AdvancedSection.EFFECTS ->
             panel.model.shared.filterKeys { it != SharedGroup.CAMERA && it != SharedGroup.LAYERS }.forEach { (group, rows) ->
@@ -85,6 +88,7 @@ internal fun sectionName(section: AdvancedSection): String =
     stringResource(
         when (section) {
             AdvancedSection.REACTIONS -> R.string.customize_section_reactions
+            AdvancedSection.SOUND -> R.string.customize_section_sound
             AdvancedSection.CAMERA -> R.string.customize_section_camera
             AdvancedSection.EFFECTS -> R.string.customize_section_effects
             AdvancedSection.EXTRAS -> R.string.customize_section_extras
@@ -101,6 +105,54 @@ internal fun QuietText(text: String) {
         color = LocalGlassStyle.current.colors.textSecondary,
         modifier = Modifier.padding(vertical = GlassSpacing.Small),
     )
+}
+
+/**
+ * The Sound signals' trims (#301): how strongly bass, mid, treble and beat drive every Reaction. They
+ * ride with the Customization and carry across Style changes; Settings' Sensitivity is the one gain on
+ * the sound itself, which reaches MilkDrop too.
+ */
+@Composable
+private fun SoundSection(panel: PanelState) {
+    QuietText(stringResource(R.string.customize_trims_help))
+    panel.model.trims.forEach { row -> TrimSlider(panel, row) }
+}
+
+@Composable
+private fun TrimSlider(
+    panel: PanelState,
+    row: TrimRow,
+) {
+    var dragging by remember { mutableStateOf(false) }
+    var held by remember { mutableFloatStateOf(row.trim.gain) }
+    val shown = if (dragging) held else row.trim.gain
+    val label = signalName(row.signal)
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                stringResource(R.string.customize_trim_value, shown),
+                style = MaterialTheme.typography.labelMedium,
+                color = LocalGlassStyle.current.colors.textSecondary,
+            )
+            IconButton(onClick = { panel.send(trimCommand(row, SignalTrim.NEUTRAL_GAIN)) }) {
+                Icon(Icons.Rounded.Restore, contentDescription = stringResource(R.string.customize_trim_reset, label))
+            }
+        }
+        Slider(
+            value = shown,
+            onValueChange = {
+                dragging = true
+                held = it
+                panel.send(CustomizationCommand.Preview(trimCommand(row, it)))
+            },
+            valueRange = SignalTrim.MIN_GAIN..SignalTrim.MAX_GAIN,
+            onValueChangeFinished = {
+                if (dragging) panel.send(trimCommand(row, held))
+                dragging = false
+            },
+        )
+    }
 }
 
 /** Sliders that set their value, link in Learn mode, and offer "React to…" on a long-press. */

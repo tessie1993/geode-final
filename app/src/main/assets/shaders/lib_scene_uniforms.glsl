@@ -123,8 +123,17 @@ bool fxOn(int index) {
     return (uFxOff & (1 << index)) == 0;
 }
 
+// The shared audio inputs (geode/viz/AudioInputs.hpp): uAudioTex is 512 texels by 8 rows, x left to
+// right. aband() is the spectrum, 30 Hz to 16 kHz on a log scale, every texel on one scale (0..1, up to
+// 1.5 with Audio drive), so its shape is the music's. apeak() is its peak hold: each texel's recent
+// highest, held, then falling, and frozen through silence. awave() is a steady oscilloscope of the mid
+// (0.5 is silence), aligned to the previous frame so a periodic sound stands still; awaveL() and
+// awaveR() are the left and right channels over the same span, for a Lissajous that keeps the stereo.
 float aband(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.25)).r; }
+float apeak(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.0625)).r; }
 float awave(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.75)).r; }
+float awaveL(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.4375)).r; }
+float awaveR(float x) { return texture(uAudioTex, vec2(clamp(x, 0.0, 1.0), 0.5625)).r; }
 
 vec2 view() {
     vec2 uv = vUv * 2.0 - 1.0;

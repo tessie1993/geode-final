@@ -44,12 +44,14 @@ public:
     void draw(float timeSeconds) override;
     void release() override;
     void acceptPcm(const float* samples, int count) override;
-    // The frame's window as projectM wants it: both channels, so wave modes that split left and right show two.
-    void acceptStereoPcm(const float* interleaved, int frames) override;
+    // The frame's audio as projectM wants it: both channels, so wave modes that split left and right show
+    // two, in the loudest window of what was heard since the last frame (milkdrop::loudestWindow).
+    void acceptPcmSpan(const float* interleaved, int frames, int fresh) override;
     void queueMilkPreset(const std::string& path) override;
     void reloadMilkPreset() override;
     void setMilkTextureDir(const std::string& dir) override;
     void setDrawTarget(GLuint fbo, int width, int height) override;
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
 
 private:
     static constexpr double kLoadDebounceSeconds = 0.4;
@@ -64,7 +66,7 @@ private:
     // threaded driver wait for its queue each time (#311).
     static constexpr int kErrorCheckFrames = 8;
     static constexpr int kPcmCapacity = 8192;
-    static constexpr int kEnginePcmSamples = 576;
+    static constexpr int kEnginePcmSamples = milkdrop::kWindowFrames;
     static constexpr float kTwoPi = 6.2831853f;
 
     struct EngineDeleter {
@@ -113,6 +115,7 @@ private:
     milkdrop::MeshSize appliedMesh_{0, 0};
     int appliedFps_ = 0;
     float lastDt_ = 0.0f;
+    FeatureValues bus_;
     bool rendering_ = false;
     // Whether the engine has loaded a preset since it was created: a Render's first preset is a
     // hard cut, since the unseeded idle preset it would blend from differs from run to run.

@@ -32,6 +32,7 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
     // REACH, TURN, DRIFT (the agents' speed), DECAY and FORCE (the deposit) move the agents' own rates.
     void setExtras(const ExtraValues& values) override { style_ = extras::apply(base_, values); }
     void setGravityField(const GravityField* field) override { gravity_ = field; }
@@ -67,6 +68,7 @@ private:
     int height_ = 1;
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
+    FeatureValues bus_;
     UniformCache agent_{0};
     UniformCache deposit_{0};
     UniformCache blur_{0};

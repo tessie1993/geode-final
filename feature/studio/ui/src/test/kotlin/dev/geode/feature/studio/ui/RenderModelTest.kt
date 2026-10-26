@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.ui
 
+import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
@@ -12,6 +13,7 @@ import dev.geode.feature.studio.api.RenderPhase
 import dev.geode.feature.studio.api.RenderPreset
 import dev.geode.feature.studio.api.RenderSize
 import dev.geode.feature.studio.api.RenderStatus
+import dev.geode.feature.studio.api.StudioCommand
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -87,5 +89,67 @@ class RenderModelTest {
         assertTrue(queue.visualsOff)
         assertEquals("Summer trip", projectName(queue.projects, PreviewStudio.trip.id))
         assertEquals("", projectName(queue.projects, ProjectId(9)))
+    }
+
+    @Test
+    fun `a section is typed as a time`() {
+        assertEquals(Millis(75_000), parseClock("1:15"))
+        assertEquals(Millis(3_725_000), parseClock(" 1:02:05 "))
+        assertEquals(Millis(90_000), parseClock("90"))
+        assertEquals(Millis.ZERO, parseClock("0:00"))
+        assertNull(parseClock(""))
+        assertNull(parseClock("1:60"))
+        assertNull(parseClock("1::05"))
+        assertNull(parseClock("1:2:3:4"))
+        assertNull(parseClock("-1:00"))
+        assertNull(parseClock("1.5"))
+        assertNull(parseClock("123456"))
+    }
+
+    @Test
+    fun `any section can be rendered, not only the first minute`() {
+        val draft = RenderDraft.startingFrom(state).preset(RenderPreset.YOUTUBE).section(Millis(62_000), Millis(45_000))
+        assertEquals(RenderLength.Section(Millis(62_000), Millis(45_000)), draft.spec.length)
+        assertNull(draft.preset)
+        assertTrue(isOwnSection(draft.spec.length))
+        assertTrue(isOwnSection(FIRST_SECTION))
+        assertFalse(isOwnSection(FIRST_MINUTE))
+        assertFalse(isOwnSection(RenderLength.WholeTrack))
+    }
+
+    @Test
+    fun `Render again opens the setup a Render was made from, and queues it as made again`() {
+        val made =
+            RenderDraft
+                .startingFrom(state)
+                .track(PreviewStudio.night)
+                .spec
+                .copy(project = PreviewStudio.trip.id)
+        val video = state.videos.first().copy(madeWith = made)
+        val again = checkNotNull(RenderDraft.again(video, state))
+        assertEquals(made, again.spec)
+        assertEquals(video.id, again.again)
+        assertEquals(video.name, again.againName)
+        val square = again.custom(again.spec.copy(format = again.spec.format.copy(aspect = RenderAspect.R1_1)))
+        assertEquals(StudioCommand.RenderAgain(video.id, square.spec), square.command)
+        // A fresh setup queues a new Render.
+        val fresh = RenderDraft.startingFrom(state).track(PreviewStudio.night)
+        assertEquals(StudioCommand.QueueRender(fresh.spec), fresh.command)
+        // Its Project gone, it goes to the default one; a video Studio did not render cannot be made again.
+        val gone = video.copy(madeWith = made.copy(project = ProjectId(99)))
+        assertEquals(PreviewStudio.gigs.id, RenderDraft.again(gone, state)?.spec?.project)
+        assertNull(RenderDraft.again(video.copy(madeWith = null), state))
+    }
+
+    @Test
+    fun `an N-minute Render is typed in whole minutes, up to ten hours`() {
+        assertEquals(90, parseMinutes(" 90 "))
+        assertEquals(1, parseMinutes("1"))
+        assertEquals(600, parseMinutes("600"))
+        assertNull(parseMinutes("0"))
+        assertNull(parseMinutes("601"))
+        assertNull(parseMinutes("1.5"))
+        assertNull(parseMinutes(""))
+        assertEquals(RenderLength.Minutes(60), AN_HOUR)
     }
 }

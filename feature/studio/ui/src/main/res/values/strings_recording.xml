@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Recording the live Visual (#317). -->
+<resources>
+    <string name="studio_record">Record</string>
+    <string name="studio_record_starting">Starting…</string>
+    <string name="studio_record_stop">Stop · %1$s</string>
+    <string name="studio_record_low_storage">Storage is running low</string>
+    <string name="studio_record_choose_project">Save the Recording to</string>
+    <string name="studio_record_stopped_itself">The Recording stopped by itself: it reached 30 minutes, or storage ran out.</string>
+</resources>

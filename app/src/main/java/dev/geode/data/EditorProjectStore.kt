@@ -2,7 +2,7 @@ package dev.geode.data
 
 import android.content.Context
 import androidx.annotation.WorkerThread
-import dev.geode.editor.EditorProject
+import dev.geode.feature.studio.core.edit.EditorProject
 import java.io.File
 
 /** One JSON file per named project under `files/editor`, written atomically like the presets. */

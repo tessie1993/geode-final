@@ -18,7 +18,7 @@
     <string name="capture_retry">Try again</string>
     <string name="capture_problem_permission">Without the microphone permission, Geode cannot hear the %1$s.</string>
     <string name="capture_problem_unavailable">The %1$s is not available. Check that it is plugged in.</string>
-    <string name="capture_problem_lost">The %1$s went away, so live sound stopped.</string>
+    <string name="capture_problem_lost">The %1$s is in use elsewhere or paused. Live sound comes back when it is free.</string>
     <string name="capture_problem_did_not_start">The %1$s did not start.</string>
     <string name="capture_source_microphone_inline">microphone</string>
 </resources>

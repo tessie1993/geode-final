@@ -98,7 +98,6 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
       currentFragment_(std::move(fragmentSrc)),
       cache_(cache),
       host_(std::move(host)),
-      pcm_(static_cast<size_t>(kAudioTexWidth) * 8, 0.0f),
       inputs_(inputs),
       feedback_(std::move(feedback)) {
     pendingFragment_ = currentFragment_;
@@ -106,12 +105,7 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
 
 ShaderScene::~ShaderScene() { release(); }
 
-void ShaderScene::acceptPcm(const float* samples, int count) {
-    const int n = std::min(count, static_cast<int>(pcm_.size()));
-    if (n <= 0) return;
-    std::copy(samples + (count - n), samples + count, pcm_.begin());
-    pcmCount_ = n;
-}
+void ShaderScene::acceptStereoPcm(const float* interleaved, int frames) { audioInputs_.acceptStereo(interleaved, frames); }
 
 void ShaderScene::setFlow(GLuint texture, float strength) {
     flowTex_ = texture;
@@ -131,7 +125,8 @@ void ShaderScene::init() {
     glGenVertexArrays(1, &vao_);
     const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     const bool floatLinear = extensions && std::strstr(extensions, "OES_texture_float_linear") != nullptr;
-    audioTex_.createImage(GL_R32F, GL_RED, GL_FLOAT, kAudioTexWidth, 2, floatLinear ? GL_LINEAR : GL_NEAREST, GL_CLAMP_TO_EDGE);
+    audioTex_.createImage(GL_R32F, GL_RED, GL_FLOAT, kAudioTexWidth, kAudioTexRows, floatLinear ? GL_LINEAR : GL_NEAREST,
+                          GL_CLAMP_TO_EDGE);
     // A Render draws each visit's random vector from the Render seed, so it repeats; the live Visual
     // from the clock, so every visit looks a little different.
     const bool rendering = host_.rendering && host_.rendering();
@@ -259,19 +254,8 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
-    for (int i = 0; i < kAudioTexWidth; ++i) {
-        const int band = i * GEODE_BAND_COUNT / kAudioTexWidth;
-        texData_[static_cast<size_t>(i)] = std::clamp(features.bands[band] * drive, 0.0f, kAudioClamp);
-    }
-    if (pcmCount_ > 0) {
-        fillPcmRow(waveRow_.data(), kAudioTexWidth, pcm_.data(), pcmCount_);
-        pcmCount_ = 0;
-    } else {
-        fillPcmRow(waveRow_.data(), kAudioTexWidth, features.waveform, GEODE_WAVEFORM_POINTS);
-    }
-    for (int i = 0; i < kAudioTexWidth; ++i) {
-        texData_[static_cast<size_t>(kAudioTexWidth + i)] = std::clamp(waveRow_[static_cast<size_t>(i)] * drive * 0.5f + 0.5f, 0.0f, 1.0f);
-    }
+    // The spectrum, its peaks and the steady scope, from this frame's window (#300).
+    audioInputs_.update(dt, drive, features, texData_.data());
     if (feedback_) {
         // The warp moves at the Style's pace and the music's swell, and the Extras it maps onto.
         feedback::Drive warp;
@@ -297,7 +281,7 @@ void ShaderScene::draw(float timeSeconds) {
     glUseProgram(program_);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, audioTex_.id());
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kAudioTexWidth, 2, GL_RED, GL_FLOAT, texData_.data());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kAudioTexWidth, kAudioTexRows, GL_RED, GL_FLOAT, texData_.data());
     uploadParams();
     glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(width_), static_cast<float>(height_));
     glUniform1i(uniforms_.loc("uAudioTex"), 0);
@@ -326,6 +310,7 @@ void ShaderScene::draw(float timeSeconds) {
     uploadGravity();
     uploadCamera();
     uploadExtras();
+    uploadFeatures();
     uploadInputs();
     glBindVertexArray(vao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -436,6 +421,11 @@ void ShaderScene::uploadCamera() {
 void ShaderScene::uploadExtras() {
     for (size_t e = 0; e < mod::kExtraCount; ++e) set1f(kExtraUniforms[e], extras_.value[e]);
     for (size_t r = 0; r < kRateUniforms.size(); ++r) set1f(kRateUniforms[r], rateClocks_[r]);
+}
+
+void ShaderScene::uploadFeatures() {
+    const auto values = uniformValues(features_);
+    for (size_t u = 0; u < kFeatureUniforms.size(); ++u) set1f(kFeatureUniforms[u], values[u]);
 }
 
 // Nothing here runs for a Style that declares no inputs, and nothing of an input it does not declare.

@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.Studio
-import dev.geode.feature.studio.api.StudioCommand
 import dev.geode.feature.studio.api.StudioFact
 import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
@@ -119,6 +118,8 @@ fun StudioRoute(
             is StudioAction.Filter -> filter = action.kind
             StudioAction.PickSaveFolder -> pickFolder()
             StudioAction.OpenRender -> draft = RenderDraft.startingFrom(state)
+            is StudioAction.RenderAgain ->
+                draft = state.videos.firstOrNull { it.id == action.video }?.let { RenderDraft.again(it, state) }
             StudioAction.Back -> if (video != null) video = null else project = null
         }
     }
@@ -138,7 +139,7 @@ fun StudioRoute(
             projects = state.projects,
             onDraft = { draft = it },
             onRender = {
-                studio.send(StudioCommand.QueueRender(open.spec))
+                studio.send(open.command)
                 draft = null
             },
             onDismiss = { draft = null },

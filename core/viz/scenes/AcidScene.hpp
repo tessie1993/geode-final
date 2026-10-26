@@ -32,6 +32,7 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
     // VARIANT the mode, FLIGHT the dive, SPIN the turn, DECAY the feedback, DRIFT the hue's run,
     // VISCOSITY the liquid warp and SWIRL the modulation.
     void setExtras(const ExtraValues& values) override { style_ = extras::apply(base_, values); }
@@ -61,6 +62,7 @@ private:
     int height_ = 1;
     float time_ = 0.0f;
     float lastDt_ = 1.0f / 60.0f;
+    FeatureValues bus_;
     UniformCache step_{0};
     UniformCache show_{0};
     bool programOk_ = false;

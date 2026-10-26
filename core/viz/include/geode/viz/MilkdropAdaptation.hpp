@@ -38,6 +38,30 @@ int engineFps(float pacedFps, float measuredFps);
 // A Render's frame rate, from the render clock's frame interval.
 int renderFps(float frameSeconds);
 
+// projectM's beat sensitivity for a Style's beat response (tools/projectm-v4.1.8-loudness.patch: how far
+// bass, mid and treble swing away from 1.0). 1, the default, leaves a preset reacting as it was
+// written; 0 holds it still; 2, the most, doubles every swing. Not a number reads as 1.
+inline constexpr float kMaxBeatSensitivity = 2.0f;
+float beatSensitivity(float beatResponse);
+
+// The audio projectM analyses each frame: one window of kWindowFrames stereo frames, of which it
+// measures only the oldest 480. At 60 fps and below that leaves part of the music unmeasured, and a
+// kick can fall in the gap, so each frame hands projectM the loudest window that ends in the audio
+// heard since the last frame rather than simply the newest one: kicks are never skipped, at the cost of
+// at most one frame interval, and the reaction no longer depends on the refresh rate.
+inline constexpr int kWindowFrames = 576;
+
+// The first frame of the chosen window in `stereo` (`frames` interleaved stereo frames, newest last):
+// of the windows of `window` frames that end within the newest `fresh` frames (or the newest window
+// alone when fresh is 0), the one with the most energy, the newest of equals. 0 when there is no room
+// for a whole window.
+int loudestWindow(const float* stereo, int frames, int window, int fresh);
+
+// How many frames of audio were heard between two Visual frames, from where each one's audio ended: 0
+// unless both heard something, in the same epoch of the feed, and the second ended later; never more
+// than `most`.
+int heardSince(bool wasLive, uint32_t wasEpoch, uint64_t wasEnd, bool live, uint32_t epoch, uint64_t end, int most);
+
 // The engine buffer for a window at a buffer scale; never below one pixel a side.
 struct BufferSize {
     int width;
