@@ -297,6 +297,16 @@ object BuiltInStyles {
             shader("nectar_flow", true, listOf(generic(COMPLEXITY), generic(FOG)), listOf(react(BASS, FOG, 0.2f))),
         )
 
+    /**
+     * The camera-world shader Styles: each moves a real camera through a 3D world of its own (it reads
+     * the Camera through lib_camera.glsl, so push-in, orbit and travel move that camera) and wires its
+     * music in its shader, so none has Extras or default Reactions yet.
+     */
+    private val cameraWorldShaders: List<StyleManifest> =
+        listOf(
+            shader("hyper_lattice", true, emptyList()),
+        )
+
     private fun life(
         id: String,
         grayScott: Boolean,
@@ -526,7 +536,7 @@ object BuiltInStyles {
 
     /** Every Style this version draws. */
     val all: List<StyleManifest> =
-        classicShaders + newerShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
+        classicShaders + newerShaders + cameraWorldShaders + lifeStyles + mycoStyles + acidStyles + fluidStyles +
             listOf(curlFlow, water) + cymaticsStyles + milkDrop
 
     val catalogue: StyleCatalogue = StyleCatalogue(all)
