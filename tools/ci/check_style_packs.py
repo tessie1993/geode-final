@@ -28,6 +28,9 @@ STYLES = ROOT / "engine" / "scenes" / "src" / "main" / "stylepacks" / "styles"
 FORMAT_VERSION = 1
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+# A family's "ignores" names Shared core properties as presets do: SPEED, AUDIO_DRIVE. The Kotlin
+# Customization tests check each one is a real property.
+SHARED_NAME_PATTERN = re.compile(r"^[A-Z][A-Z0-9_]*$")
 MANIFEST_KEYS = {"version", "id", "label", "family", "shader", "renderScale", "detail", "parameters", "extras", "macros", "reactions"}
 SHADER_FAMILY = "shader"
 PARAMETER_TYPES = {"int", "float"}
@@ -77,6 +80,25 @@ def load_json(path: Path, report: Report) -> dict | None:
     return doc
 
 
+def check_ignores(entry: dict, name: str, report: Report) -> None:
+    """A family's optional "ignores": the Shared core properties its renderer never reads."""
+    if "ignores" not in entry:
+        return
+    where = f"{FAMILIES_FILE} {name}"
+    ignores = entry["ignores"]
+    if not isinstance(ignores, list):
+        report.error(where, '"ignores" must be an array')
+        return
+    seen: set[str] = set()
+    for ignored in ignores:
+        if not isinstance(ignored, str) or not SHARED_NAME_PATTERN.match(ignored):
+            report.error(where, f'"ignores" entry {ignored!r} is not a Shared core property name')
+        elif ignored in seen:
+            report.error(where, f'"ignores" names "{ignored}" twice')
+        else:
+            seen.add(ignored)
+
+
 def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
     families: dict[str, dict[str, dict]] = {}
     entries = doc.get("families")
@@ -91,6 +113,7 @@ def check_families(doc: dict, report: Report) -> dict[str, dict[str, dict]]:
         if name in families:
             report.error(FAMILIES_FILE, f'family "{name}" is declared twice')
             continue
+        check_ignores(entry, name, report)
         specs: dict[str, dict] = {}
         for spec in entry["parameters"]:
             where = f"{FAMILIES_FILE} {name}"
@@ -295,7 +318,7 @@ GOOD_FAMILIES = {
     "version": 1,
     "families": [
         {"name": "shader", "parameters": []},
-        {"name": "plate", "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
+        {"name": "plate", "ignores": ["SPEED"], "parameters": [{"key": "mode", "type": "int", "min": 0, "max": 4}, {"key": "gain", "type": "float", "min": 0, "max": 2, "default": 1}]},
     ],
 }
 GOOD_MANIFESTS = {
@@ -376,6 +399,9 @@ def self_test() -> int:
         "Reaction with unknown curve": setter(["orb", "reactions"], [{"signal": "s", "target": "t", "amount": 1, "riseMs": 0, "fallMs": 0, "curve": "zigzag"}]),
         "family default outside range": lambda f, i, m, s: f["families"][1]["parameters"][1].update({"default": 7}),
         "family parameter with unknown type": lambda f, i, m, s: f["families"][1]["parameters"][0].update({"type": "bool"}),
+        "ignores not an array": lambda f, i, m, s: f["families"][1].update({"ignores": "SPEED"}),
+        "ignores with a bad name": lambda f, i, m, s: f["families"][1].update({"ignores": ["speed"]}),
+        "ignores naming a property twice": lambda f, i, m, s: f["families"][1].update({"ignores": ["SPEED", "SPEED"]}),
     }
     failed = [name for name, mutate in cases.items() if not run_case(mutate)]
     if failed:

@@ -50,6 +50,8 @@
     <string name="customize_board_targets">Targets</string>
     <string name="customize_react_to">React to…</string>
     <string name="customize_linked">Moved by a Reaction</string>
+    <string name="customize_ignored">This Style doesn\'t use it</string>
+    <string name="customize_macro_ignored">Unused here</string>
 
     <!-- New link, step by step -->
     <string name="customize_step_source">Step 1 of 3: what should it react to?</string>

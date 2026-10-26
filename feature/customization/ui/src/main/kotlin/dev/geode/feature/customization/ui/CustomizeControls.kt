@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -91,16 +92,18 @@ internal fun ChipFlow(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** One chip that is either chosen or not. */
+/** One chip that is either chosen or not; greyed out when not [enabled]. */
 @Composable
 internal fun ChoiceChip(
     label: String,
     selected: Boolean,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     FilterChip(
         selected = selected,
         onClick = onClick,
+        enabled = enabled,
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         shape = ForestShapes.Chip,
     )
@@ -119,7 +122,8 @@ private fun valueText(
 
 /**
  * One slider of the Advanced view. It follows the finger and sets the value when let go, so one drag
- * is one undo step. A switch for on/off properties. A long-press on its name offers "React to…".
+ * is one undo step. A switch for on/off properties. A long-press on its name offers "React to…". A
+ * row the current Style does not use is greyed out and says so (#365).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -132,10 +136,12 @@ internal fun ValueSlider(
     var held by remember(row.value) { mutableFloatStateOf(row.value) }
     val colors = LocalForestColors.current
     val reactTo = stringResource(R.string.customize_react_to)
+    val enabled = !row.ignored
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
+                .alpha(if (enabled) 1f else IGNORED_ALPHA)
                 .combinedClickable(onClick = {}, onLongClick = onReactTo, onLongClickLabel = reactTo),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -149,7 +155,7 @@ internal fun ValueSlider(
                 )
             }
             if (row.kind == ValueKind.SWITCH) {
-                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) })
+                Switch(checked = row.value > row.min, onCheckedChange = { onSet(if (it) row.max else row.min) }, enabled = enabled)
             } else {
                 Text(valueText(row.kind, held), style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
             }
@@ -161,6 +167,14 @@ internal fun ValueSlider(
                 valueRange = row.min..row.max,
                 steps = if (row.kind == ValueKind.STEPPED) ((row.max - row.min).roundToInt() - 1).coerceAtLeast(0) else 0,
                 onValueChangeFinished = { onSet(held) },
+                enabled = enabled,
+            )
+        }
+        if (row.ignored) {
+            Text(
+                stringResource(R.string.customize_ignored),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
             )
         }
     }
@@ -221,7 +235,7 @@ internal fun MacroKnobView(
     val colors = LocalForestColors.current
     val percent = (held * 100).roundToInt()
     val description = stringResource(R.string.customize_macro_knob, knob.name, percent)
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.alpha(if (knob.ignored) IGNORED_ALPHA else 1f), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier
                 .size(CustomizeDimens.knob)
@@ -253,6 +267,15 @@ internal fun MacroKnobView(
             Text(stringResource(R.string.customize_percent, percent), style = MaterialTheme.typography.titleMedium)
         }
         Text(knob.name, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (knob.ignored) {
+            Text(
+                stringResource(R.string.customize_macro_ignored),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         if (driver != null) {
             Text(
                 driver,
