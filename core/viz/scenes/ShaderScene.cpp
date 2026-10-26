@@ -51,19 +51,13 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
       vertexSrc_(std::move(vertexSrc)),
       currentFragment_(std::move(fragmentSrc)),
       cache_(cache),
-      host_(std::move(host)),
-      pcm_(static_cast<size_t>(kAudioTexWidth) * 8, 0.0f) {
+      host_(std::move(host)) {
     pendingFragment_ = currentFragment_;
 }
 
 ShaderScene::~ShaderScene() { release(); }
 
-void ShaderScene::acceptPcm(const float* samples, int count) {
-    const int n = std::min(count, static_cast<int>(pcm_.size()));
-    if (n <= 0) return;
-    std::copy(samples + (count - n), samples + count, pcm_.begin());
-    pcmCount_ = n;
-}
+void ShaderScene::acceptStereoPcm(const float* interleaved, int frames) { audioInputs_.acceptStereo(interleaved, frames); }
 
 void ShaderScene::setFlow(GLuint texture, float strength) {
     flowTex_ = texture;
@@ -80,7 +74,8 @@ void ShaderScene::init() {
     glGenVertexArrays(1, &vao_);
     const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     const bool floatLinear = extensions && std::strstr(extensions, "OES_texture_float_linear") != nullptr;
-    audioTex_.createImage(GL_R32F, GL_RED, GL_FLOAT, kAudioTexWidth, 2, floatLinear ? GL_LINEAR : GL_NEAREST, GL_CLAMP_TO_EDGE);
+    audioTex_.createImage(GL_R32F, GL_RED, GL_FLOAT, kAudioTexWidth, kAudioTexRows, floatLinear ? GL_LINEAR : GL_NEAREST,
+                          GL_CLAMP_TO_EDGE);
 }
 
 void ShaderScene::resize(int width, int height) {
@@ -177,19 +172,8 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     beatPulse_ = beatEnvelope_.step(hit, dt);
     // The heard transient resets the shared pulse ramp; between hits it free-runs.
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
-    for (int i = 0; i < kAudioTexWidth; ++i) {
-        const int band = i * GEODE_BAND_COUNT / kAudioTexWidth;
-        texData_[static_cast<size_t>(i)] = std::clamp(features.bands[band] * drive, 0.0f, kAudioClamp);
-    }
-    if (pcmCount_ > 0) {
-        fillPcmRow(waveRow_.data(), kAudioTexWidth, pcm_.data(), pcmCount_);
-        pcmCount_ = 0;
-    } else {
-        fillPcmRow(waveRow_.data(), kAudioTexWidth, features.waveform, GEODE_WAVEFORM_POINTS);
-    }
-    for (int i = 0; i < kAudioTexWidth; ++i) {
-        texData_[static_cast<size_t>(kAudioTexWidth + i)] = std::clamp(waveRow_[static_cast<size_t>(i)] * drive * 0.5f + 0.5f, 0.0f, 1.0f);
-    }
+    // The spectrum, its peaks and the steady scope, from this frame's window (#300).
+    audioInputs_.update(dt, drive, features, texData_.data());
 }
 
 void ShaderScene::draw(float timeSeconds) {
@@ -200,7 +184,7 @@ void ShaderScene::draw(float timeSeconds) {
     glUseProgram(program_);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, audioTex_.id());
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kAudioTexWidth, 2, GL_RED, GL_FLOAT, texData_.data());
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kAudioTexWidth, kAudioTexRows, GL_RED, GL_FLOAT, texData_.data());
     uploadParams();
     glUniform2f(uniforms_.loc("uResolution"), static_cast<float>(width_), static_cast<float>(height_));
     glUniform1i(uniforms_.loc("uAudioTex"), 0);

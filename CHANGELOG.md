@@ -11,6 +11,20 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Spectrum and oscilloscope inputs Styles can trust (#300).** `uAudioTex`
+  grows to 512 x 8 (`AudioInputs`), keeping the old reads at y = 0.25 and
+  0.75: the spectrum is now measured on each frame's stereo window, 30 Hz to
+  16 kHz on a log scale, on one level scale for the whole spectrum under a
+  ceiling that follows the loudest texel, with a noise floor, a fast attack
+  and a slower decay, so bass-heavy music looks bass-heavy; a peak-hold row
+  holds each texel's peak, then lets it fall, and freezes through silence.
+  The scope is a fixed span of the window aligned to the previous frame by
+  searching on the mid, the same offset for left and right, so a steady tone
+  stands still, with left and right rows of their own. `lib_scene_uniforms`
+  adds `apeak()`, `awaveL()` and `awaveR()`, and the Lissajous Style draws
+  left against right. Offline Renders, which have no window, read the
+  analysis' bands and waveform as before.
+
 - **Hi-res and 24-bit files analyse correctly (#299).** The analysis takes
   audio above 48 kHz down to 48 kHz or less by a whole factor first
   (`Decimator`: a windowed-sinc low-pass, flat to 16 kHz, with anything

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "geode/render/Program.hpp"
+#include "geode/viz/AudioInputs.hpp"
 #include "geode/viz/Scene.hpp"
 #include "geode/render/Texture.hpp"
 #include "geode/viz/BeatEnvelope.hpp"
@@ -18,7 +19,9 @@ namespace geode::viz {
 // Port of ShaderScene.kt: one fragment style on the fullscreen triangle, fed the shared uniform block.
 class ShaderScene : public Scene {
 public:
-    static constexpr int kAudioTexWidth = 512;
+    // uAudioTex: the shared audio inputs (AudioInputs, lib_audio.glsl).
+    static constexpr int kAudioTexWidth = AudioInputs::kWidth;
+    static constexpr int kAudioTexRows = AudioInputs::kRows;
 
     ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host);
     ~ShaderScene() override;
@@ -32,7 +35,7 @@ public:
     void draw(float timeSeconds) override;
     void release() override;
 
-    void acceptPcm(const float* samples, int count) override;
+    void acceptStereoPcm(const float* interleaved, int frames) override;
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }
@@ -152,7 +155,8 @@ private:
     std::mutex pendingLock_;
     std::optional<std::string> pendingFragment_;
 
-    std::array<float, kAudioTexWidth * 2> texData_{};
+    std::array<float, kAudioTexWidth * kAudioTexRows> texData_{};
+    AudioInputs audioInputs_;
     float bass_ = 0.0f;
     float mid_ = 0.0f;
     float treble_ = 0.0f;
@@ -194,9 +198,6 @@ private:
     float cyclePhase_ = 0.0f;
     float shaderTime_ = 0.0f;
 
-    std::vector<float> pcm_;
-    int pcmCount_ = 0;
-    std::array<float, kAudioTexWidth> waveRow_{};
 
     GLuint flowTex_ = 0;
     float flowStrength_ = 0.0f;
