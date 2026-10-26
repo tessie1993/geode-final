@@ -28,7 +28,7 @@ enum class Input : std::uint8_t {
     Blur1,          // uBlur1: the last frame blurred at 1/4 size
     Blur2,          // uBlur2: at 1/8
     Blur3,          // uBlur3: at 1/16
-    PreviousFrame,  // uPrevFrame: the last frame the Style drew
+    PreviousFrame,  // uPrevFrame: the last frame the Style drew (with feedback: carried through the warp, FeedbackWarp.hpp)
     Clocks,         // uFrame, uFrameDt, uVisitRand, uStyleAge
     Bar,            // uBarPhase, uBarConfidence
 };

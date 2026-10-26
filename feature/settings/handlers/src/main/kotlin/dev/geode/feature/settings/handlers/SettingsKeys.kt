@@ -105,6 +105,9 @@ internal object SettingsKeys {
     const val VISUAL_FRAME_RATE = "visual_frame_rate"
     const val SAVE_MODE = "cpu_gpu_save_mode"
 
+    /** New with #318, so in no old file: whether a saved Edit references or copies its sources, by name. */
+    const val EXPORT_EDIT_SOURCES = "export_edit_sources"
+
     // New with #196, so in no old file.
     const val VISUALS_OFF = "visuals_off"
 
@@ -119,6 +122,9 @@ internal object SettingsKeys {
      * absent for the last look.
      */
     const val START_LOOK = "start_look"
+
+    /** New with #309, so in no old file: the look of a change of Style, by the engine's id for it. */
+    const val TRANSITION_LOOK = "gui_transition_look"
 
     /**
      * New with #394, so in no old file: a surface's own quality and frame rate, by name, one key each.

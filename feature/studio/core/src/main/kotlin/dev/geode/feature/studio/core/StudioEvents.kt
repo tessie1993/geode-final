@@ -1,5 +1,7 @@
 package dev.geode.feature.studio.core
 
+import dev.geode.feature.studio.api.EditJob
+import dev.geode.feature.studio.api.EditSources
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
@@ -102,19 +104,21 @@ sealed interface RenderEnd {
 
 /**
  * What Studio's Renders read from Settings: [visualsOff] (no Render while it is on, #196), what a new
- * Render starts from in Export preferences (#22, #28), and Run in background's Renders keep going
- * switch ([keepGoing], #28).
+ * Render starts from in Export preferences (#22, #28), Run in background's Renders keep going switch
+ * ([keepGoing], #28), and what a saved Edit does with its videos ([editSources], #318).
  */
 data class RenderSettings(
     val visualsOff: Boolean,
     val format: RenderFormat,
     val extras: RenderExtras,
     val keepGoing: Boolean = true,
+    val editSources: EditSources = EditSources.REFERENCE,
 )
 
 /**
  * A Render about to be queued: a [RenderJob] before Studio's database gives it its id and batch. Every
- * Render queued together has the same [look]; [milkdrop] is the MilkDrop preset it plays (#341).
+ * Render queued together has the same [look]; [milkdrop] is the MilkDrop preset it plays (#341). An
+ * Edit's export (#318) has its [edit] and no tracks.
  */
 data class NewRender(
     val tracks: List<RenderTrack>,
@@ -124,12 +128,13 @@ data class NewRender(
     val project: ProjectId,
     val extras: RenderExtras,
     val milkdrop: String? = null,
+    val edit: EditJob? = null,
 ) {
     /** It as saved: its [id], and the [batch] it was queued in. It waits until the queue starts it. */
     fun queuedAs(
         id: RenderId,
         batch: RenderId,
-    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop)
+    ): RenderJob = RenderJob(id, batch, tracks, look, format, length, project, extras, milkdrop = milkdrop, edit = edit)
 
     /** The setup it was made from, as its video keeps it to be made again (#327). */
     fun toSpec(): RenderSpec =
@@ -146,7 +151,7 @@ data class NewRender(
 }
 
 /** [this] Render before it was queued: its choices without its id, batch or status. */
-internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop)
+internal fun RenderJob.toNewRender(): NewRender = NewRender(tracks, look, format, length, project, extras, milkdrop, edit)
 
 /** What went wrong in the handlers. */
 enum class StudioFailure {
@@ -160,6 +165,18 @@ enum class StudioFailure {
 
     /** A Render could not be saved to the queue. */
     QUEUE_RENDER,
+
+    /** The video picked for the clip editor could not be read (#318). */
+    READ_VIDEO,
+
+    /** The Timeline's saved cut could not be read; it opens empty (#318). */
+    LOAD_CUT,
+
+    /** A change to the Timeline's cut could not be saved (#318). */
+    SAVE_CUT,
+
+    /** An Edit's videos could not be copied beside it, so it was not queued (#318). */
+    COPY_SOURCES,
 }
 
 /** Work for Studio's handlers. */
@@ -257,6 +274,10 @@ fun describe(failure: StudioFailure): String =
         StudioFailure.DELETE_FILES -> "Some video files could not be deleted"
         StudioFailure.FREEZE_LOOK -> "Could not read the look for the Render, so it was not queued"
         StudioFailure.QUEUE_RENDER -> "Could not add the Render to the queue"
+        StudioFailure.READ_VIDEO -> "Could not read that video"
+        StudioFailure.LOAD_CUT -> "Could not read the saved cut, so the Timeline starts empty"
+        StudioFailure.SAVE_CUT -> "Could not save the last change to the cut"
+        StudioFailure.COPY_SOURCES -> "Could not copy the Edit's videos, so it was not exported"
     }
 
 /** How the reducer describes a Render of [title] that failed with [problem], on the app-wide banner. */

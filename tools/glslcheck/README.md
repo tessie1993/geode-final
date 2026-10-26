@@ -17,7 +17,7 @@ node check.mjs --all --size 96                 # every fragment style, compile +
 node check.mjs --fluid-display --out out/fluid # every SHADING/BLOOM/SUNRAYS x LOOK variant
 node check.mjs --shader curl_bloom --time 61   # a different point on the clocks
 node check.mjs --all --resize --size 96        # each style's picture across a scene-target resize
-node check.mjs --effects --size 96 --out out/effects  # one frame per Shared core effect
+node check.mjs --effects --size 96 --out out/effects  # one frame per Shared core effect, and the feedback store
 node check.mjs --layers --size 96 --out out/layers    # one frame per Layer 2 blend mode and influence
 node check.mjs --all --glslang                 # every Style through glslangValidator (GLSL ES 3.00)
 node check.mjs --glslang-self-test             # glslang still fails on planted violations
@@ -35,6 +35,13 @@ reloads it ([style-packs.md](../../docs/style-packs.md), "Authoring loop").
 never a clear) and writes what the resized target holds: the picture the
 renderer's next frame starts from after the load scale moves. It fails when
 that picture comes out darker than half the one before the resize.
+
+A Style with feedback (its manifest's `"feedback"`) also renders and glslang-checks its warp
+stage: its own warp shader or `feedback_warp_frag.glsl`, drawn on the motion grid
+(`feedback_warp_vert.glsl`). `--effects` runs the feedback loop's store for real: a white frame
+kept through the shared warp at 95% a second on a 120 Hz panel, in RGBA16F, RGB10_A2 and RGBA8,
+whose mean must follow the exact decay and which must end at exact black; the same loop without the
+dither and the floor must stall into a ghost, which proves the check can tell.
 
 ## How it stays honest
 

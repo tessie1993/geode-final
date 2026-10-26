@@ -1,5 +1,6 @@
 public final class dev/geode/feature/studio/api/NewVideo {
-	public synthetic fun <init> (Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ldev/geode/feature/studio/api/VideoKind;
 	public final fun component2 ()Ljava/lang/String;
 	public final fun component3 ()Ljava/lang/String;
@@ -8,13 +9,15 @@ public final class dev/geode/feature/studio/api/NewVideo {
 	public final fun component6 ()I
 	public final fun component7 ()I
 	public final fun component8 ()Ljava/lang/String;
-	public final fun copy-cKepNm8 (Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;)Ldev/geode/feature/studio/api/NewVideo;
-	public static synthetic fun copy-cKepNm8$default (Ldev/geode/feature/studio/api/NewVideo;Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/studio/api/NewVideo;
+	public final fun component9 ()Ldev/geode/feature/studio/api/RenderSpec;
+	public final fun copy-uECN91U (Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;)Ldev/geode/feature/studio/api/NewVideo;
+	public static synthetic fun copy-uECN91U$default (Ldev/geode/feature/studio/api/NewVideo;Ldev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;ILjava/lang/Object;)Ldev/geode/feature/studio/api/NewVideo;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFile ()Ljava/lang/String;
 	public final fun getHeight ()I
 	public final fun getKind ()Ldev/geode/feature/studio/api/VideoKind;
 	public final fun getLength-CmsKos8 ()J
+	public final fun getMadeWith ()Ldev/geode/feature/studio/api/RenderSpec;
 	public final fun getName ()Ljava/lang/String;
 	public final fun getSong ()Ljava/lang/String;
 	public final fun getThumbnail ()Ljava/lang/String;
@@ -58,6 +61,94 @@ public final class dev/geode/feature/studio/api/ProjectId {
 	public fun toString ()Ljava/lang/String;
 	public static fun toString-impl (J)Ljava/lang/String;
 	public final synthetic fun unbox-impl ()J
+}
+
+public abstract interface class dev/geode/feature/studio/api/RecordingCommand : dev/geode/feature/studio/api/StudioCommand {
+}
+
+public final class dev/geode/feature/studio/api/RecordingCommand$Save : dev/geode/feature/studio/api/RecordingCommand {
+	public synthetic fun <init> (Ldev/geode/feature/studio/api/ProjectId;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-bAvFCwc ()Ldev/geode/feature/studio/api/ProjectId;
+	public final fun copy-TCciBiw (Ldev/geode/feature/studio/api/ProjectId;)Ldev/geode/feature/studio/api/RecordingCommand$Save;
+	public static synthetic fun copy-TCciBiw$default (Ldev/geode/feature/studio/api/RecordingCommand$Save;Ldev/geode/feature/studio/api/ProjectId;ILjava/lang/Object;)Ldev/geode/feature/studio/api/RecordingCommand$Save;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProject-bAvFCwc ()Ldev/geode/feature/studio/api/ProjectId;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RecordingCommand$Start : dev/geode/feature/studio/api/RecordingCommand {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Ldev/geode/feature/studio/api/RecordingCommand$Start;
+	public static synthetic fun copy$default (Ldev/geode/feature/studio/api/RecordingCommand$Start;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/studio/api/RecordingCommand$Start;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSong ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RecordingCommand$Stop : dev/geode/feature/studio/api/RecordingCommand {
+	public static final field INSTANCE Ldev/geode/feature/studio/api/RecordingCommand$Stop;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class dev/geode/feature/studio/api/RecordingState {
+	public static final field Companion Ldev/geode/feature/studio/api/RecordingState$Companion;
+}
+
+public final class dev/geode/feature/studio/api/RecordingState$ChooseProject : dev/geode/feature/studio/api/RecordingState {
+	public fun <init> (Ldev/geode/feature/studio/api/NewVideo;Z)V
+	public synthetic fun <init> (Ldev/geode/feature/studio/api/NewVideo;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ldev/geode/feature/studio/api/NewVideo;
+	public final fun component2 ()Z
+	public final fun copy (Ldev/geode/feature/studio/api/NewVideo;Z)Ldev/geode/feature/studio/api/RecordingState$ChooseProject;
+	public static synthetic fun copy$default (Ldev/geode/feature/studio/api/RecordingState$ChooseProject;Ldev/geode/feature/studio/api/NewVideo;ZILjava/lang/Object;)Ldev/geode/feature/studio/api/RecordingState$ChooseProject;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getStoppedAtLimit ()Z
+	public final fun getVideo ()Ldev/geode/feature/studio/api/NewVideo;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RecordingState$Companion {
+	public final fun getLIMIT-CmsKos8 ()J
+}
+
+public final class dev/geode/feature/studio/api/RecordingState$Idle : dev/geode/feature/studio/api/RecordingState {
+	public static final field INSTANCE Ldev/geode/feature/studio/api/RecordingState$Idle;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RecordingState$Recording : dev/geode/feature/studio/api/RecordingState {
+	public synthetic fun <init> (JZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JZZZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-CmsKos8 ()J
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun copy-E2iU7tg (JZZZ)Ldev/geode/feature/studio/api/RecordingState$Recording;
+	public static synthetic fun copy-E2iU7tg$default (Ldev/geode/feature/studio/api/RecordingState$Recording;JZZZILjava/lang/Object;)Ldev/geode/feature/studio/api/RecordingState$Recording;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAtLimit ()Z
+	public final fun getElapsed-CmsKos8 ()J
+	public final fun getLowStorage ()Z
+	public final fun getStopping ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RecordingState$Starting : dev/geode/feature/studio/api/RecordingState {
+	public static final field INSTANCE Ldev/geode/feature/studio/api/RecordingState$Starting;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class dev/geode/feature/studio/api/RenderAspect : java/lang/Enum {
@@ -138,9 +229,10 @@ public final class dev/geode/feature/studio/api/RenderId {
 }
 
 public final class dev/geode/feature/studio/api/RenderJob {
-	public synthetic fun <init> (JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-_1brIWg ()J
+	public final fun component10 ()Ljava/lang/String;
 	public final fun component2-_1brIWg ()J
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4 ()Ldev/geode/feature/studio/api/RenderLook;
@@ -149,8 +241,8 @@ public final class dev/geode/feature/studio/api/RenderJob {
 	public final fun component7-tHJcqGc ()J
 	public final fun component8 ()Ldev/geode/feature/studio/api/RenderExtras;
 	public final fun component9 ()Ldev/geode/feature/studio/api/RenderStatus;
-	public final fun copy-nCuBoh4 (JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;)Ldev/geode/feature/studio/api/RenderJob;
-	public static synthetic fun copy-nCuBoh4$default (Ldev/geode/feature/studio/api/RenderJob;JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;ILjava/lang/Object;)Ldev/geode/feature/studio/api/RenderJob;
+	public final fun copy-LaJmLB8 (JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;Ljava/lang/String;)Ldev/geode/feature/studio/api/RenderJob;
+	public static synthetic fun copy-LaJmLB8$default (Ldev/geode/feature/studio/api/RenderJob;JJLjava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;JLdev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RenderStatus;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/studio/api/RenderJob;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getActive ()Z
 	public final fun getBatch-_1brIWg ()J
@@ -159,6 +251,7 @@ public final class dev/geode/feature/studio/api/RenderJob {
 	public final fun getId-_1brIWg ()J
 	public final fun getLength ()Ldev/geode/feature/studio/api/RenderLength;
 	public final fun getLook ()Ldev/geode/feature/studio/api/RenderLook;
+	public final fun getMilkdrop ()Ljava/lang/String;
 	public final fun getProject-tHJcqGc ()J
 	public final fun getStatus ()Ldev/geode/feature/studio/api/RenderStatus;
 	public final fun getTitle ()Ljava/lang/String;
@@ -168,6 +261,29 @@ public final class dev/geode/feature/studio/api/RenderJob {
 }
 
 public abstract interface class dev/geode/feature/studio/api/RenderLength {
+}
+
+public final class dev/geode/feature/studio/api/RenderLength$Loop : dev/geode/feature/studio/api/RenderLength {
+	public static final field INSTANCE Ldev/geode/feature/studio/api/RenderLength$Loop;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RenderLength$Minutes : dev/geode/feature/studio/api/RenderLength {
+	public static final field Companion Ldev/geode/feature/studio/api/RenderLength$Minutes$Companion;
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Ldev/geode/feature/studio/api/RenderLength$Minutes;
+	public static synthetic fun copy$default (Ldev/geode/feature/studio/api/RenderLength$Minutes;IILjava/lang/Object;)Ldev/geode/feature/studio/api/RenderLength$Minutes;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMinutes ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class dev/geode/feature/studio/api/RenderLength$Minutes$Companion {
+	public final fun getRANGE ()Lkotlin/ranges/IntRange;
 }
 
 public final class dev/geode/feature/studio/api/RenderLength$Section : dev/geode/feature/studio/api/RenderLength {
@@ -279,8 +395,8 @@ public final class dev/geode/feature/studio/api/RenderSize : java/lang/Enum {
 }
 
 public final class dev/geode/feature/studio/api/RenderSpec {
-	public synthetic fun <init> (Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1 ()Ljava/util/List;
 	public final fun component2 ()Ldev/geode/feature/studio/api/RenderLook;
 	public final fun component3 ()Ldev/geode/feature/studio/api/RenderFormat;
@@ -288,13 +404,15 @@ public final class dev/geode/feature/studio/api/RenderSpec {
 	public final fun component5-bAvFCwc ()Ldev/geode/feature/studio/api/ProjectId;
 	public final fun component6 ()Ldev/geode/feature/studio/api/PlaylistMode;
 	public final fun component7 ()Ldev/geode/feature/studio/api/RenderExtras;
-	public final fun copy-8U_gmNw (Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;)Ldev/geode/feature/studio/api/RenderSpec;
-	public static synthetic fun copy-8U_gmNw$default (Ldev/geode/feature/studio/api/RenderSpec;Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;ILjava/lang/Object;)Ldev/geode/feature/studio/api/RenderSpec;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun copy-bgl_Cak (Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;Ljava/lang/String;)Ldev/geode/feature/studio/api/RenderSpec;
+	public static synthetic fun copy-bgl_Cak$default (Ldev/geode/feature/studio/api/RenderSpec;Ljava/util/List;Ldev/geode/feature/studio/api/RenderLook;Ldev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderLength;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/PlaylistMode;Ldev/geode/feature/studio/api/RenderExtras;Ljava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/studio/api/RenderSpec;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getExtras ()Ldev/geode/feature/studio/api/RenderExtras;
 	public final fun getFormat ()Ldev/geode/feature/studio/api/RenderFormat;
 	public final fun getLength ()Ldev/geode/feature/studio/api/RenderLength;
 	public final fun getLook ()Ldev/geode/feature/studio/api/RenderLook;
+	public final fun getMilkdrop ()Ljava/lang/String;
 	public final fun getPlaylist ()Ldev/geode/feature/studio/api/PlaylistMode;
 	public final fun getProject-bAvFCwc ()Ldev/geode/feature/studio/api/ProjectId;
 	public final fun getTracks ()Ljava/util/List;
@@ -506,6 +624,19 @@ public final class dev/geode/feature/studio/api/StudioCommand$RenameProject : de
 	public fun toString ()Ljava/lang/String;
 }
 
+public final class dev/geode/feature/studio/api/StudioCommand$RenderAgain : dev/geode/feature/studio/api/StudioCommand {
+	public synthetic fun <init> (JLdev/geode/feature/studio/api/RenderSpec;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-H534oBQ ()J
+	public final fun component2 ()Ldev/geode/feature/studio/api/RenderSpec;
+	public final fun copy-2X86Bmw (JLdev/geode/feature/studio/api/RenderSpec;)Ldev/geode/feature/studio/api/StudioCommand$RenderAgain;
+	public static synthetic fun copy-2X86Bmw$default (Ldev/geode/feature/studio/api/StudioCommand$RenderAgain;JLdev/geode/feature/studio/api/RenderSpec;ILjava/lang/Object;)Ldev/geode/feature/studio/api/StudioCommand$RenderAgain;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getSpec ()Ldev/geode/feature/studio/api/RenderSpec;
+	public final fun getVideo-H534oBQ ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
 public final class dev/geode/feature/studio/api/StudioCommand$SetDefaultProject : dev/geode/feature/studio/api/StudioCommand {
 	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-tHJcqGc ()J
@@ -560,11 +691,14 @@ public final class dev/geode/feature/studio/api/StudioKt {
 }
 
 public final class dev/geode/feature/studio/api/StudioState {
-	public synthetic fun <init> (ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
-	public synthetic fun <init> (ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RecordingState;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RecordingState;ZZLkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun batchProgress-urxS5kM (J)F
 	public final fun component1 ()Z
 	public final fun component10 ()Ldev/geode/feature/studio/api/RenderExtras;
+	public final fun component11 ()Ldev/geode/feature/studio/api/RecordingState;
+	public final fun component12 ()Z
+	public final fun component13 ()Z
 	public final fun component2 ()Ljava/util/List;
 	public final fun component3 ()Ljava/util/List;
 	public final fun component4-bAvFCwc ()Ldev/geode/feature/studio/api/ProjectId;
@@ -573,17 +707,21 @@ public final class dev/geode/feature/studio/api/StudioState {
 	public final fun component7 ()Ljava/util/List;
 	public final fun component8 ()Z
 	public final fun component9 ()Ldev/geode/feature/studio/api/RenderFormat;
-	public final fun copy-BByBNIA (ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;)Ldev/geode/feature/studio/api/StudioState;
-	public static synthetic fun copy-BByBNIA$default (Ldev/geode/feature/studio/api/StudioState;ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;ILjava/lang/Object;)Ldev/geode/feature/studio/api/StudioState;
+	public final fun copy-WbTc1ws (ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RecordingState;ZZ)Ldev/geode/feature/studio/api/StudioState;
+	public static synthetic fun copy-WbTc1ws$default (Ldev/geode/feature/studio/api/StudioState;ZLjava/util/List;Ljava/util/List;Ldev/geode/feature/studio/api/ProjectId;Ldev/geode/feature/studio/api/SaveFolder;Ljava/util/List;Ljava/util/List;ZLdev/geode/feature/studio/api/RenderFormat;Ldev/geode/feature/studio/api/RenderExtras;Ldev/geode/feature/studio/api/RecordingState;ZZILjava/lang/Object;)Ldev/geode/feature/studio/api/StudioState;
 	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAppInFront ()Z
 	public final fun getDefaultProject-bAvFCwc ()Ldev/geode/feature/studio/api/ProjectId;
 	public final fun getLoading ()Z
 	public final fun getNeedsSetup ()Z
 	public final fun getPending ()Ljava/util/List;
 	public final fun getProjects ()Ljava/util/List;
+	public final fun getRecording ()Ldev/geode/feature/studio/api/RecordingState;
 	public final fun getRenderExtras ()Ldev/geode/feature/studio/api/RenderExtras;
 	public final fun getRenderFormat ()Ldev/geode/feature/studio/api/RenderFormat;
 	public final fun getRenders ()Ljava/util/List;
+	public final fun getRendersHeld ()Z
+	public final fun getRendersKeepGoing ()Z
 	public final fun getRunningRender ()Ldev/geode/feature/studio/api/RenderJob;
 	public final fun getSaveFolder ()Ldev/geode/feature/studio/api/SaveFolder;
 	public final fun getVideos ()Ljava/util/List;
@@ -594,9 +732,11 @@ public final class dev/geode/feature/studio/api/StudioState {
 }
 
 public final class dev/geode/feature/studio/api/Video {
-	public synthetic fun <init> (JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun <init> (JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun component1-H534oBQ ()J
 	public final fun component10 ()Ljava/lang/String;
+	public final fun component11 ()Ldev/geode/feature/studio/api/RenderSpec;
 	public final fun component2-tHJcqGc ()J
 	public final fun component3 ()Ldev/geode/feature/studio/api/VideoKind;
 	public final fun component4 ()Ljava/lang/String;
@@ -605,14 +745,15 @@ public final class dev/geode/feature/studio/api/Video {
 	public final fun component7-CmsKos8 ()J
 	public final fun component8 ()I
 	public final fun component9 ()I
-	public final fun copy-ulGZSFY (JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;)Ldev/geode/feature/studio/api/Video;
-	public static synthetic fun copy-ulGZSFY$default (Ldev/geode/feature/studio/api/Video;JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;ILjava/lang/Object;)Ldev/geode/feature/studio/api/Video;
+	public final fun copy--qjt-nk (JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;)Ldev/geode/feature/studio/api/Video;
+	public static synthetic fun copy--qjt-nk$default (Ldev/geode/feature/studio/api/Video;JJLdev/geode/feature/studio/api/VideoKind;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;JIILjava/lang/String;Ldev/geode/feature/studio/api/RenderSpec;ILjava/lang/Object;)Ldev/geode/feature/studio/api/Video;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getFile ()Ljava/lang/String;
 	public final fun getHeight ()I
 	public final fun getId-H534oBQ ()J
 	public final fun getKind ()Ldev/geode/feature/studio/api/VideoKind;
 	public final fun getLength-CmsKos8 ()J
+	public final fun getMadeWith ()Ldev/geode/feature/studio/api/RenderSpec;
 	public final fun getName ()Ljava/lang/String;
 	public final fun getProject-tHJcqGc ()J
 	public final fun getShape ()Ldev/geode/feature/studio/api/Shape;

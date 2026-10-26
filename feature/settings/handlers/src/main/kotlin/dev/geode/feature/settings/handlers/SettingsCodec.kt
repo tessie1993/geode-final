@@ -27,6 +27,7 @@ import dev.geode.feature.settings.api.Seconds
 import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -156,6 +157,7 @@ internal object SettingsCodec {
             reducedMotion = boolean(K.REDUCED_MOTION, false) || string(K.LEGACY_SAFETY_CHOICE) == LEGACY_REDUCED_MOTION,
             tilt = enum(K.TILT, default.tilt),
             startLook = startLook(string(K.START_LOOK)),
+            transitionLook = TransitionLook.ofId(string(K.TRANSITION_LOOK)) ?: default.transitionLook,
         )
     }
 
@@ -186,6 +188,7 @@ internal object SettingsCodec {
             codec = enum(K.EXPORT_CODEC, default.codec),
             loudness = LOUDNESS_IDS.entries.firstOrNull { it.value == loudness }?.key ?: default.loudness,
             finishedAlerts = boolean(K.EXPORT_FINISHED_ALERTS, default.finishedAlerts),
+            editSources = enum(K.EXPORT_EDIT_SOURCES, default.editSources),
         )
     }
 
@@ -312,6 +315,7 @@ internal object SettingsCodec {
     private fun preferences(values: SettingsValues): Map<String, Any?> =
         mapOf(
             K.EXPORT_FINISHED_ALERTS to values.export.finishedAlerts,
+            K.EXPORT_EDIT_SOURCES to values.export.editSources.name,
             K.BACKGROUND_MUSIC to values.background.music,
             K.BACKGROUND_RENDERS to values.background.renders,
             K.BACKGROUND_RECORDING to values.background.recording,
@@ -320,6 +324,7 @@ internal object SettingsCodec {
             K.SAVE_MODE to values.performance.saveMode,
             K.VISUALS_OFF to values.performance.visualsOff,
             K.START_LOOK to startLook(values.behavior.startLook),
+            K.TRANSITION_LOOK to values.behavior.transitionLook.id,
         ) + surfaces(values.performance)
 
     /** #394's per-surface picks: a surface that follows the shared value has its key removed. */

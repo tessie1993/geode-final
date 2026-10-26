@@ -58,6 +58,22 @@ constexpr std::array<InputSampler, 9> kInputSamplers = {{
     {inputs::Input::Blur3, "uBlur3", GL_TEXTURE_2D, 11},
 }};
 
+// The feedback loop's buffer: half float where the HDR targets are, else RGB10_A2, ten bits a channel,
+// which every GLES 3 device renders (FeedbackWarp.hpp).
+Framebuffer::Format feedbackFormat(Framebuffer::Format hdr) {
+    return hdr == Framebuffer::Format::Rgba16F ? Framebuffer::Format::Rgba16F : Framebuffer::Format::Rgb10A2;
+}
+
+// What the warp's dither rounds to: the format the warped picture was actually allocated in.
+feedback::Precision precisionOf(Framebuffer::Format format) {
+    switch (format) {
+        case Framebuffer::Format::Rgba16F: return feedback::Precision::Half;
+        case Framebuffer::Format::Rgb10A2: return feedback::Precision::Unorm10;
+        case Framebuffer::Format::Rgba8: return feedback::Precision::Unorm8;
+    }
+    return feedback::Precision::Unorm8;
+}
+
 // Copies the whole of `fbo` (width x height) into `target`, scaled to its size.
 void blitInto(GLuint fbo, int width, int height, const Framebuffer& target, GLenum filter) {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
@@ -76,13 +92,14 @@ float wrappedDelta(float from, float to, float period) {
 }  // namespace
 
 ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
-                         inputs::Set inputs)
+                         inputs::Set inputs, std::optional<ShaderFeedback> feedback)
     : id_(std::move(id)),
       vertexSrc_(std::move(vertexSrc)),
       currentFragment_(std::move(fragmentSrc)),
       cache_(cache),
       host_(std::move(host)),
-      inputs_(inputs) {
+      inputs_(inputs),
+      feedback_(std::move(feedback)) {
     pendingFragment_ = currentFragment_;
 }
 
@@ -98,6 +115,9 @@ void ShaderScene::setFlow(GLuint texture, float strength) {
 void ShaderScene::init() {
     program_ = 0;
     uniforms_ = UniformCache(0);
+    warpProgram_ = 0;
+    warpUniforms_ = UniformCache(0);
+    warpBuilt_ = false;
     {
         std::lock_guard<std::mutex> lock(pendingLock_);
         pendingFragment_ = currentFragment_;
@@ -120,12 +140,16 @@ void ShaderScene::setSharedInputs(SharedInputs* shared) {
     const Framebuffer::Format format = shared != nullptr ? shared->format() : Framebuffer::Format::Rgba8;
     previous_.setFormat(format);
     for (Framebuffer& level : blur_) level.setFormat(format);
+    kept_.setFormat(feedbackFormat(format));
+    warped_.setFormat(feedbackFormat(format));
 }
 
 void ShaderScene::beginVisit() {
     visitClock_.beginVisit(visitSeed_);
-    // The frames it kept belong to its last visit.
+    // The frames it kept belong to its last visit, and so does the warp's clock.
     releaseHistory();
+    warpMotion_.reset();
+    warpFrame_ = 0;
 }
 
 void ShaderScene::setDrawTarget(GLuint fbo, int width, int height) {
@@ -232,12 +256,27 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     pulsePhase_ = hit > 0.0f ? 0.0f : std::fmod(pulsePhase_ + dt * kPulsePhaseHz, 1.0f);
     // The spectrum, its peaks and the steady scope, from this frame's window (#300).
     audioInputs_.update(dt, drive, features, texData_.data());
+    if (feedback_) {
+        // The warp moves at the Style's pace and the music's swell, and the Extras it maps onto.
+        feedback::Drive warp;
+        warp.speed = p.speed;
+        warp.swell = swell_;
+        warp.beat = beatPulse_;
+        warp.decay = extras_.multiplier(mod::Extra::Decay, 0.0f);
+        warp.flight = extras_.multiplier(mod::Extra::Flight, 0.0f);
+        warp.spin = extras_.multiplier(mod::Extra::Spin, 0.0f);
+        warp.drift = extras_.multiplier(mod::Extra::Drift, 0.0f);
+        warp.swirl = extras_.multiplier(mod::Extra::Swirl, 0.0f);
+        warpStep_ = warpMotion_.step(feedback_->spec, warp, dt);
+    }
 }
 
 void ShaderScene::draw(float timeSeconds) {
     (void) timeSeconds;
     compilePendingIfAny();
     if (program_ == 0) return;
+    buildWarpIfNeeded();
+    feeding_ = feedback_.has_value() && warpFeedback();
     glDisable(GL_BLEND);
     glUseProgram(program_);
     glActiveTexture(GL_TEXTURE0);
@@ -276,7 +315,8 @@ void ShaderScene::draw(float timeSeconds) {
     glBindVertexArray(vao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
-    captureHistory();
+    if (feeding_) presentFeedback();
+    captureHistory(feeding_ ? kept_.fbo() : drawFbo_);
 }
 
 void ShaderScene::uploadParams() {
@@ -402,16 +442,13 @@ void ShaderScene::uploadInputs() {
         set1f("uBarConfidence", barClock_.confidence());
     }
     if (sharedInputs_ == nullptr) return;
-    // Every texture first: making one binds it on the active unit, which must not be one already bound.
-    std::array<GLuint, kInputSamplers.size()> textures{};
-    for (size_t i = 0; i < kInputSamplers.size(); ++i) {
-        if (inputs::has(inputs_, kInputSamplers[i].input)) textures[i] = inputTexture(kInputSamplers[i].input);
-    }
-    for (size_t i = 0; i < kInputSamplers.size(); ++i) {
-        const InputSampler& sampler = kInputSamplers[i];
+    for (const InputSampler& sampler : kInputSamplers) {
         if (!inputs::has(inputs_, sampler.input)) continue;
+        // The sampler's own unit is made active first: making a texture (the noise on its first use, the
+        // black stand-in) binds it on the active unit, which was unit 0 and so replaced uAudioTex for the
+        // frame it happened in.
         glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + sampler.unit));
-        glBindTexture(sampler.target, textures[i]);
+        glBindTexture(sampler.target, inputTexture(sampler.input));
         glUniform1i(uniforms_.loc(sampler.uniform), sampler.unit);
     }
     glActiveTexture(GL_TEXTURE0);
@@ -419,7 +456,11 @@ void ShaderScene::uploadInputs() {
 
 GLuint ShaderScene::inputTexture(inputs::Input input) {
     switch (input) {
-        case inputs::Input::PreviousFrame: return previous_.ok() ? previous_.tex() : sharedInputs_->black();
+        case inputs::Input::PreviousFrame:
+            // A Style with feedback reads the kept picture carried through the warp; one whose warp cannot
+            // run this frame reads black rather than a picture that would no longer fade.
+            if (feedback_) return feeding_ ? warped_.tex() : sharedInputs_->black();
+            return previous_.ok() ? previous_.tex() : sharedInputs_->black();
         case inputs::Input::Blur1:
         case inputs::Input::Blur2:
         case inputs::Input::Blur3: {
@@ -431,14 +472,15 @@ GLuint ShaderScene::inputTexture(inputs::Input input) {
     }
 }
 
-void ShaderScene::captureHistory() {
+void ShaderScene::captureHistory(GLuint source) {
     if (!inputs::needsHistory(inputs_) || sharedInputs_ == nullptr || drawWidth_ <= 0 || drawHeight_ <= 0) return;
     const int width = drawWidth_;
     const int height = drawHeight_;
-    if (inputs::has(inputs_, inputs::Input::PreviousFrame)) {
+    // A Style with feedback keeps its frame in kept_ itself.
+    if (inputs::has(inputs_, inputs::Input::PreviousFrame) && !feedback_) {
         // Kept across a resize, so a Style that feeds back on its last frame never starts again from black.
         if (previous_.resizePreserving(width, height) && previous_.width() == width && previous_.height() == height) {
-            blitInto(drawFbo_, width, height, previous_, GL_NEAREST);
+            blitInto(source, width, height, previous_, GL_NEAREST);
         }
     }
     const int length = inputs::blurChainLength(inputs_);
@@ -458,7 +500,7 @@ void ShaderScene::captureHistory() {
         if (built > 0) {
             // The step between: this frame halved by a linear blit; then the bloom's down filter, which
             // blurs as it halves, makes each blur level from the one above it.
-            blitInto(drawFbo_, width, height, blur_[0], GL_LINEAR);
+            blitInto(source, width, height, blur_[0], GL_LINEAR);
             const bool filtered = hdr->downsample(blur_[0].tex(), blur_[0].width(), blur_[0].height(), chain.data() + 1, built - 1, vao_);
             blurBuilt_ = filtered ? built : 1;
         }
@@ -471,6 +513,85 @@ void ShaderScene::releaseHistory() {
     previous_.release();
     for (Framebuffer& level : blur_) level.release();
     blurBuilt_ = 0;
+    kept_.release();
+    warped_.release();
+    feeding_ = false;
+}
+
+void ShaderScene::buildWarpIfNeeded() {
+    if (!feedback_ || warpBuilt_) return;
+    // Once: a warp stage that does not compile is reported and the Style draws on without its loop.
+    warpBuilt_ = true;
+    std::string error;
+    warpProgram_ = program::build(feedback_->vertex, feedback_->fragment, cache_, &error);
+    if (warpProgram_ == 0) {
+        host_.onShaderError(error);
+        return;
+    }
+    warpUniforms_ = UniformCache(warpProgram_);
+}
+
+bool ShaderScene::warpFeedback() {
+    if (warpProgram_ == 0 || sharedInputs_ == nullptr || drawWidth_ <= 0 || drawHeight_ <= 0) return false;
+    const int width = drawWidth_;
+    const int height = drawHeight_;
+    // The kept picture follows the target's size keeping what it holds, as every picture that feeds the
+    // next frame does (ADR-0005); both calls leave the framebuffer unbound.
+    const bool kept = kept_.resizePreserving(width, height) && kept_.width() == width && kept_.height() == height;
+    if (!kept || !warped_.ensure(width, height)) {
+        glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
+        glViewport(0, 0, width, height);
+        return false;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, warped_.fbo());
+    warped_.discardContents();
+    glViewport(0, 0, width, height);
+    glDisable(GL_BLEND);
+    glUseProgram(warpProgram_);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, kept_.tex());
+    glUniform1i(warpUniforms_.loc("uFbPrev"), 0);
+    uploadWarp(width, height);
+    glBindVertexArray(vao_);
+    glDrawArrays(GL_TRIANGLES, 0, feedback::kGridVertices);
+    glBindVertexArray(0);
+    warpFrame_ = (warpFrame_ + 1u) % inputs::kFrameWrap;
+    // The Style draws over the warped picture into kept_, which nothing reads any more this frame.
+    glBindFramebuffer(GL_FRAMEBUFFER, kept_.fbo());
+    glViewport(0, 0, width, height);
+    return true;
+}
+
+void ShaderScene::uploadWarp(int width, int height) {
+    const feedback::Step& step = warpStep_;
+    UniformCache& u = warpUniforms_;
+    glUniform2f(u.loc("uFbGrid"), static_cast<float>(feedback::kGridColumns), static_cast<float>(feedback::kGridRows));
+    const auto& map = step.source.map;
+    glUniform4f(u.loc("uFbMap"), map[0], map[1], map[2], map[3]);
+    glUniform2f(u.loc("uFbShift"), step.source.shift[0], step.source.shift[1]);
+    glUniform2f(u.loc("uFbStretch"), step.stretch[0], step.stretch[1]);
+    glUniform2f(u.loc("uFbCenter"), step.center[0], step.center[1]);
+    glUniform1f(u.loc("uFbAspect"), static_cast<float>(width) / static_cast<float>(height));
+    glUniform1f(u.loc("uFbWarp"), step.warp);
+    glUniform1f(u.loc("uFbPhase"), step.phase);
+    glUniform2f(u.loc("uFbTexel"), 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height));
+    glUniform1f(u.loc("uFbDt"), step.dt);
+    glUniform3f(u.loc("uFbKeep"), step.keep[0], step.keep[1], step.keep[2]);
+    glUniform1f(u.loc("uFbFloor"), step.floor);
+    const feedback::Precision precision = precisionOf(warped_.format());
+    const bool half = precision == feedback::Precision::Half;
+    glUniform1f(u.loc("uFbHalf"), flag(half));
+    glUniform1f(u.loc("uFbStep"), half ? 0.0f : feedback::quantum(0.0f, precision));
+    glUniform1f(u.loc("uFbSeed"), static_cast<float>(warpFrame_));
+}
+
+void ShaderScene::presentFeedback() {
+    // What the Style drew is kept for the next frame and shown: copied onto the renderer's target.
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, kept_.fbo());
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, drawFbo_);
+    glBlitFramebuffer(0, 0, kept_.width(), kept_.height(), 0, 0, drawWidth_, drawHeight_, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
+    glViewport(0, 0, drawWidth_, drawHeight_);
 }
 
 void ShaderScene::set1f(const char* name, float value) {
@@ -516,6 +637,10 @@ void ShaderScene::replaceFragment(std::string fragment) {
 
 void ShaderScene::release() {
     if (program_ != 0) glDeleteProgram(program_);
+    if (warpProgram_ != 0) glDeleteProgram(warpProgram_);
+    warpProgram_ = 0;
+    warpUniforms_ = UniformCache(0);
+    warpBuilt_ = false;
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
     audioTex_.release();
     releaseHistory();

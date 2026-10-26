@@ -16,6 +16,12 @@ import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.SettingsValues
+import dev.geode.feature.studio.api.EditCommand
+import dev.geode.feature.studio.api.EditCut
+import dev.geode.feature.studio.api.EditJob
+import dev.geode.feature.studio.api.EditSession
+import dev.geode.feature.studio.api.EditSource
+import dev.geode.feature.studio.api.EditSources
 import dev.geode.feature.studio.api.NewVideo
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.Project
@@ -26,6 +32,7 @@ import dev.geode.feature.studio.api.RenderExtras
 import dev.geode.feature.studio.api.RenderFormat
 import dev.geode.feature.studio.api.RenderId
 import dev.geode.feature.studio.api.RenderJob
+import dev.geode.feature.studio.api.RenderLength
 import dev.geode.feature.studio.api.RenderLook
 import dev.geode.feature.studio.api.RenderLoudness
 import dev.geode.feature.studio.api.RenderPhase
@@ -42,10 +49,24 @@ import dev.geode.feature.studio.api.Video
 import dev.geode.feature.studio.api.VideoId
 import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.api.VideosOnDelete
+import dev.geode.feature.studio.api.edit.Clip
+import dev.geode.feature.studio.api.edit.ClipContent
+import dev.geode.feature.studio.api.edit.ClipEdit
+import dev.geode.feature.studio.api.edit.ClipId
+import dev.geode.feature.studio.api.edit.EditorHistory
+import dev.geode.feature.studio.api.edit.EditorProject
+import dev.geode.feature.studio.api.edit.Lane
+import dev.geode.feature.studio.api.edit.LaneId
+import dev.geode.feature.studio.api.edit.LaneKind
+import dev.geode.feature.studio.api.edit.Timeline
 import dev.geode.feature.studio.core.NewRender
 import dev.geode.feature.studio.core.RenderEnd
 import dev.geode.feature.studio.core.RenderSettings
 import dev.geode.feature.studio.core.StudioEvent
+import dev.geode.feature.studio.handlers.edit.EditDrafts
+import dev.geode.feature.studio.handlers.edit.EditEngine
+import dev.geode.feature.studio.handlers.edit.EditTools
+import dev.geode.feature.studio.handlers.edit.EditVideos
 import dev.geode.kernel.FeatureFailure
 import dev.geode.kernel.inPlaceRuntime
 import kotlinx.coroutines.CompletableDeferred
@@ -62,6 +83,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import dev.geode.feature.settings.api.EditSources as SettingsEditSources
 
 /** Studio end to end through its store, over fake storage, Settings and files. */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -75,6 +97,9 @@ class StudioStoreTest {
     private val engine = FakeRenderEngine()
     private val night = RenderTrack(TrackId("content://media/12"), "Night Drive", Millis(215_000))
     private val tide = RenderTrack(TrackId("content://media/7"), "Low Tide", Millis(187_000))
+    private val drafts = FakeEditDrafts()
+    private val editVideos = FakeEditVideos()
+    private val editEngine = FakeEditEngine()
 
     private fun store() =
         studioStore(
@@ -84,6 +109,7 @@ class StudioStoreTest {
                 files,
                 { Millis(500) },
                 RenderSources(renderSettingsOf(settings), looks, engine),
+                edits = EditTools(drafts, editVideos, editEngine),
             ),
             inPlaceRuntime(failures = failures),
         )
@@ -658,6 +684,180 @@ class StudioStoreTest {
         )
     }
 
+    /** A store with the take in its default Project, the clip editor open on it, and [sources] chosen. */
+    private fun editingTake(sources: EditSources): Studio {
+        settings.ready(FolderUri("content://tree/videos"), export = ExportSettings(editSources = sources))
+        val (studio, _) = projectWithTake()
+        studio.send(
+            EditCommand.OpenVideo(
+                studio.state.value.videos
+                    .single()
+                    .id,
+            ),
+        )
+        studio.send(EditCommand.ChangeClip(ClipEdit(startMs = 1_000L)))
+        return studio
+    }
+
+    @Test
+    fun `an Edit with Reference is queued pointing at its video, exported, and lands as an Edit`() {
+        val studio = editingTake(SettingsEditSources.REFERENCE)
+
+        studio.send(EditCommand.Export())
+
+        val job =
+            studio.state.value.renders
+                .single()
+        val edit = requireNotNull(job.edit)
+        assertEquals(EditSources.REFERENCE, edit.sources)
+        assertEquals(take.file, (edit.cut as EditCut.OneClip).source.file)
+        assertEquals(ClipEdit(startMs = 1_000L), (edit.cut as EditCut.OneClip).edit)
+        assertTrue(editVideos.copied.isEmpty())
+        assertEquals(listOf(edit), editEngine.exported)
+        assertEquals(RenderStatus.Done, job.status)
+        val made =
+            studio.state.value.videos
+                .last()
+        assertEquals(VideoKind.EDIT, made.kind)
+        assertEquals("take", made.name)
+        assertEquals(null, made.madeWith)
+        assertEquals(FrozenLook(""), storage.rendersById[job.id]?.look)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `an Edit with Copy copies its video into the save folder and points at the copy`() {
+        val studio = editingTake(SettingsEditSources.COPY)
+
+        studio.send(EditCommand.Export())
+
+        assertEquals(listOf(take.file to "content://tree/videos"), editVideos.copied)
+        val edit =
+            requireNotNull(
+                studio.state.value.renders
+                    .single()
+                    .edit,
+            )
+        assertEquals(EditSources.COPY, edit.sources)
+        assertEquals("content://tree/videos/copy-1", (edit.cut as EditCut.OneClip).source.file)
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `an Edit whose videos cannot be copied is not queued, and says so`() {
+        val studio = editingTake(SettingsEditSources.COPY)
+        editVideos.broken = true
+
+        studio.send(EditCommand.Export())
+
+        assertTrue(
+            studio.state.value.renders
+                .isEmpty(),
+        )
+        assertTrue(storage.rendersById.isEmpty())
+        assertEquals(listOf("Could not copy the Edit's videos, so it was not exported"), failures.map { it.message })
+    }
+
+    @Test
+    fun `the Timeline opens on its saved cut, and every change is kept`() {
+        settings.ready(null)
+        val saved = EditorProject(Timeline(listOf(Lane(LaneId("lane-1"), LaneKind.Media, "Media 1"))))
+        drafts.kept = saved
+        val studio = store()
+
+        studio.send(EditCommand.OpenCut)
+        assertEquals(EditSession.Cut(EditorHistory(saved)), studio.state.value.edit)
+
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+        assertEquals(
+            2,
+            drafts.kept
+                ?.timeline
+                ?.lanes
+                ?.size,
+        )
+        assertTrue(failures.isEmpty())
+    }
+
+    @Test
+    fun `a Timeline whose cut cannot be read opens empty and says so, and a change that cannot be kept is reported`() {
+        settings.ready(null)
+        drafts.broken = true
+        val studio = store()
+
+        studio.send(EditCommand.OpenCut)
+        studio.send(EditCommand.AddLane(LaneKind.Text, "Text 1"))
+
+        assertEquals(
+            1,
+            (studio.state.value.edit as EditSession.Cut)
+                .project.timeline.lanes.size,
+        )
+        assertEquals(
+            listOf("Could not read the saved cut, so the Timeline starts empty", "Could not save the last change to the cut"),
+            failures.map { it.message },
+        )
+    }
+
+    @Test
+    fun `a picked video is read before the clip editor opens, and one that cannot be read says so`() {
+        settings.ready(null)
+        val studio = store()
+
+        studio.send(EditCommand.OpenFile("content://picked/dune.mp4"))
+        assertEquals(EditSession.OneClip(editVideos.readable), studio.state.value.edit)
+
+        studio.send(EditCommand.OpenFile("content://picked/broken.mp4"))
+        assertEquals(EditSession.Closed, studio.state.value.edit)
+        assertEquals(listOf("Could not read that video"), failures.map { it.message })
+    }
+
+    @Test
+    fun `an Edit's export and cut are kept with it in the queue's format`() {
+        val clip =
+            NewRender(
+                emptyList(),
+                RenderLook.Current,
+                RenderFormat(),
+                RenderLength.WholeTrack,
+                ProjectId(3),
+                RenderExtras(),
+                edit =
+                    EditJob(
+                        "take",
+                        EditCut.OneClip(editVideos.readable, ClipEdit(speed = 2f, lutUri = "content://lut")),
+                        EditSources.COPY,
+                    ),
+            )
+        assertEquals(clip, RenderSpecFormat.decode(RenderSpecFormat.encode(clip)))
+        val project =
+            EditorProject(
+                Timeline(
+                    listOf(
+                        Lane(
+                            LaneId("lane-1"),
+                            LaneKind.Media,
+                            "Media 1",
+                            listOf(Clip(ClipId("clip-1"), ClipContent.Video("content://v/a"), 0L, 2_000L, sourceDurationMs = 5_000L)),
+                        ),
+                    ),
+                    2_000L,
+                ),
+            )
+        val cut = clip.copy(edit = EditJob("Cut", EditCut.Cut(project), EditSources.REFERENCE))
+        assertEquals(cut, RenderSpecFormat.decode(RenderSpecFormat.encode(cut)))
+        assertEquals(null, RenderSpecFormat.decode(RenderSpecFormat.encode(clip.copy(edit = null))).edit)
+    }
+
+    @Test
+    fun `Settings' choice for an Edit's videos reaches Studio`() {
+        assertEquals(EditSources.REFERENCE, renderSettingsOf(SettingsValues()).editSources)
+        assertEquals(
+            EditSources.COPY,
+            renderSettingsOf(SettingsValues(export = ExportSettings(editSources = SettingsEditSources.COPY))).editSources,
+        )
+    }
+
     private fun projectWithTake(): Pair<Studio, ProjectId> {
         val studio = store()
         studio.send(StudioCommand.CreateProject("Trip", makeDefault = true))
@@ -874,6 +1074,55 @@ private class FakeStudioStorage : StudioStorage {
     override suspend fun forgetRender(render: RenderId) {
         ensureWorking()
         rendersById.remove(render)
+    }
+}
+
+/** Keeps the Timeline's cut in memory, or throws when [broken]. */
+private class FakeEditDrafts : EditDrafts {
+    var kept: EditorProject? = null
+    var broken = false
+
+    override suspend fun load(): EditorProject? {
+        check(!broken) { "no draft" }
+        return kept
+    }
+
+    override suspend fun save(project: EditorProject) {
+        check(!broken) { "no draft" }
+        kept = project
+    }
+}
+
+/** Reads one picked file, and copies each video as a numbered copy in the folder, unless [broken]. */
+private class FakeEditVideos : EditVideos {
+    val readable = EditSource("content://picked/dune.mp4", "dune.mp4", Millis(5_000), 720, 1280)
+    val copied = mutableListOf<Pair<String, String>>()
+    var broken = false
+
+    override suspend fun read(file: String): EditSource? = readable.takeIf { file == it.file }
+
+    override suspend fun copy(
+        file: String,
+        folder: String,
+    ): String {
+        check(!broken) { "no room" }
+        copied += file to folder
+        return "$folder/copy-${copied.size}"
+    }
+}
+
+/** Exports each Edit at once as a video named after it, remembering what it was handed. */
+private class FakeEditEngine : EditEngine {
+    val exported = mutableListOf<EditJob>()
+
+    override suspend fun export(
+        job: EditJob,
+        format: RenderFormat,
+        progress: (RenderPhase, Float) -> Unit,
+        isCancelled: () -> Boolean,
+    ): RenderEnd {
+        exported += job
+        return RenderEnd.Saved(NewVideo(VideoKind.EDIT, job.name, "content://media/edit/${job.name}", null, Millis(3_000), 1080, 1920, ""))
     }
 }
 

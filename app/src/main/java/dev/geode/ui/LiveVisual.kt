@@ -28,7 +28,8 @@ import dev.geode.studio.LiveVisualSource
  * (ADR-0002, ADR-0004). The sound never passes through the main thread or Kotlin: the renderer is
  * attached to the engine's one audio feed, and each frame it reads the features heard now and the
  * stereo window natively, on its own thread. Only the Style to draw, how long a change of Style
- * crossfades (Style switching's transition while it is on, #282), the Visual behaviours from Settings
+ * crossfades (Style switching's transition while it is on, #282) and how it looks (Settings' look,
+ * seeded by Style switching's seed for the random draw, #309), the Visual behaviours from Settings
  * (reduce motion, the finger smear) and the [surface]'s quality and frame rate are handed over from
  * here, when they change. The engine's word that Style switching is due goes back to Customization as
  * [styleCues].
@@ -74,14 +75,18 @@ fun LiveVisualBindings(
     }
     val state by customization.state.collectAsStateWithLifecycle()
     val style = state.current.style
-    val transition =
-        state.current.automations.style
-            ?.transition ?: VisualizerRenderer.DEFAULT_TRANSITION
-    // The crossfade's length goes first, so the change of Style it is for already uses it.
-    LaunchedEffect(transition) { view.visualizerRenderer.transitionDuration = transition }
-    LaunchedEffect(style) { view.visualizerRenderer.requestedSceneId = style }
+    val switching = state.current.automations.style
+    val transition = switching?.transition ?: VisualizerRenderer.DEFAULT_TRANSITION
+    val seed = switching?.seed ?: 0L
     val values by settings.state.collectAsStateWithLifecycle()
     val behavior = (values as? SettingsState.Ready)?.values?.behavior ?: BehaviorSettings()
+    // The change's length and look go first, so the change of Style they are for already uses them.
+    LaunchedEffect(transition) { view.visualizerRenderer.transitionDuration = transition }
+    LaunchedEffect(behavior.transitionLook, seed) {
+        view.visualizerRenderer.transitionSeed = seed
+        view.visualizerRenderer.transitionId = behavior.transitionLook.id
+    }
+    LaunchedEffect(style) { view.visualizerRenderer.requestedSceneId = style }
     LaunchedEffect(behavior.reducedMotion) { view.visualizerRenderer.reducedMotion = behavior.reducedMotion }
     // The fingers themselves reach the engine through the host (VisualizerCanvasHost); this is only
     // whether a Style that does not draw their strokes itself shows them as the shared smear.

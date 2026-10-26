@@ -104,7 +104,9 @@ fun interface StyleSwitches {
  * scenes the real sound heard at that moment (#342), as the live Visual's feed does, so projectM, the
  * shader PCM row and the simulations' strikes react to it. With [switches], the look's Style switching
  * runs as it does live (#343): each time the engine's count of due switches rises, the Render changes
- * Style, crossfading over the switching's transition, and hands the engine the switched look. Not
+ * Style, crossfading over the switching's transition, and hands the engine the switched look. The
+ * engine runs that change as it runs a live one (#309): from the next downbeat the track's analysis
+ * hears, eased, a step on with each kick. Not
  * thread-safe, and every call must happen on the thread holding the GL context.
  */
 class OffscreenSceneRenderer(

@@ -18,6 +18,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -50,6 +51,7 @@ import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -297,6 +299,14 @@ internal fun LazyListScope.exportSection(
             }
         }
     }
+    item {
+        SettingsGroup(stringResource(R.string.export_group_edits)) {
+            ChoiceRow(stringResource(R.string.export_edit_sources), EditSources.entries, export.editSources, { editSourcesName(it) }) {
+                change(ExportCommand.SetEditSources(it))
+            }
+            Note(stringResource(R.string.export_edit_sources_note))
+        }
+    }
 }
 
 /**
@@ -490,6 +500,15 @@ internal fun LazyListScope.applicationSection(
                 change(BehaviorCommand.SetTilt(it))
             }
             if (behavior.reducedMotion && behavior.tilt != TiltAmount.OFF) Note(stringResource(R.string.behavior_tilt_reduced_motion))
+        }
+    }
+    item {
+        SettingsGroup(stringResource(R.string.behavior_group_style_change)) {
+            val looks = TransitionLook.entries
+            ChoiceRow(stringResource(R.string.behavior_transition_look), looks, behavior.transitionLook, { transitionLookName(it) }) {
+                change(BehaviorCommand.SetTransitionLook(it))
+            }
+            Note(stringResource(R.string.behavior_transition_note))
         }
     }
     item {

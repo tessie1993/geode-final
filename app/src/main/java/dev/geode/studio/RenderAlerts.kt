@@ -19,9 +19,10 @@ import dev.geode.util.bestEffort
 import kotlinx.coroutines.flow.filterIsInstance
 
 /**
- * Export-finished alerts (#22, #28): when a Render's video lands in its Project, a notification on the
- * Renders' channel says so, with Open and Share. Settings' Export preferences can turn them off. The
- * alert is the system's notification, so a person who refused notifications simply gets none.
+ * Export-finished alerts (#22, #28): when a Render's video, or an Edit exported through the render
+ * queue (#318), lands in its Project, a notification on the Renders' channel says so, with Open and
+ * Share. Settings' Export preferences can turn them off. The alert is the system's notification, so a
+ * person who refused notifications simply gets none.
  */
 class RenderAlerts(
     private val context: Context,
@@ -34,7 +35,7 @@ class RenderAlerts(
             if (!wanted()) return@collect
             val ids = added.videos.toSet()
             studio.state.value.videos
-                .filter { it.id in ids && it.kind == VideoKind.RENDER }
+                .filter { it.id in ids && it.kind in ALERTED }
                 .forEach { video -> bestEffort(TAG, "alert(video)") { alert(video) } }
         }
     }
@@ -44,19 +45,10 @@ class RenderAlerts(
     private fun alert(video: Video) {
         ExportService.ensureChannel(context)
         val uri = Uri.parse(video.file)
-        val open =
-            Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, VIDEO_MIME)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        val share =
-            Intent
-                .createChooser(
-                    Intent(Intent.ACTION_SEND)
-                        .setType(VIDEO_MIME)
-                        .putExtra(Intent.EXTRA_STREAM, uri)
-                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-                    context.getString(R.string.render_finished_share),
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Both taps go to Geode's own RenderAlertActivity by name; the implicit view and share intents
+        // are only made there.
+        val open = RenderAlertActivity.intent(context, uri, share = false)
+        val share = RenderAlertActivity.intent(context, uri, share = true)
         val id = NOTIFICATION_BASE + (video.id.value % NOTIFICATION_SPAN).toInt()
         val notification =
             Notification
@@ -83,7 +75,9 @@ class RenderAlerts(
 
     private companion object {
         const val TAG = "RenderAlerts"
-        const val VIDEO_MIME = "video/mp4"
+
+        /** The videos the render queue makes. */
+        val ALERTED = setOf(VideoKind.RENDER, VideoKind.EDIT)
 
         // Apart from the progress notification's id; each video gets its own alert, and Share its own request.
         const val NOTIFICATION_BASE = 5_000

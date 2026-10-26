@@ -3,9 +3,9 @@ package dev.geode.feature.studio.handlers.edit
 import androidx.media3.common.C
 import androidx.media3.common.audio.SpeedProvider
 import androidx.media3.common.util.UnstableApi
-import dev.geode.feature.studio.core.edit.Clip
-import dev.geode.feature.studio.core.edit.KeyframeTrack
-import dev.geode.feature.studio.core.edit.ParamValue
+import dev.geode.feature.studio.api.edit.Clip
+import dev.geode.feature.studio.api.edit.KeyframeTrack
+import dev.geode.feature.studio.api.edit.ParamValue
 import kotlin.math.abs
 
 /**

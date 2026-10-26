@@ -5,8 +5,8 @@ import dev.geode.kernel.Feature
 
 /**
  * Studio as everything outside it sees it (ADR-0003, ADR-0005): the Projects, the videos inside them,
- * the default Project and the save folder, the render queue, and the Commands that change them (#21,
- * #338). Recording, editing and Shorts add to this feature (#23–#26).
+ * the default Project and the save folder, the render queue, the Recording and the open editor, and the
+ * Commands that change them (#21, #338, #317, #318). Shorts add to this feature (#25).
  */
 typealias Studio = Feature<StudioState, StudioCommand, StudioFact>
 
@@ -126,7 +126,9 @@ sealed interface SaveFolder {
  * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
  * [recording] is the Recording of the live Visual, if one runs or waits for its Project (#317).
  * [rendersKeepGoing] is Settings' Renders keep going switch (#28), and [appInFront] whether the app is
- * what the person sees: with the switch off, Renders only run while the app is in front.
+ * what the person sees: with the switch off, Renders only run while the app is in front. [edit] is the
+ * editor open on an Edit (#318), and [editSources] Settings' choice of what a saved Edit does with its
+ * videos.
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -142,6 +144,8 @@ data class StudioState(
     val recording: RecordingState = RecordingState.Idle,
     val rendersKeepGoing: Boolean = true,
     val appInFront: Boolean = true,
+    val edit: EditSession = EditSession.Closed,
+    val editSources: EditSources = EditSources.REFERENCE,
 ) {
     /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
     val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront

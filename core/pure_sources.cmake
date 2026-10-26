@@ -73,6 +73,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/BeatEnvelope.cpp
     viz/FeatureBus.cpp
     viz/DisplayEvents.cpp
+    viz/StyleTransition.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp
     viz/TileFrame.cpp
@@ -82,6 +83,7 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/StyleProfiles.cpp
     viz/StyleExtras.cpp
     viz/StyleInputs.cpp
+    viz/FeedbackWarp.cpp
     viz/ThermalGovernor.cpp
     viz/TouchField.cpp
     viz/GravityField.cpp

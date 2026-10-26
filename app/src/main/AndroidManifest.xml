@@ -74,6 +74,13 @@
         <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
+        <!-- Where a finished Render's alert sends Open and Share (#28): explicit, private, shows nothing. -->
+        <activity
+            android:name=".studio.RenderAlertActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <!--
           Picture-in-picture (#287): leaving the app from the full-screen Visual shrinks it into a
           small window where the Visual keeps drawing. Entering and leaving that window changes the

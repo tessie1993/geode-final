@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.ExportCodec
 import dev.geode.feature.settings.api.ExportLoudness
@@ -13,6 +14,7 @@ import dev.geode.feature.settings.api.PlayerPosition
 import dev.geode.feature.settings.api.ReplayGainMode
 import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -45,6 +47,31 @@ internal fun tiltName(amount: TiltAmount): String =
             TiltAmount.OFF -> R.string.behavior_tilt_off
             TiltAmount.SUBTLE -> R.string.behavior_tilt_subtle
             TiltAmount.FULL -> R.string.behavior_tilt_full
+        },
+    )
+
+@Composable
+internal fun transitionLookName(look: TransitionLook): String =
+    stringResource(
+        when (look) {
+            TransitionLook.FADE -> R.string.transition_look_fade
+            TransitionLook.MELT -> R.string.transition_look_melt
+            TransitionLook.SLIDE -> R.string.transition_look_slide
+            TransitionLook.ZOOM -> R.string.transition_look_zoom
+            TransitionLook.DREAMY -> R.string.transition_look_dreamy
+            TransitionLook.CROSS_WARP -> R.string.transition_look_cross_warp
+            TransitionLook.SWIRL -> R.string.transition_look_swirl
+            TransitionLook.RIPPLE -> R.string.transition_look_ripple
+            TransitionLook.WATER_DROP -> R.string.transition_look_water_drop
+            TransitionLook.BLUR -> R.string.transition_look_blur
+            TransitionLook.WARP -> R.string.transition_look_warp
+            TransitionLook.RADIAL -> R.string.transition_look_radial
+            TransitionLook.CIRCLE -> R.string.transition_look_circle
+            TransitionLook.WIND -> R.string.transition_look_wind
+            TransitionLook.CLOUDS -> R.string.transition_look_clouds
+            TransitionLook.MORPH -> R.string.transition_look_morph
+            TransitionLook.SWEEP -> R.string.transition_look_sweep
+            TransitionLook.RANDOM -> R.string.transition_look_random
         },
     )
 
@@ -124,6 +151,15 @@ internal fun codecName(codec: ExportCodec): String =
         when (codec) {
             ExportCodec.H264 -> R.string.export_codec_h264
             ExportCodec.HEVC -> R.string.export_codec_hevc
+        },
+    )
+
+@Composable
+internal fun editSourcesName(sources: EditSources): String =
+    stringResource(
+        when (sources) {
+            EditSources.REFERENCE -> R.string.export_edit_sources_reference
+            EditSources.COPY -> R.string.export_edit_sources_copy
         },
     )
 

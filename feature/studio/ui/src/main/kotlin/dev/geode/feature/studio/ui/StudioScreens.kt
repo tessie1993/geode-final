@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.window.Dialog
 import dev.geode.design.glass.GlassLoading
 import dev.geode.design.glass.GlassMessage
+import dev.geode.feature.studio.api.EditCommand
 import dev.geode.feature.studio.api.Project
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.Shape
@@ -98,6 +99,14 @@ fun ProjectListScreen(
             }
             Button(onClick = { naming = true }, enabled = !model.loading, modifier = Modifier.padding(start = StudioDimens.gap)) {
                 Text(stringResource(R.string.studio_new_project))
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+            OutlinedButton(onClick = { onAction(StudioAction.PickVideoToEdit) }, enabled = !model.loading) {
+                Text(stringResource(R.string.edit_open_video))
+            }
+            OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenCut)) }, enabled = !model.loading) {
+                Text(stringResource(R.string.edit_open_cut))
             }
         }
         if (queue.visualsOff) Note(stringResource(R.string.studio_render_visuals_off))
@@ -439,6 +448,9 @@ fun VideoScreen(
         Text(stringResource(video.kind.label), style = MaterialTheme.typography.titleMedium)
         VideoFacts(video)
         Text(stringResource(R.string.studio_in_project, model.project.name), style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = { onAction(StudioAction.Send(EditCommand.OpenVideo(video.id))) }) {
+            Text(stringResource(R.string.edit_this_video))
+        }
         if (video.madeWith != null) {
             OutlinedButton(onClick = { onAction(StudioAction.RenderAgain(video.id)) }) {
                 Text(stringResource(R.string.studio_render_again))

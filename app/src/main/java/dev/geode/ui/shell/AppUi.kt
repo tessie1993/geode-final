@@ -41,9 +41,6 @@ enum class Sheet {
 
     /** The Live input from the microphone, over the full-screen Visual (#17). */
     CAPTURE,
-
-    /** Edit and export a video or the project, until Studio's own export lands (#17). */
-    EXPORT,
 }
 
 /** A failure the banner shows; [id] tells one showing from the next, so a stale timer clears nothing. */

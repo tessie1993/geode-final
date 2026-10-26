@@ -22,6 +22,8 @@ SceneParams apply(const SceneParams& p, bool reducedMotion = false);
 float limitLfoRate(float rateHz, LfoTarget target);
 float beatMinIntervalMs(float requestedMs);
 TransitionStyle transitionStyle(TransitionStyle requested);
+// A change of Style's look: one of the No-flash safe looks (transition::kSafeLooks) or "random", and
+// the fade for anything else, a hard cut included.
 std::string transitionId(const std::string& requested);
 
 }  // namespace safety

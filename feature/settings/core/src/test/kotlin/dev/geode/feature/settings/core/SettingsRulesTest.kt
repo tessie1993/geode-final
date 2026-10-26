@@ -14,6 +14,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerCommand
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
@@ -45,6 +46,7 @@ import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -212,6 +214,15 @@ class SettingsRulesTest {
             Row(BehaviorCommand.SetStartLook(StartLook.Last), defaults),
             Row(BehaviorCommand.SetStartLook(StartLook.Style(SceneId(" "))), defaults),
             Row(BehaviorCommand.SetStartLook(StartLook.Preset(PresetId(""))), defaults),
+            Row(
+                BehaviorCommand.SetTransitionLook(TransitionLook.RANDOM),
+                defaults.copy(behavior = behavior.copy(transitionLook = TransitionLook.RANDOM)),
+            ),
+            Row(
+                BehaviorCommand.SetTransitionLook(TransitionLook.SWIRL),
+                defaults.copy(behavior = behavior.copy(transitionLook = TransitionLook.SWIRL)),
+            ),
+            Row(BehaviorCommand.SetTransitionLook(TransitionLook.FADE), defaults),
         )
 
     private val exportRows: List<Row> =
@@ -234,6 +245,10 @@ class SettingsRulesTest {
                 defaults.copy(export = defaults.export.copy(quality = ExportQuality.QHD1440)),
             ),
             Row(ExportCommand.SetFinishedAlerts(false), defaults.copy(export = defaults.export.copy(finishedAlerts = false))),
+            Row(
+                ExportCommand.SetEditSources(EditSources.COPY),
+                defaults.copy(export = defaults.export.copy(editSources = EditSources.COPY)),
+            ),
         )
 
     private val backgroundRows: List<Row> =

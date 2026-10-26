@@ -10,6 +10,7 @@ import dev.geode.feature.settings.api.BehaviorSettings
 import dev.geode.feature.settings.api.CornerStyle
 import dev.geode.feature.settings.api.CrossfadeCurve
 import dev.geode.feature.settings.api.Decibels
+import dev.geode.feature.settings.api.EditSources
 import dev.geode.feature.settings.api.EqualizerPreset
 import dev.geode.feature.settings.api.EqualizerSettings
 import dev.geode.feature.settings.api.ExportCodec
@@ -34,6 +35,7 @@ import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
 import dev.geode.feature.settings.api.ThemeMode
 import dev.geode.feature.settings.api.TiltAmount
+import dev.geode.feature.settings.api.TransitionLook
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -218,6 +220,17 @@ class SettingsCodecTest {
     }
 
     @Test
+    fun `whether an Edit copies its sources is kept by name in its own key, Reference when nothing is stored`() {
+        assertEquals("REFERENCE", newKeysAtDefaults["export_edit_sources"])
+        for (sources in EditSources.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(export = ExportSettings(editSources = sources)))
+            assertEquals(sources.name, stored["export_edit_sources"])
+            assertEquals(sources, SettingsCodec.decode(stored).export.editSources)
+        }
+        assertEquals(EditSources.REFERENCE, SettingsCodec.decode(mapOf("export_edit_sources" to "MOVE")).export.editSources)
+    }
+
+    @Test
     fun `tilt is kept by name in its own key, Subtle when nothing is stored`() {
         assertEquals("SUBTLE", newKeysAtDefaults["gui_tilt"])
         for (amount in TiltAmount.entries) {
@@ -227,6 +240,19 @@ class SettingsCodecTest {
             assertEquals(amount, SettingsCodec.decode(stored).behavior.tilt)
         }
         assertEquals(TiltAmount.SUBTLE, SettingsCodec.decode(mapOf("gui_tilt" to "SIDEWAYS")).behavior.tilt)
+    }
+
+    @Test
+    fun `the look of a change of Style is kept by its id in its own key, the fade when nothing is stored`() {
+        assertEquals("fade", newKeysAtDefaults["gui_transition_look"])
+        assertTrue(SettingsKeys.LEGACY_FILES.values.none { "gui_transition_look" in it })
+        for (look in TransitionLook.entries) {
+            val stored = SettingsCodec.encode(SettingsValues(behavior = BehaviorSettings(transitionLook = look)))
+            assertEquals(look.id, stored["gui_transition_look"])
+            assertEquals(look, SettingsCodec.decode(stored).behavior.transitionLook)
+        }
+        assertEquals(TransitionLook.FADE, SettingsCodec.decode(mapOf("gui_transition_look" to "cut")).behavior.transitionLook)
+        assertEquals(TransitionLook.FADE, SettingsCodec.decode(mapOf("gui_transition_look" to 3)).behavior.transitionLook)
     }
 
     @Test

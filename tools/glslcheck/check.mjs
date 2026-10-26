@@ -32,8 +32,9 @@
 //   node check.mjs --all --size 200
 //   node check.mjs --fluid-display               # every SHADING/BLOOM/SUNRAYS x LOOK variant
 //   node check.mjs --all --resize                # each style's picture across a scene-target resize
-//   node check.mjs --effects --out out/effects   # one frame per Shared core effect
+//   node check.mjs --effects --out out/effects   # one frame per Shared core effect, and the change-of-Style looks
 //   node check.mjs --layers --out out/layers     # one frame per Layer 2 blend mode and influence
+//   node check.mjs --effects                     # also: the feedback warp fades to exact black in every format
 //   node check.mjs --all --glslang               # every Style's GLSL ES through glslangValidator
 //   node check.mjs --glslang-self-test           # glslang still fails on planted violations
 //   node check.mjs --shader kifs --glslang --watch --push   # the authoring loop (docs/style-packs.md)
@@ -64,6 +65,10 @@ const SHADER_SOURCE_CPP = path.join(ROOT, 'core', 'render', 'ShaderSource.cpp');
 // names its family and, for a shader Style, its shader file.
 const STYLES = path.join(ROOT, 'engine', 'scenes', 'src', 'main', 'stylepacks', 'styles');
 const FLUID_LOOK_HPP = path.join(ROOT, 'core', 'viz', 'fluid', 'FluidLook.hpp');
+const FEEDBACK_HPP = path.join(ROOT, 'core', 'viz', 'include', 'geode', 'viz', 'FeedbackWarp.hpp');
+// The looks a change of Style may take (kSafeLooks) and the GL Transitions library they splice in.
+const STYLE_TRANSITION_HPP = path.join(ROOT, 'core', 'viz', 'include', 'geode', 'viz', 'StyleTransition.hpp');
+const GL_TRANSITIONS = path.join(ROOT, 'app', 'src', 'main', 'assets', 'gl_transitions.json');
 
 // One load step down and then some: the renderer's scale moves in 0.05 steps, a Style's own scale
 // and a thermal tier move it further.
@@ -139,15 +144,25 @@ function shaderStyles() {
   return new Map([...shaderPacks()].map(([id, pack]) => [id, pack.file]));
 }
 
-// id -> { file, inputs } of every shader Style: its shader and the shared inputs its manifest declares.
+// id -> { file, inputs, warp } of every shader Style: its shader, the shared inputs its manifest
+// declares and, for a Style with feedback, its warp stage's fragment (its own, or the shared one).
 function shaderPacks() {
   const index = JSON.parse(fs.readFileSync(path.join(STYLES, 'index.json'), 'utf8'));
   const out = new Map();
   for (const id of index.styles) {
     const manifest = JSON.parse(fs.readFileSync(path.join(STYLES, id, 'manifest.json'), 'utf8'));
-    if (manifest.family === 'shader') out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [] });
+    if (manifest.family !== 'shader') continue;
+    const feedback = manifest.feedback;
+    const warp = !feedback ? null : feedback.shader ? path.join(STYLES, id, feedback.shader) : path.join(SHADERS, 'feedback_warp_frag.glsl');
+    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp });
   }
   return out;
+}
+
+// A shader file's name as a compile error gives it: styles/<id>/<file> or shaders/<file>.
+function sourceName(file) {
+  const base = file.startsWith(STYLES) ? path.dirname(STYLES) : path.dirname(SHADERS);
+  return path.relative(base, file).split(path.sep).join('/');
 }
 
 // The shared inputs a rendered program read (its uniforms the page did not report dropped) that the
@@ -156,6 +171,17 @@ function undeclaredInputs(job, result) {
   if (!job.inputs) return [];
   const live = job.uniforms.map((u) => u.name).filter((name) => name in INPUT_UNIFORMS && !result.dropped.includes(name));
   return [...new Set(live.map((name) => INPUT_UNIFORMS[name]))].filter((input) => !job.inputs.includes(input));
+}
+
+// The feedback warp's motion grid (FeedbackWarp.hpp kGridColumns, kGridRows), read from the header.
+function feedbackGrid() {
+  const src = fs.readFileSync(FEEDBACK_HPP, 'utf8');
+  const read = (name) => {
+    const m = src.match(new RegExp(`${name}\\s*=\\s*(\\d+)`));
+    if (!m) throw new Error(`could not find ${name} in ${FEEDBACK_HPP}`);
+    return Number(m[1]);
+  };
+  return [read('kGridColumns'), read('kGridRows')];
 }
 
 function fluidLookCount() {
@@ -243,6 +269,16 @@ const INPUT_UNIFORMS = {
   uFrame: 'clocks', uFrameDt: 'clocks', uVisitRand: 'clocks', uStyleAge: 'clocks', uBarPhase: 'bar', uBarConfidence: 'bar',
 };
 
+// The feedback warp stage (ShaderScene::uploadWarp, lib_feedback.glsl): one 60 fps frame of a picture
+// growing 35% a second and turning slowly, a light swirl, 45% of its light kept a second with a warm tint,
+// into an RGBA8 target. uFbPrev reads the stand-in last frame.
+const FEEDBACK_VALUES = {
+  uFbGrid: [32, 24], uFbMap: [0.995, -0.002, 0.002, 0.995], uFbShift: [0, 0], uFbStretch: [1, 1], uFbCenter: [0.5, 0.5],
+  uFbAspect: 1, uFbWarp: 0.0025, uFbPhase: 3.7, uFbTexel: [0, 0], uFbDt: 1 / 60, uFbKeep: [0.987, 0.985, 0.983],
+  uFbFloor: 1 / 256 / 60, uFbHalf: 0, uFbStep: 1 / 255, uFbSeed: 2220,
+};
+const FEEDBACK_TEXTURES = { uFbPrev: 'history' };
+
 // FluidLook::drawDisplay with mid-loudness audio.
 const FLUID_VALUES = {
   uInvRes: [0, 0], uAspect: 1, uDitherScale: [1, 1], uTexelSize: [0, 0],
@@ -266,7 +302,9 @@ function plan(uniforms, values, textures, width, height) {
     let value = values[u.name];
     if (u.name === 'uResolution') value = [width, height];
     if (u.name === 'uInvRes' || u.name === 'uTexelSize') value = [1 / width, 1 / height];
-    out.push({ ...u, value });
+    // A bool uniform is set with glUniform1i, as TransitionCatalog::uploadParams sets it.
+    if (u.type === 'bool') out.push({ ...u, type: 'int', value: Number(value) });
+    else out.push({ ...u, value });
   }
   if (missing.length) throw new Error(`no value for uniform(s): ${missing.join(', ')} - add them to the table`);
   return out;
@@ -379,6 +417,62 @@ function layerJobs(registry, size) {
     uniforms: plan(uniforms, { ...COMPOSITE_NEUTRAL, ...values }, COMPOSITE_TEXTURES, size, size),
   }));
 }
+// One frame of a warp stage: the motion grid (feedback_warp_vert.glsl) and `file`'s fragment.
+function warpJob(name, file, registry, size) {
+  const vert = fs.readFileSync(path.join(SHADERS, 'feedback_warp_vert.glsl'), 'utf8');
+  const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, sourceName(file));
+  const [columns, rows] = feedbackGrid();
+  const values = { ...FEEDBACK_VALUES, uFbGrid: [columns, rows], uFbTexel: [1 / size, 1 / size] };
+  const uniforms = plan([...parseUniforms(vert), ...parseUniforms(frag)], values, FEEDBACK_TEXTURES, size, size);
+  return { name, vert, frag, uniforms, vertices: columns * rows * 6 };
+}
+
+// The feedback loop's store, run for real (#321): a white frame kept through the shared warp at the
+// slowest decay a Style can ask for, 95% a second, on a 120 Hz panel, in each format the engine keeps it
+// in (half float, RGB10_A2, RGBA8). Its mean must follow the exact decay less the floor, and every
+// pixel must be exactly black a while after that reaches 0: no stall ghost. The same loop without the
+// dither and the floor must stall, which proves the check can tell.
+const SETTLE_FPS = 120;
+const SETTLE_DECAY = 0.95;
+const SETTLE_SECONDS_PAST_ZERO = 20;
+const SETTLE_CHECKPOINT_SECONDS = 30;
+const SETTLE_TOLERANCE = 0.02;
+const SETTLE_GHOST = 0.25;
+// Long enough for the plain loop to reach where it stalls (half float: 57% after 11 s).
+const SETTLE_STALL_SECONDS = 15;
+const SETTLE_SIZE = 16;
+
+function settleJobs(registry) {
+  const keep = SETTLE_DECAY ** (1 / SETTLE_FPS);
+  const floor = 1 / 256 / SETTLE_FPS;
+  const tail = floor / (1 - keep);
+  const zero = Math.ceil(Math.log(tail / (1 + tail)) / Math.log(keep));
+  const checkpoint = SETTLE_CHECKPOINT_SECONDS * SETTLE_FPS;
+  const vert = fs.readFileSync(path.join(SHADERS, 'feedback_warp_vert.glsl'), 'utf8');
+  const frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, 'feedback_warp_frag.glsl'), 'utf8'), registry, 'shaders/feedback_warp_frag.glsl');
+  // Nothing moves: a grid of one cell, the identity map.
+  const still = {
+    ...FEEDBACK_VALUES, uFbGrid: [1, 1], uFbMap: [1, 0, 0, 1], uFbWarp: 0, uFbTexel: [1 / SETTLE_SIZE, 1 / SETTLE_SIZE],
+    uFbDt: 1 / SETTLE_FPS, uFbKeep: [keep, keep, keep], uFbFloor: floor,
+  };
+  const uniforms = (values) => plan([...parseUniforms(vert), ...parseUniforms(frag)], values, FEEDBACK_TEXTURES, SETTLE_SIZE, SETTLE_SIZE);
+  const jobs = [];
+  for (const format of ['rgba16f', 'rgb10a2', 'rgba8']) {
+    const step = format === 'rgba16f' ? 0 : format === 'rgb10a2' ? 1 / 1023 : 1 / 255;
+    const base = { vert, frag, vertices: 6, format, size: SETTLE_SIZE, checkpoint };
+    jobs.push({
+      ...base, name: `feedback_settles_${format}`, frames: zero + SETTLE_SECONDS_PAST_ZERO * SETTLE_FPS,
+      expected: (1 + tail) * keep ** checkpoint - tail, tolerance: SETTLE_TOLERANCE,
+      uniforms: uniforms({ ...still, uFbHalf: format === 'rgba16f' ? 1 : 0, uFbStep: step }),
+    });
+    jobs.push({
+      ...base, name: `feedback_stalls_undithered_${format}`, frames: SETTLE_STALL_SECONDS * SETTLE_FPS, ghost: SETTLE_GHOST,
+      uniforms: uniforms({ ...still, uFbHalf: 0, uFbStep: 0, uFbFloor: 0 }),
+    });
+  }
+  return jobs;
+}
+
 // The HDR pipeline's own passes (core/viz/HdrPass): the bloom's downsample (the thresholded first
 // level and a plain one), its upsample, and the final tonemap (highlight roll-off) with and without bloom. The
 // stand-in picture is 8-bit, so the threshold is the lowest the Bloom parameter reaches.
@@ -458,7 +552,90 @@ function effectJobs(registry, size) {
   add('tile', 'composite_frag.glsl', COMPOSITE_NEUTRAL, COMPOSITE_HALF_TEXTURES, COMPOSITE_FROM_HALF);
   add('tile', 'tonemap_frag.glsl', TONEMAP_NEUTRAL, HDR_HALF_TEXTURES, { tonemap_upscale: {}, tonemap_upscale_bloom: { uBloomStrength: 0.5 } });
   add('tile', 'noflash_mix_frag.glsl', NOFLASH_MIX_NEUTRAL, NOFLASH_MIX_TEXTURES, { noflash_upscale: {}, noflash_upscale_damped: { uAmount: 0.5 } });
+  jobs.push(warpJob('feedback_warp_shared', path.join(SHADERS, 'feedback_warp_frag.glsl'), registry, size));
+  jobs.push(...settleJobs(registry));
   return jobs;
+}
+
+// ---- the looks of a change of Style (#309) ------------------------------------
+//
+// Every look core/viz/StyleTransition.hpp lists in kSafeLooks (parsed out of that file, so the two
+// cannot drift) is drawn through composite_frag.glsl as the renderer draws it: the composite's own
+// four by uStyle, a library look spliced in the way TransitionCatalog::spliceInto does it, with its
+// default parameters. Each is drawn from the outgoing picture ('history') to the incoming one ('scene')
+// at points along its progress, and fails when the frame's mean brightness leaves the span of its two
+// pictures by more than LOOK_TOLERANCE: a look that dips through black or washes to white flashes
+// (the No-flash rule) however slowly it runs. Two planted looks that do exactly that must fail.
+
+const LOOK_BUILT_IN = { fade: 1, melt: 2, slide: 3, zoom: 4 };
+const LOOK_LIBRARY_STYLE = 5;
+const LOOK_POINTS = [0.1, 0.25, 0.5, 0.75, 0.9];
+const LOOK_TOLERANCE = 0.05;
+const LOOK_PLANTED_UNSAFE = ['DreamyZoom', 'fadecolor'];
+const LOOK_TEXTURES = { ...COMPOSITE_TEXTURES, uTexA: 'scene', uTexB: 'history' };
+const TRANSITION_MARKER = '// __GL_TRANSITION_SOURCE__';
+
+function safeLooks() {
+  const src = fs.readFileSync(STYLE_TRANSITION_HPP, 'utf8');
+  const m = src.match(/kSafeLooks\s*=\s*\{([\s\S]*?)\};/);
+  if (!m) throw new Error(`could not find kSafeLooks in ${STYLE_TRANSITION_HPP}`);
+  return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+}
+
+// The composite, and the job that draws `id` at `progress` through it.
+function lookJob(id, progress, registry, library, size) {
+  const vert = fs.readFileSync(path.join(SHADERS, 'fade_vert.glsl'), 'utf8');
+  let frag = resolveIncludes(fs.readFileSync(path.join(SHADERS, 'composite_frag.glsl'), 'utf8'), registry, 'shaders/composite_frag.glsl');
+  const values = { ...COMPOSITE_NEUTRAL, uProgress: progress };
+  if (id in LOOK_BUILT_IN) {
+    values.uStyle = LOOK_BUILT_IN[id];
+  } else {
+    const def = library.get(id);
+    if (!def) throw new Error(`look ${id} is not in ${path.relative(ROOT, GL_TRANSITIONS)}`);
+    const nl = frag.indexOf('\n') + 1;
+    frag = `${frag.slice(0, nl)}#define MV_TRANSITION 1\n${frag.slice(nl)}`;
+    if (!frag.includes(TRANSITION_MARKER)) throw new Error('composite_frag.glsl has lost its transition splice point');
+    frag = frag.replace(TRANSITION_MARKER, () => def.glsl);
+    for (const [key, value] of Object.entries(def.defaultParams || {})) values[key] = typeof value === 'boolean' ? Number(value) : value;
+    values.uStyle = LOOK_LIBRARY_STYLE;
+  }
+  return { name: `look_${id}_${progress}`, vert, frag, uniforms: plan(parseUniforms(frag), values, LOOK_TEXTURES, size, size) };
+}
+
+// The worst way `id` leaves the span of its two pictures' brightness, or the error that stopped it.
+async function lookExcursion(page, id, registry, library, size, endsAt) {
+  let worst = 0;
+  for (const progress of LOOK_POINTS) {
+    const job = lookJob(id, progress, registry, library, size);
+    const r = await page.call('__render', { ...job, width: size, height: size });
+    if (r.error) return { error: remapLog(r.error, job.frag) };
+    worst = Math.max(worst, endsAt.low - r.meanLuma, r.meanLuma - endsAt.high);
+  }
+  return { worst };
+}
+
+async function lookCheck(page, registry, size) {
+  const library = new Map(JSON.parse(fs.readFileSync(GL_TRANSITIONS, 'utf8')).map((def) => [def.name, def]));
+  const end = async (progress) => (await page.call('__render', { ...lookJob('fade', progress, registry, library, size), width: size, height: size })).meanLuma;
+  const from = await end(0);
+  const to = await end(1);
+  const endsAt = { low: Math.min(from, to), high: Math.max(from, to) };
+  console.log(`ok   ${'look pictures'.padEnd(28)} outgoing mean ${from.toFixed(3)}, incoming mean ${to.toFixed(3)}`);
+  let allOk = true;
+  for (const id of safeLooks()) {
+    const r = await lookExcursion(page, id, registry, library, size, endsAt);
+    const ok = !r.error && r.worst <= LOOK_TOLERANCE;
+    const detail = r.error ? r.error : `leaves the span of its pictures by at most ${Math.max(r.worst, 0).toFixed(3)}`;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} ${`look ${id}`.padEnd(28)} ${detail}`);
+    allOk = ok && allOk;
+  }
+  for (const id of LOOK_PLANTED_UNSAFE) {
+    const r = await lookExcursion(page, id, registry, library, size, endsAt);
+    const ok = !r.error && r.worst > LOOK_TOLERANCE;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} look self-test: ${id} ${ok ? `is caught, ${r.worst.toFixed(3)} outside` : `was not caught${r.error ? `: ${r.error}` : ''}`}`);
+    allOk = ok && allOk;
+  }
+  return allOk;
 }
 
 // ---- driving the page ------------------------------------------------------
@@ -496,6 +673,20 @@ function parseArgs(argv) {
   return a;
 }
 
+// The verdict on a run of the feedback store (settleJobs): the dithered loop follows the exact decay and
+// ends at exact black; the plain one stalls into a ghost.
+function judgeSettle(job, r) {
+  if (job.ghost !== undefined) {
+    if (!(r.finalMax > job.ghost)) r.error = `the undithered loop no longer stalls (max ${r.finalMax}), so this check cannot tell`;
+    return;
+  }
+  if (Math.abs(r.checkpointMean - job.expected) > job.tolerance) {
+    r.error = `the loop does not follow the decay: mean ${r.checkpointMean.toFixed(4)} at ${job.checkpoint} frames, expected ${job.expected.toFixed(4)}`;
+  } else if (r.finalMax !== 0) {
+    r.error = `a ghost is left: max ${r.finalMax} after ${job.frames} frames`;
+  }
+}
+
 function report(name, r, frag) {
   const status = r.error ? 'FAIL' : 'ok  ';
   const stats = r.error
@@ -518,15 +709,25 @@ const GLSLANG = process.env.GLSLANG_VALIDATOR || 'glslangValidator';
 function glslangCheck(styles, ids, registry) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'glslcheck-'));
   let allOk = true;
+  // Each Style's shader; for a Style with feedback its warp stage too, and the motion grid once.
+  const packs = shaderPacks();
+  const checks = [];
+  for (const id of ids) {
+    checks.push({ label: id, file: styles.get(id), stage: 'frag' });
+    const warp = packs.get(id)?.warp;
+    if (warp) checks.push({ label: `${id} warp`, file: warp, stage: 'frag' });
+  }
+  if (checks.some((c) => c.label.endsWith(' warp'))) {
+    checks.push({ label: 'feedback grid', file: path.join(SHADERS, 'feedback_warp_vert.glsl'), stage: 'vert' });
+  }
   try {
-    for (const id of ids) {
-      const file = styles.get(id);
-      const name = path.relative(path.dirname(STYLES), file).split(path.sep).join('/');
+    for (const { label, file, stage } of checks) {
+      const name = sourceName(file);
       let ok = false;
       let detail = '';
       try {
         const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
-        const tmp = path.join(dir, `${id}.frag`);
+        const tmp = path.join(dir, `${label.replace(/\W+/g, '_')}.${stage}`);
         fs.writeFileSync(tmp, frag);
         const run = spawnSync(GLSLANG, [tmp], { encoding: 'utf8' });
         if (run.error) throw new Error(`cannot run ${GLSLANG}: ${run.error.message}`);
@@ -537,7 +738,7 @@ function glslangCheck(styles, ids, registry) {
       } catch (e) {
         detail = e.message;
       }
-      console.log(`${ok ? 'ok  ' : 'FAIL'} ${`${id} glslang`.padEnd(28)} ${ok ? '' : detail.split('\n').join('\n     ')}`.trimEnd());
+      console.log(`${ok ? 'ok  ' : 'FAIL'} ${`${label} glslang`.padEnd(28)} ${ok ? '' : detail.split('\n').join('\n     ')}`.trimEnd());
       allOk = ok && allOk;
     }
   } finally {
@@ -625,6 +826,9 @@ function buildJobs(args, registry, styles, renderIds) {
       job.keepFraction = KEEP_FRACTION;
     }
     jobs.push(job);
+    // A Style with feedback: one frame of its warp stage too.
+    const warp = packs.get(id).warp;
+    if (warp && !args.resize) jobs.push(warpJob(`${id} warp`, warp, registry, args.size));
   }
   if (args.fluidDisplay) {
     const vert = fs.readFileSync(path.join(SHADERS, 'fluid_base_vert.glsl'), 'utf8');
@@ -672,7 +876,9 @@ async function runOnce(args, getPage) {
   if (jobs.length) {
     const page = await getPage();
     for (const job of jobs) {
-      const r = await page.call(job.resizeWidth ? '__renderResized' : '__render', { ...job, width: args.size, height: args.size });
+      const entry = job.frames ? '__renderFeedback' : job.resizeWidth ? '__renderResized' : '__render';
+      const r = await page.call(entry, { ...job, width: args.size, height: args.size });
+      if (job.frames && !r.error) judgeSettle(job, r);
       const undeclared = r.error ? [] : undeclaredInputs(job, r);
       if (undeclared.length) r.error = `reads shared input(s) ${undeclared.join(', ')} its manifest's "inputs" does not declare`;
       allOk = report(job.name, r, job.frag) && allOk;
@@ -684,6 +890,7 @@ async function runOnce(args, getPage) {
     }
     for (const line of page.drainConsole()) console.log(`  [page] ${line}`);
   }
+  if (args.effects) allOk = (await lookCheck(await getPage(), registry, args.size)) && allOk;
   if (args.push && allOk) pushStyles(ids, args.pkg);
   return allOk;
 }

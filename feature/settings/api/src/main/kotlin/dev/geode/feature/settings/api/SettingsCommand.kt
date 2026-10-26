@@ -208,6 +208,11 @@ sealed interface BehaviorCommand : SettingsCommand {
     data class SetStartLook(
         val look: StartLook,
     ) : BehaviorCommand
+
+    /** How every change of Style looks on the live Visual (#309). */
+    data class SetTransitionLook(
+        val look: TransitionLook,
+    ) : BehaviorCommand
 }
 
 sealed interface ExportCommand : SettingsCommand {
@@ -237,6 +242,11 @@ sealed interface ExportCommand : SettingsCommand {
 
     data class SetFinishedAlerts(
         val on: Boolean,
+    ) : ExportCommand
+
+    /** Whether a saved Edit references its sources or copies them (#318). */
+    data class SetEditSources(
+        val sources: EditSources,
     ) : ExportCommand
 }
 

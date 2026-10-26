@@ -128,8 +128,8 @@ void geode_viz_set_reduced_motion(geode_viz* v, int on) {
     if (v) v->renderer.setReducedMotion(on != 0);
 }
 
-void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms) {
-    if (v) v->renderer.setTransition(text(id), duration_ms);
+void geode_viz_set_transition(geode_viz* v, const char* id, int64_t duration_ms, int64_t seed) {
+    if (v) v->renderer.setTransition(text(id), duration_ms, static_cast<uint64_t>(seed));
 }
 
 void geode_viz_begin_param_morph(geode_viz* v, float seconds) {

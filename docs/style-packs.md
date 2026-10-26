@@ -91,7 +91,8 @@ sound, the bands, the spectrum and the stereo image, so its Styles declare exact
 | `inputs` | no | The shared Style inputs the shader reads ("Shared inputs" below), each named once: `noise_lq`, `noise_mq`, `noise_hq`, `noise_vol`, `blue_noise`, `blur1`, `blur2`, `blur3`, `previous_frame`, `clocks`, `bar`. Shader Styles only; the shader includes `lib_inputs` and reads every input it declares and no other (CI checks both, the render check on the linked program). |
 | `tiers` | no | What each hot thermal tier lets the Style spend (#286): `eased`, `reduced` and `minimal`, each optionally with `steps` (0.25–1, the share of the Detail step budget it marches) and `off` (names from `effects`). A tier left out keeps the share the default ladder gives it (1, 0.85, 0.7, 0.55); a hotter tier never gets more steps, nor any effect a cooler one switched off. |
 | `lens` | no | The shared lens effects (#313, `geode/viz/LensFx.hpp`), each part optional: `threshold` (0.5–1, the light the glare gathers from), `flare` (`amount`, `ghosts` 1–8, `halo`, `dispersion`), `godRays` (`amount`, `source` [x, y] in 0–1 from the bottom left, `length` 0.1–1, `decay` 0.8–0.99), `streaks` (`amount`, `shape` `star`, `zoom` or `anamorphic`, `spokes` 2–8, `length` 0.1–1) and `depthOfField` (`aperture`, `focus` 0.05–0.95). Amounts, halo, dispersion and aperture are 0–1, and each part needs its `amount` (`aperture` for depth of field) above 0. Depth of field is for shader Styles only: the shader writes its depth into alpha as t / (t + the subject's distance), 1 for nothing hit. |
-| `reactivity` | yes | The Style's reactivity profile (#319): what it reacts to at each level of the music, `macro` (sections and energy), `meso` (the bar and the beat) and `micro` (onsets and the spectrum), each a list of the features below. A shader Style declares exactly what its own shader reads (its copy of `view()` and of the audio taps aside: those are the Shared core's controls); any other Style declares exactly what its family declares. CI rejects a feature nothing reads and one read but not declared. |
+| `reactivity` | yes | The Style's reactivity profile (#319): what it reacts to at each level of the music, `macro` (sections and energy), `meso` (the bar and the beat) and `micro` (onsets and the spectrum), each a list of the features below. A shader Style declares exactly what its own code reads, its shader and its feedback warp stage (its copy of `view()` and of the audio taps aside: those are the Shared core's controls; nor what the engine's warp does with `react` and the Extras); any other Style declares exactly what its family declares. CI rejects a feature nothing reads and one read but not declared. |
+| `feedback` | no | The feedback warp layer ("Feedback" below), each part optional: `decay` (0.05–0.95, the share of light kept after a second), `zoom` (0.5–2, growth a second), `rotate` (−3–3, radians a second), `flow` [x, y] (−0.5–0.5, frame heights a second), `stretch` [x, y] (0.5–2), `warp` (0–1, the swirl), `tint` [r, g, b] (0–1, kept a second on top of the decay), `center` [x, y] (0–1) and `react` (0–1, how much the music speeds the motion), and `shader`, the Style's own warp stage, a file in its folder. Shader Styles only, and `inputs` must declare `previous_frame`. |
 | `particles3d` | no | The shared 3D particle layer (#314): `amount` (above 0, up to 1), `kind` (`streaks` or `sparks`), and multipliers `count` (0.25–2), `speed` (0.1–3) and `size` (0.3–3), and a `tint` [r, g, b] in 0–2. |
 
 Every lens effect and the particles are light: they run inside the HDR frame graph, before the
@@ -116,7 +117,7 @@ nothing.
 | `noise_lq`, `noise_mq`, `noise_hq` | `uNoiseLq`, `uNoiseMq`, `uNoiseHq`; `fbmTex()` | 256×256 RGBA noise that tiles, four independent channels: white noise, then smooth value noise with a lattice point every 4 and every 8 texels. |
 | `noise_vol` | `uNoiseVol`; `vnoiseVol()`, `fbmVol()` | A 32³ RGBA volume of white noise. `vnoiseVol` and `fbmVol` are `lib_sdf3`'s `vnoise3` and `fbm3` at one fetch per octave. |
 | `blue_noise` | `uBlueNoise` | The 64×64 blue-noise mask the tonemap dithers with. |
-| `previous_frame` | `uPrevFrame` | The last frame this Style drew, at its size, kept across a resize. |
+| `previous_frame` | `uPrevFrame` | The last frame this Style drew, at its size, kept across a resize; with `feedback`, that frame carried through the warp ("Feedback" below). |
 | `blur1`, `blur2`, `blur3` | `uBlur1`, `uBlur2`, `uBlur3` | That frame blurred at 1/4, 1/8 and 1/16 of its size by the bloom chain's own down filter (`HdrPass::downsample`), only as deep as the deepest one declared. |
 | `clocks` | `uFrame`, `uFrameDt`, `uVisitRand`, `uStyleAge` | Frames drawn this visit, the frame's seconds, four random values drawn once per visit, and seconds into the visit. A visit starts when the Style starts to be drawn, as Layer 1 or Layer 2. |
 | `bar` | `uBarPhase`, `uBarConfidence` | Where the music is in its bar (0–1, four beats), a clock locked to the heard downbeat that never runs backwards or jumps, and how sure it is. |
@@ -124,6 +125,37 @@ nothing.
 The noise is drawn from the Render seed, and so is `uVisitRand` in a Render, so a Render gives the same
 frames every time. The previous frame and the blur levels are the Style's own picture: what feeds back
 must stay below 1, or the loop grows into a flash. A Style's kept frames start black at each visit.
+
+## Feedback
+
+A shader Style that declares `feedback` is drawn as a loop, the way MilkDrop draws every preset
+(`geode/viz/FeedbackWarp.hpp`). Each frame the picture the Style kept is carried through a coarse
+motion grid (`feedback_warp_vert.glsl`, 32 × 24 cells: the zoom, rotation and flow about `center`,
+the stretch and a slow swirl), decayed, tinted and stored; the Style reads that as `uPrevFrame` and
+draws over it, and what it draws is both shown and kept for the next frame. Draw over it with
+`max(picture, echo)` (or anything else that never brightens the echo): the loop must only shrink,
+and the engine holds what is kept below 1 a second (the No-flash rule; the limiter still bounds the
+output).
+
+Everything is per second: the motion is integrated exactly over each frame's time and the decay and
+tint are raised to it, so a Style moves and fades alike at 30, 60 and 120 Hz. Speed and the music
+(`react`: the swell and, half as much, the beat) speed the motion up to three times the Style's own;
+the Extras `decay` (the trails' half-life), `flight` (the zoom), `spin` (the rotation), `drift` (the
+flow) and `swirl` (the swirl) move their part of it, read by the engine, so a Style with feedback may
+declare them without its shader reading them.
+
+The loop is kept in half float where the device renders it and in RGB10_A2 elsewhere, and the warp
+rounds stochastically: a slow decay multiplied into any fixed number of bits stalls where one frame's
+step no longer moves the stored value, a ghost that never fades. A dither of one step of the format
+keeps the expected value on the exact decay, and 1/256 taken off each second ends every trail at exact
+black. The CI render check runs the loop in all three formats and fails on a ghost.
+
+A Style's own warp stage (`"shader"` under `feedback`) is a fragment shader that includes
+`lib_feedback`: it reads the kept picture with `fbFetch()` wherever it likes around `vSrc` (where
+the grid says this point reads from), scales anything it moves by `uFbDt`, and hands what it keeps to
+`fbSettle()` last. Without one, the shared stage keeps `fbWarp()`. The warp stage is not reloaded from
+the Style lab; a changed `feedback` or `inputs` there rebuilds the Style. A Style with feedback keeps
+its depth for depth of field only in half float (RGB10_A2 has two bits of alpha).
 
 ## The music in a Style
 

@@ -254,7 +254,10 @@ sealed interface StartLook {
     ) : StartLook
 }
 
-/** Application preferences (was Behavior): touch, motion and the look Geode starts on. */
+/**
+ * Application preferences (was Behavior): touch, motion, the look Geode starts on and how the live
+ * Visual changes from one Style to the next.
+ */
 data class BehaviorSettings(
     val touchSmear: Boolean = false,
     val touchSmearStrength: Float = TOUCH_SMEAR_STRENGTH_DEFAULT,
@@ -263,10 +266,47 @@ data class BehaviorSettings(
     /** How much tilting the phone moves the live Visual (#315). Reduce motion stills it whatever this says. */
     val tilt: TiltAmount = TiltAmount.SUBTLE,
     val startLook: StartLook = StartLook.Last,
+    /** How every change of Style looks on the live Visual, the person's or Style switching's (#309). */
+    val transitionLook: TransitionLook = TransitionLook.FADE,
 ) {
     companion object {
         const val TOUCH_SMEAR_STRENGTH_DEFAULT = 1f
         val TOUCH_SMEAR_STRENGTH: ClosedFloatingPointRange<Float> = 0.2f..2f
+    }
+}
+
+/**
+ * How a change of Style looks on the live Visual (#309): the plain crossfade (the default), one of the
+ * other looks, or [RANDOM], a seeded draw from all of them for each change. Every one keeps the
+ * No-flash rule, and there is no hard cut. [id] is the engine's name for the look: the engine draws
+ * exactly these (core/viz StyleTransition.hpp, kSafeLooks), and the fade for any other id.
+ */
+enum class TransitionLook(
+    val id: String,
+) {
+    FADE("fade"),
+    MELT("melt"),
+    SLIDE("slide"),
+    ZOOM("zoom"),
+    DREAMY("Dreamy"),
+    CROSS_WARP("crosswarp"),
+    SWIRL("Swirl"),
+    RIPPLE("ripple"),
+    WATER_DROP("WaterDrop"),
+    BLUR("LinearBlur"),
+    WARP("directionalwarp"),
+    RADIAL("Radial"),
+    CIRCLE("circleopen"),
+    WIND("wind"),
+    CLOUDS("perlin"),
+    MORPH("morph"),
+    SWEEP("angular"),
+    RANDOM("random"),
+    ;
+
+    companion object {
+        /** The look stored as [id], or null for an id no look has. */
+        fun ofId(id: String?): TransitionLook? = entries.firstOrNull { it.id == id }
     }
 }
 
@@ -314,7 +354,17 @@ enum class ExportLoudness {
     LEAVE_AS_IS,
 }
 
-/** Export preferences (was Export): what new renders start with. */
+/**
+ * What a saved Edit does with the Renders and Recordings it is cut from (#318, owner decision on #24):
+ * [REFERENCE] points at them where they are and copies nothing; [COPY] copies them beside the Edit in
+ * the Save folder, so the Edit still exports after a source is moved or deleted.
+ */
+enum class EditSources {
+    REFERENCE,
+    COPY,
+}
+
+/** Export preferences (was Export): what new renders start with, and what a saved Edit keeps. */
 data class ExportSettings(
     val quality: ExportQuality = ExportQuality.FHD1080,
     val frameRate: ExportFrameRate = ExportFrameRate.FPS60,
@@ -324,6 +374,8 @@ data class ExportSettings(
     val loudness: ExportLoudness = ExportLoudness.LEAVE_AS_IS,
     /** A notification when a render finishes, with Share and Open buttons (#28). */
     val finishedAlerts: Boolean = true,
+    /** Whether a saved Edit references its sources or copies them (#318); referencing is the default. */
+    val editSources: EditSources = EditSources.REFERENCE,
 )
 
 /**
