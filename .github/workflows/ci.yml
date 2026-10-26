@@ -1,16 +1,16 @@
 name: CI
 
-# The whole test suite, on every pull request (docs/ci.md). Every job is a gate: a ticket is done
-# when all of them are green. Nothing is built or tested anywhere else; agents never build locally.
+# The test suite, on every pull request (docs/ci.md). The first job reads the files the pull request
+# changes and picks the jobs that read them (tools/ci/select_jobs.py, "Which checks run" in docs/ci.md):
+# a module's tests run when the module or something it depends on changed, a check runs when one of its
+# inputs did, and a change to this workflow runs everything, as does [ci-full] in the head commit's
+# message. Every job that runs is a gate; the CI job at the end is green only when all of them are,
+# and is the one check to require. Nothing is built or tested anywhere else; agents never build locally.
 # Pushes to main are handled by ship-apk.yml, which builds and publishes the APK.
 
 on:
   workflow_dispatch:
   pull_request:
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - "CONTEXT.md"
 
 permissions:
   contents: read
@@ -20,8 +20,69 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Which checks this change needs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.select.outputs.build }}
+      static_analysis: ${{ steps.select.outputs.static_analysis }}
+      unit_tests: ${{ steps.select.outputs.unit_tests }}
+      unit_test_tasks: ${{ steps.select.outputs.unit_test_tasks }}
+      mutation: ${{ steps.select.outputs.mutation }}
+      mutation_matrix: ${{ steps.select.outputs.mutation_matrix }}
+      native_mutation: ${{ steps.select.outputs.native_mutation }}
+      native_mutation_matrix: ${{ steps.select.outputs.native_mutation_matrix }}
+      analysis_parts: ${{ steps.select.outputs.analysis_parts }}
+      native_tests: ${{ steps.select.outputs.native_tests }}
+      native_concurrency: ${{ steps.select.outputs.native_concurrency }}
+      milkdrop_frame_exact: ${{ steps.select.outputs.milkdrop_frame_exact }}
+      visual_frames: ${{ steps.select.outputs.visual_frames }}
+      play_gates: ${{ steps.select.outputs.play_gates }}
+      secrets: ${{ steps.select.outputs.secrets }}
+      notices: ${{ steps.select.outputs.notices }}
+      dependency_review: ${{ steps.select.outputs.dependency_review }}
+      instrumented_tests: ${{ steps.select.outputs.instrumented_tests }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Two commits deep, so the PR's head commit is here too: its message can ask for [ci-full]
+          # or [api-dump].
+          fetch-depth: 2
+      # On a pull request HEAD is the merge of the head into the base, so a diff against the base is
+      # exactly the change the pull request makes. Anything else (workflow_dispatch) runs everything.
+      - name: The files this pull request changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          : > changed.txt
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            git fetch --no-tags --depth=1 origin "$BASE_SHA"
+            git diff --name-only "$BASE_SHA" HEAD > changed.txt
+          fi
+          echo "::group::$(wc -l < changed.txt) changed file(s)"; cat changed.txt; echo "::endgroup::"
+      # The self-test first proves the selection on known changes; the table of what runs and why goes
+      # to the run's summary.
+      - name: Select the jobs
+        id: select
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 tools/ci/select_jobs.py --self-test
+          flags=()
+          [ "$GITHUB_EVENT_NAME" = pull_request ] || flags+=(--all)
+          message=$(git log -1 --format=%B "$HEAD_SHA")
+          case "$message" in *"[ci-full]"*) flags+=(--all) ;; esac
+          case "$message" in *"[api-dump]"*) flags+=(--also static-analysis) ;; esac
+          python3 tools/ci/select_jobs.py --changed changed.txt "${flags[@]}" \
+            --github-output "$GITHUB_OUTPUT" --explain | tee -a "$GITHUB_STEP_SUMMARY"
+
   build:
     name: Build debug APK
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -58,6 +119,8 @@ jobs:
 
   static-analysis:
     name: Lint (detekt, ktlint, Android lint, public API)
+    needs: changes
+    if: needs.changes.outputs.static_analysis == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     # Write access only to push regenerated public API dumps back to the PR ([api-dump]).
@@ -125,14 +188,20 @@ jobs:
 
   unit-tests:
     name: Kotlin unit tests and coverage
+    needs: changes
+    if: needs.changes.outputs.unit_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
-      # One task name for every module: the JVM modules answer to it too (geode.jvm-library).
-      - name: Unit tests (every module)
-        run: ./gradlew testDebugUnitTest --continue --stacktrace --no-daemon
+      # One task name for every module: the JVM modules answer to it too (geode.jvm-library). The
+      # changes job names the modules the change can reach: the touched ones and their dependents, or
+      # all of them when the build itself changed. Unquoted on purpose: one word per task.
+      - name: Unit tests (the modules this change reaches)
+        env:
+          TASKS: ${{ needs.changes.outputs.unit_test_tasks }}
+        run: ./gradlew $TASKS --continue --stacktrace --no-daemon
       - name: Coverage reports
         if: success() || failure()
         run: ./gradlew koverXmlReport --continue --stacktrace --no-daemon
@@ -150,78 +219,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # One job per module with a floor in config/mutation/thresholds.properties, for the modules the
+  # change reaches (the changes job; every module when the build or the gate changed).
   mutation:
     name: Mutation tests ${{ matrix.module }}
+    needs: changes
+    if: needs.changes.outputs.mutation == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - module: ":engine:audio-core"
-            task: ":engine:audio-core:pitest"
-            dir: engine/audio-core
-            name: audio-core
-          - module: ":engine:scenes"
-            task: ":engine:scenes:pitestDebug"
-            dir: engine/scenes
-            name: scenes
-          - module: ":engine:audio-android"
-            task: ":engine:audio-android:pitestDebug"
-            dir: engine/audio-android
-            name: audio-android
-          - module: ":engine:live"
-            task: ":engine:live:pitestDebug"
-            dir: engine/live
-            name: live
-          - module: ":app"
-            task: ":app:pitestDebug"
-            dir: app
-            name: app
-          - module: ":design"
-            task: ":design:pitestDebug"
-            dir: design
-            name: design
-          - module: ":arch:kernel"
-            task: ":arch:kernel:pitest"
-            dir: arch/kernel
-            name: arch-kernel
-          - module: ":arch:audio"
-            task: ":arch:audio:pitest"
-            dir: arch/audio
-            name: arch-audio
-          - module: ":feature:capture:core"
-            task: ":feature:capture:core:pitest"
-            dir: feature/capture/core
-            name: capture-core
-          - module: ":feature:playback:core"
-            task: ":feature:playback:core:pitest"
-            dir: feature/playback/core
-            name: playback-core
-          - module: ":feature:settings:core"
-            task: ":feature:settings:core:pitest"
-            dir: feature/settings/core
-            name: feature-settings-core
-          - module: ":feature:customization:core"
-            task: ":feature:customization:core:pitest"
-            dir: feature/customization/core
-            name: customization-core
-          - module: ":feature:library:core"
-            task: ":feature:library:core:pitest"
-            dir: feature/library/core
-            name: library-core
-          - module: ":feature:diagnostics:core"
-            task: ":feature:diagnostics:core:pitest"
-            dir: feature/diagnostics/core
-            name: feature-diagnostics-core
-          - module: ":feature:visuals:core"
-            task: ":feature:visuals:core:pitest"
-            dir: feature/visuals/core
-            name: visuals-core
-          - module: ":feature:studio:core"
-            task: ":feature:studio:core:pitest"
-            dir: feature/studio/core
-            name: studio-core
+        include: ${{ fromJSON(needs.changes.outputs.mutation_matrix) }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/android-setup
@@ -247,45 +256,22 @@ jobs:
   # Mull over the host GoogleTest suite, one pure native library per job (docs/ci.md, "C++ mutation
   # tests"). Mull's compiler plugin builds every mutant into the test binary; mull-runner switches them
   # on one at a time and runs the whole suite against each. A library with more mutants than fit the
-  # job's time limit runs in parts, each a share of its files (tools/ci/mull_part.py), and
-  # native-mutation-gate scores the parts' reports as one library.
+  # job's time limit runs in parts, each a share of its files (tools/ci/mull_part.py).
   native-mutation:
     name: C++ mutation tests ${{ matrix.name }}
+    needs: changes
+    if: needs.changes.outputs.native_mutation == 'true'
     runs-on: ubuntu-24.04
     # Every mutant runs the whole native suite (about 15 s on this runner, four at a time); the
     # Visual's library has the most mutants and outgrew an hour.
     timeout-minutes: 180
     strategy:
       fail-fast: false
+      # One entry per library the change reaches (the changes job), from NATIVE_MUTATION_PARTS in
+      # tools/ci/select_jobs.py: a library whose mutants outgrow one job runs in parts, and
+      # native-mutation-gate scores the parts' reports as one library. geode_viz is paused there.
       matrix:
-        include:
-          - library: geode_util
-            dir: core/util
-            name: geode_util
-          - library: geode_audio
-            dir: core/audio
-            name: geode_audio
-          # geode_analysis has about 1 800 mutants, four times geode_util's, and one run of them all
-          # outgrew the time limit on every pull request (2026-10-26). Four parts, side by side; the
-          # count is repeated in native-mutation-gate.
-          - library: geode_analysis
-            dir: core/analysis
-            name: geode_analysis-1
-            part: 1/4
-          - library: geode_analysis
-            dir: core/analysis
-            name: geode_analysis-2
-            part: 2/4
-          - library: geode_analysis
-            dir: core/analysis
-            name: geode_analysis-3
-            part: 3/4
-          - library: geode_analysis
-            dir: core/analysis
-            name: geode_analysis-4
-            part: 4/4
-          # geode_viz is paused for now (owner, 2026-10-23): its run outgrows the job's time limit on
-          # most pull requests. Its floor stays in native-thresholds.properties for when it returns.
+        include: ${{ fromJSON(needs.changes.outputs.native_mutation_matrix) }}
     env:
       # Mull is built per LLVM major; 18 is the runner's clang. Pinned to an exact package and its hash.
       LLVM_MAJOR: "18"
@@ -362,14 +348,14 @@ jobs:
   # (tools/ci/merge_mutation_reports.py) and scored as one library, against its one floor.
   native-mutation-gate:
     name: C++ mutation score geode_analysis
-    needs: native-mutation
+    needs: [changes, native-mutation]
     # Also when a part failed: fewer reports than parts fails the gate with a message, never by absence.
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.analysis_parts != '0' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      # The number of geode_analysis parts in native-mutation's matrix.
-      PARTS: "4"
+      # The number of geode_analysis parts in native-mutation's matrix (NATIVE_MUTATION_PARTS).
+      PARTS: ${{ needs.changes.outputs.analysis_parts }}
     steps:
       - uses: actions/checkout@v7
       - name: Download the parts' reports
@@ -400,6 +386,8 @@ jobs:
 
   native-tests:
     name: C++ unit tests (host, ASan + UBSan)
+    needs: changes
+    if: needs.changes.outputs.native_tests == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -439,6 +427,8 @@ jobs:
 
   native-concurrency:
     name: C++ concurrency tests (host, TSan)
+    needs: changes
+    if: needs.changes.outputs.native_concurrency == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -466,6 +456,8 @@ jobs:
   # and every bundled preset must run as written, with no shader silently replaced by the default.
   milkdrop-frame-exact:
     name: MilkDrop Renders are frame-exact
+    needs: changes
+    if: needs.changes.outputs.milkdrop_frame_exact == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -491,6 +483,8 @@ jobs:
   # glslang then holds every Style to the GLSL ES 3.00 specification, which ANGLE may not.
   visual-frames:
     name: Shaders compile and render
+    needs: changes
+    if: needs.changes.outputs.visual_frames == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -537,6 +531,8 @@ jobs:
 
   play-gates:
     name: Play Store gates
+    needs: changes
+    if: needs.changes.outputs.play_gates == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -555,6 +551,8 @@ jobs:
 
   secrets:
     name: Secret scan
+    needs: changes
+    if: needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -578,6 +576,8 @@ jobs:
   # The self-test first proves the check still catches drift.
   notices:
     name: Third-party notices
+    needs: changes
+    if: needs.changes.outputs.notices == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -589,7 +589,8 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.dependency_review == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -608,6 +609,8 @@ jobs:
   # permission model do not exist off a device, and Robolectric's shadows misreport some of them.
   instrumented-tests:
     name: Instrumented tests (emulator)
+    needs: changes
+    if: needs.changes.outputs.instrumented_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -644,3 +647,38 @@ jobs:
             app/build/outputs/androidTest-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  # The one check to require on main: green when every job this change needed is green. A skipped job
+  # was not needed; a failed, cancelled or missing one fails this, and so does a failed selection.
+  ci:
+    name: CI
+    needs:
+      - changes
+      - build
+      - static-analysis
+      - unit-tests
+      - mutation
+      - native-mutation
+      - native-mutation-gate
+      - native-tests
+      - native-concurrency
+      - milkdrop-frame-exact
+      - visual-frames
+      - play-gates
+      - secrets
+      - notices
+      - dependency-review
+      - instrumented-tests
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every job this change needed is green
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e '
+            .changes.result == "success"
+            and ([.[] | .result] | all(. == "success" or . == "skipped"))' > /dev/null

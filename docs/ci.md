@@ -1,17 +1,17 @@
 # CI: the test suite
 
-GitHub Actions is the only place Geode is built and tested. Agents never run Gradle, CMake or tests locally (see `CLAUDE.md`). A pull request is done when every check below is green.
+GitHub Actions is the only place Geode is built and tested. Agents never run Gradle, CMake or tests locally (see `CLAUDE.md`). A pull request is done when its `CI` check is green: every job the change needed has passed.
 
 ## The checks
 
-All of these run on every pull request, in `.github/workflows/ci.yml` unless noted.
+Each runs when the pull request changes something it reads ([Which checks run](#which-checks-run)), in `.github/workflows/ci.yml` unless noted.
 
 | Check | What it gates | Where it is configured |
 |---|---|---|
 | Build debug APK | The app assembles, native code included. The APK is attached to the run for device testing (not a gate). | `ci.yml` |
 | Lint | detekt (every module, with per-module baselines), ktlint, Android lint (every Android module), and the public API of the interface modules against their dumps. | `config/detekt/detekt.yml`, `build-logic/…/geode.kotlin-common.gradle.kts`, `geode.api-dump` |
 | Kotlin unit tests and coverage | Every module's unit tests, including the JVM modules (`:engine:audio-core`, `:arch:*`, and each feature's `:api` and `:core`), and the architecture test. Line coverage per module is written to the job summary. | Kover, applied in `geode.kotlin-common` |
-| Mutation tests | One job per module runs **every** mutant (Pitest), then `tools/ci/mutation_gate.py` checks the score. | `config/mutation/thresholds.properties`, `geode.mutation-jvm` / `geode.mutation-android` |
+| Mutation tests | One job per module the change reaches runs **every** mutant (Pitest), then `tools/ci/mutation_gate.py` checks the score. | `config/mutation/thresholds.properties`, `geode.mutation-jvm` / `geode.mutation-android` |
 | C++ mutation tests | One job per pure native library (`geode_util`, `geode_audio`, `geode_analysis`, `geode_viz`) runs **every** mutant (Mull) over the host GoogleTest suite, then `tools/ci/native_mutation_gate.py` checks the score. A library with too many mutants for one job (`geode_analysis`) runs in parts, each a share of its files, and one gate job scores the parts together. | `config/mutation/native-thresholds.properties`, `config/mutation/mull.yml`, `core/host/CMakeLists.txt` (`GEODE_MUTATE`), `tools/ci/mull_part.py`, `tools/ci/merge_mutation_reports.py` |
 | Native library boundaries | Each native library includes only its own headers and the public headers (`core/<lib>/include/geode/<lib>/`) of the libraries it depends on; the dependency graph has no cycles. Runs first in the C++ job, after a self-test that proves it still catches violations. Then the Mermaid diagram in [native-libraries.md](native-libraries.md) must match the same dependency table (`tools/ci/native_graph_doc.py --check`, after its own self-test); `python3 tools/ci/native_graph_doc.py` regenerates it. | `tools/ci/check_native_includes.py`, `tools/ci/native_graph_doc.py`, [native-libraries.md](native-libraries.md) |
 | Bridge schema | The C, C++ and Kotlin types generated from `core/bridge/schema/native_bridge.json` (the Customization snapshot and the bridge's status codes) match what is committed. Runs in the C++ job. To change the schema, edit it, run `python3 tools/bridge_schema/generate.py` and commit the generated files with it. | `tools/bridge_schema/generate.py` |
@@ -28,12 +28,26 @@ All of these run on every pull request, in `.github/workflows/ci.yml` unless not
 
 **No stored images.** Geode keeps no screenshot or golden-image tests (#184): App UI screens are checked by their unit tests and previews, and the Visual by the shader check above, which needs no committed images.
 
+## Which checks run
+
+The first job, `changes`, diffs the pull request against its base and runs `tools/ci/select_jobs.py` over the changed paths. Every other job runs only when that selection names it, and the `CI` job at the end is green when every job that ran is green: a skipped job was not needed. `CI` is the one check to require on `main`. The run's summary shows the table of what ran and why.
+
+How a job is chosen:
+
+- **A check runs when one of its inputs changed.** The script keeps, per job, the loose files it reads: a tool under `tools/`, a config under `config/`, an asset root such as `app/src/main/assets/shaders/`. Nothing else is listed by hand.
+- **Kotlin modules come from the build.** The module list is read from `settings.gradle.kts`, each module's dependencies from its build file and the `geode.*` convention plugins it applies, test fixtures included. A change under a module's directory reaches the module and everything that depends on it, transitively: those modules' unit tests run, and their mutation tests where they have a floor in `config/mutation/thresholds.properties`; the APK, lint and instrumented jobs run for any module change. A change to the build itself (`build-logic/`, `gradle/`, the root build files) reaches every module.
+- **Native libraries come from `LIBRARY_DEPS`** in `tools/ci/check_native_includes.py`, the table the include check enforces. A change under `core/<lib>/` reaches the library and every library that links it, and their mutation tests run. A change to the host suite's inputs (`core/tests/`, the host build, the shaders and Style packs the tests read) reaches every library. Any change under `core/` runs the C++ unit and concurrency tests.
+- **Everything runs** when the workflow, the composite action or the selector changes, on `workflow_dispatch`, and when the head commit's message contains `[ci-full]`. `[api-dump]` adds the lint job whatever changed.
+- **The secret scan runs on every pull request.**
+
+`python3 tools/ci/select_jobs.py --changed <file> --explain` prints the table for a list of paths; `--self-test` proves the selection on known changes and runs first in CI. A job that starts reading a new file adds it to `JOB_INPUTS` in the script, with a self-test case.
+
 ## Mutation score floors
 
 The mutation score counts every mutant. A mutant no test reaches counts as surviving, so untested code cannot score well by being skipped.
 
 - **Module floors.** Each module has a floor in `config/mutation/thresholds.properties`. The floors only ratchet upwards: raise one when a module's score improves, and never lower one to get a PR through.
-- **Feature cores.** Each feature's `:feature:<name>:core` module, and the `:arch:kernel` and `:arch:audio` modules, have a floor of 80 (ADR-0003, ADR-0005). A new feature adds its `:core` to `config/mutation/thresholds.properties` and to the mutation matrix in `ci.yml`, and its JVM modules to the unit-test step. Today these are Capture, Playback, Settings, Customization, Library, Diagnostics, Visuals and Studio (`:feature:<name>:core`). The `feature-core` package floor (`dev.geode.feature.<name>.core`) still applies inside any module.
+- **Feature cores.** Each feature's `:feature:<name>:core` module, and the `:arch:kernel` and `:arch:audio` modules, have a floor of 80 (ADR-0003, ADR-0005). A new feature adds its `:core` to `config/mutation/thresholds.properties`; the mutation matrix is read from that file and the unit-test tasks from `settings.gradle.kts` (`tools/ci/select_jobs.py`). Today these are Capture, Playback, Settings, Customization, Library, Diagnostics, Visuals and Studio (`:feature:<name>:core`). The `feature-core` package floor (`dev.geode.feature.<name>.core`) still applies inside any module.
 
 The job log lists the surviving mutants, and the HTML report is attached to the run.
 
@@ -43,9 +57,9 @@ The pure part of each native library (the sources in `core/pure_sources.cmake`: 
 
 - **How it runs.** The host build is configured with `-DGEODE_MUTATE=<library>`: Mull's compiler plugin builds every mutant of that one library into the test binary. `mull-runner` then switches the mutants on one at a time and runs the whole GoogleTest suite against each, every mutant, with no coverage filter: Mull 0.34's filter wrongly reports mutants inside switch cases as not reached (`NoCoverage`) and skips them, so the build has no source coverage. Which operators run, and which paths may be mutated, is in `config/mutation/mull.yml` (all of Mull's operators). Mull and its LLVM are pinned in `ci.yml` (Mull 0.34.1 for LLVM 18, the runner's clang), by package hash.
 - **Score.** Killed, timed-out and crashed mutants are detected. A mutant no test reaches survives (and a `NoCoverage` mutant, should one be reported, counts as surviving), as on the Kotlin side. Only mutants in the library's own directory (`core/<lib>/`) count.
-- **Floors.** Each library has a floor in `config/mutation/native-thresholds.properties`, keyed by its CMake target. They ratchet the same way as the module floors: raise one when the score improves, never lower one. A library with no floor fails the gate. A new pure library gets a matrix entry in the `native-mutation` job (`library`, `dir` and `name`), a `GEODE_PURE_LIBRARIES` entry in `core/host/CMakeLists.txt`, its directory in `includePaths` in `mull.yml`, and a floor set at its first measured score, rounded down.
+- **Floors.** Each library has a floor in `config/mutation/native-thresholds.properties`, keyed by its CMake target. They ratchet the same way as the module floors: raise one when the score improves, never lower one. A library with no floor fails the gate. A new pure library gets an entry in `NATIVE_MUTATION_PARTS` in `tools/ci/select_jobs.py` (its number of parts, 1 for one run), a `GEODE_PURE_LIBRARIES` entry in `core/host/CMakeLists.txt`, its directory in `includePaths` in `mull.yml`, and a floor set at its first measured score, rounded down.
 - **Results.** The job log lists every surviving and uncovered mutant (file, line, operator); the job summary has the score. The Mutation Testing Elements report (`<library>.json` and an `.html` viewer for it) is attached to the run as `native-mutation-<library>-<run>`.
-- **Parts.** A library whose mutants outgrow one job's time limit runs in parts: `geode_analysis` (about 1 800 mutants, four times `geode_util`'s) runs as four matrix entries, `part: 1/4` to `4/4`. Each part's job writes `mull.yml` narrowed to its share of the library's files (`tools/ci/mull_part.py`: every file under `core/<lib>/`, shared out by line count, so the parts together cover every file exactly once), builds and runs only those mutants, and uploads its report as `native-mutation-<library>-<part>-<run>`. The `native-mutation-gate` job then joins the parts' reports (`tools/ci/merge_mutation_reports.py`: a missing or overlapping part is an error, never a pass) and runs the same gate over the joined report, against the library's one floor; the joined report is attached as `native-mutation-<library>-<run>`. To change the number of parts, change the matrix entries and `PARTS` in `native-mutation-gate` together.
+- **Parts.** A library whose mutants outgrow one job's time limit runs in parts: `geode_analysis` (about 1 800 mutants, four times `geode_util`'s) runs as four matrix entries (`NATIVE_MUTATION_PARTS` in `tools/ci/select_jobs.py`), `part: 1/4` to `4/4`. Each part's job writes `mull.yml` narrowed to its share of the library's files (`tools/ci/mull_part.py`: every file under `core/<lib>/`, shared out by line count, so the parts together cover every file exactly once), builds and runs only those mutants, and uploads its report as `native-mutation-<library>-<part>-<run>`. The `native-mutation-gate` job then joins the parts' reports (`tools/ci/merge_mutation_reports.py`: a missing or overlapping part is an error, never a pass) and runs the same gate over the joined report, against the library's one floor; the joined report is attached as `native-mutation-<library>-<run>`. To change the number of parts, change `NATIVE_MUTATION_PARTS`: the matrix and the gate's `PARTS` both come from it.
 - **Not mutated.** `render` and `library` have no pure part, and the device-only sources of `audio` and `viz` (Oboe, GLES, projectM) are outside the host build.
 
 ## Updating the public API dumps
