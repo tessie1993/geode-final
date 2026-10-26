@@ -685,7 +685,7 @@ class StudioStoreTest {
     }
 
     /** A store with the take in its default Project, the clip editor open on it, and [sources] chosen. */
-    private fun editingTake(sources: EditSources): Studio {
+    private fun editingTake(sources: SettingsEditSources): Studio {
         settings.ready(FolderUri("content://tree/videos"), export = ExportSettings(editSources = sources))
         val (studio, _) = projectWithTake()
         studio.send(
