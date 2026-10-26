@@ -70,6 +70,7 @@ constexpr std::array<SharedSpec, kSharedCount> kTable = {{
     {"GAMMA", 0.3f, 2.5f, 1.0f, K::Continuous, true},
     {"TEMPERATURE", -1.0f, 1.0f, 0.0f, K::Continuous, false},
     {"INVERT", 0.0f, 1.0f, 0.0f, K::Switch, true},
+    {"ANAGLYPH", 0.0f, 1.0f, 0.0f, K::Switch, true},
 }};
 }  // namespace
 

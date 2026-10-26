@@ -182,6 +182,7 @@
     <string name="customize_property_gamma">Gamma</string>
     <string name="customize_property_temperature">Temperature</string>
     <string name="customize_property_invert">Invert</string>
+    <string name="customize_property_anaglyph">Red/blue 3D</string>
 
     <!-- SharedGroup -->
     <string name="customize_group_camera">Camera</string>

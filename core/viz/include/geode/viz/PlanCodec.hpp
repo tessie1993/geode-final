@@ -35,7 +35,7 @@ constexpr size_t kModulatorFloats = 16 + kMaxSteps;
 constexpr size_t kMacroLinkFloats = 6;
 constexpr size_t kAutomationFloats = 12 + kMaxSteps;
 // The snapshot schema reads this literal.
-constexpr size_t kPlanFloats = 3900;
+constexpr size_t kPlanFloats = 3901;
 static_assert(kPlanFloats == kPlanHeaderFloats + kSharedCount + kExtraCount + kMacroCount + 2 * kSoundSignalCount +
                                  kMaxReactions * kReactionFloats + kMaxModulators * kModulatorFloats +
                                  kMaxMacroLinks * kMacroLinkFloats + kMaxAutomations * kAutomationFloats);

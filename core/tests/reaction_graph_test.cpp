@@ -44,7 +44,7 @@ ModulatorSpec saw(float periodSeconds) {
 }
 
 TEST(SharedCore, TheTableFollowsTheKotlinModel) {
-    EXPECT_EQ(kSharedCount, 58u);
+    EXPECT_EQ(kSharedCount, 59u);
     EXPECT_STREQ(spec(Shared::Zoom).name, "ZOOM");
     EXPECT_STREQ(spec(Shared::Invert).name, "INVERT");
     EXPECT_EQ(spec(Shared::Brightness).min, 0.2f);

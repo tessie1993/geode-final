@@ -127,6 +127,7 @@ internal fun propertyName(property: SharedProperty): String =
             SharedProperty.GAMMA -> R.string.customize_property_gamma
             SharedProperty.TEMPERATURE -> R.string.customize_property_temperature
             SharedProperty.INVERT -> R.string.customize_property_invert
+            SharedProperty.ANAGLYPH -> R.string.customize_property_anaglyph
         },
     )
 
