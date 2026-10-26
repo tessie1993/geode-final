@@ -64,7 +64,9 @@ void FluidScene::draw(float timeSeconds) {
     sim_.pressureDamp = std::clamp(p.fluidPressure, 0.0f, 1.0f);
     // The style's multipliers sit on the user's values, inside the same clamps.
     sim_.velocityDissipation = std::clamp(p.fluidVelocityDissipation * style_.velocityDissipation, 0.0f, 4.0f);
-    sim_.curlStrength = std::clamp(p.fluidCurl * style_.curl, 0.0f, 50.0f) * (1.0f + p.fluidCurlAudio * f.mid + pcmKick * 0.5f);
+    // A drop throws the whole field (#294).
+    sim_.curlStrength = std::clamp(p.fluidCurl * style_.curl, 0.0f, 50.0f) * (1.0f + p.fluidCurlAudio * f.mid + pcmKick * 0.5f) *
+                        featuremap::fluidCurl(bus_);
     sim_.densityDissipation =
         std::clamp(p.fluidDensityDissipation * style_.densityDissipation, 0.0f, 4.0f) * (1.0f + p.fluidFadeAudio * (1.0f - energy));
     sim_.chromaticAging = std::clamp(p.fluidChromaticAging, 0.0f, 1.0f);
@@ -73,9 +75,11 @@ void FluidScene::draw(float timeSeconds) {
     emitters_.applyParams(p);
     emitters_.splatRadius = std::clamp(emitters_.splatRadius * style_.splatRadius, 0.02f, 0.4f);
     emitters_.paletteCycleSpeed = hue::paletteCycleSpeed(p.fluidPaletteCycleSpeed);
-    emitters_.forceScale = std::clamp(p.fluidSplatForce * style_.splatForce, 0.0f, 3.0f) * (1.0f + pcmKick * 0.5f);
+    // The kick pushes the emitters and a drop throws them (#294).
+    emitters_.forceScale = std::clamp(p.fluidSplatForce * style_.splatForce, 0.0f, 3.0f) * (1.0f + pcmKick * 0.5f) * featuremap::fluidSplatForce(bus_);
     const float simDt = std::clamp(lastDt_, 0.0f, 1.0f / 30.0f);
-    const float hueBase = hue::base(p.paletteBase()) + style_.hueOffset;
+    // The brightness of the sound tints the dye, latched at phrase rate (#294).
+    const float hueBase = hue::base(p.paletteBase()) + style_.hueOffset + featuremap::fluidHueOffset(bus_);
     const float hueSpan = hue::span(p.hueRange, p.paletteRange());
     choreography_.tick(f, simDt, sim_.aspect());
     emitters_.tick(f, simDt, sim_.aspect(), hueBase, hueSpan, splats_);

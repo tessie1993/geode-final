@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The picture follows the music's structure, rhythm, timbre and space (#294).**
+  One feature bus in the engine reads everything the analysis hears beyond the
+  bands and the beat (downbeat, bar, drums, novelty, sections, build-ups,
+  drops, arrivals, timbre and stereo), shaped so nothing jumps a frame, latched
+  at phrase rate where it should be, and faded out while the tempo is unsure.
+  Shader Styles read it through `lib_scene_features.glsl` (Plasma by section,
+  Kaleido by bar and drums, Voronoi by timbre, Liss by stereo, Tunnel by drops
+  and arrivals), and every other family has its own mapping: Fluid's kick and
+  drop, Life's bar-locked seeding and harmonic rule, Mycelium's branching,
+  Acid's feedback, Cymatics' modes over the bar, Curl Flow's build, Water's
+  downbeat ring and section swell, and MilkDrop's post pass.
+
 - **Spectrum and oscilloscope inputs Styles can trust (#300).** `uAudioTex`
   grows to 512 x 8 (`AudioInputs`), keeping the old reads at y = 0.25 and
   0.75: the spectrum is now measured on each frame's stereo window, 30 Hz to

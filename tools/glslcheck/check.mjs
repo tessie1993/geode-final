@@ -213,6 +213,12 @@ const SHADER_VALUES = {
   uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
   // The shared Style inputs' clocks (lib_inputs.glsl): 37 s into a visit at 60 fps.
   uFrame: 2220, uFrameDt: 1 / 60, uVisitRand: [0.31, 0.72, 0.18, 0.55], uStyleAge: 37.0, uBarPhase: 0.4, uBarConfidence: 0.8,
+  // The feature bus (lib_scene_features, FeatureBus.hpp) mid-song: a trusted bar, a section and a drop
+  // a few seconds back, a fairly bright and tonal sound, a little wide and right of centre.
+  uKick: 0.4, uSnare: 0.2, uHat: 0.3, uBeatInBar: 1, uDownbeat: 0.25, uDownbeatConfidence: 0.8,
+  uPulseConfidence: 0.85, uTempoStability: 0.9, uNovelty: 0.3, uSection: 0.62, uBuildup: 0.2, uDrop: 0.4,
+  uArrival: 0.1, uMacro: 0.5, uSectionHit: 0.05, uDropHit: 0.1, uArrivalHit: 0.0, uCentroid: 0.55,
+  uHarmonicity: 0.6, uFlux: 0.35, uOnset: 0.3, uStereoWidth: 0.4, uStereoPan: 0.15, uStereoCorrelation: 0.7,
 };
 
 // The shared inputs' textures: the noise as the engine seeds it (page.html mirrors StyleInputs.cpp),

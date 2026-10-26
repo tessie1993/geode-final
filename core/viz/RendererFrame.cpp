@@ -42,6 +42,9 @@ float Renderer::beginFrame(double timeSeconds) {
         frameTransitionId_ = transitionId_;
         frameTransitionDurationMs_ = transitionDurationMs_;
     }
+    featureBus_.step(frameFeatures_, dt);
+    frameBus_ = reducedMotion_.load(std::memory_order_relaxed) ? featurebus::calmed(featureBus_.values(), safety::kReducedMotionScale)
+                                                               : featureBus_.values();
     latchFramePcm();
     applyMilkRequests();
     applyOverlayUploads();
@@ -181,6 +184,7 @@ void Renderer::prepareScene(Scene& scene, const ExtraValues& extras) {
         scene.setCamera(pose);
     }
     scene.setExtras(extras);
+    scene.setFeatureBus(frameBus_);
     scene.setQuality(qualityFor(scene.id()));
 }
 

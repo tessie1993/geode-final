@@ -137,6 +137,7 @@ vec2 view() {
 }
 
 //#include lib_style
+//#include lib_scene_features
 //#include lib_palette
 
 vec3 grade(vec3 col) {
@@ -158,13 +159,19 @@ vec3 grade(vec3 col) {
 }
 
 // Classic demo-scene plasma, breathing with the mix.
+//
+// Structure (#294): each section carries the field somewhere new and turns the palette on, a
+// build tightens the pattern and a drop opens it out, and a changing passage churns it. All of it
+// glides over seconds; none of it moves the picture on a single frame.
 void main() {
-    vec2 uv = view() * 2.0 * xm(uXScale);
+    vec2 travel = 0.8 * vec2(cos(6.2831853 * uSection), sin(6.2831853 * uSection));
+    vec2 uv = view() * 2.0 * xm(uXScale) * (1.0 + 0.35 * uBuildup - 0.2 * uDrop) + travel;
     float t = uXDriftTime * 0.6;
+    uv += 0.3 * uNovelty * vec2(sin(uv.y * 1.3 + t), cos(uv.x * 1.1 - t));
     float v = sin(uv.x * 2.0 + t) + sin(uv.y * 2.3 - t * 1.2)
         + sin((uv.x + uv.y) * 1.7 + t * 0.7)
         + sin(length(uv) * (3.0 + uBass * 3.0) - t * 2.0);
-    v = v / 4.0 + aband(fract(v * 0.25 + 0.5)) * 0.4;
+    v = v / 4.0 + aband(fract(v * 0.25 + 0.5)) * 0.4 + 0.2 * (0.5 - 0.5 * cos(6.2831853 * uSection));
     vec3 col = pal(v) * (0.45 + uEnergy * 0.9 + uBeat * uBeatResponse * 0.2);
     fragColor = vec4(grade(col), 1.0);
 }

@@ -33,6 +33,7 @@ public:
     void release() override;
     void acceptPcm(const float* samples, int count) override { pcmPulse_.accept(samples, count); }
     void setTouchField(const TouchField* field) override { touch_ = field; }
+    void setFeatureBus(const FeatureValues& values) override { bus_ = values; }
     // GROWTH and SPREAD move the rule's own rates, VARIANT the look, FORCE how hard a hit kicks the field.
     void setExtras(const ExtraValues& values) override {
         style_ = extras::apply(base_, values);
@@ -42,7 +43,6 @@ public:
 private:
     static constexpr int kSimRes = 288;
     static constexpr float kSeedSeconds = 0.5f;
-    static constexpr float kGoldenAngle = 2.399963f;
     static constexpr float kBeatThreshold = 0.3f;
     static constexpr float kCensusSeconds = 4.0f;
     static constexpr float kStarved = 0.004f;
@@ -93,6 +93,7 @@ private:
     float censusAge_ = 0.0f;
     framerate::FixedStepClock ticks_{kTicksPerSecond, kMaxTicksPerFrame};
     const TouchField* touch_ = nullptr;
+    FeatureValues bus_;
 };
 
 }  // namespace geode::viz

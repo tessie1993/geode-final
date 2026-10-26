@@ -343,7 +343,8 @@ void MilkdropScene::draw(float timeSeconds) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, frame_.tex());
     glUniform1i(postLocs_.loc("uTex"), 0);
-    set1f("uZoom", p.zoom * (1.0f + beatPulse_ * p.beatResponse * 0.08f));
+    // Geode's own post pass leans in on a trusted downbeat and a drop; the preset's variables are left alone (#294).
+    set1f("uZoom", p.zoom * (1.0f + beatPulse_ * p.beatResponse * 0.08f + featuremap::milkdropZoom(bus_)));
     set1f("uRotation", rotationAngle_);
     set1f("uZoomPhase", zoomPhase_);
     set1f("uMirrorX", p.mirror ? 1.0f : 0.0f);

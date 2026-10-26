@@ -119,6 +119,47 @@ The noise is drawn from the Render seed, and so is `uVisitRand` in a Render, so 
 frames every time. The previous frame and the blur levels are the Style's own picture: what feeds back
 must stay below 1, or the loop grows into a flash. A Style's kept frames start black at each visit.
 
+## The music in a Style
+
+The analysis hears far more than the bands and the beat, and every family draws from the same reading
+of it: one feature bus (`geode/viz/FeatureBus.hpp`), stepped once per frame by the renderer and handed
+to every scene with the Camera. Nothing on it is raw. Slow values glide, hits rise over an attack and
+decay, timbre is latched at phrase rate (every four trusted bars, at a section boundary, or every 8 s
+without either), and the tempo-locked values fall away while the tracker is unsure, so an uncertain
+tempo leaves the picture to the energy instead of making it jitter. Silence settles every value and
+holds it still, and the same frames give the same values, so a Render repeats.
+
+A shader Style reads it with `//#include lib_scene_features`. It is not a shared input: nothing is made
+for it, so it needs no `inputs` entry (the bar's phase is the `bar` shared input, `uBarPhase`). The other families read it through `featuremap` in the same header.
+
+| Scale | Feature | Uniform | Drives | Families |
+|---|---|---|---|---|
+| Structure | novelty | `uNovelty` | churn, branching | Mycelium widens its sensors |
+| | section | `uSection` (a phase: read it through a hue or a sine), `uSectionHit` | palette, camera travel, a twist | Water swells every ripple |
+| | build-up | `uBuildup` | tightening, force | Curl Flow pushes harder |
+| | drop | `uDrop` (a glow over seconds), `uDropHit` | opening out, a global push | Fluid throws the field, Acid clears its loop, MilkDrop's post pass leans in |
+| | arrival | `uArrival`, `uArrivalHit` | a turn, a ring sent through | |
+| | passage loudness | `uMacro` | density, thickness | |
+| Rhythm | downbeat | `uDownbeat` (trusted only), `uBeatInBar` | bar-scale symmetry and accent | Water rings from the centre, Cymatics climbs its modes over the bar, Life seeds on the bar's clock |
+| | kick, snare, hat | `uKick`, `uSnare`, `uHat` | each its own layer: low body, mid crack, high sparkle | Fluid's emitters take the kick |
+| | trust | `uPulseConfidence`, `uTempoStability`, `uDownbeatConfidence` | how far a tempo-locked use may go | all |
+| Timbre | centroid, harmonicity, flux, onset | `uCentroid`, `uHarmonicity`, `uFlux`, `uOnset` | material: rough or smooth, metal or organic, bloom or crisp | Fluid's tint, Life's rule, Acid's feedback |
+| Space | width, pan, correlation | `uStereoWidth`, `uStereoPan`, `uStereoCorrelation` | true left/right asymmetry, duplication | stereo-meaningful Styles only |
+
+What not to do:
+
+- **No flicker per frame.** Structure changes the picture over seconds; a hit moves, swells, ripples or
+  shifts colour, and never brightens the whole frame (the No-flash rule).
+- **Not everything on everything.** A Style picks the few features that mean something for its picture.
+  One shared bump for every drum, or every feature on one value, reads as noise, not music.
+- **Never multiply a running clock.** A feature scales a width, an offset or a mix, never the factor on
+  a phase that has run for minutes, where the smallest change slides the whole picture.
+- **Fade tempo-locked uses by the trust**, so a tracker that is unsure falls back to the energy.
+
+The engine uploads every feature uniform to every shader Style; one it never reads costs nothing. A host
+test holds the uploaded list to the library and fails when no shipped Style reads one of them, and the
+pack check fails a Style that includes the library and reads none of it.
+
 ## Adding a Style
 
 1. Make `styles/<id>/` with `manifest.json` (and `shader.glsl` for a shader Style).
