@@ -47,13 +47,6 @@ void Renderer::setFeatures(const GeodeFeatureFrame& features) {
     features_ = features;
 }
 
-void Renderer::setLayer(const std::string& sceneId, float mix, int blendOrdinal) {
-    std::lock_guard<std::mutex> lock(stateLock_);
-    layerSceneId_ = sceneId;
-    layerMix_ = mix;
-    layerBlend_ = blendOrdinal;
-}
-
 void Renderer::setTransition(const std::string& id, int64_t durationMs) {
     std::lock_guard<std::mutex> lock(stateLock_);
     transitionId_ = safety::transitionId(id);
@@ -277,10 +270,14 @@ void Renderer::onSurfaceCreated() {
     }
     fboA_.release();
     fboB_.release();
+    fboL_.release();
     compositePass_.releaseStaleTextures();
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
+    layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
+    layerMixer_.reset();
     overlays_.recreate();
     {
         std::lock_guard<std::mutex> lock(stateLock_);
@@ -351,6 +348,9 @@ scale::ScaleInputs Renderer::scaleInputs(const Scene* scene) {
     const bool followsLoad = scene == nullptr || scene->family() != SceneFamily::Milkdrop;
     in.loadScale = followsLoad ? loadScale_.scale() : scale::LoadScaleConfig{}.maxScale;
     in.styleScale = scene != nullptr ? styleScaleFor(scene->id()) : scale::kDefaultStyleRenderScale;
+    // Two Styles drawing every frame: both draw softer (RenderScale.hpp, kLayeredRenderScale).
+    in.layered = layerScene_ != nullptr && layerScene_ != scene;
+    in.layerStyleScale = in.layered ? styleScaleFor(layerScene_->id()) : scale::kDefaultStyleRenderScale;
     return in;
 }
 
@@ -373,6 +373,7 @@ void Renderer::applyRenderSize(scale::RenderSize size) {
         fboA_.resizePreserving(size.width, size.height);
         if (fboA_.width() != size.width || fboA_.height() != size.height) return;
         if (fboB_.ok()) fboB_.resizePreserving(size.width, size.height);
+        if (fboL_.ok()) fboL_.resizePreserving(size.width, size.height);
     }
     renderWidth_ = size.width;
     renderHeight_ = size.height;
@@ -397,6 +398,7 @@ void Renderer::cut() {
     outgoingScene_ = nullptr;
     outgoingParams_.reset();
     layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
 }
 
 Scene* Renderer::builtScene(const std::string& id) {
@@ -447,6 +449,7 @@ void Renderer::releaseScenes() {
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
     layerScene_ = nullptr;
+    layerDrawn_ = nullptr;
 }
 
 }  // namespace geode::viz

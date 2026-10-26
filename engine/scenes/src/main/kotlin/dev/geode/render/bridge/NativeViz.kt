@@ -11,7 +11,6 @@ import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.AdsrConfig
 import dev.geode.render.AdsrEngine
-import dev.geode.render.BlendMode
 import dev.geode.render.FrameStats
 import dev.geode.render.LfoConfig
 import dev.geode.render.LfoEngine
@@ -110,14 +109,6 @@ class NativeViz(
 
     fun setReducedMotion(on: Boolean) {
         live { h -> GeodeNative.vizSetReducedMotion(h, on) }
-    }
-
-    fun setLayer(
-        sceneId: SceneId?,
-        mix: Float,
-        blend: BlendMode,
-    ) {
-        live { h -> GeodeNative.vizSetLayer(h, sceneId?.value ?: "", mix, blend.ordinal) }
     }
 
     fun setTransition(

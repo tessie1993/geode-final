@@ -143,7 +143,6 @@ GEODE_API void        geode_viz_set_params(geode_viz*, const float* values, int 
 GEODE_API int         geode_viz_set_param(geode_viz*, const char* name, float value);   /* 1 = known name */
 GEODE_API void        geode_viz_set_features(geode_viz*, const GeodeFeatureFrame*);
 GEODE_API void        geode_viz_set_reduced_motion(geode_viz*, int on);
-GEODE_API void        geode_viz_set_layer(geode_viz*, const char* scene_id, float mix, int blend_mode); /* "" = none */
 GEODE_API void        geode_viz_set_transition(geode_viz*, const char* id, int64_t duration_ms);
 GEODE_API void        geode_viz_begin_param_morph(geode_viz*, float seconds);
 GEODE_API void        geode_viz_set_touch(geode_viz*, const float* xy_ndc, int points);   /* 0 points = all lifted */

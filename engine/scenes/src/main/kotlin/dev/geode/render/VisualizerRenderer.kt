@@ -56,15 +56,6 @@ class VisualizerRenderer(
     @Volatile
     var reducedMotion: Boolean = false
 
-    @Volatile
-    var layerSceneId: SceneId? = null
-
-    @Volatile
-    var layerMix: Float = 0.5f
-
-    @Volatile
-    var layerBlend: BlendMode = BlendMode.SCREEN
-
     /** The built-in style behind [transitionId], kept for the settings model; the renderer reads the id. */
     @Volatile
     var transitionStyle: TransitionStyle = TransitionStyle.FADE
@@ -204,7 +195,6 @@ class VisualizerRenderer(
         if (wanted == null) syncSceneParams()
         nativeViz.setFeatures(displayEvents.frame(featureSource() ?: features))
         nativeViz.setReducedMotion(reducedMotion)
-        nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
         nativeViz.setPacedFps(ThermalGovernor.pacedFps)
         nativeViz.setQualityCeiling(qualityCeiling)
