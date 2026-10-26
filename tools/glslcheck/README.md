@@ -18,6 +18,7 @@ node check.mjs --fluid-display --out out/fluid # every SHADING/BLOOM/SUNRAYS x L
 node check.mjs --shader curl_bloom --time 61   # a different point on the clocks
 node check.mjs --all --resize --size 96        # each style's picture across a scene-target resize
 node check.mjs --effects --size 96 --out out/effects  # one frame per Shared core effect
+node check.mjs --layers --size 96 --out out/layers    # one frame per Layer 2 blend mode and influence
 ```
 
 `--resize` draws one frame into a scene target, resizes the target the way
