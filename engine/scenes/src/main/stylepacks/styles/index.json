@@ -99,6 +99,7 @@
     "crystal_shaft",
     "night_drive",
     "reef_glide",
-    "cloud_deck"
+    "cloud_deck",
+    "gyro_core"
   ]
 }

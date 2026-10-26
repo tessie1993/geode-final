@@ -311,6 +311,7 @@ object BuiltInStyles {
             shader("night_drive", true, listOf(generic(FOG))),
             shader("reef_glide", true, listOf(generic(FOG))),
             shader("cloud_deck", true, listOf(generic(FOG))),
+            shader("gyro_core", true, listOf(generic(SPIN), generic(FOG))),
         )
 
     private fun life(
