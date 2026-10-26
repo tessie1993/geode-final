@@ -232,6 +232,131 @@ TEST(RandomDrift, WandersSmoothlyInsideZeroToOneAndRepeatsForTheSameSeed) {
     EXPECT_GT(high - low, 0.2f);
 }
 
+ModulatorSpec onBeat(ModulatorKind kind, int everyBeats, float glideSeconds) {
+    ModulatorSpec s;
+    s.kind = kind;
+    s.stepCount = everyBeats;
+    s.attackSeconds = glideSeconds;
+    return s;
+}
+
+// One heard beat: the Beat signal for one frame, then a frame without it.
+float beat(Modulator& m, const ModulatorSpec& s, float dt = kFrameDt, const ModulatorDrive& drive = kAsSet) {
+    m.tick(s, drive, with(SoundSignal::Beat, 1.0f), dt);
+    return m.tick(s, drive, playing(), dt);
+}
+
+TEST(ToggleOnBeat, FlipsBetweenZeroAndOneOnEveryBeat) {
+    Modulator m;
+    const ModulatorSpec s = onBeat(ModulatorKind::ToggleOnBeat, 1, 0.0f);
+    EXPECT_EQ(m.tick(s, kAsSet, playing(), kFrameDt), 0.0f);
+    EXPECT_EQ(beat(m, s), 1.0f);
+    EXPECT_EQ(run(m, s, 1.0f, kFrameDt), 1.0f) << "holds between beats";
+    EXPECT_EQ(beat(m, s), 0.0f);
+    EXPECT_EQ(beat(m, s), 1.0f);
+}
+
+TEST(ToggleOnBeat, CountsOneBeatPerRiseOfTheBeatSignal) {
+    Modulator m;
+    const ModulatorSpec s = onBeat(ModulatorKind::ToggleOnBeat, 1, 0.0f);
+    for (int i = 0; i < 10; ++i) m.tick(s, kAsSet, with(SoundSignal::Beat, 1.0f), kFrameDt);
+    EXPECT_EQ(m.value(), 1.0f) << "a held beat is one beat";
+    EXPECT_EQ(m.tick(s, kAsSet, with(SoundSignal::Beat, kBeatHeard), kFrameDt), 1.0f) << "too faint to be a beat";
+    EXPECT_EQ(m.tick(s, kAsSet, with(SoundSignal::Beat, 0.02f), kFrameDt), 0.0f) << "any beat heard counts";
+}
+
+TEST(ToggleOnBeat, FlipsEveryNBeatsAndThePatternMovesWhichBeat) {
+    Modulator m;
+    const ModulatorSpec s = onBeat(ModulatorKind::ToggleOnBeat, 4, 0.0f);
+    EXPECT_EQ(beat(m, s), 0.0f);
+    EXPECT_EQ(beat(m, s), 0.0f);
+    EXPECT_EQ(beat(m, s), 0.0f);
+    EXPECT_EQ(beat(m, s), 1.0f);
+    EXPECT_EQ(beat(m, s), 1.0f);
+
+    Modulator shifted;
+    const ModulatorDrive drive{ModulatorDrive::kOwn, ModulatorDrive::kOwn, 0.5f};
+    EXPECT_EQ(beat(shifted, s, kFrameDt, drive), 0.0f);
+    EXPECT_EQ(beat(shifted, s, kFrameDt, drive), 1.0f) << "half a cycle on: the second beat of four";
+    EXPECT_EQ(beat(shifted, s, kFrameDt, drive), 1.0f);
+}
+
+TEST(ToggleOnBeat, GlidesOverItsGlideScaledByTheRateAndDepth) {
+    Modulator m;
+    ModulatorSpec s = onBeat(ModulatorKind::ToggleOnBeat, 1, 0.4f);
+    m.tick(s, kAsSet, with(SoundSignal::Beat, 1.0f), 0.1f);
+    EXPECT_NEAR(m.value(), 0.25f, kTolerance);
+    EXPECT_NEAR(run(m, s, 0.2f, 0.1f), 0.75f, kTolerance);
+    EXPECT_NEAR(run(m, s, 0.3f, 0.1f), 1.0f, kTolerance) << "lands and stops";
+
+    Modulator fast;
+    s.rate = 2.0f;
+    s.depth = 0.5f;
+    fast.tick(s, kAsSet, with(SoundSignal::Beat, 1.0f), 0.1f);
+    EXPECT_NEAR(fast.value(), 0.25f, kTolerance) << "half the swing, twice as fast";
+}
+
+TEST(ToggleOnBeat, StandsStillWithoutBeatsAndWhenTheMusicStops) {
+    Modulator m;
+    const ModulatorSpec s = onBeat(ModulatorKind::ToggleOnBeat, 1, 0.0f);
+    EXPECT_EQ(run(m, s, 5.0f, kFrameDt), 0.0f);
+    SignalFrame stopped = with(SoundSignal::Beat, 1.0f);
+    stopped.playing = false;
+    EXPECT_EQ(m.tick(s, kAsSet, stopped, kFrameDt), 0.0f);
+}
+
+TEST(ToggleOnBeat, AStartOnASoundCountsTheBeatsAgain) {
+    Modulator m;
+    ModulatorSpec s = onBeat(ModulatorKind::ToggleOnBeat, 2, 0.0f);
+    s.start = StartMode::OnSound;
+    s.startSignal = SoundSignal::Kick;
+    EXPECT_EQ(beat(m, s), 0.0f);
+    m.tick(s, kAsSet, with(SoundSignal::Kick, 1.0f), kFrameDt);
+    EXPECT_EQ(beat(m, s), 0.0f) << "the kick started the count over";
+    EXPECT_EQ(beat(m, s), 1.0f);
+}
+
+TEST(RandomOnBeat, MovesToANewValueOnEachBeatAndRepeatsForTheSameSeed) {
+    ModulatorSpec s = onBeat(ModulatorKind::RandomOnBeat, 1, 0.0f);
+    s.seed = 7;
+    Modulator a;
+    Modulator b;
+    std::set<float> values;
+    for (int i = 0; i < 8; ++i) {
+        const float va = beat(a, s);
+        EXPECT_EQ(va, beat(b, s));
+        EXPECT_GE(va, 0.0f);
+        EXPECT_LE(va, 1.0f);
+        EXPECT_EQ(run(a, s, 0.5f, kFrameDt), va) << "holds between beats";
+        run(b, s, 0.5f, kFrameDt);
+        values.insert(va);
+    }
+    EXPECT_GE(values.size(), 6u);
+    ModulatorSpec other = s;
+    other.seed = 8;
+    Modulator c;
+    Modulator d;
+    EXPECT_NE(beat(c, other), beat(d, s));
+}
+
+TEST(RandomOnBeat, ChangesOnlyEveryNBeatsAndGlides) {
+    ModulatorSpec s = onBeat(ModulatorKind::RandomOnBeat, 2, 0.0f);
+    s.seed = 3;
+    Modulator m;
+    EXPECT_EQ(beat(m, s), 0.0f);
+    const float first = beat(m, s);
+    EXPECT_GT(first, 0.0f);
+    EXPECT_EQ(beat(m, s), first);
+    EXPECT_NE(beat(m, s), first);
+
+    s.attackSeconds = 1.0f;
+    s.stepCount = 1;
+    Modulator gliding;
+    gliding.tick(s, kAsSet, with(SoundSignal::Beat, 1.0f), 0.01f);
+    EXPECT_GT(gliding.value(), 0.0f);
+    EXPECT_LE(gliding.value(), 0.01f + kTolerance) << "never further than the glide allows in one frame";
+}
+
 TEST(StartMode, WhilePlayingItHoldsStillWhenTheMusicStops) {
     Modulator m;
     const ModulatorSpec s = lfo(Wave::Saw, 1.0f);
@@ -268,8 +393,8 @@ TEST(StartMode, OnASoundItRestartsEachTimeThatSoundHits) {
 
 TEST(Modulator, BrokenSettingsStillGiveAValueInZeroToOne) {
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    for (const ModulatorKind kind :
-         {ModulatorKind::Lfo, ModulatorKind::HitEnvelope, ModulatorKind::StepSequencer, ModulatorKind::RandomDrift}) {
+    for (const ModulatorKind kind : {ModulatorKind::Lfo, ModulatorKind::HitEnvelope, ModulatorKind::StepSequencer,
+                                     ModulatorKind::RandomDrift, ModulatorKind::ToggleOnBeat, ModulatorKind::RandomOnBeat}) {
         ModulatorSpec s;
         s.kind = kind;
         s.periodSeconds = nan;

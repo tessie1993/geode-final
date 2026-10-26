@@ -80,7 +80,7 @@ bool decodePlan(const float* data, size_t count, CustomizationPlan& out) {
         r.fallSeconds = in.next();
     }
     for (auto& m : plan.modulators) {
-        m.kind = in.as<ModulatorKind>(static_cast<size_t>(ModulatorKind::RandomDrift) + 1);
+        m.kind = in.as<ModulatorKind>(static_cast<size_t>(ModulatorKind::RandomOnBeat) + 1);
         m.wave = in.as<Wave>(static_cast<size_t>(Wave::Random) + 1);
         m.periodSeconds = in.next();
         m.beatSync = in.flag();
