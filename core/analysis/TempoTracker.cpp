@@ -117,7 +117,8 @@ void TempoTracker::decide() {
     // One cycle of the strongest resonator: where its main hit is, and its median as the level of no hit.
     const Comb& comb = combs_[best];
     pattern_.clear();
-    for (int lag = 0; lag < comb.period; lag++) pattern_.push_back(valueAt(comb, static_cast<float>(lag)));
+    const int cycle = static_cast<int>(std::ceil(comb.period));
+    for (int lag = 0; lag < cycle; lag++) pattern_.push_back(valueAt(comb, static_cast<float>(lag)));
     const int mainLag = static_cast<int>(std::max_element(pattern_.begin(), pattern_.end()) - pattern_.begin());
     const auto middle = pattern_.begin() + static_cast<std::ptrdiff_t>(pattern_.size() / 2);
     std::nth_element(pattern_.begin(), middle, pattern_.end());
