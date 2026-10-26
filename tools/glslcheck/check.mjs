@@ -144,8 +144,10 @@ function shaderStyles() {
   return new Map([...shaderPacks()].map(([id, pack]) => [id, pack.file]));
 }
 
-// id -> { file, inputs, warp } of every shader Style: its shader, the shared inputs its manifest
-// declares and, for a Style with feedback, its warp stage's fragment (its own, or the shared one).
+// id -> { file, inputs, warp, images, buffers } of every shader Style: its shader, the shared inputs its
+// manifest declares, for a Style with feedback its warp stage's fragment (its own, or the shared one), its
+// own images and its own buffer passes (#387), A to D, each a fragment in its folder and a share of the
+// target.
 function shaderPacks() {
   const index = JSON.parse(fs.readFileSync(path.join(STYLES, 'index.json'), 'utf8'));
   const out = new Map();
@@ -158,7 +160,10 @@ function shaderPacks() {
       key: `${id}/${t.name}`, uniform: imageUniform(t.name), file: path.join(STYLES, id, t.file),
       wrap: t.wrap ?? 'repeat', filter: t.filter ?? 'linear',
     }));
-    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp, images });
+    const buffers = (manifest.buffers ?? []).map((b, i) => ({
+      letter: 'ABCD'[i], file: path.join(STYLES, id, b.shader), scale: b.scale ?? 1,
+    }));
+    out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [], warp, images, buffers });
   }
   return out;
 }
@@ -260,6 +265,9 @@ const SHADER_VALUES = {
   uBassPresence: 0.55, uMidPresence: 0.5, uTreblePresence: 0.4,
   // A multi-pass Style (lib_multipass) drawn in one pass, as on a phone without half-float targets.
   uMpPass: 0, uMpUseCoarse: 0,
+  // A Style's own buffer passes (lib_buffers): the image pass two seconds into a visit. The buffer run
+  // (__renderBuffers) counts the frames and names each pass itself.
+  uBufFrame: 120, uBufPass: 4,
 };
 
 // The shared inputs' textures: the noise as the engine seeds it (page.html mirrors StyleInputs.cpp),
@@ -269,6 +277,9 @@ const SHADER_TEXTURES = {
   uNoiseLq: 'noise_lq', uNoiseMq: 'noise_mq', uNoiseHq: 'noise_hq', uNoiseVol: 'noise_vol', uBlueNoise: 'noise',
   uPrevFrame: 'history', uBlur1: 'history_blur', uBlur2: 'history_blur', uBlur3: 'history_blur',
   uMpCoarse: 'history',
+  // A buffer Style's image pass drawn on its own (the resize check) reads the stand-in history as each
+  // buffer; the buffer run binds the buffers themselves.
+  uBufA: 'history', uBufB: 'history', uBufC: 'history', uBufD: 'history',
 };
 
 // The shared inputs (geode/viz/StyleInputs.hpp): each sampler and clock uniform of lib_inputs.glsl and
@@ -754,6 +765,7 @@ function glslangCheck(styles, ids, registry) {
     checks.push({ label: id, file: styles.get(id), stage: 'frag' });
     const warp = packs.get(id)?.warp;
     if (warp) checks.push({ label: `${id} warp`, file: warp, stage: 'frag' });
+    for (const buffer of packs.get(id)?.buffers ?? []) checks.push({ label: `${id} buffer ${buffer.letter}`, file: buffer.file, stage: 'frag' });
   }
   if (checks.some((c) => c.label.endsWith(' warp'))) {
     checks.push({ label: 'feedback grid', file: path.join(SHADERS, 'feedback_warp_vert.glsl'), stage: 'vert' });
@@ -860,6 +872,12 @@ function buildJobs(args, registry, styles, renderIds) {
       name: id, vert: quadVert, frag, inputs: packs.get(id).inputs, images,
       uniforms: plan(parseUniforms(frag), values, textures, args.size, args.size),
     };
+    const buffers = packs.get(id).buffers;
+    if (buffers.length && !args.resize) {
+      // A Style with its own buffers: the whole chain, run frame by frame from a fresh visit.
+      jobs.push(bufferJob(job, buffers, registry, values, textures, args.size));
+      continue;
+    }
     if (args.resize) {
       job.name = `${id} resized`;
       job.resizeWidth = Math.max(1, Math.round(args.size * RESIZE_SCALE));
@@ -897,6 +915,34 @@ function buildJobs(args, registry, styles, renderIds) {
   return jobs;
 }
 
+// A buffer Style's run (page.html __renderBuffers): each buffer pass's fragment and uniforms, A to D, then
+// the image pass, BUFFER_FRAMES frames from a fresh visit. The image must come out lit (what the buffers
+// grew reaches the screen) and its mean brightness may move no more than BUFFER_MAX_JUMP from one frame
+// to the next over the last BUFFER_WATCH frames, with the music held still: the buffers must not make the
+// picture strobe on their own (the No-flash rule).
+const BUFFER_FRAMES = 150;
+const BUFFER_WATCH = 30;
+const BUFFER_MIN_MAX_LUMA = 0.05;
+const BUFFER_MAX_JUMP = 0.06;
+
+function bufferJob(image, buffers, registry, values, textures, size) {
+  const passes = buffers.map((buffer) => {
+    const frag = resolveIncludes(fs.readFileSync(buffer.file, 'utf8'), registry, sourceName(buffer.file));
+    return { name: `buffer ${buffer.letter}`, frag, scale: buffer.scale, uniforms: plan(parseUniforms(frag), values, textures, size, size) };
+  });
+  const passFrags = [...passes.map((p) => p.frag), image.frag];
+  return {
+    ...image, frames: BUFFER_FRAMES, watch: BUFFER_WATCH, buffers: passes, image: { frag: image.frag, uniforms: image.uniforms },
+    uniforms: [...passes.flatMap((p) => p.uniforms), ...image.uniforms], passFrags, entry: '__renderBuffers',
+  };
+}
+
+// The verdict on a buffer Style's run (bufferJob).
+function judgeBuffers(r) {
+  if (r.maxLuma < BUFFER_MIN_MAX_LUMA) r.error = `the image pass drew black from its buffers (max ${r.maxLuma.toFixed(3)})`;
+  else if (r.meanJump > BUFFER_MAX_JUMP) r.error = `the picture jumps in brightness from frame to frame (by ${r.meanJump.toFixed(3)})`;
+}
+
 // The selected Style ids, each checked against the packs as they are now.
 function selectedIds(args, styles) {
   const ids = args.all ? [...styles.keys()] : args.shaders;
@@ -922,12 +968,16 @@ async function runOnce(args, getPage) {
         const loaded = await page.call('__packImage', { key: image.key, png, wrap: image.wrap, filter: image.filter });
         if (loaded.error) throw new Error(`${job.name}: image ${path.basename(image.file)}: ${loaded.error}`);
       }
-      const entry = job.frames ? '__renderFeedback' : job.resizeWidth ? '__renderResized' : '__render';
+      const entry = job.entry ?? (job.frames ? '__renderFeedback' : job.resizeWidth ? '__renderResized' : '__render');
       const r = await page.call(entry, { ...job, width: args.size, height: args.size });
-      if (job.frames && !r.error) judgeSettle(job, r);
+      if (job.entry === '__renderBuffers' && !r.error) judgeBuffers(r);
+      else if (job.frames && !r.error) judgeSettle(job, r);
       const undeclared = r.error ? [] : undeclaredInputs(job, r);
       if (undeclared.length) r.error = `reads shared input(s) ${undeclared.join(', ')} its manifest's "inputs" does not declare`;
-      allOk = report(job.name, r, job.frag) && allOk;
+      // A pass that failed to build names its own file and lines.
+      const failed = job.passFrags && r.failedPass >= 0 ? job.passFrags[r.failedPass] : job.frag;
+      if (job.passFrags && r.failedPass >= 0) r.error = `${r.failedPass < job.buffers.length ? job.buffers[r.failedPass].name : 'image pass'}: ${r.error}`;
+      allOk = report(job.name, r, failed) && allOk;
       if (args.out && r.png) {
         const dest = jobs.length === 1 ? args.out : path.join(args.out, `${job.name.replace(/[^\w]+/g, '_')}.png`);
         fs.mkdirSync(path.dirname(dest), { recursive: true });
