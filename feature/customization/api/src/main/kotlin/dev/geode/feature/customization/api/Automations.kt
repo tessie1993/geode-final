@@ -61,6 +61,12 @@ enum class StylePool {
 
     /** The Styles [StyleSwitching.chosen] names, such as one folder's, in a seeded shuffle (#308). */
     CHOSEN,
+
+    /**
+     * Back and forth between the first two Styles [StyleSwitching.chosen] names, like a DJ's call and
+     * response (#384), on the switching's own cadence: every so many bars, or on big moments.
+     */
+    PAIR,
 }
 
 /**
@@ -79,7 +85,8 @@ enum class StyleMark(
 /**
  * Switches Style by itself at its [cadence], from its [pool], through a smooth crossfade of
  * [transition] that keeps the No-flash rule. [seed] fixes the app's picks' shuffle, so a Render repeats.
- * [chosen] are the Styles the [StylePool.CHOSEN] pool switches within.
+ * [chosen] are the Styles the [StylePool.CHOSEN] pool switches within; [StylePool.PAIR] goes back and
+ * forth between the first two.
  */
 data class StyleSwitching(
     val cadence: Cadence = Cadence(),

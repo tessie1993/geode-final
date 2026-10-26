@@ -1,6 +1,7 @@
 package dev.geode.feature.customization.ui
 
 import dev.geode.engine.types.Millis
+import dev.geode.engine.types.SceneId
 import dev.geode.feature.customization.api.Automations
 import dev.geode.feature.customization.api.BeatSpan
 import dev.geode.feature.customization.api.Cadence
@@ -42,6 +43,16 @@ fun StyleSwitching.within(folder: StyleFolderChip): Boolean = pool == StylePool.
 
 /** Style switching within [folder]'s Styles, as they are now. */
 fun StyleSwitching.withinFolder(folder: StyleFolderChip): StyleSwitching = copy(pool = StylePool.CHOSEN, chosen = folder.styles)
+
+/** The two Styles a [StylePool.PAIR] goes back and forth between (#384): the first two chosen. */
+val StyleSwitching.pair: List<SceneId>
+    get() = chosen.take(2)
+
+/** [style] taken out of the pair when it is in it, or else paired with the newer of the two. */
+fun StyleSwitching.pairToggled(style: SceneId): StyleSwitching {
+    val paired = pair
+    return copy(chosen = if (style in paired) paired - style else (paired + style).takeLast(2))
+}
 
 /** Palette changes turned on or off. */
 fun Automations.changingPalette(on: Boolean): Automations = copy(palette = if (on) palette ?: PaletteChanges() else null)

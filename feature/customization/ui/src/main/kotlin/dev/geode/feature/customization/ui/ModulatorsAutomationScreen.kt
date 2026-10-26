@@ -216,6 +216,13 @@ private fun StyleSwitchingControls(
             }
         }
     }
+    // The two Styles a pair goes back and forth between (#384).
+    if (switching.pool == StylePool.PAIR) {
+        QuietText(stringResource(R.string.automation_pair_hint))
+        ChipFlow {
+            model.looks.forEach { look -> ChoiceChip(look.name, look.style in switching.pair) { set(switching.pairToggled(look.style)) } }
+        }
+    }
     QuietText(stringResource(R.string.automation_marks))
     HeldSlider(
         label = stringResource(R.string.automation_transition),
@@ -398,6 +405,7 @@ private fun poolName(pool: StylePool): String =
             StylePool.BOTH -> R.string.automation_pool_both
             StylePool.FAVOURITES -> R.string.automation_pool_favourites
             StylePool.CHOSEN -> R.string.automation_pool_chosen
+            StylePool.PAIR -> R.string.automation_pool_pair
         },
     )
 

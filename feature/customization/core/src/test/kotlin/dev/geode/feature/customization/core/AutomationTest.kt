@@ -444,4 +444,19 @@ class AutomationTest {
         val chosen = Automations(style = StyleSwitching(pool = StylePool.CHOSEN, chosen = listOf(a, b, a)))
         assertEquals(listOf(a, b), Rules.automations(julia, chosen).style?.chosen)
     }
+
+    @Test
+    fun `a pair goes back and forth between its two Styles`() {
+        val pair = StyleSwitching(pool = StylePool.PAIR, chosen = listOf(b, d, a))
+        assertEquals(Automation.Pick(b, 1), Automation.nextStyle(pair, c, emptyList(), builtIns, 0))
+        assertEquals(Automation.Pick(d, 2), Automation.nextStyle(pair, b, emptyList(), builtIns, 1))
+        assertEquals(Automation.Pick(b, 3), Automation.nextStyle(pair, d, emptyList(), builtIns, 2))
+        assertEquals("the one showing is passed over", Automation.Pick(d, 2), Automation.nextStyle(pair, b, emptyList(), builtIns, 0))
+        val played = (0 until 6).map { checkNotNull(Automation.nextStyle(pair, SceneId("none"), emptyList(), builtIns, it)).style }
+        assertEquals(listOf(b, d, b, d, b, d), played)
+        val single = pair.copy(chosen = listOf(b))
+        assertNull("one Style is no pair to go back and forth", Automation.nextStyle(single, b, emptyList(), builtIns, 0))
+        val withoutNever = Automation.nextStyle(pair, b, emptyList(), builtIns, 1, mapOf(d to StyleMark.NEVER))
+        assertEquals("a Never is left out of the pair too", Automation.Pick(a, 2), withoutNever)
+    }
 }

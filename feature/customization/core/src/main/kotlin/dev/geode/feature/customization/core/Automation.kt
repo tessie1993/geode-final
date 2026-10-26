@@ -107,7 +107,8 @@ object Automation {
      *   round, so none comes again until all have played, and a Render repeats exactly;
      * - [StylePool.BOTH]: the Visualizer styles, then the shuffle of the other built-in Styles;
      * - [StylePool.FAVOURITES]: the shuffle of the person's [favourites];
-     * - [StylePool.CHOSEN]: the shuffle of the switching's chosen Styles.
+     * - [StylePool.CHOSEN]: the shuffle of the switching's chosen Styles;
+     * - [StylePool.PAIR]: the first two chosen Styles, in turn, so it goes back and forth between them.
      *
      * Every shuffle is weighted by the person's [marks] ([weighted]); a Style marked Never is left out
      * of every pool. A pick that is the Style already showing is passed over. Null when the pool has
@@ -132,6 +133,7 @@ object Automation {
                 StylePool.BOTH -> listed + weighted(drawn - listed.toSet(), marks, switching.seed, n)
                 StylePool.FAVOURITES -> weighted(among(favourites), marks, switching.seed, n)
                 StylePool.CHOSEN -> weighted(among(switching.chosen), marks, switching.seed, n)
+                StylePool.PAIR -> among(switching.chosen).take(PAIRED)
             }
         }
         val size = round(0).size
@@ -246,6 +248,9 @@ object Automation {
 
     private val PALETTES = SharedProperty.PALETTE.max.toInt() + 1
     private const val SEED_STRIDE = 1_000_003L
+
+    /** How many Styles [StylePool.PAIR] goes back and forth between. */
+    private const val PAIRED = 2
     private const val SMOOTH_A = 3f
     private const val SMOOTH_B = 2f
 }
