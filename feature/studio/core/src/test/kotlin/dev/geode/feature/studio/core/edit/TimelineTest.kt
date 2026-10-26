@@ -372,7 +372,12 @@ class TimelineTest {
         val project = EditorProject(timeline(video("a", 0, 1_000)))
         assertSame(project, project.apply(EditResult.Rejected(EditError.TooShort)))
         val added = project.apply(project.timeline.addClip(media, video("b", 2_000, 100)))
-        assertEquals(2, added.timeline.lane(media)!!.clips.size)
+        assertEquals(
+            2,
+            added.timeline
+                .lane(media)!!
+                .clips.size,
+        )
     }
 
     @Test
@@ -388,11 +393,32 @@ class TimelineTest {
             )
         val lane = project.apply(project.timeline.rippleDeleteClip(ClipId("a")))
         assertEquals(listOf(2_000L), lane.markers.timesMs)
-        assertEquals(500L, lane.keyframes.track(ParamId("clip.speed"), ClipId("b"))!!.keys.single().atMs)
-        assertEquals(1_500L, lane.keyframes.track(ParamId("scene.zoom"))!!.keys.single().atMs)
+        assertEquals(
+            500L,
+            lane.keyframes
+                .track(ParamId("clip.speed"), ClipId("b"))!!
+                .keys
+                .single()
+                .atMs,
+        )
+        assertEquals(
+            1_500L,
+            lane.keyframes
+                .track(ParamId("scene.zoom"))!!
+                .keys
+                .single()
+                .atMs,
+        )
         val all = project.apply(project.timeline.rippleDeleteClip(ClipId("a"), RippleScope.ALL_LANES))
         assertEquals(listOf(1_000L), all.markers.timesMs)
-        assertEquals(500L, all.keyframes.track(ParamId("scene.zoom"))!!.keys.single().atMs)
+        assertEquals(
+            500L,
+            all.keyframes
+                .track(ParamId("scene.zoom"))!!
+                .keys
+                .single()
+                .atMs,
+        )
     }
 
     @Test

@@ -30,8 +30,7 @@ class RecordingHandlersTest {
             ): RecordingEnd = body(song, started, tick, shouldStop)
         }
 
-    private fun video(song: String) =
-        NewVideo(VideoKind.RECORDING, song, "content://media/video/4", null, Millis(2_000), 1080, 2400, song)
+    private fun video(song: String) = NewVideo(VideoKind.RECORDING, song, "content://media/video/4", null, Millis(2_000), 1080, 2400, song)
 
     @Test
     fun `a Recording reports that it runs, how long it has run, and how it ended`() =

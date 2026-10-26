@@ -237,13 +237,55 @@ class KeyframesTest {
         val stayed = KeyframeTrack(opacity, listOf(key("s", 2_000, scalar(0f))), ClipId("other"))
         val sheet = KeyframeSheet(listOf(programme, moved, stayed))
         val lane = sheet.rippled(RippleShift(1_000, -500, RippleScope.LANE, setOf(clip)))
-        assertEquals(2_000L, lane.track(opacity)!!.keys.single().atMs)
-        assertEquals(1_500L, lane.track(opacity, clip)!!.keys.single().atMs)
-        assertEquals(2_000L, lane.track(opacity, ClipId("other"))!!.keys.single().atMs)
+        assertEquals(
+            2_000L,
+            lane
+                .track(opacity)!!
+                .keys
+                .single()
+                .atMs,
+        )
+        assertEquals(
+            1_500L,
+            lane
+                .track(opacity, clip)!!
+                .keys
+                .single()
+                .atMs,
+        )
+        assertEquals(
+            2_000L,
+            lane
+                .track(opacity, ClipId("other"))!!
+                .keys
+                .single()
+                .atMs,
+        )
         val all = sheet.rippled(RippleShift(1_000, -500, RippleScope.ALL_LANES, setOf(clip)))
-        assertEquals(1_500L, all.track(opacity)!!.keys.single().atMs)
+        assertEquals(
+            1_500L,
+            all
+                .track(opacity)!!
+                .keys
+                .single()
+                .atMs,
+        )
         val shifted = sheet.shiftClip(clip, 300)
-        assertEquals(2_300L, shifted.track(opacity, clip)!!.keys.single().atMs)
-        assertEquals(2_000L, shifted.track(opacity)!!.keys.single().atMs)
+        assertEquals(
+            2_300L,
+            shifted
+                .track(opacity, clip)!!
+                .keys
+                .single()
+                .atMs,
+        )
+        assertEquals(
+            2_000L,
+            shifted
+                .track(opacity)!!
+                .keys
+                .single()
+                .atMs,
+        )
     }
 }
