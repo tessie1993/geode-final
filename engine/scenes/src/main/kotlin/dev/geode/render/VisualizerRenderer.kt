@@ -58,6 +58,17 @@ class VisualizerRenderer(
     var reducedMotion: Boolean = false
 
     /**
+     * Settings' "smear the Visual with a finger": whether a Style that does not draw the finger's
+     * strokes itself (Water does) shows them as the shared ripple smear. Off by default, as in Settings.
+     */
+    @Volatile
+    var touchSmear: Boolean = false
+
+    /** How strongly the smear answers a stroke; Settings' smear strength. */
+    @Volatile
+    var touchSmearStrength: Float = 1f
+
+    /**
      * Freeze reactions (#366): the Sound signals hold steady while the picture's own motion goes on.
      * Live only; the MilkDrop preset gets no new samples meanwhile, so it holds too.
      */
@@ -175,6 +186,16 @@ class VisualizerRenderer(
         n: Int,
     ) = nativeViz.submitTouchPoints(xy, n)
 
+    /**
+     * The phone's down in screen space (x right, y up, z out of the screen), any length, latest-wins;
+     * `0, 0, 0` says there is no reading. [GravitySource] calls it; the engine smooths it.
+     */
+    fun submitGravity(
+        x: Float,
+        y: Float,
+        z: Float,
+    ) = nativeViz.submitGravity(x, y, z)
+
     fun beginParamMorph(seconds: Float) {
         if (seconds <= 0f) return
         nativeViz.beginParamMorph(seconds)
@@ -230,6 +251,7 @@ class VisualizerRenderer(
         signalHold.held = held
         nativeViz.setFeatures(signalHold.frame(displayEvents.frame(featureSource() ?: features)))
         nativeViz.setReducedMotion(reducedMotion)
+        nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
         nativeViz.setLayer(layerSceneId, layerMix, layerBlend)
         nativeViz.setTransition(transitionId, transitionDuration)
         // The rate the pacer actually draws at, the thermal frame cap included, so the load scale and

@@ -197,6 +197,7 @@ void RippleSim::step(float dtRaw) {
         set1f(kInkAdvect, "uDt", dt);
         set1f(kInkAdvect, "uFlow", std::clamp(inkFlow, 0.0f, 8.0f));
         set1f(kInkAdvect, "uKeep", ripple::inkDissipation(inkDissipation, dt));
+        glUniform2f(loc(kInkAdvect, "uRunoff"), runoffX, runoffY);
         blitDiscarding(inkFbo.write());
         inkFbo.swap();
         glActiveTexture(GL_TEXTURE0);

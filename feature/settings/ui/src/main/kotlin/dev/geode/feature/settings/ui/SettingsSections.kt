@@ -49,6 +49,7 @@ import dev.geode.feature.settings.api.Semitones
 import dev.geode.feature.settings.api.SettingsCommand
 import dev.geode.feature.settings.api.SettingsValues
 import dev.geode.feature.settings.api.StartLook
+import dev.geode.feature.settings.api.TiltAmount
 import dev.geode.feature.settings.api.VisualFrameRate
 import dev.geode.feature.settings.api.VisualQuality
 import dev.geode.feature.settings.api.VisualSurface
@@ -482,6 +483,10 @@ internal fun LazyListScope.applicationSection(
             SwitchRow(stringResource(R.string.behavior_touch_transform), behavior.touchTransform) {
                 change(BehaviorCommand.SetTouchTransform(it))
             }
+            ChoiceRow(stringResource(R.string.behavior_tilt), TiltAmount.entries, behavior.tilt, { tiltName(it) }) {
+                change(BehaviorCommand.SetTilt(it))
+            }
+            if (behavior.reducedMotion && behavior.tilt != TiltAmount.OFF) Note(stringResource(R.string.behavior_tilt_reduced_motion))
         }
     }
     item {
