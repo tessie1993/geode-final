@@ -246,9 +246,11 @@ jobs:
 
   # Mull over the host GoogleTest suite, one pure native library per job (docs/ci.md, "C++ mutation
   # tests"). Mull's compiler plugin builds every mutant into the test binary; mull-runner switches them
-  # on one at a time and runs the whole suite against each.
+  # on one at a time and runs the whole suite against each. A library with more mutants than fit the
+  # job's time limit runs in parts, each a share of its files (tools/ci/mull_part.py), and
+  # native-mutation-gate scores the parts' reports as one library.
   native-mutation:
-    name: C++ mutation tests ${{ matrix.library }}
+    name: C++ mutation tests ${{ matrix.name }}
     runs-on: ubuntu-24.04
     # Every mutant runs the whole native suite (about 15 s on this runner, four at a time); the
     # Visual's library has the most mutants and outgrew an hour.
@@ -259,10 +261,29 @@ jobs:
         include:
           - library: geode_util
             dir: core/util
+            name: geode_util
           - library: geode_audio
             dir: core/audio
+            name: geode_audio
+          # geode_analysis has about 1 800 mutants, four times geode_util's, and one run of them all
+          # outgrew the time limit on every pull request (2026-10-26). Four parts, side by side; the
+          # count is repeated in native-mutation-gate.
           - library: geode_analysis
             dir: core/analysis
+            name: geode_analysis-1
+            part: 1/4
+          - library: geode_analysis
+            dir: core/analysis
+            name: geode_analysis-2
+            part: 2/4
+          - library: geode_analysis
+            dir: core/analysis
+            name: geode_analysis-3
+            part: 3/4
+          - library: geode_analysis
+            dir: core/analysis
+            name: geode_analysis-4
+            part: 4/4
           # geode_viz is paused for now (owner, 2026-10-23): its run outgrows the job's time limit on
           # most pull requests. Its floor stays in native-thresholds.properties for when it returns.
     env:
@@ -271,12 +292,26 @@ jobs:
       MULL_VERSION: "0.34.1"
       MULL_DEB: Mull-18-0.34.1-LLVM-18.1.3-ubuntu-amd64-24.04.deb
       MULL_DEB_SHA256: 983ea9c84ecab621414d5442a66c1a1ce4127491b79d42fd5e2fd6fe01d02699
-      # Read by the compiler plugin while building and by mull-runner.
-      MULL_CONFIG: ${{ github.workspace }}/config/mutation/mull.yml
+      # Read by the compiler plugin while building and by mull-runner: config/mutation/mull.yml, or
+      # for a part of a library, that config narrowed to the part's files (the step below).
+      MULL_CONFIG: ${{ github.workspace }}/mull-config/mull.yml
     steps:
       - uses: actions/checkout@v7
       - name: Check out kissfft
         run: git submodule update --init --depth 1 third_party/kissfft
+      - name: Mull's configuration (the whole library, or this part of it)
+        env:
+          PART: ${{ matrix.part }}
+          DIR: ${{ matrix.dir }}
+        run: |
+          set -euo pipefail
+          mkdir -p mull-config
+          if [ -n "$PART" ]; then
+            python3 tools/ci/mull_part.py --self-test
+            python3 tools/ci/mull_part.py config/mutation/mull.yml "$DIR" "$PART" mull-config/mull.yml
+          else
+            cp config/mutation/mull.yml mull-config/mull.yml
+          fi
       - name: Install Mull
         run: |
           set -euo pipefail
@@ -298,12 +333,19 @@ jobs:
         run: cmake --build build-mutation --parallel --target geode_core_tests
       # Every mutant runs (the build has no coverage filter); one no test reaches survives.
       # mull-runner's own threshold is off: the gate below decides.
+      # Each mutant's test process is held to 3 GB of address space (four run at once on a 16 GB
+      # runner): a mutant that allocates without end then dies of bad_alloc, a detected mutant,
+      # instead of taking the runner down with it (geode_analysis lost its runner to a "shutdown
+      # signal" part-way through on #426 and #427; the suite itself needs well under 1 GB).
       - name: Run every mutant
         run: |
+          ulimit -v 3145728
           "mull-runner-$LLVM_MAJOR" --include-not-covered --allow-surviving \
             --reporters Elements --report-dir mutation-report --report-name ${{ matrix.library }} \
             build-mutation/geode_core_tests
+      # A part's report is scored with the other parts' in native-mutation-gate.
       - name: Mutation score gate
+        if: ${{ !matrix.part }}
         run: |
           python3 tools/ci/native_mutation_gate.py ${{ matrix.library }} \
             mutation-report/${{ matrix.library }}.json ${{ matrix.dir }} config/mutation/native-thresholds.properties
@@ -311,7 +353,47 @@ jobs:
         if: success() || failure()
         uses: actions/upload-artifact@v7
         with:
-          name: native-mutation-${{ matrix.library }}-${{ github.run_number }}
+          name: native-mutation-${{ matrix.name }}-${{ github.run_number }}
+          path: mutation-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # geode_analysis runs in parts (native-mutation); its parts' reports are joined
+  # (tools/ci/merge_mutation_reports.py) and scored as one library, against its one floor.
+  native-mutation-gate:
+    name: C++ mutation score geode_analysis
+    needs: native-mutation
+    # Also when a part failed: fewer reports than parts fails the gate with a message, never by absence.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # The number of geode_analysis parts in native-mutation's matrix.
+      PARTS: "4"
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download the parts' reports
+        uses: actions/download-artifact@v7
+        with:
+          pattern: native-mutation-geode_analysis-*-${{ github.run_number }}
+          path: parts
+      - name: Join the parts' reports
+        run: |
+          set -euo pipefail
+          python3 tools/ci/merge_mutation_reports.py --self-test
+          mkdir -p mutation-report
+          python3 tools/ci/merge_mutation_reports.py --parts "$PARTS" mutation-report/geode_analysis.json parts/*/geode_analysis.json
+          # The same viewer page as a part's, over the joined report.
+          for html in parts/*/geode_analysis.html; do cp "$html" mutation-report/geode_analysis.html; break; done
+      - name: Mutation score gate
+        run: |
+          python3 tools/ci/native_mutation_gate.py geode_analysis \
+            mutation-report/geode_analysis.json core/analysis config/mutation/native-thresholds.properties
+      - name: Upload the joined report
+        if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-mutation-geode_analysis-${{ github.run_number }}
           path: mutation-report/
           if-no-files-found: ignore
           retention-days: 14

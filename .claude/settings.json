@@ -24,6 +24,12 @@
     "searchfit-seo@synced": false,
     "canva@synced": false,
     "cowork-plugin-management@synced": false,
-    "enterprise-search@synced": false
+    "enterprise-search@synced": false,
+    "engineering@synced": false,
+    "pdf-viewer@synced": false,
+    "image-generation@synced": false,
+    "design-superpowers@synced": false,
+    "design-skills@synced": false,
+    "ux-agent-skills@synced": false
   }
 }
