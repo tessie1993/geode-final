@@ -96,6 +96,10 @@
     <string name="studio_render_length">Length</string>
     <string name="studio_render_whole">Whole track</string>
     <string name="studio_render_first_minute">First minute</string>
+    <string name="studio_render_section">A section</string>
+    <string name="studio_render_section_from">From (m:ss)</string>
+    <string name="studio_render_section_length">Length (m:ss)</string>
+    <string name="studio_render_section_note">A section that runs past the end of the track stops with it.</string>
     <string name="studio_render_project">Project</string>
     <string name="studio_render_no_project">Create a Project first: the video is saved into one.</string>
     <string name="studio_render_start">Render</string>

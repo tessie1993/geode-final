@@ -48,12 +48,15 @@ import java.io.IOException
  *
  * A Render is not bound to real time: it draws as fast as the encoder takes frames, except while the
  * live Visual is on screen ([liveVisualShown]) or the CPU/GPU save mode is on, when it waits a little
- * after each frame so the live picture stays smooth and the phone cool (ADR-0004, #28).
+ * after each frame so the live picture stays smooth and the phone cool (ADR-0004, #28). While it is
+ * [held] (Renders keep going is off and the app is not in front, #28) it stops between frames until the
+ * app is back or the Render is cancelled.
  */
 class NativeRenderEngine(
     private val context: Context,
     private val settings: Settings,
     private val liveVisualShown: () -> Boolean,
+    private val held: () -> Boolean,
     private val work: CoroutineDispatcher,
 ) : RenderEngine {
     private val exporter = VideoExporter(context)
@@ -138,7 +141,7 @@ class NativeRenderEngine(
                 fileName = fileNameOf(track),
                 onProgress = { progress(phaseAt(it), ANALYSIS_SHARE + it * (1f - ANALYSIS_SHARE)) },
                 isCancelled = isCancelled,
-                pace = ::pace,
+                pace = { pace(isCancelled) },
             )
         } catch (refused: MediaCodec.CodecException) {
             RingLog.note(TAG, "the encoder refused the Render", refused)
@@ -201,8 +204,12 @@ class NativeRenderEngine(
         return analysed.withBeatSensitivity(sensitivity, gap)
     }
 
-    /** Waits a little after a frame while the live Visual shows or the save mode is on. */
-    private fun pace() {
+    /**
+     * Waits after a frame: for as long as the Render is held, then a little while the live Visual shows or
+     * the save mode is on.
+     */
+    private fun pace(isCancelled: () -> Boolean) {
+        while (held() && !isCancelled()) Thread.sleep(HOLD_POLL_MS)
         val slowed = (settings.state.value as? SettingsState.Ready)?.values?.performance?.rendersSlowed == true
         if (slowed || liveVisualShown()) Thread.sleep(PACE_MS)
     }
@@ -226,6 +233,9 @@ class NativeRenderEngine(
 
         /** How long a Render waits after each frame while it gives way. */
         const val PACE_MS = 12L
+
+        /** How often a held Render looks whether it may go on. */
+        const val HOLD_POLL_MS = 250L
 
         /** The longest a video's name grows from its Track's title. */
         const val MAX_NAME = 80

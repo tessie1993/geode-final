@@ -118,6 +118,8 @@ sealed interface SaveFolder {
  * [renders] is the render queue (#338): what waits and runs, oldest first, and what finished since the
  * app started. [visualsOff] is Settings' Visuals off, while which no Render can be made (#196).
  * [renderFormat] and [renderExtras] are what a new Render starts from: Settings > Export preferences.
+ * [rendersKeepGoing] is Settings' Renders keep going switch (#28), and [appInFront] whether the app is
+ * what the person sees: with the switch off, Renders only run while the app is in front.
  */
 data class StudioState(
     val loading: Boolean = true,
@@ -130,7 +132,12 @@ data class StudioState(
     val visualsOff: Boolean = false,
     val renderFormat: RenderFormat = RenderFormat(),
     val renderExtras: RenderExtras = RenderExtras(),
+    val rendersKeepGoing: Boolean = true,
+    val appInFront: Boolean = true,
 ) {
+    /** Whether the queue waits for the app to come back: Renders keep going is off and it is not in front. */
+    val rendersHeld: Boolean get() = !rendersKeepGoing && !appInFront
+
     fun videosIn(project: ProjectId): List<Video> = videos.filter { it.project == project }
 
     /** Whether Studio's first-run step should be shown: Settings are read and no save folder is picked. */

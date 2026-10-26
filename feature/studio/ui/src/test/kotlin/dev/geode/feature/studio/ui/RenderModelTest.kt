@@ -1,5 +1,6 @@
 package dev.geode.feature.studio.ui
 
+import dev.geode.engine.types.Millis
 import dev.geode.feature.studio.api.PlaylistMode
 import dev.geode.feature.studio.api.ProjectId
 import dev.geode.feature.studio.api.RenderAspect
@@ -87,5 +88,31 @@ class RenderModelTest {
         assertTrue(queue.visualsOff)
         assertEquals("Summer trip", projectName(queue.projects, PreviewStudio.trip.id))
         assertEquals("", projectName(queue.projects, ProjectId(9)))
+    }
+
+    @Test
+    fun `a section is typed as a time`() {
+        assertEquals(Millis(75_000), parseClock("1:15"))
+        assertEquals(Millis(3_725_000), parseClock(" 1:02:05 "))
+        assertEquals(Millis(90_000), parseClock("90"))
+        assertEquals(Millis.ZERO, parseClock("0:00"))
+        assertNull(parseClock(""))
+        assertNull(parseClock("1:60"))
+        assertNull(parseClock("1::05"))
+        assertNull(parseClock("1:2:3:4"))
+        assertNull(parseClock("-1:00"))
+        assertNull(parseClock("1.5"))
+        assertNull(parseClock("123456"))
+    }
+
+    @Test
+    fun `any section can be rendered, not only the first minute`() {
+        val draft = RenderDraft.startingFrom(state).preset(RenderPreset.YOUTUBE).section(Millis(62_000), Millis(45_000))
+        assertEquals(RenderLength.Section(Millis(62_000), Millis(45_000)), draft.spec.length)
+        assertNull(draft.preset)
+        assertTrue(isOwnSection(draft.spec.length))
+        assertTrue(isOwnSection(FIRST_SECTION))
+        assertFalse(isOwnSection(FIRST_MINUTE))
+        assertFalse(isOwnSection(RenderLength.WholeTrack))
     }
 }

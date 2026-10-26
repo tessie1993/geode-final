@@ -232,6 +232,52 @@ class RenderQueueTest {
             ),
         )
 
+    private val away = waiting.copy(rendersKeepGoing = false, appInFront = false)
+
+    private val keepGoingRows: List<Row> =
+        listOf(
+            row(
+                "with Renders keep going off nothing starts while the app is away",
+                away,
+                StudioEvent.RendersQueued(emptyList()),
+                away,
+            ),
+            row(
+                "the app coming back starts the held queue",
+                away,
+                StudioEvent.AppInFront(true),
+                busy.copy(rendersKeepGoing = false),
+                Perform(StudioWork.Render(firstRunning)),
+            ),
+            row(
+                "with Renders keep going on the app leaving holds nothing",
+                waiting,
+                StudioEvent.AppInFront(false),
+                busy.copy(appInFront = false),
+                Perform(StudioWork.Render(firstRunning)),
+            ),
+            row(
+                "turning Renders keep going off while away holds the queue",
+                waiting.copy(appInFront = false),
+                StudioEvent.RenderSettingsChanged(RenderSettings(false, format, extras, keepGoing = false)),
+                away.copy(renderFormat = format, renderExtras = extras),
+            ),
+            row(
+                "turning Renders keep going off while in front changes nothing yet",
+                waiting,
+                StudioEvent.RenderSettingsChanged(RenderSettings(false, format, extras, keepGoing = false)),
+                busy.copy(rendersKeepGoing = false, renderFormat = format, renderExtras = extras),
+                Perform(StudioWork.Render(firstRunning)),
+            ),
+            row(
+                "turning Renders keep going back on starts the queue while away",
+                away,
+                StudioEvent.RenderSettingsChanged(RenderSettings(false, format, extras, keepGoing = true)),
+                busy.copy(appInFront = false, renderFormat = format, renderExtras = extras),
+                Perform(StudioWork.Render(firstRunning)),
+            ),
+        )
+
     private val progressRows: List<Row> =
         listOf(
             row(
@@ -370,7 +416,7 @@ class RenderQueueTest {
 
     @Test
     fun `every row of the transition table`() {
-        for (row in queueRows + startRows + progressRows + endRows + cancelRows) {
+        for (row in queueRows + startRows + keepGoingRows + progressRows + endRows + cancelRows) {
             assertEquals(row.name, row.to, StudioReducer.reduce(row.from, row.event))
         }
     }

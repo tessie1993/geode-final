@@ -21,9 +21,10 @@ const val CONTINUOUS_REFUSAL = "One continuous video of a playlist is not availa
  * Studio's render queue (#338, ADR-0004): Renders run one at a time, in the order they were queued,
  * each on its own engine instance in the handlers. A Render is queued once its look is frozen and it
  * is saved, so it survives the app being killed; it then waits until none runs and the Visual is on.
- * Cancelling a waiting Render forgets it; cancelling the running one asks the engine to stop, and it
- * ends as cancelled. A saved Render's video goes to its Project, or the default one if its Project
- * was deleted meanwhile.
+ * With Renders keep going off (#28) nothing new starts while the app is not in front, and the running
+ * Render waits in the engine until it is back. Cancelling a waiting Render forgets it; cancelling the
+ * running one asks the engine to stop, and it ends as cancelled. A saved Render's video goes to its
+ * Project, or the default one if its Project was deleted meanwhile.
  */
 internal object RenderQueue {
     fun queue(
@@ -51,11 +52,21 @@ internal object RenderQueue {
         state: StudioState,
         settings: RenderSettings,
     ): Next<StudioState, StudioEffect> =
-        next(state.copy(visualsOff = settings.visualsOff, renderFormat = settings.format, renderExtras = settings.extras))
+        next(
+            state.copy(
+                visualsOff = settings.visualsOff,
+                renderFormat = settings.format,
+                renderExtras = settings.extras,
+                rendersKeepGoing = settings.keepGoing,
+            ),
+        )
 
-    /** Starts the oldest waiting Render, unless one runs, the library is not read yet or Visuals off is on. */
+    /**
+     * Starts the oldest waiting Render, unless one runs, the library is not read yet, Visuals off is on,
+     * or the queue is held while the app is away.
+     */
     fun next(state: StudioState): Next<StudioState, StudioEffect> {
-        if (state.loading || state.visualsOff || state.runningRender != null) return Next(state)
+        if (state.loading || state.visualsOff || state.rendersHeld || state.runningRender != null) return Next(state)
         val waiting = state.renders.firstOrNull { it.status == RenderStatus.Queued } ?: return Next(state)
         val started = waiting.copy(status = RenderStatus.Running(RenderPhase.PREPARING, 0f))
         return Next(state.replacing(started), listOf(Perform(StudioWork.Render(started))))

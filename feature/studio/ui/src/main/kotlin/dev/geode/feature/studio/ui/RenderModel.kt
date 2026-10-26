@@ -59,6 +59,12 @@ data class RenderDraft(
     /** [preset]'s values filled in; it shows as chosen until a value is changed by hand. */
     fun preset(preset: RenderPreset): RenderDraft = copy(spec = spec.withPreset(preset), preset = preset)
 
+    /** [length] from [start] of the Track, set by hand. */
+    fun section(
+        start: Millis,
+        length: Millis,
+    ): RenderDraft = custom(spec.copy(length = RenderLength.Section(start, length)))
+
     /** A value changed by hand: the format is Custom from now on. */
     fun custom(spec: RenderSpec): RenderDraft = copy(spec = spec, preset = null)
 
@@ -81,6 +87,30 @@ data class RenderDraft(
 
 /** The Render setup's choices for a Render of the first minute or so, as the short-form presets cap it. */
 val FIRST_MINUTE: RenderLength = RenderLength.Section(Millis.ZERO, Millis(59_000))
+
+/** Where "A section" starts when the person first picks it: the first half minute, then changed by hand. */
+val FIRST_SECTION: RenderLength.Section = RenderLength.Section(Millis.ZERO, Millis(30_000))
+
+/** Whether [length] is a section the person set by hand, not the whole Track or the first minute. */
+fun isOwnSection(length: RenderLength): Boolean = length is RenderLength.Section && length != FIRST_MINUTE
+
+/**
+ * [text] as a time: `m:ss`, `h:mm:ss` or whole seconds, as the setup's section fields take it; null when
+ * it is not one (a part past the first that is not under 60, or anything but digits and colons).
+ */
+fun parseClock(text: String): Millis? {
+    val parts = text.trim().split(':')
+    if (parts.size > MAX_CLOCK_PARTS || parts.any { it.isEmpty() || it.length > MAX_PART_DIGITS || !it.all(Char::isDigit) }) return null
+    val numbers = parts.map { it.toLong() }
+    if (numbers.drop(1).any { it >= SIXTY }) return null
+    val seconds = numbers.fold(0L) { total, part -> total * SIXTY + part }
+    return Millis(seconds * MILLIS_PER_SECOND)
+}
+
+private const val MAX_CLOCK_PARTS = 3
+private const val MAX_PART_DIGITS = 5
+private const val SIXTY = 60L
+private const val MILLIS_PER_SECOND = 1_000L
 
 /**
  * One group of the render queue: the Renders queued together as [batch] (a playlist's tracks, or one

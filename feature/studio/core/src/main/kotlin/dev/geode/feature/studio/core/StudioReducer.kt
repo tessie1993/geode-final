@@ -61,6 +61,7 @@ object StudioReducer : Reducer<StudioState, StudioEvent, StudioEffect> {
                 )
             is StudioEvent.Failed -> failed(state, event.failure)
             is StudioEvent.RenderSettingsChanged -> RenderQueue.settings(state, event.settings)
+            is StudioEvent.AppInFront -> RenderQueue.next(state.copy(appInFront = event.inFront))
             is StudioEvent.RendersQueued -> RenderQueue.queued(state, event.renders)
             is StudioEvent.RenderProgress -> RenderQueue.progress(state, event)
             is StudioEvent.RenderEnded -> RenderQueue.ended(state, event)

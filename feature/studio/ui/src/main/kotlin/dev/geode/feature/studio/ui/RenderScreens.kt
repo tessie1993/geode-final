@@ -307,9 +307,48 @@ private fun FormatPicker(
     Heading(stringResource(R.string.studio_render_codec))
     Chips(RenderCodec.entries, { format.codec == it }, { codecLabel(it) }) { set(format.copy(codec = it)) }
     Heading(stringResource(R.string.studio_render_length))
-    Chips(listOf(RenderLength.WholeTrack, FIRST_MINUTE), { spec.length == it }, { lengthLabel(it) }) {
+    val lengths = listOf(RenderLength.WholeTrack, FIRST_MINUTE, FIRST_SECTION)
+    Chips(lengths, { if (it == FIRST_SECTION) isOwnSection(spec.length) else spec.length == it }, { lengthLabel(it) }) {
         onDraft(draft.custom(spec.copy(length = it)))
     }
+    val section = spec.length as? RenderLength.Section
+    if (section != null && isOwnSection(section)) SectionFields(draft, section, onDraft)
+}
+
+/** The section's start and length as `m:ss`; a field that does not read as a time keeps the last good one. */
+@Composable
+private fun SectionFields(
+    draft: RenderDraft,
+    section: RenderLength.Section,
+    onDraft: (RenderDraft) -> Unit,
+) {
+    var start by remember { mutableStateOf(section.start.clock()) }
+    var length by remember { mutableStateOf(section.length.clock()) }
+    Row(horizontalArrangement = Arrangement.spacedBy(StudioDimens.gap)) {
+        OutlinedTextField(
+            value = start,
+            onValueChange = { text ->
+                start = text
+                parseClock(text)?.let { onDraft(draft.section(it, section.length)) }
+            },
+            modifier = Modifier.weight(StudioDimens.FILL),
+            label = { Text(stringResource(R.string.studio_render_section_from)) },
+            isError = parseClock(start) == null,
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = length,
+            onValueChange = { text ->
+                length = text
+                parseClock(text)?.let { onDraft(draft.section(section.start, it)) }
+            },
+            modifier = Modifier.weight(StudioDimens.FILL),
+            label = { Text(stringResource(R.string.studio_render_section_length)) },
+            isError = parseClock(length) == null,
+            singleLine = true,
+        )
+    }
+    Note(stringResource(R.string.studio_render_section_note))
 }
 
 @Composable
@@ -406,7 +445,13 @@ private fun codecLabel(codec: RenderCodec): String =
 
 @Composable
 private fun lengthLabel(length: RenderLength): String =
-    stringResource(if (length == RenderLength.WholeTrack) R.string.studio_render_whole else R.string.studio_render_first_minute)
+    stringResource(
+        when (length) {
+            RenderLength.WholeTrack -> R.string.studio_render_whole
+            FIRST_MINUTE -> R.string.studio_render_first_minute
+            else -> R.string.studio_render_section
+        },
+    )
 
 private const val PERCENT = 100
 private const val SECONDS_PER_MINUTE = 60L

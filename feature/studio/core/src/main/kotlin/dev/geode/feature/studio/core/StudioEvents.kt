@@ -59,6 +59,11 @@ sealed interface StudioEvent {
         val settings: RenderSettings,
     ) : StudioEvent
 
+    /** The app came in front of the person, or left (#28): with Renders keep going off, the queue follows it. */
+    data class AppInFront(
+        val inFront: Boolean,
+    ) : StudioEvent
+
     /** Renders were saved to the queue, with their ids, in the order they were queued. */
     data class RendersQueued(
         val renders: List<RenderJob>,
@@ -94,13 +99,15 @@ sealed interface RenderEnd {
 }
 
 /**
- * What Studio's Renders read from Settings: [visualsOff] (no Render while it is on, #196), and what a
- * new Render starts from in Export preferences (#22, #28).
+ * What Studio's Renders read from Settings: [visualsOff] (no Render while it is on, #196), what a new
+ * Render starts from in Export preferences (#22, #28), and Run in background's Renders keep going
+ * switch ([keepGoing], #28).
  */
 data class RenderSettings(
     val visualsOff: Boolean,
     val format: RenderFormat,
     val extras: RenderExtras,
+    val keepGoing: Boolean = true,
 )
 
 /**
@@ -183,6 +190,9 @@ sealed interface StudioWork {
 
     /** Follow Settings' Visuals off and Export preferences for as long as the app runs. */
     data object FollowRenderSettings : StudioWork
+
+    /** Follow whether the app is in front of the person, for as long as it runs (#28). */
+    data object FollowAppInFront : StudioWork
 
     /**
      * Freeze the [renders]' look once (the full Customization, Automations included) and save them to
