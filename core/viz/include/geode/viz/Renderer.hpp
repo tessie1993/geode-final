@@ -231,6 +231,8 @@ private:
     float timeSeconds_ = 0.0f;
     GeodeFeatureFrame frameFeatures_{};
     SharedEffects frameEffects_;
+    // The red/blue anaglyph's faded mix (sharedfx::anaglyphMix), stepped once per composite.
+    float anaglyphMix_ = 0.0f;
     std::optional<mod::Evaluated> frameCustomization_;
     CameraRig camera_;
     // The active Style's Extras this frame.

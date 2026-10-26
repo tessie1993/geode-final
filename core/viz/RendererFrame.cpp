@@ -321,6 +321,8 @@ void Renderer::composite(Scene& scene, const SceneParams& p, float progress, GLu
     in.underlayTex = compositePass_.underlayTexOrZero();
     in.underlayBlend = compositePass_.underlayBlendMode();
     in.underlayAmount = compositePass_.underlayAmount();
+    anaglyphMix_ = sharedfx::anaglyphMix(anaglyphMix_, frameEffects_.anaglyph, dt);
+    in.anaglyph = anaglyphMix_;
     compositePass_.draw(in);
     if (limited) noFlash_.present(dt, targetFbo, quadVao_);
     // W00: overlay is its own draw call, over whatever composite() just wrote to targetFbo, so it

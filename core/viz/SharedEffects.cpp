@@ -28,6 +28,7 @@ SharedEffects effectsOf(const Frame& e) {
     fx.particles = e[mod::Shared::Particles];
     fx.particleKind = static_cast<int>(e[mod::Shared::ParticleKind]);
     fx.particleSize = e[mod::Shared::ParticleSize];
+    fx.anaglyph = e[mod::Shared::Anaglyph] >= 0.5f ? 1.0f : 0.0f;
     return fx;
 }
 }  // namespace
@@ -52,6 +53,14 @@ float echoZoom(float zoom, float dt) {
 }
 
 float echoWarp(float warp, float dt) { return std::isfinite(warp) ? warp * framerate::referenceFrames(dt) : 0.0f; }
+
+float anaglyphMix(float current, float target, float dt) {
+    const float from = mod::unit(current);
+    const float to = mod::unit(target);
+    if (!(dt > 0.0f) || !std::isfinite(dt)) return from;
+    const float step = dt / kAnaglyphFadeSeconds;
+    return from < to ? std::min(from + step, to) : std::max(from - step, to);
+}
 
 }  // namespace sharedfx
 

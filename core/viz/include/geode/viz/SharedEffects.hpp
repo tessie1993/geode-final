@@ -19,6 +19,9 @@ struct SharedEffects {
     float particles = 0.0f;
     int particleKind = 0;
     float particleSize = 1.0f;
+    // The red/blue anaglyph switch (#388), 0 or 1. composite_frag.glsl draws it last, so it is not
+    // part of active(): SharedFxPass has nothing to do for it.
+    float anaglyph = 0.0f;
 
     bool active() const { return trails > 0.0f || softFocus > 0.0f || motionBlur > 0.0f || particles > 0.0f; }
     // Read in the Shared core's own ranges.
@@ -51,6 +54,12 @@ float motionKeep(float motionBlur, float dt);
 constexpr float kEchoZoomScale = 0.06f;
 float echoZoom(float zoom, float dt);
 float echoWarp(float warp, float dt);
+
+// How long the anaglyph takes to fade fully in or out: switching it never cuts the picture over.
+constexpr float kAnaglyphFadeSeconds = 0.5f;
+// The anaglyph's mix this frame, moved from `current` toward `target` (each 0..1) at most a frame's
+// share of kAnaglyphFadeSeconds; it holds where it is on a stalled frame.
+float anaglyphMix(float current, float target, float dt);
 
 }  // namespace sharedfx
 

@@ -38,6 +38,7 @@ internal val EFFECT_TOGGLES: List<SharedProperty> =
         SharedProperty.ENDLESS_ZOOM,
         SharedProperty.SOLARIZE,
         SharedProperty.INVERT,
+        SharedProperty.ANAGLYPH,
     )
 
 /** One Style the look picker strip offers. Which Styles, and their names, come from the place that opens Customize. */

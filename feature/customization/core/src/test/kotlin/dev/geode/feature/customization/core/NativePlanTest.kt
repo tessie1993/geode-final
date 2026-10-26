@@ -125,7 +125,7 @@ class NativePlanTest {
     @Test
     fun `is exactly the engine's size`() {
         assertEquals(NativePlan.floatCount, plan.size)
-        assertEquals(3900, NativePlan.floatCount)
+        assertEquals(3901, NativePlan.floatCount)
     }
 
     @Test
