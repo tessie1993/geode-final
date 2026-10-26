@@ -14,6 +14,11 @@ patches, listed and applied at configure time (idempotently) by `tools/projectm-
 - `tools/projectm-v4.1.8-plasma-mediump.patch` carries upstream master commit `0227b7a`: the plasma
   transition's noise overflowed at mediump precision on mobile GPUs, and the Visual uses blended
   transitions.
+- `tools/projectm-v4.1.8-texture-pool.patch` keeps the six generated noise textures for the life of
+  an engine: `MilkdropScene` sets new texture paths for every preset, which used to rebuild them on the
+  CPU each time. A seeded engine makes them again from its seed, so Renders stay frame-exact. The
+  scanner skips hidden folders (the per-preset `.links` folders), and a random texture (`randNN`)
+  draws from each file once, however many search paths or links reach it (#307).
 - `tools/projectm-eval-render-clock.patch`, applied inside `vendor/projectm-eval`, lets the seeded
   instance feed the expression `rand()` too. The build therefore always uses the vendored
   projectm-eval, never a system one.

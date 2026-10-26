@@ -11,6 +11,18 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **Our own starter textures for MilkDrop (#307).** Geode ships 24 textures
+  of its own, drawn from integer hashes by `tools/milk_textures/generate.py`
+  (about 0.9 MB in all) under the names presets ask for most (`worms`,
+  `clouds`, `pic`, `manyfish`, `sunrise`, `cells`, `seaweed`, `lichen`,
+  `rose`, `grad3`, `grad16`, `heart` and more), so imported packs find them on
+  a fresh install. `MilkStarterPack` installs them once beside the presets,
+  never over a texture of the same name. A new projectM patch
+  (`projectm-v4.1.8-texture-pool.patch`) makes the noise textures once per
+  engine instead of on every preset switch (a seeded engine makes them from
+  its seed, so Renders stay frame-exact), skips the hidden link folders when
+  scanning, and draws random textures from each file once.
+
 - **Every MilkDrop preset is a Style (#305).** Each `.milk` in the MilkDrop
   folder, the ones Geode ships and the person's own, is listed as a Style of
   its own in the Visuals tab's MilkDrop group and plays through Customization

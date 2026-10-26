@@ -9,10 +9,14 @@
 #                                              fixed seed, so the same input gives the same frames.
 #   projectm-v4.1.8-plasma-mediump.patch       upstream master 0227b7a: the plasma transition's noise
 #                                              no longer overflows at mediump on mobile GPUs.
+#   projectm-v4.1.8-texture-pool.patch         the noise textures are made once per engine (and per
+#                                              seed), not on every new set of texture paths; hidden
+#                                              folders are not scanned; a random texture picks each
+#                                              file with the same chance.
 #   projectm-eval-render-clock.patch           (in vendor/projectm-eval) lets the seeded instance feed
 #                                              the expression rand() as well.
 #
-# Order matters: the render-clock patch is written against the backport. Applying is idempotent: a
+# Order matters: each patch is written against the ones above it. Applying is idempotent: a
 # reverse check recognises an already-patched tree, which is what every configure after the first
 # (and each per-ABI configure the Android Gradle plugin runs) sees.
 
@@ -55,6 +59,7 @@ function(geode_patch_projectm projectm_dir)
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-render-fbo-backport.patch")
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-render-clock.patch")
     geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-plasma-mediump.patch")
+    geode_apply_patch("${projectm_dir}" "${GEODE_PROJECTM_PATCH_DIR}/projectm-v4.1.8-texture-pool.patch")
     geode_apply_patch("${projectm_dir}/vendor/projectm-eval" "${GEODE_PROJECTM_PATCH_DIR}/projectm-eval-render-clock.patch")
     set(ENABLE_SYSTEM_PROJECTM_EVAL OFF CACHE BOOL "" FORCE)
 endfunction()
