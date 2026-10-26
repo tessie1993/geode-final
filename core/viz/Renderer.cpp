@@ -277,6 +277,7 @@ void Renderer::onSurfaceCreated() {
     fboOut_.release();
     fboL_.release();
     hdrPass_.release();
+    sharedInputs_.release();
     dofPass_.release();
     particlePass_.release();
     compositePass_.releaseStaleTextures();
@@ -291,6 +292,7 @@ void Renderer::onSurfaceCreated() {
     trailPass_.setTargetFormat(hdrFormat);
     sharedFx_.setTargetFormat(hdrFormat);
     hdrPass_.setTargetFormat(hdrFormat);
+    sharedInputs_.attach(&assets_, &hdrPass_, hdrFormat);
     dofPass_.setTargetFormat(hdrFormat);
     activeScene_ = nullptr;
     outgoingScene_ = nullptr;
@@ -458,6 +460,7 @@ std::unique_ptr<Scene> Renderer::buildScene(const std::string& id) {
     if (paletteLutTex_ != 0) scene->setPaletteLut(paletteLutTex_);
     scene->setTouchField(&touchField_);
     scene->setGravityField(&gravityField_);
+    scene->setSharedInputs(&sharedInputs_);
     scene->init();
     scene->setParams(initialParams);
     scene->resize(renderWidth_, renderHeight_);

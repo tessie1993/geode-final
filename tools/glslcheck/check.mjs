@@ -136,13 +136,26 @@ function remapLog(log, assembled) {
 
 // id -> shader file of every shader Style, in the packs' index order.
 function shaderStyles() {
+  return new Map([...shaderPacks()].map(([id, pack]) => [id, pack.file]));
+}
+
+// id -> { file, inputs } of every shader Style: its shader and the shared inputs its manifest declares.
+function shaderPacks() {
   const index = JSON.parse(fs.readFileSync(path.join(STYLES, 'index.json'), 'utf8'));
   const out = new Map();
   for (const id of index.styles) {
     const manifest = JSON.parse(fs.readFileSync(path.join(STYLES, id, 'manifest.json'), 'utf8'));
-    if (manifest.family === 'shader') out.set(id, path.join(STYLES, id, manifest.shader));
+    if (manifest.family === 'shader') out.set(id, { file: path.join(STYLES, id, manifest.shader), inputs: manifest.inputs ?? [] });
   }
   return out;
+}
+
+// The shared inputs a rendered program read (its uniforms the page did not report dropped) that the
+// Style's manifest does not declare.
+function undeclaredInputs(job, result) {
+  if (!job.inputs) return [];
+  const live = job.uniforms.map((u) => u.name).filter((name) => name in INPUT_UNIFORMS && !result.dropped.includes(name));
+  return [...new Set(live.map((name) => INPUT_UNIFORMS[name]))].filter((input) => !job.inputs.includes(input));
 }
 
 function fluidLookCount() {
@@ -198,9 +211,27 @@ const SHADER_VALUES = {
   uXTurn: 1, uXHold: 1, uXVariant: 0, uXCenterX: 0, uXCenterY: 0,
   uXFlightTime: 37.0, uXSpinTime: 37.0, uXDriftTime: 37.0,
   uCamRot: [1, 0, 0, 0, 1, 0, 0, 0, 1], uCamPush: 0, uCamTravel: 0, uCamOrbit: [0, 0],
+  // The shared Style inputs' clocks (lib_inputs.glsl): 37 s into a visit at 60 fps.
+  uFrame: 2220, uFrameDt: 1 / 60, uVisitRand: [0.31, 0.72, 0.18, 0.55], uStyleAge: 37.0, uBarPhase: 0.4, uBarConfidence: 0.8,
 };
 
-const SHADER_TEXTURES = { uAudioTex: 'audio', uPalLut: 'palette', uFlow: 'flow' };
+// The shared inputs' textures: the noise as the engine seeds it (page.html mirrors StyleInputs.cpp),
+// and the last frame and its blur levels as the same stand-in history.
+const SHADER_TEXTURES = {
+  uAudioTex: 'audio', uPalLut: 'palette', uFlow: 'flow',
+  uNoiseLq: 'noise_lq', uNoiseMq: 'noise_mq', uNoiseHq: 'noise_hq', uNoiseVol: 'noise_vol', uBlueNoise: 'noise',
+  uPrevFrame: 'history', uBlur1: 'history_blur', uBlur2: 'history_blur', uBlur3: 'history_blur',
+};
+
+// The shared inputs (geode/viz/StyleInputs.hpp): each sampler and clock uniform of lib_inputs.glsl and
+// the manifest name that declares it. The engine binds only what a manifest declares, so a Style whose
+// linked program still reads an undeclared one fails here (helpers included, which a text search of
+// the shader cannot see).
+const INPUT_UNIFORMS = {
+  uNoiseLq: 'noise_lq', uNoiseMq: 'noise_mq', uNoiseHq: 'noise_hq', uNoiseVol: 'noise_vol', uBlueNoise: 'blue_noise',
+  uPrevFrame: 'previous_frame', uBlur1: 'blur1', uBlur2: 'blur2', uBlur3: 'blur3',
+  uFrame: 'clocks', uFrameDt: 'clocks', uVisitRand: 'clocks', uStyleAge: 'clocks', uBarPhase: 'bar', uBarConfidence: 'bar',
+};
 
 // FluidLook::drawDisplay with mid-loudness audio.
 const FLUID_VALUES = {
@@ -213,7 +244,7 @@ function plan(uniforms, values, textures, width, height) {
   const missing = [];
   const out = [];
   for (const u of uniforms) {
-    if (u.type === 'sampler2D') {
+    if (u.type.startsWith('sampler')) {
       if (!(u.name in textures)) missing.push(u.name);
       else out.push({ ...u, texture: textures[u.name] });
       continue;
@@ -565,6 +596,7 @@ function pushStyles(ids, pkg) {
 
 function buildJobs(args, registry, styles, renderIds) {
   const jobs = [];
+  const packs = shaderPacks();
   const quadVert = fs.readFileSync(path.join(SHADERS, 'quad_vert.glsl'), 'utf8');
   for (const id of renderIds) {
     const file = styles.get(id);
@@ -572,7 +604,10 @@ function buildJobs(args, registry, styles, renderIds) {
     const frag = resolveIncludes(fs.readFileSync(file, 'utf8'), registry, name);
     const values = { ...SHADER_VALUES };
     if (args.time !== null) values.uTime = args.time;
-    const job = { name: id, vert: quadVert, frag, uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size) };
+    const job = {
+      name: id, vert: quadVert, frag, inputs: packs.get(id).inputs,
+      uniforms: plan(parseUniforms(frag), values, SHADER_TEXTURES, args.size, args.size),
+    };
     if (args.resize) {
       job.name = `${id} resized`;
       job.resizeWidth = Math.max(1, Math.round(args.size * RESIZE_SCALE));
@@ -628,6 +663,8 @@ async function runOnce(args, getPage) {
     const page = await getPage();
     for (const job of jobs) {
       const r = await page.call(job.resizeWidth ? '__renderResized' : '__render', { ...job, width: args.size, height: args.size });
+      const undeclared = r.error ? [] : undeclaredInputs(job, r);
+      if (undeclared.length) r.error = `reads shared input(s) ${undeclared.join(', ')} its manifest's "inputs" does not declare`;
       allOk = report(job.name, r, job.frag) && allOk;
       if (args.out && r.png) {
         const dest = jobs.length === 1 ? args.out : path.join(args.out, `${job.name.replace(/[^\w]+/g, '_')}.png`);

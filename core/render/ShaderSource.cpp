@@ -11,10 +11,10 @@ namespace geode::viz {
 namespace {
 
 // The libraries a shader may include (shaders/<name>.glsl). tools/glslcheck/check.mjs reads this list.
-constexpr std::array<const char*, 14> kIncludes = {
-    "lib_palette",         "lib_scene_uniforms", "lib_scene_grade",  "lib_sdf3", "lib_touch", "lib_psrdnoise2",
-    "lib_particle_common", "lib_particle_shade", "lib_scene_motion", "lib_dmt",  "lib_style", "lib_camera",
-    "lib_layers",          "lib_gravity",
+constexpr std::array<const char*, 15> kIncludes = {
+    "lib_palette",         "lib_scene_uniforms", "lib_scene_grade",  "lib_sdf3", "lib_touch",  "lib_psrdnoise2",
+    "lib_particle_common", "lib_particle_shade", "lib_scene_motion", "lib_dmt",  "lib_style",  "lib_camera",
+    "lib_layers",          "lib_gravity",        "lib_inputs",
 };
 
 const std::vector<std::string>& knownIncludes() {

@@ -15,6 +15,8 @@
 
 namespace geode::viz {
 
+class SharedInputs;
+
 enum class SceneFamily { Shader, Milkdrop, Fluid };
 
 // Port of Scene.kt plus the optional hooks the renderer wires by capability rather than by class.
@@ -44,6 +46,12 @@ public:
     virtual void setExtras(const ExtraValues& extras) { (void) extras; }
     // What the current thermal tier lets this Style spend (QualityTiers.hpp), handed over with the Camera.
     virtual void setQuality(const quality::Budget& budget) { (void) budget; }
+    // The renderer's shared Style inputs (SharedInputs.hpp), handed over before init(); a shader Style
+    // binds the ones its pack declares.
+    virtual void setSharedInputs(SharedInputs* inputs) { (void) inputs; }
+    // The Style starts to be drawn: it became Layer 1 or Layer 2. Its visit clocks start over and its
+    // kept frames are let go (StyleInputs.hpp).
+    virtual void beginVisit() {}
     // The framebuffer the renderer bound for this draw and the viewport to draw at, handed over just
     // before draw(). A Style that draws through targets of its own comes back to this one from here
     // rather than asking the driver: a glGet makes a threaded driver wait for its queue (#311). The

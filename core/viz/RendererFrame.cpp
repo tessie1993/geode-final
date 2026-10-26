@@ -79,6 +79,7 @@ Scene* Renderer::resolveActiveScene() {
         }
         activeScene_ = requested;
         sceneJustSwitched_ = true;
+        requested->beginVisit();
     }
     return activeScene_;
 }
@@ -203,7 +204,10 @@ void Renderer::resolveLayer(float dt) {
     // A Style that stops being drawable as Layer 2 (it became the active one) still fades out: its
     // scene is then Layer 1's, and its picture is read from there (layerTexture).
     frameLayer_ = layerMixer_.step(request, dt);
-    layerScene_ = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+    Scene* const layer = frameLayer_.draws() ? sceneFor(layerStyleId(frameLayer_.spec.style)) : nullptr;
+    // A Style that starts to be drawn as Layer 2 starts a visit; Layer 1's own Style is already on one.
+    if (layer != nullptr && layer != layerScene_ && layer != activeScene_) layer->beginVisit();
+    layerScene_ = layer;
 }
 
 const std::string& Renderer::layerStyleId(uint32_t name) {

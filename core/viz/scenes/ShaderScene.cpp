@@ -1,10 +1,13 @@
 #include "scenes/ShaderScene.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 
+#include "geode/viz/HdrPass.hpp"
 #include "geode/viz/LiveSignal.hpp"
+#include "geode/viz/ToneMap.hpp"
 #include "scenes/SceneCommon.hpp"
 
 namespace geode::viz {
@@ -36,6 +39,32 @@ constexpr std::array<const char*, mod::kExtraCount> kExtraUniforms = {
 constexpr std::array<mod::Extra, 3> kRateExtras = {mod::Extra::Flight, mod::Extra::Spin, mod::Extra::Drift};
 constexpr std::array<const char*, 3> kRateUniforms = {"uXFlightTime", "uXSpinTime", "uXDriftTime"};
 
+// The shared inputs' samplers (lib_inputs.glsl), each on its own unit above the audio, flow and palette.
+struct InputSampler {
+    inputs::Input input;
+    const char* uniform;
+    GLenum target;
+    GLint unit;
+};
+constexpr std::array<InputSampler, 9> kInputSamplers = {{
+    {inputs::Input::NoiseLq, "uNoiseLq", GL_TEXTURE_2D, 3},
+    {inputs::Input::NoiseMq, "uNoiseMq", GL_TEXTURE_2D, 4},
+    {inputs::Input::NoiseHq, "uNoiseHq", GL_TEXTURE_2D, 5},
+    {inputs::Input::NoiseVolume, "uNoiseVol", GL_TEXTURE_3D, 6},
+    {inputs::Input::BlueNoise, "uBlueNoise", GL_TEXTURE_2D, 7},
+    {inputs::Input::PreviousFrame, "uPrevFrame", GL_TEXTURE_2D, 8},
+    {inputs::Input::Blur1, "uBlur1", GL_TEXTURE_2D, 9},
+    {inputs::Input::Blur2, "uBlur2", GL_TEXTURE_2D, 10},
+    {inputs::Input::Blur3, "uBlur3", GL_TEXTURE_2D, 11},
+}};
+
+// Copies the whole of `fbo` (width x height) into `target`, scaled to its size.
+void blitInto(GLuint fbo, int width, int height, const Framebuffer& target, GLenum filter) {
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.fbo());
+    glBlitFramebuffer(0, 0, width, height, 0, 0, target.width(), target.height(), GL_COLOR_BUFFER_BIT, filter);
+}
+
 // Shortest signed distance from `from` to `to` on a unit-period circle.
 float wrappedDelta(float from, float to, float period) {
     const float half = period * 0.5f;
@@ -46,13 +75,15 @@ float wrappedDelta(float from, float to, float period) {
 
 }  // namespace
 
-ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host)
+ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string fragmentSrc, ProgramBinaryCache* cache, SceneHost host,
+                         inputs::Set inputs)
     : id_(std::move(id)),
       vertexSrc_(std::move(vertexSrc)),
       currentFragment_(std::move(fragmentSrc)),
       cache_(cache),
       host_(std::move(host)),
-      pcm_(static_cast<size_t>(kAudioTexWidth) * 8, 0.0f) {
+      pcm_(static_cast<size_t>(kAudioTexWidth) * 8, 0.0f),
+      inputs_(inputs) {
     pendingFragment_ = currentFragment_;
 }
 
@@ -81,6 +112,31 @@ void ShaderScene::init() {
     const char* extensions = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     const bool floatLinear = extensions && std::strstr(extensions, "OES_texture_float_linear") != nullptr;
     audioTex_.createImage(GL_R32F, GL_RED, GL_FLOAT, kAudioTexWidth, 2, floatLinear ? GL_LINEAR : GL_NEAREST, GL_CLAMP_TO_EDGE);
+    // A Render draws each visit's random vector from the Render seed, so it repeats; the live Visual
+    // from the clock, so every visit looks a little different.
+    const bool rendering = host_.rendering && host_.rendering();
+    const auto live = static_cast<std::uint32_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    visitSeed_ = inputs::visitSeed(rendering ? inputs::kNoiseSeed : live, id_);
+}
+
+void ShaderScene::setSharedInputs(SharedInputs* shared) {
+    sharedInputs_ = shared;
+    // Once, not every frame: a target that fell back to RGBA8 here stays so instead of being made again.
+    const Framebuffer::Format format = shared != nullptr ? shared->format() : Framebuffer::Format::Rgba8;
+    previous_.setFormat(format);
+    for (Framebuffer& level : blur_) level.setFormat(format);
+}
+
+void ShaderScene::beginVisit() {
+    visitClock_.beginVisit(visitSeed_);
+    // The frames it kept belong to its last visit.
+    releaseHistory();
+}
+
+void ShaderScene::setDrawTarget(GLuint fbo, int width, int height) {
+    drawFbo_ = fbo;
+    drawWidth_ = width;
+    drawHeight_ = height;
 }
 
 void ShaderScene::resize(int width, int height) {
@@ -167,6 +223,8 @@ void ShaderScene::update(const GeodeFeatureFrame& features, float dt) {
     smoothTreble_ = slew(smoothTreble_, treble_, dt, kBandRiseHz, kBandFallHz);
     smoothEnergy_ = slew(smoothEnergy_, energy_, dt, kBandRiseHz, kBandFallHz);
     swell_ = slew(swell_, energy_, dt, kSwellRiseHz, kSwellFallHz);
+    if (inputs::has(inputs_, inputs::Input::Clocks)) visitClock_.step(dt);
+    if (inputs::has(inputs_, inputs::Input::Bar)) barClock_.step(features.barPhase, features.downbeatConfidence, features.bpm, dt);
     const float hit = live::hit(features);
     stepMotion(hit, dt);
     energyPhase_ = framerate::advancePhase(energyPhase_, p.speed * smoothEnergy_, dt, kTimeWrapSeconds);
@@ -229,9 +287,11 @@ void ShaderScene::draw(float timeSeconds) {
     uploadGravity();
     uploadCamera();
     uploadExtras();
+    uploadInputs();
     glBindVertexArray(vao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
+    captureHistory();
 }
 
 void ShaderScene::uploadParams() {
@@ -338,6 +398,91 @@ void ShaderScene::uploadExtras() {
     for (size_t r = 0; r < kRateUniforms.size(); ++r) set1f(kRateUniforms[r], rateClocks_[r]);
 }
 
+// Nothing here runs for a Style that declares no inputs, and nothing of an input it does not declare.
+void ShaderScene::uploadInputs() {
+    if (inputs_ == 0) return;
+    if (inputs::has(inputs_, inputs::Input::Clocks)) {
+        set1f("uFrame", static_cast<float>(visitClock_.frame()));
+        set1f("uFrameDt", visitClock_.dt());
+        glUniform4fv(uniforms_.loc("uVisitRand"), 1, visitClock_.random().data());
+        set1f("uStyleAge", visitClock_.age());
+    }
+    if (inputs::has(inputs_, inputs::Input::Bar)) {
+        set1f("uBarPhase", barClock_.phase());
+        set1f("uBarConfidence", barClock_.confidence());
+    }
+    if (sharedInputs_ == nullptr) return;
+    // Every texture first: making one binds it on the active unit, which must not be one already bound.
+    std::array<GLuint, kInputSamplers.size()> textures{};
+    for (size_t i = 0; i < kInputSamplers.size(); ++i) {
+        if (inputs::has(inputs_, kInputSamplers[i].input)) textures[i] = inputTexture(kInputSamplers[i].input);
+    }
+    for (size_t i = 0; i < kInputSamplers.size(); ++i) {
+        const InputSampler& sampler = kInputSamplers[i];
+        if (!inputs::has(inputs_, sampler.input)) continue;
+        glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + sampler.unit));
+        glBindTexture(sampler.target, textures[i]);
+        glUniform1i(uniforms_.loc(sampler.uniform), sampler.unit);
+    }
+    glActiveTexture(GL_TEXTURE0);
+}
+
+GLuint ShaderScene::inputTexture(inputs::Input input) {
+    switch (input) {
+        case inputs::Input::PreviousFrame: return previous_.ok() ? previous_.tex() : sharedInputs_->black();
+        case inputs::Input::Blur1:
+        case inputs::Input::Blur2:
+        case inputs::Input::Blur3: {
+            const int level = 1 + static_cast<int>(input) - static_cast<int>(inputs::Input::Blur1);
+            const int source = inputs::blurSource(level, blurBuilt_);
+            return source >= 0 ? blur_[static_cast<size_t>(source)].tex() : sharedInputs_->black();
+        }
+        default: return sharedInputs_->texture(input);
+    }
+}
+
+void ShaderScene::captureHistory() {
+    if (!inputs::needsHistory(inputs_) || sharedInputs_ == nullptr || drawWidth_ <= 0 || drawHeight_ <= 0) return;
+    const int width = drawWidth_;
+    const int height = drawHeight_;
+    if (inputs::has(inputs_, inputs::Input::PreviousFrame)) {
+        // Kept across a resize, so a Style that feeds back on its last frame never starts again from black.
+        if (previous_.resizePreserving(width, height) && previous_.width() == width && previous_.height() == height) {
+            blitInto(drawFbo_, width, height, previous_, GL_NEAREST);
+        }
+    }
+    const int length = inputs::blurChainLength(inputs_);
+    HdrPass* hdr = sharedInputs_->hdr();
+    blurBuilt_ = 0;
+    if (length > 0 && hdr != nullptr) {
+        std::array<tone::LevelSize, tone::kMaxLevels> sizes{};
+        const int count = std::min({tone::bloomLevels(width, height, sizes), length, kBlurChain});
+        std::array<Framebuffer*, kBlurChain> chain{};
+        int built = 0;
+        for (int i = 0; i < count; ++i) {
+            Framebuffer& level = blur_[static_cast<size_t>(i)];
+            if (!level.ensure(sizes[static_cast<size_t>(i)].width, sizes[static_cast<size_t>(i)].height)) break;
+            chain[static_cast<size_t>(i)] = &level;
+            built = i + 1;
+        }
+        if (built > 0) {
+            // The step between: this frame halved by a linear blit; then the bloom's down filter, which
+            // blurs as it halves, makes each blur level from the one above it.
+            blitInto(drawFbo_, width, height, blur_[0], GL_LINEAR);
+            const bool filtered = hdr->downsample(blur_[0].tex(), blur_[0].width(), blur_[0].height(), chain.data() + 1, built - 1, vao_);
+            blurBuilt_ = filtered ? built : 1;
+        }
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, drawFbo_);
+    glViewport(0, 0, width, height);
+}
+
+void ShaderScene::releaseHistory() {
+    previous_.release();
+    for (Framebuffer& level : blur_) level.release();
+    blurBuilt_ = 0;
+}
+
 void ShaderScene::set1f(const char* name, float value) {
     glUniform1f(uniforms_.loc(name), value);
 }
@@ -383,6 +528,7 @@ void ShaderScene::release() {
     if (program_ != 0) glDeleteProgram(program_);
     if (vao_ != 0) glDeleteVertexArrays(1, &vao_);
     audioTex_.release();
+    releaseHistory();
     program_ = 0;
     vao_ = 0;
     uniforms_ = UniformCache(0);
