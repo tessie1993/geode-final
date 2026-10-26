@@ -2,6 +2,7 @@ package dev.geode.feature.settings.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -46,8 +47,8 @@ private enum class FolderPick {
 
 /**
  * Settings' place (ADR-0003): the only part that touches the Settings store and the system folder
- * picker. Which section is open is App UI state kept here. [fontColors], [appVersion] and the looks Geode
- * can start on ([startLooks], #383) come from the app; [onStartTutorial] replays the intro tour and [onSetLiveWallpaper] opens the system's wallpaper
+ * picker. Which section is open, if any, is App UI state kept here; with none open it shows their
+ * list. [fontColors], [appVersion] and the looks Geode can start on ([startLooks], #383) come from the app; [onStartTutorial] replays the intro tour and [onSetLiveWallpaper] opens the system's wallpaper
  * picker. [helpExtra] is drawn at the end of the Help section, for what other features add there (Diagnostics).
  */
 @Composable
@@ -62,7 +63,8 @@ fun SettingsRoute(
     helpExtra: @Composable () -> Unit = {},
 ) {
     val state by settings.state.collectAsStateWithLifecycle()
-    var section by rememberSaveable { mutableStateOf(SettingsSection.THEME) }
+    // Null is the list of sections. Saved, so a rotation or the process coming back keeps it.
+    var section by rememberSaveable { mutableStateOf<SettingsSection?>(null) }
     var picking by rememberSaveable { mutableStateOf(FolderPick.VIDEO) }
     val pick =
         rememberFolderPicker { folder ->
@@ -75,6 +77,8 @@ fun SettingsRoute(
                 },
             )
         }
+    // Back leaves an open section for the list before it leaves Settings.
+    BackHandler(enabled = section != null) { section = null }
     val pickFor: (FolderPick) -> Unit = {
         picking = it
         pick()
@@ -85,6 +89,7 @@ fun SettingsRoute(
             when (action) {
                 is SettingsAction.Change -> settings.send(action.command)
                 is SettingsAction.Show -> section = action.section
+                SettingsAction.Back -> section = null
                 SettingsAction.PickVideoFolder -> pickFor(FolderPick.VIDEO)
                 SettingsAction.PickPresetMirror -> pickFor(FolderPick.PRESET_MIRROR)
                 SettingsAction.PickPresetFolder -> pickFor(FolderPick.PRESET_FOLDER)

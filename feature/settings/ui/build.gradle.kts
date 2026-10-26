@@ -7,4 +7,5 @@ plugins {
 dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.activity.compose)
+    implementation(libs.compose.material.icons.extended)
 }

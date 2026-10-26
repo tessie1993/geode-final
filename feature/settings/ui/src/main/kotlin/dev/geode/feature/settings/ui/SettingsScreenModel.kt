@@ -36,11 +36,11 @@ data class StartLookChoice(
 
 /**
  * Everything [SettingsScreen] shows. [values] is null while the stored settings are being read.
- * Which [section] is open is App-UI-only state, kept by the route.
+ * Which [section] is open is App-UI-only state, kept by the route; null shows the list of sections.
  */
 @Immutable
 data class SettingsScreenModel(
-    val section: SettingsSection,
+    val section: SettingsSection?,
     val values: SettingsValues?,
     val fontColors: List<FontColorChoice>,
     val appVersion: String,
@@ -50,7 +50,7 @@ data class SettingsScreenModel(
         /** The model for Settings' [state], with the rest supplied by the route. */
         fun of(
             state: SettingsState,
-            section: SettingsSection,
+            section: SettingsSection?,
             fontColors: List<FontColorChoice>,
             appVersion: String,
             startLooks: List<StartLookChoice> = emptyList(),
@@ -71,9 +71,13 @@ sealed interface SettingsAction {
         val command: SettingsCommand,
     ) : SettingsAction
 
+    /** Open [section] from the list. */
     data class Show(
         val section: SettingsSection,
     ) : SettingsAction
+
+    /** Back from an open section to the list of sections. */
+    data object Back : SettingsAction
 
     /** Pick the folder Studio saves its videos to (#21); the route opens the system's folder picker. */
     data object PickVideoFolder : SettingsAction

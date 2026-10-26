@@ -11,6 +11,17 @@
     <string name="settings_section_help">Help</string>
     <string name="settings_section_about">About</string>
 
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back to Settings</string>
+    <string name="settings_summary_theme">Light or dark, colours, text and layout</string>
+    <string name="settings_summary_application">Screen, start-up look, touch, motion and wallpaper</string>
+    <string name="settings_summary_audio">Playback, equalizer and analysis</string>
+    <string name="settings_summary_export">What new renders start with, and when they finish</string>
+    <string name="settings_summary_default_paths">Where videos, presets and music are kept</string>
+    <string name="settings_summary_battery">Save mode, Visuals off and cooling down</string>
+    <string name="settings_summary_help">The walkthrough and diagnostics</string>
+    <string name="settings_summary_about">Version and privacy</string>
+
     <string name="settings_off">Off</string>
 
     <!-- Look -->
