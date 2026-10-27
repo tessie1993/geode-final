@@ -29,35 +29,33 @@ float beatSensitivity(float beatResponse) {
 
 namespace {
 
-double framePower(const float* stereo, int frame) {
-    const double left = stereo[2 * frame];
-    const double right = stereo[2 * frame + 1];
-    return left * left + right * right;
+double framePower(const float* pcm, int frame, int channels) {
+    double power = 0.0;
+    for (int c = 0; c < channels; ++c) {
+        const double sample = pcm[channels * frame + c];
+        power += sample * sample;
+    }
+    return power;
 }
 
 }  // namespace
 
-int loudestWindow(const float* stereo, int frames, int window, int fresh) {
-    if (stereo == nullptr || window <= 0 || frames <= window) return 0;
+int loudestWindow(const float* pcm, int frames, int window, int fresh, int channels) {
+    if (pcm == nullptr || window <= 0 || channels <= 0 || frames <= window) return 0;
     const int newest = frames - window;
     const int oldest = newest - std::min(std::max(fresh, 0), newest);
     double energy = 0.0;
-    for (int i = oldest; i < oldest + window; ++i) energy += framePower(stereo, i);
+    for (int i = oldest; i < oldest + window; ++i) energy += framePower(pcm, i, channels);
     int best = oldest;
     double bestEnergy = energy;
     for (int start = oldest + 1; start <= newest; ++start) {
-        energy += framePower(stereo, start + window - 1) - framePower(stereo, start - 1);
+        energy += framePower(pcm, start + window - 1, channels) - framePower(pcm, start - 1, channels);
         if (energy >= bestEnergy) {
             bestEnergy = energy;
             best = start;
         }
     }
     return best;
-}
-
-int heardSince(bool wasLive, uint32_t wasEpoch, uint64_t wasEnd, bool live, uint32_t epoch, uint64_t end, int most) {
-    if (!wasLive || !live || epoch != wasEpoch || end <= wasEnd || most <= 0) return 0;
-    return static_cast<int>(std::min<uint64_t>(end - wasEnd, static_cast<uint64_t>(most)));
 }
 
 BufferSize bufferSize(int windowWidth, int windowHeight, float scale) {

@@ -54,9 +54,8 @@ namespace geode::viz {
 class Renderer {
 public:
     static constexpr float kTimeWrapSeconds = 7100.0f;
-    static constexpr int kPcmWindowFrames = 576;
-    // The longest span of audio a frame is handed: a frame interval at 15 fps and 48 kHz, plus a window.
-    static constexpr int kPcmSpanFrames = 4096;
+    // The most mono samples kept from one push: a frame interval at 15 fps and 48 kHz, plus a window.
+    static constexpr int kPcmCapacity = 4096;
 
     Renderer(AAssetManager* assets, std::string cacheDir);
     ~Renderer();
@@ -74,6 +73,11 @@ public:
     // The phone's down in screen space, latest-wins (GravityField); 0, 0, 0 says there is none.
     void submitGravity(float x, float y, float z) { gravityField_.submit(x, y, z); }
     void queueTouchStroke(float nx, float ny, float ndx, float ndy, float dt, float strength);
+    // The mono samples the host's PCM ring received since the last frame (the newest kPcmCapacity are
+    // kept): latched in beginFrame, handed to every scene of that frame (Scene::acceptPcm) and then
+    // dropped, so no chunk is drawn twice and a paused player draws silence. Without a push the scenes
+    // fall back to the features' waveform.
+    void pushPcm(const float* samples, int count);
     // The person's "smear the Visual with a finger" (Settings): whether a Style that does not draw the
     // strokes itself gets them as the shared ripple smear, and how strongly. Off until set.
     void setTouchSmear(bool on, float strength);
@@ -112,12 +116,6 @@ public:
 #endif
 
     // GL thread.
-    // The next frame's audio, interleaved stereo: up to kPcmSpanFrames frames ending at the audio heard,
-    // the newest `fresh` of them heard since the last frame. Every scene gets the newest
-    // kPcmWindowFrames as its window, and the whole span (Scene::acceptPcmSpan); both are handed over
-    // that frame and then dropped, so no window is ever drawn twice. Without them, the scenes fall back
-    // to the features' waveform.
-    void setFramePcm(const float* stereo, int frames, int fresh = 0);
     void onSurfaceCreated();
     void surfaceChanged(int width, int height);
     bool setScene(const std::string& sceneId);
@@ -267,18 +265,13 @@ private:
     float exportSupersample_ = scale::kExportSupersample;
     float morphFadeSec_ = 0.0f;
     float morphRemainSec_ = 0.0f;
-    // The audio window setFramePcm handed over for the next frame, and the one this frame draws: latched in
-    // beginFrame, so every scene of a frame gets the same window and the next frame gets none unless a new
-    // one comes.
-    std::array<float, kPcmSpanFrames * 2> pendingPcm_{};
-    int pendingPcmFrames_ = 0;
-    int pendingPcmFresh_ = 0;
-    std::array<float, kPcmSpanFrames * 2> frameSpan_{};
-    int frameSpanFrames_ = 0;
-    int frameSpanFresh_ = 0;
-    std::array<float, kPcmWindowFrames * 2> framePcm_{};
-    std::array<float, kPcmWindowFrames> framePcmMono_{};
-    int framePcmFrames_ = 0;
+    // The samples pushPcm handed over since the last frame (under stateLock_), and the ones this frame
+    // draws: latched in beginFrame, so every scene of a frame gets the same chunk and the next frame gets
+    // none unless a new one comes.
+    std::vector<float> pendingPcm_;
+    int pendingPcmCount_ = 0;
+    std::vector<float> framePcm_;
+    int framePcmCount_ = 0;
     // W00: overlay/underlay layers. Retained (not just "pending") so a surface recreation can
     // re-arm the dirty flag and re-upload; see onSurfaceCreated() and applyOverlayUploads().
     // Empty = cleared.

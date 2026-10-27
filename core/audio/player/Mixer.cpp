@@ -1,13 +1,13 @@
 #include "geode/audio/player/Mixer.hpp"
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 
 namespace geode::audio::player {
 
 namespace {
 
+constexpr size_t kTapSamples = 1u << 16;
 constexpr float kHalfPi = 1.57079632679f;
 
 void gainsFor(float t, int curve, float& out, float& in) {
@@ -30,23 +30,9 @@ void gainsFor(float t, int curve, float& out, float& in) {
     }
 }
 
-int64_t nowNs() {
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
 }  // namespace
 
-Mixer::Mixer() : scratch_(kMaxRenderFrames * kChannels, 0.0f) {}
-
-void Mixer::setFeedRunning(bool running) {
-    if (feed::FeedRing* ring = feed_.load(std::memory_order_acquire)) ring->setRunning(feed::FeedSource::Player, running);
-}
-
-void Mixer::setFeedDelay(int64_t delayNs, bool measured) {
-    if (feed::FeedRing* ring = feed_.load(std::memory_order_acquire)) {
-        ring->setPresentation(feed::FeedSource::Player, delayNs, 1.0f, measured);
-    }
-}
+Mixer::Mixer() : tap_(kTapSamples), scratch_(kMaxRenderFrames * kChannels, 0.0f) {}
 
 // geode_player_set_dsp hands the installed chain to the player, which destroys it "at player
 // destruction" (geode_api.h), so the live chain is freed here along with the retired ones. The output
@@ -129,15 +115,12 @@ void Mixer::render(float* out, size_t frames) {
             }
         }
     }
-    // Before volume and DSP: the Visual follows the music, not the volume knob or the equalizer.
-    if (feed::FeedRing* ring = feed_.load(std::memory_order_acquire)) {
-        ring->write(feed::FeedSource::Player, out, frames, kChannels, feedRate_.load(std::memory_order_relaxed), nowNs());
-    }
     const float volume = volume_.load(std::memory_order_relaxed);
     if (volume != 1.0f) {
         for (size_t i = 0; i < samples; ++i) out[i] *= volume;
     }
     if (geode_dsp* dsp = dsp_.load(std::memory_order_acquire)) geode_dsp_process(dsp, out, frames);
+    tap_.push(out, samples);
     callbacks_.fetch_add(1, std::memory_order_release);
 }
 

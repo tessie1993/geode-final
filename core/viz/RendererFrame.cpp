@@ -56,20 +56,13 @@ float Renderer::beginFrame(double timeSeconds) {
     return dt;
 }
 
+// Copied out under the lock and handed to the scenes once unlocked: acceptPcm() (a copy of up to
+// kPcmCapacity samples plus a texture row) must never run while stateLock_ is held, or pushPcm() on the
+// PCM producer's thread blocks behind a scene upload.
 void Renderer::latchFramePcm() {
-    frameSpanFrames_ = std::exchange(pendingPcmFrames_, 0);
-    frameSpanFresh_ = std::exchange(pendingPcmFresh_, 0);
-    std::copy(pendingPcm_.begin(), pendingPcm_.begin() + static_cast<std::ptrdiff_t>(frameSpanFrames_) * 2, frameSpan_.begin());
-    // The window is the newest kPcmWindowFrames of the span.
-    framePcmFrames_ = std::min(frameSpanFrames_, kPcmWindowFrames);
-    const int first = frameSpanFrames_ - framePcmFrames_;
-    for (int i = 0; i < framePcmFrames_; ++i) {
-        const float left = frameSpan_[static_cast<size_t>(2 * (first + i))];
-        const float right = frameSpan_[static_cast<size_t>(2 * (first + i) + 1)];
-        framePcm_[static_cast<size_t>(2 * i)] = left;
-        framePcm_[static_cast<size_t>(2 * i + 1)] = right;
-        framePcmMono_[static_cast<size_t>(i)] = 0.5f * (left + right);
-    }
+    std::lock_guard<std::mutex> lock(stateLock_);
+    framePcmCount_ = std::exchange(pendingPcmCount_, 0);
+    if (framePcmCount_ > 0) std::copy(pendingPcm_.begin(), pendingPcm_.begin() + framePcmCount_, framePcm_.begin());
 }
 
 Scene* Renderer::resolveActiveScene(float dt) {
@@ -286,10 +279,7 @@ bool Renderer::ensureTargets() {
 }
 
 void Renderer::deliverPcm(Scene& scene) {
-    if (framePcmFrames_ <= 0) return;
-    scene.acceptPcm(framePcmMono_.data(), framePcmFrames_);
-    scene.acceptStereoPcm(framePcm_.data(), framePcmFrames_);
-    scene.acceptPcmSpan(frameSpan_.data(), frameSpanFrames_, frameSpanFresh_);
+    if (framePcmCount_ > 0) scene.acceptPcm(framePcm_.data(), framePcmCount_);
 }
 
 float Renderer::drawSecondaryTargets(const SceneParams& p, float dt) {

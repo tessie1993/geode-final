@@ -13,6 +13,8 @@ using geode::jni::valueCall;
 
 // The longest player error message handed to Kotlin, terminator included.
 constexpr size_t kErrorCapacity = 256;
+// Floats per frame in the tap: the stereo mix.
+constexpr jlong kTapFloatsPerFrame = 2;
 
 geode_player* playerOf(jlong handle) { return reinterpret_cast<geode_player*>(handle); }
 
@@ -137,11 +139,17 @@ Java_dev_geode_engine_bridge_GeodeNative_playerErrorKind(JNIEnv* env, jobject, j
     return valueCall(env, "playerErrorKind", jint{GEODE_PLAYER_ERROR_NONE}, [&] { return geode_player_error_kind(playerOf(handle)); });
 }
 
-// The feed must outlive the player: Kotlin's feed is the process's own and is never destroyed.
+// The buffer must be direct: the analysis thread reads straight out of the mixer's ring.
 JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_playerSetFeed(JNIEnv* env, jobject, jlong handle, jlong feed) {
-    return playerCall(env, "playerSetFeed", handle,
-                      [&](geode_player* p) { geode_player_set_feed(p, reinterpret_cast<geode_feed*>(feed)); });
+Java_dev_geode_engine_bridge_GeodeNative_playerReadTap(JNIEnv* env, jobject, jlong handle, jobject buffer, jint frames) {
+    return valueCall(env, "playerReadTap", jint{0}, [&]() -> jint {
+        if (!handle || !buffer || frames <= 0) return 0;
+        auto* out = static_cast<float*>(env->GetDirectBufferAddress(buffer));
+        if (!out) return 0;
+        const jlong capacityFrames = env->GetDirectBufferCapacity(buffer) / static_cast<jlong>(kTapFloatsPerFrame * sizeof(float));
+        const size_t wanted = static_cast<size_t>(frames < capacityFrames ? frames : capacityFrames);
+        return static_cast<jint>(geode_player_read_tap(playerOf(handle), out, wanted));
+    });
 }
 
 }  // extern "C"

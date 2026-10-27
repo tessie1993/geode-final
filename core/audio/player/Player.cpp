@@ -29,9 +29,6 @@ int64_t nowMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-// Engine loop turns between two latency reports: about a quarter second while a track plays.
-constexpr int kLatencyTicks = 50;
-
 }  // namespace
 
 struct Player::Track {
@@ -94,12 +91,6 @@ void Player::setCrossfade(int durationMs, int curve) {
     enqueue(command);
 }
 
-void Player::setFeed(feed::FeedRing* ring) {
-    mixer_.setFeed(ring);
-    mixer_.setFeedRate(outRate_.load(std::memory_order_acquire));
-    mixer_.setFeedRunning(output_.running());
-}
-
 std::string Player::lastError() const {
     std::lock_guard<std::mutex> guard(errorLock_);
     return lastError_;
@@ -135,7 +126,6 @@ void Player::run() {
         reconcile();
         pump();
         updateState();
-        reportLatency();
     }
     doStop();
 }
@@ -146,7 +136,7 @@ void Player::handle(const Command& command) {
         case Command::Kind::SetNext: doSetNext(command); break;
         case Command::Kind::Play: break;
         case Command::Kind::Pause:
-            if (output_.running()) pauseOutput();
+            if (output_.running()) output_.pause();
             break;
         case Command::Kind::Stop: doStop(); break;
         case Command::Kind::Seek: doSeek(command.positionUs); break;
@@ -227,7 +217,7 @@ void Player::doSeek(int64_t positionUs) {
 }
 
 void Player::doStop() {
-    if (output_.running()) pauseOutput();
+    if (output_.running()) output_.pause();
     postCommand({DeckCommand::Op::SetCurrent, nullptr});
     postCommand({DeckCommand::Op::ClearNext, nullptr});
     current_.reset();
@@ -246,7 +236,6 @@ bool Player::ensureOutput() {
     // Open again, so a reopen still waiting for its next attempt must not close this stream.
     retry_.reset();
     outRate_.store(output_.sampleRate(), std::memory_order_release);
-    mixer_.setFeedRate(output_.sampleRate());
     mixer_.setCrossfade(crossfadeFrames(), curve_);
     return true;
 }
@@ -263,7 +252,6 @@ void Player::reopenOutput() {
     }
     retry_.reset();
     const int rate = output_.sampleRate();
-    mixer_.setFeedRate(rate);
     if (rate == outRate_.load(std::memory_order_relaxed)) return;
     outRate_.store(rate, std::memory_order_release);
     mixer_.setCrossfade(crossfadeFrames(), curve_);
@@ -410,36 +398,10 @@ void Player::updateState() {
     state_.store(state, std::memory_order_release);
     const bool wantRunning = playWhenReady_.load(std::memory_order_acquire) && state == PlayerState::Ready;
     if (wantRunning && !output_.running()) {
-        startOutput();
+        output_.start();
     } else if (!wantRunning && output_.running() && state != PlayerState::Buffering) {
-        pauseOutput();
+        output_.pause();
     }
-}
-
-void Player::startOutput() {
-    output_.start();
-    mixer_.setFeedRunning(output_.running());
-}
-
-void Player::pauseOutput() {
-    output_.pause();
-    mixer_.setFeedRunning(output_.running());
-}
-
-void Player::reportLatency() {
-    if (++latencyTicks_ < kLatencyTicks) return;
-    latencyTicks_ = 0;
-    if (!output_.running()) return;
-    const double ms = output_.latencyMillis();
-    if (ms >= 0.0) {
-        mixer_.setFeedDelay(static_cast<int64_t>(ms * 1'000'000.0), true);
-        return;
-    }
-    // An output that gives no timestamp (some OpenSL ES paths, a stream not yet timed): its buffer is all
-    // that is known, and the feed adds what the output route is known to add.
-    const int rate = output_.sampleRate();
-    const int32_t frames = output_.bufferedFrames();
-    if (rate > 0 && frames > 0) mixer_.setFeedDelay(int64_t{frames} * 1'000'000'000 / rate, false);
 }
 
 void Player::noteError(const std::string& message) {
@@ -450,7 +412,7 @@ void Player::noteError(const std::string& message) {
 void Player::fail(const std::string& message, PlayerError kind) {
     noteError(message);
     errorKind_.store(kind, std::memory_order_release);
-    if (output_.running()) pauseOutput();
+    if (output_.running()) output_.pause();
     postCommand({DeckCommand::Op::SetCurrent, nullptr});
     postCommand({DeckCommand::Op::ClearNext, nullptr});
     current_.reset();

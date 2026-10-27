@@ -126,7 +126,7 @@ ShaderScene::ShaderScene(std::string id, std::string vertexSrc, std::string frag
 
 ShaderScene::~ShaderScene() { release(); }
 
-void ShaderScene::acceptStereoPcm(const float* interleaved, int frames) { audioInputs_.acceptStereo(interleaved, frames); }
+void ShaderScene::acceptPcm(const float* samples, int count) { audioInputs_.acceptMono(samples, count); }
 
 void ShaderScene::setFlow(GLuint texture, float strength) {
     flowTex_ = texture;

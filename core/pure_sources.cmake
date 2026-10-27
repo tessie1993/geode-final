@@ -22,10 +22,6 @@ set(GEODE_AUDIO_PURE_SOURCES
     audio/dsp/Limiter.cpp
     audio/player/BufferTuner.cpp
     audio/player/OutputRetry.cpp
-    audio/feed/FeedRing.cpp
-    audio/feed/FeatureHistory.cpp
-    audio/feed/HeardClock.cpp
-    audio/feed/FeedTap.cpp
 )
 set(GEODE_ANALYSIS_PURE_SOURCES
     analysis/WindowTable.cpp
@@ -73,7 +69,6 @@ set(GEODE_VIZ_PURE_SOURCES
     viz/QualityTiers.cpp
     viz/BeatEnvelope.cpp
     viz/FeatureBus.cpp
-    viz/DisplayEvents.cpp
     viz/StyleTransition.cpp
     viz/MilkdropAdaptation.cpp
     viz/RenderScale.cpp

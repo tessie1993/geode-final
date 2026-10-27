@@ -26,7 +26,9 @@ Renderer::Renderer(AAssetManager* assets, std::string cacheDir)
                           [this] { return thermal_.pacedFps(); },
                           [this](const std::string& path) { notePresetLoaded(path); },
                           [this] { return thermal_.offscreen(); }}),
-      compositePass_(assets_, &programCache_) {
+      compositePass_(assets_, &programCache_),
+      pendingPcm_(kPcmCapacity, 0.0f),
+      framePcm_(kPcmCapacity, 0.0f) {
     programCache_.install(cacheDir_);
 }
 
@@ -62,13 +64,18 @@ void Renderer::beginParamMorph(float seconds) {
     morphRemainSec_ = seconds * 3.0f;
 }
 
-void Renderer::setFramePcm(const float* stereo, int frames, int fresh) {
-    const int n = stereo ? std::clamp(frames, 0, kPcmSpanFrames) : 0;
-    // The newest frames of a longer span, which is where the audio heard is.
-    const std::ptrdiff_t skip = stereo ? static_cast<std::ptrdiff_t>(frames - n) * 2 : 0;
-    std::copy(stereo + skip, stereo + skip + static_cast<std::ptrdiff_t>(n) * 2, pendingPcm_.begin());
-    pendingPcmFrames_ = n;
-    pendingPcmFresh_ = std::clamp(fresh, 0, n);
+void Renderer::pushPcm(const float* samples, int count) {
+    if (!samples || count <= 0) return;
+    std::lock_guard<std::mutex> lock(stateLock_);
+    // Pushes between two frames add up, the newest kPcmCapacity samples kept, so a frame drawn late
+    // still sees everything that came since the one before.
+    const int n = std::min(count, kPcmCapacity);
+    const int keep = std::min(pendingPcmCount_, kPcmCapacity - n);
+    if (keep > 0 && keep < pendingPcmCount_) {
+        std::copy(pendingPcm_.begin() + (pendingPcmCount_ - keep), pendingPcm_.begin() + pendingPcmCount_, pendingPcm_.begin());
+    }
+    std::copy(samples + (count - n), samples + count, pendingPcm_.begin() + keep);
+    pendingPcmCount_ = keep + n;
 }
 
 double Renderer::monotonicSeconds() {

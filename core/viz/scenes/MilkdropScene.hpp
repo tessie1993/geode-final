@@ -34,8 +34,7 @@ namespace geode::viz {
 class MilkdropScene : public Scene {
 public:
     MilkdropScene(std::string id, ProgramLoader loader, SceneHost host)
-        : id_(std::move(id)), loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f),
-          stereo_(static_cast<size_t>(kEnginePcmSamples) * 2, 0.0f) {}
+        : id_(std::move(id)), loader_(loader), host_(std::move(host)), pcm_(kPcmCapacity, 0.0f) {}
     ~MilkdropScene() override { release(); }
 
     const std::string& id() const override { return id_; }
@@ -46,10 +45,9 @@ public:
     void update(const GeodeFeatureFrame& features, float dt) override;
     void draw(float timeSeconds) override;
     void release() override;
+    // The samples heard since the last frame; update() hands projectM the loudest window of them
+    // (milkdrop::loudestWindow), so no kick falls between the windows it measures.
     void acceptPcm(const float* samples, int count) override;
-    // The frame's audio as projectM wants it: both channels, so wave modes that split left and right show
-    // two, in the loudest window of what was heard since the last frame (milkdrop::loudestWindow).
-    void acceptPcmSpan(const float* interleaved, int frames, int fresh) override;
     void queueMilkPreset(const std::string& path) override;
     void reloadMilkPreset() override;
     void setMilkTextureDir(const std::string& dir) override;
@@ -125,9 +123,6 @@ private:
     SceneHost host_;
     std::vector<float> pcm_;
     int pcmCount_ = 0;
-    // This frame's stereo window; preferred over the mono samples when a frame brings both.
-    std::vector<float> stereo_;
-    int stereoFrames_ = 0;
     Engine engine_;
     int width_ = 0;
     int height_ = 0;

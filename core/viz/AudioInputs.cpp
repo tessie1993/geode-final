@@ -52,6 +52,20 @@ void AudioInputs::acceptStereo(const float* interleaved, int frames) {
     fresh_ = true;
 }
 
+void AudioInputs::acceptMono(const float* mono, int frames) {
+    if (!mono || frames <= 0) return;
+    const int n = std::min(frames, kFftSize);
+    const float* from = mono + static_cast<size_t>(frames - n);
+    stereo_.resize(static_cast<size_t>(n) * 2);
+    for (int i = 0; i < n; ++i) {
+        const float sample = sane(from[i]);
+        stereo_[static_cast<size_t>(2 * i)] = sample;
+        stereo_[static_cast<size_t>(2 * i + 1)] = sample;
+    }
+    frames_ = n;
+    fresh_ = true;
+}
+
 void AudioInputs::reset() {
     instant_.fill(0.0f);
     spectrum_.fill(0.0f);

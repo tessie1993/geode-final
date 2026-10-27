@@ -62,6 +62,9 @@ public:
 
     // This frame's stereo window, interleaved: what the frame draws.
     void acceptStereo(const float* interleaved, int frames);
+    // This frame's mono samples (the host's PCM ring is mono): heard on both channels, so the scope's left
+    // and right rows read as its mid.
+    void acceptMono(const float* mono, int frames);
     // Advances by dt and writes the kRows rows of kWidth texels into out, the levels scaled by drive.
     void update(float dt, float drive, const GeodeFeatureFrame& features, float* out);
     void reset();

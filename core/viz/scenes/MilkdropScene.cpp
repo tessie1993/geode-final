@@ -133,16 +133,6 @@ void MilkdropScene::acceptPcm(const float* samples, int count) {
     pcmCount_ += n;
 }
 
-void MilkdropScene::acceptPcmSpan(const float* interleaved, int frames, int fresh) {
-    const int n = std::min(frames, kEnginePcmSamples);
-    if (!interleaved || n <= 0) return;
-    // Replacing the last window: a window is added to projectM once. projectM measures one window a frame,
-    // so the loudest one heard since the last frame goes in, and no kick falls between two frames.
-    const int start = milkdrop::loudestWindow(interleaved, frames, n, fresh);
-    std::copy(interleaved + static_cast<size_t>(start) * 2, interleaved + static_cast<size_t>(start + n) * 2, stereo_.begin());
-    stereoFrames_ = n;
-}
-
 void MilkdropScene::queueMilkPreset(const std::string& path) {
     std::lock_guard<std::mutex> lock(presetLock_);
     pendingPresetPath_ = path;
@@ -291,13 +281,12 @@ void MilkdropScene::update(const GeodeFeatureFrame& features, float dt) {
         adapter_.onFrame(dt, host_.pacedFps ? host_.pacedFps() : 0.0f);
     }
     if (!engine_) return;
-    if (stereoFrames_ > 0) {
-        projectm_pcm_add_float(engine_.get(), stereo_.data(), static_cast<unsigned int>(stereoFrames_), PROJECTM_STEREO);
-        stereoFrames_ = 0;
-        pcmCount_ = 0;
-    } else if (pcmCount_ > 0) {
+    if (pcmCount_ > 0) {
+        // One window a frame goes to projectM: the loudest of those ending in the samples heard since the
+        // last frame (every sample here is new), so no kick falls between the windows it measures.
         const int n = std::min(pcmCount_, kEnginePcmSamples);
-        if (n < pcmCount_) std::copy(pcm_.begin() + (pcmCount_ - n), pcm_.begin() + pcmCount_, pcm_.begin());
+        const int start = milkdrop::loudestWindow(pcm_.data(), pcmCount_, n, pcmCount_, 1);
+        if (start > 0) std::copy(pcm_.begin() + start, pcm_.begin() + start + n, pcm_.begin());
         pcmCount_ = 0;
         projectm_pcm_add_float(engine_.get(), pcm_.data(), static_cast<unsigned int>(n), PROJECTM_MONO);
     } else {

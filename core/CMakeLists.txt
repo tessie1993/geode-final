@@ -110,8 +110,6 @@ geode_core_library(geode_api api
     api/geode_tags_api.cpp
     api/geode_player_api.cpp
     api/geode_snapshot_api.cpp
-    api/geode_feed_api.cpp
-    api/Feed.cpp
 )
 target_link_libraries(geode_api
     PUBLIC geode_api_types

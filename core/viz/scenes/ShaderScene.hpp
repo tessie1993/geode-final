@@ -75,7 +75,7 @@ public:
     void draw(float timeSeconds) override;
     void release() override;
 
-    void acceptStereoPcm(const float* interleaved, int frames) override;
+    void acceptPcm(const float* samples, int count) override;
     void setFlow(GLuint texture, float strength) override;
     void setPaletteLut(GLuint texture) override { paletteLutTex_ = texture; }
     void setTouchField(const TouchField* field) override { touchField_ = field; }

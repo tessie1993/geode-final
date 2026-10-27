@@ -32,13 +32,6 @@ public:
     int sampleRate() const { return sampleRate_; }
     // The output buffer size the BufferTuner last applied, in frames (0 when untuned). Safe from any thread.
     int32_t bufferSizeFrames() const { return tuner_.sizeFrames(); }
-    // From the mix leaving the callback to it being heard, in ms, by the stream's timestamps (Oboe reads
-    // getTimestamp(CLOCK_MONOTONIC) and the frames written); negative while the stream cannot tell (not open,
-    // not started yet, or an output that gives no timestamps). Engine thread.
-    double latencyMillis();
-    // The frames the output buffer holds: the tuner's size, or the stream's own while untuned; 0 when
-    // closed. Engine thread.
-    int32_t bufferedFrames() const;
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream, void* audioData, int32_t numFrames) override;
     void onErrorAfterClose(oboe::AudioStream* stream, oboe::Result error) override;

@@ -5,7 +5,6 @@
 
 #include "geode/api/geode_api.h"
 #include "geode/audio/player/Player.hpp"
-#include "FeedHandle.hpp"
 
 struct geode_player {
     geode::audio::player::Player player;
@@ -94,8 +93,8 @@ int geode_player_error_kind(geode_player* p) {
     return p ? static_cast<int>(p->player.errorKind()) : GEODE_PLAYER_ERROR_NONE;
 }
 
-void geode_player_set_feed(geode_player* p, geode_feed* f) {
-    if (p) p->player.setFeed(f ? &f->feed->ring() : nullptr);
+size_t geode_player_read_tap(geode_player* p, float* stereo, size_t frames) {
+    return p && stereo ? p->player.readTap(stereo, frames) : 0;
 }
 
 }  // extern "C"

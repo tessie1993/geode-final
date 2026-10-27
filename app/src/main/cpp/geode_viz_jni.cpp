@@ -237,6 +237,16 @@ Java_dev_geode_engine_bridge_GeodeNative_vizTakeMilkPresetLoaded(JNIEnv* env, jo
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_geode_engine_bridge_GeodeNative_vizPushPcm(JNIEnv* env, jobject, jlong handle, jfloatArray mono, jint count) {
+    return vizCall(env, "vizPushPcm", handle, [&](geode_viz* v) {
+        FloatElements data(env, mono);
+        if (!data.get()) return GEODE_STATUS_INVALID_ARGUMENT;
+        geode_viz_push_pcm(v, data.get(), count < data.length() ? count : data.length());
+        return GEODE_STATUS_OK;
+    });
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizSetLfo(JNIEnv* env, jobject, jlong handle, jint slot, jfloatArray config) {
     return vizCall(env, "vizSetLfo", handle, [&](geode_viz* v) {
         FloatElements data(env, config);
@@ -394,41 +404,6 @@ JNIEXPORT jint JNICALL
 Java_dev_geode_engine_bridge_GeodeNative_vizReleaseScenes(JNIEnv* env, jobject, jlong handle) {
     return vizCall(env, "vizReleaseScenes", handle, [](geode_viz* v) {
         geode_viz_release_scenes(v);
-        return GEODE_STATUS_OK;
-    });
-}
-
-// GL thread: the Visual reads the live sound from the feed at the start of each frame; 0 detaches.
-JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizAttachFeed(JNIEnv* env, jobject, jlong handle, jlong feed) {
-    return vizCall(env, "vizAttachFeed", handle, [&](geode_viz* v) {
-        return geode_viz_attach_feed(v, reinterpret_cast<geode_feed*>(feed));
-    });
-}
-
-JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetPresentTime(JNIEnv* env, jobject, jlong handle, jlong presentNs) {
-    return vizCall(env, "vizSetPresentTime", handle, [&](geode_viz* v) {
-        geode_viz_set_present_time(v, presentNs);
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetReactionsHeld(JNIEnv* env, jobject, jlong handle, jboolean held) {
-    return vizCall(env, "vizSetReactionsHeld", handle, [&](geode_viz* v) {
-        geode_viz_set_reactions_held(v, held ? 1 : 0);
-        return GEODE_STATUS_OK;
-    });
-}
-
-JNIEXPORT jint JNICALL
-Java_dev_geode_engine_bridge_GeodeNative_vizSetFramePcm(JNIEnv* env, jobject, jlong handle, jfloatArray stereo, jint frames,
-                                                       jint fresh) {
-    return vizCall(env, "vizSetFramePcm", handle, [&](geode_viz* v) {
-        FloatElements data(env, stereo);
-        if (!data.get() || frames < 0 || data.length() < static_cast<jsize>(frames) * 2) return GEODE_STATUS_INVALID_ARGUMENT;
-        geode_viz_set_frame_pcm(v, data.get(), static_cast<int>(frames), static_cast<int>(fresh));
         return GEODE_STATUS_OK;
     });
 }
