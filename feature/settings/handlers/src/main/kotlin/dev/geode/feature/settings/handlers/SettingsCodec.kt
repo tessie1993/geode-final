@@ -143,7 +143,6 @@ internal object SettingsCodec {
             beatMinIntervalMs = float(K.BEAT_MIN_INTERVAL, default.beatMinIntervalMs),
             presetMorph = Seconds(float(K.PRESET_MORPH, legacyMorph)),
             reactToMicrophone = boolean(K.REACT_TO_MICROPHONE, default.reactToMicrophone),
-            syncOffset = Millis((int(K.SYNC_OFFSET) ?: default.syncOffset.value.toInt()).toLong()),
             sensitivity = Decibels(float(K.SENSITIVITY, default.sensitivity.value)),
         )
     }
@@ -287,7 +286,6 @@ internal object SettingsCodec {
             K.BEAT_MIN_INTERVAL to analysis.beatMinIntervalMs,
             K.PRESET_MORPH to analysis.presetMorph.value,
             K.REACT_TO_MICROPHONE to analysis.reactToMicrophone,
-            K.SYNC_OFFSET to analysis.syncOffset.value.toInt(),
             K.SENSITIVITY to analysis.sensitivity.value,
             K.TOUCH_SMEAR to behavior.touchSmear,
             K.TOUCH_SMEAR_STRENGTH to behavior.touchSmearStrength,

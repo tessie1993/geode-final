@@ -176,11 +176,6 @@ sealed interface AnalysisCommand : SettingsCommand {
     data class SetSensitivity(
         val sensitivity: Decibels,
     ) : AnalysisCommand
-
-    /** Positive draws the Visual later than the music, negative earlier. */
-    data class SetSyncOffset(
-        val offset: Millis,
-    ) : AnalysisCommand
 }
 
 sealed interface BehaviorCommand : SettingsCommand {

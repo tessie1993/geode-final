@@ -111,9 +111,6 @@ internal object SettingsKeys {
     // New with #196, so in no old file.
     const val VISUALS_OFF = "visuals_off"
 
-    /** New with #295, so in no old file: the Visual's sync offset in whole milliseconds. */
-    const val SYNC_OFFSET = "visual_sync_offset_ms"
-
     /** New with #301, so in no old file: the Sensitivity in dB. */
     const val SENSITIVITY = "visual_sensitivity_db"
 

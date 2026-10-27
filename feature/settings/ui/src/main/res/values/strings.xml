@@ -89,7 +89,6 @@
     <string name="audio_default">Default</string>
     <string name="audio_preset_morph">Preset glide  %1$.1f s</string>
     <string name="audio_react_mic">React to the microphone</string>
-    <string name="audio_sync_offset">Picture sync  %1$+d ms (later when positive)</string>
 
     <!-- Export -->
     <string name="export_group_defaults">New renders start with</string>

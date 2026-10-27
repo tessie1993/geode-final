@@ -11,6 +11,28 @@ a partial reconstruction, rebuilt from the references in these entries, is at
 
 ## Unreleased
 
+- **The Visual's sound goes back through the Kotlin rings (undoes #276).** The
+  native audio feed broke the end-to-end audio-to-Visual pipeline, so the old
+  path is back: the player's tap (ExoPlayer's `TeeAudioProcessor`, or the native
+  mixer's tap drained by `NativeTapPump`) and Live input write into the session's
+  `VisualSink`, which fans out to the stereo `SampleRing` the Kotlin
+  `AnalysisEngine` reads and the mono `PcmRingBuffer` the Styles read; the
+  analysis publishes to `AudioBus`, and each Visual reads the features and
+  pushes the ring's new samples to the engine (`geode_viz_push_pcm`) on its own
+  thread. What was built on the feed is redone on this path: the analysis
+  sleeps when no Visual is shown (#298) through `AudioBus` consumers; Live
+  input (#297) starts a new ring epoch and resets the analysis, with its
+  waveform gain on the scenes' ring alone; Settings' Sensitivity (#301) is a
+  gain in `VisualSink` before both rings; MilkDrop (#296) takes the loudest
+  576-sample window of the mono samples heard since the last frame; Renders
+  (#342) push their decoded track as mono; a Recording (#317) taps the
+  `SampleRing` through `RecordingTap`, with silence for the time nothing
+  arrives. The engine now drops each pushed chunk after the frame that drew it,
+  so a paused player draws silence rather than its last chunk again. The heard
+  clock and the Picture sync setting (#295) are gone with the feed:
+  `AnalysisSettings.syncOffset`, `AnalysisCommand.SetSyncOffset` and the
+  `visual_sync_offset_ms` key are removed.
+
 - **The legacy app code is gone (#334).** The old player session and
   screens, their settings plumbing, the old export and loop-render dialogs
   and their controller, the export presets and the legacy quality, ratio
