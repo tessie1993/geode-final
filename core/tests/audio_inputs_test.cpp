@@ -320,3 +320,39 @@ TEST(AudioInputs, AResetForgetsEverything) {
     inputs.update(kFrame, 1.0f, GeodeFeatureFrame{}, rows.data());
     EXPECT_EQ(rows[AudioInputs::kScopeRow * AudioInputs::kWidth], 0.5f);
 }
+
+TEST(AudioInputs, MonoSamplesAreHeardOnBothChannels) {
+    const std::vector<float> stereo = window({{1000.0, 0.5}});
+    std::vector<float> mono(kWindow);
+    for (int i = 0; i < kWindow; ++i) mono[static_cast<size_t>(i)] = stereo[static_cast<size_t>(2 * i)];
+    AudioInputs fromStereo;
+    AudioInputs fromMono;
+    std::vector<float> rows(AudioInputs::kWidth * AudioInputs::kRows);
+    fromStereo.acceptStereo(stereo.data(), kWindow);
+    fromStereo.update(kFrame, 1.0f, GeodeFeatureFrame{}, rows.data());
+    fromMono.acceptMono(mono.data(), kWindow);
+    fromMono.update(kFrame, 1.0f, GeodeFeatureFrame{}, rows.data());
+    EXPECT_EQ(fromMono.spectrum(), fromStereo.spectrum());
+    EXPECT_EQ(fromMono.scopeMid(), fromStereo.scopeMid());
+    EXPECT_EQ(fromMono.scopeLeft(), fromMono.scopeMid());
+    EXPECT_EQ(fromMono.scopeRight(), fromMono.scopeMid());
+}
+
+TEST(AudioInputs, ALongMonoChunkKeepsItsNewestSamples) {
+    // A chunk longer than the FFT: the oldest samples are dropped, as a long stereo window's are.
+    const std::vector<float> stereo = window({{1000.0, 0.5}}, 0, 1.0, AudioInputs::kFftSize + 300);
+    std::vector<float> mono(stereo.size() / 2);
+    for (size_t i = 0; i < mono.size(); ++i) mono[i] = stereo[2 * i];
+    AudioInputs fromStereo;
+    AudioInputs fromMono;
+    std::vector<float> rows(AudioInputs::kWidth * AudioInputs::kRows);
+    fromStereo.acceptStereo(stereo.data(), static_cast<int>(mono.size()));
+    fromStereo.update(kFrame, 1.0f, GeodeFeatureFrame{}, rows.data());
+    fromMono.acceptMono(mono.data(), static_cast<int>(mono.size()));
+    fromMono.update(kFrame, 1.0f, GeodeFeatureFrame{}, rows.data());
+    EXPECT_EQ(fromMono.spectrum(), fromStereo.spectrum());
+    EXPECT_EQ(fromMono.scopeMid(), fromStereo.scopeMid());
+    // Nothing, or a chunk with nothing in it, changes nothing.
+    fromMono.acceptMono(nullptr, 10);
+    fromMono.acceptMono(mono.data(), 0);
+}

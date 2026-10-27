@@ -373,23 +373,19 @@ TEST(MilkdropLoudestWindow, ASpanWithNoRoomForAWindowStartsAtItsFirstFrame) {
     EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 3, 4, 3), 0);
 }
 
-TEST(MilkdropHeardSince, TheAudioBetweenTwoFramesIsNew) {
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1800, 4000), 800);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1001, 4000), 1);
+TEST(MilkdropLoudestWindow, MonoSamplesAreOneChannel) {
+    // The mono chunk the host pushes between two frames: every sample is new, so every window may go in.
+    std::vector<float> mono(10, 0.0f);
+    mono[3] = 0.5f;
+    EXPECT_EQ(milkdrop::loudestWindow(mono.data(), 10, 4, 10, 1), 3);
+    mono[8] = 0.75f;
+    EXPECT_EQ(milkdrop::loudestWindow(mono.data(), 10, 4, 10, 1), 6);
+    // Read as stereo, the same floats are five frames: no window of four ends in anything but frame 4.
+    EXPECT_EQ(milkdrop::loudestWindow(mono.data(), 5, 4, 5, 2), 1);
 }
 
-TEST(MilkdropHeardSince, NoMoreIsNewThanTheSpanHolds) {
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 9000, 3520), 3520);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 4520, 3520), 3520);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 4519, 3520), 3519);
-}
-
-TEST(MilkdropHeardSince, NothingIsNewAcrossSilenceAnEpochOrAStep) {
-    EXPECT_EQ(milkdrop::heardSince(false, 3, 1000, true, 3, 1800, 4000), 0);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, false, 3, 1800, 4000), 0);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 4, 1800, 4000), 0);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1000, 4000), 0);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 900, 4000), 0);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1800, 0), 0);
-    EXPECT_EQ(milkdrop::heardSince(true, 3, 1000, true, 3, 1800, -5), 0);
+TEST(MilkdropLoudestWindow, NoChannelsIsNoWindow) {
+    const std::vector<float> pcm = clicks(10, {9});
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3, 0), 0);
+    EXPECT_EQ(milkdrop::loudestWindow(pcm.data(), 10, 4, 3, -1), 0);
 }
