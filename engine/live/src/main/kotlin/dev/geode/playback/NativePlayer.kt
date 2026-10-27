@@ -18,7 +18,6 @@ import dev.geode.RingLog
 import dev.geode.engine.audio.AudioFocusPolicy
 import dev.geode.engine.audio.FocusChange
 import dev.geode.engine.audio.FocusState
-import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.AudioRestartPolicy
 import dev.geode.engine.bridge.GeodeNative
 import dev.geode.engine.bridge.NativeFailures
@@ -36,7 +35,7 @@ import java.util.concurrent.TimeUnit
  * handed to the engine, which owns them from then on. A poll on the main thread mirrors the engine's
  * state, position and gapless joins back into [SimpleBasePlayer].
  *
- * The engine writes its mix into the Visual's [feed] from its own audio callback. Audio focus and
+ * The engine's mix reaches the analysis through [tap], drained from the mixer's ring. Audio focus and
  * unplugged headphones are handled here, as ExoPlayer handles them for itself: a call pauses the music
  * until it ends, another player taking over pauses it for good, a ducking request lowers it, and
  * unplugging pauses it when the Settings say so.
@@ -44,7 +43,7 @@ import java.util.concurrent.TimeUnit
 @OptIn(UnstableApi::class)
 class NativePlayer(
     context: Context,
-    private val feed: VisualFeed,
+    private val tap: NativeTapPump,
     private val dsp: NativePlayerDsp,
 ) : SimpleBasePlayer(Looper.getMainLooper()) {
     private class Entry(
@@ -118,7 +117,7 @@ class NativePlayer(
         }
 
     init {
-        NativeFailures.check(GeodeNative.playerSetFeed(handle, feed.handle), "playerSetFeed")
+        tap.start(handle)
         dsp.attach(handle)
         main.post(poll)
     }
@@ -267,7 +266,7 @@ class NativePlayer(
         // handle we're about to destroy; the worker bodies also bail out early once released.
         worker.shutdownNow()
         bestEffort(TAG, "await worker shutdown") { worker.awaitTermination(500, TimeUnit.MILLISECONDS) }
-        GeodeNative.playerSetFeed(handle, 0L)
+        tap.stop()
         dsp.release()
         GeodeNative.playerDestroy(handle)
         return done()

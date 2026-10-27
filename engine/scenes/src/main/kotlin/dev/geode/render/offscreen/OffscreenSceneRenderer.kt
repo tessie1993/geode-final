@@ -129,6 +129,7 @@ class OffscreenSceneRenderer(
     private var stylesDue = 0
     private var revision = 0
     private val span = FloatArray(PCM_SPAN_FRAMES * 2)
+    private val mono = FloatArray(PCM_SPAN_FRAMES)
 
     /** Builds the native renderer, its scene and its look; must run with the target GL context current. */
     fun prepare() {
@@ -173,8 +174,13 @@ class OffscreenSceneRenderer(
         val features = timeline.featuresAround(frameMs(g), halfwayBeforeMs(g), halfwayBeforeMs(g + 1))
         viz.setFeatures(features)
         pcm?.let { sound ->
+            // The scenes take mono, as the live PCM ring gives it: the span's window plus what was heard since
+            // the last frame, mixed down, so MilkDrop still finds the loudest window of the new audio.
             val heard = sound.spanAt(g * MICROS_PER_SECOND / spec.fps, span)
-            if (heard.frames > 0) viz.setFramePcm(span, heard.frames, heard.fresh)
+            if (heard.frames > 0) {
+                for (i in 0 until heard.frames) mono[i] = (span[2 * i] + span[2 * i + 1]) * HALF
+                viz.pushPcm(mono, heard.frames)
+            }
         }
         // The render clock is exact: frame g is drawn g / fps seconds into the track, so every step is
         // one frame long, where whole milliseconds would alternate 16 and 17 ms at 60 fps, and a ranged
@@ -244,8 +250,9 @@ class OffscreenSceneRenderer(
         const val TAG = "OffscreenSceneRenderer"
         const val MILLIS_PER_SECOND = 1_000L
         const val MICROS_PER_SECOND = 1_000_000L
+        const val HALF = 0.5f
 
-        /** The longest span of sound a frame hands the scenes: the engine's GEODE_FEED_SPAN_FRAMES. */
+        /** The longest span of sound a frame hands the scenes: the engine's Renderer::kPcmCapacity. */
         const val PCM_SPAN_FRAMES = 4096
     }
 }

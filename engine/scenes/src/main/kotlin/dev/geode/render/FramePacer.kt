@@ -1,7 +1,5 @@
 package dev.geode.render
 
-import android.annotation.TargetApi
-import android.os.Build
 import android.view.Choreographer
 import android.view.Surface
 import kotlin.math.ceil
@@ -78,7 +76,7 @@ data class FrameStats(
 class FramePacer(
     initialPolicy: FrameRatePolicy = FrameRatePolicy.Capped(DEFAULT_TARGET_FPS),
     private val sink: FrameSink,
-) : FramePresentation {
+) {
     /**
      * Settable from any thread — a quality scaler reacting to thermal headroom will not be on the
      * Choreographer thread — and read back on the next vsync, which is where the divide is
@@ -109,20 +107,7 @@ class FramePacer(
     var dtSeconds: Float = DEFAULT_DT_SECONDS
         private set
 
-    /**
-     * When the frame the last drawn vsync asked for is expected on screen, in [System.nanoTime]
-     * nanoseconds; 0 before the first. Written on the Choreographer thread, read on the GL thread.
-     */
-    @Volatile
-    private var expectedPresent = 0L
-
-    override fun expectedPresentNanos(): Long = expectedPresent
-
-    private val callback = Choreographer.FrameCallback { frameTimeNanos -> onVsync(frameTimeNanos, NO_TIMELINE) }
-
-    // API 33+: the vsync callback also carries the frame timeline, whose expected presentation time is
-    // the platform's own answer to when a frame started at this vsync reaches the screen.
-    private val timelineCallback: Any? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) TimelineCallback() else null
+    private val callback = Choreographer.FrameCallback { frameTimeNanos -> onVsync(frameTimeNanos) }
 
     private var choreographer: Choreographer? = null
     private var running = false
@@ -165,7 +150,7 @@ class FramePacer(
             runningStack.add(this)
         }
         publishActiveCap()
-        post(instance)
+        instance.postFrameCallback(callback)
     }
 
     /**
@@ -176,9 +161,8 @@ class FramePacer(
     fun stop() {
         if (!running) return
         running = false
-        choreographer?.let(::unpost)
+        choreographer?.removeFrameCallback(callback)
         choreographer = null
-        expectedPresent = 0L
         // Drop out of the running stack before republishing: if another pacer (the view's and the
         // wallpaper's can both be live at once) is still running, its cap — not 0 — is what
         // ThermalGovernor should read next.
@@ -252,35 +236,11 @@ class FramePacer(
             }
         }
 
-    private fun post(instance: Choreographer) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) postTimeline(instance) else instance.postFrameCallback(callback)
-    }
-
-    private fun unpost(instance: Choreographer) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) unpostTimeline(instance) else instance.removeFrameCallback(callback)
-    }
-
-    @TargetApi(Build.VERSION_CODES.TIRAMISU)
-    private fun postTimeline(instance: Choreographer) = instance.postVsyncCallback(timelineCallback as TimelineCallback)
-
-    @TargetApi(Build.VERSION_CODES.TIRAMISU)
-    private fun unpostTimeline(instance: Choreographer) = instance.removeVsyncCallback(timelineCallback as TimelineCallback)
-
-    @TargetApi(Build.VERSION_CODES.TIRAMISU)
-    private inner class TimelineCallback : Choreographer.VsyncCallback {
-        override fun onVsync(data: Choreographer.FrameData) {
-            this@FramePacer.onVsync(data.frameTimeNanos, data.preferredFrameTimeline.expectedPresentationTimeNanos)
-        }
-    }
-
-    private fun onVsync(
-        frameTimeNanos: Long,
-        timelineNanos: Long,
-    ) {
+    private fun onVsync(frameTimeNanos: Long) {
         if (!running) return
         // Re-post first: the cadence has to survive a slow sink, and a frame we skip still has to
         // wake us for the next one.
-        choreographer?.let(::post)
+        choreographer?.postFrameCallback(callback)
         trackVsyncPeriod(frameTimeNanos)
         // Recomputed here, on the Choreographer thread, rather than in the [policy] setter: it
         // reads the vsync estimate, and a setter racing this thread over a 64-bit field is a bug
@@ -289,8 +249,6 @@ class FramePacer(
         vsyncsSinceDrawn++
         if (vsyncsSinceDrawn < divisor) return
         vsyncsSinceDrawn = 0
-        // Before the sink asks for the frame, so the GL thread drawing it reads this vsync's estimate.
-        expectedPresent = PresentEstimate.expectedPresentNanos(frameTimeNanos, vsyncPeriodNanos, timelineNanos)
         draw(frameTimeNanos)
     }
 
@@ -441,8 +399,5 @@ class FramePacer(
         private const val P95 = 0.95f
 
         private const val P99 = 0.99f
-
-        /** No frame timeline: the pacer estimates the present time from the vsync period. */
-        private const val NO_TIMELINE = 0L
     }
 }

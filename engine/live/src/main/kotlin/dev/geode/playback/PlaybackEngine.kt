@@ -7,12 +7,14 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import dev.geode.audio.AudioBus
 import dev.geode.audio.AudioFxController
+import dev.geode.audio.PcmRingBuffer
 import dev.geode.audio.TapRenderersFactory
+import dev.geode.audio.VisualSink
 import dev.geode.audio.dsp.NativeDspProcessor
 import dev.geode.engine.audio.AudioPresentationClock
-import dev.geode.engine.audio.FeedSource
-import dev.geode.engine.audio.VisualFeed
+import dev.geode.engine.audio.SampleRing
 import dev.geode.engine.audioandroid.PcmTap
 import dev.geode.engine.audioandroid.SinkClockDriver
 import dev.geode.engine.audioandroid.TapBoundaryListener
@@ -20,13 +22,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
+/**
+ * The live audio engine's session: the player, the rings the Visual's sound goes through, and the
+ * analysis over them (#17).
+ *
+ * The sound path: the player's tap (ExoPlayer's `TeeAudioProcessor`, or the native mixer's tap drained
+ * by [NativeTapPump]) and Live input write into [captureSink], which fans out to [sampleRing] (stereo,
+ * what the analysis reads) and [ring] (mono, what the Styles' waveforms and MilkDrop's PCM read). The
+ * [analysis] runs on its own loop while a Visual watches ([AudioBus]) and publishes its features there;
+ * each Visual reads the features and the ring on its drawing thread.
+ */
 @OptIn(UnstableApi::class)
 class PlaybackSession internal constructor(
     private val context: Context,
-    /** The Visual's one audio feed, which the player writes into: [PlaybackEngine.feed]. */
-    val feed: VisualFeed,
 ) {
+    /** The mono PCM ring the Visual's scenes read: the newest samples, mixed down. */
+    val ring = PcmRingBuffer()
+
+    /** The stereo ring the analysis reads forward, frame by frame, and a Recording taps (#317). */
+    val sampleRing = SampleRing(capacityFrames = 1 shl 16, channelCount = 2)
+
     @Volatile
     var onAudioFormat: ((sampleRateHz: Int, channelCount: Int, encoding: Int) -> Unit)? = null
 
@@ -34,17 +51,24 @@ class PlaybackSession internal constructor(
 
     internal val clockDriver = SinkClockDriver(presentationClock)
 
-    // ExoPlayer's tap: before speed, silence skipping, DSP and volume, written into the feed as the
-    // player source. The native player writes its own mix into the feed from its audio callback.
-    private val playerSink = feed.sink(FeedSource.PLAYER)
+    /**
+     * Where every source of the Visual's sound writes: the player's tap and Live input. Settings'
+     * Sensitivity (#301) and Live input's waveform gain (#297) are applied here, before the rings.
+     */
+    val captureSink = VisualSink(analysis = sampleRing, scenes = ring)
 
     internal val tap =
-        PcmTap(playerSink) { format ->
-            playerSink.rateHz = format.sampleRate.value
-            onAudioFormat?.invoke(format.sampleRate.value, format.channelCount, format.encoding)
+        PcmTap(captureSink) { format ->
+            val hook = onAudioFormat
+            if (hook != null) {
+                hook(format.sampleRate.value, format.channelCount, format.encoding)
+            } else {
+                analysis.sampleRateHz = format.sampleRate.value
+            }
         }.apply {
             boundaryListener =
                 TapBoundaryListener { ended, endedFrames, begun ->
+                    sampleRing.beginEpoch()
                     clockDriver.onTapBoundary(ended, endedFrames, begun)
                 }
         }
@@ -73,10 +97,10 @@ class PlaybackSession internal constructor(
     // cannot doze mid-track with the screen off. Not the WIFI variant: nothing streams.
     private fun buildPlayer(nativeEngine: Boolean): Player =
         if (nativeEngine) {
-            NativePlayer(context, feed, NativePlayerDsp(dsp))
+            NativePlayer(context, NativeTapPump(tap, clockDriver), NativePlayerDsp(dsp))
         } else {
             ExoPlayer
-                .Builder(context, TapRenderersFactory(context, tap, clockDriver, dsp = listOf(dsp), feed = feed))
+                .Builder(context, TapRenderersFactory(context, tap, clockDriver, dsp = listOf(dsp)))
                 .setMediaSourceFactory(
                     androidx.media3.exoplayer.source.DefaultMediaSourceFactory(
                         context,
@@ -104,19 +128,27 @@ class PlaybackSession internal constructor(
 
     val replayGain = ReplayGain(context.contentResolver, scope) { audioFx.setGainDb(it) }
 
-    val analysis = dev.geode.analysis.AnalysisEngine(feed)
+    val analysis = dev.geode.analysis.AnalysisEngine(sampleRing)
 
-    // Where the sound comes out, for outputs that cannot time themselves (#295).
-    private val routes = OutputRouteWatcher(context, feed)
+    private val interestHook: () -> Unit = { syncAnalysis() }
 
     init {
-        // The player is what the Visual hears, until Live input takes over.
-        feed.select(FeedSource.PLAYER)
-        routes.start()
+        AudioBus.onInterestChanged = interestHook
+        syncAnalysis()
+        scope.launch {
+            analysis.features.collect { AudioBus.publish(it) }
+        }
+    }
+
+    // The analysis runs only while a Visual watches: the app's, the wallpaper's or a Recording.
+    private fun syncAnalysis() {
+        if (AudioBus.hasConsumers) analysis.start(scope) else analysis.stop()
     }
 
     internal fun release() {
-        routes.stop()
+        analysis.close()
+        if (AudioBus.onInterestChanged === interestHook) AudioBus.onInterestChanged = null
+        AudioBus.clear()
         scope.cancel()
         onAudioFormat = null
         audioFx.release()
@@ -130,12 +162,6 @@ class PlaybackSession internal constructor(
 }
 
 object PlaybackEngine {
-    /**
-     * The Visual's one audio feed, for the life of the process: every session's player and Live input
-     * write into it, and every Visual (the app's and the live wallpaper's) reads from it.
-     */
-    val feed: VisualFeed by lazy { VisualFeed() }
-
     private var app: Context? = null
     private var session: PlaybackSession? = null
     private var uiHolds = 0
@@ -158,8 +184,12 @@ object PlaybackEngine {
     @Synchronized
     private fun sessionFor(context: Context): PlaybackSession {
         val current = rebindTo(context)
-        return session ?: PlaybackSession(current, feed).also { session = it }
+        return session ?: PlaybackSession(current).also { session = it }
     }
+
+    /** The open session, if a UI or the service holds one; a Recording reads its rings (#317). */
+    @Synchronized
+    fun current(): PlaybackSession? = session
 
     @Synchronized
     fun acquireForUi(context: Context): PlaybackSession = sessionFor(context).also { uiHolds++ }

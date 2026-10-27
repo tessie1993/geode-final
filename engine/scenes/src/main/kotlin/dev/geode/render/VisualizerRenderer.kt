@@ -6,11 +6,11 @@ import android.os.SystemClock
 import dev.geode.analysis.AudioFeatures
 import dev.geode.analysis.DisplayEvents
 import dev.geode.analysis.SignalHold
-import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.engine.types.Millis
 import dev.geode.engine.types.SceneId
 import dev.geode.render.bridge.NativeViz
+import dev.geode.render.scene.PcmChunk
 import dev.geode.render.scene.SceneIds
 import dev.geode.render.scene.SceneParams
 import javax.microedition.khronos.egl.EGLConfig
@@ -133,23 +133,15 @@ class VisualizerRenderer(
     var onStyleDue: () -> Unit = {}
 
     /**
-     * The live sound: while set, the native renderer reads the features heard now and the stereo
-     * window for the scenes straight from this feed at the start of each frame, on the GL thread, and
-     * [features] is not sent. Null draws [features].
+     * The samples the engine's PCM ring received since the last frame, read on the GL thread every
+     * frame and pushed to the scenes (MilkDrop's waveform, the shader PCM row); null when there are none.
      */
     @Volatile
-    var feed: VisualFeed? = null
+    var pcmProvider: () -> PcmChunk? = { null }
 
-    // GL thread only: the feed the native renderer is attached to now.
-    private var attachedFeed: VisualFeed? = null
-
-    /**
-     * When each frame is expected on screen (#295): the pacer that asks for the frames. With a [feed],
-     * the frame draws the audio heard at that moment, so the picture lands on the beat being heard
-     * rather than one or two refreshes early. Null draws the audio heard as the frame starts.
-     */
+    /** The live sound's features, read on the GL thread every frame; [features] while it has none. */
     @Volatile
-    var presentation: FramePresentation? = null
+    var featureSource: () -> AudioFeatures? = { null }
 
     /**
      * The Customization snapshots each frame picks up (ADR-0004). While they are attached the engine
@@ -291,7 +283,6 @@ class VisualizerRenderer(
         nativeViz.surfaceCreated()
         styleLab?.attach(appContext, nativeViz)
         attachedSnapshots = null
-        attachedFeed = null
         // A new context: the encoder surface went with the old one, and is made again on this one.
         recorder?.forget()
         nativeParams = null
@@ -320,7 +311,6 @@ class VisualizerRenderer(
         }
         nativeViz.setScene(request.scene)
         syncNativeState()
-        nativeViz.setPresentTime(presentation?.expectedPresentNanos() ?: 0L)
         nativeViz.render(SystemClock.elapsedRealtimeNanos() / NANOS_PER_SECOND, targetFbo = 0)
         record()
         nativeViz.pollError(onShaderError)
@@ -367,19 +357,12 @@ class VisualizerRenderer(
             nativeAdsr = null
         }
         if (wanted == null) syncSceneParams()
-        val live = feed
-        if (live !== attachedFeed) {
-            nativeViz.attachFeed(live)
-            attachedFeed = live
-        }
         val held = reactionsHeld
         signalHold.held = held
-        if (live == null) {
-            nativeViz.setFeatures(signalHold.frame(displayEvents.frame(features)))
-        } else {
-            // The feed's frames are held natively, with the audio window MilkDrop is fed, so it holds too.
-            nativeViz.setReactionsHeld(held)
-        }
+        nativeViz.setFeatures(signalHold.frame(displayEvents.frame(featureSource() ?: features)))
+        // Under a hold the scenes get no new samples either, so MilkDrop's picture holds with the signals.
+        val chunk = pcmProvider()
+        if (chunk != null && !held) nativeViz.pushPcm(chunk.data, chunk.count)
         nativeViz.setReducedMotion(reducedMotion)
         nativeViz.setTouchSmear(touchSmear, touchSmearStrength)
         nativeViz.setTransition(transitionId, transitionDuration, transitionSeed)

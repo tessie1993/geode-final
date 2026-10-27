@@ -3,7 +3,6 @@ package dev.geode.render.bridge
 import android.content.Context
 import android.content.res.AssetManager
 import dev.geode.analysis.AudioFeatures
-import dev.geode.engine.audio.VisualFeed
 import dev.geode.engine.bridge.FeatureFrameLayout
 import dev.geode.engine.bridge.GeodeNative
 import dev.geode.engine.bridge.NativeFailures
@@ -180,34 +179,14 @@ class NativeViz(
     fun takeMilkPresetLoaded(): String? = liveOr(null) { h -> GeodeNative.vizTakeMilkPresetLoaded(h) }
 
     /**
-     * GL thread: from the next frame on, the renderer reads the live sound from [feed] (the features
-     * heard now and the scenes' stereo window) instead of [setFeatures]; null detaches.
+     * The [count] mono samples of [mono] the PCM ring received since the last frame, for the scenes
+     * (MilkDrop's waveform, the shader PCM row); handed over once, on the next frame.
      */
-    fun attachFeed(feed: VisualFeed?) {
-        live { h -> NativeFailures.check(GeodeNative.vizAttachFeed(h, feed?.handle ?: 0L), "vizAttachFeed") }
-    }
-
-    /**
-     * GL thread: the next frame's audio for the scenes, [frames] interleaved stereo frames of [stereo]
-     * ending at the audio heard, the newest [fresh] of them new since the last frame (#342). A Render hands
-     * over its own decode of the track this way, as a feed does live.
-     */
-    fun setFramePcm(
-        stereo: FloatArray,
-        frames: Int,
-        fresh: Int,
+    fun pushPcm(
+        mono: FloatArray,
+        count: Int,
     ) {
-        live { h -> NativeFailures.check(GeodeNative.vizSetFramePcm(h, stereo, frames, fresh), "vizSetFramePcm") }
-    }
-
-    /** Freeze reactions (#366) on the features and audio window read from an attached feed. */
-    fun setReactionsHeld(held: Boolean) {
-        live { h -> GeodeNative.vizSetReactionsHeld(h, held) }
-    }
-
-    /** When the next frame is expected on screen (System.nanoTime nanoseconds); 0 draws for now. */
-    fun setPresentTime(presentNanos: Long) {
-        live { h -> GeodeNative.vizSetPresentTime(h, presentNanos) }
+        if (count > 0) live { h -> GeodeNative.vizPushPcm(h, mono, count) }
     }
 
     fun setLfoConfigs(configs: List<LfoConfig>) {

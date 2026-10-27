@@ -227,7 +227,7 @@ class TrackPcm(
         /** Empty polls in a row after which a decoder that says nothing more is taken to have stalled. */
         const val MAX_IDLE_POLLS = 500
 
-        /** The window every scene reads: the engine's GEODE_FEED_WINDOW_FRAMES. */
+        /** The window every scene reads: projectM's 576-frame ring, the window MilkDrop measures. */
         const val WINDOW_FRAMES = 576
 
         /** Two seconds at 48 kHz: far more than a span, so a frame never asks for sound already dropped. */
