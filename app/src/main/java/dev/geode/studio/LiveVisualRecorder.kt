@@ -9,8 +9,7 @@ import android.os.ParcelFileDescriptor
 import android.os.StatFs
 import android.provider.MediaStore
 import dev.geode.RingLog
-import dev.geode.engine.audio.VisualFeed
-import dev.geode.engine.bridge.GeodeNative
+import dev.geode.audio.RecordingTap
 import dev.geode.engine.types.Millis
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
@@ -19,6 +18,7 @@ import dev.geode.feature.studio.api.VideoKind
 import dev.geode.feature.studio.core.RecordingEnd
 import dev.geode.feature.studio.core.RecordingProblem
 import dev.geode.feature.studio.handlers.LiveRecorder
+import dev.geode.playback.PlaybackSession
 import dev.geode.render.RecordingTarget
 import dev.geode.render.VisualizerRenderer
 import dev.geode.util.bestEffort
@@ -49,35 +49,11 @@ object LiveVisualSource {
 }
 
 /**
- * A Recording's tap on the Visual's audio feed (geode_feed_tap): the sound heard, in order and once,
- * at the point the Visual reads it, or silence while nothing is heard.
- */
-internal class FeedTap(
-    feed: VisualFeed,
-) : AutoCloseable {
-    private var handle = GeodeNative.feedTapCreate(feed.handle)
-    private val rate = IntArray(1)
-
-    val open: Boolean get() = handle != 0L
-
-    /** The rate of the frames the last [take] gave. */
-    val rateHz: Int get() = rate[0]
-
-    /** Interleaved stereo frames into [out], at most half its size; the first take only marks the start. */
-    fun take(out: FloatArray): Int = if (handle == 0L) 0 else GeodeNative.feedTapTake(handle, out, rate)
-
-    override fun close() {
-        if (handle != 0L) GeodeNative.feedTapDestroy(handle)
-        handle = 0L
-    }
-}
-
-/**
  * Records the live Visual on the phone (#317): Studio's [LiveRecorder]. The picture is the Visual
  * alone: the live renderer copies each frame it draws into the encoder's surface on its own context
  * ([VisualizerRenderer.recording]), so no App UI is ever in it. The sound is whatever drives the
- * Visual, the playing track or Live input, read from the engine's one audio feed ([feed]) at the
- * point the Visual reads it, so the two line up. The video is H.264 and AAC in an MP4, at the screen's
+ * Visual, the playing track or Live input, read from the engine's [session] ring the Visual's analysis
+ * reads, so the two line up. The video is H.264 and AAC in an MP4, at the screen's
  * size when the encoder takes it, saved to `Movies/Geode` where Renders are saved; Studio then puts it
  * into the Project the person chooses.
  *
@@ -87,7 +63,7 @@ internal class FeedTap(
 class LiveVisualRecorder(
     private val context: Context,
     private val settings: Settings,
-    private val feed: () -> VisualFeed,
+    private val session: () -> PlaybackSession?,
     private val liveVisualShown: () -> Boolean,
     private val work: CoroutineDispatcher,
 ) : LiveRecorder {
@@ -102,33 +78,25 @@ class LiveVisualRecorder(
             if (renderer == null || renderer.surfaceWidth <= 0 || renderer.surfaceHeight <= 0) {
                 return@withContext RecordingEnd.Failed(RecordingProblem.NO_VISUAL)
             }
-            val visualFeed = feed()
-            val tap = FeedTap(visualFeed)
-            // A Recording keeps the analysis awake (#298), even while the Visual is off the screen.
-            visualFeed.acquire()
-            try {
-                if (!tap.open) return@withContext RecordingEnd.Failed(RecordingProblem.NOT_SAVED)
-                val pcm = FloatArray(TAP_FRAMES * 2)
-                // The first take marks where the Recording's sound starts: its clock starts here.
-                tap.take(pcm)
-                val startNs = System.nanoTime()
-                val rate = tap.rateHz.takeIf { it > 0 } ?: FALLBACK_RATE
-                val file =
-                    MovieFile.create(context, fileNameOf(song))
-                        ?: return@withContext RecordingEnd.Failed(RecordingProblem.NOT_SAVED)
-                val end = record(Take(renderer, tap, pcm, file, rate, startNs), started, tick, shouldStop)
-                if (end is RecordingEnd.Saved) file.publish() else file.discard()
-                if (end is RecordingEnd.Saved) end.copy(video = end.video.copy(name = nameOf(song), song = song)) else end
-            } finally {
-                visualFeed.release()
-                tap.close()
-            }
+            val engine = session() ?: return@withContext RecordingEnd.Failed(RecordingProblem.NO_VISUAL)
+            val tap = RecordingTap(engine.sampleRing, rateHz = { engine.analysis.sampleRateHz })
+            val pcm = FloatArray(TAP_FRAMES * 2)
+            // The first take marks where the Recording's sound starts: its clock starts here.
+            tap.take(pcm)
+            val startNs = System.nanoTime()
+            val rate = tap.lastRateHz.takeIf { it > 0 } ?: FALLBACK_RATE
+            val file =
+                MovieFile.create(context, fileNameOf(song))
+                    ?: return@withContext RecordingEnd.Failed(RecordingProblem.NOT_SAVED)
+            val end = record(Take(renderer, tap, pcm, file, rate, startNs), started, tick, shouldStop)
+            if (end is RecordingEnd.Saved) file.publish() else file.discard()
+            if (end is RecordingEnd.Saved) end.copy(video = end.video.copy(name = nameOf(song), song = song)) else end
         }
 
     /** One Recording's parts: where it draws, hears and writes, and when it started. */
     private class Take(
         val renderer: VisualizerRenderer,
-        val tap: FeedTap,
+        val tap: RecordingTap,
         val pcm: FloatArray,
         val file: MovieFile,
         val rate: Int,
@@ -218,7 +186,7 @@ class LiveVisualRecorder(
         while (true) {
             val frames = take.tap.take(take.pcm)
             if (frames <= 0) return
-            val pcm = take.matcher.convert(take.pcm, frames, take.tap.rateHz)
+            val pcm = take.matcher.convert(take.pcm, frames, take.tap.lastRateHz)
             encoder.sound(pcm, pcm.size / 2)
             if (frames < TAP_FRAMES) return
         }
@@ -267,10 +235,10 @@ class LiveVisualRecorder(
     private companion object {
         const val TAG = "LiveVisualRecorder"
 
-        /** The most frames one take from the feed gives: a quarter of a second at 48 kHz. */
+        /** The most frames one take from the ring gives: a quarter of a second at 48 kHz. */
         const val TAP_FRAMES = 12_000
 
-        /** The rate a Recording's sound is made at when the feed has had none yet. */
+        /** The rate a Recording's sound is made at when the ring has had none yet. */
         const val FALLBACK_RATE = 48_000
 
         const val POLL_MS = 10L

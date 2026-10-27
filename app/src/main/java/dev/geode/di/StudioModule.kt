@@ -78,9 +78,9 @@ object StudioModule {
                 held = { !AppPresence.inFront.value && !keepGoing(settings) },
                 work = Dispatchers.Default,
             )
-        // A Recording draws from the live Visual and hears the engine's one audio feed (#317).
+        // A Recording draws from the live Visual and hears the engine's session (#317).
         val recorder =
-            LiveVisualRecorder(application, settings, { PlaybackEngine.feed }, LiveVisualPresence::isShown, Dispatchers.Default)
+            LiveVisualRecorder(application, settings, PlaybackEngine::current, LiveVisualPresence::isShown, Dispatchers.Default)
         // The editors (#318) draw transitions from the engine's catalogue and keep the Timeline's cut
         // where the old editor kept it, so a cut made before the move opens as it was.
         val sources =

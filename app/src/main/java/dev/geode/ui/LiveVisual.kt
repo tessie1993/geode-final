@@ -10,6 +10,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.currentStateAsState
 import dev.geode.RingLog
+import dev.geode.audio.AudioBus
+import dev.geode.audio.PcmRingBuffer
 import dev.geode.engine.bridge.NativeSnapshots
 import dev.geode.feature.customization.api.CustomizationFeature
 import dev.geode.feature.customization.handlers.StyleCues
@@ -20,15 +22,16 @@ import dev.geode.feature.settings.api.VisualSurface
 import dev.geode.playback.PlaybackEngine
 import dev.geode.render.VisualizerRenderer
 import dev.geode.render.VisualizerView
+import dev.geode.render.scene.PcmChunk
 import dev.geode.studio.LiveVisualSource
 import dev.geode.visuals.StyleTargets
 
 /**
  * Binds the one live Visual to its sources (#17). Customization reaches it through the plan alone:
  * the renderer is attached to the [snapshots] exchange, which Customization's store publishes to
- * (ADR-0002, ADR-0004). The sound never passes through the main thread or Kotlin: the renderer is
- * attached to the engine's one audio feed, and each frame it reads the features heard now and the
- * stereo window natively, on its own thread. Only the Style to draw, how long a change of Style
+ * (ADR-0002, ADR-0004). The sound never passes through the main thread: each frame the renderer reads
+ * the analysis' latest features from the [AudioBus] and the newest samples from the engine's PCM ring,
+ * on its own thread. Only the Style to draw, how long a change of Style
  * crossfades (Style switching's transition while it is on, #282) and how it looks (Settings' look,
  * seeded by Style switching's seed for the random draw, #309), the Visual behaviours from Settings
  * (reduce motion, the finger smear) and the [surface]'s quality and frame rate are handed over from
@@ -54,7 +57,8 @@ fun LiveVisualBindings(
         val renderer = view.visualizerRenderer
         val session = PlaybackEngine.acquireForUi(context)
         renderer.snapshots = snapshots
-        renderer.feed = session.feed
+        renderer.featureSource = AudioBus::features
+        renderer.pcmProvider = LivePcm(session.ring)::next
         renderer.onShaderError = { error -> error?.let { RingLog.note(TAG, "shader: $it") } }
         renderer.onStyleDue = styleCues::raise
         // A Recording draws from the bound renderer (#317); the analysis runs while the Visual is watched, below.
@@ -62,7 +66,8 @@ fun LiveVisualBindings(
         onDispose {
             renderer.onStyleDue = {}
             LiveVisualSource.unbind(renderer)
-            renderer.feed = null
+            renderer.pcmProvider = { null }
+            renderer.featureSource = { null }
             PlaybackEngine.releaseUi()
         }
     }
@@ -70,9 +75,8 @@ fun LiveVisualBindings(
     val watching = VisualWatch.watching(shown, lifecycleState.isAtLeast(Lifecycle.State.STARTED))
     DisposableEffect(watching) {
         RingLog.note(TAG, if (watching) "analysis runs" else "analysis sleeps")
-        val feed = PlaybackEngine.feed.takeIf { watching }
-        feed?.acquire()
-        onDispose { feed?.release() }
+        if (watching) AudioBus.addConsumer()
+        onDispose { if (watching) AudioBus.removeConsumer() }
     }
     val state by customization.state.collectAsStateWithLifecycle()
     val style = state.current.style
@@ -123,4 +127,19 @@ internal object VisualWatch {
     ): Boolean = fullScreen || onVisualsTab
 }
 
+/** The samples the engine's ring received since the last frame; read on the GL thread only. */
+private class LivePcm(
+    private val ring: PcmRingBuffer,
+) {
+    private val scratch = FloatArray(PCM_FLOATS)
+    private var cursor = 0L
+
+    fun next(): PcmChunk? {
+        val count = ring.copyNewSince(cursor, scratch)
+        cursor = ring.lastCopyEndIndex
+        return if (count > 0) PcmChunk(scratch, count) else null
+    }
+}
+
+private const val PCM_FLOATS = 4096
 private const val TAG = "LiveVisual"

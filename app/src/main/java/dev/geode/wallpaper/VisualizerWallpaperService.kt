@@ -10,12 +10,13 @@ import android.os.Looper
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import dagger.hilt.android.AndroidEntryPoint
+import dev.geode.analysis.AudioFeatures
+import dev.geode.audio.AudioBus
 import dev.geode.data.GeodePrefsFiles
 import dev.geode.data.PresetStore
 import dev.geode.feature.settings.api.Settings
 import dev.geode.feature.settings.api.SettingsState
 import dev.geode.feature.settings.api.VisualSurface
-import dev.geode.playback.PlaybackEngine
 import dev.geode.render.FramePacer
 import dev.geode.render.FrameRatePolicy
 import dev.geode.render.TouchField
@@ -36,8 +37,23 @@ class VisualizerWallpaperService : WallpaperService() {
         private var glView: WallpaperGlSurfaceView? = null
         private var renderer: VisualizerRenderer? = null
 
-        // Whether this engine watches the app's audio feed now: while it is visible.
-        private var listening = false
+        // Nothing playing is silence: the wallpaper moves on the Style's own time, never on made-up sound.
+        private val silence = AudioFeatures.empty()
+        private var feeder: Thread? = null
+
+        @Volatile
+        private var running = false
+
+        /**
+         * Distinguishes one feeder run from the next.
+         *
+         * A wallpaper toggles visibility every time the screen sleeps or the user switches app, so
+         * over a day this runs hundreds of times. If a join ever times out, the old thread must be
+         * able to tell that a newer run has taken over and exit — otherwise it keeps ticking, and
+         * keeps the renderer and the service context alive, for the rest of the process.
+         */
+        @Volatile
+        private var feedGeneration = 0
 
         /**
          * Each engine instance — preview and home screen can both be live at once — owns its
@@ -81,10 +97,9 @@ class VisualizerWallpaperService : WallpaperService() {
             // the person touching the wallpaper. Only COMMAND_TAP (a tap on empty space) reaches it.
             setTouchEventsEnabled(false)
             val engine = VisualizerRenderer(this@VisualizerWallpaperService)
-            // Drawn for the moment this engine's pacer expects each frame on screen (#295).
-            engine.presentation = pacer
             renderer = engine
             restoreLiveState(engine)
+            engine.pcmProvider = { null }
             glView =
                 WallpaperGlSurfaceView(this@VisualizerWallpaperService).apply {
                     setEGLContextClientVersion(3)
@@ -115,20 +130,33 @@ class VisualizerWallpaperService : WallpaperService() {
                     ?: legacyReducedMotion(prefsFiles.general)
         }
 
-        // The app's one audio feed, read natively by the renderer each frame: what plays in the app, or
-        // silence when nothing does (the wallpaper then moves on the Style's own time, never on made-up
-        // sound). The analysis runs while the wallpaper is visible.
-        private fun startListening(engine: VisualizerRenderer) {
-            if (listening) return
-            listening = true
-            PlaybackEngine.feed.acquire()
-            engine.feed = PlaybackEngine.feed
+        // The app's analysis, read from the AudioBus: what plays in the app, or silence when nothing does.
+        // The analysis runs while the wallpaper is visible.
+        private fun startFeeding(engine: VisualizerRenderer) {
+            if (feeder != null) return
+            AudioBus.addConsumer()
+            val generation = ++feedGeneration
+            running = true
+            feeder =
+                Thread {
+                    while (running && feedGeneration == generation) {
+                        engine.features = AudioBus.features() ?: silence
+                        Thread.sleep(FEED_INTERVAL_MS)
+                    }
+                }.apply {
+                    isDaemon = true
+                    name = "geode-wallpaper-audio"
+                    start()
+                }
         }
 
-        private fun stopListening() {
-            if (!listening) return
-            listening = false
-            PlaybackEngine.feed.release()
+        private fun stopFeeding() {
+            val thread = feeder ?: return
+            running = false
+            feedGeneration++
+            AudioBus.removeConsumer()
+            runCatching { thread.join(FEEDER_JOIN_MS) }
+            feeder = null
         }
 
         private fun syncRunState() {
@@ -137,14 +165,14 @@ class VisualizerWallpaperService : WallpaperService() {
                 drawAsSettingsSay(engine)
                 glView?.onResume()
                 pacer.start()
-                startListening(engine)
+                startFeeding(engine)
             } else {
                 // Stopped first, and on this same main-thread callback: the vsync callback is gone
                 // before onPause is even asked for, so no frame can be requested after the
                 // wallpaper stops being visible.
                 pacer.stop()
                 glView?.onPause()
-                stopListening()
+                stopFeeding()
             }
         }
 
@@ -228,7 +256,7 @@ class VisualizerWallpaperService : WallpaperService() {
         override fun onDestroy() {
             mainHandler.removeCallbacks(endTap)
             pacer.stop()
-            stopListening()
+            stopFeeding()
             releaseScenesOnGlThread()
             glView?.destroy()
             glView = null
@@ -271,6 +299,10 @@ class VisualizerWallpaperService : WallpaperService() {
 
         /** Bounded on purpose: a wedged GL thread must not turn teardown into an ANR. */
         const val GL_RELEASE_WAIT_MS = 200L
+
+        const val FEED_INTERVAL_MS = 16L
+
+        const val FEEDER_JOIN_MS = 200L
 
         /** About five frames: long enough for the engine to see a tap, short enough not to linger. */
         const val TAP_MS = 90L
