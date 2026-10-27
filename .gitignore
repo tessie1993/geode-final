@@ -21,10 +21,12 @@ secrets.properties
 google-services.json
 
 # Agent tooling is local-only and is not tracked in this repository, except the shared project
-# settings (which plugins Geode sessions load) and the path-scoped rules (CLAUDE.md, "Navigating the code").
+# settings (which plugins Geode sessions load), the path-scoped rules (CLAUDE.md, "Navigating the code")
+# and the project skills installed from mattpocock/skills (recorded in skills-lock.json).
 .claude/*
 !.claude/settings.json
 !.claude/rules/
+!.claude/skills/
 .agents/
 .codex/
 AGENTS.md
