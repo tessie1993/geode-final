@@ -1,5 +1,11 @@
 # Geode
 
+## Agent setup
+
+`.claude/settings.json` turns on the plugins this repo uses (mattpocock-skills, engineering, ci-optimizer, claude-security) and turns off the rest. Personal overrides go in `.claude/settings.local.json`, which is not tracked. `AGENTS.md` points other agents here.
+
+When the user types `/<skill>`, run that skill. Their direct instructions take priority over any skill's process.
+
 ## Agent skills
 
 ### Issue tracker
