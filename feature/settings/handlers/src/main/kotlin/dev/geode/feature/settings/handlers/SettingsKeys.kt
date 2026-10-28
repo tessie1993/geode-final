@@ -73,9 +73,12 @@ internal object SettingsKeys {
     const val EXPORT_CODEC = "export_codec"
     const val EXPORT_LOUDNESS = "export_loudness_target"
 
-    // Folders (geode-prefs, geode-library).
+    // Default paths (geode-prefs, geode-library).
     const val PRESET_MIRROR = "preset_mirror_uri"
     const val MUSIC_FOLDERS = "roots"
+
+    /** New with the Default paths section (#101), so in no old file. */
+    const val PRESET_FOLDER = "preset_folder_uri"
 
     // Onboarding (geode-prefs).
     const val SAFETY_ACKNOWLEDGED = "gui_safety_acknowledged"

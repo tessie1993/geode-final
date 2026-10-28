@@ -630,6 +630,8 @@ class PlayerSession internal constructor(
 
     fun userMilkPresets(): List<File> = presetLibrary.userMilkPresets()
 
+    fun milkCatalog(): dev.geode.data.MilkCatalog = presetLibrary.milkCatalog()
+
     private val queueController: QueueController =
         QueueController(
             application,
