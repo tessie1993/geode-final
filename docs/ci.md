@@ -4,7 +4,7 @@ GitHub Actions is the only place Geode is built and tested. Agents never run Gra
 
 ## The checks
 
-All of these run on every pull request, in `.github/workflows/ci.yml` unless noted.
+All of these run on every pull request, in `.github/workflows/ci.yml` unless noted. A pull request that changes only Markdown, `docs/`, agent config (`.claude/`), `.gitignore` files or IDE files (`.idea/`) builds and ships nothing, so it skips them.
 
 | Check | What it gates | Where it is configured |
 |---|---|---|
