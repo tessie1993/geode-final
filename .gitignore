@@ -20,8 +20,8 @@ keystore.properties
 secrets.properties
 google-services.json
 
-# Agent tooling: .claude/settings.json and AGENTS.md are shared through the
-# repository so cloud sessions get them; personal overrides stay local.
+# Agent tooling: .claude/ and AGENTS.md are shared through the repository so
+# cloud sessions get them; personal overrides stay local.
 .claude/settings.local.json
 .claude/worktrees/
 .agents/
