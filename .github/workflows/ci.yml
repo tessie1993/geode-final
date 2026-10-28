@@ -11,6 +11,10 @@ on:
       - "**.md"
       - "docs/**"
       - "CONTEXT.md"
+      # Agent config, ignore rules and IDE state build and ship nothing.
+      - ".claude/**"
+      - "**/.gitignore"
+      - ".idea/**"
 
 permissions:
   contents: read
