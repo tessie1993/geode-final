@@ -1,3 +1,0 @@
-# CI runner tooling. Hook-specific pins remain in .pre-commit-config.yaml.
--r requirements.txt
-PyYAML==6.0.3

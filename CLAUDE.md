@@ -31,7 +31,3 @@ Use the Graphify MCP tools (`mcp__graphify__*`, repository `tessie1993/geode-fin
 - Blast radius of a change: `graphify_impact` or `impact_and_risk`; linked tests: `graphify_tests_for`.
 
 The graph reflects the last indexed commit (check `graph_stats` freshness). Confirm with the actual file before editing, and fall back to Grep/Read for files changed since indexing.
-
-## Builds and tests
-
-Never run Gradle, CMake or tests locally. Push to the PR; GitHub Actions is the only judge, and a ticket is done when CI is green. Mutation tests are one of the suite's test types and run in full with the rest of it. What each check gates and the mutation floors: `docs/ci.md`.
