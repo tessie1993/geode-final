@@ -1,3 +1,14 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+# Per-machine state: selected devices, local JDK and paths, caches, personal
+# preferences. Android Studio regenerates these on sync.
+/caches/
+/modules/
+/appInsightsSettings.xml
+/deploymentTargetSelector.xml
+/deviceManager.xml
+/gradle.xml
+/markdown.xml
+/migrations.xml
+/misc.xml

@@ -1,5 +1,11 @@
 # Geode
 
+## Agent setup
+
+`AGENTS.md` points other agents here. Personal Claude settings go in `.claude/settings.local.json`, which is not tracked.
+
+When the user types `/<skill>`, run that skill. Their direct instructions take priority over any skill's process.
+
 ## Agent skills
 
 ### Issue tracker
