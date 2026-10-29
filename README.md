@@ -1,46 +1,12 @@
-# Geode — Android music player, visualizer and video suite
+# Geode
 
-Native Android music player, real-time GPU music visualizer and a small video
-suite. Kotlin and Jetpack Compose on top; a C++20 engine built by CMake and
-the NDK underneath (audio analysis, the GLES 3.x renderer, the DSP chain, a
-native player and tag access). Everything runs on-device: the app holds no
-network permission, and nothing it hears or renders leaves the phone.
+Android music player and real-time GPU music visualizer: Kotlin and Jetpack
+Compose over a C++20 engine built by CMake and the NDK. What the app does is
+in [PRODUCT.md](PRODUCT.md); the version history is in
+[CHANGELOG.md](CHANGELOG.md). This file covers building, layout and tests.
 
-Currently v1.8.0 (versionCode 32); minSdk 31, targetSdk 36, compileSdk 37,
-ABIs arm64-v8a and x86_64. The full version history is in
-[CHANGELOG.md](CHANGELOG.md).
-
-## Features
-
-- **Player** — MediaStore library plus SAF folder roots and imports, editable
-  queue, favourites, playlists and smart playlists (rules over title, artist,
-  album, folder, length, age, play count and favourite), a duplicate finder,
-  multi-term search; timed lyrics (`.lrc`), A-B repeat, fades, sleep timer, a
-  ten-band equalizer, ReplayGain, playback speed/pitch, skip silence, resume
-  position for tracks over twenty minutes; tag editing that can write back
-  into the file. An optional native audio engine adds gapless joins and
-  crossfades. Android Auto browsing (tracks, albums, artists, playlists, favourites, recently
-  played) and a home-screen now-playing widget.
-- **Visual scenes** — particle, simulation and fragment-shader scenes; the GPU
-  fluid family (nine Fluid looks over one solver,
-  plus Curl Flow and Water);
-  Cymatics; MilkDrop via projectM 4 built in-tree from a git submodule. Every
-  scene is rendered by the native core; the Customize panel exposes every
-  parameter with per-param locks, a randomizer, LFO and ADSR modulation, a
-  palette maker, presets (JSON + `.milk`) and photosensitivity clamps.
-- **Studio** — a multi-lane timeline (visual, media, text, overlay, audio
-  lanes) with trim, split, ripple, snapping, markers, tap-in, auto-cut from the
-  analysed track, keyframe curves for scene and clip parameters, GL
-  Transitions between clips, speed ramps, `.cube` LUTs and per-channel gamma,
-  captions from lyrics or SRT (import and export). The visualizer export is
-  frame-exact from the analysis timeline; the cut export runs on Media3
-  Transformer. Both encode H.264 or HEVC, with H.264 as the fallback when a
-  device has no HEVC encoder.
-- **Live wallpaper** — the visualizer as a home-screen wallpaper, with an idle
-  drive so it keeps moving without audio.
-- **Live input** — the microphone, in place of a track from the library,
-  feeds the same PCM ring buffer as the player's tap, so every scene reacts to
-  the room unchanged.
+v1.8.0 (versionCode 32); minSdk 31, targetSdk 36, compileSdk 37, ABIs
+arm64-v8a and x86_64.
 
 ## Build
 
@@ -53,86 +19,56 @@ git submodule update --init --recursive   # projectM, kissfft, oboe, taglib
 
 Requires JDK 17+, the Android SDK with `platforms;android-37`, NDK
 `28.0.13004108` and CMake 3.22.1; `local.properties` must point at the SDK.
-`tools/setup-android-sdk.sh` installs those packages on a machine without
-them. The workflows under `.github/workflows` build the debug APK, ship a
-signed APK and cut a Play Store release; they check out the submodules.
+`tools/setup-android-sdk.sh` installs those packages. Release signing reads
+`keystore.properties` (see `keystore.properties.example`).
 
-For staged-change checks before each commit (Kotlin, C/C++, CMake, dependency
-declarations, and common file errors), follow [the Git hook setup](docs/GIT_HOOKS.md).
+CI is being re-added; there are no workflows in the tree right now.
 
-## Architecture
+## Layout
 
-Gradle modules, package `dev.geode`:
+Gradle modules, package `dev.geode`, listed in `settings.gradle.kts`:
 
-| Module | What it holds |
+| Pattern | What it holds |
 |---|---|
-| `:engine:audio-core` | `GeodeNative`, the JNI binding to `libgeode.so`, and the Kotlin wrappers over the native analyzers |
-| `:engine:audio-android` | The PCM tap, presentation clock driver and other Android-side audio plumbing |
-| `:engine:scenes` | Scene ids and parameters, the GL-thread adapter over the native renderer, offscreen rendering for export, the analysis engine and its cache |
-| `:app` | Compose UI, playback service and media session, library and playlist stores, the editor model, the export pipelines, the wallpaper and the widget |
+| `:app` | The application: wiring, services, manifest, JNI files in `app/src/main/cpp` |
+| `:design`, `:design:elements:*` | Shared Compose design system and visual elements |
+| `:engine:*` | Kotlin side of the native engine: JNI binding, audio plumbing, scenes, live input |
+| `:arch:*` | Shared architecture primitives (`kernel`, `audio`) |
+| `:feature:<name>:{api,core,handlers,ui}` | One feature per name (playback, library, visuals, studio, …), split into a public API, logic, handlers and Compose UI; `home` has only `api` and `ui` |
 
-The native core lives outside the modules and is built by the root
-`CMakeLists.txt` into one `libgeode.so` (plus `libprojectM-4.so`, LGPL,
-dynamically linked). It is a set of static libraries, one per directory, each
-with its public headers in `core/<lib>/include/geode/<lib>/` and everything
-else private; the dependency graph and the CI check that keeps it one-way are
-in [docs/native-libraries.md](docs/native-libraries.md):
+Convention plugins live in `build-logic/`; detekt and mutation-test config in
+`config/`.
 
-| Directory | What it holds |
-|---|---|
-| `core/api` | `geode/api/geode_api.h`, the `extern "C"` ABI — the only thing JNI calls — and its implementation over the libraries below |
-| `core/util` | JSON, SHA-256, logging |
-| `core/render` | GL plumbing: capability probing, programs and the program binary cache, textures, framebuffers, the fullscreen quad, compute, shader sources |
-| `core/analysis` | FFT (kissfft), bands, onsets, tempo, beats, bars, key, structure, stereo field; the feature frame |
-| `core/viz` | The Visual: the frame graph (scene → trails → composite), transitions, safety clamps, every scene family |
-| `core/audio/dsp` | Biquad equalizer, gain, crossfeed, lookahead limiter; the `geode_dsp_*` part of the C ABI |
-| `core/audio/player` | AMediaCodec decode, resampling, a lock-free mixer with gapless and crossfade, Oboe output |
-| `core/library` | TagLib tag reading and writing over a file descriptor |
-| `app/src/main/cpp` | The JNI files: no logic, only marshalling into `core/api` |
-| `third_party/` | Git submodules: projectm, kissfft, oboe, taglib |
+The native core is built by the root `CMakeLists.txt` into `libgeode.so`
+(plus `libprojectM-4.so`, LGPL, dynamically linked). It is a set of static
+libraries under `core/` — `api` (the `extern "C"` ABI that JNI calls),
+`util`, `render`, `analysis`, `viz`, `audio/dsp`, `audio/player`, `library`,
+`bridge` — with public headers in `core/<lib>/include/geode/<lib>/` (the two
+audio libraries share `core/audio/include/geode/audio/`). Third-party
+code is in git submodules under `third_party/`. Shaders and MilkDrop presets
+ship as assets under `app/src/main/assets/`.
 
-Shaders ship as assets under `app/src/main/assets/shaders/` and are loaded by
-the native core. Inside `:app`, dependency flow is one-way: `ui` depends on
-`playback`, `export`, `editor` and `data`, never the reverse.
+The app's manifest requests no `INTERNET` permission; Media3 merges in
+`ACCESS_NETWORK_STATE`.
 
 ## Tests
 
-Three test files exist: `app/src/test/.../PresetLinkTest.kt`,
-`app/src/androidTest/.../BuildVariantTest.kt` and
-`engine/audio-core/src/test/.../FeatureRingTest.kt`. Checks that cannot run
-headless (GL behaviour, capture, wallpaper) are listed in
-[docs/DEVICE_CHECKS.md](docs/DEVICE_CHECKS.md), a partial reconstruction.
-`tools/glslcheck` compiles and renders every fragment style and every fluid
-display variant headlessly (`node check.mjs --all`), and
-`tools/hostlink/hostlink.sh` compiles and links the native renderer on the
-host with no undefined symbols allowed; both are lower bounds on
-portability, not device checks.
+```bash
+./gradlew test                            # JVM unit tests, all modules
+./gradlew connectedAndroidTest            # instrumented tests, needs a device
+cmake -S core/host -B build-host && cmake --build build-host && ctest --test-dir build-host
+```
 
-## Maintainer notes
+Kotlin tests sit in each module's `src/test` and `src/androidTest`. The C++
+GoogleTest suite is in `core/tests/` and runs on the host through
+`core/host/` (no SDK, NDK or GPU; GoogleTest is fetched at configure time;
+`-DGEODE_SANITIZE=ON` adds ASan and UBSan). `tools/glslcheck` compiles and
+renders the fragment shaders headlessly (`node check.mjs --all`), and
+`tools/hostlink/hostlink.sh` links the native renderer on the host with no
+undefined symbols allowed.
 
-- Tag writing covers files the app holds a write grant for. For a
-  `content://media/...` track the app did not create, the editor launches
-  `MediaStore.createWriteRequest` for the user's consent and retries the
-  write once if it is granted; for a non-MediaStore URI, or if consent is
-  denied, it reports the refused write instead.
-- `ENABLE_PLAYLIST` in the root `CMakeLists.txt` is now `OFF`: nothing calls
-  `libprojectM-4-playlist.so`, so it is no longer packaged.
-- `compileSdk = 37` while the workflows install `platforms;android-36`; both
-  are left as they are.
-- `docs/visualizer-v2/` is what survives of the V2 planning set: the source
-  archive and provenance registry (which the build's provenance check reads),
-  the feature ABI and the safety model. The master plan they cite is not in
-  the tree.
+## Other files
 
-## Documentation
-
-- [CHANGELOG.md](CHANGELOG.md) — version history, newest first.
-- [docs/AUDIO_CHAIN.md](docs/AUDIO_CHAIN.md) — where playback audio goes and
-  which stages the visuals see.
-- [docs/PARAM_MATRIX.md](docs/PARAM_MATRIX.md) — param × scene-family matrix.
-- [docs/VISUAL_STYLE_RESEARCH.md](docs/VISUAL_STYLE_RESEARCH.md) — design
-  rationale and the style catalogue.
-- [docs/DEVICE_CHECKS.md](docs/DEVICE_CHECKS.md) — on-device checklist.
 - `tools/build-projectm.md` — how projectM is built from the submodule.
 - `THIRD_PARTY_NOTICES` — licences and attributions; the in-app notices asset
-  mirrors this file.
+  mirrors it.
