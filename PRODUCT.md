@@ -2,196 +2,84 @@
 
 > This is an overview of the app, to help with understanding Geode as a whole. It is context only: it is not used to make decisions.
 
-Music you can see.
+## Music you can see
 
-## What Geode is
+Geode is a music player for Android that turns every song into a living picture. Press play and the music takes shape on your screen as a moving visual that pulses, flows and changes with the sound. You choose the look, shape it until it feels like yours, and when you want to keep a moment, you record it or render the whole song into a video ready to share.
 
-Geode is an Android phone app that plays your music and turns it into visuals. Every song comes alive as a moving picture that reacts to the sound, in a look you can choose and make your own. You can then keep it: record it live, or render a song or a whole playlist into a video to save or share.
+People come to Geode for the visuals, but it is a complete music player too. It finds the music on your phone, plays it well, and is just as happy running quietly in your pocket when you don't feel like watching. Geode is for anyone who loves music and visuals. It is easy to pick up in a minute, and there is plenty of depth for those who want to dig in. It works fully offline, with no account and no sign-in. You only need the internet when you share a video.
 
-People download Geode for the music visuals. It also works as a plain music player when you don't want to watch.
+## How Geode fits together
 
-It is for anyone who loves music and visuals, not a specialist tool. It is easy to start with, with more depth for people who want to dig in. Geode works fully offline: there is no account and no sign-in. The internet is only needed to share videos.
+The home screen is where every visit starts. It greets you with the last song you played and the last visual you watched, ready to pick up where you left off, and it points the way to everything the app can do. You can choose what it shows, such as shortcuts, your favourite Presets or your recent plays. From here you move into one of four places: the **Music Library**, where your music lives; **Visuals**, where the music comes to life; **Studio**, where music and visuals become video; and **Settings**, where you make the app work your way.
 
-## The four sections
+```mermaid
+flowchart TD
+    Start([Open Geode]) --> Home[Home screen<br/>last song and look, shortcuts]
+    Home --> Library[Music Library<br/>pick a song or playlist]
+    Home --> Visuals[Visuals<br/>choose and shape a look]
+    Home --> Studio[Studio<br/>make and edit videos]
+    Home --> Settings[Settings<br/>preferences and tutorials]
 
-From the home screen you reach the four main sections:
+    Library -->|song plays, tap the eye icon| Visuals
+    Mic[Microphone<br/>sound in the room] --> Visuals
+    Visuals --> Watch[Watch full screen<br/>or cast to a TV]
+    Visuals --> Customize[Customize<br/>Macros, settings, Advanced]
+    Customize -->|save| Presets[Scene Presets and Presets]
+    Presets --> Visuals
+    Watch --> Record[Record live]
+    Record --> Studio
+    Library -->|song or playlist| Export
+    Studio --> Export[Export lounge<br/>render a video]
+    Studio --> Edit[Editing lounge<br/>trim, join, add text]
+    Export --> Edit
+    Export --> Save([Save to phone or share])
+    Edit --> Save
+```
 
-- **Music Library**: your music.
-- **Visuals**: watch, choose and customize the visual.
-- **Studio**: turn music and visuals into video, and edit videos.
-- **Settings**: your preferences and the tutorials.
+## Your music
 
-## Home screen
+The Music Library is a full music player in its own right. Your tracks, artists, albums and playlists are all there to browse and search. You can build your own playlists, let smart playlists fill themselves by rules you set, import and export playlists, line up a queue, mark favourites and look back at what you've listened to. Songs can flow into each other without gaps or with a crossfade. A sleep timer fades the music out as you drift off, an A-B loop repeats the part of a song you love, and Geode remembers where you stopped. An equalizer, crossfeed for headphones and volume levelling keep everything sounding right.
 
-The home screen is a hub. It shows artwork of the last visual you played and the last song, ready to resume, and it shows what you can do in the app. You can change what the home screen shows in Settings, for example shortcuts, Presets or your last played.
+While music plays, a mini player stays with you at the top or bottom of the screen. The music keeps going in the background, with controls on the lock screen and in the notification, and a home-screen widget shows what is playing. You can even set the visual as your phone's live wallpaper.
 
-## Music Library
+The library is also the doorway to everything else. A small eye icon at the top of the screen takes you straight to the visual for the song that is playing, and any song or playlist can be sent to Studio to become a video.
 
-A normal music library: tracks, artists, albums and playlists, with browsing and search. Geode finds the music on your phone.
+## Your visuals
 
-While a song plays, a mini player sits at the bottom or the top of the screen, whichever you choose. An **eye icon** at the top opens the visual that is currently loaded. If no visual is loaded yet, it takes you to the Visuals section to choose one.
+This is the heart of Geode. Visuals react to whatever you are listening to, either a song from your library or the sound around you through the microphone. Point your phone at a speaker, a band or a DJ and the visual moves with the room just as it does with your own music. That makes Geode as much at home at a party or a live show as it is on the sofa, and a natural tool for making clips for social media.
 
-The library is the way into the visuals: songs played here drive the visual. It is also where you pick songs and playlists to turn into videos.
+Every look in Geode belongs to a **Style Family**, a group of visuals that share the same way of moving and reacting to music. Within each Family are **Styles**, variations with their own look and extra touches. New Families are added regularly. Geode also includes MilkDrop, the classic music visualizer with a huge world of community-made presets. A set of MilkDrop presets comes built in, and you can import your own packs and textures.
 
-### Player features
+Finding a look is simple. Browse the Families with live previews, pick one, choose a Style, and the visual starts moving to your music. If you have a favourite look saved, one tap brings it back exactly as you left it. Switching between looks happens with a smooth transition, so the music never feels interrupted.
 
-- **Playlists and queue**: your own playlists, smart playlists that fill themselves by rules, importing and exporting playlists, a play queue, favourites and listening history.
-- **Listening tools**: a sleep timer that fades the music out, A-B loop to repeat part of a song, resume where you left off, and smooth transitions between songs (gapless or crossfade).
-- **Sound tools**: an equalizer, crossfeed for headphones, and volume levelling so songs play at a similar loudness.
-- **Search** across your music.
+Once a visual is playing, you can let it fill the whole screen, or drag the panels down to see all of it. The panels can be made see-through, so every change you make shows on the visual straight away. A long press in full screen brings up a side bar with the Macros and a record button. You can also send the visual to a bigger screen, such as a TV. When you leave Visuals the picture pauses but the music plays on, and the same look is waiting when you come back.
 
-### Outside the app
+## Making it yours
 
-- **Lock screen and notification**: media controls, and the music keeps playing in the background.
-- **Home-screen widget**: shows what's playing, with controls.
-- **Live wallpaper**: the visual as your phone's wallpaper.
+Customization lets you change how a visual looks and behaves: its speed, its motion, its colours, how strongly it reacts to the music and how it responds when you touch it. It is built in three layers, so everyone finds their own level. Six big **Macros** give you instant, satisfying control with a single turn. The **Customization** settings offer clear, friendly controls that anyone can understand. **Advanced** opens a full modulation matrix for those who want to go deep, with a patch board for wiring parts of the sound to any setting and modulators that move settings on their own over time. A randomize button throws up surprise looks, and you can save colour palettes to reuse. A setting means the same thing in every Family, while each Family keeps its own character in how it answers the music.
 
-## Visuals
+When you have something you love, you can keep it. A **Scene Preset** saves the whole look in one go: the Family, the Style and every setting. A **Preset** saves just the settings, so you can try them on other Styles. Both can be sorted into folders. Even if you never save, Geode remembers your current look for next time.
 
-This is where the music comes to life. You come here to watch, to set a mood, and to make a look your own. It is also used for:
+Moving the visual by tilting the phone, so that gravity pulls it around, is a planned feature that is not built yet.
 
-- **Live performance**: visualizing a musician or DJ through the microphone.
-- **Content creation**: making a look to record or render into clips for social media.
+## Recording and video
 
-### Sound sources
+When something beautiful happens on screen, hit record. Geode captures the visual and the sound together, never the app's own screens, and keeps recording even if you move around the app. You can keep playing with the Macros and touching the visual while you record, and every change ends up in the video. If you want more control later, Geode can also save each change you made as separate lanes next to the video, ready to be edited in Studio.
 
-The visual reacts to sound. The sound comes from:
+Studio is where music and visuals become finished video. In the **export lounge** you choose a song or a whole playlist, pick a look, and choose a vertical, square or wide format and the quality you want. Geode then renders the video from the music itself, which means it can look ahead in the song and react even more precisely than the live visual. You can make a short clip that loops seamlessly, long playlist videos get a chapter for each song, and the sound is levelled to a good loudness for sharing. Rendering happens in the background while you keep listening, and a notification tells you when the video is ready. For the fastest route, Quick Export renders the song that is playing with the current look in one tap, and any song or playlist in the library can be exported directly.
 
-- **Your music library**: the song that is playing.
-- **The microphone**: sound in the room, such as music from a speaker, a live performance or a party. The visual reacts to the mic the same way it reacts to library music.
+In the **editing lounge** you shape your videos, whether Geode made them, you recorded them or you already had them on your phone. A timeline with keyframes, curves, markers and undo lets you trim and cut. Clips can be cut automatically on the beat, joined with transitions, sped up or slowed down with speed ramps, and finished with filters and colour grading. You can add text such as the song title, the artist, captions or lyrics, timed to the music. If a recording was saved with its lanes, you can edit those changes, add new ones and render a clean new video from the song. Your work is kept as a project you can return to, and when you're done you save the video to your phone or share it.
 
-More sound sources may come later.
+## Settings, safety and help
 
-### Style Families, Styles and Presets
+Settings gathers all your preferences in tabs sorted by topic: what the home screen shows, how gestures and panels behave in Visuals, recording options, where the mini player sits, default folders and playback, export defaults, language, and importing your library and data from an older version of Geode. Tutorials and help are always there, and if something goes wrong you can send a problem report with personal data removed.
 
-- **Style Family**: a group of Styles built on the same base method. Each Family moves and reacts to music in its own way. New Families are added regularly.
-- **Style**: one variation within a Family. It uses the same base but has its own look and extra touches.
-- **Preset**: a saved set of customization settings only. It can be used on other Styles.
-- **Scene Preset**: a saved Family and Style together with every customization, a complete look in one tap.
+Geode takes care of the people watching. Because visuals can flash, Geode warns you and asks for your consent before the first one plays, and a flash limiter and a no-flash mode protect anyone sensitive to flashing light. Reduced motion calms the app's own animations, and text is kept readable for everyone.
 
-Presets and Scene Presets can be organised into folders.
+## A day with Geode
 
-### MilkDrop
+The first time you open Geode, it asks to read your music and scans your library. A short tour shows you the Library, the Visuals, what the Macros do and what Studio can make, and lets you switch features on or off before you land on the home screen.
 
-Geode includes MilkDrop visuals, a classic kind of music visual with a large world of community-made presets. Geode ships a set of MilkDrop presets, and you can import your own MilkDrop packs and their textures.
+You tap a song in the library and it starts to play. You tap the eye icon, and because you haven't picked a look yet, the chooser opens. You pick a Family and a Style, and the visual comes alive with the music. You open Customization, make it bluer and wilder with the panels see-through so you can watch it change, and save it as a Scene Preset. In full screen you long-press, turn the Macros, touch the visual and hit record. Later, in Studio, you render the whole song as a vertical video, keep listening while it renders, trim it, add the song title and share it.
 
-### Choosing a look
-
-When no visual is showing, the Visuals section opens on the chooser. Families are shown first, with previews. You pick a Family, then a Style, then optionally a Preset. Or you jump straight to a saved Scene Preset.
-
-### Watching
-
-Once a Style is chosen, the visual plays. You can:
-
-- Switch to **full-screen** mode, showing only the visual.
-- **Drag down** to look at the whole visual behind the panels.
-- Adjust a **translucency slider**, so the panels are see-through and your choices and edits show on the visual straight away.
-- **Long-press** in full screen to bring up a side bar with the Macros and a red **record** button. Which gestures do what is set in Settings.
-
-When you switch to another look, the visual changes over with a smooth transition.
-
-When you leave the Visuals section, the visual pauses and the music keeps playing. When the next song starts, the same look continues.
-
-### Customization
-
-Customization changes how the visual looks and behaves: speed, motion, colour, how it reacts to the music, and how it reacts to you when you touch the visual. Tilting the phone so that gravity pulls the visual is a planned feature that is not built yet. It has three layers:
-
-1. **Macros**: six big knobs, each bundling settings that belong together, for a quick and easy feel.
-2. **Customization**: clear, intuitive settings that anyone can use.
-3. **Advanced**: a detailed modulation matrix for people who want to go deep. It has a **patch board** for wiring parts of the sound to settings, and **modulators** (such as LFOs) that move a setting by themselves over time.
-
-A **randomize** button shuffles the settings for a surprise look, and you can save and reuse colour **palettes**.
-
-A customization has the same effect in every Style Family. Each Family still keeps its own character in how it responds to the music.
-
-You can keep your work by saving a **Scene Preset** or a **Preset**. Your current look is also kept automatically, even if you don't save it.
-
-### Recording
-
-The record button captures the visual and the sound live, as you watch:
-
-- It never records the app's own screens.
-- It keeps recording even if you move to another screen.
-- You can keep playing with Macros and touch while recording, and those changes appear in the video.
-- The recording is saved to your phone and can be opened in Studio.
-
-By default a recording is one video with the visual and music together. In Settings you can choose to also save every control change (Macros, customizations) next to the video as separate lanes. You can edit those lanes later in Studio.
-
-### Casting
-
-You can send the visual to a bigger screen, such as a TV.
-
-## Studio
-
-Studio is where music and visuals become video. It has two parts.
-
-### Export lounge
-
-Here you render a video offline from the music:
-
-- **What**: a single song, or a whole playlist. By default, what is playing.
-- **Look**: by default, the current visual. You can also pick a Scene Preset.
-- **Format and quality**: vertical, square or wide, and the resolution.
-- **Loop**: optionally render a short video that loops seamlessly.
-- **Chapters**: a long playlist video gets chapter markers, one per song.
-- **Loudness**: the audio is levelled to a good loudness for sharing.
-
-While rendering you see progress and the time left. Rendering keeps going in the background, you can keep listening to music meanwhile, and a notification tells you when the video is ready.
-
-A rendered video reacts to the music even better than the live visual, because the render can look ahead in the song.
-
-There are three ways to start an export:
-
-- **Quick Export**: renders the song that is playing, from the start, with the current visual settings.
-- **From Studio**, in the export lounge.
-- **From the Music Library**, from a song or playlist.
-
-### Editing lounge
-
-Here you edit videos: ones Geode rendered, recordings, or videos you already had. You can:
-
-- Trim and cut, on a **timeline** with keyframes, curves, markers and undo.
-- **Auto-cut** clips on the beat of the music.
-- Join clips, with **transitions** between them.
-- Change speed with **speed ramps**.
-- Add text, such as the song title, artist, captions, subtitles or lyrics, timed to the music.
-- Apply filters and **colour grading**.
-
-Your work is kept as a **project** you can save and come back to.
-
-If a recording was saved with its control lanes, you can also see those lanes, edit them, add new changes, and re-render a clean video from the song.
-
-When you're done, you save the video to your phone or share it through Android's share menu.
-
-## Settings
-
-All your preferences, in tabs sorted by topic:
-
-- **Home screen**: what the hub shows.
-- **Visualizer**: gestures, panel translucency, full-screen behaviour, and recording options such as saving control lanes.
-- **Library and player**: mini-player position, default folders, and playback.
-- **Export**: default format, quality and save location.
-- **Accessibility and safety**: the flash-safety options and reduced motion (see below).
-- **Language**: the app's language.
-- **Tutorials**: the tour and help, available any time.
-- **Help and diagnostics**: send a problem report, with personal data removed.
-- **Import**: bring over your library and data from an older version of Geode.
-
-## Safety and accessibility
-
-- **Flash safety**: visuals can flash. Geode shows a warning and asks for consent before the first visual. A flash limiter and a no-flash mode protect people who are sensitive to flashing light.
-- **Reduced motion**: calmer animations in the app for people who need it.
-- **Readable contrast**: text stays readable for everyone.
-
-## A typical session
-
-1. **First open.** Geode asks permission to read your music and scans your library. A short tour shows the main features: the Library, Visuals, what Macros do, and the Studio. You can ask for more information, and you can turn features on or off. You land on the home hub.
-2. **Play a song.** In the Music Library you tap a song. It plays, and the mini player appears.
-3. **See it.** You tap the eye icon. With no look chosen yet, the Visuals chooser opens.
-4. **Choose a look.** You pick a Family, a Style and maybe a Preset. The visual starts moving to the song.
-5. **Make it yours.** You open Customization to make it bluer and wilder, with the panels see-through so you can watch the change happen.
-6. **Keep it.** You save it as a Scene Preset.
-7. **Play with it.** In full screen you long-press, turn the Macros, touch the visual, and hit record.
-8. **Make a video.** In Studio you render the whole song as a vertical video, keep listening while it renders, then trim it, add the song title and share it.
-9. **Next day.** The home screen shows yesterday's song and look, ready to resume.
-10. **At a party.** You switch the visual to the microphone, go full screen, and cast it to the TV.
+The next day, the home screen shows yesterday's song and look, ready to resume. That evening at a party, you switch the visual to the microphone, go full screen and cast it to the TV, and the whole room can see the music.
