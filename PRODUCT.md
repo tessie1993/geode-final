@@ -78,4 +78,4 @@ Visuals can flash, so Geode warns you and asks for consent before the first one 
 
 ## Where to find more
 
-Terms and design decisions are recorded in `CONTEXT.md` and `docs/adr/` as they are settled. These may not exist yet.
+Terms and design decisions are recorded in `GLOSSARY.md` and `docs/adr/` as they are settled. These may not exist yet.

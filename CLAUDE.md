@@ -14,11 +14,11 @@ Issues live in GitHub Issues on `tessie1993/geode-final`, worked through the Git
 
 ### Triage labels
 
-Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+Mapped onto existing repo labels: `needs-triage`, `question` (needs-info), `ready-for-agent`, `help wanted` (ready-for-human), `wontfix`. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ## Navigating the code
 
