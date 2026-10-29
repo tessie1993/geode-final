@@ -79,3 +79,33 @@ Visuals can flash, so Geode warns you and asks for consent before the first one 
 ## Where to find more
 
 Terms and design decisions are recorded in `CONTEXT.md` and `docs/adr/` as they are settled. These may not exist yet.
+
+## Examples
+
+![](examples/01-fullscreen-visual.jpg)
+
+![](examples/02-library.jpg)
+
+![](examples/03-player-over-visual.jpg)
+
+![](examples/04-customize-motion.jpg)
+
+![](examples/05-styles-silk.jpg)
+
+![](examples/06-library-tracks.jpg)
+
+![](examples/07-presets.jpg)
+
+![](examples/08-styles-milkdrop.jpg)
+
+![](examples/09-tour-6-settings.jpg)
+
+![](examples/10-tour-5-studio.jpg)
+
+![](examples/11-tour-3-styles.jpg)
+
+![](examples/12-tour-4-touch.jpg)
+
+![](examples/13-tour-2-library.jpg)
+
+![](examples/14-tour-1-player.jpg)
