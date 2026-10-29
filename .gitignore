@@ -24,7 +24,8 @@ google-services.json
 # cloud sessions get them; personal overrides stay local.
 .claude/settings.local.json
 .claude/worktrees/
-.agents/
+.agents/*
+!.agents/skills/
 .codex/
 __pycache__/
 .venv-hooks/
