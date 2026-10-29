@@ -36,7 +36,7 @@ The live moving picture that reacts to a song or to the microphone, drawn in rea
 _Avoid_: Visualization, scene
 
 **Style Family**:
-A group of Styles that move and react to music in the same way.
+A group of Styles that move and react to music in the same way. Each Style belongs to exactly one Family; the Acid Family holds the Acid Styles.
 _Avoid_: Family type, renderer
 
 **Style**:
@@ -51,7 +51,7 @@ MilkDrop's own word for one of its Styles. It is not a kind of Preset.
 
 **Look**:
 A snapshot of every Setting, with no Style Family or Style. Geode keeps the current Look even when it is not saved.
-_Avoid_: State, grade
+_Avoid_: State
 
 **Scene**:
 A Style Family, a Style and a Look together: everything that decides how the Visual appears.
@@ -85,7 +85,7 @@ A saved snapshot of the values of one part of the app, kept to use later. There 
 _Avoid_: Preset (alone, without its kind)
 
 **Look Preset**:
-A saved Look. It can be loaded onto any Style.
+A saved Look. It may record the Style it was made on, but it can be loaded onto any Style.
 
 **Scene Preset**:
 A saved Scene. Loading it switches to its Style Family and Style.
@@ -108,7 +108,7 @@ Moving a finished video out of the app: saving it to the phone, a drive, or uplo
 _Avoid_: Render
 
 **Export Lounge**:
-The part of Studio where you start a Render of a song or a playlist.
+The part of Studio (and only Studio) where you start a Render of a song or a playlist.
 
 **Editing Lounge**:
 The part of Studio where you cut, add effects to and finish videos, then Render them.
@@ -131,11 +131,11 @@ _Avoid_: Disclaimer, onboarding
 
 Places where the code or the app uses a different word, or where a term is not settled yet. Nothing has been renamed.
 
-1. **Style vs Style Family.** The code makes Style the main thing and gives it a `StyleFamily` (`feature/customization/api/.../Styles.kt`). The glossary makes the Family the group that holds Styles. The meaning is the same, but the order is the other way round.
+1. **Style vs Style Family in the code.** The code makes Style the main thing and gives it a `StyleFamily` (`feature/customization/api/.../Styles.kt`). The domain says a Family holds its own Styles.
 2. **"Scene" in the code means Style.** Styles are identified by `SceneId`, and legacy code uses `SceneParams`. In the glossary, a Scene is Family + Style + Look.
-3. **Presets in the code.** There is no Scene Preset. The two `Preset` classes (`app/.../data/PresetStore.kt` and `feature/customization/api/.../Presets.kt`) both carry a Style, so they sit between a Look Preset and a Scene Preset.
+3. **No Scene Preset in the code.** The two `Preset` classes (`app/.../data/PresetStore.kt` and `feature/customization/api/.../Presets.kt`) are closest to Look Presets that record their Style.
 4. **No Lounges in the code.** Studio code says `Export*` for the Export Lounge and `Editor*` for the Editing Lounge, so "export" in the code often means Render (e.g. `ExportService`, the "Rendering video" notification).
-5. **Where the Export Lounge lives.** One Studio string says to Render from "Settings › Export video", not from Studio.
-6. **"Look" in Studio.** The Editing Lounge's colour-grading section is called "Look" (`studio_section_look`). The Visual keeps the word; this section needs a new name.
+5. **Export Lounge path.** One Studio string still says to Render from "Settings › Export video". The Export Lounge lives in Studio.
+6. **Words reused across the app.** "Look" also names the Editing Lounge's colour section (`studio_section_look`), and "Preset" names several kinds. Context decides which is meant; no renames until each case is looked at.
 7. **Studio's "Send" button.** It opens the share sheet (`studio_send`). Its place in the domain is unknown; it is probably one way to Export.
 8. **Flash Safety rules.** The Safety Consent screen says the flash rate is always limited in the engine, while the product promises ways to limit or turn off flashing. To be decided later.
