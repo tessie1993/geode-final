@@ -12,29 +12,7 @@ People come to Geode for the visuals, but it is a complete music player too. It 
 
 The home screen is where every visit starts. It greets you with the last song you played and the last visual you watched, ready to pick up where you left off, and it points the way to everything the app can do. You can choose what it shows, such as shortcuts, your favourite Presets or your recent plays. From here you move into one of four places: the **Music Library**, where your music lives; **Visuals**, where the music comes to life; **Studio**, where music and visuals become video; and **Settings**, where you make the app work your way.
 
-```mermaid
-flowchart TD
-    Start([Open Geode]) --> Home[Home screen<br/>last song and look, shortcuts]
-    Home --> Library[Music Library<br/>pick a song or playlist]
-    Home --> Visuals[Visuals<br/>choose and shape a look]
-    Home --> Studio[Studio<br/>make and edit videos]
-    Home --> Settings[Settings<br/>preferences and tutorials]
-
-    Library -->|song plays, tap the eye icon| Visuals
-    Mic[Microphone<br/>sound in the room] --> Visuals
-    Visuals --> Watch[Watch full screen<br/>or cast to a TV]
-    Visuals --> Customize[Customize<br/>Macros, settings, Advanced]
-    Customize -->|save| Presets[Scene Presets and Presets]
-    Presets --> Visuals
-    Watch --> Record[Record live]
-    Record --> Studio
-    Library -->|song or playlist| Export
-    Studio --> Export[Export lounge<br/>render a video]
-    Studio --> Edit[Editing lounge<br/>trim, join, add text]
-    Export --> Edit
-    Export --> Save([Save to phone or share])
-    Edit --> Save
-```
+Most visits follow the same simple path. You start in the Music Library and play a song. Then you tap the eye icon to see that song as a visual. If you are not playing music, you can switch the visual to the microphone so it reacts to the sound in the room instead. In Visuals you choose a look, watch it full screen or send it to a TV, and change it until you like it. You can save the look so you can use it again later. While you watch, you can record what is on screen. That recording goes to Studio. You can also send a song or playlist from the library straight to Studio to turn it into a video. In Studio you make the video, edit it if you want, and then save it to your phone or share it.
 
 ## Your music
 
